@@ -220,7 +220,12 @@ public sealed class AnimatedArtworkAutoFetcher
     /// the album already has a cover (a cached one is marked used), is blocked, was a miss
     /// recently, or has no clear match. Never throws except for cancellation.
     /// </summary>
-    public async Task<string?> FetchAsync(IReadOnlyList<Track> albumTracks, long capBytes, CancellationToken ct)
+    public Task<string?> FetchAsync(IReadOnlyList<Track> albumTracks, long capBytes, CancellationToken ct)
+        => FetchAsync(albumTracks, capBytes, preferMax: false, ct);
+
+    /// <param name="preferMax">GitHub #185 (Settings › Artwork › Animated Artwork Quality):
+    /// fetch the 2160p loop, or the 1080p one when the album has no 2160p loop.</param>
+    public async Task<string?> FetchAsync(IReadOnlyList<Track> albumTracks, long capBytes, bool preferMax, CancellationToken ct)
     {
         var album = AnimatedArtworkBulkService.GroupAlbums(albumTracks).FirstOrDefault();
         if (album is null) return null;
@@ -241,7 +246,7 @@ public sealed class AnimatedArtworkAutoFetcher
             AnimatedArtworkLookup outcome;
             try
             {
-                outcome = await _lookup.FindAndDownloadAsync(album, _gate, part, ct).ConfigureAwait(false);
+                outcome = await _lookup.FindAndDownloadAsync(album, _gate, part, preferMax, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
             catch (Exception ex)

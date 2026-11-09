@@ -58,4 +58,22 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, added, start));
     }
+
+    /// <summary>
+    /// Inserts multiple items at <paramref name="index"/> in their order, firing a single Add
+    /// event that carries them all and their starting index (see <see cref="AppendRange"/>).
+    /// </summary>
+    public void InsertRange(int index, IEnumerable<T> items)
+    {
+        var added = new List<T>(items);
+        if (added.Count == 0) return;
+        CheckReentrancy();
+        var start = Math.Clamp(index, 0, Items.Count);
+        for (var k = 0; k < added.Count; k++)
+            Items.Insert(start + k, added[k]);
+
+        OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+        OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, added, start));
+    }
 }

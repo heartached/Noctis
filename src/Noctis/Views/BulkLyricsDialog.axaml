@@ -50,6 +50,10 @@
             <CheckBox x:Name="RecheckBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding Recheck}"
                       IsEnabled="{Binding CanChangeOptions}"
                       Content="{loc:T BulkLyrics.Recheck}" />
+            <!-- GitHub #195: look up first, then tick which finds to save. -->
+            <CheckBox x:Name="ReviewBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding ReviewFirst}"
+                      IsEnabled="{Binding CanChangeOptions}"
+                      Content="{loc:T BulkLyrics.ReviewFirst}" />
         </StackPanel>
 
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="28,8,28,8">
@@ -62,8 +66,12 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:BulkLyricsViewModel+Row">
                         <Border Classes="job-row pill-well">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="1">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <!-- Review run (GitHub #195): ticked finds are saved by Save Selected. -->
+                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox" IsChecked="{Binding IsChosen}"
+                                          IsVisible="{Binding CanChoose}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                          AutomationProperties.Name="{Binding Title}" />
+                                <StackPanel Grid.Column="1" Spacing="1">
                                     <!-- Badge docked after the title; Left-aligned so it hugs short titles and long ones still trim -->
                                     <DockPanel HorizontalAlignment="Left">
                                         <Border DockPanel.Dock="Right" Classes="explicit-badge compact" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsExplicit}">
@@ -73,10 +81,14 @@
                                     </DockPanel>
                                     <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Border CornerRadius="999" Padding="7,1" VerticalAlignment="Center" IsVisible="{Binding HasKind}"
+                                            Background="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                                        <TextBlock Text="{Binding KindText}" FontSize="10" FontWeight="SemiBold" Opacity="0.85" />
+                                    </Border>
                                     <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding Status}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
                                     <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
-                                              Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Done}" />
+                                              Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Succeeded}" />
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -117,7 +129,11 @@
                     <Button x:Name="CloseButton" Grid.Column="2" Classes="pill-secondary" Content="{Binding CloseText}"
                             Command="{Binding CancelCommand}" MinWidth="100" Margin="0,0,10,0" />
                     <Button x:Name="StartButton" Grid.Column="3" Classes="pill-primary" Content="{Binding ActionText}"
-                            Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" MinWidth="108" />
+                            Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" MinWidth="108"
+                            IsVisible="{Binding !IsReviewing}" />
+                    <Button x:Name="ApplyButton" Grid.Column="3" Classes="pill-primary" Content="{Binding ApplyText}"
+                            Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" MinWidth="108"
+                            IsVisible="{Binding IsReviewing}" />
                 </Grid>
             </StackPanel>
         </Border>

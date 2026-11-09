@@ -55,6 +55,7 @@ public partial class LyricsPage : UserControl
     public LyricsPage()
     {
         InitializeComponent();
+        LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
         WashDither.Background = NowPlayingPage.Dither;
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
         LyricsScroll.PropertyChanged += OnScrollPropertyChanged;
@@ -76,7 +77,11 @@ public partial class LyricsPage : UserControl
         Backdrop.PropertyChanged += (_, e) => { if (e.Property == Image.SourceProperty) UpdateFades(); };
         TopFade.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) UpdateFades(); };
         BottomFade.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) UpdateFades(); };
-        SizeChanged += (_, _) => UpdateFades();
+        SizeChanged += (_, e) =>
+        {
+            ApplyOrientation(e.NewSize);
+            UpdateFades();
+        };
 
         SeekBar.ScrubStarted += (_, _) => _shell?.Player.BeginSeek();
         SeekBar.ScrubCompleted += OnSeekCompleted;
@@ -133,7 +138,11 @@ public partial class LyricsPage : UserControl
         if (e.PropertyName == nameof(LyricsPageViewModel.WantsFrames))
             EnsureFrameLoop();
         else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible)
+        {
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
             ScrollToLine(_lyrics!.ScrollLineIndex, animate: true);
+            Services.FrameStallMonitor.AddTime("lyric scroll start", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        }
         else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && IsVisible)
             ShowControls();   // (re)starts the hide timer once there is something to read
     }
@@ -158,6 +167,43 @@ public partial class LyricsPage : UserControl
     {
         var height = LyricsScroll.Viewport.Height;
         LyricsList.Margin = new Thickness(28, height * 0.12, 28, height * 0.70);
+    }
+
+    // ── Landscape ──
+
+    private bool? _landscape;
+    private double _sideWidth = double.NaN;
+
+    /// <summary>
+    /// Beta 2 (#mobile-beta): sideways, the lyrics kept the portrait column, its header and
+    /// transport leaving the lines a strip in the middle. Landscape now matches Now Playing's
+    /// (NowPlayingPage.ApplyOrientation): the big cover on the left, where Now Playing's
+    /// stands - the same 5:6 split, 24 dp margins and full height - and the header, lines and
+    /// transport on the right. The header's own small cover makes way for the big one (pulled
+    /// out of its column, not hidden: the wash is made from its image). Portrait is untouched.
+    /// </summary>
+    private void ApplyOrientation(Size size)
+    {
+        var landscape = size.Width > size.Height;
+        var safe = _shell?.SafeArea ?? default;
+        var side = landscape ? safe.Left + 24 + Math.Max(0, size.Width - safe.Left - safe.Right - 48) * 5 / 11 : 0;
+        if (_landscape == landscape && side == _sideWidth) return;
+        _landscape = landscape;
+        _sideWidth = side;
+        // Built, not parsed: "{side},*" formats in the phone's culture, and "444,27,*" (German,
+        // French, Russian...) is three columns - the lyrics got a 27 dp one and spilled off screen.
+        Split.ColumnDefinitions = landscape
+            ? new ColumnDefinitions { new ColumnDefinition(side, GridUnitType.Pixel), new ColumnDefinition(1, GridUnitType.Star) }
+            : new ColumnDefinitions { new ColumnDefinition(1, GridUnitType.Star) };
+        Grid.SetColumn(LyricsSide, landscape ? 1 : 0);
+        SideArtBox.IsVisible = landscape;
+        SideArtBox.Margin = new Thickness(safe.Left + 24, safe.Top, 24, safe.Bottom + 8);
+        HeaderArtButton.Opacity = landscape ? 0 : 1;
+        HeaderArtButton.IsHitTestVisible = !landscape;
+        HeaderArtButton.Margin = landscape ? new Thickness(-72, 0, 0, 0) : default;
+        // The fades repaint the wash where they stand on the page; moving to the other column
+        // changes that place but not their size, so nothing else tells them.
+        Dispatcher.UIThread.Post(UpdateFades, DispatcherPriority.Loaded);
     }
 
     // ── Soft edges ──

@@ -183,6 +183,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // block pending. A jump between consecutive blocks means VLC dropped audio
     // upstream and the hole is butt-spliced into the ring.
     private readonly long[] _engineExpectedPts = new long[2];
+    // Per slot: the upmix matrix spreading a stereo input on a multichannel engine (decoder
+    // thread only), rebuilt when the segment or Settings → Upmix changes.
+    private readonly (GaplessTrackSegment? Seg, UpmixMode Mode, UpmixSampleProvider.Spreader? Spreader)[] _engineSpread =
+        new (GaplessTrackSegment?, UpmixMode, UpmixSampleProvider.Spreader?)[2];
     private long _enginePtsGapCount;   // every PtsGap this session (the log line is rate-limited)
     private long _lastPtsGapLogTick;   // Environment.TickCount64 of the last PtsGap line
     // VLC clock date (µs) of the slot's pause callback; 0 = not paused. A pause moves
@@ -332,9 +336,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // reaches the damage (see EngineCutBeforeDamage).
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long Bytes, long Ticks, Mp3FrameScan.Damage[] Runs)> _mp3Damage =
         new(StringComparer.FromComparison(Helpers.PathComparison.Comparison));
-    // The reopen past known damage uses FFmpeg's decoder once (the seek may land inside the
-    // damaged bytes), without adding the file to the fallback list.
-    private string? _avcodecOncePath;
+    // Set (by path) when the play callback ended the input before known damage, until the
+    // reopened input begins: the old input's mpg123 may still run into the damage meanwhile,
+    // and its error storm is not a wedge to recover from (harness 11-06: it was taken for one,
+    // with no position, and the file restarted from 0:00).
+    private string? _damageAheadReopenPath;
     // After a storm, act only once the audible position stands still while the errors keep
     // coming: the line names no player (the standby one may be preparing a file), and the
     // engine ring still plays out what was decoded before the damage. Harness: ~4 s of
@@ -670,7 +676,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         HeadphoneSurroundActive = HeadphoneSurroundAtLaunch;
         if (StereoModeArg(HeadphoneSurroundActive) is { } stereoMode)
             vlcArgs.Add(stereoMode);
-        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting", $"headphoneSurround={HeadphoneSurroundActive}");
+        // Multichannel output needs a multichannel output, Headphone surround a stereo one to
+        // binauralize into: Headphone surround wins (it is the more specific choice, for headphones).
+        MultichannelOutputActive = OperatingSystem.IsWindows() && MultichannelLayout.EnabledAtLaunch && !HeadphoneSurroundActive;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Audio.Setting",
+            $"headphoneSurround={HeadphoneSurroundActive}, multichannel={MultichannelOutputActive} (saved {MultichannelLayout.EnabledAtLaunch})");
 
         // Diagnostic: append arbitrary space-separated LibVLC args so output
         // modules / clock / time-stretch settings can be A/B-tested on real
@@ -756,7 +766,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (OperatingSystem.IsWindows() &&
             Environment.GetEnvironmentVariable("NOCTIS_WASAPI") == "1")
         {
-            wasapi = WasapiGainOutput.TryCreate(_outputDeviceId);
+            wasapi = WasapiGainOutput.TryCreate(_outputDeviceId, MultichannelOutputActive);
             if (wasapi != null)
             {
                 _audioPlayCb = AudioPlay;
@@ -830,7 +840,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                          Environment.GetEnvironmentVariable("NOCTIS_GAPLESS_ENGINE") != "0";
         if (_gaplessEngine)
         {
-            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId);
+            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId, MultichannelOutputActive);
             if (_gaplessSink == null)
             {
                 _gaplessEngine = false;
@@ -1825,6 +1835,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <inheritdoc />
     public bool HeadphoneSurroundActive { get; }
 
+    /// <inheritdoc />
+    public bool MultichannelOutputActive { get; }
+
+    /// <summary>The first audio track's channel count of a parsed Media (0 = unknown);
+    /// DSD media, which is never parsed, from its own header.</summary>
+    private static int SourceChannelsOf(Media media)
+    {
+        try
+        {
+            if (DsdPcmInput.TryGetFormat(media, out _, out var dsdChannels)) return dsdChannels;
+            foreach (var t in media.Tracks)
+                if (t.TrackType == TrackType.Audio) return (int)t.Data.Audio.Channels;
+        }
+        catch { /* unknown */ }
+        return 0;
+    }
+
     /// <summary>
     /// The players are wired into an NAudio chain with a <see cref="BeatTapProvider"/>:
     /// the gapless engine's sink, the exclusive-mode callbacks (whose sink, exclusive or
@@ -2206,6 +2233,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// bit-perfect; >16-bit content is truncated upstream by VLC 3.x — a hard
     /// LibVLC limitation). The track's rate comes from the already-parsed Media.
     /// </summary>
+    // Exclusive multichannel layouts ("device|rate|channels") a device refused this session.
+    private readonly HashSet<string> _exclusiveLayoutRejected = new(StringComparer.Ordinal);
+
     private void PrepareExclusiveOutputFor(Media media)
     {
         try
@@ -2223,9 +2253,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 (rate, channels) = (dsdRate, dsdChannels);
             // amem delivers the wrong amount of audio from 262144 Hz up (see AmemRate), so a
             // 352.8/384 kHz source opens the device at 176.4/192 kHz and VLC resamples 2:1.
-            // The sink renders at most stereo (LibVLC downmixes to what we pin below).
+            // The sink renders at most stereo (LibVLC downmixes to what we pin below), or with
+            // Multichannel output on a 4–8 channel source at its own count when the device takes it.
             rate = AmemRate.Fit(Math.Max(rate, 8000));
-            channels = Math.Clamp(channels, 1, 2);
+            channels = MultichannelOutputActive && MultichannelLayout.IsSupported(channels)
+                ? channels : Math.Clamp(channels, 1, 2);
 
             string? notice = null;
             int sinkRate, sinkChannels;
@@ -2235,6 +2267,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // the next track moves back once it returns).
             var pin = _outputDeviceId;
             var target = AudioOutputDeviceCatalog.Exists(pin) ? pin : null;
+            // A layout this device already refused exclusively goes straight to stereo, so the
+            // next 5.1 track does not close the open stereo stream just to fail again.
+            var layoutKey = $"{target}|{rate}|{channels}";
+            if (channels > 2 && _exclusiveLayoutRejected.Contains(layoutKey)) channels = 2;
 
             lock (_exclusiveSinkLock)
             {
@@ -2254,13 +2290,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_exclusiveOut == null)
                 {
                     var sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out var reason);
+                    if (sink == null && channels > 2)
+                    {
+                        // The device does not take this layout exclusively: stay bit-perfect in
+                        // stereo (LibVLC downmixes) rather than leave exclusive mode.
+                        DebugLogger.Info(DebugLogger.Category.Playback, "Exclusive.MultichannelRejected",
+                            $"channels={channels}, rate={rate}, reason={reason}");
+                        _exclusiveLayoutRejected.Add(layoutKey);
+                        channels = 2;
+                        sink = WasapiGainOutput.TryCreateExclusive(rate, channels, target, out reason);
+                    }
                     if (sink != null)
                     {
                         notice = $"Exclusive output active: {sink.SampleRate / 1000.0:0.#} kHz / {(sink.BitsPerSample == 32 ? "32-bit float" : $"{sink.BitsPerSample}-bit")}";
                     }
                     else
                     {
-                        sink = WasapiGainOutput.TryCreate(target);
+                        sink = WasapiGainOutput.TryCreate(target, MultichannelOutputActive);
                         // Read as an error before: it said what failed but not that
                         // playback is fine, nor that the next track retries exclusive
                         // (the reuse check above drops a shared fallback sink).
@@ -2926,6 +2972,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
             Media media;
             int mp3TailTrimFrames;
+            bool onAvcodec;
             try
             {
                 media = (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, normalizedPath))
@@ -2933,7 +2980,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (!isRemote)
                     ApplyReadAhead(media);
                 mp3TailTrimFrames = ApplyMp3Demux(media, normalizedPath, startPositionMs);
-                ApplyMp3DecoderFallback(media, normalizedPath);
+                onAvcodec = ApplyMp3DecoderFallback(media, normalizedPath);
                 CountMp3Length(normalizedPath);
                 // Off the engine the playback-speed button is LibVLC's rate; only
                 // media opened with time-stretch keep their pitch at ≠ 1×.
@@ -3070,7 +3117,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     // input decodes nothing — VLC 3 source-verified), no volume
                     // dance (the OS session owns the sink's stream).
                     _engineStagedPath = normalizedPath;
-                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath, mp3TailTrimFrames);
+                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath, mp3TailTrimFrames, onAvcodec,
+                        SourceChannelsOf(media));
                     _standbyPlayer.Play(media);
                     if (startPositionMs > 0)
                     {
@@ -3607,7 +3655,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (pendingMs > 0)
                 _currentMedia.AddOption(FormattableString.Invariant($":start-time={pendingMs / 1000.0:0.###}"));
             var mp3TailTrimFrames = isPathless ? 0 : ApplyMp3Demux(_currentMedia, filePath, pendingMs);
-            ApplyMp3DecoderFallback(_currentMedia, filePath);
+            var onAvcodec = ApplyMp3DecoderFallback(_currentMedia, filePath);
             if (!isPathless) CountMp3Length(filePath);
 
             // Exclusive mode: open/reuse the device sink at this track's source
@@ -3627,7 +3675,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // EngineBeginSegment stores the base in both the segment and
                 // _enginePendingBaseMs, so an input-open flush re-bases to the
                 // same value the :start-time open actually begins at.
-                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames);
+                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames, onAvcodec,
+                    SourceChannelsOf(_currentMedia));
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
@@ -4594,6 +4643,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
             buf = System.Buffers.ArrayPool<byte>.Shared.Rent(bytes);
             System.Runtime.InteropServices.Marshal.Copy(samples, buf, 0, bytes);
+            // Multichannel: amem hands over VLC's channel order, WASAPI expects Windows' one.
+            if (channels > 2)
+                MultichannelLayout.ToWaveOrder(MemoryMarshal.Cast<byte, short>(buf.AsSpan(0, bytes)), channels);
             sink.Write(buf, bytes);
         }
         catch (Exception ex)
@@ -4683,8 +4735,17 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     catch { /* diagnostic only */ }
                 }
 
-                // Damaged data ahead (see ScanMp3Damage): the input ends right before it.
-                if (seg.DamageAhead is { } damage && EngineCutBeforeDamage(slot, seg, damage, buf, sampleCount, sink.Channels, sink.SampleRate))
+                // Multichannel engine: VLC's channel order → Windows' (MultichannelLayout), and a
+                // stereo input, which VLC delivers on FL/FR only, spread by Settings → Upmix.
+                if (sink.Channels > 2)
+                    EngineToSpeakerLayout(slot, seg, buf.AsSpan(0, sampleCount), sink);
+
+                // Damaged data ahead (see ScanMp3Damage): on mpg123 the input ends right before
+                // it; FFmpeg's decoder plays through it and what it decodes from it is dropped.
+                if (seg.DamageAhead is { } damage &&
+                    (seg.DecodesThroughDamage
+                        ? EngineDropDamagedBlock(seg, damage, buf.AsSpan(0, sampleCount), sink.Channels, sink.SampleRate)
+                        : EngineCutBeforeDamage(slot, seg, damage, buf, sampleCount, sink.Channels, sink.SampleRate)))
                     return;
 
                 // Blocks when the ring is full (back-pressures this player's
@@ -4705,6 +4766,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         }
     }
 
+    /// <summary>Libvlc decoder thread: one multichannel engine block from amem order into the
+    /// sink's speaker order, upmixing a stereo input when Settings → Upmix asks for it.</summary>
+    private void EngineToSpeakerLayout(int slot, GaplessTrackSegment seg, Span<short> block, GaplessSink sink)
+    {
+        MultichannelLayout.ToWaveOrder(block, sink.Channels);
+        if (!seg.StereoSource) return;
+        var mode = GaplessSink.UpmixMode;
+        if (mode == UpmixMode.Off) return;
+        var spread = _engineSpread[slot];
+        if (!ReferenceEquals(spread.Seg, seg) || spread.Mode != mode || spread.Spreader == null)
+        {
+            spread = (seg, mode, new UpmixSampleProvider.Spreader(sink.SampleRate, sink.Channels, mode));
+            _engineSpread[slot] = spread;
+        }
+        spread.Spreader!.SpreadFrontsInPlace(block);
+    }
+
     /// <summary>
     /// Libvlc decoder thread. When this block of the playing input reaches a damaged run found
     /// ahead of time, writes only what comes before it, ends the segment with a fade (its ring
@@ -4723,6 +4801,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (string.IsNullOrEmpty(path) || !ReferenceEquals(Volatile.Read(ref _engineSegments[slot]), seg)) return false;
         if (keep > 0) seg.Write(buf.AsSpan(0, keep * channels));
         seg.EndWithFade(sampleRate * DecoderDamageFadeMs / 1000);
+        Volatile.Write(ref _damageAheadReopenPath, path);
         var sessionId = CurrentSessionId;
         DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Info, "Decoder.DamageAhead",
             $"cutMs={run.CutMs}, resumeMs={run.ResumeMs}, writeEndMs={writeEndMs}, bufferedMs={seg.BufferedSamples / channels * 1000L / sampleRate}");
@@ -4731,10 +4810,72 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (_disposed || sessionId != CurrentSessionId) return;
             DebugLog.Write("Audio", $"Damaged MP3 data ahead at {TimeSpan.FromMilliseconds(run.CutMs):h\\:mm\\:ss}; " +
                                     $"continuing past it on the FFmpeg decoder — {LogName(path)}");
-            ReopenPastDamage(path, run.ResumeMs, seg, remember: false);
+            ReopenPastDamage(path, run.ResumeMs, seg);
         });
         return true;
     }
+
+    // What FFmpeg's decoder makes of damaged MP3 data (harness 11-06, Tangent's file at 31:14:
+    // 3 blocks clipped at full scale right after the junk bytes, peaks 1.8x and levels up to
+    // 3.5x the music's just before; the bit reservoir of the frames after the damage points
+    // into it). Looked for only this close to a damaged run found ahead of time; outside one
+    // nothing is dropped.
+    private const int DamageJunkBeforeMs = 50;
+    private const int DamageJunkAfterMs = 400;
+    private const float DamageJunkPeak = 0.97f;
+    private const float DamageJunkRatio = 1.5f;
+
+    /// <summary>
+    /// Libvlc decoder thread, an input on FFmpeg's decoder. A block near a known damaged run
+    /// that is decoded junk (see IsDecodedJunk) is dropped with a short fade either side
+    /// instead of written; any other block only updates the recent level. True when dropped.
+    /// </summary>
+    private bool EngineDropDamagedBlock(GaplessTrackSegment seg, Mp3FrameScan.Damage[] damage,
+        ReadOnlySpan<short> block, int channels, int sampleRate)
+    {
+        if (block.Length < channels) return false;
+        long sumSq = 0;
+        var peak = 0;
+        foreach (var v in block)
+        {
+            sumSq += v * v;
+            peak = Math.Max(peak, Math.Abs((int)v));
+        }
+        var rms = (float)(Math.Sqrt((double)sumSq / block.Length) / 32768d);
+        var blockPeak = peak / 32768f;
+        var writeEndMs = seg.WriteEndMs;
+        var blockEndMs = writeEndMs + (long)(block.Length / channels) * 1000 / sampleRate;
+        if (!NearDamage(writeEndMs, blockEndMs, damage))
+        {
+            // ~0.5 s memory at 26 ms blocks.
+            seg.RecentRms = seg.RecentRms <= 0 ? rms : seg.RecentRms + (rms - seg.RecentRms) * 0.05f;
+            seg.RecentPeak = seg.RecentPeak <= 0 ? blockPeak : seg.RecentPeak + (blockPeak - seg.RecentPeak) * 0.05f;
+            return false;
+        }
+        if (!IsDecodedJunk(blockPeak, rms, seg.RecentPeak, seg.RecentRms)) return false;
+        DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Info, "Decoder.DamageDropped",
+            $"writeEndMs={writeEndMs}, peak={peak}, rms={rms * 32768:0}, recentPeak={seg.RecentPeak * 32768:0}, recentRms={seg.RecentRms * 32768:0}");
+        seg.DropBlock(sampleRate * DecoderDamageFadeMs / 1000);
+        return true;
+    }
+
+    /// <summary>A block [writeEndMs, blockEndMs) lies near a damaged run. Pure; internal for tests.</summary>
+    internal static bool NearDamage(long writeEndMs, long blockEndMs, Mp3FrameScan.Damage[] damage)
+    {
+        foreach (var d in damage)
+            if (blockEndMs > d.CutMs - DamageJunkBeforeMs && writeEndMs < d.ResumeMs + DamageJunkAfterMs)
+                return true;
+        return false;
+    }
+
+    /// <summary>
+    /// A decoded block is junk: clipped at full scale and far above the music just before it,
+    /// in peak or in level (a loud passage reaches full scale too, but not out of nowhere).
+    /// Unknown recent levels (a fresh input) never make junk. Pure; internal for tests.
+    /// </summary>
+    internal static bool IsDecodedJunk(float peak, float rms, float recentPeak, float recentRms) =>
+        peak >= DamageJunkPeak && recentPeak > 0 && recentRms > 0 &&
+        (peak >= recentPeak * DamageJunkRatio || rms >= recentRms * DamageJunkRatio);
 
     /// <summary>
     /// Frames of a block starting at <paramref name="writeEndMs"/> to keep before the first
@@ -4759,12 +4900,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// Reopens the playing file at <paramref name="atMs"/> on FFmpeg's MP3 decoder (the
     /// Seek.Restart mechanism). With <paramref name="keep"/> (the damaged input's segment) its
     /// ring plays out and the reopened input is queued behind it, so the switch is not a cold
-    /// open. <paramref name="remember"/> puts the file on the fallback list (a real wedge).
+    /// open. The file goes on the fallback list: it opens on FFmpeg's decoder from then on.
     /// </summary>
-    private void ReopenPastDamage(string path, long atMs, GaplessTrackSegment? keep, bool remember)
+    private void ReopenPastDamage(string path, long atMs, GaplessTrackSegment? keep)
     {
-        if (remember) _avcodecMp3Paths.Add(path);
-        else Volatile.Write(ref _avcodecOncePath, path);
+        _avcodecMp3Paths.Add(path);
         Volatile.Write(ref _decoderRecoveryOpenPath, path);
         if (keep != null)
         {
@@ -4973,11 +5113,16 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         _mp3Damage[path] = (bytes, ticks, []); // one scan at a time per file
         _ = Task.Run(() =>
         {
+            var started = Environment.TickCount64;
             var runs = Mp3FrameScan.FindDamage(path).ToArray();
             _mp3Damage[path] = (bytes, ticks, runs);
             if (runs.Length == 0) return;
+            // Every later play (this session and the next ones) opens it on FFmpeg's decoder,
+            // which plays through the damage: no switch at each damaged run (each reopen has to
+            // land before the ring runs dry; harness 11-06: 2 of 14 did not, 0.6 and 1.5 s silent).
+            _avcodecMp3Paths.Add(path);
             DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DamageFound",
-                $"path={LogName(path)}, runs={runs.Length}, at={string.Join(";", runs.Take(8).Select(r => $"{r.CutMs}-{r.ResumeMs}"))}");
+                $"path={LogName(path)}, runs={runs.Length}, scanMs={Environment.TickCount64 - started}, at={string.Join(";", runs.Take(8).Select(r => $"{r.CutMs}-{r.ResumeMs}"))}");
             for (var slot = 0; slot < _engineRgInput.Length; slot++)
                 if (Volatile.Read(ref _engineRgInput[slot]) is { } input &&
                     string.Equals(input.Item2, path, Helpers.PathComparison.Comparison))
@@ -5004,7 +5149,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// whatever the sink is rendering. Call BEFORE the player's Play().
     /// <paramref name="path"/> is the input it carries (its ReplayGain level).
     /// </summary>
-    private void EngineBeginSegment(MediaPlayer player, long basePositionMs, string path, int tailTrimFrames)
+    private void EngineBeginSegment(MediaPlayer player, long basePositionMs, string path, int tailTrimFrames,
+        bool decodesThroughDamage, int sourceChannels = 0)
     {
         var sink = _gaplessSink;
         if (sink == null) return;
@@ -5017,6 +5163,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         seg.Gain = EngineSegmentGain(slot, path);
         seg.TailTrimFrames = tailTrimFrames;
         seg.DamageAhead = KnownMp3Damage(path);
+        seg.DecodesThroughDamage = decodesThroughDamage;
+        seg.StereoSource = sink.Channels > 2 && sourceChannels is 1 or 2;
+        if (ReferenceEquals(player, _player)) Volatile.Write(ref _damageAheadReopenPath, null);
         // The reopen after a decoder wedge: start on the music, faded in, not on priming zeros.
         if (ReferenceEquals(player, _player) &&
             string.Equals(Volatile.Read(ref _decoderRecoveryOpenPath), path, StringComparison.Ordinal))
@@ -5069,16 +5218,14 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// A file that wedged LibVLC's mpg123 decoder this session (see DecoderWedgeDetector)
     /// opens on FFmpeg's MP3 decoder instead, which skips damaged bytes and plays on
     /// (harness: the junk file plays straight through on it). ",any" keeps a libvlc
-    /// without the avcodec plugin (plain Linux installs) playing on mpg123.
+    /// without the avcodec plugin (plain Linux installs) playing on mpg123. True when applied.
     /// </summary>
-    private void ApplyMp3DecoderFallback(Media media, string path)
+    private bool ApplyMp3DecoderFallback(Media media, string path)
     {
-        if (string.IsNullOrEmpty(path)) return;
-        var once = Volatile.Read(ref _avcodecOncePath) is { } o && string.Equals(o, path, StringComparison.Ordinal) &&
-                   Interlocked.CompareExchange(ref _avcodecOncePath, null, o) == o;
-        if (!once && !_avcodecMp3Paths.Contains(path)) return;
+        if (string.IsNullOrEmpty(path) || !_avcodecMp3Paths.Contains(path)) return false;
         media.AddOption(":codec=avcodec,any");
         DebugLogger.Info(DebugLogger.Category.Playback, "Mp3.DecoderFallback", $"path={LogName(path)}, codec=avcodec");
+        return true;
     }
 
     internal enum DecoderWedgeAction { ReopenOnAvcodec, SkipAhead, GiveUp }
@@ -5145,11 +5292,13 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (active == null || !ReferenceEquals(sink.Provider.ActiveSegment, active)) return -1;
         var idleMs = active.WriteIdleMs;
         if (idleMs < DecoderWedgeWriterIdleMs) return -1;
-        seg = active;
-        var damageMs = seg.TrimDamagedTail(
+        var damageMs = active.TrimDamagedTail(
             sink.SampleRate * DecoderDamageDropMs / 1000, sink.SampleRate * DecoderDamageFadeMs / 1000,
             sink.SampleRate * DecoderDamageSilenceMs / 1000);
+        // An input that already ended has no damage point: handing it back with -1 reopened
+        // the file at 0:00 (harness 11-06).
         if (damageMs < 0) return -1;
+        seg = active;
         // Where the trimmed ring runs dry (the dropped zeros make it earlier than the damage).
         var heardMs = seg.PositionMs;
         runsDryMs = heardMs + seg.BufferedSamples / Math.Max(1, seg.Channels) * 1000L / seg.SampleRate;
@@ -5160,6 +5309,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
     private void RecoverFromDecoderWedge(long sessionId, int errors)
     {
+        if (DamageAheadReopenPending(errors)) return;
         var started = Environment.TickCount64;
         var prev = HeardPositionMs();
         var damageMs = TrimDamagedEngineTail(errors, out var damagedSeg, out _);
@@ -5206,7 +5356,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             }
         }
         var path = _currentMediaPath;
-        if (string.IsNullOrEmpty(path)) return;
+        if (string.IsNullOrEmpty(path) || DamageAheadReopenPending(errors)) return;
 
         int attempt;
         var now = Environment.TickCount64;
@@ -5235,7 +5385,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         switch (action)
         {
             case DecoderWedgeAction.ReopenOnAvcodec:
-                ReopenPastDamage(path, atMs, damagedSeg, remember: true);
+                ReopenPastDamage(path, atMs, damagedSeg);
                 break;
             case DecoderWedgeAction.SkipAhead:
                 Seek(TimeSpan.FromMilliseconds(atMs + DecoderWedgeSkipMs(attempt)));
@@ -5244,6 +5394,18 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 PlaybackError?.Invoke(this, $"The MP3 decoder kept failing on damaged data at {at:h\\:mm\\:ss}.");
                 break;
         }
+    }
+
+    /// <summary>
+    /// The storm is the input the play callback already ended before known damage (see
+    /// EngineCutBeforeDamage), still decoding while its reopen is on the way: nothing to recover.
+    /// </summary>
+    private bool DamageAheadReopenPending(int errors)
+    {
+        if (Volatile.Read(ref _damageAheadReopenPath) is not { } path) return false;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Decoder.WedgeIgnored",
+            $"errors={errors}, reason=damageAheadReopen, path={LogName(path)}");
+        return true;
     }
 
     /// <summary>

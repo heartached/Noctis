@@ -519,7 +519,8 @@ public class MobileMotionTests
         Assert.True(rig.Shell.TryHandleBack());
         Settle(window, 900);
         Assert.Empty(rig.Shell.Pages);
-        Assert.Empty(view.GetVisualDescendants().OfType<SettingsPage>());
+        // Settings' view stays in the tree, hidden, for the next open (MobilePage.KeepsView).
+        Assert.DoesNotContain(view.GetVisualDescendants().OfType<SettingsPage>(), p => p.IsEffectivelyVisible);
         Assert.Empty(view.GetVisualDescendants().OfType<AccountPage>());
         AssertAtRest(view);
         window.Close();

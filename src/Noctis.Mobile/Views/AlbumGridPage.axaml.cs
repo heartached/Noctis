@@ -7,5 +7,6 @@ public partial class AlbumGridPage : UserControl
     public AlbumGridPage()
     {
         InitializeComponent();
+        AlbumRows.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("album rows prepared");
     }
 }

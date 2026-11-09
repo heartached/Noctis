@@ -386,6 +386,8 @@ public sealed partial class ShellViewModel : ObservableObject
         _playlistsRoot?.Relabel();
         _favoritesRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
+        OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
+        OnPropertyChanged(nameof(QueueHistoryToggleText));
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
@@ -411,7 +413,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { IsEmbedded = true, OffersFavouritesFilter = false };
+        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false };
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -500,7 +502,74 @@ public sealed partial class ShellViewModel : ObservableObject
             OnPropertyChanged(nameof(IsMiniBarInlineVisible));
         }
         if (e.PropertyName is nameof(NowPlayingViewModel.CurrentTrack))
+        {
             MiniTint.Load(Player.CurrentTrack?.AlbumArtworkPath);
+            UpdateArtworkAccent();
+        }
+    }
+
+    // ── Settings › Accent › Match Artwork: the accent takes the playing cover's colour ──
+
+    /// <summary>
+    /// Match Artwork is on (Settings and the app set it alongside <see cref="IThemeHost.ApplyTheme(string, string, string, bool, bool)"/>).
+    /// While on, every playing cover's vibrant colour goes to <see cref="Theme"/>; turned on
+    /// mid-song, the current cover's goes at once. Off, no cover is decoded for it.
+    /// </summary>
+    public bool AccentFollowsArtwork
+    {
+        get => _accentFollowsArtwork;
+        set
+        {
+            if (_accentFollowsArtwork == value) return;
+            _accentFollowsArtwork = value;
+            UpdateArtworkAccent();
+        }
+    }
+    private bool _accentFollowsArtwork;
+
+    /// <summary>A cover path to the colour the accent tames, the desktop's "Accent follows album
+    /// art" one (<see cref="ArtworkVibrantColor.GetAccentSourceHex"/>: the cover's dominant
+    /// colourful region, not its edge); null without readable artwork. Tests inject one.</summary>
+    public Func<string, string?> ArtworkAccentSource { get; init; } = ArtworkVibrantColor.GetAccentSourceHex;
+
+    /// <summary>Runs <see cref="ArtworkAccentSource"/> (a Skia decode) off the UI thread; tests run it inline.</summary>
+    public Func<Func<string?>, Task<string?>> RunArtworkAccent { get; init; } = work => Task.Run(work);
+
+    /// <summary>The latest Match Artwork colour on its way to the host; tests await it.</summary>
+    public Task ArtworkAccentReady { get; private set; } = Task.CompletedTask;
+
+    private int _artworkAccentGeneration;
+
+    private void UpdateArtworkAccent()
+    {
+        var generation = ++_artworkAccentGeneration;
+        ArtworkAccentReady = Task.CompletedTask;
+        var path = AccentFollowsArtwork ? Player.CurrentTrack?.AlbumArtworkPath : null;
+        // Off, nothing playing or no cover: the host keeps (or goes back to) the chosen accent,
+        // and holds no stale cover for the next time Match Artwork is turned on.
+        if (string.IsNullOrEmpty(path))
+        {
+            Theme?.CoverColourChanged(null);
+            return;
+        }
+        ArtworkAccentReady = UpdateArtworkAccentAsync(path, generation);
+    }
+
+    private async Task UpdateArtworkAccentAsync(string path, int generation)
+    {
+        string? hex;
+        try
+        {
+            hex = await RunArtworkAccent(() => ArtworkAccentSource(path));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Artwork", $"Artwork accent failed: {ex.Message}");
+            hex = null;
+        }
+        // A later track (or Match Artwork turned off) won the race: only the newest paints.
+        if (generation != _artworkAccentGeneration) return;
+        Theme?.CoverColourChanged(hex != null && Avalonia.Media.Color.TryParse(hex, out var c) ? c : null);
     }
 
     // ── Mini player: the elapsed part of the song fills the capsule in the cover's colour ──
@@ -596,6 +665,25 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>Now Playing draws a disc in place of the square cover.</summary>
     public bool ShowsDiscArtwork => NowPlayingArtwork != NowPlayingArtworkStyle.Cover;
 
+    /// <summary>Beta 2 request: Settings › Appearance › Now Playing Background, -50 (darker) to
+    /// 50 (brighter), 0 the stock look. Saved with the player bar's settings and applied live:
+    /// brighter thins Now Playing's shade (to 40% of it at 50), darker lays black over it (60%
+    /// at -50).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingShadeOpacity), nameof(NowPlayingDimOpacity), nameof(NowPlayingBrightnessLabel))]
+    private int _nowPlayingBrightness;
+
+    public const int NowPlayingBrightnessLimit = 50;
+
+    /// <summary>The opacity of Now Playing's shade (WashShade): 1 at 0 and darker.</summary>
+    public double NowPlayingShadeOpacity => 1 - 0.6 * Math.Max(0, NowPlayingBrightness) / NowPlayingBrightnessLimit;
+
+    /// <summary>The opacity of the black over the shade (WashDim): 0 at 0 and brighter.</summary>
+    public double NowPlayingDimOpacity => 0.6 * Math.Max(0, -NowPlayingBrightness) / NowPlayingBrightnessLimit;
+
+    /// <summary>The row's value: "0", "+20", "-35".</summary>
+    public string NowPlayingBrightnessLabel => NowPlayingBrightness.ToString("+0;-0;0", System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
     /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
     [ObservableProperty] private bool _isSuspended;
@@ -615,6 +703,34 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnArtworkPageColorsChanged(bool value) => SavePlayerBarSettings(nameof(ArtworkPageColors));
     partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
     partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
+    partial void OnNowPlayingBrightnessChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBrightness));
+
+    /// <summary>Settings › Appearance › Liquid Glass Tab Pill (testers 11-06): the selected tab's
+    /// pill stays clear liquid glass at rest instead of settling into the dark tinted pill.
+    /// Off by default (the glass reads the bar's backdrop every frame it is shown).</summary>
+    [ObservableProperty] private bool _glassTabPill;
+    partial void OnGlassTabPillChanged(bool value) => SavePlayerBarSettings(nameof(GlassTabPill));
+
+    /// <summary>Settings › Listening › Played Songs in Queue (Discord request 11-07): the Queue page
+    /// shows the songs already played above the current track (NowPlayingViewModel.PlayedSongs).
+    /// Off by default, the Queue page as it was.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows))]
+    private bool _showQueueHistory;
+    partial void OnShowQueueHistoryChanged(bool value) => SavePlayerBarSettings(nameof(ShowQueueHistory));
+
+    /// <summary>The Queue page's History is folded to its title (its Hide); for this run of the app only.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows), nameof(QueueHistoryToggleText))]
+    private bool _isQueueHistoryCollapsed;
+
+    /// <summary>The History's rows are on screen: the setting is on and the section is not folded.</summary>
+    public bool ShowsQueueHistoryRows => ShowQueueHistory && !IsQueueHistoryCollapsed;
+
+    /// <summary>The History title's button: Hide while its rows show, Show once folded.</summary>
+    public string QueueHistoryToggleText => IsQueueHistoryCollapsed ? Loc.T("Mobile.Queue.ShowHistory") : Loc.T("Mobile.Queue.HideHistory");
+
+    [RelayCommand] private void ToggleQueueHistoryCollapsed() => IsQueueHistoryCollapsed = !IsQueueHistoryCollapsed;
 
     private async Task LoadPlayerBarSettingsAsync()
     {
@@ -633,6 +749,10 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
+                    NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
             }
             finally
             {
@@ -658,6 +778,9 @@ public sealed partial class ShellViewModel : ObservableObject
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
+        var brightness = NowPlayingBrightness;
+        var glassPill = GlassTabPill;
+        var queueHistory = ShowQueueHistory;
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -670,6 +793,9 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileArtworkPageColors = pages;
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
+                    settings.MobileNowPlayingBrightness = brightness;
+                    settings.MobileGlassTabPill = glassPill;
+                    settings.MobileQueueShowHistory = queueHistory;
                 });
             }
             catch (Exception ex)
@@ -734,6 +860,8 @@ public sealed partial class ShellViewModel : ObservableObject
         CloseSheet();
         if (IsPlayerUp) CloseNowPlaying();
         page.IsSheet = sheet;
+        page.PushedOver = Pages.Count > 0 ? Pages[^1] : null;
+        page.PushedOnTab = SelectedTab;
         Pages.Add(page);
         LastPageMove = PageMove.Push;
         CurrentPage = page;
@@ -868,11 +996,11 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
-    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs));
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs"));
 
-    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites) { OffersFavouritesFilter = false });
+    [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { OffersFavouritesFilter = false });
 
-    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Mobile.RecentlyAdded", Library.RecentlyAdded));
+    [RelayCommand] private void OpenRecentlyAdded() => Navigate(new SongListPageViewModel(this, "Mobile.RecentlyAdded", Library.RecentlyAdded, sortKey: "Mobile.RecentlyAdded"));
 
     [RelayCommand] private void OpenAlbums() => Navigate(new AlbumGridPageViewModel(this));
 
@@ -883,7 +1011,7 @@ public sealed partial class ShellViewModel : ObservableObject
     // Library sections' › headers.
     [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Mobile.Pinned", () => Library.PinnedRail));
 
-    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks));
+    [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks, sortKey: "Mobile.OnRepeat"));
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
@@ -958,6 +1086,24 @@ public sealed partial class ShellViewModel : ObservableObject
         });
     }
 
+    /// <summary>The Playlists page's New Playlist (+): the Rename prompt's name field, empty; the
+    /// playlist is made as a song's "Add to Playlist › New playlist" makes one, with no songs yet.</summary>
+    [RelayCommand]
+    private void AskNewPlaylist() =>
+        ShowPrompt(new PromptViewModel(this, Loc.T("Mobile.Playlists.New"), string.Empty,
+            new[] { new PromptAction(Loc.T("Mobile.Create"), p => CreatePlaylistAsync(p.Entered)) })
+        {
+            HasField = true,
+            FieldPlaceholder = Loc.T("Mobile.PlaylistName"),
+        });
+
+    public async Task CreatePlaylistAsync(string name)
+    {
+        name = name.Trim();
+        if (name.Length == 0) return;
+        await Library.CreatePlaylistAsync(name);
+    }
+
     public async Task RenamePlaylistAsync(Playlist playlist, string name)
     {
         name = name.Trim();
@@ -990,6 +1136,40 @@ public sealed partial class ShellViewModel : ObservableObject
         }
         if (CurrentPage is SongListPageViewModel { Playlist: { } shown } && shown.Id == playlist.Id) GoBack();
         await Library.DeletePlaylistAsync(playlist);
+    }
+
+    /// <summary>Change Cover: a picture from the phone's picker becomes the playlist's cover (one of
+    /// the computer's takes it there too on the next sync). A file that is not a picture says so.</summary>
+    public async Task ChangePlaylistCoverAsync(Playlist playlist)
+    {
+        if (PlaylistFiles is not { } picker) return;
+        PickedPlaylistFile? image;
+        try
+        {
+            image = await picker.PickImageAsync();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Picking a playlist cover failed: {ex.Message}");
+            return;
+        }
+        if (image is null) return;
+        if (!await Library.SetPlaylistCoverAsync(CurrentPlaylist(playlist), image.Content))
+            Player.Notice = Loc.T("Mobile.CoverNotPicture");
+    }
+
+    /// <summary>Remove Cover: back to the first song's cover, on the computer too for one of its playlists.</summary>
+    public async Task RemovePlaylistCoverAsync(Playlist playlist)
+    {
+        try
+        {
+            Account?.RecordPlaylistCoverRemoved(playlist.Id);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Recording a cover removal failed: {ex.Message}");
+        }
+        await Library.RemovePlaylistCoverAsync(CurrentPlaylist(playlist));
     }
 
     /// <summary>A song's Remove from Playlist (no question asked, as on the desktop and Apple's).</summary>
@@ -1162,6 +1342,58 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
+    /// <summary>The desktop's Snooze for a Month (PlayerViewModel.SnoozeDurationDays).</summary>
+    public const int SnoozeDays = 30;
+
+    /// <summary>
+    /// Snooze <paramref name="tracks"/> for a month, or end their snooze: the desktop's
+    /// SetTracksSnoozedAsync (app state only, no tag write), on the library's own songs and the
+    /// queue's copies. Shuffle then holds them out (PlaybackQueue.IsHeldOutOfShuffle) and the
+    /// Last.fm mixes are built again without them; a desktop song's snooze goes to the computer
+    /// on the next sync (NoctisAccountService.RecordTrackStates).
+    /// </summary>
+    public async Task SetSnoozedAsync(IReadOnlyList<Track> tracks, bool snooze)
+    {
+        if (tracks.Count == 0) return;
+        var current = tracks.Select(t => Library.Service.GetTrackById(t.Id) ?? t).DistinctBy(t => t.Id).ToList();
+        DateTime? until = snooze ? DateTime.UtcNow.AddDays(SnoozeDays) : null;
+        try
+        {
+            await Library.Service.SetTracksSnoozedAsync(current, until);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Snooze save failed: {ex.Message}");
+        }
+        // After the save: a copy that is the library's own song must still differ when it runs.
+        foreach (var t in tracks) t.SnoozedUntil = until;
+        _lastFm?.SuggestionsChanged();
+        Player.Notice = Loc.T(snooze ? "Mobile.SnoozedNotice" : "Mobile.UnsnoozedNotice");
+    }
+
+    /// <summary>
+    /// Hide Song (Discord #mobile-beta: voice notes and other audio that is not music): the
+    /// desktop's hidden-folder list (AppSettings.HiddenLibraryFolders, LibraryService.SetFolderHiddenAsync)
+    /// with the song's own path in it, which hides that one file (FolderPathMatch.IsInOrSameAsAny).
+    /// The library rebuilds without it, so Songs, Albums, Artists, search, Shuffle and the mixes
+    /// leave it out; Settings › Hidden shows it again. Nothing is deleted or rescanned.
+    /// </summary>
+    public async Task SetHiddenAsync(IReadOnlyList<string> paths, bool hidden)
+    {
+        foreach (var path in paths.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.Ordinal))
+        {
+            try
+            {
+                await Library.Service.SetFolderHiddenAsync(path, hidden);
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Library", $"Hide failed: {ex.Message}");
+            }
+        }
+        if (hidden) Player.Notice = Loc.T("Mobile.HiddenNotice");
+    }
+
     [RelayCommand]
     private async Task ToggleCurrentFavouriteAsync()
     {
@@ -1174,6 +1406,11 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         if (Player.CurrentTrack is { } track) Sheet = ContextSheetViewModel.ForTrack(this, track);
     }
+
+    /// <summary>The Sleep Timer's choices on the glass menu: from the playing song's ⋯ menu, or
+    /// out of Now Playing's timer pill while one runs.</summary>
+    [RelayCommand]
+    private void ShowSleepTimerMenu() => ShowOptions(OptionsMenuViewModel.ForSleepTimer(this, Player));
 
     /// <summary>The Library tab's ⋯: Add Folder…, Rescan Library and Settings on the glass menu.</summary>
     [RelayCommand]
@@ -1269,6 +1506,7 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
+        await LoadListSortsAsync();
         await Background.LoadAsync();
         await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads

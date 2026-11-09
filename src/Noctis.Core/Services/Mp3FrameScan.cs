@@ -46,6 +46,98 @@ internal static class Mp3FrameScan
         }
     }
 
+    /// <summary>
+    /// The length of a local MP3 where TagLib's can be wrong: the length the first frame's
+    /// Xing/Info or VBRI header states, else the counted length of a headerless VBR file
+    /// (<see cref="TryMeasureHeaderlessVbr(string, out TimeSpan, out int)"/>). False for any
+    /// other file or on error, and the existing readers' values stand.
+    /// </summary>
+    public static bool TryMeasureLength(string path, out TimeSpan duration, out int averageKbps)
+    {
+        duration = TimeSpan.Zero;
+        averageKbps = 0;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 1, FileOptions.SequentialScan);
+            return TryReadStatedLength(stream, out duration, out averageKbps)
+                || TryMeasureHeaderlessVbr(stream, out duration, out averageKbps);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The length a local MP3's first-frame header states (see the stream overload);
+    /// false for any other file or on error. Reads only the start of the file.</summary>
+    public static bool TryReadStatedLength(string path, out TimeSpan duration, out int averageKbps)
+    {
+        duration = TimeSpan.Zero;
+        averageKbps = 0;
+        try
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete,
+                bufferSize: 1, FileOptions.SequentialScan);
+            return TryReadStatedLength(stream, out duration, out averageKbps);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// The length the first frame's Xing/Info or VBRI header states (frame count x samples per
+    /// frame), with the average bitrate of the audio bytes. TagLib reads only a "Xing" header:
+    /// an "Info" header (CBR, which ffmpeg writes in a frame of its own smaller bitrate, 64 kbps
+    /// for 128 kbps audio) was skipped and the length guessed from that frame's bitrate, so
+    /// ffmpeg-made MP3s showed twice their length at half their bitrate. Internal for tests.
+    /// </summary>
+    internal static bool TryReadStatedLength(Stream stream, out TimeSpan duration, out int averageKbps)
+    {
+        duration = TimeSpan.Zero;
+        averageKbps = 0;
+        var length = stream.Length;
+        long start = 0;
+        var id3 = new byte[10];
+        stream.Position = 0;
+        if (stream.ReadAtLeast(id3, id3.Length, throwOnEndOfStream: false) == id3.Length &&
+            id3[0] == (byte)'I' && id3[1] == (byte)'D' && id3[2] == (byte)'3')
+            start = Id3v2TotalSize(id3);
+        if (start >= length) return false;
+
+        var head = ReadAt(stream, start, SyncSearchBytes + 2048);
+        var first = FindFrame(head, 0, SyncSearchBytes, out var frame);
+        if (first < 0) return false;
+
+        static uint Be32(ReadOnlySpan<byte> d, int i) =>
+            (uint)(d[i] << 24 | d[i + 1] << 16 | d[i + 2] << 8 | d[i + 3]);
+        long frames = 0, bytes = 0;
+        var xing = first + 4 + frame.SideInfo;
+        var vbri = first + 4 + 32;
+        if (xing + 16 <= head.Length && (head.AsSpan(xing, 4).SequenceEqual("Xing"u8) || head.AsSpan(xing, 4).SequenceEqual("Info"u8)))
+        {
+            var flags = Be32(head, xing + 4);
+            var at = xing + 8;
+            if ((flags & 1) != 0) { frames = Be32(head, at); at += 4; }
+            if ((flags & 2) != 0 && at + 4 <= head.Length) bytes = Be32(head, at);
+        }
+        else if (vbri + 18 <= head.Length && head.AsSpan(vbri, 4).SequenceEqual("VBRI"u8))
+        {
+            bytes = Be32(head, vbri + 10);
+            frames = Be32(head, vbri + 14);
+        }
+        if (frames <= 0) return false;
+
+        var seconds = frames * (double)frame.Samples / frame.SampleRate;
+        if (seconds <= 0) return false;
+        var audioBytes = bytes > 0 && bytes <= length ? bytes : length - (start + first);
+        duration = TimeSpan.FromSeconds(seconds);
+        averageKbps = (int)Math.Round(audioBytes * 8d / seconds / 1000d);
+        return averageKbps > 0;
+    }
+
     /// <summary>Same, over a seekable stream. Internal for tests.</summary>
     internal static bool TryMeasureHeaderlessVbr(Stream stream, out TimeSpan duration, out int averageKbps)
     {

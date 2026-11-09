@@ -87,7 +87,7 @@ internal static class MobileFixtures
 
     /// <summary>A shell over the fakes, with the library already initialised. <paramref name="seed"/>
     /// runs against the persistence root first (settings, playlists).</summary>
-    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null, NoPicker? picker = null, IArtistLogoSource? logos = null, Noctis.Mobile.Services.IFrameRateHost? frameRate = null, IDeviceMusic? deviceMusic = null)
+    internal static Rig MakeRig(Track[]? tracks = null, Album[]? albums = null, Func<PersistenceService, Task>? seed = null, Action<FakeHistoryLog>? log = null, Func<PageTint>? tint = null, IThemeHost? theme = null, IArtistPhotoSource? photos = null, NoPicker? picker = null, IArtistLogoSource? logos = null, Noctis.Mobile.Services.IFrameRateHost? frameRate = null, IDeviceMusic? deviceMusic = null, Func<string, string?>? artworkAccent = null)
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
         var library = new FakeLibraryService();
@@ -106,6 +106,9 @@ internal static class MobileFixtures
         {
             // Tests never decode covers: no tint, extracted synchronously.
             TintFactory = tint ?? (() => new PageTint(_ => null, work => Task.FromResult(work()))),
+            // Match Artwork's cover colour: none unless a test hands one, worked out inline.
+            ArtworkAccentSource = artworkAccent ?? (_ => null),
+            RunArtworkAccent = work => Task.FromResult(work()),
             Theme = theme,
             ArtistPhotos = photos,
             ArtistLogos = logos,

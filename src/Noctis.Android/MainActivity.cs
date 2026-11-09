@@ -232,8 +232,9 @@ public class MainActivity : AvaloniaMainActivity
     /// <paramref name="mimeTypes"/>; resolves to the picked URIs (empty when backed out of).
     /// The grant is the one-time read the result carries: the caller reads the files at once,
     /// so no persistable permission is taken (the 128/512 cap stays for music folders).
+    /// <paramref name="multiple"/> false asks for one file.
     /// </summary>
-    public Task<IReadOnlyList<global::Android.Net.Uri>> OpenDocumentsAsync(string[] mimeTypes)
+    public Task<IReadOnlyList<global::Android.Net.Uri>> OpenDocumentsAsync(string[] mimeTypes, bool multiple = true)
     {
         _openDocuments?.TrySetResult(Array.Empty<global::Android.Net.Uri>());
         _openDocuments = new TaskCompletionSource<IReadOnlyList<global::Android.Net.Uri>>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -241,7 +242,7 @@ public class MainActivity : AvaloniaMainActivity
         intent.AddCategory(Intent.CategoryOpenable);
         intent.SetType("*/*");
         intent.PutExtra(Intent.ExtraMimeTypes, mimeTypes);
-        intent.PutExtra(Intent.ExtraAllowMultiple, true);
+        intent.PutExtra(Intent.ExtraAllowMultiple, multiple);
         intent.AddFlags(ActivityFlags.GrantReadUriPermission);
         StartActivityForResult(intent, OpenDocumentsRequest);
         return _openDocuments.Task;

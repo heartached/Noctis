@@ -113,16 +113,21 @@ public sealed class LibrarySyncService : ILibrarySyncService
         foreach (var t in tracks)
         {
             if (t is null || t.SourceType != SourceType.Local) continue;
-            var payload = SyncJson.Serialize(TrackSyncState.From(t));
             var id = t.Id.ToString("N");
+            var existing = Store.Get(SyncKinds.Track, id);
+            var payload = Payload(t, existing?.Payload);
             // Echo guard: applying a phone's change re-saves the track here; identical
             // payloads must not become a new "change" that bounces back to the phone.
-            var existing = Store.Get(SyncKinds.Track, id);
             if (existing is not null && existing.Payload == payload) continue;
             if (Store.Upsert(SyncKinds.Track, id, payload, now, device)) any = true;
         }
         if (any) Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>The track's ledger payload; an Unsnooze since the stored one says so
+    /// (<see cref="TrackSyncState.From(Track, TrackSyncState?)"/>).</summary>
+    private static string Payload(Track t, string? stored) =>
+        SyncJson.Serialize(TrackSyncState.From(t, stored is null ? null : SyncJson.Deserialize<TrackSyncState>(stored)));
 
     public async Task SeedAsync(IEnumerable<Track> tracks, IReadOnlyList<Playlist> playlists)
     {
@@ -135,12 +140,12 @@ public sealed class LibrarySyncService : ILibrarySyncService
             {
                 if (t is null || t.SourceType != SourceType.Local) continue;
                 var id = t.Id.ToString("N");
-                var payload = SyncJson.Serialize(TrackSyncState.From(t));
+                var payload = Payload(t, known.GetValueOrDefault(id));
                 // A song the ledger has is brought up to date: sync was off while it changed
                 // (unfavourited, re-rated), so nothing recorded that. A new one only with state.
                 if (known.TryGetValue(id, out var stored)
                         ? stored == payload
-                        : !t.IsFavorite && t.Rating == 0 && !t.IsDisliked && t.PlayCount == 0) continue;
+                        : !t.IsFavorite && t.Rating == 0 && !t.IsDisliked && t.PlayCount == 0 && !t.IsSnoozed) continue;
                 Store.Upsert(SyncKinds.Track, id, payload, now, device);
             }
             RefreshPlaylists(playlists);
@@ -161,10 +166,24 @@ public sealed class LibrarySyncService : ILibrarySyncService
         {
             var id = p.Id.ToString("N");
             present.Add(id);
-            var payload = SyncJson.Serialize(PlaylistSyncState.From(p));
+            var state = PlaylistSyncState.From(p);
             var existing = Store.Get(SyncKinds.Playlist, id);
+            var stored = existing is null ? null : SyncJson.Deserialize<PlaylistSyncState>(existing.Payload);
+            // A cover file unreadable right now says nothing: the ledger keeps what it has.
+            if (state.Cover is null && stored is not null) state = state with { Cover = stored.Cover };
+            var payload = SyncJson.Serialize(state);
             if (existing is not null && existing.Payload == payload) continue;
             var stamp = p.ModifiedAt.Kind == DateTimeKind.Utc ? p.ModifiedAt : p.ModifiedAt.ToUniversalTime();
+            // Only the cover differs: a row from before covers synced, or a cover this computer
+            // does not show (a phone's whose picture never arrived). On a row from before covers,
+            // "no cover" is no news; any other cover is, and must get past LWW although the
+            // playlist itself did not change (an equal stamp loses).
+            if (existing is not null && stored is { Deleted: false }
+                && SyncJson.Serialize(state with { Cover = stored.Cover }) == existing.Payload)
+            {
+                if (stored.Cover is null && state.Cover is not { Length: > 0 }) continue;
+                if (stamp <= existing.UpdatedUtc) stamp = existing.UpdatedUtc.AddMilliseconds(1);
+            }
             // A remote edit can carry a later ModifiedAt than this stale local copy: LWW keeps it.
             Store.Upsert(SyncKinds.Playlist, id, payload, stamp, device);
         }
@@ -231,6 +250,21 @@ public sealed class LibrarySyncService : ILibrarySyncService
     private static DateTime? ClampOptional(DateTime? value, DateTime now)
         => value is not { } v || ToUtc(v) < OldestStamp ? null : ClampStamp(v, now);
 
+    /// <summary>A snooze end in UTC, at most <see cref="MaxSnooze"/> ahead; any past date is
+    /// <see cref="TrackSyncState.NotSnoozed"/> (one value for "not snoozed", so the echo guard
+    /// sees the same payload whichever past date a device sent). Null stays null ("says nothing").</summary>
+    internal static DateTime? ClampSnooze(DateTime? value, DateTime now)
+    {
+        if (value is not { } v) return null;
+        v = ToUtc(v);
+        if (v <= now) return TrackSyncState.NotSnoozed;
+        var max = now + MaxSnooze;
+        return v > max ? max : v;
+    }
+
+    /// <summary>The longest snooze a push may set (the apps snooze for 30 days).</summary>
+    public static readonly TimeSpan MaxSnooze = TimeSpan.FromDays(366);
+
     private static DateTime ToUtc(DateTime value) => value.Kind switch
     {
         DateTimeKind.Utc => value,
@@ -242,7 +276,8 @@ public sealed class LibrarySyncService : ILibrarySyncService
     /// The item as it may enter the ledger, or null to reject it: kind is track or playlist, the
     /// id a 32-hex Guid ("N", lower-cased), the payload a valid state (stored re-serialized, never
     /// raw), stamps clamped, rating 0–5, play count at most <see cref="MaxPlayCountJump"/> above
-    /// the ledger's, playlists within their size limits and a #RRGGBB[AA] colour (or none).
+    /// the ledger's, playlists within their size limits, a #RRGGBB[AA] colour (or none) and a
+    /// cover that is none or a hash (or absent).
     /// </summary>
     internal SyncItem? Normalize(SyncItem item, DateTime now)
     {
@@ -262,6 +297,7 @@ public sealed class LibrarySyncService : ILibrarySyncService
                     PlayCount = (int)Math.Clamp(s.PlayCount, 0L, maxPlays),
                     LastPlayed = ClampOptional(s.LastPlayed, now),
                     FavoritedAt = ClampOptional(s.FavoritedAt, now),
+                    SnoozedUntil = ClampSnooze(s.SnoozedUntil, now),
                 };
                 payload = SyncJson.Serialize(s);
                 break;
@@ -275,7 +311,9 @@ public sealed class LibrarySyncService : ILibrarySyncService
                 var color = s.Color ?? string.Empty;
                 if (trackIds.Count > MaxPlaylistTracks || name.Length > MaxPlaylistName || description.Length > MaxPlaylistDescription) return null;
                 if (color.Length > 0 && !ColorPattern.IsMatch(color)) return null;
-                s = s with { Name = name, Description = description, Color = color, TrackIds = trackIds, ModifiedAt = ClampStamp(s.ModifiedAt, now) };
+                // A cover is "" (none) or a hash; anything else says nothing (kept as it is).
+                var cover = s.Cover is { Length: 0 } || PlaylistCovers.IsHash(s.Cover) ? s.Cover : null;
+                s = s with { Name = name, Description = description, Color = color, TrackIds = trackIds, ModifiedAt = ClampStamp(s.ModifiedAt, now), Cover = cover };
                 payload = SyncJson.Serialize(s);
                 break;
             }

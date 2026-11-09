@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
@@ -244,6 +245,43 @@ public partial class LyricShareDialog : Window
         {
             System.Diagnostics.Debug.WriteLine($"[LyricShareDialog] Video export failed: {ex.Message}");
             Vm?.ReportStatus(Localization.Loc.T("ShareLyrics.VideoFailed"));
+        }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Picks a picture or clip for the Lyrics Page background.</summary>
+    private async void OnChooseBackgroundClick(object? sender, RoutedEventArgs e)
+    {
+        // async void: an escaped exception would crash the app.
+        if (_busy || Vm is not { } vm) return;
+        _busy = true;
+        try
+        {
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = Localization.Loc.T("Picker.ChooseShareBackground"),
+                AllowMultiple = false,
+                FileTypeFilter = new[]
+                {
+                    new FilePickerFileType(Localization.Loc.T("Picker.ImageOrVideo"))
+                    {
+                        Patterns = new[] { "*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif", "*.mp4", "*.mov", "*.webm", "*.m4v" },
+                    },
+                    new FilePickerFileType(Localization.Loc.T("Picker.AllFiles")) { Patterns = new[] { "*" } },
+                },
+            });
+            if (files.Count == 0) return;
+            // A pick that is not a local file (a cloud entry with no path) cannot be read by ffmpeg.
+            if (files[0].TryGetLocalPath() is not { } path)
+            {
+                vm.ReportStatus(Localization.Loc.T("ShareLyrics.BackgroundNotLocal"));
+                return;
+            }
+            await vm.SetPageBackgroundFileAsync(path);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LyricShareDialog] Background pick failed: {ex.Message}");
         }
         finally { _busy = false; }
     }

@@ -30,6 +30,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly IDiscordPresenceService _discord;
     private readonly ILastFmService _lastFm;
     private readonly IListenBrainzService _listenBrainz;
+    /// <summary>GitHub #197: plays wait here until Last.fm / ListenBrainz has taken them.</summary>
+    private readonly ScrobbleQueue _scrobbleQueue;
     private readonly ISyncService _syncService;
     private readonly ArtistImageService _artistImageService;
     private readonly LoonClient _loon;
@@ -84,6 +86,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _homeVm.IsActive = ReferenceEquals(current, _homeVm);
         _coverFlowVm.IsActive = ReferenceEquals(current, _coverFlowVm);
         _songsVm.IsActive = ReferenceEquals(current, _songsVm);
+        // Lyric search lists library songs: offered on Songs (Discord, Cosmo 11-08).
+        TopBar.IsLyricsSearchAvailable = ReferenceEquals(CurrentView, _songsVm);
         _albumsVm.IsActive = ReferenceEquals(current, _albumsVm);
         _artistsVm.IsActive = ReferenceEquals(current, _artistsVm);
         _foldersVm.IsActive = ReferenceEquals(current, _foldersVm);
@@ -184,6 +188,28 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool IsWindowTinted => WindowTintBrush != null;
 
+    partial void OnWindowTintBrushChanged(IBrush? value) => UpdateIslandBackdrop();
+
+    /// <summary>
+    /// The plain colour under the player island (PlaybackBarView.BackdropColor): a tinted
+    /// album page while its tint reaches the island, else the whole-window tint; null on the
+    /// theme's own page. The island's fill is translucent, so a light colour here turns the
+    /// pill light and its text and icons go dark (live 11-06, Lavender Haze / Lover).
+    /// </summary>
+    [ObservableProperty] private Color? _islandBackdropColor;
+
+    /// <summary>The island's backdrop for <paramref name="view"/> under <paramref name="windowTint"/>.
+    /// The lyrics page hides this island, bringing it back only over a full-size music video.
+    /// Internal for tests.</summary>
+    internal static Color? IslandBackdropFor(IBrush? windowTint, ViewModelBase? view) => view switch
+    {
+        LyricsViewModel => null,
+        AlbumDetailViewModel { HasTint: true, TintUnderPlayerBar: true, BackgroundBrush: ISolidColorBrush page } => page.Color,
+        _ => (windowTint as ISolidColorBrush)?.Color,
+    };
+
+    private void UpdateIslandBackdrop() => IslandBackdropColor = IslandBackdropFor(WindowTintBrush, CurrentView);
+
     private ViewModelBase? _tintSourcePage;
 
     /// <summary>The window tint for <paramref name="view"/>: its page colour when it is a
@@ -211,13 +237,19 @@ public partial class MainWindowViewModel : ViewModelBase
             if (page != null) page.PropertyChanged += OnTintSourcePageChanged;
         }
         WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
+        UpdateIslandBackdrop();
     }
 
     private void OnTintSourcePageChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(AlbumDetailViewModel.BackgroundBrush) or nameof(AlbumDetailViewModel.HasTint)
             or nameof(LyricsViewModel.PageTintBrush))
+        {
             WindowTintBrush = WindowTintFor(WholeWindowTintOn, CurrentView);
+            UpdateIslandBackdrop();
+        }
+        else if (e.PropertyName == nameof(AlbumDetailViewModel.TintUnderPlayerBar))
+            UpdateIslandBackdrop();
     }
 
     /// <summary>Whether the playback island bar should be visible (has content and not in lyrics
@@ -356,6 +388,14 @@ public partial class MainWindowViewModel : ViewModelBase
         _discord = discord;
         _lastFm = lastFm;
         _listenBrainz = listenBrainz;
+        _scrobbleQueue = new ScrobbleQueue(
+            Path.Combine(persistence.DataDirectory ?? string.Empty, "pending_scrobbles.json"),
+            service => service == ScrobbleService.LastFm
+                ? _lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled
+                : _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled,
+            (service, plays, ct) => service == ScrobbleService.LastFm
+                ? _lastFm.SendScrobblesAsync(plays, ct)
+                : _listenBrainz.SendListensAsync(plays, ct));
         _syncService = syncService;
         _artistImageService = artistImageService;
         _loon = loon;
@@ -383,6 +423,12 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);
         Player.SetSettingsViewModel(Settings);
+        // GitHub #186: the island's quick playlist pop-up with none set leads to their pickers.
+        Player.QuickPlaylistSettingsRequested += (_, _) =>
+        {
+            Settings.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+            OpenSettings();
+        };
         Player.SetPlayHistory(playHistory);
         if (App.Services?.GetService<Services.Waveform.WaveformService>() is { } waveforms)
             Player.SetWaveformService(waveforms);
@@ -390,6 +436,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.SetLoonClient(loon);
         Settings.SetLastFm(lastFm);
         Settings.SetListenBrainz(listenBrainz);
+        Settings.SetScrobbleQueue(_scrobbleQueue);
         Settings.SetTidal(App.Services!.GetRequiredService<ITidalAuthService>());
         Settings.SetUpdateService(App.Services!.GetRequiredService<UpdateService>());
         // Deferred tag writes skip the file that is playing; the player knows which one.
@@ -450,7 +497,17 @@ public partial class MainWindowViewModel : ViewModelBase
         if (App.Services?.GetService<System.Net.Http.HttpClient>() is { } pluginHttp)
             Settings.PluginCatalogClient = new PluginCatalogClient(pluginHttp);
         TrackContextMenuBuilder.PluginCommandSource = () => Plugins.TrackCommands;
+        // API 1.7: plugin entries on the artist page's menu and the Songs page's top bar.
+        PluginLibraryMenu.Source = place => Plugins.LibraryCommands(place);
+        void SyncSongsPluginButtons() => Dispatcher.UIThread.Post(() =>
+        {
+            if (TopBar.HasPageActions) TopBar.PagePluginButtons = PluginLibraryMenu.SongsPageButtons();
+        });
+        Plugins.LibraryCommandsChanged += (_, _) => SyncSongsPluginButtons();
+        Plugins.VisualLayersChanged += (_, _) => SyncSongsPluginButtons();
         TrackContextMenuBuilder.CreateMixCommand = CreateMixFromSongCommand;
+        TrackContextMenuBuilder.OtherVersionsSource = song => SongVersions.FindOtherVersions(song, _library.Tracks);
+        TrackContextMenuBuilder.SwitchVersionCommand = SwitchToVersionCommand;
         // API 1.3: plugin views open in a window of their own; ShowAlbum opens the album page here.
         Plugins.ViewPresenter = Views.PluginViewWindow.Present;
         // The sidebar's Plugins section follows the running plugins' views (loads and unloads
@@ -633,6 +690,18 @@ public partial class MainWindowViewModel : ViewModelBase
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
         };
+        // Settings › General › Sidebar (GitHub #199): the pages the user hid and their order.
+        // A hidden page is only off the rail: Navigate still opens it from shortcuts and links.
+        void SyncSidebarLayout() => Sidebar.ApplyUserLayout(Settings.SidebarPageOrderKeys, Settings.SidebarHiddenPageKeys);
+        Settings.SidebarLayoutChanged += (_, _) =>
+        {
+            if (Dispatcher.UIThread.CheckAccess()) SyncSidebarLayout();
+            else Dispatcher.UIThread.Post(SyncSidebarLayout);
+        };
+        Sidebar.PageAvailabilityChanged += (key, present) => Settings.SetSidebarPageAvailable(key, present);
+        foreach (var pageKey in SidebarViewModel.DefaultPageOrder)
+            Settings.SetSidebarPageAvailable(pageKey, Sidebar.IsPagePresent(pageKey));
+        if (Settings.IsSettingsLoaded) SyncSidebarLayout();
         // Folders sort (GitHub #89): mirror into the top bar and persist, adopting the
         // saved choice once settings load — same shape as the Artists sort above.
         var adoptingFoldersSort = false;
@@ -695,6 +764,10 @@ public partial class MainWindowViewModel : ViewModelBase
         _queueVm = new QueueViewModel(Player);
         _lyricsVm = new LyricsViewModel(Player, lrcLib, netEase, metadata, persistence, library);
         _lyricsVm.PluginLyricsSources = () => Plugins.LyricsProviders;
+        // GitHub #194: plain lyrics → the bulk lookup over the same sources, saving synced finds only.
+        if (App.Services?.GetService<Services.Lyrics.ILyricsBulkService>() is { } lyricsBulk)
+            _lyricsVm.UpgradePlainLyrics = async (track, ct) =>
+                (await lyricsBulk.FetchAsync(new[] { track }, new Services.Lyrics.LyricsBulkOptions(SyncedOnly: true), null, ct)).Synced > 0;
         // Musixmatch, lrc.red, Unison, Kugou and YouTube Music (issue #113): searched when switched
         // on in Settings, and always offered by the lyrics page's Choose Source dialog.
         if (App.Services?.GetService<IMusixmatchService>() is { } musixmatch
@@ -770,6 +843,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up search
         TopBar.SearchTextChanged += OnSearchTextChanged;
         TopBar.HomeSearchRedirectRequested += OnHomeSearchRedirectRequested;
+        TopBar.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(TopBarViewModel.LyricsSearchMode))
+                _songsVm.LyricsSearchMode = TopBar.LyricsSearchMode;
+        };
 
         // Wire up album detail navigation from albums view
         _albumsVm.AlbumOpened += OnAlbumOpened;
@@ -882,6 +960,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         // Load settings
         await Settings.LoadAsync();
+        // GitHub #197: plays left waiting last time (offline, signed out) go out once loading settles.
+        _scrobbleQueue.FlushSoon(TimeSpan.FromSeconds(15));
 
         // Warm the play-history log off the UI thread. Every consumer (Home, Statistics,
         // Settings, Wrap) reads it from the UI thread, and the first read otherwise
@@ -964,6 +1044,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 Debug.WriteLine($"[MainWindowVM] Wrap archive failed: {ex.Message}");
             }
         });
+
+        // GitHub #160/#182: "Keep play counts in sync" — every startup, after a short delay.
+        _ = Settings.SyncPlayCountsOnStartupAsync();
 
         // What an auto-update did at launch ("Updated to X.") and a queued install's Ready state.
         Settings.RestoreAutoUpdateState();
@@ -1056,8 +1139,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var allNavItems = Sidebar.NavItems
             .Concat(Sidebar.FavoritesItems)
             .Concat(Sidebar.PlaylistItems);
-        Sidebar.SelectedNavItem = allNavItems.FirstOrDefault(n => n.Key == defaultKey)
-                                  ?? Sidebar.NavItems[0];
+        // A start page without a sidebar row (hidden, GitHub #199) keeps the rail unselected:
+        // falling back to the first row would navigate away from the page just opened.
+        if (allNavItems.FirstOrDefault(n => n.Key == defaultKey) is { } startItem)
+            Sidebar.SelectedNavItem = startItem;
 
         // Play any files this launch was asked to open ("Open with Noctis"),
         // now that the window and player are up. Background priority so first
@@ -1121,18 +1206,25 @@ public partial class MainWindowViewModel : ViewModelBase
     /// GitHub #71: with Settings → Library → "Import dropped files" off, a drop plays or
     /// queues the files from where they are — nothing is moved into Noctis Imports and
     /// the library is left alone. Folders expand to their audio files in name order.
-    /// Empty player: the drop replaces the queue and starts; otherwise it appends.
+    /// Empty player: the drop replaces the queue and starts; otherwise it appends, or with
+    /// <paramref name="insertAt"/> (GitHub #189: dropped onto the queue list) goes into Up Next
+    /// there, with no toast: the open list shows where they went.
     /// </summary>
-    public async Task QueueExternalMediaAsync(IReadOnlyList<string> paths)
+    public async Task QueueExternalMediaAsync(IReadOnlyList<string> paths, int? insertAt = null)
     {
         try
         {
+            // Reading the files takes a moment, and a song may start (leaving Up Next) or the
+            // queue change meanwhile: insert before the song the drop was above, not at an index.
+            var before = insertAt is { } at && at >= 0 && at < Player.UpNext.Count ? Player.UpNext[at] : null;
             var files = await Task.Run(() => DroppedFilesService.ExpandAudioFiles(paths));
             if (files.Count == 0) return;
             var tracks = await ResolveExternalTracksAsync(files);
             if (tracks.Count == 0) return;
             if (DropStartsPlayback)
                 Player.ReplaceQueueAndPlay(tracks, 0);
+            else if (insertAt is { } requested)
+                Player.InsertIntoQueue(QueueDropIndex(Player.UpNext, before, requested), tracks, announce: false);
             else
                 Player.AddRangeToQueue(tracks);
         }
@@ -1140,6 +1232,25 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Debug.WriteLine($"[MainWindowVM] QueueExternalMedia failed: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// GitHub #189: where a queue drop lands once its files are read: before the song it was
+    /// dropped above (<paramref name="before"/>, null for the end), wherever that song is now;
+    /// <paramref name="requested"/> (clamped) when it has left Up Next. A song queued twice
+    /// is the copy nearest the requested row.
+    /// </summary>
+    internal static int QueueDropIndex(IList<Track> upNext, Track? before, int requested)
+    {
+        if (before == null) return requested <= 0 ? 0 : upNext.Count;
+        var found = -1;
+        for (var i = 0; i < upNext.Count; i++)
+        {
+            if (ReferenceEquals(upNext[i], before)
+                && (found < 0 || Math.Abs(i - requested) < Math.Abs(found - requested)))
+                found = i;
+        }
+        return found >= 0 ? found : Math.Clamp(requested, 0, upNext.Count);
     }
 
     /// <summary>Library entries by path where known (play counts / ratings attach), else a
@@ -2588,6 +2699,15 @@ public partial class MainWindowViewModel : ViewModelBase
         return CreatePlaylistAndOpenAsync(seed.PlaylistName, MixPlaylistBuilder.Build(seed, _library.Tracks));
     }
 
+    /// <summary>Song menu ▸ Other Versions ▸ a version (Discord, Cosmo 11-08): see
+    /// <see cref="PlayerViewModel.SwitchToVersion"/>.</summary>
+    [RelayCommand]
+    private void SwitchToVersion(VersionSwitchRequest? request)
+    {
+        if (request is null) return;
+        Player.SwitchToVersion(request.From, request.To);
+    }
+
     private void OnPlaylistOpened(object? sender, Playlist playlist)
     {
         PushCurrentViewToHistory();
@@ -2764,8 +2884,9 @@ public partial class MainWindowViewModel : ViewModelBase
         // navigation. Navigate closes and clears the search pill as part of the
         // section switch, so it may only be reopened once navigation is done.
         var songs = Sidebar.NavItems.FirstOrDefault(n => n.Key == "songs");
-        if (songs == null) return;
-        Sidebar.SelectedNavItem = songs;
+        // Songs hidden from the sidebar (GitHub #199): there is no row to select, go there directly.
+        if (songs == null) Navigate("songs");
+        else Sidebar.SelectedNavItem = songs;
         if (TopBar.IsSearchVisible)
             TopBar.OpenSearchCommand.Execute(null);
     }
@@ -2800,6 +2921,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 }
             }));
         TopBar.ShowSongsFilters(_songsVm.SummaryText, _songsVm.QualityFilter, _songsVm.SetQualityFilterCommand);
+        TopBar.PagePluginButtons = PluginLibraryMenu.SongsPageButtons();
         _songsVmTopBarHandler = (_, e) =>
         {
             if (e.PropertyName == nameof(LibrarySongsViewModel.ShowOnlyFavorites))
@@ -3411,7 +3533,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
             var dto = new DiscordPresenceTrack(
                 track.Title ?? "Unknown",
-                track.Artist ?? "Unknown Artist",
+                // As every artist line shows it, not the stored credit ("A; B"; GitHub #187).
+                track.ArtistCreditDisplay,
                 track.Album,
                 artworkUrl,
                 ShowAlbum: Settings.DiscordShowAlbum,
@@ -3431,11 +3554,10 @@ public partial class MainWindowViewModel : ViewModelBase
         if (_scrobbleTrack == null)
             return;
 
-        var lastFmActive = _lastFm.IsAuthenticated && Settings.LastFmScrobblingEnabled;
-        var listenBrainzActive = _listenBrainz.IsAuthenticated && Settings.ListenBrainzScrobblingEnabled;
+        var (lastFmOwed, listenBrainzOwed) = ScrobbleTargets();
         // Plugins' OnTrackScrobbled fires on the same rule, with or without a scrobbling service.
         var pluginsListening = Plugins.HasScrobbleListeners;
-        if (!lastFmActive && !listenBrainzActive && !pluginsListening)
+        if (!lastFmOwed && !listenBrainzOwed && !pluginsListening)
         {
             _scrobbleTrack = null;
             return;
@@ -3456,17 +3578,13 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var track = _scrobbleTrack;
             var startedAt = _scrobbleClock.StartedAt;
-            var pending = new List<Task>(2);
-            if (lastFmActive)
-                pending.Add(_lastFm.ScrobbleAsync(track, startedAt));
-            if (listenBrainzActive)
-                pending.Add(_listenBrainz.ScrobbleAsync(track, startedAt));
 
             // Exposed so shutdown can await it. Fire-and-forget here meant the outbound
             // HTTP request was killed with the process — the last track of every session
             // silently failed to scrobble, because App.OnFrameworkInitializationCompleted
-            // calls desktop.Shutdown() as soon as ShutdownAsync returns.
-            _pendingScrobbles = pending.Count > 0 ? Task.WhenAll(pending) : Task.CompletedTask;
+            // calls desktop.Shutdown() as soon as ShutdownAsync returns. The play is in the
+            // queue file before the send starts, so one cut short goes out at the next start.
+            _pendingScrobbles = QueueScrobbleAsync(track, startedAt, lastFmOwed, listenBrainzOwed);
 
             if (pluginsListening)
             {
@@ -3478,6 +3596,26 @@ public partial class MainWindowViewModel : ViewModelBase
         _scrobbleTrack = null;
     }
 
+    /// <summary>
+    /// GitHub #197: the services a counted play is owed to. Each one turned on and either signed in,
+    /// or signed out without the user asking for it — a session Last.fm expired, or a login only
+    /// another computer sharing the data folder can read: the account name stays then, while Log Out
+    /// clears it. Those plays wait in the queue and go out once the service is signed in again.
+    /// </summary>
+    private (bool LastFm, bool ListenBrainz) ScrobbleTargets() =>
+        (Settings.LastFmScrobblingEnabled && (_lastFm.IsAuthenticated || !string.IsNullOrEmpty(Settings.LastFmUsername)),
+         Settings.ListenBrainzScrobblingEnabled && (_listenBrainz.IsAuthenticated || !string.IsNullOrEmpty(Settings.ListenBrainzUsername)));
+
+    /// <summary>Queues a counted play for the services named, then sends what is queued (GitHub #197).</summary>
+    private Task QueueScrobbleAsync(Track track, DateTime startedAt, bool lastFm, bool listenBrainz)
+    {
+        if (!lastFm && !listenBrainz) return Task.CompletedTask;
+        var utc = startedAt.Kind == DateTimeKind.Local ? startedAt.ToUniversalTime() : DateTime.SpecifyKind(startedAt, DateTimeKind.Utc);
+        _scrobbleQueue.Add(new ScrobbleEntry(track.Artist ?? string.Empty, track.Title ?? string.Empty, track.Album,
+            (int)Math.Max(0, track.Duration.TotalSeconds), new DateTimeOffset(utc).ToUnixTimeSeconds()), lastFm, listenBrainz);
+        return _scrobbleQueue.FlushAsync(now: true);
+    }
+
     /// <summary>Whether a phone's plays go on to Last.fm and ListenBrainz from here (signed in and
     /// turned on), for the phone's Scrobbling page.</summary>
     public (bool LastFm, bool ListenBrainz) PhoneScrobbleServices =>
@@ -3486,18 +3624,16 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// A play from a phone in Through Computer mode (the server's scrobble call): the phone already
     /// applied the scrobble rule on its played time, and marks the plays it sent itself so they never
-    /// come here. This computer's own choices still decide: each service signed in and on, and its
-    /// "don't scrobble" songs, albums and artists. Sent with the phone's start time, as a desktop
-    /// play is. Plugins' OnTrackScrobbled is for this computer's own playback and is not raised.
+    /// come here. This computer's own choices still decide: each service on (and signed in, or
+    /// waiting for a sign-in, see <see cref="ScrobbleTargets"/>), and its "don't scrobble" songs,
+    /// albums and artists. Sent with the phone's start time through the same queue as a desktop
+    /// play. Plugins' OnTrackScrobbled is for this computer's own playback and is not raised.
     /// </summary>
     public Task ForwardPhoneScrobbleAsync(Track track, DateTime startedAtUtc)
     {
         if (Settings.IsScrobbleExcluded(track)) return Task.CompletedTask;
-        var (lastFmActive, listenBrainzActive) = PhoneScrobbleServices;
-        var pending = new List<Task>(2);
-        if (lastFmActive) pending.Add(_lastFm.ScrobbleAsync(track, startedAtUtc));
-        if (listenBrainzActive) pending.Add(_listenBrainz.ScrobbleAsync(track, startedAtUtc));
-        return pending.Count > 0 ? Task.WhenAll(pending) : Task.CompletedTask;
+        var (lastFm, listenBrainz) = ScrobbleTargets();
+        return QueueScrobbleAsync(track, startedAtUtc, lastFm, listenBrainz);
     }
 
     /// <summary>In-flight scrobble posts from the most recent track transition.</summary>

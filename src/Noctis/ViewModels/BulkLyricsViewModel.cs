@@ -34,6 +34,11 @@ public partial class BulkLyricsViewModel : ViewModelBase
     [ObservableProperty] private bool _upgradeExisting;
     /// <summary>Ask again about songs an earlier run already looked up.</summary>
     [ObservableProperty] private bool _recheck;
+    /// <summary>GitHub #195: look up first, save only the finds the user keeps.</summary>
+    [ObservableProperty] private bool _reviewFirst;
+    /// <summary>A review run ended: the rows with finds carry a checkbox and Save Selected saves the ticked ones.</summary>
+    [ObservableProperty] private bool _isReviewing;
+    [ObservableProperty] private string _applyText = string.Empty;
     /// <summary>After a run: songs left with plain lyrics only, which Lyrics Studio can time.</summary>
     [ObservableProperty] private bool _canTimeInStudio;
     [ObservableProperty] private string _studioOfferText = string.Empty;
@@ -51,7 +56,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _statusMessage = string.Empty;
 
-    public bool CanStart => !IsRunning && !IsDone;
+    public bool CanStart => !IsRunning && !IsDone && !IsReviewing;
 
     public event EventHandler? Closed;
 
@@ -101,6 +106,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanStart));
         OnPropertyChanged(nameof(CloseText));
         OnPropertyChanged(nameof(CanChangeOptions));
+        OnPropertyChanged(nameof(CanApply));
     }
 
     partial void OnIsDoneChanged(bool value)
@@ -109,9 +115,26 @@ public partial class BulkLyricsViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanChangeOptions));
     }
 
+    partial void OnIsReviewingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanStart));
+        OnPropertyChanged(nameof(CanChangeOptions));
+        OnPropertyChanged(nameof(CanApply));
+    }
+
+    /// <summary>Save Selected: while reviewing, not mid-save, with at least one find ticked.</summary>
+    public bool CanApply => IsReviewing && !IsRunning && Rows.Any(r => r.CanChoose && r.IsChosen);
+
+    private void RefreshApply()
+    {
+        var n = Rows.Count(r => r.CanChoose && r.IsChosen);
+        ApplyText = L("BulkLyrics.SaveSelected", n);
+        OnPropertyChanged(nameof(CanApply));
+    }
+
     /// <summary>"Hide" while a run goes on (it keeps running), "Close" otherwise.</summary>
     public string CloseText => IsRunning ? L("BulkLyrics.Hide") : L("BulkLyrics.Close");
-    public bool CanChangeOptions => IsFetch && !IsRunning && !IsDone;
+    public bool CanChangeOptions => IsFetch && !IsRunning && !IsDone && !IsReviewing;
 
     [RelayCommand]
     private async Task Start()
@@ -138,7 +161,15 @@ public partial class BulkLyricsViewModel : ViewModelBase
             }
             else
             {
-                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck), progress, _cts.Token);
+                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst), progress, _cts.Token);
+                if (ReviewFirst && s.Finds.Count > 0)
+                {
+                    // GitHub #195: nothing saved yet; the finds wait for Save Selected.
+                    ShowFinds(s.Finds);
+                    StatusMessage = Noctis.Localization.Loc.Plural("BulkLyrics.ReviewReady", s.Finds.Count);
+                    IsReviewing = true;
+                    return;
+                }
                 StatusMessage = L(_cts.IsCancellationRequested ? "BulkLyrics.StoppedSummary" : "BulkLyrics.DoneSummary", Summarize(s));
                 OfferStudio(s.PlainOnlyTracks);
             }
@@ -156,6 +187,65 @@ public partial class BulkLyricsViewModel : ViewModelBase
         {
             IsRunning = false;
             Progress = 1;
+        }
+    }
+
+    // Each find goes on its song's row, ticked: unticking leaves that song as it is.
+    private void ShowFinds(IReadOnlyList<LyricsBulkFind> finds)
+    {
+        foreach (var f in finds)
+        {
+            if (!_rowById.TryGetValue(f.Track.Id, out var row)) continue;
+            row.Find = f;
+            row.KindText = KindLabel(f.Rank);
+            row.Status = f.Source;
+            row.Done = true; // the background row-state read must not write over the source
+            row.CanChoose = true;
+            row.IsChosen = true;
+            row.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(Row.IsChosen)) RefreshApply(); };
+        }
+        RefreshApply();
+    }
+
+    internal static string KindLabel(int rank) => rank >= Noctis.Services.LyricsSearchSelector.WordSyncedRank
+        ? L("BulkLyrics.KindWord") : rank >= 2 ? L("BulkLyrics.KindLine") : L("BulkLyrics.KindPlain");
+
+    /// <summary>GitHub #195: saves the ticked finds of a review run; the unticked songs stay as they were.</summary>
+    [RelayCommand]
+    private async Task Apply()
+    {
+        if (!CanApply) return;
+        var chosen = Rows.Where(r => r.CanChoose && r.IsChosen && r.Find is not null).Select(r => r.Find!).ToList();
+        foreach (var r in Rows.Where(r => r.CanChoose))
+        {
+            r.CanChoose = false;
+            if (!r.IsChosen) r.Status = L("BulkLyrics.NotSaved");
+        }
+        IsRunning = true;
+        Progress = 0;
+        StatusMessage = L("BulkLyrics.Saving");
+        _cts = new CancellationTokenSource();
+        var progress = new Progress<LyricsBulkProgress>(p => Dispatcher.UIThread.Post(() =>
+        {
+            Progress = p.Total == 0 ? 1 : p.Done / (double)p.Total;
+            if (_rowById.GetValueOrDefault(p.TrackId) is { } row) { row.Status = p.Outcome; row.Failed = p.Outcome == "failed"; }
+        }));
+        try
+        {
+            var s = await _service.ApplyAsync(chosen, progress, _cts.Token);
+            StatusMessage = L("BulkLyrics.DoneSummary", Summarize(s));
+            OfferStudio(s.PlainOnlyTracks);
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = L("BulkLyrics.Failed", ex.Message);
+        }
+        finally
+        {
+            IsRunning = false;
+            Progress = 1;
+            IsReviewing = false;
+            IsDone = true;
         }
     }
 
@@ -223,7 +313,18 @@ public partial class BulkLyricsViewModel : ViewModelBase
         public bool IsExplicit => Track.IsExplicit;
         public string Subtitle => Track.ArtistDisplay;
         [ObservableProperty] private string _status = string.Empty;
-        [ObservableProperty] private bool _done;
-        [ObservableProperty] private bool _failed;
+        [ObservableProperty, NotifyPropertyChangedFor(nameof(Succeeded))] private bool _done;
+        [ObservableProperty, NotifyPropertyChangedFor(nameof(Succeeded))] private bool _failed;
+        /// <summary>The row's tick: a song that ended "not found" or "failed" showed it beside the red outcome.</summary>
+        public bool Succeeded => Done && !Failed;
+        /// <summary>A review run's find for this song (GitHub #195); null when nothing better was found.</summary>
+        public LyricsBulkFind? Find { get; set; }
+        /// <summary>Word-synced / Line-synced / Plain: the find's format, shown as a badge.</summary>
+        [ObservableProperty] private string _kindText = string.Empty;
+        /// <summary>The checkbox shows while the user reviews this row's find.</summary>
+        [ObservableProperty] private bool _canChoose;
+        [ObservableProperty] private bool _isChosen;
+        public bool HasKind => !string.IsNullOrEmpty(KindText);
+        partial void OnKindTextChanged(string value) => OnPropertyChanged(nameof(HasKind));
     }
 }

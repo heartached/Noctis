@@ -79,7 +79,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Re-labels the section items after a language switch (labels are plain strings, not bindings).</summary>
     private void RelabelSections()
     {
-        foreach (var item in NavItems.Concat(FavoritesItems))
+        foreach (var item in NavItems.Concat(FavoritesItems).Concat(_pageItems.Values).Distinct())
             item.Label = Loc.T(LabelKey(item.Key));
     }
 
@@ -126,17 +126,16 @@ public partial class SidebarViewModel : ViewModelBase
     public void RefreshInbox()
     {
         var count = _library.InboxTracks.Count;
-        SetOptionalSectionVisible(_inboxEnabled || count > 0, "inbox", Loc.T("Nav.Inbox"), "SidebarInboxIcon",
-            after: "folders", before: "playlists");
-        if (NavItems.FirstOrDefault(i => i.Key == "inbox") is { } item)
-        {
-            item.Count = count;
-            item.ShowBadge = count > 0;
-        }
+        SetOptionalSectionVisible(_inboxEnabled || count > 0, "inbox");
+        // The row is kept while hidden (GitHub #199), so its count stays current for when it returns.
+        var item = GetPageItem("inbox");
+        item.Count = count;
+        item.ShowBadge = count > 0;
     }
 
-    /// <summary>True while the sidebar has an Inbox entry.</summary>
-    public bool IsInboxSectionVisible => NavItems.Any(i => i.Key == "inbox");
+    /// <summary>True while the Inbox page exists (setting on or songs waiting), even when the
+    /// user hid its entry: a hidden page is still reachable.</summary>
+    public bool IsInboxSectionVisible => IsPagePresent("inbox");
 
     /// <summary>
     /// Shows or hides the "Server" entry (between Playlists and Settings). The item
@@ -144,43 +143,29 @@ public partial class SidebarViewModel : ViewModelBase
     /// container doesn't leave a dead gap in the rail.
     /// </summary>
     public void SetServerSectionVisible(bool visible)
-        => SetOptionalSectionVisible(visible, "server", Loc.T("Nav.Server"), "ServerIcon", after: null, before: "cd");
+        => SetOptionalSectionVisible(visible, "server");
 
     /// <summary>
     /// Shows or hides the "Visualizer" entry (Settings › Plugins › Built-in Features › Audio
     /// Visualizer). It goes back to its place after Playlists.
     /// </summary>
     public void SetVisualizerSectionVisible(bool visible)
-        => SetOptionalSectionVisible(visible, "visualizer", Loc.T("Nav.Visualizer"), "SidebarVisualizerIcon", after: "playlists", before: "lyricsstudio");
+        => SetOptionalSectionVisible(visible, "visualizer");
 
-    /// <summary>True while the sidebar has a Visualizer entry.</summary>
-    public bool IsVisualizerSectionVisible => NavItems.Any(i => i.Key == "visualizer");
+    /// <summary>True while the Visualizer page exists (Built-in Features), even when hidden.</summary>
+    public bool IsVisualizerSectionVisible => IsPagePresent("visualizer");
 
     /// <summary>
     /// Shows or hides the "Audio CD" entry. It sits after Server (when present),
     /// otherwise directly above Settings, and only exists while an optical drive does.
     /// </summary>
     public void SetAudioCdSectionVisible(bool visible)
-        => SetOptionalSectionVisible(visible, "cd", Loc.T("Nav.AudioCd"), "CdIcon", after: "server", before: null);
+        => SetOptionalSectionVisible(visible, "cd");
 
-    /// <summary>Insert order: right after <paramref name="after"/> if present, else right before
-    /// <paramref name="before"/> if present, else above Settings.</summary>
-    private void SetOptionalSectionVisible(bool visible, string key, string label, string icon, string? after, string? before)
-    {
-        var existing = NavItems.FirstOrDefault(i => i.Key == key);
-        if (visible == (existing != null)) return;
-        if (!visible) { NavItems.Remove(existing!); return; }
-
-        var indexed = NavItems.Select((item, index) => (item, index)).ToList();
-        var afterIndex = after == null ? -1 : indexed.FirstOrDefault(x => x.item.Key == after, (null!, -1)).index;
-        var beforeIndex = before == null ? -1 : indexed.FirstOrDefault(x => x.item.Key == before, (null!, -1)).index;
-        var settingsIndex = indexed.FirstOrDefault(x => x.item.Key == "settings", (null!, -1)).index;
-        var insertAt = afterIndex >= 0 ? afterIndex + 1
-            : beforeIndex >= 0 ? beforeIndex
-            : settingsIndex >= 0 ? settingsIndex
-            : NavItems.Count;
-        NavItems.Insert(insertAt, new NavItem { Key = key, Label = label, IconGlyph = icon });
-    }
+    /// <summary>The page comes or goes with its feature; where it sits and whether it shows
+    /// follow the user's layout (see SidebarViewModel.Layout.cs). The item is inserted/removed
+    /// rather than IsVisible-toggled so a collapsed ListBoxItem never leaves a dead gap.</summary>
+    private void SetOptionalSectionVisible(bool visible, string key) => SetPagePresent(key, visible);
 
     private bool _suppressNavigationRequest;
 
@@ -1240,7 +1225,7 @@ public partial class SidebarViewModel : ViewModelBase
             // Drop a previous cover with a different extension: replacing a .png with a
             // .jpg left the .png behind forever, since RemoveCoverArt only deletes the
             // path currently recorded.
-            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}.*"))
+            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}*"))
             {
                 if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
                     try { File.Delete(stale); } catch { }

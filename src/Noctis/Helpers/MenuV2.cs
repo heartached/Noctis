@@ -103,11 +103,19 @@ public static class MenuV2
     /// the slot's parts once it is attached: same centre line as the line icons, and the name
     /// starts where every other row's label does.
     /// </summary>
-    public static Border ArtistAvatar(out CachedImage photo)
+    public static Border ArtistAvatar(out CachedImage photo) =>
+        IconPicture(out photo, "ArtistsIcon", AvatarSize / 2, "mv2-avatar");
+
+    /// <summary>A small rounded album cover for a row's icon slot (Other Versions, owner 11-08):
+    /// the same slot handling as <see cref="ArtistAvatar"/>, square with a note placeholder.</summary>
+    public static Border AlbumThumb(out CachedImage photo) =>
+        IconPicture(out photo, "SongsIcon", 4, "mv2-cover");
+
+    private static Border IconPicture(out CachedImage photo, string glyphKey, double corner, string cssClass)
     {
         var glyph = new Path { Stretch = Stretch.Uniform, Height = 11, Opacity = 0.35,
             HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        if (Application.Current?.TryGetResource("ArtistsIcon", null, out var data) == true && data is Geometry g)
+        if (Application.Current?.TryGetResource(glyphKey, null, out var data) == true && data is Geometry g)
             glyph.Data = g;
         glyph[!Shape.FillProperty] = glyph.GetResourceObservable("SystemControlForegroundBaseHighBrush").ToBinding();
         photo = new CachedImage { Stretch = Stretch.UniformToFill, Width = AvatarSize, Height = AvatarSize, IsVisible = false };
@@ -116,11 +124,11 @@ public static class MenuV2
         panel.Children.Add(photo);
         var circle = new Border
         {
-            Width = AvatarSize, Height = AvatarSize, CornerRadius = new CornerRadius(AvatarSize / 2),
+            Width = AvatarSize, Height = AvatarSize, CornerRadius = new CornerRadius(corner),
             ClipToBounds = true, Child = panel, Margin = new Thickness(-(AvatarSize - 16) / 2),
         };
         circle[!Border.BackgroundProperty] = circle.GetResourceObservable("ArtworkPlaceholderBackground").ToBinding();
-        circle.Classes.Add("mv2-avatar");
+        circle.Classes.Add(cssClass);
         circle.AttachedToVisualTree += (_, _) =>
         {
             // Local values outrank the template's ClipToBounds; stops at the row.

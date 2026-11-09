@@ -139,10 +139,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             app.SetAccent(vm.Settings.ActiveAccentHex);
             return;
         }
-        Task.Run(() => ShareCardRenderer.GetVibrantColorHex(path)).ContinueWith(t =>
+        // The same colour the phone's Match Artwork wears (ArtworkVibrantColor, shared): null
+        // for a grey or unreadable cover, which keeps the user's own accent.
+        Task.Run(() => ArtworkVibrantColor.GetAccentHex(path)).ContinueWith(t =>
         {
             if (!t.IsCompletedSuccessfully) return;
-            var hex = Noctis.Helpers.ArtworkAccent.TameForAccent(t.Result);
+            var hex = t.Result;
             Dispatcher.UIThread.Post(() =>
             {
                 // A later track may have won the race; only the newest path paints.
@@ -195,9 +197,31 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private Action? _detachReopenActivation;
 
     /// <summary>
+    /// A click on the player island's artwork (GitHub #183): the mini player (default, the
+    /// behaviour before), the lyrics page (the lyrics button's command) or the lyrics page in
+    /// full screen, as Settings → Player → Clicking the artwork picked.
+    /// </summary>
+    public void HandleIslandArtworkClick(IslandArtworkClick action)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        IslandArtworkClickRouter.Route(action,
+            ToggleMiniPlayer,
+            () => vm.ToggleLyricsCommand.Execute(null),
+            () =>
+            {
+                // The F11 full screen with the lyrics page up is the immersive lyrics view
+                // (UpdateImmersiveLyricsState hides the sidebar); Esc / F11 leaves it.
+                vm.ShowLyricsPage();
+                if (WindowState != WindowState.FullScreen)
+                    ToggleFullScreen();
+            });
+    }
+
+    /// <summary>
     /// Opens the compact always-on-top mini player (hiding the main window), or closes
     /// it if it's already open. Closing the mini player restores the main window.
-    /// Triggered by clicking the album art in the bottom player bar.
+    /// Triggered by clicking the album art in the bottom player bar (the default of
+    /// Settings → Player → Clicking the artwork) or the island's mini player button.
     /// </summary>
     public void ToggleMiniPlayer()
     {
@@ -707,7 +731,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 QueueDrawerGlass.Apply(_queuePopupPanel, _queueGlass, AppGlass.IsActive);
 
                 InitializeQueuePopupBinding(vm);
-                InitializeSearchCapsuleInset(vm);
                 InitializeTaskbarButtons(vm);
                 InitializeTrayIcon(vm);
                 _trayHost = LinuxTrayHost.TryStart();
@@ -1305,7 +1328,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             // The menu above opens in Avalonia's own transparent window; always frost it
             // (GitHub #150 — owner wants it frosted, not only with Liquid Glass), tinted with
-            // the theme's menu colour. Windows draws it solid when Transparency effects are off.
+            // the theme's menu colour. With Windows Transparency effects off it stays unfrosted
+            // (TrayMenuFrost.TransparencyEffectsOn): DWM drew the blur black at the corners.
             TrayMenuFrost.Register(() => true,
                 () => ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414")));
 
@@ -1571,44 +1595,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_mainVmPropertyChangedHandler != null)
                 vm.PropertyChanged -= _mainVmPropertyChangedHandler;
-
-            if (_searchInsetHandler != null)
-                vm.TopBar.PropertyChanged -= _searchInsetHandler;
         }
-    }
-
-    private System.ComponentModel.PropertyChangedEventHandler? _searchInsetHandler;
-
-    /// <summary>
-    /// The sidebar's search pill floats over the page beside the rail, at the Search button's
-    /// height: just under the top bar, over the Songs column headers and first row (Discord,
-    /// HypnoTized 10-24; the same spot on every page). While it is open the page host starts
-    /// below the pill instead. Measured per open, and again when the top bar's height changes
-    /// under an open pill (a page without a bar), so the band is only what the pill needs.
-    /// </summary>
-    private void InitializeSearchCapsuleInset(MainWindowViewModel vm)
-    {
-        var host = this.FindControl<ContentControl>("PageHost");
-        if (host == null || _contentDockPanel == null) return;
-
-        void Apply()
-        {
-            var top = 0.0;
-            if (vm.TopBar.IsSearchOpen && SidebarPane?.SearchCapsuleBottom(_contentDockPanel) is { } bottom)
-                top = Math.Max(0, Math.Ceiling(bottom));
-            if (host.Margin.Top != top)
-                host.Margin = new Thickness(0, top, 0, 0);
-        }
-
-        _searchInsetHandler = (_, e) =>
-        {
-            if (e.PropertyName == nameof(TopBarViewModel.IsSearchOpen)) Apply();
-        };
-        vm.TopBar.PropertyChanged += _searchInsetHandler;
-        _contentDockPanel.PropertyChanged += (_, e) =>
-        {
-            if (e.Property == BoundsProperty && vm.TopBar.IsSearchOpen) Apply();
-        };
     }
 
     /// <summary>
@@ -1882,6 +1869,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         MoveDragChip(e);
         _dragOverTicks++;
 
+        // GitHub #189: over a queue list the drop goes where its insertion line is.
+        if (TrackQueueDrop(e)) return;
+
         // Don't show import overlay for internal drags (album/track tiles dragged within the app)
         if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
             return;
@@ -1911,7 +1901,58 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             if (ticks != _dragOverTicks) return;
             ShowDragOverlay(false);
             SidebarPane?.EndExternalFileDrop();
+            QueueDropTarget.HideAll();
         }, DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// GitHub #189: a drag over a queue list that it takes — files / folders from outside the
+    /// app, or (queue panel only, GitHub #71) rows dragged from the library — shows the list's
+    /// insertion line instead of the drop overlay. False elsewhere (every line hidden).
+    /// </summary>
+    private bool TrackQueueDrop(DragEventArgs e)
+    {
+        var target = QueueDropTargetFor(e);
+        QueueDropTarget.HideAll(target);
+        if (target == null) return false;
+        target.Track(v => e.GetPosition(v));
+        ShowDragOverlay(false);
+        SidebarPane?.EndExternalFileDrop();
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+        return true;
+    }
+
+    /// <summary>The queue list under the pointer, when it takes this drag's payload.</summary>
+    private QueueDropTarget? QueueDropTargetFor(DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel) return null;
+        if (QueueDropTarget.At(v => e.GetPosition(v)) is not { } target) return null;
+        if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
+            return target.AcceptsInternalRows && Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is { Count: > 0 }
+                ? target : null;
+        return GetDroppedLocalPaths(e.DataTransfer).Any(IsImportablePath) ? target : null;
+    }
+
+    /// <summary>GitHub #189: a drop onto a queue list inserts there (see <see cref="TrackQueueDrop"/>).
+    /// Files are played from where they are, as a drop outside the zones does with "Import
+    /// dropped files" off; nothing is imported.</summary>
+    private bool TryQueueDrop(DragEventArgs e)
+    {
+        if (QueueDropTargetFor(e) is not { } target || DataContext is not MainWindowViewModel vm) return false;
+        var index = target.Track(v => e.GetPosition(v));
+        QueueDropTarget.HideAll();
+        ShowDragOverlay(false);
+        SidebarPane?.EndExternalFileDrop();
+        e.Handled = true;
+        if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is { Count: > 0 } rows)
+        {
+            // The rows land in the open queue list itself: that is the confirmation.
+            vm.Player.InsertIntoQueue(index, rows.ToList(), announce: false);
+            return true;
+        }
+        _ = vm.QueueExternalMediaAsync(GetDroppedLocalPaths(e.DataTransfer), index);
+        return true;
     }
 
     /// <summary>Counts DragEnter / DragOver, so a DragLeave can tell a crossing from an exit.</summary>
@@ -1983,6 +2024,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
     private async void OnWindowDrop(object? sender, DragEventArgs e)
     {
+        if (TryQueueDrop(e)) return;
+        QueueDropTarget.HideAll();
+
         // Ignore internal drags (album/track tiles dragged within the app)
         if (Helpers.DragFileBehavior.IsInternalDrag(e.DataTransfer))
             return;
@@ -3053,36 +3097,31 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             rootPanel.AddHandler(DragDrop.DragLeaveEvent, OnWindowDragLeave, RoutingStrategies.Bubble, handledEventsToo: true);
         }
 
-        // GitHub #71 (3): rows dragged from any library page drop onto the queue popup
-        // to append them. The window handlers above leave in-app payloads alone, so this
-        // list is the one place that reads them here.
+        // GitHub #71 (3): rows dragged from any library page drop onto the queue popup.
+        // GitHub #189: so do files and folders from outside the app, and both land where the
+        // insertion line shows (the window handlers above route them, QueueDropTarget).
         if (this.FindControl<ListBox>("QueuePopupListBox") is { } queueDropTarget)
         {
             DragDrop.SetAllowDrop(queueDropTarget, true);
-            queueDropTarget.AddHandler(DragDrop.DragOverEvent, OnQueueDragOver);
-            queueDropTarget.AddHandler(DragDrop.DropEvent, OnQueueDrop);
+            if (this.FindControl<Border>("QueueDropLine") is { } dropLine)
+            {
+                var popupDrop = new QueueDropTarget(queueDropTarget, dropLine,
+                    row => (DataContext as MainWindowViewModel)?.Player.QueueInsertRowToUpNextIndex(row) ?? 0,
+                    index => (DataContext as MainWindowViewModel)?.Player.UpNextIndexToQueueRow(index) ?? index,
+                    () => DataContext is MainWindowViewModel { Player.IsQueuePopupOpen: true })
+                {
+                    Priority = 1, // the panel sits over the page, the Queue page's list included
+                    AcceptsInternalRows = true,
+                };
+                QueueDropTarget.Register(popupDrop);
+                Closed += (_, _) => QueueDropTarget.Unregister(popupDrop);
+            }
             // GitHub #88 rubber band. handledEventsToo: rows / ListBoxItems handle presses.
             queueDropTarget.AddHandler(PointerPressedEvent, OnQueueBandPressed, RoutingStrategies.Bubble, handledEventsToo: true);
             queueDropTarget.AddHandler(PointerMovedEvent, OnQueueBandMoved, RoutingStrategies.Bubble, handledEventsToo: true);
             queueDropTarget.AddHandler(PointerReleasedEvent, OnQueueBandReleased, RoutingStrategies.Bubble, handledEventsToo: true);
             queueDropTarget.AddHandler(PointerCaptureLostEvent, OnQueueBandCaptureLost, RoutingStrategies.Direct);
         }
-    }
-
-    private void OnQueueDragOver(object? sender, DragEventArgs e)
-    {
-        if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is not { Count: > 0 }) return;
-        e.DragEffects = DragDropEffects.Copy;
-        e.Handled = true;
-    }
-
-    private void OnQueueDrop(object? sender, DragEventArgs e)
-    {
-        if (Helpers.DragFileBehavior.GetDraggedTracks(e.DataTransfer) is not { Count: > 0 } tracks) return;
-        if (DataContext is not MainWindowViewModel vm) return;
-        e.Handled = true;
-        // The rows land in the open queue list itself: that is the confirmation.
-        vm.Player.AddRangeToQueue(tracks.ToList(), announce: false);
     }
 
     // Backdrop click closes the Settings modal; clicks inside the card are swallowed.

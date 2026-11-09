@@ -239,6 +239,11 @@ public sealed class LibraryServerAdapter : IServerLibrary
             // Play counts only ever grow: a device that missed a few plays must not roll them back.
             if (state.PlayCount > track.PlayCount) track.PlayCount = state.PlayCount;
             if (state.LastPlayed.HasValue && (track.LastPlayed is null || state.LastPlayed > track.LastPlayed)) track.LastPlayed = state.LastPlayed;
+            // Snooze is app state only (SetTracksSnoozedAsync writes no tag), so it is set here,
+            // before the save, which then records the same payload the ledger already holds.
+            // Absent: the sender said nothing about it (an older phone). A past date: not snoozed.
+            if (state.SnoozedUntil is { } snooze)
+                track.SnoozedUntil = snooze > DateTime.UtcNow ? snooze : null;
             await _library.SaveTrackUserStateAsync(new[] { track });
             if (favoriteChanged) _library.NotifyFavoritesChanged(new[] { track });
             // Rating/dislike go through the same calls the desktop's star clicks use, so the
@@ -246,6 +251,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
             await _library.SetTracksRatingAsync(new[] { track }, Math.Clamp(state.Rating, 0, 5));
             await _library.SetTracksDislikedAsync(new[] { track }, state.Disliked);
         });
+
+    public string PlaylistCoverStagingDirectory => Sync.PlaylistCovers.StagingDirectory(_persistence.DataDirectory);
 
     public async Task ApplyPlaylistStateAsync(Guid playlistId, Sync.PlaylistSyncState state)
     {
@@ -268,6 +275,8 @@ public sealed class LibraryServerAdapter : IServerLibrary
             if (!string.IsNullOrWhiteSpace(state.Color)) existing.Color = state.Color;
             existing.TrackIds = state.TrackIds?.ToList() ?? new List<Guid>();
             existing.ModifiedAt = state.ModifiedAt;
+            Sync.PlaylistCovers.Apply(existing, state.Cover,
+                Sync.PlaylistCovers.CoversDirectory(_persistence.DataDirectory), PlaylistCoverStagingDirectory);
         }
         await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
         await NotifyPlaylists().ConfigureAwait(false);

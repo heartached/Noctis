@@ -351,7 +351,7 @@
 
         <!-- Card options: every choice the two outlined summary pills held, as labelled
              pill drop-downs. -->
-        <Grid Grid.Row="2" Margin="28,16,28,18" ColumnDefinitions="*,12,*,12,*,12,*,Auto">
+        <Grid Grid.Row="2" Margin="28,16,28,18" ColumnDefinitions="*,12,*,12,*,12,*,Auto" RowDefinitions="Auto,Auto">
             <StackPanel Grid.Column="0" Spacing="6">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Layout}" />
                 <ComboBox x:Name="LayoutBox" Classes="pill-field"
@@ -359,6 +359,7 @@
                           SelectedIndex="{Binding LayoutIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T LyricShare.Card}" ToolTip.Tip="{loc:T LyricShare.RoundedCardArtworkHeaderTip}" />
                     <ComboBoxItem Content="{loc:T LyricShare.Poster}" ToolTip.Tip="{loc:T LyricShare.BigCenteredArtworkCenteredTip}" />
+                    <!-- Lyrics Page (index 2) taken out of the picker (owner 11-08). -->
                 </ComboBox>
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="6">
@@ -370,7 +371,7 @@
                     <ComboBoxItem Content="{loc:T ShareLyrics.Story}" />
                 </ComboBox>
             </StackPanel>
-            <StackPanel Grid.Column="4" Spacing="6">
+            <StackPanel Grid.Column="4" Spacing="6" IsVisible="{Binding !IsPageLayout}">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Text}" />
                 <ComboBox x:Name="TextColorBox" Classes="pill-field"
                           AutomationProperties.Name="{loc:T LyricShare.Text}"
@@ -380,7 +381,7 @@
                     <ComboBoxItem Content="{loc:T LyricShare.Black}" />
                 </ComboBox>
             </StackPanel>
-            <StackPanel Grid.Column="6" Spacing="6">
+            <StackPanel Grid.Column="6" Spacing="6" IsVisible="{Binding !IsPageLayout}">
                 <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Background}" />
                 <ComboBox x:Name="BackgroundBox" Classes="pill-field"
                           AutomationProperties.Name="{loc:T LyricShare.Background}"
@@ -405,7 +406,13 @@
                 </ComboBox>
             </StackPanel>
             <!-- Word-by-word sweep on Save Video, only when the picked lines carry word timings. -->
-            <StackPanel Grid.Column="7" Spacing="6" Margin="18,0,0,0" IsVisible="{Binding KaraokeAvailable}">
+            <StackPanel Grid.Column="7" Spacing="6" Margin="18,0,0,0">
+                <StackPanel.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="KaraokeAvailable" />
+                        <Binding Path="!IsPageLayout" />
+                    </MultiBinding>
+                </StackPanel.IsVisible>
                 <TextBlock Classes="sl-label" Text="{loc:T ShareLyrics.Video}" />
                 <CheckBox x:Name="KaraokeBox"
                           Classes="metadata-pill-checkbox"
@@ -414,6 +421,59 @@
                           IsChecked="{Binding KaraokeEnabled, Mode=TwoWay}"
                           Content="{loc:T LyricShare.KaraokeVideo}"
                           ToolTip.Tip="{loc:T LyricShare.SaveVideoRendersMovingTip}" />
+            </StackPanel>
+
+            <!-- Lyrics Page options, in the card-only slots: what fills the video, how dark
+                 the readability layer is, your own picture or clip, and the safe zones. -->
+            <StackPanel Grid.Column="4" Spacing="6" IsVisible="{Binding IsPageLayout}">
+                <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Background}" />
+                <ComboBox x:Name="PageBackgroundBox" Classes="pill-field"
+                          AutomationProperties.Name="{loc:T LyricShare.Background}"
+                          SelectedIndex="{Binding PageBackgroundIndex, Mode=TwoWay}">
+                    <ComboBoxItem Content="{loc:T LyricShare.PageBackgroundArtwork}" />
+                    <ComboBoxItem Content="{loc:T LyricShare.PageBackgroundAnimated}"
+                                  IsEnabled="{Binding AnimatedCoverAvailable}" />
+                    <ComboBoxItem Content="{loc:T LyricShare.PageBackgroundCustom}"
+                                  IsEnabled="{Binding CustomBackgroundAvailable}" />
+                </ComboBox>
+            </StackPanel>
+            <StackPanel Grid.Column="6" Spacing="6" IsVisible="{Binding IsPageLayout}">
+                <TextBlock Classes="sl-label" Text="{loc:T LyricShare.Readability}" />
+                <Slider x:Name="ReadabilitySlider"
+                        Minimum="0" Maximum="100"
+                        Value="{Binding PageBackgroundStrength, Mode=TwoWay}"
+                        AutomationProperties.Name="{loc:T LyricShare.Readability}"
+                        ToolTip.Tip="{loc:T LyricShare.ReadabilityTip}"
+                        VerticalAlignment="Center" />
+            </StackPanel>
+            <!-- The page-only controls get a row of their own: squeezed into the Auto column
+                 beside the four drop-downs they narrowed them until the labels truncated
+                 ("Lyrics Pa", "1:1 · Squa"). Collapsed in the card layouts, so that row stays
+                 as it was. -->
+            <StackPanel x:Name="PageOptionsRow"
+                        Grid.Row="1" Grid.ColumnSpan="8"
+                        Orientation="Horizontal" Spacing="8" Margin="0,10,0,0"
+                        IsVisible="{Binding IsPageLayout}">
+                <TextBlock Classes="sl-label" Text="{loc:T ShareLyrics.Video}"
+                           VerticalAlignment="Center" Margin="0,0,4,0" />
+                <Button x:Name="ChooseBackgroundButton"
+                        Classes="pill-secondary"
+                        MinHeight="40"
+                        Content="{loc:T LyricShare.ChooseBackground}"
+                        Click="OnChooseBackgroundClick" />
+                <Button x:Name="RemoveBackgroundButton"
+                        Classes="pill-secondary"
+                        MinHeight="40"
+                        Content="{loc:T LyricShare.RemoveBackground}"
+                        Command="{Binding RemovePageBackgroundCommand}"
+                        IsVisible="{Binding CustomBackgroundAvailable}" />
+                <CheckBox x:Name="SafeZonesBox"
+                          Classes="metadata-pill-checkbox"
+                          MinHeight="40"
+                          FontSize="13"
+                          IsChecked="{Binding SafeZonesEnabled, Mode=TwoWay}"
+                          Content="{loc:T LyricShare.SafeZones}"
+                          ToolTip.Tip="{loc:T LyricShare.SafeZonesTip}" />
             </StackPanel>
         </Grid>
 

@@ -218,8 +218,8 @@
             <Setter Property="Opacity" Value="1" />
         </Style>
 
-        <!-- Accent swatches: nine dots, five over four centred under them, each cell a full
-             touch target (a fifth of the card by 48); the chosen one gets a ring and a tick. -->
+        <!-- Accent swatches: seventeen dots and Match Artwork, three rows of six, each cell a full
+             touch target (a sixth of the card by 48); the chosen one gets a ring and a tick. -->
         <Style Selector="ListBox.swatches">
             <Setter Property="Margin" Value="8,10" />
         </Style>
@@ -240,6 +240,10 @@
         </Style>
         <Style Selector="ListBox.swatches ListBoxItem:selected Ellipse.swatch-ring, ListBox.swatches ListBoxItem:selected PathIcon.swatch-tick">
             <Setter Property="Opacity" Value="1" />
+        </Style>
+        <!-- Match Artwork's note gives way to the tick when it is chosen. -->
+        <Style Selector="ListBox.swatches ListBoxItem:selected PathIcon.swatch-glyph">
+            <Setter Property="Opacity" Value="0" />
         </Style>
 
         <!-- Music Folders: a folder whose access was lost, or that the last scan could not reach, reads as a warning. -->
@@ -273,6 +277,25 @@
             <Setter Property="Background" Value="Transparent" />
         </Style>
         <Style Selector="Button.folder-remove:pressed">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <!-- Settings › Hidden: a row's Unhide, the accent's text at the row's end, a full finger tall. -->
+        <Style Selector="Button.unhide">
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Margin" Value="8,0,-12,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="FontSize" Value="16" />
+        </Style>
+        <Style Selector="Button.unhide:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.unhide:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Button.unhide:pressed">
             <Setter Property="Opacity" Value="0.5" />
         </Style>
         <!-- The Windows Settings slider (SettingsView's accent-slider): an 8 dp round-ended track,
@@ -558,6 +581,18 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06). -->
+                                    <ToggleButton Name="GlassTabPillSwitch" Classes="switch-row" IsChecked="{Binding Shell.GlassTabPill}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.GlassTabPill}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.GlassTabPill}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.GlassTabPillHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Smooth Motion: up to 120 Hz on, 60 Hz off (AndroidFrameRate). -->
                                     <ToggleButton Name="SmoothMotionSwitch" Classes="switch-row" IsChecked="{Binding SmoothMotion}"
                                                   AutomationProperties.Name="{loc:T Mobile.Settings.SmoothMotion}">
@@ -572,6 +607,23 @@
                                 </StackPanel>
                             </Border>
                             <TextBlock Name="SmoothMotionFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Settings.SmoothMotionFootnote}" />
+                        </StackPanel>
+
+                        <!-- Now Playing Background: the wash darker or brighter, live (beta 2 request). -->
+                        <StackPanel>
+                            <Border Name="NowPlayingBrightnessCard" Classes="group-card">
+                                <StackPanel>
+                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBrightness}" />
+                                        <TextBlock Grid.Column="1" Name="NowPlayingBrightnessLabel" Classes="row-value"
+                                                   Text="{Binding Shell.NowPlayingBrightnessLabel}" />
+                                    </views:SettingRow>
+                                    <controls:SmoothSlider Name="NowPlayingBrightnessSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                           Minimum="-50" Maximum="50" Step="5" SteppedValue="{Binding Shell.NowPlayingBrightness}"
+                                                           AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingBrightnessName}" />
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.NowPlayingBrightnessHint}" />
                         </StackPanel>
 
                         <!-- Library: Music Folders and Downloads are pages; Rescan is an action, its state under it. -->
@@ -601,6 +653,17 @@
                                             </views:SettingRow>
                                         </Button>
                                     </StackPanel>
+                                    <!-- Hidden: what Hide Song left out of the library (Discord #mobile-beta), with Unhide. -->
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="HiddenRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.Hidden}" AutomationProperties.Name="{Binding HiddenRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconHidden}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.Hidden}" />
+                                            <TextBlock Grid.Column="2" Name="HiddenValueLabel" Classes="row-value" Text="{Binding HiddenValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
                                             IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
@@ -634,7 +697,7 @@
                             <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
                         </StackPanel>
 
-                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Pick Up on Computer a switch. -->
+                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Played Songs in Queue and Pick Up on Computer switches. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Listening}" />
                             <Border Name="ListeningCard" Classes="group-card">
@@ -668,6 +731,18 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Played Songs in Queue: the Queue page keeps a History above the current track (Discord 11-07). -->
+                                    <ToggleButton Name="QueueHistorySwitch" Classes="switch-row" IsChecked="{Binding Shell.ShowQueueHistory}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.QueueHistory}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconQueueHistory}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.QueueHistory}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.QueueHistoryHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
                                     <StackPanel Name="PickUpGroup" IsVisible="{Binding ShowPickUp}">
                                         <Border Classes="row-separator chipped" />
                                         <ToggleButton Name="PickUpSwitch" Classes="switch-row" IsChecked="{Binding History.PickUpOnComputer}"
@@ -847,6 +922,39 @@
                             </StackPanel>
                         </StackPanel>
 
+                        <!-- Hidden: each hidden song (title, artist) or folder with Unhide, the note under them. -->
+                        <StackPanel Name="HiddenPane" Classes="grouped-content" IsVisible="{Binding ShowsHiddenPane}">
+                            <StackPanel>
+                                <Border Name="HiddenCard" Classes="group-card">
+                                    <StackPanel>
+                                        <ItemsControl Name="HiddenList" ItemsSource="{Binding HiddenRows}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:HiddenItem">
+                                                    <StackPanel>
+                                                        <Border Classes="row-separator plain" />
+                                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                                            <StackPanel VerticalAlignment="Center" Margin="0,10">
+                                                                <TextBlock Classes="row-label" Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Classes="row-sub" Text="{Binding Subtitle}" TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                            <Button Grid.Column="1" Classes="unhide" Content="{loc:T Mobile.Hidden.Unhide}"
+                                                                    Command="{Binding $parent[ItemsControl].((vm:SettingsPageViewModel)DataContext).UnhideCommand}"
+                                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding UnhideName}" />
+                                                        </views:SettingRow>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <views:SettingRow Name="NoHiddenRow" Classes="setting-row" IsVisible="{Binding !HasHidden}">
+                                            <TextBlock Classes="row-label" Foreground="{DynamicResource PhoneSecondaryTextBrush}"
+                                                       Text="{loc:T Mobile.Hidden.None}" />
+                                        </views:SettingRow>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Hidden.Hint}" />
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- Background, Scrobbling and Listening History: pages of their own (Views/Settings),
                              each with its own view model on the page's. -->
                         <Panel Name="BackgroundHost" IsVisible="{Binding ShowsBackgroundPane}">
@@ -859,7 +967,7 @@
                             <views:ListeningHistoryPane Name="HistoryPane" DataContext="{Binding History}" />
                         </Panel>
 
-                        <!-- Accent: the nine colours, then whether album and artist pages take the cover's colour. -->
+                        <!-- Accent: the colours and Match Artwork, then whether album and artist pages take the cover's colour. -->
                         <StackPanel Name="AccentPane" Classes="grouped-content" IsVisible="{Binding ShowsAccentPane}">
                             <!-- A colour theme's own accent (its hue), while on; a swatch below turns it off. -->
                             <StackPanel IsVisible="{Binding ShowsMatchTheme}">
@@ -873,10 +981,10 @@
                             </StackPanel>
                             <StackPanel>
                                 <Border Classes="group-card">
-                                    <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding SelectedAccent}">
+                                    <ListBox Name="AccentList" Classes="swatches" ItemsSource="{Binding AccentChoices}" SelectedItem="{Binding ShownAccent}">
                                         <ListBox.ItemsPanel>
                                             <ItemsPanelTemplate>
-                                                <views:CenteredRowsPanel Columns="5" />
+                                                <views:CenteredRowsPanel Columns="6" />
                                             </ItemsPanelTemplate>
                                         </ListBox.ItemsPanel>
                                         <ListBox.ItemTemplate>
@@ -887,13 +995,22 @@
                                                     <Ellipse Width="30" Height="30" Fill="{Binding Brush}"
                                                              Stroke="{DynamicResource PhoneChromeOutlineBrush}" StrokeThickness="1" />
                                                     <PathIcon Classes="swatch-tick" Data="{DynamicResource CheckmarkIcon}" Width="14" Height="14"
-                                                              Foreground="{DynamicResource AccentForegroundBrush}" />
+                                                              Foreground="{DynamicResource AccentForegroundBrush}" IsVisible="{Binding !IsArtwork}" />
+                                                    <!-- Match Artwork: a white note on the hue wheel, white tick once chosen. -->
+                                                    <PathIcon Classes="swatch-glyph" Data="{DynamicResource AppleMusicIcon}" Width="13" Height="13"
+                                                              Foreground="White" IsVisible="{Binding IsArtwork}" />
+                                                    <PathIcon Classes="swatch-tick" Data="{DynamicResource CheckmarkIcon}" Width="14" Height="14"
+                                                              Foreground="White" IsVisible="{Binding IsArtwork}" />
                                                 </Panel>
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
                                 </Border>
-                                <TextBlock Classes="group-footnote" Text="{Binding AccentName, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.AccentFootnote}" />
+                                <TextBlock Classes="group-footnote" IsVisible="{Binding !UsesArtworkAccent}"
+                                           Text="{Binding AccentName, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.AccentFootnote}" />
+                                <!-- Match Artwork: what it does, and the colour worn when nothing plays. -->
+                                <TextBlock Name="AccentArtworkFootnote" Classes="group-footnote" IsVisible="{Binding UsesArtworkAccent}"
+                                           Text="{Binding FixedAccentName, Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Settings.AccentArtworkFootnote}" />
                             </StackPanel>
                             <!-- Album and artist pages in a deep shade of the cover's colour (on by
                                  default); off, the theme's plain pages. The shell applies it at once

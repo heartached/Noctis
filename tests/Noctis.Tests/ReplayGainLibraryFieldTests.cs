@@ -208,7 +208,7 @@ public class ReplayGainLibraryFieldTests : IDisposable
     [Fact]
     public async Task Backfill_ReadsUnreadTracksOnce_MarksFilesWithoutGain_SkipsMissingAndStreamed()
     {
-        _persistence.Settings.MetadataSchemaVersion = 12; // no label/genre pass pending
+        _persistence.Settings.MetadataSchemaVersion = 13; // no label/genre/MP3-length pass pending
         var tagged = Row(Flac("a.flac", "-7.84 dB", "0.98", "-6.10 dB"));
         var plain = Row(Flac("b.flac"));
         var missing = Row(Path.Combine(_dir, "gone.flac"));
@@ -232,7 +232,7 @@ public class ReplayGainLibraryFieldTests : IDisposable
         Assert.False(streamed.ReplayGainChecked);
         Assert.Equal(-4.0, known.ReplayGainTrackDb);
         Assert.False(File.Exists(ProgressFile));
-        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion); // stamps nothing
+        Assert.Equal(13, _persistence.Settings.MetadataSchemaVersion); // stamps nothing
 
         // Next launch: nothing readable is opened again; the missing file came back meanwhile.
         File.Move(Flac("back.flac", "+1.25 dB"), missing.FilePath);
@@ -247,7 +247,7 @@ public class ReplayGainLibraryFieldTests : IDisposable
     [Fact]
     public async Task Backfill_ShutdownMidPass_NextLaunchContinuesWithoutRereadingCheckedFiles()
     {
-        _persistence.Settings.MetadataSchemaVersion = 12;
+        _persistence.Settings.MetadataSchemaVersion = 13;
         var tracks = new[]
         {
             Row(Flac("a0.flac")),
@@ -285,7 +285,7 @@ public class ReplayGainLibraryFieldTests : IDisposable
     [Fact]
     public async Task Backfill_RunsBeforeTheLabelPass()
     {
-        _persistence.Settings.MetadataSchemaVersion = 10; // label (v11) and genre (v12) passes pending
+        _persistence.Settings.MetadataSchemaVersion = 10; // label (v11), genre (v12) and MP3 length (v13) passes pending
         var tracks = new[] { Row(Flac("a.flac", "-3.00 dB")), Row(Flac("b.flac", "-5.50 dB")) };
         _persistence.LibraryTracks.AddRange(tracks);
 
@@ -295,7 +295,7 @@ public class ReplayGainLibraryFieldTests : IDisposable
         Assert.Equal(new double?[] { -3.0, -5.5 }, tracks.Select(t => t.ReplayGainTrackDb));
         // Every label read came after both ReplayGain reads.
         Assert.Equal(new[] { "a.flac@2", "b.flac@2" }, run.LabelReads);
-        Assert.Equal(12, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(13, _persistence.Settings.MetadataSchemaVersion);
     }
 
     /// <summary>GitHub #158: rows on screen are read at once (no wait for the pass), once each,
@@ -303,7 +303,7 @@ public class ReplayGainLibraryFieldTests : IDisposable
     [Fact]
     public async Task ReadReplayGainSoon_ReadsUnreadRowsNow_ThePassSkipsThemAfter()
     {
-        _persistence.Settings.MetadataSchemaVersion = 12;
+        _persistence.Settings.MetadataSchemaVersion = 13;
         var shown = Row(Flac("a.flac", "-7.84 dB", "0.98", "-6.10 dB"));
         var plain = Row(Flac("b.flac"));
         var known = Row(Flac("c.flac", "-1.00 dB"));

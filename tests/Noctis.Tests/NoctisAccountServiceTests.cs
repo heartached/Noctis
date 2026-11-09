@@ -84,6 +84,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         // Two items per pull page, so every sync walks the "more" loop.
         _sync = new LibrarySyncService(() => _deskSettings, _deskPersistence) { ChangesPageSize = 2 };
         _desk.Sync = _sync;
+        _desk.DataDirectory = _deskPersistence.DataDirectory;
         _server = new NoctisServer(_desk, _users, "test", _sync, coverResizer: (_, path, size, _) =>
         {
             lock (_coverSizes) _coverSizes.Add(size);
@@ -807,6 +808,84 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(0, _t1.Rating);
     }
 
+    // ── Snooze for a Month, both ways (Discord #mobile-beta) ─────────────
+
+    [Fact]
+    public async Task SnoozeFromTheSongMenu_IsPushed_TheDesktopAppliesIt_AndAnUnsnoozeFollows()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var shell = PhoneShell();
+
+        var menu = ContextSheetViewModel.ForTrack(shell, Phone(_t1));
+        Assert.True(menu.CanSnooze);
+        Assert.False(menu.IsSnoozed);
+        await menu.ToggleSnoozeCommand.ExecuteAsync(null);
+        Assert.True(Phone(_t1).IsSnoozed);
+        await Until(() => svc.PendingTrackCount == 1);
+
+        var result = await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, result.StateChangesPushed);
+        var applied = Assert.Single(_desk.AppliedTracks, a => a.Id == _t1.Id);
+        Assert.NotNull(applied.State.SnoozedUntil);
+        Assert.True(_t1.IsSnoozed);
+        Assert.Equal(0, svc.PendingTrackCount);
+        Assert.Equal(0, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).StateChangesPushed);   // no echo
+
+        var again = ContextSheetViewModel.ForTrack(shell, Phone(_t1));
+        Assert.True(again.IsSnoozed);
+        Assert.Equal("Unsnooze", again.SnoozeLabel);
+        await again.ToggleSnoozeCommand.ExecuteAsync(null);
+        Assert.False(Phone(_t1).IsSnoozed);
+        await Until(() => svc.PendingTrackCount == 1);
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(TrackSyncState.NotSnoozed, _desk.AppliedTracks.Last(a => a.Id == _t1.Id).State.SnoozedUntil);
+        Assert.False(_t1.IsSnoozed);
+        Assert.Equal(0, svc.PendingTrackCount);
+    }
+
+    [Fact]
+    public async Task DesktopSnooze_IsPulled_AnUnsnoozeToo_AndNeitherIsRecordedAsAPhoneEdit()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        _t2.SnoozedUntil = DateTime.UtcNow.AddDays(30);
+        _sync.RecordTrackStates(new[] { _t2 });
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.True(Phone(_t2).IsSnoozed);
+
+        // The desktop's Settings › Snoozed Tracks › Un-snooze clears the date (null).
+        _t2.SnoozedUntil = null;
+        _sync.RecordTrackStates(new[] { _t2 });
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        Assert.False(Phone(_t2).IsSnoozed);
+
+        await Task.Delay(300);
+        Assert.Equal(0, svc.PendingTrackCount);
+        Assert.Equal(0, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).StateChangesPushed);
+        Assert.DoesNotContain(_desk.AppliedTracks, a => a.Id == _t2.Id);
+    }
+
+    [Fact]
+    public async Task AFavoriteFromAPhoneThatSaysNothingAboutSnooze_LeavesTheDesktopSnoozeAlone()
+    {
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var until = DateTime.UtcNow.AddDays(20);
+        _t1.SnoozedUntil = until;   // snoozed on the desktop; this phone has not pulled it yet
+
+        Phone(_t1).IsFavorite = true;   // the phone's song was never snoozed: its push has no snoozedUntil
+        await _phoneLibrary.SaveTrackUserStateAsync(new[] { Phone(_t1) });
+        await Until(() => svc.PendingTrackCount == 1);
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+
+        var applied = Assert.Single(_desk.AppliedTracks, a => a.Id == _t1.Id);
+        Assert.True(applied.State.Favorite);
+        Assert.Null(applied.State.SnoozedUntil);
+        Assert.Equal(until, _t1.SnoozedUntil);
+    }
+
     [Fact]
     public async Task DesktopChange_IsPulled_AndApplyingItIsNotRecordedAsAPhoneEdit()
     {
@@ -1495,6 +1574,32 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ASongTheScanFindsAfterASync_IsPairedWithoutAnotherManualSync()
+    {
+        // Discord #mobile-beta (Android beta 2): signed in while the phone's own scan was still
+        // running, the library showed the desktop song and the phone's file side by side until
+        // a sign-out and sign-in (a new sync) paired them.
+        var ct = TestContext.Current.CancellationToken;
+        _t3.Title = "Phone song";
+        _t3.Artist = "Tester";
+        _t3.Duration = TimeSpan.FromSeconds(1);
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        Assert.NotNull(_phoneLibrary.GetTrackById(_t3.Id));
+
+        Directory.CreateDirectory(PhoneMusic);
+        NoctisAccountLibraryTests.WriteMp3(Path.Combine(PhoneMusic, "local.mp3"), "Phone song");
+        await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
+        await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, ct);
+        var local = _phoneLibrary.Tracks.Single(t => t.SourceType == SourceType.Local);
+
+        await Until(() => svc.DesktopIdOf(local) == _t3.Id && _phoneLibrary.GetTrackById(_t3.Id) is null && !svc.IsSyncing);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);                     // the file + Alpha + Beta, not 4
+        var mix = Assert.Single(await _phonePersistence.LoadPlaylistsAsync(), p => p.Id == _deskMixId);
+        Assert.Equal(new[] { _t1.Id, local.Id }, mix.TrackIds);
+    }
+
+    [Fact]
     public async Task APairedSongDownload_IsDropped_TheFilePlaysInstead()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -1585,6 +1690,149 @@ public class NoctisAccountServiceTests : IAsyncLifetime
 
         Assert.Equal(new[] { _t3.Id, _t1.Id }, _deskPersistence.Playlists.Single(p => p.Id == _deskMixId).TrackIds);
         Assert.Equal(new[] { local.Id, _t1.Id }, (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId).TrackIds);
+    }
+
+    // ── Custom playlist covers (mobile beta 2, 11-07) ────────────────────
+
+    private static readonly byte[] PngA = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 1, 1 };
+    private static readonly byte[] PngB = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 2, 2, 2 };
+    private static readonly byte[] JpegC = { 0xFF, 0xD8, 0xFF, 0xE0, 3, 3, 3 };
+
+    private string DeskCovers => PlaylistCovers.CoversDirectory(_deskPersistence.DataDirectory);
+    private string PhoneCovers => PlaylistCovers.CoversDirectory(_phonePersistence.DataDirectory);
+
+    /// <summary>The desktop's Change cover / Remove custom cover (EditPlaylistDialog): the file in
+    /// playlist_covers as &lt;id&gt;.ext and a ModifiedAt bump.</summary>
+    private void DeskSetsCover(byte[]? bytes)
+    {
+        var mix = _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
+        if (bytes is null) mix.CoverArtPath = null;
+        else
+        {
+            Directory.CreateDirectory(DeskCovers);
+            var path = Path.Combine(DeskCovers, $"{_deskMixId}{PlaylistCovers.ImageExtension(bytes)}");
+            File.WriteAllBytes(path, bytes);
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddSeconds(Random.Shared.Next(1, 1000)));
+            mix.CoverArtPath = path;
+        }
+        mix.ModifiedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>The phone's Change Cover / Remove Cover (LibraryViewModel), on playlists.json.</summary>
+    private async Task PhoneSetsCoverAsync(NoctisAccountService svc, Guid id, byte[]? bytes)
+    {
+        var lists = await _phonePersistence.LoadPlaylistsAsync();
+        var p = lists.Single(x => x.Id == id);
+        if (bytes is null)
+        {
+            svc.RecordPlaylistCoverRemoved(id);
+            p.CoverArtPath = null;
+        }
+        else
+        {
+            var temp = Path.Combine(_dir, "picked-" + Guid.NewGuid().ToString("N"));
+            File.WriteAllBytes(temp, bytes);
+            p.CoverArtPath = PlaylistCovers.Store(temp, id, PhoneCovers);
+        }
+        p.ModifiedAt = DateTime.UtcNow;
+        await _phonePersistence.SavePlaylistsAsync(lists);
+    }
+
+    private async Task<Playlist> PhoneMixAsync() => (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);
+
+    private Playlist DeskMix => _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
+
+    [Fact]
+    public async Task PlaylistCovers_TravelBothWays_SetChangedAndRemoved()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        DeskSetsCover(PngA);
+        var svc = await SignedInAsync();
+
+        // Desktop → phone: the picture arrives with the playlist, named after its bytes.
+        await svc.SyncNowAsync(ct);
+        var mix = await PhoneMixAsync();
+        Assert.Equal(PngA, File.ReadAllBytes(mix.CoverArtPath!));
+        Assert.StartsWith(Path.GetFullPath(PhoneCovers), Path.GetFullPath(mix.CoverArtPath!));
+
+        // Changed on the desktop (same file name, new bytes): the phone follows, one file kept.
+        DeskSetsCover(JpegC);
+        await svc.SyncNowAsync(ct);
+        mix = await PhoneMixAsync();
+        Assert.Equal(JpegC, File.ReadAllBytes(mix.CoverArtPath!));
+        Assert.Single(Directory.GetFiles(PhoneCovers, $"{_deskMixId}*"));
+
+        // Phone → desktop: its picture is sent, and the desktop shows it.
+        await PhoneSetsCoverAsync(svc, _deskMixId, PngB);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(PlaylistCovers.Hash(PngB), _desk.AppliedPlaylists.Last(a => a.Id == _deskMixId).State.Cover);
+        Assert.Equal(PngB, File.ReadAllBytes(DeskMix.CoverArtPath!));
+        Assert.Single(Directory.GetFiles(DeskCovers, $"{_deskMixId}*"));   // the desktop's <id>.jpg went
+        // Settled: the next sync sends and fetches nothing, and the phone keeps its file.
+        var path = (await PhoneMixAsync()).CoverArtPath;
+        var again = await svc.SyncNowAsync(ct);
+        Assert.Equal(0, again.StateChangesPushed);
+        Assert.Equal(path, (await PhoneMixAsync()).CoverArtPath);
+
+        // Removed on the phone: removed on the desktop.
+        await PhoneSetsCoverAsync(svc, _deskMixId, null);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal("", _desk.AppliedPlaylists.Last(a => a.Id == _deskMixId).State.Cover);
+        Assert.Null(DeskMix.CoverArtPath);
+        Assert.Null((await PhoneMixAsync()).CoverArtPath);
+
+        // Set again on the desktop, then removed there: the phone follows both.
+        DeskSetsCover(PngA);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(PngA, File.ReadAllBytes((await PhoneMixAsync()).CoverArtPath!));
+        DeskSetsCover(null);
+        await svc.SyncNowAsync(ct);
+        Assert.Null((await PhoneMixAsync()).CoverArtPath);
+    }
+
+    /// <summary>A phone with no cover only because the fetch failed has not removed it: a phone
+    /// edit of the playlist meanwhile keeps the desktop's cover, and the next sync fetches it.</summary>
+    [Fact]
+    public async Task ACoverThatFailedToArrive_IsNeverSentBackAsRemoved_AndArrivesLater()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        DeskSetsCover(PngA);
+        await SignedInAsync();
+        var fail = true;
+        var svc = WithHandler(r => fail && r.RequestUri!.AbsolutePath.EndsWith("getNoctisPlaylistCover.view", StringComparison.Ordinal));
+        await svc.SyncNowAsync(ct);
+        Assert.Null((await PhoneMixAsync()).CoverArtPath);
+
+        var lists = await _phonePersistence.LoadPlaylistsAsync();
+        var mix = lists.Single(p => p.Id == _deskMixId);
+        mix.Name = "Renamed on phone";
+        mix.ModifiedAt = DateTime.UtcNow;
+        await _phonePersistence.SavePlaylistsAsync(lists);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal("Renamed on phone", DeskMix.Name);
+        Assert.Null(_desk.AppliedPlaylists.Last(a => a.Id == _deskMixId).State.Cover);   // nothing said
+        Assert.Equal(PngA, File.ReadAllBytes(DeskMix.CoverArtPath!));
+
+        fail = false;
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(PngA, File.ReadAllBytes((await PhoneMixAsync()).CoverArtPath!));
+    }
+
+    /// <summary>Playlists made on the phone stay there, their covers too.</summary>
+    [Fact]
+    public async Task APhoneOnlyPlaylistsCover_StaysOnThePhone()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var own = new Playlist { Name = "Phone only" };
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { own });
+        var svc = await SignedInAsync();
+        await PhoneSetsCoverAsync(svc, own.Id, PngB);
+
+        await svc.SyncNowAsync(ct);
+
+        Assert.DoesNotContain(_desk.AppliedPlaylists, a => a.Id == own.Id);
+        Assert.False(Directory.Exists(PlaylistCovers.StagingDirectory(_deskPersistence.DataDirectory)));
+        Assert.Equal(PngB, File.ReadAllBytes((await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == own.Id).CoverArtPath!));
     }
 
     private sealed class DesktopPersistence : TestPersistenceService
@@ -1696,6 +1944,8 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             if (state.LastPlayed.HasValue && (t.LastPlayed is null || state.LastPlayed > t.LastPlayed)) t.LastPlayed = state.LastPlayed;
             t.Rating = Math.Clamp(state.Rating, 0, 5);
             t.IsDisliked = state.Disliked;
+            // As LibraryServerAdapter.ApplyTrackStateAsync: absent = say nothing, past = not snoozed.
+            if (state.SnoozedUntil is { } snooze) t.SnoozedUntil = snooze > DateTime.UtcNow ? snooze : null;
             Sync?.RecordTrackStates(new[] { t });
             return Task.CompletedTask;
         }
@@ -1719,7 +1969,13 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             if (!string.IsNullOrWhiteSpace(state.Color)) existing.Color = state.Color;
             existing.TrackIds = state.TrackIds?.ToList() ?? new List<Guid>();
             existing.ModifiedAt = state.ModifiedAt;
+            if (DataDirectory is { } data)
+                PlaylistCovers.Apply(existing, state.Cover, PlaylistCovers.CoversDirectory(data), PlaylistCovers.StagingDirectory(data));
             return Task.CompletedTask;
         }
+
+        /// <summary>The desktop's data folder (LibraryServerAdapter's covers and staging); null = takes no covers.</summary>
+        public string? DataDirectory { get; set; }
+        public string? PlaylistCoverStagingDirectory => DataDirectory is null ? null : PlaylistCovers.StagingDirectory(DataDirectory);
     }
 }

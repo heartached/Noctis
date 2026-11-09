@@ -8,33 +8,6 @@
              x:DataType="vm:ArtistListPageViewModel">
 
     <UserControl.Styles>
-        <!-- ‹ Library, in the accent, over the large title (Apple's Artists page). -->
-        <Style Selector="Button.back-link">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8,0,12,0" />
-            <Setter Property="Height" Value="44" />
-            <Setter Property="VerticalContentAlignment" Value="Center" />
-        </Style>
-        <Style Selector="Button.back-link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.back-link:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.back-link:pressed">
-            <Setter Property="Opacity" Value="0.6" />
-        </Style>
-        <Style Selector="Button.back-link PathIcon">
-            <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="26" />
-            <Setter Property="Margin" Value="-4,0,-3,0" />
-            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
-        </Style>
-        <Style Selector="Button.back-link TextBlock">
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="Margin" Value="2,0,0,0" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
-        </Style>
-
         <!-- One artist: a circle (the cover, else initials on a soft tint) and the name. -->
         <Style Selector="Border.avatar">
             <Setter Property="Width" Value="104" />
@@ -74,44 +47,35 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,Auto,*">
-        <Button Grid.Row="0" Name="ArtistsBackButton" Classes="back-link" Margin="6,4,0,0" HorizontalAlignment="Left"
-                Command="{Binding Shell.NavigateBackCommand}">
-            <StackPanel Orientation="Horizontal">
-                <PathIcon Data="{DynamicResource PhBack}" />
-                <TextBlock Text="{loc:T Tab.Library}" />
-            </StackPanel>
-        </Button>
-        <TextBlock Grid.Row="1" Name="ArtistsTitle" Classes="title" Text="{Binding Title}" Margin="20,0,20,8" />
+    <Grid RowDefinitions="Auto,Auto,*">
+        <!-- The shared header (PageHeader): "‹ Library" over the large title. -->
+        <views:PageHeader Grid.Row="0" Name="Header" />
 
         <!-- "Find in Artists": the list pages' shared field (FindField), as on Albums and Songs. -->
-        <views:FindField Grid.Row="2" Name="FindField" Text="{Binding Query}" Placeholder="{loc:T Mobile.Artists.Find}"
+        <views:FindField Grid.Row="1" Name="FindField" Text="{Binding Query}" Placeholder="{loc:T Mobile.Artists.Find}"
                          IsVisible="{Binding HasArtists}" />
 
-        <TextBlock Grid.Row="3" Name="NoArtistsText" Classes="subtle" Text="{loc:T Mobile.Artists.None}" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="2" Name="NoArtistsText" Classes="subtle" Text="{loc:T Mobile.Artists.None}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding !HasArtists}" />
-        <TextBlock Grid.Row="3" Name="NoResultsText" Classes="subtle" Text="{loc:T Mobile.Artists.NoMatch}" HorizontalAlignment="Center"
+        <TextBlock Grid.Row="2" Name="NoResultsText" Classes="subtle" Text="{loc:T Mobile.Artists.NoMatch}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
         <!-- Rows of three, virtualised; each row is ArtistListPageViewModel.RowHeight tall so a
              letter's row sits at row × height. Right margin leaves the strip its lane. -->
-        <ScrollViewer Grid.Row="3" Classes="page-scroll" Name="ArtistScroll" views:ScrollMemory.IsEnabled="True"
+        <ScrollViewer Grid.Row="2" Classes="page-scroll" Name="ArtistScroll" views:ScrollMemory.IsEnabled="True"
                       HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Name="ArtistGrid" ItemsSource="{Binding Rows}" Margin="10,4,26,16">
-                <ItemsControl.ItemsPanel>
+            <views:RowItemsControl Name="ArtistGrid" ItemsSource="{Binding Rows}" Margin="10,4,26,16">
+                <views:RowItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />
                     </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
+                </views:RowItemsControl.ItemsPanel>
+                <views:RowItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ArtistGridRow">
-                        <ItemsControl ItemsSource="{Binding Artists}" Height="{x:Static vm:ArtistListPageViewModel.RowHeight}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{x:Static vm:ArtistListPageViewModel.Columns}" VerticalAlignment="Top" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <!-- Circles built once per row and handed the next artist (SlotRow). -->
+                        <views:SlotRow Items="{Binding Artists}" Height="{x:Static vm:ArtistListPageViewModel.RowHeight}"
+                                       Columns="{x:Static vm:ArtistListPageViewModel.Columns}">
+                            <views:SlotRow.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ArtistListItem">
                                     <Button Classes="row" VerticalAlignment="Top"
                                             views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenArtistSheetCommand}"
@@ -128,16 +92,16 @@
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:SlotRow.ItemTemplate>
+                        </views:SlotRow>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </views:RowItemsControl.ItemTemplate>
+            </views:RowItemsControl>
         </ScrollViewer>
 
         <!-- The A–Z strip, centred in the part of the page the floating bar does not cover.
              A press or a slide along it jumps the grid (code-behind). -->
-        <Panel Grid.Row="3" Margin="{DynamicResource ShellBottomInset}" HorizontalAlignment="Right" IsVisible="{Binding ShowIndex}">
+        <Panel Grid.Row="2" Margin="{DynamicResource ShellBottomInset}" HorizontalAlignment="Right" IsVisible="{Binding ShowIndex}">
             <Border Name="IndexStrip" Width="26" Background="Transparent" VerticalAlignment="Center" Padding="0,4"
                     PointerPressed="OnIndexPressed" PointerMoved="OnIndexMoved"
                     PointerReleased="OnIndexReleased" PointerCaptureLost="OnIndexCaptureLost">

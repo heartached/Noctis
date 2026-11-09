@@ -27,9 +27,10 @@ public sealed class SpectrumMeter
     /// <summary>FFT window in frames (~43 ms at 48 kHz — enough bass resolution for the lowest band).</summary>
     public const int WindowFrames = 2048;
 
-    /// <summary>Lowest and highest band edges (Hz) for the log-spaced band mapping.</summary>
-    public const double MinHz = 40;
-    public const double MaxHz = 16000;
+    /// <summary>Lowest and highest band edges (Hz) for the log-spaced band mapping: the audible
+    /// range (GitHub #196: 40 Hz..16 kHz cut both ends off). The top is capped below Nyquist.</summary>
+    public const double MinHz = 20;
+    public const double MaxHz = 20000;
 
     // Silence floor / full-scale span in dB for the 0..1 band normalisation.
     private const double FloorDb = -60;
@@ -72,7 +73,9 @@ public sealed class SpectrumMeter
     {
         if (count <= 0 || channels <= 0 || sampleRate <= 0) return;
         var frames = count / channels;
-        var inv = 1.0f / channels;
+        // Above stereo (Multichannel output) a sum over 2, like a downmix: a stereo song on a 5.1
+        // engine (FL/FR only) reads exactly as on a stereo one instead of a third as loud.
+        var inv = 1.0f / Math.Min(channels, 2);
         var head = _head;
         var mask = RingFrames - 1;
         var end = offset + frames * channels;
@@ -128,8 +131,11 @@ public sealed class SpectrumMeter
 
     /// <summary>
     /// Log-spaced band levels from an FFT result: each band spans [edge_k, edge_k+1) Hz, takes the
-    /// peak magnitude within, and maps dB onto 0..1 between the silence floor and full scale.
-    /// Bins are normalised so a full-scale sine reads ~0 dB. Exposed for tests.
+    /// peak magnitude of the bins centred within, and maps dB onto 0..1 between the silence floor
+    /// and full scale. Bass bands narrower than one bin hold no bin centre of their own: they read
+    /// the spectrum at their centre frequency, interpolated between the two bins around it, so
+    /// neighbouring bands don't repeat one bin as a flat plateau (GitHub #196). Bins are
+    /// normalised so a full-scale sine reads ~0 dB. Exposed for tests.
     /// </summary>
     public static void MapBands(double[] re, double[] im, int sampleRate, Span<float> bands)
     {
@@ -140,19 +146,31 @@ public sealed class SpectrumMeter
         var norm = 4.0 / n;
         var count = bands.Length;
         var logMin = Math.Log(MinHz);
-        var logSpan = Math.Log(MaxHz) - logMin;
+        var logSpan = Math.Log(Math.Min(MaxHz, (half - 1) * binHz)) - logMin;
 
         for (var b = 0; b < count; b++)
         {
             var lo = Math.Exp(logMin + logSpan * b / count);
             var hi = Math.Exp(logMin + logSpan * (b + 1) / count);
-            var binLo = Math.Max(1, (int)Math.Floor(lo / binHz));
-            var binHi = Math.Min(half - 1, Math.Max(binLo, (int)Math.Ceiling(hi / binHz) - 1));
             double peak = 0;
-            for (var k = binLo; k <= binHi; k++)
+            if (hi - lo < binHz)
             {
-                var mag = Math.Sqrt(re[k] * re[k] + im[k] * im[k]) * norm;
-                if (mag > peak) peak = mag;
+                var pos = Math.Sqrt(lo * hi) / binHz;
+                var k0 = Math.Clamp((int)Math.Floor(pos), 1, half - 2);
+                var frac = Math.Clamp(pos - k0, 0, 1);
+                var m0 = Math.Sqrt(re[k0] * re[k0] + im[k0] * im[k0]);
+                var m1 = Math.Sqrt(re[k0 + 1] * re[k0 + 1] + im[k0 + 1] * im[k0 + 1]);
+                peak = (m0 + (m1 - m0) * frac) * norm;
+            }
+            else
+            {
+                var binLo = Math.Max(1, (int)Math.Ceiling(lo / binHz));
+                var binHi = Math.Min(half - 1, Math.Max(binLo, (int)Math.Ceiling(hi / binHz) - 1));
+                for (var k = binLo; k <= binHi; k++)
+                {
+                    var mag = Math.Sqrt(re[k] * re[k] + im[k] * im[k]) * norm;
+                    if (mag > peak) peak = mag;
+                }
             }
             var db = peak <= 1e-9 ? FloorDb : 20 * Math.Log10(peak);
             bands[b] = (float)Math.Clamp((db - FloorDb) / (CeilDb - FloorDb), 0, 1);

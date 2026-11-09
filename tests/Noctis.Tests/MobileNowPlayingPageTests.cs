@@ -115,10 +115,23 @@ public class MobileNowPlayingPageTests : IDisposable
         Assert.False(MobileFixtures.Named<Control>(page, "VolumeRow").IsVisible);   // no volume control in tests
         Assert.DoesNotContain(page.GetVisualDescendants().OfType<TextBlock>(), t => t.Text?.Contains("Video") == true);
 
-        // Apple's page (owner 10-13): no heart by the title (it is in the ⋯ menu), shuffle and
-        // repeat on the Queue page, one transport row with Play/Pause a little larger.
-        foreach (var gone in new[] { "FavouriteButton", "ShuffleButton", "RepeatButton" })
-            Assert.DoesNotContain(page.GetVisualDescendants().OfType<Control>(), c => c.Name == gone);
+        // Apple's page (owner 10-13): no heart by the title (it is in the ⋯ menu), one transport
+        // row with Play/Pause a little larger. Beta 2: Shuffle and Repeat at that row's ends
+        // (testers could not find them on the Queue page), on the same row as the transport.
+        Assert.DoesNotContain(page.GetVisualDescendants().OfType<Control>(), c => c.Name == "FavouriteButton");
+        var shuffle = MobileFixtures.Named<Button>(page, "ShuffleButton");
+        var repeat = MobileFixtures.Named<Button>(page, "RepeatButton");
+        Assert.True(shuffle.IsEffectivelyVisible && repeat.IsEffectivelyVisible);
+        var play = MobileFixtures.Named<Button>(page, "PlayPauseButton");
+        var playY = play.TranslatePoint(new Point(0, play.Bounds.Height / 2), page)!.Value.Y;
+        Assert.Equal(playY, shuffle.TranslatePoint(new Point(0, shuffle.Bounds.Height / 2), page)!.Value.Y, 0);
+        Assert.False(shuffle.Classes.Contains("on"));
+        rig.Shell.Player.ToggleShuffleCommand.Execute(null);
+        Assert.True(shuffle.Classes.Contains("on"));
+        rig.Shell.Player.CycleRepeatCommand.Execute(null);
+        Assert.True(repeat.Classes.Contains("on"));
+        rig.Shell.Player.CycleRepeatCommand.Execute(null);
+        Assert.True(MobileFixtures.Named<PathIcon>(page, "RepeatOneGlyph").IsVisible);
         var transport = new[] { "PreviousButton", "PlayPauseButton", "NextButton" }
             .Select(n => MobileFixtures.Named<Button>(page, n)).ToList();
         Assert.Single(transport.Select(b => b.TranslatePoint(default, page)!.Value.Y).Distinct());

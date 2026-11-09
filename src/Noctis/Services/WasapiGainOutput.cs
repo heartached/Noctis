@@ -105,12 +105,14 @@ internal sealed class WasapiGainOutput : IDisposable
         };
     }
 
-    public static WasapiGainOutput? TryCreate(string? deviceId = null)
+    /// <param name="multichannel">Settings → Audio → Multichannel output (off while Headphone
+    /// surround is on): render at a 4–8 channel device's own channel count instead of stereo.</param>
+    public static WasapiGainOutput? TryCreate(string? deviceId = null, bool multichannel = false)
     {
         if (!OperatingSystem.IsWindows()) return null;
         // Silent test mode (NOCTIS_AOUT=dummy) opens no device: callers take their fallbacks.
         if (NullWavePlayer.SilentMode) return null;
-        try { return new WasapiGainOutput(deviceId); }
+        try { return new WasapiGainOutput(deviceId, multichannel); }
         catch (Exception ex)
         {
             Diag($"TryCreate FAILED (device={deviceId ?? "default"}): {ex.GetType().Name}: {ex.Message}");
@@ -118,7 +120,7 @@ internal sealed class WasapiGainOutput : IDisposable
             // fallback: retry once on the Windows default device.
             if (!string.IsNullOrEmpty(deviceId))
             {
-                try { return new WasapiGainOutput(null); }
+                try { return new WasapiGainOutput(null, multichannel); }
                 catch { }
             }
             return null;
@@ -158,17 +160,19 @@ internal sealed class WasapiGainOutput : IDisposable
         {
             failureReason = (ex as System.Runtime.InteropServices.COMException)?.HResult == HrDeviceInUse
                 ? "audio device is in use by another app"
-                : $"device rejected {sampleRate / 1000.0:0.#} kHz exclusive output";
+                : channels > 2
+                    ? $"device rejected {channels}-channel {sampleRate / 1000.0:0.#} kHz exclusive output"
+                    : $"device rejected {sampleRate / 1000.0:0.#} kHz exclusive output";
             Diag($"TryCreateExclusive FAILED: {ex.GetType().Name}: {ex.Message}");
             return null;
         }
     }
 
-    private WasapiGainOutput(string? deviceId)
+    private WasapiGainOutput(string? deviceId, bool multichannel)
     {
         Diag($"=== WasapiGainOutput init (shared, device={(deviceId ?? "default")}) ===");
 
-        int rate = 48000, channels = 2;
+        int rate = 48000, channels = 2, mask = 0;
         MMDevice device;
         try
         {
@@ -190,7 +194,10 @@ internal sealed class WasapiGainOutput : IDisposable
             Diag($"device mix format: {mix.Encoding} {mix.SampleRate}Hz {mix.Channels}ch {mix.BitsPerSample}bit");
             // Shared mode converts to the mix rate itself; LibVLC can't deliver above AmemRate.Max.
             rate = AmemRate.Fit(mix.SampleRate);
-            channels = mix.Channels >= 2 ? 2 : 1; // render stereo (or mono); LibVLC downmixes
+            // Stereo (or mono), LibVLC downmixing; with Multichannel output on, a 4–8 channel
+            // device's own count (5.1/7.1 discrete, stereo on FL/FR, see MultichannelLayout).
+            channels = MultichannelLayout.SharedChannels(mix.Channels, multichannel, headphoneSurround: false);
+            if (channels > 2) mask = MultichannelLayout.MaskFor(channels, MultichannelLayout.MaskOf(mix));
         }
         catch (Exception ex)
         {
@@ -208,7 +215,11 @@ internal sealed class WasapiGainOutput : IDisposable
         _out = new WasapiOut(device, AudioClientShareMode.Shared, useEventSync: true, latency: 50);
         // Post-gain beat tap for the flowing-artwork lyrics background (see BeatMeter).
         // Mono Audio / Balance / sleep fade, like the engine sink (see ChannelMixProvider).
-        _out.Init(new BeatTapProvider(new ChannelMixProvider(_gain, ChannelMixSettings.Shared), 50));
+        ISampleProvider chain = new BeatTapProvider(new ChannelMixProvider(_gain, ChannelMixSettings.Shared), 50);
+        // Above stereo the stream names its speakers (WAVEFORMATEXTENSIBLE mask) instead of
+        // leaving the mapping of a bare WAVEFORMATEX to the driver.
+        if (channels > 2) _out.Init(new MultichannelLayout.MaskedWaveProvider(chain, 32, mask));
+        else _out.Init(chain);
         HookPlaybackStopped();
         _out.Play();
         Diag($"input S16N {SampleRate}Hz {Channels}ch | WasapiOut state={_out.PlaybackState}");
@@ -240,7 +251,28 @@ internal sealed class WasapiGainOutput : IDisposable
             // Bit-perfect: mono/balance are bypassed here (allowChannelMix: false); only the
             // sleep timer's fade applies, and it is a pass-through at unity.
             var tapped = new BeatTapProvider(new ChannelMixProvider(_gain, ChannelMixSettings.Shared, allowChannelMix: false), 100);
-            IWaveProvider rendered = bits switch
+            IWaveProvider? rendered = null;
+            if (channels > 2)
+            {
+                // Multichannel (GitHub #200): WAVEFORMATEXTENSIBLE with the speaker mask, and only
+                // a format the driver takes as-is. NAudio otherwise falls back to a DMO resampler
+                // that may remix the channels, which is neither bit-perfect nor discrete; the
+                // caller then retries in stereo.
+                foreach (var mask in ExclusiveMasks(channels))
+                {
+                    var candidate = new MultichannelLayout.MaskedWaveProvider(tapped, bits, mask);
+                    if (!IsExclusiveFormatSupported(_device, candidate.WaveFormat)) continue;
+                    rendered = candidate;
+                    break;
+                }
+                if (rendered == null)
+                {
+                    Diag($"exclusive {bits}-bit {channels}ch not supported by the device");
+                    lastError ??= new NotSupportedException($"{channels}-channel exclusive output not supported");
+                    continue;
+                }
+            }
+            rendered ??= bits switch
             {
                 24 => new SampleToWaveProvider24(tapped),
                 16 => new SampleToWaveProvider16(tapped),
@@ -271,6 +303,20 @@ internal sealed class WasapiGainOutput : IDisposable
 
         try { _device.Dispose(); } catch { }
         throw lastError ?? new InvalidOperationException("exclusive WASAPI init failed");
+    }
+
+    /// <summary>Speaker masks tried for an exclusive multichannel open: Windows' default layout,
+    /// then 5.1 with side instead of rear surrounds (VLC fills the same two slots either way).</summary>
+    private static IEnumerable<int> ExclusiveMasks(int channels)
+    {
+        yield return MultichannelLayout.StandardMask(channels);
+        if (channels == 6) yield return 0x60F;
+    }
+
+    private static bool IsExclusiveFormatSupported(MMDevice device, WaveFormat format)
+    {
+        try { return device.AudioClient.IsFormatSupported(AudioClientShareMode.Exclusive, format); }
+        catch { return false; }
     }
 
     /// <summary>The endpoint to open: the pinned device id, or the Windows default.

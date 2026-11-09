@@ -538,6 +538,23 @@
                             <PathIcon Data="{StaticResource ViewIcon}"/>
                         </Button>
 
+                        <!-- Plugin buttons (API 1.7 library commands on the Songs page), e.g. Album Roulette. -->
+                        <ItemsControl ItemsSource="{Binding PagePluginButtons}" VerticalAlignment="Center"
+                                      IsVisible="{Binding HasPagePluginButtons}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="8"/></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="helpers:PluginPageButton">
+                                    <Button Classes="corner-icon" Command="{Binding Command}"
+                                            AutomationProperties.Name="{Binding Label}"
+                                            ToolTip.Tip="{Binding Label}">
+                                        <PathIcon Data="{Binding Icon}"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PageShuffleCommand}"
                                 ToolTip.Tip="{loc:T Main.ShuffleTip}">
@@ -1205,6 +1222,7 @@
                                                     <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                         <Binding />
                                                         <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
@@ -1242,6 +1260,7 @@
                                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                             <Binding />
                                                             <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                            <Binding Path="ArtistDisplay" />
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
@@ -1259,6 +1278,7 @@
                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                     <Binding />
                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    <Binding Path="ArtistDisplay" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -1441,6 +1461,7 @@
                                                             <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                                 <Binding />
                                                                 <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
                                                             </MultiBinding>
                                                         </TextBlock.Text>
                                                     </TextBlock>
@@ -1478,6 +1499,7 @@
                                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                                     <Binding />
                                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                    <Binding Path="ArtistDisplay" />
                                                                 </MultiBinding>
                                                             </TextBlock.Text>
                                                         </TextBlock>
@@ -1495,6 +1517,7 @@
                                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                             <Binding />
                                                             <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                            <Binding Path="ArtistDisplay" />
                                                         </MultiBinding>
                                                     </TextBlock.Text>
                                                 </TextBlock>
@@ -1556,7 +1579,7 @@
                             </ListBox>
 
                             <!-- GitHub #92: empty-queue hint. Not hit-testable, so a library row
-                                 dragged over it still lands on the ListBox (OnQueueDrop).
+                                 dragged over it still lands on the ListBox (QueueDropTarget).
                                  GitHub #134: only when there is nothing at all (it showed under a
                                  playing song and its played songs whenever Up Next was empty). -->
                             <StackPanel x:Name="QueueEmptyHint"
@@ -1648,6 +1671,7 @@
                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                     <Binding />
                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    <Binding Path="ArtistDisplay" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -1663,6 +1687,7 @@
                                                 <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                                     <Binding />
                                                     <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                    <Binding Path="ArtistDisplay" />
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>
@@ -1685,6 +1710,18 @@
                                         Background="{DynamicResource AccentColorBrush}"
                                         Opacity="0.18" />
                             </Border>
+
+                            <!-- GitHub #189: where files dragged in from Explorer (or rows from the
+                                 library) land between the rows; placed from code-behind
+                                 (QueueDropTarget). Inset like the rows (12 px). -->
+                            <Border x:Name="QueueDropLine"
+                                    IsHitTestVisible="False"
+                                    IsVisible="False"
+                                    VerticalAlignment="Top"
+                                    Height="2"
+                                    Margin="16,0,16,0"
+                                    CornerRadius="1"
+                                    Background="{DynamicResource AccentColorBrush}" />
                         </Grid>
                     </DockPanel>
 
@@ -1804,6 +1841,7 @@
     <views:PlaybackBarView DataContext="{Binding Player}"
                            ClipToBounds="False"
                            CompactWhenLyricsPageActive="False"
+                           BackdropColor="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IslandBackdropColor, FallbackValue={x:Null}}"
                            IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarMounted, FallbackValue=False}"
                            IsHitTestVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsPlaybackBarHitTestVisible, FallbackValue=False}"
                            Opacity="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaybackBarOpacity, FallbackValue=0}"

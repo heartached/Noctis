@@ -216,7 +216,8 @@
             </Grid>
 
 
-            <ListBox Grid.Row="4"
+            <ListBox x:Name="UpNextList"
+                     Grid.Row="4"
                      Classes="track-list"
                      ItemsSource="{Binding UpNext}"
                      Margin="0,0,0,24">
@@ -233,6 +234,7 @@
                                             <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                 <Binding />
                                                 <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                                <Binding Path="ArtistDisplay" />
                                             </MultiBinding>
                                         </TextBlock.Text>
                                     </TextBlock>
@@ -256,6 +258,7 @@
                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                             <Binding />
                                             <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                            <Binding Path="ArtistDisplay" />
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>
@@ -270,6 +273,18 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+
+            <!-- GitHub #189: where files dragged in from Explorer land between the Up Next rows;
+                 placed from code-behind (QueueDropTarget). -->
+            <Panel Grid.Row="4" IsHitTestVisible="False">
+                <Border x:Name="QueueDropLine"
+                        IsVisible="False"
+                        VerticalAlignment="Top"
+                        Height="2"
+                        Margin="4,0,4,0"
+                        CornerRadius="1"
+                        Background="{DynamicResource AccentColorBrush}" />
+            </Panel>
 
             <!-- History section -->
             <TextBlock Text="{loc:T Queue.History}"
@@ -298,6 +313,7 @@
                                             <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
                                                 <Binding />
                                                 <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                                <Binding Path="ArtistDisplay" />
                                             </MultiBinding>
                                         </TextBlock.Text>
                                     </TextBlock>
@@ -321,6 +337,7 @@
                                         <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
                                             <Binding />
                                             <Binding Path="$parent[UserControl].((vm:QueueViewModel)DataContext).Player.QueueRowLayout" />
+                                            <Binding Path="ArtistDisplay" />
                                         </MultiBinding>
                                     </TextBlock.Text>
                                 </TextBlock>

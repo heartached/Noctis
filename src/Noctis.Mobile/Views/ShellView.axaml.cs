@@ -21,6 +21,7 @@ public partial class ShellView : UserControl
 
     public ShellView()
     {
+        ScrollBarFade.Install();
         InitializeComponent();
         // The TopLevel pads its main view by the safe area by default; the shell pads each
         // layer itself (SafeArea) so the overlays' backgrounds run under the system bars,
@@ -29,6 +30,7 @@ public partial class ShellView : UserControl
         AddHandler(KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
         TabContent.AddHandler(ScrollViewer.ScrollChangedEvent, OnContentScrollChanged);
         ChromeHost.SizeChanged += (_, _) => ApplyChromeLayout();
+        AttachTabDrag();
         // The tab bar stays up under the Queue sheet (the owner's mockup): the sheet slides it
         // with itself, and the bar sits over the overlays while the page is on screen.
         QueueSheet.TabBar = BottomChrome;
@@ -241,6 +243,8 @@ public partial class ShellView : UserControl
         SelectionPill.Transitions = new Transitions
         {
             new DoubleTransition { Property = GlassDroplet.LiftProperty, Duration = LiftTime, Easing = new CubicBezierEase(0.25, 0.1, 0.25, 1) },
+            // The end tabs' capsule is a little narrower: it eases to it as it slides.
+            new DoubleTransition { Property = WidthProperty, Duration = Slide, Easing = new CubicBezierEase(0.25, 0.1, 0.25, 1) },
         };
     }
 
@@ -276,15 +280,22 @@ public partial class ShellView : UserControl
         _settleTimer.Start();
     }
 
-    internal static double SelectionPillWidth(double barWidth) => barWidth / TabCount + 2 * PillOverhang;
-
-    /// <summary>Where the selected tab's capsule sits: centred on its tab, but never closer than
-    /// <see cref="PillInset"/> to the bar's rounded ends.</summary>
-    internal static double SelectionPillX(double barWidth, int index)
+    /// <summary>The selected tab's capsule: a little wider than its tab, but on the first and
+    /// last tab only as wide as fits <see cref="PillInset"/> inside the bar's rounded end while
+    /// still centred on the tab. Beta 2: one width everywhere was clamped against the end and
+    /// sat 6 dp off its tab's icon and label there (testers: "the button is not centred").</summary>
+    internal static double SelectionPillWidth(double barWidth, int index)
     {
-        var x = index * (barWidth / TabCount) - PillOverhang;
-        return Math.Clamp(x, PillInset, Math.Max(PillInset, barWidth - SelectionPillWidth(barWidth) - PillInset));
+        var tab = barWidth / TabCount;
+        var centre = (index + 0.5) * tab;
+        var room = Math.Min(centre, barWidth - centre) - PillInset;
+        return Math.Max(0, Math.Min(tab + 2 * PillOverhang, 2 * room));
     }
+
+    /// <summary>Where the selected tab's capsule starts: centred on its tab (<see
+    /// cref="SelectionPillWidth"/> keeps it inside the bar's ends).</summary>
+    internal static double SelectionPillX(double barWidth, int index)
+        => (index + 0.5) * (barWidth / TabCount) - SelectionPillWidth(barWidth, index) / 2;
 
     /// <summary>A tab's column in the bar (TabBar in the XAML).</summary>
     internal static int TabIndex(MobileTab tab) => tab switch
@@ -349,7 +360,7 @@ public partial class ShellView : UserControl
         SelectionBar.Margin = miniMargin;
 
         var index = TabIndex(vm.SelectedTab);
-        var pillWidth = SelectionPillWidth(width);
+        var pillWidth = SelectionPillWidth(width, index);
         SelectionPill.Width = pillWidth;
         SelectionPill.Height = TabHeight - 2 * PillInset;
         var pillX = TransformOperations.Parse($"translateX({SelectionPillX(width, index).ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");

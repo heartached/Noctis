@@ -104,8 +104,13 @@
                                 </Button>
                             </StackPanel>
                         </Grid>
-                        <ItemsControl Name="FeaturedSongResults" ItemsSource="{Binding FeaturedSongs}" Margin="-8,0">
-                            <ItemsControl.ItemTemplate>
+                        <views:RowItemsControl Name="FeaturedSongResults" ItemsSource="{Binding FeaturedSongs}" Margin="-8,0">
+                            <views:RowItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </views:RowItemsControl.ItemsPanel>
+                            <views:RowItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:Track">
                                     <Button Classes="row"
                                             Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).PlayFeaturedSongCommand}"
@@ -114,12 +119,15 @@
                                         <views:SongRow MenuCommand="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}" />
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemTemplate>
+                        </views:RowItemsControl>
                     </StackPanel>
                 </Border>
 
-                <!-- Songs first: a search is usually for a song. -->
+                <!-- Songs first: a search is usually for a song. The result lists are RowItemsControls
+                     on a VirtualizingStackPanel: a keystroke that changes the results rebinds the
+                     rows already built instead of building every row again (11-06: 130-440 ms of
+                     layout a keystroke on the emulator). -->
                 <StackPanel Spacing="4" IsVisible="{Binding HasSongs}">
                     <Button Classes="row" Name="SongsHeader" Command="{Binding SetScopeCommand}" CommandParameter="{x:Static vm:SearchScope.Songs}"
                             IsHitTestVisible="{Binding IsAllScope}">
@@ -128,13 +136,13 @@
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
-                    <ItemsControl Name="SongResults" ItemsSource="{Binding Songs}">
-                        <ItemsControl.ItemsPanel>
+                    <views:RowItemsControl Name="SongResults" ItemsSource="{Binding Songs}">
+                        <views:RowItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <VirtualizingStackPanel />
                             </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
+                        </views:RowItemsControl.ItemsPanel>
+                        <views:RowItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="models:Track">
                                 <Button Classes="row"
                                         Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).PlaySongCommand}"
@@ -143,8 +151,8 @@
                                     <views:SongRow MenuCommand="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}" />
                                 </Button>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </views:RowItemsControl.ItemTemplate>
+                    </views:RowItemsControl>
                 </StackPanel>
 
                 <StackPanel Spacing="8" IsVisible="{Binding HasAlbums}">
@@ -158,13 +166,13 @@
                     <!-- Virtualised sideways (the artist page's rails): every keystroke used to
                          realise all twelve tiles, each decoding its cover, for the three that fit. -->
                     <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" IsVisible="{Binding ShowAlbumRow}">
-                        <ItemsControl Name="AlbumResults" ItemsSource="{Binding Albums}" Margin="8,0,-4,0">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="AlbumResults" ItemsSource="{Binding Albums}" Margin="8,0,-4,0">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                            </views:RowItemsControl.ItemsPanel>
+                            <views:RowItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:Album">
                                     <Button Classes="row" Width="140" Margin="0,0,12,0"
                                             Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).Shell.OpenAlbumCommand}"
@@ -173,8 +181,8 @@
                                         <views:AlbumTile />
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemTemplate>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                     <!-- The Albums chip: every match as a two-column grid. -->
                     <ItemsControl Name="AlbumGridResults" ItemsSource="{Binding Albums}" Margin="4,0" IsVisible="{Binding ShowAlbumGrid}">
@@ -204,8 +212,13 @@
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
-                    <ItemsControl Name="ArtistResults" ItemsSource="{Binding Artists}">
-                        <ItemsControl.ItemTemplate>
+                    <views:RowItemsControl Name="ArtistResults" ItemsSource="{Binding Artists}">
+                        <views:RowItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </views:RowItemsControl.ItemsPanel>
+                        <views:RowItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:ArtistListItem">
                                 <Button Classes="row"
                                         Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenArtistCommand}"
@@ -222,8 +235,8 @@
                                     </Grid>
                                 </Button>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </views:RowItemsControl.ItemTemplate>
+                    </views:RowItemsControl>
                 </StackPanel>
 
                 <StackPanel Spacing="4" IsVisible="{Binding HasPlaylists}">
@@ -234,8 +247,13 @@
                             <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
-                    <ItemsControl Name="PlaylistResults" ItemsSource="{Binding Playlists}">
-                        <ItemsControl.ItemTemplate>
+                    <views:RowItemsControl Name="PlaylistResults" ItemsSource="{Binding Playlists}">
+                        <views:RowItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <VirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </views:RowItemsControl.ItemsPanel>
+                        <views:RowItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PlaylistResult">
                                 <Button Classes="row"
                                         Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).Shell.OpenPlaylistCommand}"
@@ -256,8 +274,8 @@
                                     </Grid>
                                 </Button>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </views:RowItemsControl.ItemTemplate>
+                    </views:RowItemsControl>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

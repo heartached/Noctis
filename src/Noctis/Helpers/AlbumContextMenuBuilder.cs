@@ -35,6 +35,8 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem SearchLyrics { get; private set; } = null!;
+    /// <summary>GitHub #195: every song of the album (or the Ctrl-selection) → the bulk Find Lyrics dialog. Bound by <see cref="BindFindLyrics"/>.</summary>
+    public MenuItem FindLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     /// <summary>GitHub #121: the album's songs → Send to Folder (copy or move). Bound by <see cref="BindSendToFolder"/>.</summary>
     public MenuItem SendToFolder { get; private set; } = null!;
@@ -134,6 +136,10 @@ public sealed class AlbumContextMenuBuilder
         SearchLyrics.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
         items.Add(SearchLyrics);
 
+        FindLyrics = new MenuItem { Header = Loc.T("LibraryAlbums.FindLyrics"), IsVisible = false };
+        FindLyrics.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
+        items.Add(FindLyrics);
+
         // Lyrics Background Video ▸ — one clip for every song on this album (a song's own
         // clip still wins). Static commands; see Helpers.LyricsBackgroundOverrides.
         LyricsBackground = new MenuItem { Header = "Lyrics Background Video" };
@@ -212,6 +218,8 @@ public sealed class AlbumContextMenuBuilder
         items.Add(EditDescription);
         SearchLyrics = MenuV2.Row(host, Loc.T("Lyrics.SearchLyrics"), "MenuLineLyrics", visible: false);
         items.Add(SearchLyrics);
+        FindLyrics = MenuV2.Row(host, Loc.T("LibraryAlbums.FindLyrics"), "MenuLineLyricsBulk", visible: false);
+        items.Add(FindLyrics);
         LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
         LyricsBackgroundChoose = new MenuItem { Header = Loc.T("AlbumDetail.ChooseAlbumVideo"), Command = LyricsBackgroundOverrides.ChooseForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundChoose);
@@ -339,6 +347,16 @@ public sealed class AlbumContextMenuBuilder
     public void BindGroupAlbums(Album album, ICommand? groupCommand)
     {
         BindOptional(GroupAlbums, groupCommand, album);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    /// <summary>
+    /// GitHub #195: "Find Lyrics…" for every song of the album or the Ctrl-selection it is in
+    /// (hidden when null). Separate from <see cref="Bind"/> like <see cref="BindSendToFolder"/>.
+    /// </summary>
+    public void BindFindLyrics(Album album, ICommand? findLyricsCommand)
+    {
+        BindOptional(FindLyrics, findLyricsCommand, album);
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 

@@ -59,6 +59,26 @@ public sealed class OptionsMenuViewModel
         return Lined(items);
     }
 
+    /// <summary>
+    /// Now Playing's Sleep Timer (the desktop player bar's): 15, 30, 45 minutes, 1 hour and End
+    /// of Current Song, the one running ticked; Turn Off Timer after a group break while one is
+    /// set. Headed "Sleep Timer", with what is left under it.
+    /// </summary>
+    public static OptionsMenuViewModel ForSleepTimer(ShellViewModel shell, NowPlayingViewModel player)
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var minutes in new[] { 15, 30, 45 })
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.SleepTimer.Minutes", minutes), player.SleepTimerMinutes == minutes,
+                () => player.StartSleepTimer(minutes)));
+        items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.SleepTimer.OneHour"), player.SleepTimerMinutes == 60, () => player.StartSleepTimer(60)));
+        if (player.HasTrack)
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.SleepTimer.EndOfSong"), player.StopAfterCurrentSong, player.StopAfterThisSong));
+        if (player.HasSleepTimer)
+            items.Add(new OptionsMenuItem(shell, Loc.T("Mobile.SleepTimer.TurnOff"), false, player.CancelSleepTimer) { StartsGroup = true });
+        var lined = Lined(items);
+        return new OptionsMenuViewModel(lined.Items, Loc.T("Mobile.SleepTimer"), player.HasSleepTimer ? player.SleepTimerStatus : null);
+    }
+
     /// <summary>Any short list of choices (Settings' Theme menu): the items as given, with the usual hairlines.</summary>
     public static OptionsMenuViewModel ForItems(List<OptionsMenuItem> items) => Lined(items);
 

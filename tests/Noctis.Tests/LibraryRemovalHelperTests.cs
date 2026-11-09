@@ -144,6 +144,35 @@ public class LibraryRemovalHelperTests
         finally { Directory.Delete(dir, true); }
     }
 
+    /// <summary>LyricsWriter saves word timings as a .elrc beside the .lrc, and the lyrics page
+    /// reads LRCGET's .lyricsfile too; trashing a song left both behind, and the leftover then
+    /// kept its album folder from being swept (GitHub #186 review).</summary>
+    [Fact]
+    public void TrashSidecarFiles_AlsoTrashesWordSyncedAndLyricsfileSidecars()
+    {
+        var dir = MakeTempDir();
+        try
+        {
+            var elrc = Path.Combine(dir, "01 song.elrc");
+            var lyricsfile = Path.Combine(dir, "01 song.lyricsfile");
+            File.WriteAllText(elrc, "[00:01.00]<00:01.00>hi");
+            File.WriteAllText(lyricsfile, "x");
+
+            var trashed = new List<string>();
+            LibraryRemovalHelper.TrashSidecarFiles(new[] { Path.Combine(dir, "01 song.flac") },
+                p => { trashed.Add(p); return true; });
+
+            Assert.Equal(new[] { elrc, lyricsfile }.OrderBy(p => p), trashed.OrderBy(p => p));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Theory]
+    [InlineData("01 song.elrc")]
+    [InlineData("01 song.lyricsfile")]
+    public void LyricSidecars_AreDisposableLeftovers(string name)
+        => Assert.True(LibraryRemovalHelper.IsDisposableLeftover(name));
+
     [Fact]
     public async Task CleanupEmptiedFolders_TrashesLeftoverOnlyFolderAndEmptiedParent()
     {

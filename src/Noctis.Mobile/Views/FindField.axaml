@@ -40,11 +40,11 @@
     <Border Classes="find-field">
         <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,0,4,0">
             <PathIcon Data="{DynamicResource PhSearch}" Width="20" Height="20" Margin="-2,0" Opacity="0.55" />
+            <!-- Not bound to Text: the code-behind hands typing on (FindField.TypingDebounce). -->
             <TextBox Grid.Column="1" Name="FindBox" Classes="find"
-                     Text="{Binding $parent[views:FindField].Text}"
                      PlaceholderText="{Binding $parent[views:FindField].Placeholder}" />
             <Button Grid.Column="2" Name="ClearFindButton" Classes="icon" Width="32" Height="32" Click="OnClear"
-                    IsVisible="{Binding $parent[views:FindField].Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    IsVisible="{Binding #FindBox.Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                     AutomationProperties.Name="{loc:T Mobile.ClearSearch}">
                 <PathIcon Data="{DynamicResource PhClose}" Width="20" Height="20" Opacity="0.55" />
             </Button>

@@ -163,7 +163,27 @@ public static class ArtistCredit
     }
 
     /// <summary>Restores the shipped defaults (used by Settings' reset and by tests).</summary>
-    public static void ResetToDefaults() => Configure(ArtistGroupMode.Artist, DefaultSeparators, DefaultProtectedNames);
+    public static void ResetToDefaults()
+    {
+        Configure(ArtistGroupMode.Artist, DefaultSeparators, DefaultProtectedNames);
+        ShowAsTagged = false;
+    }
+
+    private static volatile bool _showAsTagged;
+
+    /// <summary>
+    /// GitHub #187: Settings › Library › "Show artists as written in the tags". Off (default):
+    /// <see cref="Display(string?)"/> reads active symbol separators as the join text. On: a
+    /// credit is shown exactly as tagged ("Kraak &amp; Smaak", "A x B", "A; B"). Display only —
+    /// <see cref="Split(string?)"/>, the artist index and artist links are unchanged, and the
+    /// shown text still splits into the same names, so a click resolves per artist. Mirrored
+    /// from AppSettings by SettingsViewModel (static for the same reason as the separators).
+    /// </summary>
+    public static bool ShowAsTagged
+    {
+        get => _showAsTagged;
+        set => _showAsTagged = value;
+    }
 
     /// <summary>
     /// Trims, drops blanks, and de-duplicates case-insensitively. Unlike the separators an
@@ -220,6 +240,7 @@ public static class ArtistCredit
     public static string Display(string? value)
     {
         if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
+        if (_showAsTagged) return value.Trim();
         Regex? regex;
         string join;
         Rules rules;
@@ -241,6 +262,16 @@ public static class ArtistCredit
             return join;
         }).Trim();
     }
+
+    /// <summary>
+    /// A track credit as shown, given the credit Noctis indexes (<paramref name="credit"/>,
+    /// which may carry names merged in from the title) and the tag's own text
+    /// (<paramref name="asTagged"/>, null when it is the same). With
+    /// <see cref="ShowAsTagged"/> on the tag's text is shown as written; off, the indexed
+    /// credit goes through <see cref="Display(string?)"/>.
+    /// </summary>
+    public static string Display(string? credit, string? asTagged)
+        => _showAsTagged && !string.IsNullOrWhiteSpace(asTagged) ? asTagged.Trim() : Display(credit);
 
     private static Regex? _displayRegex;
 

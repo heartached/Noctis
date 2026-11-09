@@ -34,7 +34,8 @@ public partial class AlbumDetailViewModel
 
         var cts = new CancellationTokenSource();
         _autoFetchCts = cts;
-        AutoFetchTask = AutoFetchAsync(fetcher, Tracks.ToList(), _settings.AnimatedArtworkCacheBytes, cts.Token);
+        AutoFetchTask = AutoFetchAsync(fetcher, Tracks.ToList(), _settings.AnimatedArtworkCacheBytes,
+            _settings.AnimatedArtworkPrefersMax, cts.Token);
     }
 
     /// <summary>The page left the screen (or closed): stop asking for its loop.</summary>
@@ -44,12 +45,13 @@ public partial class AlbumDetailViewModel
         _autoFetchCts = null;
     }
 
-    private async Task AutoFetchAsync(AnimatedArtworkAutoFetcher fetcher, IReadOnlyList<Models.Track> tracks, long capBytes, CancellationToken ct)
+    private async Task AutoFetchAsync(AnimatedArtworkAutoFetcher fetcher, IReadOnlyList<Models.Track> tracks, long capBytes,
+        bool preferMax, CancellationToken ct)
     {
         try
         {
             // Off the UI thread: the lookup, the download and the cache's file checks.
-            var path = await Task.Run(() => fetcher.FetchAsync(tracks, capBytes, ct), ct);
+            var path = await Task.Run(() => fetcher.FetchAsync(tracks, capBytes, preferMax, ct), ct);
             if (path is null || ct.IsCancellationRequested) return;
             ShowStoredAnimatedCover();
         }

@@ -993,6 +993,7 @@
                                                              IsSearching="{Binding IsSearchingArtwork}"
                                                              Status="{Binding ArtworkSearchStatus}"
                                                              IsDownloading="{Binding IsDownloadingArtwork}"
+                                                             Download="{Binding ArtworkDownload}"
                                                              PickCommand="{Binding SelectArtworkChoiceCommand}" />
                             </Flyout>
                         </FlyoutBase.AttachedFlyout>
@@ -1170,6 +1171,7 @@
                                                              StatusDetail="{Binding AnimatedSearchDetail}"
                                                              IsCheckingMore="{Binding IsProbingAnimatedCandidates}"
                                                              IsDownloading="{Binding IsDownloadingAnimatedCover}"
+                                                             Download="{Binding AnimatedArtworkDownload}"
                                                              PickCommand="{Binding SelectAnimatedArtworkResultCommand}"
                                                              PreviewCommand="{Binding PreviewAnimatedArtworkResultCommand}" />
                             </Flyout>

@@ -137,10 +137,15 @@ public class PersistenceService : IPersistenceService
         settings.ClampToValidRanges();
         // Decrypt at-rest-protected credentials (see SaveSettingsAsync).
         // Legacy plaintext values pass through unchanged.
-        settings.LastFmSessionKey = UnprotectSecret(settings.LastFmSessionKey);
-        settings.ListenBrainzToken = UnprotectSecret(settings.ListenBrainzToken);
+        // GitHub #197: copies this computer cannot decrypt (another PC or Windows user shares the
+        // data folder) are kept aside, and the next save writes them back untouched instead of
+        // the empty value the field reads here — which used to sign the other PC out as well.
+        var stored = settings.OtherComputerSecrets;
+        settings.OtherComputerSecrets = null;
+        settings.LastFmSessionKey = UnprotectOrKeep(settings, stored, LastFmSessionKeyField, settings.LastFmSessionKey);
+        settings.ListenBrainzToken = UnprotectOrKeep(settings, stored, ListenBrainzTokenField, settings.ListenBrainzToken);
         foreach (var conn in settings.SourceConnections)
-            conn.TokenOrPassword = UnprotectSecret(conn.TokenOrPassword);
+            conn.TokenOrPassword = UnprotectOrKeep(settings, stored, SourceConnectionField(conn.Id), conn.TokenOrPassword);
         // Full paths into the data folder: after a data folder move (GitHub #165), or with the
         // folder copied from another computer, they still name the old place.
         settings.ProfileAvatarPath = Helpers.DataLocation.Rebase(settings.ProfileAvatarPath, DataDirectory, "profile") ?? "";
@@ -293,14 +298,21 @@ public class PersistenceService : IPersistenceService
         var node = JsonSerializer.SerializeToNode(settings, JsonOptions);
         if (node is JsonObject obj)
         {
-            ProtectField(obj, "lastFmSessionKey");
-            ProtectField(obj, "listenBrainzToken");
+            // Rebuilt below from what each field keeps for the other computers.
+            obj.Remove("otherComputerSecrets");
+            var others = new JsonObject();
+            ProtectField(obj, LastFmSessionKeyField, settings, LastFmSessionKeyField, others);
+            ProtectField(obj, ListenBrainzTokenField, settings, ListenBrainzTokenField, others);
             // Remote-source (Navidrome/WebDAV/SMB) passwords get the same
             // at-rest protection as the scrobbler tokens.
             if (obj["sourceConnections"] is System.Text.Json.Nodes.JsonArray connections)
                 foreach (var conn in connections)
                     if (conn is JsonObject connObj)
-                        ProtectField(connObj, "tokenOrPassword");
+                        ProtectField(connObj, "tokenOrPassword", settings,
+                            connObj["id"] is JsonValue id && id.TryGetValue<Guid>(out var connId)
+                                ? SourceConnectionField(connId)
+                                : null, others);
+            if (others.Count > 0) obj["otherComputerSecrets"] = others;
         }
         await SaveJsonAsync(SettingsPath, node);
     }
@@ -541,14 +553,81 @@ public class PersistenceService : IPersistenceService
 
     private const string ProtectedPrefix = "enc:dpapi:";
 
-    private static void ProtectField(JsonObject obj, string propertyName)
+    internal const string LastFmSessionKeyField = "lastFmSessionKey";
+    internal const string ListenBrainzTokenField = "listenBrainzToken";
+    internal static string SourceConnectionField(Guid id) => "sourceConnection:" + id.ToString("N");
+
+    /// <summary>Copies kept per field for other computers; older ones beyond this are let go.</summary>
+    internal const int MaxOtherComputerSecrets = 4;
+
+    /// <summary>
+    /// The value of <paramref name="field"/> on this computer: the field itself, else the first
+    /// copy from <paramref name="stored"/> (the other computers' copies, GitHub #197) this computer
+    /// can decrypt. Protected copies it cannot decrypt read as nothing here and are remembered in
+    /// <see cref="AppSettings.OtherComputerSecrets"/>, so the save puts them back untouched.
+    /// </summary>
+    private static string UnprotectOrKeep(AppSettings settings, Dictionary<string, List<string>>? stored, string field, string value)
     {
-        if (obj[propertyName] is JsonValue value && value.TryGetValue<string>(out var raw))
+        var candidates = new List<string>();
+        if (!string.IsNullOrEmpty(value)) candidates.Add(value);
+        if (stored != null && stored.TryGetValue(field, out var extra) && extra != null)
+            candidates.AddRange(extra.Where(e => !string.IsNullOrEmpty(e)));
+
+        string result = string.Empty;
+        List<string>? unreadable = null;
+        foreach (var candidate in candidates.Distinct(StringComparer.Ordinal))
+        {
+            var raw = UnprotectSecret(candidate);
+            if (raw.Length > 0)
+            {
+                if (result.Length == 0) result = raw;
+                continue;
+            }
+            if (candidate.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
+                (unreadable ??= new()).Add(candidate);
+        }
+
+        if (unreadable != null)
+        {
+            (settings.OtherComputerSecrets ??= new(StringComparer.Ordinal))[field] =
+                unreadable.Take(MaxOtherComputerSecrets).ToList();
+            DebugLog.Write("Persistence",
+                $"{field}: {unreadable.Count} saved cop{(unreadable.Count == 1 ? "y" : "ies")} from another computer or Windows user " +
+                "cannot be decrypted here; kept untouched for that computer" +
+                (result.Length == 0 ? ", so this one reads signed out." : "."));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Protects <paramref name="propertyName"/> in the serialized tree. GitHub #197: with no value
+    /// on this computer (never signed in here) the first copy kept for another computer goes back
+    /// into the field unchanged, instead of the empty value that signed that computer out; the
+    /// rest of the kept copies go to <paramref name="others"/> under <paramref name="field"/>.
+    /// </summary>
+    private static void ProtectField(JsonObject obj, string propertyName, AppSettings settings, string? field, JsonObject others)
+    {
+        if (obj[propertyName] is not JsonValue value || !value.TryGetValue<string>(out var raw)) return;
+
+        var kept = field != null && settings.OtherComputerSecrets is { } map && map.TryGetValue(field, out var list) && list != null
+            ? list.Where(b => !string.IsNullOrEmpty(b)).Distinct(StringComparer.Ordinal).ToList()
+            : new List<string>();
+
+        if (string.IsNullOrEmpty(raw) && kept.Count > 0)
+        {
+            obj[propertyName] = kept[0];
+            kept.RemoveAt(0);
+        }
+        else
         {
             var protectedValue = ProtectSecret(raw);
             if (!ReferenceEquals(protectedValue, raw))
                 obj[propertyName] = protectedValue;
         }
+
+        if (field != null && kept.Count > 0)
+            others[field] = new System.Text.Json.Nodes.JsonArray(
+                kept.Take(MaxOtherComputerSecrets).Select(b => (JsonNode?)JsonValue.Create(b)).ToArray());
     }
 
     internal static string ProtectSecret(string value)

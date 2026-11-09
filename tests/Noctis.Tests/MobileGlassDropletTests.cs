@@ -105,16 +105,25 @@ public class MobileGlassDropletTests
     }
 
     /// <summary>Apple's selected-tab capsule overhangs its tab a little but stays inside the bar's
-    /// rounded ends on the first and last tab.</summary>
+    /// rounded ends on the first and last tab - and is centred on its tab on every one (beta 2:
+    /// the end tabs' capsule was clamped 6 dp off its icon and label).</summary>
     [Fact]
-    public void TheSelectedTabCapsule_StaysInsideTheBarsEnds()
+    public void TheSelectedTabCapsule_StaysInsideTheBarsEnds_CentredOnEveryTab()
     {
         const double bar = 380;
-        var width = ShellView.SelectionPillWidth(bar);
-        Assert.True(width > bar / 5);
+        var tab = bar / 5;
+        for (var i = 1; i <= 3; i++)
+        {
+            Assert.Equal(tab + 4, ShellView.SelectionPillWidth(bar, i), 3);
+            Assert.Equal(i * tab - 2, ShellView.SelectionPillX(bar, i), 3);
+        }
         Assert.Equal(4, ShellView.SelectionPillX(bar, 0));
-        Assert.Equal(bar - width - 4, ShellView.SelectionPillX(bar, 4), 3);
-        Assert.Equal(bar / 5 - 2, ShellView.SelectionPillX(bar, 1), 3);
+        Assert.Equal(bar - ShellView.SelectionPillWidth(bar, 4) - 4, ShellView.SelectionPillX(bar, 4), 3);
+        for (var i = 0; i < 5; i++)
+        {
+            var centre = ShellView.SelectionPillX(bar, i) + ShellView.SelectionPillWidth(bar, i) / 2;
+            Assert.Equal((i + 0.5) * tab, centre, 3);
+        }
     }
 
     /// <summary>The expanded bar: a full-width tab pill with the mini player's own capsule 8 dp above it.</summary>

@@ -42,6 +42,7 @@ public class PluginViewInPlaceTests : IDisposable
     {
         public string Name { get; set; } = "Town";
         public Size? Preferred;
+        public Size? Min;
         public int Created;
         public readonly List<Control> Controls = new();
         public Control CreateView()
@@ -52,6 +53,7 @@ public class PluginViewInPlaceTests : IDisposable
             return c;
         }
         public Size? PreferredWindowSize => Preferred;
+        public Size? MinWindowSize => Min;
     }
 
     private sealed class NoOpPlayHistory : IPlayHistoryService
@@ -276,7 +278,7 @@ public class PluginViewInPlaceTests : IDisposable
     public void TheCard_GrowsToTheSizeTheViewAsksFor_WithinTheWindow_AndShrinksBack(double width, double height)
     {
         AddToPlaylistDialogTests.EnsureAppStyles();
-        var view = new View { Preferred = new Size(1100, 760) };
+        var view = new View { Preferred = new Size(1200, 800), Min = new Size(1100, 760) };
         using var m = Mount(view);
         var w = new MainWindow { Width = width, Height = height };
         _windows.Add(w);
@@ -314,15 +316,46 @@ public class PluginViewInPlaceTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void TheCard_KeepsItsOwnSize_ForAViewThatFitsIt()
+    {
+        // Discord "Fix. That. Modal." (11-06): a view with no size hint (every official plugin)
+        // grew Settings to 1000 x 680 plus the rail, wider than every other Settings page.
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        using var m = Mount(new View());
+        var w = new MainWindow { Width = 1800, Height = 1200 };
+        _windows.Add(w);
+        w.Show();
+        w.FindControl<Border>("SettingsOverlay")!.IsVisible = true;
+        w.EnsureSettingsViewLoaded();
+        var host = w.FindControl<ContentControl>("SettingsViewHost")!;
+        host.DataContext = m.Vm;
+        m.Vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+        m.Vm.OpenPluginCardCommand.Execute(m.Vm.CommunityCards.Single(c => c.Id == Id));
+        Pump(200);
+        var card = w.FindControl<Border>("SettingsCard")!;
+        var normal = card.Bounds.Size;
+
+        m.Vm.OpenPluginViewCommand.Execute(m.Entry);
+        Pump(600);
+
+        Assert.Equal((1000, 720), (card.MaxWidth, card.MaxHeight));
+        Assert.Equal(normal, card.Bounds.Size);
+        var frame = ((SettingsView)host.Content!).FindControl<Border>("PluginViewFrame")!;
+        Assert.True(frame.Bounds.Width >= 480 && frame.Bounds.Height >= 360, $"{frame.Bounds}");
+    }
+
+    [AvaloniaFact]
     public void ViewSize_FollowsTheHint_TheDefaults_AndSizeToContent()
     {
-        Assert.Equal(new Size(1000, 680), SettingsView.PluginViewSize(PluginViewSizeHint.None, null));
-        Assert.Equal(new Size(460, 500), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(460, 500), new Size(380, 320), SizeToContent.Manual), null));
-        // A preferred size under the minimum opens at the minimum.
+        // In place the view needs only its minimum (the preferred size is the pop-out window's):
+        // the default 480 x 360, the hint's minimum, or the preferred size when that is smaller.
+        Assert.Equal(new Size(480, 360), SettingsView.PluginViewSize(PluginViewSizeHint.None, null));
+        Assert.Equal(new Size(380, 320), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(460, 500), new Size(380, 320), SizeToContent.Manual), null));
+        Assert.Equal(new Size(300, 200), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(300, 200), null, SizeToContent.Manual), null));
         Assert.Equal(new Size(500, 400), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(300, 200), new Size(500, 400), SizeToContent.Manual), null));
         // Size to content on the height: the control's own height, never under the minimum.
         var content = new Border { Height = 240 };
-        Assert.Equal(new Size(600, 240), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(600, 900), new Size(300, 200), SizeToContent.Height), content));
-        Assert.Equal(new Size(600, 300), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(600, 900), new Size(300, 300), SizeToContent.Height), content));
+        Assert.Equal(new Size(300, 240), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(600, 900), new Size(300, 200), SizeToContent.Height), content));
+        Assert.Equal(new Size(300, 300), SettingsView.PluginViewSize(new PluginViewSizeHint(new Size(600, 900), new Size(300, 300), SizeToContent.Height), content));
     }
 }

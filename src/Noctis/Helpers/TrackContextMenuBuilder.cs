@@ -22,6 +22,9 @@ namespace Noctis.Helpers;
 /// <summary>Parameter of the Rate ▸ menu: which row was clicked and the stars chosen (0 = clear).</summary>
 public sealed record RateRequest(Track Track, int Stars);
 
+/// <summary>Parameter of Other Versions ▸: the clicked (or playing) song and the version picked.</summary>
+public sealed record VersionSwitchRequest(Track From, Track To);
+
 /// <summary>
 /// Builds and binds a reusable track context menu shared across views.
 /// Stores named references to menu items to avoid fragile index-based access.
@@ -49,6 +52,10 @@ public sealed class TrackContextMenuBuilder
     /// commands; with several credited artists View Artist is a submenu, one entry per name.</summary>
     public MenuItem ViewAlbum { get; private set; } = null!;
     public MenuItem ViewArtist { get; private set; } = null!;
+    /// <summary>"Other Versions ▸" (Discord, Cosmo 11-08): the library's other recordings of the
+    /// song (Instrumental, Remastered, Live …). Shown only when there are some and
+    /// <see cref="OtherVersionsSource"/> / <see cref="SwitchVersionCommand"/> are set.</summary>
+    public MenuItem OtherVersions { get; private set; } = null!;
     public MenuItem AddToPlaylist { get; private set; } = null!;
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
@@ -83,6 +90,16 @@ public sealed class TrackContextMenuBuilder
 
     /// <summary>Makes a playlist mix from the clicked song; set once by MainWindowViewModel.</summary>
     public static ICommand? CreateMixCommand { get; set; }
+
+    /// <summary>The library's other versions of a song (<see cref="SongVersions.FindOtherVersions"/>);
+    /// set once by MainWindowViewModel, read on every Bind.</summary>
+    public static Func<Track, IReadOnlyList<Track>>? OtherVersionsSource { get; set; }
+
+    /// <summary>Plays the picked version (<see cref="VersionSwitchRequest"/>); set once by MainWindowViewModel.</summary>
+    public static ICommand? SwitchVersionCommand { get; set; }
+
+    /// <summary>At most this many rows in Other Versions ▸ (a song on many compilations).</summary>
+    internal const int MaxVersionRows = 20;
 
     /// <summary>App-wide artist picture lookup for View Artist ▸, set once by MainWindowViewModel
     /// (owner 10-10: the round pictures in every track menu, not only Home's charts). A Bind
@@ -169,6 +186,10 @@ public sealed class TrackContextMenuBuilder
         ViewArtist = new MenuItem { Header = "View Artist", IsVisible = false };
         ViewArtist.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Artists%20ICON.png");
         items.Add(ViewArtist);
+
+        OtherVersions = new MenuItem { Header = Loc.T("Menu.OtherVersions"), IsVisible = false };
+        OtherVersions.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Albums%20ICON.png");
+        items.Add(OtherVersions);
 
         items.Add(new Separator());
 
@@ -348,6 +369,8 @@ public sealed class TrackContextMenuBuilder
         items.Add(ViewAlbum);
         ViewArtist = MenuV2.Row(host, Loc.T("PlaybackBar.ViewArtistTip"), "MenuLineArtist", visible: false);
         items.Add(ViewArtist);
+        OtherVersions = MenuV2.Row(host, Loc.T("Menu.OtherVersions"), "MenuLineVersions", visible: false);
+        items.Add(OtherVersions);
         StartRadio = MenuV2.Row(host, Loc.T("Menu.StartRadio"), "MenuLineRadio", visible: false);
         items.Add(StartRadio);
         CreateMix = MenuV2.Row(host, Loc.T("Menu.CreateMix"), "MenuLineSmartPlaylist", visible: false);
@@ -464,7 +487,8 @@ public sealed class TrackContextMenuBuilder
         // artist's round picture beside their name in View Artist ▸.
         BindViewAlbum(track, viewAlbumCommand);
         BindViewArtist(track, viewArtistCommand, artistPhotoSource ?? ArtistPhotoSource);
-        _viewSeparator.IsVisible = ViewAlbum.IsVisible || ViewArtist.IsVisible;
+        BindOtherVersions(OtherVersions, track);
+        _viewSeparator.IsVisible = ViewAlbum.IsVisible || ViewArtist.IsVisible || OtherVersions.IsVisible;
 
         // Badge ▸ (optional). Rebuilt per bind: the names come from what the library holds now.
         Badge.IsVisible = badgeCommand != null;
@@ -675,6 +699,61 @@ public sealed class TrackContextMenuBuilder
         item.IsVisible = command != null;
         item.Command = command;
         item.CommandParameter = track;
+    }
+
+    /// <summary>
+    /// Fills Other Versions ▸ for <paramref name="track"/>: one row per other recording, its
+    /// version ("Live", "2011 Remaster", or "Original" for the plain title), album and year.
+    /// Hidden when the library has none. Shared with the playback bar's "…" menu.
+    /// </summary>
+    internal static void BindOtherVersions(MenuItem item, Track? track)
+    {
+        item.Items.Clear();
+        IReadOnlyList<Track> versions = Array.Empty<Track>();
+        if (track != null && OtherVersionsSource is { } source && SwitchVersionCommand != null)
+        {
+            try { versions = source(track); }
+            catch { versions = Array.Empty<Track>(); } // a library mid-reload: no versions this open
+        }
+        item.IsVisible = versions.Count > 0;
+        var shown = versions
+            .OrderBy(v => v.Year == 0 ? int.MaxValue : v.Year)
+            .ThenBy(v => v.Album, StringComparer.CurrentCultureIgnoreCase)
+            .Take(MaxVersionRows)
+            .ToList();
+        // Short rows ("Live · 2016", owner 11-08: the album made every row trim). The album comes
+        // back only where two rows would otherwise read the same; the tooltip always has it.
+        var shortTexts = shown.Select(v => VersionRowText(v, withAlbum: false)).ToList();
+        for (var i = 0; i < shown.Count; i++)
+        {
+            var version = shown[i];
+            var clash = shortTexts.Count(t => t == shortTexts[i]) > 1;
+            var item2 = new MenuItem
+            {
+                Header = clash ? VersionRowText(version) : shortTexts[i],
+                Command = SwitchVersionCommand,
+                CommandParameter = new VersionSwitchRequest(track!, version),
+            };
+            ToolTip.SetTip(item2, VersionRowText(version));
+            // The version's album cover (owner 11-08): the path is already on the track, and the
+            // image decodes through the shared artwork cache only while the submenu is shown.
+            item2.Icon = MenuV2.AlbumThumb(out var cover);
+            cover.DecodeWidth = 64;
+            cover.SourcePath = version.AlbumArtworkPath;
+            cover.IsVisible = version.HasAlbumArt;
+            item.Items.Add(item2);
+        }
+    }
+
+    /// <summary>"Live · Live at Wembley · 1986" (or "Live · 1986" without the album); the plain
+    /// title reads "Original". Internal for tests.</summary>
+    internal static string VersionRowText(Track version, bool withAlbum = true)
+    {
+        var label = SongVersions.VersionLabel(version.Title);
+        var parts = new List<string> { label.Length > 0 ? label : Loc.T("Menu.OriginalVersion") };
+        if (withAlbum && Track.IsRealAlbumName(version.Album)) parts.Add(version.Album);
+        if (version.Year > 0) parts.Add(version.Year.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return string.Join(" · ", parts);
     }
 
     /// <summary>

@@ -82,6 +82,7 @@ public class MobileLocalizationTests
             "Plum Ink", "Library rows", "Scan on startup", "Remove downloads",
             "Google code scanner (ML Kit, Google Play services)",
             "Voice Recorder",   // a folder name recorders save into (DeviceMusicScan), not UI text
+            " Voice Notes",     // the end of messaging apps' voice-message folder names (DeviceMusicScan), not UI text
         };
         var literal = new Regex(@"(\$@|@\$|\$|@)?""((?:[^""\\\n]|\\.)*)""");
         var skip = new Regex(@"DebugLog|\bLog\.|nameof\(|Exception\(|throw |\[InlineData");

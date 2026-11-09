@@ -102,11 +102,13 @@ public sealed class GaplessSink : IDisposable
                 $"heldMs={Stopwatch.GetElapsedTime(Interlocked.Read(ref _rebuildHoldStart)).TotalMilliseconds:0}");
     }
 
-    public static GaplessSink? TryCreate(string? deviceId = null)
+    /// <param name="multichannel">Settings → Audio → Multichannel output, already off while
+    /// Headphone surround is on: run the engine at the startup device's 4–8 channel layout.</param>
+    public static GaplessSink? TryCreate(string? deviceId = null, bool multichannel = false)
     {
         try
         {
-            return new GaplessSink(deviceId);
+            return new GaplessSink(deviceId, multichannel);
         }
         catch (Exception ex)
         {
@@ -115,7 +117,7 @@ public sealed class GaplessSink : IDisposable
         }
     }
 
-    private GaplessSink(string? pinnedDeviceId)
+    private GaplessSink(string? pinnedDeviceId, bool multichannel)
     {
         var openStart = Stopwatch.GetTimestamp();
         WaveFormat mix;
@@ -136,7 +138,10 @@ public sealed class GaplessSink : IDisposable
             // the engine runs at a fixed rate instead of reading a device format.
             mix = WaveFormat.CreateIeeeFloatWaveFormat(LinuxEngineSampleRate, 2);
         }
-        (SampleRate, Channels) = EngineFormat(mix.SampleRate);
+        (SampleRate, Channels) = EngineFormat(mix.SampleRate, multichannel ? MixChannelsOverrideForTests ?? mix.Channels : 2);
+        if (Channels > 2)
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Multichannel",
+                $"channels={Channels}, deviceMask=0x{MultichannelLayout.MaskOf(mix):X}");
         // 200ms pre-buffer before a FRESH segment renders (kills the input-start
         // buzz of chopping ramping delivery against silence); the gapless splice
         // is unaffected — a staged segment holds seconds and passes instantly.
@@ -314,8 +319,22 @@ public sealed class GaplessSink : IDisposable
     /// the rate is halved into range (a 384 kHz device runs the engine at 192 kHz): LibVLC's
     /// callbacks deliver the wrong amount of audio there (see <see cref="AmemRate"/>).
     /// </summary>
-    internal static (int SampleRate, int Channels) EngineFormat(int mixSampleRate) =>
-        (mixSampleRate < 44100 ? 48000 : AmemRate.Fit(mixSampleRate), 2);
+    internal static (int SampleRate, int Channels) EngineFormat(int mixSampleRate) => EngineFormat(mixSampleRate, 2);
+
+    /// <summary>Tests: the startup device's channel count a multichannel engine opens at, in place
+    /// of the real device's (silent mode renders into no device, so any layout can be exercised).</summary>
+    internal static int? MixChannelsOverrideForTests { get; set; }
+
+    /// <summary>
+    /// With Multichannel output on, the engine keeps a 4–8 channel startup device's own channel
+    /// count (VLC renders 5.1/7.1 sources discretely and stereo onto FL/FR, see
+    /// <see cref="MultichannelLayout"/>); anything else stays stereo as above. A later move to a
+    /// stereo device downmixes in shared mode's AUTOCONVERTPCM, the explicit speaker mask
+    /// (<see cref="CreateOutput"/>) telling it which channel is which.
+    /// </summary>
+    internal static (int SampleRate, int Channels) EngineFormat(int mixSampleRate, int multichannelDeviceChannels) =>
+        (mixSampleRate < 44100 ? 48000 : AmemRate.Fit(mixSampleRate),
+         MultichannelLayout.IsSupported(multichannelDeviceChannels) ? multichannelDeviceChannels : 2);
 
     // ── Multi-channel upmix (Settings → Audio) ──
     // Read at output creation, so a change takes effect through the same rebuild
@@ -414,6 +433,13 @@ public sealed class GaplessSink : IDisposable
         }
     }
 
+    /// <summary>Speaker mask of a device's mix format, or 0 when it cannot be read.</summary>
+    private static int MixMaskOf(MMDevice device)
+    {
+        try { return MultichannelLayout.MaskOf(device.AudioClient.MixFormat); }
+        catch { return 0; }
+    }
+
     /// <summary>Channels in a device's mix format, or 2 when it cannot be read.</summary>
     private static int MixChannelsOf(MMDevice device)
     {
@@ -446,7 +472,9 @@ public sealed class GaplessSink : IDisposable
         {
             ISampleProvider render = _renderSource;
             var mode = UpmixMode;
-            if (mode != Services.UpmixMode.Off)
+            // A multichannel engine spreads stereo inputs per segment instead (EnginePlay):
+            // the output stage only ever upmixes a stereo/mono engine.
+            if (mode != Services.UpmixMode.Off && Channels <= 2)
             {
                 // device == null on the silent/Linux paths: stereo either way.
                 var deviceChannels = device != null ? MixChannelsOf(device) : 2;
@@ -458,7 +486,14 @@ public sealed class GaplessSink : IDisposable
                     DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.Upmix", $"mode={mode}, channels={deviceChannels}");
                 }
             }
-            wasapiOut.Init(new SampleToWaveProvider(render));
+            // Above stereo, say which speaker each channel is (WAVEFORMATEXTENSIBLE mask): a bare
+            // WAVEFORMATEX leaves that to the driver. The data is in Windows' order already
+            // (MultichannelLayout.ToWaveOrder at the engine's input, UpmixSampleProvider's layout).
+            var renderChannels = render.WaveFormat.Channels;
+            wasapiOut.Init(renderChannels > 2
+                ? new MultichannelLayout.MaskedWaveProvider(render, 32,
+                    MultichannelLayout.MaskFor(renderChannels, device != null ? MixMaskOf(device) : 0))
+                : new SampleToWaveProvider(render));
         }
         catch
         {

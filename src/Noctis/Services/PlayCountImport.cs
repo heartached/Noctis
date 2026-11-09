@@ -73,15 +73,43 @@ public sealed class PlayCountHistoryFetcher
     public async Task<List<SourcePlayCount>> FetchLastFmAsync(string user,
         IProgress<PlayCountFetchProgress>? progress, CancellationToken ct)
     {
-        var to = _now().ToUnixTimeSeconds();
         var counts = new Counter();
+        await ReadLastFmAsync(user, null, _now().ToUnixTimeSeconds(),
+            (_, artist, title, album) => counts.Add(artist, title, album), progress, ct);
+        return counts.ToList();
+    }
+
+    /// <summary>
+    /// Every listen in [<paramref name="fromTs"/>, <paramref name="toTs"/>) (unix seconds; no
+    /// <paramref name="fromTs"/> = the whole history), newest first, handed to
+    /// <paramref name="onListen"/> as (time, artist, title, album); it returns whether the listen
+    /// counted (blank artist/title don't). Used by the incremental sync (<see cref="PlayCountSync"/>).
+    /// </summary>
+    internal Task ReadListensAsync(PlayCountImportSource source, string user, string? listenBrainzApiUrl,
+        string? listenBrainzToken, long? fromTs, long toTs, Func<long, string, string, string, bool> onListen,
+        IProgress<PlayCountFetchProgress>? progress, CancellationToken ct)
+        => source == PlayCountImportSource.LastFm
+            ? ReadLastFmAsync(user, fromTs, toTs, onListen, progress, ct)
+            : ReadListenBrainzAsync(listenBrainzApiUrl ?? ListenBrainzService.DefaultApiUrl, user, listenBrainzToken,
+                fromTs, toTs, onListen, progress, ct);
+
+    /// <summary>The current time as the services count it (unix seconds).</summary>
+    internal long NowUnix() => _now().ToUnixTimeSeconds();
+
+    // Last.fm's from is inclusive and to exclusive (checked against the live API: a scrobble at
+    // t is returned for from=t&to=t+1 and not for from=t-1&to=t).
+    private async Task ReadLastFmAsync(string user, long? fromTs, long toTs,
+        Func<long, string, string, string, bool> onListen, IProgress<PlayCountFetchProgress>? progress, CancellationToken ct)
+    {
         var listens = 0;
         var totalPages = 1;
         for (var page = 1; page <= totalPages; page++)
         {
             if (page > 1) await _delay(PagePause, ct);
             var url = $"{LastFmApi.ApiBase}?method=user.getrecenttracks&user={Uri.EscapeDataString(user)}" +
-                      $"&limit={LastFmPageSize}&page={page}&to={to}&api_key={LastFmApi.ApiKey}&format=json";
+                      $"&limit={LastFmPageSize}&page={page}" +
+                      (fromTs is { } f ? $"&from={f.ToString(CultureInfo.InvariantCulture)}" : "") +
+                      $"&to={toTs.ToString(CultureInfo.InvariantCulture)}&api_key={LastFmApi.ApiKey}&format=json";
             using var doc = await GetJsonAsync(url, null, isLastFm: true, ct);
             if (!doc.RootElement.TryGetProperty("recenttracks", out var recent))
                 throw new PlayCountImportException(PlayCountImportError.BadReply, "no recenttracks");
@@ -101,16 +129,18 @@ public sealed class PlayCountHistoryFetcher
                     : tracks.ValueKind == JsonValueKind.Object ? new[] { tracks } : Array.Empty<JsonElement>();
                 foreach (var t in items)
                 {
-                    if (!t.TryGetProperty("date", out _)) continue; // now playing
+                    if (!t.TryGetProperty("date", out var date)) continue; // now playing
+                    var ts = date.ValueKind == JsonValueKind.Object ? ReadLong(date, "uts") : 0;
+                    if (fromTs is { } from && ts > 0 && ts < from) continue;
+                    if (ts >= toTs) continue;
                     var artist = ReadText(t, "artist");
                     var title = ReadString(t, "name");
                     var album = ReadText(t, "album");
-                    if (counts.Add(artist, title, album)) listens++;
+                    if (onListen(ts, artist, title, album)) listens++;
                 }
             }
             progress?.Report(new PlayCountFetchProgress(listens, total));
         }
-        return counts.ToList();
     }
 
     // ── ListenBrainz ──
@@ -123,6 +153,19 @@ public sealed class PlayCountHistoryFetcher
     /// </summary>
     public async Task<List<SourcePlayCount>> FetchListenBrainzAsync(string apiUrl, string user, string? token,
         IProgress<PlayCountFetchProgress>? progress, CancellationToken ct)
+    {
+        var counts = new Counter();
+        await ReadListenBrainzAsync(apiUrl, user, token, null, null,
+            (_, artist, title, album) => counts.Add(artist, title, album), progress, ct);
+        return counts.ToList();
+    }
+
+    /// <summary>The paging above; with <paramref name="fromTs"/> it stops at the first page that
+    /// reaches back past it (the API's min_ts can't be combined with paging backwards), and
+    /// listens at or after <paramref name="toTs"/> are left out (the first page asks for
+    /// max_ts = toTs).</summary>
+    private async Task ReadListenBrainzAsync(string apiUrl, string user, string? token, long? fromTs, long? toTs,
+        Func<long, string, string, string, bool> onListen, IProgress<PlayCountFetchProgress>? progress, CancellationToken ct)
     {
         var root = (ListenBrainzService.NormalizeApiUrl(apiUrl) ?? ListenBrainzService.DefaultApiUrl).TrimEnd('/');
         var userPath = Uri.EscapeDataString(user);
@@ -138,9 +181,8 @@ public sealed class PlayCountHistoryFetcher
             // Progress without a total.
         }
 
-        var counts = new Counter();
         var listens = 0;
-        long? maxTs = null;
+        long? maxTs = toTs is { } pin ? pin - 1 : null; // each request asks for max_ts = maxTs + 1 (exclusive)
         var boundary = new HashSet<string>(StringComparer.Ordinal); // listens already read at the boundary second
         while (true)
         {
@@ -169,7 +211,9 @@ public sealed class PlayCountHistoryFetcher
                     if (maxTs == ts && boundary.Contains(key)) continue;
 
                     fresh++;
-                    if (counts.Add(artist, title, album)) listens++;
+                    if ((fromTs is not { } from || ts >= from) && (toTs is not { } to || ts < to) &&
+                        onListen(ts, artist, title, album))
+                        listens++;
                     if (oldest == null || ts < oldest)
                     {
                         oldest = ts;
@@ -182,6 +226,7 @@ public sealed class PlayCountHistoryFetcher
                 // No new listen on this page = the end (also stops a page made only of
                 // already-read listens sharing one second from looping forever).
                 if (fresh == 0 || oldest == null) break;
+                if (fromTs is { } stop && oldest < stop) break; // reached back past the window
                 if (oldest == maxTs) boundary.UnionWith(atOldest);
                 else
                 {
@@ -191,7 +236,6 @@ public sealed class PlayCountHistoryFetcher
                 maxTs = oldest;
             }
         }
-        return counts.ToList();
     }
 
     // ── HTTP ──
@@ -287,6 +331,14 @@ public sealed class PlayCountHistoryFetcher
         if (n.ValueKind == JsonValueKind.Number && n.TryGetInt32(out var i)) return i;
         return n.ValueKind == JsonValueKind.String &&
                int.TryParse(n.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : 0;
+    }
+
+    private static long ReadLong(JsonElement e, string name)
+    {
+        if (!e.TryGetProperty(name, out var n)) return 0;
+        if (n.ValueKind == JsonValueKind.Number && n.TryGetInt64(out var i)) return i;
+        return n.ValueKind == JsonValueKind.String &&
+               long.TryParse(n.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : 0;
     }
 
     private static string ReadString(JsonElement e, string name)

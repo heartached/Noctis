@@ -49,11 +49,20 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private string? _headerArtPath;
 
     /// <summary>GitHub #114: the header cover opens full size when there is a still cover to
-    /// show. An animated cover plays over the still one; the viewer shows the still.</summary>
+    /// show. An animated cover plays over the still one, in the viewer too (Discord ask).</summary>
     public bool CanViewArtwork => !string.IsNullOrEmpty(HeaderArtPath);
 
-    /// <summary>Shows a cover file full size until the viewer closes; tests swap it out.</summary>
-    internal Func<string, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
+    /// <summary>Shows a cover full size until the viewer closes; tests swap it out.</summary>
+    internal Func<Views.ArtworkViewerRequest, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
+
+    /// <summary>What the viewer shows for <paramref name="stillPath"/>: the header's animated
+    /// cover too when the header plays one (Animated Artwork on and a loop found or fetched),
+    /// started or paused as the viewer's play/pause button was last left.</summary>
+    internal Views.ArtworkViewerRequest BuildArtworkViewerRequest(string stillPath)
+        => new(stillPath,
+            ShowAnimatedCover ? AnimatedCoverPath : null,
+            _settings?.ArtworkViewerAnimated ?? true,
+            on => { if (_settings != null) _settings.ArtworkViewerAnimated = on; });
 
     /// <summary>True when this album's track is currently playing AND animated covers are enabled AND a cover exists.</summary>
     public bool IsCurrentAlbumPlaying =>
@@ -88,6 +97,12 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// Versions / More By; true without a settings VM.</summary>
     public bool TintWholePage => _settings?.AlbumPageTintWholePage ?? AppSettings.AlbumPageTintWholePageDefault;
     [ObservableProperty] private bool _isLightTint;
+
+    /// <summary>Whether the tint runs under the floating player island right now (set by the
+    /// view as the page scrolls): with Tint whole page off, the related sections below the
+    /// album block sit on the theme's page instead. MainWindow hands the island the tint as
+    /// its backdrop only while this holds (PlaybackBarView.BackdropColor).</summary>
+    [ObservableProperty] private bool _tintUnderPlayerBar = true;
     [ObservableProperty] private IBrush _pageForegroundBrush = Brushes.White;
     [ObservableProperty] private IBrush _pageSubtleForegroundBrush = new SolidColorBrush(Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF));
     [ObservableProperty] private IBrush _pageDividerBrush = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
@@ -233,10 +248,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         _settings = settings;
         _album = album;
 
-        // Parse individual artist names from the album artist field
-        var tokens = Track.ParseArtistTokens(album.Artist);
-        if (tokens.Length == 0) tokens = new[] { album.Artist };
-        ArtistTokens = tokens.Select((name, i) => new ArtistTokenItem(name, IsLast: i == tokens.Length - 1)).ToArray();
+        // One link per credited name, separators as the album artist line shows them
+        ArtistTokens = ArtistTokenItem.FromCredit(album.ArtistDisplay);
 
         // Load tracks (single Reset event instead of N Add events)
         Tracks.ReplaceAll(album.Tracks);
@@ -329,9 +342,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     partial void OnAlbumChanged(Album value)
     {
-        var tokens = Track.ParseArtistTokens(value.Artist);
-        if (tokens.Length == 0) tokens = new[] { value.Artist };
-        ArtistTokens = tokens.Select((name, i) => new ArtistTokenItem(name, IsLast: i == tokens.Length - 1)).ToArray();
+        ArtistTokens = ArtistTokenItem.FromCredit(value.ArtistDisplay);
         OnPropertyChanged(nameof(ArtistTokens));
         OnPropertyChanged(nameof(HasMultipleArtists));
         OnPropertyChanged(nameof(MoreByArtistTitle));
@@ -840,7 +851,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// viewer is up, so a double-click on the cover opens one viewer, not two.</summary>
     [RelayCommand(CanExecute = nameof(CanViewArtwork))]
     private Task ViewArtwork()
-        => HeaderArtPath is { Length: > 0 } path ? ShowArtworkViewer(path) : Task.CompletedTask;
+        => HeaderArtPath is { Length: > 0 } path ? ShowArtworkViewer(BuildArtworkViewerRequest(path)) : Task.CompletedTask;
 
     [RelayCommand]
     private async Task EditAlbumDescription()
@@ -1270,8 +1281,36 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 }
 
-/// <summary>Display item for an individual artist name in a multi-artist album header.</summary>
-public record ArtistTokenItem(string Name, bool IsLast);
+/// <summary>
+/// Display item for an individual artist name in a multi-artist header (album page, lyrics
+/// page): the name as a link, then <see cref="Separator"/> as plain text up to the next name.
+/// </summary>
+public record ArtistTokenItem(string Name, bool IsLast, string Separator = ", ")
+{
+    /// <summary>
+    /// One item per credited name of <paramref name="shown"/> — the credit exactly as the
+    /// other artist lines show it — with the text between two names kept as the separator.
+    /// GitHub #187: these headers joined the names with a hard-coded ", ", so "A feat. B"
+    /// read "A feat. B" in Songs but "A, B" on the lyrics page, and "as tagged" was lost.
+    /// A credit with no name the splitter finds is one item holding the whole text.
+    /// </summary>
+    public static ArtistTokenItem[] FromCredit(string? shown)
+    {
+        if (string.IsNullOrWhiteSpace(shown)) return Array.Empty<ArtistTokenItem>();
+        var spans = ArtistCreditSpans.Locate(shown);
+        if (spans.Count == 0) return new[] { new ArtistTokenItem(shown.Trim(), IsLast: true, Separator: string.Empty) };
+
+        var items = new ArtistTokenItem[spans.Count];
+        for (var i = 0; i < spans.Count; i++)
+        {
+            var last = i == spans.Count - 1;
+            var end = spans[i].Start + spans[i].Length;
+            var separator = last ? string.Empty : shown[end..spans[i + 1].Start];
+            items[i] = new ArtistTokenItem(spans[i].Name, last, separator);
+        }
+        return items;
+    }
+}
 
 /// <summary>A group of tracks belonging to a single disc within an album.
 /// Observable so large albums can stream rows in after first paint.</summary>

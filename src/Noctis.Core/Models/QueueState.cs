@@ -61,6 +61,13 @@ public class QueueState
     /// the phone's "Track N of M". Null when unknown, in older files and on the desktop.
     /// </summary>
     public int? PlayedInQueue { get; set; }
+
+    /// <summary>
+    /// Desktop, GitHub #175 / #188: Clear Queue took the current track out of the queue (it
+    /// played on outside it), so the next launch keeps it off the queue too. False in older
+    /// files and on the phone.
+    /// </summary>
+    public bool CurrentClearedFromQueue { get; set; }
 }
 
 /// <summary>

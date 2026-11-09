@@ -27,7 +27,7 @@ namespace Noctis.Tests;
 /// </summary>
 public class LyricShareDialogTests
 {
-    private static void EnsureAppStyles()
+    internal static void EnsureAppStyles()
     {
         var app = Application.Current!;
         if (app.Resources.TryGetResource("HeartFillIcon", null, out _)) return;
@@ -222,7 +222,7 @@ public class LyricShareDialogTests
     // ── Clip export ──
 
     /// <summary>Fakes the converter service so ExportClipAsync finds "ffmpeg" (our script).</summary>
-    private sealed class FfmpegOnly(string path) : IAudioConverterService, IServiceProvider
+    internal sealed class FfmpegOnly(string path) : IAudioConverterService, IServiceProvider
     {
         public string? GetFfmpegPath() => path;
         public Task<string?> ValidateFfmpegAsync(string? p = null, CancellationToken ct = default) => Task.FromResult<string?>("ffmpeg");
@@ -714,11 +714,12 @@ public class LyricShareDialogTests
                 Assert.DoesNotContain(all.OfType<Button>(), b => b.Classes.Contains("share-pill"));
                 Assert.DoesNotContain(all.OfType<CheckBox>(), c => c.DataContext is SelectableLyricLine);
 
-                // Options: four filled pill drop-downs carrying every choice.
+                // Options: filled pill drop-downs carrying every choice (four for the card, plus
+                // the Lyrics Page background, shown only in that layout).
                 var combos = all.OfType<ComboBox>().ToList();
-                Assert.Equal(4, combos.Count);
+                Assert.Equal(5, combos.Count);
                 Assert.All(combos, c => Assert.Contains("pill-field", c.Classes));
-                Assert.Equal(2, Named<ComboBox>(win, "LayoutBox").ItemCount);
+                Assert.Equal(2, Named<ComboBox>(win, "LayoutBox").ItemCount); // Card, Poster (Lyrics Page out, owner 11-08)
                 Assert.Equal(2, Named<ComboBox>(win, "FormatBox").ItemCount);
                 Assert.Equal(3, Named<ComboBox>(win, "TextColorBox").ItemCount);
                 Assert.Equal(vm.SolidSwatches.Count + 1, Named<ComboBox>(win, "BackgroundBox").ItemCount);
@@ -869,6 +870,115 @@ public class LyricShareDialogTests
             Assert.True(row.Bounds.Height - h0 <= 4, $"the row grew {row.Bounds.Height - h0:0.0} px (min height {box.MinHeight})");
         }
         finally { if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); } }
+    }
+
+    /// <summary>
+    /// Bug (lead 11-06 screenshot, 1920×1030, Interface Size 100%): with Layout = Lyrics Page
+    /// the drop-downs read "Lyrics Pa", "1:1 · Squa", "Artwork c": Choose image or clip, Remove
+    /// and Social safe zones sat in the row's Auto column and squeezed the four option columns.
+    /// The page-only controls get a row of their own; no selected-item label trims, at 100% or
+    /// 150%, and the card layout's row stays one row with its columns as before.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(1.0)]
+    [InlineData(1.5)]
+    public void PageLayout_OptionLabels_DoNotTruncate(double scale)
+    {
+        EnsureAppStyles();
+        Noctis.Helpers.UiScale.Install();
+        Noctis.Helpers.UiScale.SetFactor(scale);
+        var dir = Directory.CreateTempSubdirectory("noctis-share-row-").FullName;
+        var lines = Enumerable.Range(0, 10).Select(i => $"line {i}").ToList();
+        var stamps = Enumerable.Range(0, 10).Select(i => (TimeSpan?)TimeSpan.FromSeconds(i * 2)).ToList();
+        var vm = new LyricShareViewModel(Song(), lines, stamps, null);
+        var win = new Noctis.Views.LyricShareDialog(vm) { Width = 1920, Height = 1030 };
+        win.Show();
+        try
+        {
+            var host = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(win).OfType<Noctis.Controls.PillDialogHost>().Single();
+            Assert.True(PumpUntil(() => host.Card is { Opacity: > 0.999 }), "open animation never settled");
+            var layout = Named<ComboBox>(win, "LayoutBox");
+            var options = (Grid)layout.Parent!.Parent!;
+            var pageRow = Named<StackPanel>(win, "PageOptionsRow");
+
+            // Card layout: one row, the second collapsed.
+            PumpUntil(() => false, 30);
+            Assert.False(pageRow.IsVisible);
+            Assert.Equal(((Control)layout.Parent).Bounds.Height, options.Bounds.Height, 1);
+            Rect[] CardCombos() => new[] { "LayoutBox", "FormatBox", "TextColorBox", "BackgroundBox" }
+                .Select(n => Named<ComboBox>(win, n).Bounds).ToArray();
+            var cardBefore = CardCombos();
+
+            // Lyrics Page, Story, a custom background (so Remove shows too).
+            var png = Path.Combine(dir, "bg.png");
+            using (var bmp = new SKBitmap(8, 8))
+            {
+                bmp.Erase(SKColors.SteelBlue);
+                using var data = bmp.Encode(SKEncodedImageFormat.Png, 100);
+                File.WriteAllBytes(png, data.ToArray());
+            }
+            vm.LayoutIndex = 2;
+            vm.FormatIndex = 1;
+            vm.PageBackgroundPath = png;
+            vm.PageBackgroundIndex = 2;
+            Assert.True(vm.IsPageLayout);
+            Assert.True(PumpUntil(() => pageRow.IsVisible && pageRow.Bounds.Width > 0));
+            PumpUntil(() => false, 30);
+
+            foreach (var name in new[] { "LayoutBox", "FormatBox", "PageBackgroundBox" })
+            {
+                var combo = Named<ComboBox>(win, name);
+                // The page controls take no width from the row: every drop-down keeps the
+                // width the card layout gives it (no Karaoke pill here, so the full quarter).
+                Assert.Equal(cardBefore[0].Width, combo.Bounds.Width, 1);
+                // The stub text shaper draws every glyph one em wide (twice a real font), so
+                // the label check needs real shaping: NOCTIS_TEST_SKIA=1.
+                if (!HeadlessTestApp.RealRendering) continue;
+                var texts = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(combo).OfType<TextBlock>()
+                    .Where(t => t.IsEffectivelyVisible && !string.IsNullOrEmpty(t.Text)).ToList();
+                Assert.NotEmpty(texts);
+                foreach (var t in texts)
+                {
+                    var natural = new TextBlock
+                    {
+                        Text = t.Text, FontSize = t.FontSize, FontFamily = t.FontFamily,
+                        FontWeight = t.FontWeight, FontStyle = t.FontStyle, FontStretch = t.FontStretch,
+                        LetterSpacing = t.LetterSpacing,
+                    };
+                    natural.Measure(Size.Infinity);
+                    Assert.True(t.Bounds.Width + 0.5 >= natural.DesiredSize.Width,
+                        $"{name} '{t.Text}' trimmed at {scale:0%}: {t.Bounds.Width:0.0} of {natural.DesiredSize.Width:0.0} px");
+                }
+            }
+
+            // The page controls sit on their own row under the drop-downs and fit the card,
+            // Remove included, inside the options' width.
+            Assert.True(pageRow.Bounds.Top >= ((Control)layout.Parent).Bounds.Bottom, "page controls share the drop-downs' row");
+            var right = options.Bounds.Width;
+            foreach (var c in new Control[] { Named<Button>(win, "ChooseBackgroundButton"),
+                         Named<Button>(win, "RemoveBackgroundButton"), Named<CheckBox>(win, "SafeZonesBox") })
+            {
+                Assert.True(c.IsEffectivelyVisible, $"{c.Name} hidden");
+                if (!HeadlessTestApp.RealRendering) continue;
+                var r = c.Bounds.Translate((Vector)c.TranslatePoint(default, options)!.Value - c.Bounds.Position);
+                Assert.True(r.Right <= right + 0.5, $"{c.Name} ends at {r.Right:0} past {right:0}");
+                Assert.True(c.DesiredSize.Width <= c.Bounds.Width + 0.5, $"{c.Name} squeezed");
+            }
+
+            // Back to the card: the same single row, the same columns.
+            vm.LayoutIndex = 0;
+            Assert.True(PumpUntil(() => !pageRow.IsVisible));
+            PumpUntil(() => false, 30);
+            Assert.Equal(((Control)layout.Parent).Bounds.Height, options.Bounds.Height, 1);
+            Assert.Equal(cardBefore, CardCombos());
+        }
+        finally
+        {
+            if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
+            vm.Detach();
+            Noctis.Helpers.UiScale.SetFactor(1.0);
+            try { Directory.Delete(dir, true); } catch { }
+        }
     }
 
     /// <summary>

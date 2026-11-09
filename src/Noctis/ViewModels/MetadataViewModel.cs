@@ -1290,7 +1290,11 @@ public partial class MetadataViewModel : ViewModelBase
                 t.AlbumArtist = AlbumArtist;
                 t.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist); // the user's tag (GitHub #178)
             }
-            if (albumChg) t.Album = Album;
+            if (albumChg)
+            {
+                t.Album = Album;
+                t.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
+            }
             if (composerChg) t.Composer = Composer;
             if (groupingChg) t.Grouping = Grouping;
             if (genreChg) t.Genre = genre;
@@ -1701,6 +1705,15 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
+    /// <summary>GitHub #185: the Artwork chooser's download bar (percent, speed, time left).</summary>
+    public ArtworkDownloadProgress ArtworkDownload { get; } = new();
+
+    // Closed (a click outside, Esc, the window going): stop a cover still downloading.
+    partial void OnIsArtworkSearchOpenChanged(bool value)
+    {
+        if (!value) ArtworkDownload.Cancel();
+    }
+
     [RelayCommand]
     private async Task SelectStandardArtworkResult(ArtworkSearchResult? result)
         => await SelectArtworkResultAsync(result, useHighestResolution: false);
@@ -1717,17 +1730,21 @@ public partial class MetadataViewModel : ViewModelBase
     private async Task SelectArtworkResultAsync(ArtworkSearchResult? result, bool useHighestResolution)
     {
         var candidate = result?.Candidate;
-        if (candidate == null || _itunes == null) return;
+        // One download at a time, as the animated chooser: a second pill clicked mid-download
+        // started a second one, and whichever finished last won the preview.
+        if (candidate == null || _itunes == null || IsDownloadingArtwork) return;
 
         IsDownloadingArtwork = true;
-        // The spinner row carries its own "Downloading…" label (as the animated chooser).
+        // The bar carries its own "Downloading…" label (as the animated chooser).
         ArtworkSearchStatus = string.Empty;
+        var ct = ArtworkDownload.Begin();
         try
         {
             byte[]? data = null;
             foreach (var url in candidate.DownloadUrls(useHighestResolution))
             {
-                data = await _itunes.DownloadAsync(url);
+                data = await _itunes.DownloadAsync(url, ct, onProgress: ArtworkDownload.Report);
+                ct.ThrowIfCancellationRequested();
                 if (data is { Length: > 0 } && Services.HttpSafety.LooksLikeImage(data)) break;
                 data = null;
             }
@@ -1750,12 +1767,17 @@ public partial class MetadataViewModel : ViewModelBase
             ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimApplied");
             IsArtworkSearchOpen = false;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Closed or cancelled: nothing applied, nothing to report.
+        }
         catch (Exception ex)
         {
             ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimDownloadFailed", ex.Message);
         }
         finally
         {
+            ArtworkDownload.End();
             IsDownloadingArtwork = false;
         }
     }
@@ -2302,6 +2324,8 @@ public partial class MetadataViewModel : ViewModelBase
             if (!string.Equals(_track.AlbumArtist, AlbumArtist, StringComparison.Ordinal))
                 _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist);
             _track.AlbumArtist = AlbumArtist;
+            if (!string.Equals(_track.Album, Album, StringComparison.Ordinal))
+                _track.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
             _track.Album = Album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
             _track.Composer = Composer;

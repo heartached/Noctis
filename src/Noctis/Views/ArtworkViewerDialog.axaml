@@ -78,6 +78,22 @@
                             <Image x:Name="FullImage"
                                    Stretch="Uniform"
                                    RenderOptions.BitmapInterpolationMode="HighQuality" />
+                            <!-- The album's animated cover, on the album page's own player
+                                 (one shared decoder per file). Fades in over the still once
+                                 its first frame is up, and out when paused. -->
+                            <controls:AnimatedCoverImage x:Name="AnimatedImage"
+                                                         Opacity="0"
+                                                         IsVisible="False">
+                                <controls:AnimatedCoverImage.Transitions>
+                                    <Transitions>
+                                        <DoubleTransition Property="Opacity" Duration="0:0:0.25">
+                                            <DoubleTransition.Easing>
+                                                <CubicEaseOut/>
+                                            </DoubleTransition.Easing>
+                                        </DoubleTransition>
+                                    </Transitions>
+                                </controls:AnimatedCoverImage.Transitions>
+                            </controls:AnimatedCoverImage>
                         </Panel>
                     </Border>
                 </Border>
@@ -89,14 +105,28 @@
                            Opacity="0.55" />
             </StackPanel>
 
-            <Button Classes="dialog-close"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Margin="16"
-                    ToolTip.Tip="{loc:T Common.Close}"
-                    Click="OnCloseClick">
-                <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" />
-            </Button>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="16"
+                        Spacing="8">
+                <!-- Pause / play the animated cover; only there when the album has one.
+                     Name, tip and glyph are set from code-behind (UpdateAnimatedToggle). -->
+                <Button x:Name="AnimatedToggle"
+                        Classes="dialog-close"
+                        IsVisible="False"
+                        Click="OnAnimatedToggleClick">
+                    <controls:LineIcon x:Name="AnimatedToggleIcon"
+                                       Data="{StaticResource MenuLinePause}"
+                                       Width="18" Height="18" />
+                </Button>
+                <Button Classes="dialog-close"
+                        ToolTip.Tip="{loc:T Common.Close}"
+                        AutomationProperties.Name="{loc:T Common.Close}"
+                        Click="OnCloseClick">
+                    <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" />
+                </Button>
+            </StackPanel>
         </Panel>
     </Border>
 </Window>

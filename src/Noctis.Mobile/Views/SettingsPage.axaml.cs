@@ -21,7 +21,9 @@ public partial class SettingsPage : UserControl
 
     public SettingsPage()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         InitializeComponent();
+        Services.FrameStallMonitor.AddTime("settings page built", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         PaneHost.SizeChanged += (_, _) => PlacePanes(animate: false);
         MainScroll.ScrollChanged += (_, _) => UpdateHairline();
         SubScroll.ScrollChanged += (_, _) => UpdateHairline();
@@ -33,6 +35,9 @@ public partial class SettingsPage : UserControl
         if (_vm != null) _vm.PropertyChanged -= OnViewModelChanged;
         _vm = DataContext as SettingsPageViewModel;
         if (_vm != null) _vm.PropertyChanged += OnViewModelChanged;
+        // A kept view handed a new Settings (PageStack): it opens at its top, as a new one did.
+        MainScroll.Offset = default;
+        SubScroll.Offset = default;
         PlacePanes(animate: false);
     }
 

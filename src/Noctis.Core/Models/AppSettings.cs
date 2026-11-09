@@ -146,6 +146,11 @@ public class AppSettings : IJsonOnDeserializing
     /// of <see cref="AccentColorHex"/>. Themes without one (Light, the dark styles) keep the accent.</summary>
     public bool MobileAccentFollowsTheme { get; set; } = true;
 
+    /// <summary>Phone, Settings › Accent › Match Artwork: the accent takes the playing song's cover
+    /// colour; <see cref="AccentColorHex"/> stays the chosen one, worn when nothing plays or the
+    /// cover is grey. The phone's own (the desktop has <see cref="AccentFollowsArtwork"/>).</summary>
+    public bool MobileAccentFollowsArtwork { get; set; }
+
     /// <summary>Phone: the lyrics page's text size on top of the system font scale (0.8-1.6).</summary>
     public double MobileLyricsTextScale { get; set; } = 1.0;
 
@@ -180,6 +185,24 @@ public class AppSettings : IJsonOnDeserializing
     /// default), or printed on a spinning record (Vinyl) or disc (CD). Saved by name; anything
     /// unknown reads as Cover.</summary>
     public string MobileNowPlayingArtwork { get; set; } = "Cover";
+
+    /// <summary>Phone: the sort each list was left in, by list ("Nav.Songs", "Nav.Playlists",
+    /// "Playlist:{id}"): a sort name, with " desc" when reversed. A list in its own order has no
+    /// entry; a name the phone does not know reads as its own order.</summary>
+    public Dictionary<string, string> MobileListSorts { get; set; } = new();
+
+    /// <summary>Phone, Settings › Appearance › Now Playing Background: how dark the wash behind
+    /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
+    public int MobileNowPlayingBrightness { get; set; }
+
+    /// <summary>Phone, Settings › Appearance › Liquid Glass Tab Pill: the selected tab's pill stays
+    /// clear glass instead of the dark tinted pill. Off by default.</summary>
+    public bool MobileGlassTabPill { get; set; }
+
+    /// <summary>Phone, Settings › Listening › Played Songs in Queue: the Queue page keeps the songs
+    /// already played in a History section above the current track (a tap plays one again). Off by
+    /// default: played songs leave the Queue page, as they always have.</summary>
+    public bool MobileQueueShowHistory { get; set; }
 
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
@@ -385,6 +408,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether animated cover art (looping MP4/WebM) plays for the currently playing track.</summary>
     public bool EnableAnimatedCovers { get; set; } = true;
 
+    /// <summary>The full-size cover (album page cover click) plays the album's animated cover
+    /// when it has one and <see cref="EnableAnimatedCovers"/> is on. The viewer's own
+    /// play/pause button flips it, and the choice sticks for the next album (Discord ask).</summary>
+    public bool ArtworkViewerAnimated { get; set; } = true;
+
     /// <summary>GitHub #167: look up an album's animated cover (clear matches only) when its
     /// page opens, and keep it in a size-capped cache. Off by default: it asks Apple about
     /// every album opened.</summary>
@@ -399,6 +427,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>The nearest of <see cref="AnimatedArtworkCacheSizeChoices"/>: a hand-edited value snaps.</summary>
     public static int SnapAnimatedArtworkCacheMb(int mb) =>
         AnimatedArtworkCacheSizeChoices.MinBy(c => Math.Abs((long)c - mb));
+
+    /// <summary>GitHub #185: the loop quality the fetch on opening an album and Find Animated
+    /// Artwork download, "1080p" or "2160p" (<see cref="AnimatedArtworkQualities"/>). 2160p falls
+    /// back to the 1080p loop when an album has none.</summary>
+    public string AnimatedArtworkQuality { get; set; } = AnimatedArtworkQualities.Default;
 
     /// <summary>Album pages take their background colour from the cover's edge colour,
     /// Apple-Music style, with the page text flipping dark on light covers. Ships on
@@ -487,6 +520,12 @@ public class AppSettings : IJsonOnDeserializing
     /// a plain stereo downmix. Stereo and mono pass untouched. Read at launch (VLC takes it as an
     /// instance option), so a change applies the next time Noctis starts.</summary>
     public bool HeadphoneSurround { get; set; }
+
+    /// <summary>Settings → Audio (Windows, GitHub #200): on a 4–8 channel device, 5.1/7.1 files play
+    /// discretely on every speaker instead of a stereo downmix; stereo stays on FL/FR unless the
+    /// upmix is on. Read at launch (the engine's channel count is fixed for the session), so a change
+    /// applies the next time Noctis starts. Headphone surround wins when both are on.</summary>
+    public bool MultichannelOutput { get; set; }
 
     /// <summary>Settings → Audio: Mono Audio, left and right averaged onto both channels (hearing
     /// in one ear, a single earbud). Bypassed in Exclusive Mode.</summary>
@@ -850,6 +889,30 @@ public class AppSettings : IJsonOnDeserializing
     /// default so the mini player is discoverable; like the heart it adds 36px when shown.</summary>
     public bool PlaybackBarShowMiniPlayer { get; set; } = true;
 
+    /// <summary>GitHub #183: the lyrics button in the island's right cluster. On by default;
+    /// off hides it on the main bar (the lyrics page's own bar keeps it as its way out) and
+    /// the lyrics page stays reachable from the shortcut or a click on the artwork.</summary>
+    public bool PlaybackBarShowLyrics { get; set; } = true;
+
+    /// <summary>GitHub #183: what a click on the island's artwork opens — "MiniPlayer"
+    /// (default, the behaviour before), "LyricsPage" or "FullScreenLyrics". See
+    /// <see cref="IslandArtworkClicks.Parse"/>.</summary>
+    public string PlaybackBarArtworkClick { get; set; } = IslandArtworkClicks.DefaultSetting;
+
+    /// <summary>GitHub #186: a Move to Trash button in the island's right cluster (off by default).</summary>
+    public bool PlaybackBarShowTrash { get; set; }
+
+    /// <summary>GitHub #186: where the Move to Trash button moves the playing song. Empty (the
+    /// default), or a folder that's gone, sends it to the Recycle Bin / Trash instead.</summary>
+    public string PlaybackBarTrashFolder { get; set; } = string.Empty;
+
+    /// <summary>GitHub #186: a Quick Add to Playlist button in the island's right cluster (off by default).</summary>
+    public bool PlaybackBarShowQuickPlaylist { get; set; }
+
+    /// <summary>GitHub #186: the quick playlists' ids, one per slot (at most three;
+    /// <see cref="Guid.Empty"/> = an empty slot).</summary>
+    public List<Guid> PlaybackBarQuickPlaylistIds { get; set; } = new();
+
     /// <summary>GitHub #92: the "Nothing playing · Queue" pill that stands in for the island
     /// while nothing is loaded. Off by default (owner, 2026-09-24).</summary>
     public bool PlaybackBarShowIdlePill { get; set; }
@@ -863,6 +926,11 @@ public class AppSettings : IJsonOnDeserializing
     /// (decoded in the background with ffmpeg, cached under cache/waveforms). Off by
     /// default — when off nothing is decoded and the plain seek line stays.</summary>
     public bool WaveformSeekBarEnabled { get; set; }
+
+    /// <summary>GitHub #181: the lyrics page's progress bar draws the same waveform (same
+    /// background decode and cache as <see cref="WaveformSeekBarEnabled"/>). Off by default
+    /// — when off the lyrics page keeps its plain bar.</summary>
+    public bool LyricsWaveformSeekBarEnabled { get; set; }
 
     /// <summary>Whether tracks marked explicit (ITUNESADVISORY=1) may play automatically.
     /// On by default. When off they are skipped on queue advance, excluded from shuffle,
@@ -879,6 +947,19 @@ public class AppSettings : IJsonOnDeserializing
     /// stay readable without hovering. Overrides <see cref="SidebarHoverExpand"/> while on.
     /// Off by default to preserve the compact icon rail.</summary>
     public bool SidebarAlwaysExpanded { get; set; } = false;
+
+    /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
+    /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
+    /// from the list keeps its built-in place.</summary>
+    public List<string> SidebarPageOrder { get; set; } = new();
+
+    /// <summary>Sidebar page keys the user hid (GitHub #199). Settings can never be hidden.
+    /// A hidden page stays reachable from shortcuts, menus and links.</summary>
+    public List<string> SidebarHiddenPages { get; set; } = new();
+
+    /// <summary>Page Noctis opens on (a sidebar page key). Falls back to "home" when the page is
+    /// hidden or not available (GitHub #199).</summary>
+    public string StartPage { get; set; } = "home";
 
     /// <summary>Executable the "Open in …" track context-menu item launches with the audio
     /// file (e.g. an audio editor or analyzer). Empty by default: on Windows the item falls
@@ -897,6 +978,20 @@ public class AppSettings : IJsonOnDeserializing
     /// editions remain reachable via the album page's "Other Versions" section. Default off.</summary>
     public bool CollapseAlbumEditions { get; set; } = false;
 
+    /// <summary>GitHub #193: songs without an Album Artist tag that share an album name in one
+    /// folder are one album (GitHub #178, AlbumGrouping). On by default; off puts every grouped
+    /// song back on its own album on the next index rebuild (LibraryService.SetAlbumGroupingAsync).</summary>
+    public bool AlbumGroupingEnabled { get; set; } = true;
+
+    /// <summary>GitHub #190: also write the grouped album's Album Artist (and album name) into the
+    /// files the grouping re-keyed, so other players show the same album. Off by default; only
+    /// acts while <see cref="AlbumGroupingEnabled"/> is on.</summary>
+    public bool AlbumGroupingWriteTags { get; set; }
+
+    /// <summary>GitHub #193: the one-time re-read of songs a 1.6.8 grouping re-keyed without
+    /// keeping their own album artist (LibraryService.ResolveUngroupedAlbumsAsync) has run.</summary>
+    public bool AlbumGroupingOriginalsRead { get; set; }
+
     /// <summary>Windows only (GitHub #53): paint the current song's progress on the app's
     /// taskbar button. Off by default — it is a visible change to the taskbar the user
     /// should opt into.</summary>
@@ -913,6 +1008,12 @@ public class AppSettings : IJsonOnDeserializing
     /// written. Flipping the toggle re-applies to already-indexed tracks right away
     /// (LibraryService.ApplyMergeFeaturedFromTitlesAsync).</summary>
     public bool MergeFeaturedFromTitles { get; set; } = true;
+
+    /// <summary>GitHub #187: show every artist line (rows, tiles, queue, player island, lyrics
+    /// page, mini player, media controls, Discord) exactly as the artist tag writes it ("Kraak
+    /// &amp; Smaak", "A feat. B", "A x B") instead of with separators read as commas. Display
+    /// only: the Artists section and artist links split credits as before. Off by default.</summary>
+    public bool ShowArtistsAsTagged { get; set; }
 
     /// <summary>Which tag the Artists section groups by (GitHub #51): "Artist" (default, the
     /// first credited track artist) or "AlbumArtist". Parsed by name via ArtistGroupModes.Parse.</summary>
@@ -1014,6 +1115,20 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Last.fm session key for authenticated API calls.</summary>
     public string LastFmSessionKey { get; set; } = "";
 
+    /// <summary>GitHub #197: protected credentials this data folder holds that the computer which
+    /// saved it cannot decrypt — Windows DPAPI copies made by another computer or Windows user
+    /// sharing the folder (e.g. a data folder on a music drive used by two PCs). Keyed like the
+    /// field they belong to ("lastFmSessionKey", "listenBrainzToken", "sourceConnection:{id}").
+    /// Each computer decrypts the copy it made and keeps the others untouched, so signing in on
+    /// one computer (or not being signed in there at all) no longer signs the other one out.
+    /// Managed by PersistenceService on load and save; nothing else writes it.</summary>
+    public Dictionary<string, List<string>>? OtherComputerSecrets { get; set; }
+
+    /// <summary>True when <paramref name="field"/> has a credential saved on another computer or
+    /// Windows user that this one cannot read (see <see cref="OtherComputerSecrets"/>).</summary>
+    public bool HasOtherComputerSecret(string field) =>
+        OtherComputerSecrets?.TryGetValue(field, out var blobs) == true && blobs.Count > 0;
+
     /// <summary>Last.fm username (populated after successful auth).</summary>
     public string LastFmUsername { get; set; } = "";
 
@@ -1021,6 +1136,24 @@ public class AppSettings : IJsonOnDeserializing
     /// connected account. On by default: they only show while an account is connected, and
     /// connecting is the opt-in; this lets a connected user turn them off.</summary>
     public bool LastFmTasteEnabled { get; set; } = true;
+
+    /// <summary>GitHub #160: how an imported play count combines with Noctis's count:
+    /// "KeepHigher" (default, never lowers a count) or "Replace" (PlayCountImportMode).</summary>
+    public string PlayCountImportMode { get; set; } = "KeepHigher";
+
+    /// <summary>GitHub #160: "Keep play counts in sync" under Last.fm. Off by default: when on,
+    /// the play count import runs in the background on every startup, when turned on and on
+    /// connecting, reading only what was scrobbled since the last sync (GitHub #182).</summary>
+    public bool LastFmPlayCountSync { get; set; }
+
+    /// <summary>When the last Last.fm play count sync (or Import) finished; null = never.</summary>
+    public DateTime? LastFmPlayCountSyncedUtc { get; set; }
+
+    /// <summary>GitHub #160: "Keep play counts in sync" under ListenBrainz; see <see cref="LastFmPlayCountSync"/>.</summary>
+    public bool ListenBrainzPlayCountSync { get; set; }
+
+    /// <summary>When the last ListenBrainz play count sync (or Import) finished; null = never.</summary>
+    public DateTime? ListenBrainzPlayCountSyncedUtc { get; set; }
 
     /// <summary>Whether ListenBrainz scrobbling is enabled (independent of Last.fm).
     /// Off until a token is validated, matching <see cref="LastFmScrobblingEnabled"/>.</summary>
@@ -1131,6 +1264,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Freeze the lyrics background video while playback is paused (off = keep looping).</summary>
     public bool LyricsBackgroundPausesWithPlayback { get; set; }
 
+    /// <summary>Share Lyrics › Lyrics Page: the user's own background image/clip (empty = none).</summary>
+    public string ShareLyricsPageBackgroundPath { get; set; } = "";
+
+    /// <summary>Share Lyrics › Lyrics Page: readability tint strength, 0–100.</summary>
+    public int ShareLyricsPageBackgroundStrength { get; set; } = 70;
+
     /// <summary>Show a music video found next to the song (same name, or a videos folder) in place of the cover on the lyrics page.</summary>
     public bool MusicVideosEnabled { get; set; } = true;
 
@@ -1174,6 +1313,11 @@ public class AppSettings : IJsonOnDeserializing
     /// instead of leaving the lyrics half empty. Ships on.</summary>
     public bool LyricsCenterWhenNoLyrics { get; set; } = true;
 
+    /// <summary>GitHub #184: the lyrics page's background (blurred cover, flowing style,
+    /// background video, colour) reaches the window's left edge under the sidebar rail, so
+    /// the rail sits on the artwork instead of a dark column. Off by default.</summary>
+    public bool LyricsBackgroundBehindSidebar { get; set; }
+
     /// <summary>Show a TTML file's translation under each lyric line (issue #78).</summary>
     public bool LyricsShowTranslations { get; set; } = true;
 
@@ -1193,6 +1337,13 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>What an automatic online pick keeps: "WordSynced" (the richest, the default),
     /// "LineSynced" or "Plain". See <see cref="LyricsSaveOptions.ParsePreferredType"/> (GitHub #135).</summary>
     public string LyricsPreferredType { get; set; } = nameof(Models.LyricsPreferredType.WordSynced);
+
+    /// <summary>GitHub #194: when a lyrics view opens on a song with plain lyrics only and the preferred
+    /// type is synced, look for synced lyrics and save them if found; otherwise the plain lyrics stay.</summary>
+    public bool LyricsUpgradePlain { get; set; }
+
+    /// <summary>GitHub #195: songs new to the library go through a background bulk lyrics run.</summary>
+    public bool LyricsAutoFindNew { get; set; }
 
     // ── Lyrics providers ──
 

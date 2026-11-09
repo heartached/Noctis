@@ -53,6 +53,26 @@ public class StartupErrorAlertTests
         Assert.Contains("ShowStartupErrorAlert(ex.Message", elseBranch[..600]);
     }
 
+    // GitHub #192: a launch handed to the running instance quit with no word at all, which
+    // from a launcher reads as "opens for a second, then closes".
+    [Fact]
+    public void HandedToRunningInstanceText_NamesTheDataFolderAndTheWayOut()
+    {
+        var text = global::Noctis.Program.HandedToRunningInstanceText("/home/me/.config/Noctis");
+        Assert.Contains("already running", text);
+        Assert.Contains("/home/me/.config/Noctis", text);
+        Assert.Contains("pkill -x Noctis", text);
+    }
+
+    [Fact]
+    public void Program_HandoffExit_SaysWhyOnStderr()
+    {
+        var program = File.ReadAllText(Path.Combine(FindRepoRoot(), "src", "Noctis", "Program.cs"));
+        var handoff = program[program.IndexOf("SingleInstanceGuard.SignalFirstInstance(filesToOpen))", StringComparison.Ordinal)..];
+        var body = handoff[..handoff.IndexOf("return;", StringComparison.Ordinal)];
+        Assert.Contains("Console.Error.WriteLine(HandedToRunningInstanceText(", body);
+    }
+
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

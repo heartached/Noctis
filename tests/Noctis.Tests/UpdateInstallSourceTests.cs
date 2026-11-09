@@ -28,4 +28,28 @@ public class UpdateInstallSourceTests
     {
         Assert.Equal(expected, UpdateService.ClassifyInstall(appDir, innoInstallLocation));
     }
+
+    [Theory]
+    // AppImage launch: swaps itself in place.
+    [InlineData(true,  false, false, InstallSource.Installed)]
+    // .deb (GitHub #191): dpkg owns /opt/noctis — never the tarball path, even when run as
+    // root makes the folder writable.
+    [InlineData(false, true,  true,  InstallSource.DebPackage)]
+    [InlineData(false, true,  false, InstallSource.DebPackage)]
+    // Tarball: in place where writable, else steer to GitHub.
+    [InlineData(false, false, true,  InstallSource.Installed)]
+    [InlineData(false, false, false, InstallSource.Portable)]
+    public void ClassifyLinuxInstall_categorizesRunningCopy(
+        bool isAppImage, bool isDebPackage, bool writable, InstallSource expected)
+    {
+        Assert.Equal(expected, UpdateService.ClassifyLinuxInstall(isAppImage, isDebPackage, () => writable));
+    }
+
+    [Fact]
+    public void DebPackage_isNeverAutoUpdated()
+    {
+        Assert.Equal(AutoUpdateMode.Off, AutoUpdatePolicy.ResolveMode(
+            isWindows: false, isMacOS: false, isLinux: true, InstallSource.DebPackage,
+            isAppImage: false, appImageDirWritable: false, isX64: true, isDebugBuild: false));
+    }
 }

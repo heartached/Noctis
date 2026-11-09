@@ -32,6 +32,13 @@ public partial class ArtistDetailView : UserControl
         BioText.LayoutUpdated += OnBioLayoutUpdated;
     }
 
+    /// <summary>The header "…" menu: plugin entries (API 1.7) for this artist go at the end.</summary>
+    private void OnOptionsMenuOpening(object? sender, EventArgs e)
+    {
+        if (sender is MenuFlyout menu)
+            PluginLibraryMenu.BindArtistMenu(menu, (DataContext as ArtistDetailViewModel)?.ArtistName);
+    }
+
     // ── Scroll position across navigation ──
     // The view-model survives in the navigation history while an album/track page is
     // open; the view is rebuilt on Back. Save the offset when leaving, restore it once
@@ -222,6 +229,7 @@ public partial class ArtistDetailView : UserControl
             searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand,
             snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
+        _albumMenuBuilder.BindFindLyrics(album, albumsVm.FindLyricsAlbumCommand); // GitHub #195
 
         OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
         return true;

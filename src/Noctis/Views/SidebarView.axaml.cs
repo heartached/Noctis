@@ -67,6 +67,7 @@ public partial class SidebarView : UserControl
         {
             _vm.PropertyChanged += OnViewModelPropertyChanged;
             _vm.FolderRowsInserted += OnFolderRowsInserted;
+            _vm.NavItemsLayoutChanged += SyncSelectionFromViewModel;
             _vm.FoldFolderRows = FoldFolderRowsAsync;
         }
         AttachTopBar(_vm?.TopBar);
@@ -860,16 +861,6 @@ public partial class SidebarView : UserControl
             SearchPopup.VerticalOffset = capsuleOrigin.Y - room.Top;
     }
 
-    /// <summary>
-    /// The open pill's bottom edge in <paramref name="relativeTo"/>'s coordinates (null before
-    /// layout). Same origin as EnsureSearchPopupPinned: the 48px host covers the button row and
-    /// the 40px pill is centred in it. The window reserves the page band above this so the
-    /// floating pill never covers a page's column headers or first row (Discord, HypnoTized 10-24).
-    /// </summary>
-    internal double? SearchCapsuleBottom(Visual relativeTo) =>
-        SearchIconHost.TranslatePoint(
-            new Point(0, -10 + (SearchCapsuleClosedSize + SearchCapsuleOpenHeight) / 2), relativeTo)?.Y;
-
     /// <summary>Every UI-side close: flips the view model, whose change plays the collapse
     /// (see SyncSearchPopupToViewModel). Without a view model, collapses directly.</summary>
     private void CloseSearchPopup(bool landOnHover = false)
@@ -1108,6 +1099,7 @@ public partial class SidebarView : UserControl
         {
             _vm.PropertyChanged -= OnViewModelPropertyChanged;
             _vm.FolderRowsInserted -= OnFolderRowsInserted;
+            _vm.NavItemsLayoutChanged -= SyncSelectionFromViewModel;
             if (_vm.FoldFolderRows == FoldFolderRowsAsync) _vm.FoldFolderRows = null;
         }
         AttachTopBar(null);

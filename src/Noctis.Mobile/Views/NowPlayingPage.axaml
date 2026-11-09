@@ -33,7 +33,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
         <Style Selector="Button.transport">
-            <Setter Property="Width" Value="96" />
+            <Setter Property="Width" Value="80" />
             <Setter Property="Height" Value="72" />
             <Setter Property="CornerRadius" Value="36" />
         </Style>
@@ -52,6 +52,40 @@
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="Padding" Value="9,3,10,3" />
             <Setter Property="Height" Value="23" />
+        </Style>
+        <!-- Shuffle and Repeat at the transport's ends (beta 2: testers could not find them in
+             the Queue). Plain glyphs, dimmed while off; on, full white over a faint white square
+             (the Queue pill's on state, in Now Playing's always-white ink). 36 wide so the row
+             still fits a 360 dp phone: 3 x 80 + 2 x 36 = 312, the column between the margins. -->
+        <Style Selector="Button.icon.np-mode">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.icon.np-mode PathIcon">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Foreground" Value="#8CFFFFFF" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.icon.np-mode Border.np-mode-wash">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="#2EFFFFFF" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.icon.np-mode.on Border.np-mode-wash">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="Button.icon.np-mode.on PathIcon">
+            <Setter Property="Foreground" Value="White" />
         </Style>
         <!-- The bottom row = the desktop player bar's Lyrics, Volume and Queue buttons, their
              glyphs and proportions: Lyrics and Queue in one box, the speaker at 16 of their 18. -->
@@ -130,7 +164,7 @@
                 long otherwise lands in visible bands; a hair of noise breaks them up. -->
         <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
                Stretch="Fill" IsHitTestVisible="False" />
-        <Border Name="WashShade" IsHitTestVisible="False">
+        <Border Name="WashShade" IsHitTestVisible="False" Opacity="{Binding NowPlayingShadeOpacity}">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
                     <GradientStop Offset="0" Color="#4D000000" />
@@ -144,6 +178,9 @@
             </Border.Background>
         </Border>
         <Border Name="WashDither" IsHitTestVisible="False" />
+        <!-- Settings › Appearance › Now Playing Background: darker lays black over the wash
+             (ShellViewModel.NowPlayingDimOpacity), brighter thins the shade itself. -->
+        <Border Name="WashDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingDimOpacity}" />
 
         <Border Padding="{Binding SafeArea}">
             <!-- Portrait: one column. Landscape (the code-behind, on resize): the cover on the
@@ -156,8 +193,11 @@
                             HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Button>
 
-                <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen. -->
-                <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8">
+                <!-- A fixed 320 box scaled to the row: shrinks in landscape instead of pushing the transport off screen.
+                     Not clipped: the box is exactly the cover's size, and a Viewbox clips by default, which cut
+                     the cover's shadow off at its square bounds - only the slivers round the corners showed,
+                     square-cornered (beta 2, "the corners on the cover have a sharp edge shadow"). -->
+                <Viewbox Grid.Row="1" Name="ArtworkBox" Stretch="Uniform" Margin="0,8" ClipToBounds="False">
                   <Panel Width="320" Height="320">
                     <Border Name="ArtworkFrame" Width="320" Height="320" CornerRadius="10"
                             BoxShadow="0 10 28 0 #66000000" Classes.paused="{Binding !Player.IsPlaying}"
@@ -200,7 +240,7 @@
                   </Panel>
                 </Viewbox>
 
-                <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
                     <StackPanel VerticalAlignment="Center">
                         <!-- Left-aligned so the explicit badge follows the title, not the row's end. -->
                         <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
@@ -216,8 +256,22 @@
                             <TextBlock Classes="np-sub" Text="{Binding Player.CurrentTrack.Artist}" FontSize="20" TextTrimming="CharacterEllipsis" />
                         </Button>
                     </StackPanel>
+                    <!-- A sleep timer is set: what is left, on the quality badge's capsule; a tap
+                         opens its choices (Turn Off Timer among them) out of it. -->
+                    <Button Grid.Column="1" Name="SleepTimerPill" Classes="row np-badge" Margin="8,0,0,0"
+                            Command="{Binding ShowSleepTimerMenuCommand}" IsVisible="{Binding Player.HasSleepTimer}"
+                            AutomationProperties.Name="{Binding Player.SleepTimerStatus}">
+                        <Border Classes="np-badge-pill">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <PathIcon Data="{DynamicResource PhTimer}" Width="13" Height="13" VerticalAlignment="Center"
+                                          Foreground="{DynamicResource NowPlayingBadgeText}" />
+                                <TextBlock Name="SleepTimerText" Text="{Binding Player.SleepTimerRemainingText}" FontSize="12"
+                                           FontWeight="SemiBold" VerticalAlignment="Center" Foreground="{DynamicResource NowPlayingBadgeText}" />
+                            </StackPanel>
+                        </Border>
+                    </Button>
                     <!-- Favourite and the rest live in the ⋯ menu (Apple's). -->
-                    <Button Grid.Column="1" Name="NowPlayingMore" Classes="icon" Margin="8,0,-10,0" VerticalAlignment="Center"
+                    <Button Grid.Column="2" Name="NowPlayingMore" Classes="icon" Margin="8,0,-10,0" VerticalAlignment="Center"
                             Command="{Binding OpenNowPlayingMenuCommand}" AutomationProperties.Name="{loc:T Mobile.More}">
                         <PathIcon Data="{DynamicResource PhMore}" Width="26" Height="26" />
                     </Button>
@@ -255,20 +309,37 @@
                 </Grid>
 
                 <!-- Filled glyphs, no circle, Play/Pause a little larger than the skips: the desktop
-                     player bar's 18 and 20, here 44 and 48 (the Queue pill: 30 and 33).
-                     Shuffle and Repeat are on the Queue page (Apple's). -->
+                     player bar's 18 and 20, here 36 and 40 (owner 11-08: a little smaller; the Queue pill: 30 and 33).
+                     Shuffle and Repeat at the row's ends (np-mode), as on the Queue pill too. -->
                 <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
+                    <Button Grid.Column="0" Name="ShuffleButton" Classes="icon np-mode" HorizontalAlignment="Left"
+                            Classes.on="{Binding Player.IsShuffleEnabled}"
+                            Command="{Binding Player.ToggleShuffleCommand}" AutomationProperties.Name="{loc:T Mobile.Shuffle}">
+                        <Panel>
+                            <Border Classes="np-mode-wash" />
+                            <PathIcon Data="{DynamicResource PhShuffle}" />
+                        </Panel>
+                    </Button>
                     <Button Grid.Column="1" Name="PreviousButton" Classes="icon transport tx"
                             Command="{Binding Player.PreviousCommand}" AutomationProperties.Name="{loc:T Mobile.Previous}">
-                        <controls:TransportGlyph Kind="Previous" Width="44" Height="44" />
+                        <controls:TransportGlyph Kind="Previous" Width="36" Height="36" />
                     </Button>
                     <Button Grid.Column="2" Name="PlayPauseButton" Classes="icon transport tx"
                             Command="{Binding Player.TogglePlayPauseCommand}" AutomationProperties.Name="{loc:T Mobile.PlayPause}">
-                        <controls:TransportGlyph Kind="PlayPause" Width="48" Height="48" IsPlaying="{Binding Player.IsPlaying}" />
+                        <controls:TransportGlyph Kind="PlayPause" Width="40" Height="40" IsPlaying="{Binding Player.IsPlaying}" />
                     </Button>
                     <Button Grid.Column="3" Name="NextButton" Classes="icon transport tx"
                             Command="{Binding Player.NextCommand}" AutomationProperties.Name="{loc:T Mobile.Next}">
-                        <controls:TransportGlyph Kind="Next" Width="44" Height="44" />
+                        <controls:TransportGlyph Kind="Next" Width="36" Height="36" />
+                    </Button>
+                    <Button Grid.Column="4" Name="RepeatButton" Classes="icon np-mode" HorizontalAlignment="Right"
+                            Classes.on="{Binding Player.IsRepeatOn}"
+                            Command="{Binding Player.CycleRepeatCommand}" AutomationProperties.Name="{loc:T Mobile.Repeat}">
+                        <Panel>
+                            <Border Classes="np-mode-wash" />
+                            <PathIcon Data="{DynamicResource PhRepeat}" IsVisible="{Binding !Player.IsRepeatOne}" />
+                            <PathIcon Name="RepeatOneGlyph" Data="{DynamicResource PhRepeatOne}" IsVisible="{Binding Player.IsRepeatOne}" />
+                        </Panel>
                     </Button>
                 </Grid>
 

@@ -13,6 +13,9 @@ public sealed record NoctisAccount
 {
     /// <summary>"https://host:port", no trailing slash, no path.</summary>
     public required string ServerUrl { get; init; }
+    /// <summary>The computer's other addresses from its QR code (it lists up to four), tried in
+    /// turn when <see cref="ServerUrl"/> stops answering; empty for a password sign-in.</summary>
+    public IReadOnlyList<string> OtherServerUrls { get; init; } = Array.Empty<string>();
     public required string UserName { get; init; }
     /// <summary>The per-device API key ("nk_…") from noctisSignIn.</summary>
     public required string DeviceKey { get; init; }
@@ -209,6 +212,10 @@ public interface INoctisAccountService
     /// <summary>The phone deleted a playlist: one of the computer's is deleted there too on the
     /// next sync (instead of being restored as a stale save's loss); a phone-only one is ignored.</summary>
     void RecordPlaylistDeleted(Guid playlistId) { }
+
+    /// <summary>The phone removed a playlist's custom cover: one of the computer's loses it there too
+    /// on the next sync; a phone-only one is ignored.</summary>
+    void RecordPlaylistCoverRemoved(Guid playlistId) { }
 
     // ── Downloads ──
     bool IsRemote(Track track);

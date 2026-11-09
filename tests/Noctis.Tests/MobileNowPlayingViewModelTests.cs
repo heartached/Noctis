@@ -593,4 +593,182 @@ public class MobileNowPlayingViewModelTests : IDisposable
         Assert.True(next.IsPlaying);
         Assert.Equal(new[] { t[1], t[2] }, next.UpNext);
     }
+
+    // ── Queue History and Add Before Current Song (Discord 11-07) ──
+
+    [Fact]
+    public void PlayedSongs_ListsTheHistoryOldestFirst_WithItsPlaceInHistory()
+    {
+        var t = Tracks(4);
+        var (vm, _, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        Assert.Empty(vm.PlayedSongs);
+        Assert.False(vm.HasPlayedSongs);
+
+        vm.NextCommand.Execute(null);
+        vm.NextCommand.Execute(null);
+
+        Assert.Equal(new[] { t[0], t[1] }, vm.PlayedSongs.Select(p => p.Track));
+        Assert.Equal(new[] { 1, 0 }, vm.PlayedSongs.Select(p => p.HistoryIndex));
+        Assert.True(vm.HasPlayedSongs);
+    }
+
+    [Fact]
+    public void PlayFromHistory_PlaysThatSongAgain_AndPutsTheLaterOnesBackInUpNext_WithoutCopies()
+    {
+        var t = Tracks(4);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.NextCommand.Execute(null);
+        vm.NextCommand.Execute(null);                       // t2 plays; played t0 t1
+
+        vm.PlayFromHistoryCommand.Execute(vm.PlayedSongs[0]); // t0
+
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.Equal(t[0].FilePath, player.PlayedPaths[^1]);
+        Assert.Empty(vm.PlayedSongs);
+        Assert.Equal(new[] { t[1], t[2], t[3] }, vm.UpNext);
+        Assert.Equal("Track 1 of 4", vm.QueuePositionText);
+    }
+
+    [Fact]
+    public void PlayFromHistory_IgnoresARowWhoseSongMovedAway()
+    {
+        var t = Tracks(3);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.NextCommand.Execute(null);
+        var stale = vm.PlayedSongs[0];                       // t0 at history 0
+        vm.NextCommand.Execute(null);                        // now t1 is at history 0
+        var plays = player.PlayedPaths.Count;
+
+        vm.PlayFromHistoryCommand.Execute(stale);
+
+        Assert.Same(t[2], vm.CurrentTrack);
+        Assert.Equal(plays, player.PlayedPaths.Count);
+    }
+
+    [Fact]
+    public void PlayedSongs_LeaveOutTheLastSongOfAQueueThatRanOut_ItStillShowsAsCurrent()
+    {
+        var t = Tracks(2);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        player.RaiseTrackEnded();
+        player.RaiseTrackEnded();                            // ran out, t1 kept for the bar
+        Assert.Same(t[1], vm.CurrentTrack);
+
+        Assert.Equal(new[] { t[0] }, vm.PlayedSongs.Select(p => p.Track));
+
+        vm.PlayFromHistoryCommand.Execute(vm.PlayedSongs[0]);
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.True(vm.IsPlaying);
+        Assert.Equal(new[] { t[1] }, vm.UpNext);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_KeepsTheSongPlaying_AndPreviousPlaysTheAddedOnes()
+    {
+        var t = Tracks(3);
+        var extra = Tracks(2);
+        var (vm, player, _, _) = Make(t.Concat(extra).ToArray());
+        vm.PlayTracks(t, 0);
+        var plays = player.PlayedPaths.Count;
+
+        vm.AddBeforeCurrent(extra);
+
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.Equal(plays, player.PlayedPaths.Count);       // nothing restarted
+        Assert.Equal(new[] { extra[0], extra[1] }, vm.PlayedSongs.Select(p => p.Track));
+        Assert.Equal(new[] { t[1], t[2] }, vm.UpNext);
+        Assert.Equal("Track 3 of 5", vm.QueuePositionText);
+
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(extra[1], vm.CurrentTrack);
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(extra[0], vm.CurrentTrack);
+        Assert.Equal(new[] { extra[1], t[0], t[1], t[2] }, vm.UpNext);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_WithNothingLoaded_PlaysTheSongs()
+    {
+        var t = Tracks(2);
+        var (vm, _, _, _) = Make(t);
+
+        vm.AddBeforeCurrent(t, "Alpha");
+
+        Assert.Same(t[0], vm.CurrentTrack);
+        Assert.Equal(new[] { t[1] }, vm.UpNext);
+        Assert.Equal("Alpha", vm.SourceLabel);
+    }
+
+    [Fact]
+    public void AddBeforeCurrent_AfterTheQueueRanOut_GoesBeforeTheSongStillShown()
+    {
+        var t = Tracks(2);
+        var extra = Tracks(1);
+        var (vm, player, _, _) = Make(t.Concat(extra).ToArray());
+        vm.PlayTracks(t, 0);
+        player.RaiseTrackEnded();
+        player.RaiseTrackEnded();                            // ran out, t1 kept for the bar
+
+        vm.AddBeforeCurrent(extra);
+
+        Assert.Same(t[1], vm.CurrentTrack);
+        Assert.Equal(new[] { t[0], extra[0] }, vm.PlayedSongs.Select(p => p.Track));
+        vm.PreviousCommand.Execute(null);
+        Assert.Same(extra[0], vm.CurrentTrack);
+    }
+
+    [Fact]
+    public async Task AddBeforeCurrent_IsSavedWithTheQueue()
+    {
+        var t = Tracks(2);
+        var extra = Tracks(1);
+        var all = t.Concat(extra).ToArray();
+        var (vm, _, _, persistence) = Make(all);
+        vm.PlayTracks(t, 0);
+        vm.AddBeforeCurrent(extra);
+        await vm.SaveStateAsync();
+
+        var state = await persistence.LoadQueueStateAsync();
+
+        Assert.Equal(new[] { extra[0].Id }, state!.HistoryIds);
+        Assert.Equal(1, state.PlayedInQueue);
+    }
+
+    [Fact]
+    public void MoveInQueueList_AboveTheCurrentSong_KeepsItPlaying_AndPreviousPlaysTheMovedOne()
+    {
+        var t = Tracks(4);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.NextCommand.Execute(null);                        // [t0] t1 [t2 t3]
+        var plays = player.PlayedPaths.Count;
+
+        vm.MoveInQueueList(3, 1);                            // t3 just before t1
+
+        Assert.Same(t[1], vm.CurrentTrack);
+        Assert.Equal(plays, player.PlayedPaths.Count);
+        Assert.Equal(new[] { t[0], t[3] }, vm.PlayedSongs.Select(p => p.Track));
+        Assert.Equal(new[] { t[2] }, vm.UpNext);
+        Assert.Equal(new[] { t[2].FilePath }, player.PreparedPaths.TakeLast(1));
+        Assert.Equal("Track 3 of 4", vm.QueuePositionText);
+    }
+
+    [Fact]
+    public void MoveInQueueList_PlayedSongBelowTheCurrent_IsPreparedNextForGapless()
+    {
+        var t = Tracks(3);
+        var (vm, player, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.NextCommand.Execute(null);                        // [t0] t1 [t2]
+
+        vm.MoveInQueueList(0, 1);                            // t0 after t1
+
+        Assert.Empty(vm.PlayedSongs);
+        Assert.Equal(new[] { t[0], t[2] }, vm.UpNext);
+        Assert.Equal(t[0].FilePath, player.PreparedPaths[^1]);
+    }
 }

@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.Services.LyricsPage;
 
 namespace Noctis.ViewModels;
 
@@ -24,14 +25,37 @@ public record ShareBackgroundChoice(string Name, IBrush Preview, bool IsArtwork 
 /// <summary>A lyric line the user can include on (and edit for) the share card.</summary>
 public partial class SelectableLyricLine : ObservableObject
 {
-    public SelectableLyricLine(string text, TimeSpan? timestamp = null,
-        IReadOnlyList<WordTiming>? words = null, TimeSpan? endTimestamp = null)
+    public SelectableLyricLine(string text, TimeSpan? timestamp = null, IReadOnlyList<WordTiming>? words = null,
+        TimeSpan? endTimestamp = null, LyricLine? source = null)
     {
         _text = text;
+        OriginalText = text;
         Timestamp = timestamp;
         Words = words;
         EndTimestamp = endTimestamp;
+        if (source != null)
+        {
+            Voice = source.Voice;
+            BackgroundWords = source.BackgroundWords;
+            BackgroundEndTimestamp = source.BackgroundEndTimestamp;
+            IsBackgroundOnly = source.IsBackgroundOnly;
+        }
     }
+
+    /// <summary>The line as the lyrics page has it, whatever the user typed over it.</summary>
+    public string OriginalText { get; }
+
+    /// <summary>Duet voice of the source line (the Lyrics Page video aligns by it).</summary>
+    public LyricVoice Voice { get; }
+
+    /// <summary>The source line's adlib (background vocal) words, when it has any.</summary>
+    public IReadOnlyList<WordTiming>? BackgroundWords { get; }
+
+    /// <summary>End of the source line's adlib; bounds its last word's sweep.</summary>
+    public TimeSpan? BackgroundEndTimestamp { get; }
+
+    /// <summary>The source line is only an adlib: the main row stays empty, only the small row shows.</summary>
+    public bool IsBackgroundOnly { get; }
 
     /// <summary>Editable line text — changes re-render the card preview.</summary>
     [ObservableProperty]
@@ -94,6 +118,13 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>Spotify caps at ~5; we allow a little more before the card gets cramped.</summary>
     public const int MaxLines = 8;
 
+    /// <summary>Lines the Lyrics Page video shows above and below the picked range, as the
+    /// lyrics page has its neighbours on screen.</summary>
+    public const int PageContextLines = 10;
+
+    /// <summary>The song's last line holds the clip at least this long after it starts.</summary>
+    private const double PageLastLineMinSeconds = 4;
+
     private static string L(string key) => Localization.Loc.T(key);
     private static string L(string key, params object[] args) => Localization.Loc.T(key, args);
 
@@ -114,9 +145,17 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private bool _isSquare = true;
     [ObservableProperty] private bool _isStory;
 
-    // ── Layout: Card (panel header) or Poster (big centered artwork) ────
+    // ── Layout: Card (panel header), Poster (big centered artwork) or Lyrics Page (the
+    // moving lyrics page as a video). The three are exclusive. ────
     [ObservableProperty] private bool _isPanelLayout = true;
     [ObservableProperty] private bool _isPosterLayout;
+    [ObservableProperty] private bool _isPageLayout;
+
+    /// <summary>The Lyrics Page plays the song's timing, so it needs a line with a timestamp.</summary>
+    public bool PageLayoutAvailable { get; }
+
+    /// <summary>The Lyrics Page choice's tooltip: what it is, or why it is off.</summary>
+    public string PageLayoutTip => PageLayoutAvailable ? L("LyricShare.LyricsPageTip") : L("ShareLyrics.PageNeedsSync");
 
     [ObservableProperty] private Bitmap? _preview;
     [ObservableProperty] private string _statusText = string.Empty;
@@ -125,6 +164,144 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private bool _isRendering;
 
     [ObservableProperty] private ShareTextColor _textColor = ShareTextColor.Auto;
+
+    // ── Lyrics Page background, readability and safe zones ──
+    // What fills the video behind the lyrics, how dark the readability layer over it is, and
+    // whether the lyrics keep clear of the apps' buttons. The picked file and the strength
+    // are remembered for the next share (AppSettings.ShareLyricsPageBackground*).
+
+    /// <summary>0 = artwork wash, 1 = the track's animated cover, 2 = the user's own file.
+    /// A choice that has nothing to show (no animated cover, no file) snaps back to 0.</summary>
+    [ObservableProperty] private int _pageBackgroundIndex;          // 0 artwork wash, 1 animated cover, 2 custom
+
+    /// <summary>Readability layer strength, 0-100.</summary>
+    [ObservableProperty] private int _pageBackgroundStrength = PageBackgroundTint.DefaultStrength;
+
+    /// <summary>The user's own background (image or video), "" when none.</summary>
+    [ObservableProperty] private string _pageBackgroundPath = "";
+
+    /// <summary>Keeps the lyrics out of the social apps' button areas.</summary>
+    [ObservableProperty] private bool _safeZonesEnabled;            // follows the format: on for Story, off for Square
+
+    /// <summary>The track's animated cover, when it has one.</summary>
+    public string? AnimatedCoverPath { get; }
+
+    public bool AnimatedCoverAvailable => !string.IsNullOrEmpty(AnimatedCoverPath);
+
+    /// <summary>A background file is chosen and still on disk.</summary>
+    public bool CustomBackgroundAvailable =>
+        !string.IsNullOrEmpty(PageBackgroundPath) && File.Exists(PageBackgroundPath);
+
+    /// <summary>The strength as last read from (or written to) the settings; Detach saves a change.</summary>
+    private int _savedPageStrength = PageBackgroundTint.DefaultStrength;
+
+    partial void OnPageBackgroundIndexChanged(int value)
+    {
+        bool usable = value switch
+        {
+            0 => true,
+            1 => AnimatedCoverAvailable,
+            2 => CustomBackgroundAvailable,
+            _ => false,
+        };
+        if (!usable) { PageBackgroundIndex = 0; return; }
+        if (IsPageLayout) RefreshPreview();
+    }
+
+    partial void OnPageBackgroundStrengthChanged(int value)
+    {
+        if (value is < 0 or > 100) { PageBackgroundStrength = Math.Clamp(value, 0, 100); return; }
+        if (!IsPageLayout) return;
+        // Only the layer over the background changes: the shown animator takes it as it is, so a
+        // slider drag neither restarts the loop nor a clip's ffmpeg. A build in flight read the
+        // old value, so that one is redone.
+        if (_animator is LyricsPageAnimator page && !_previewRendering && !_previewStale)
+        {
+            page.BackgroundStrength = value;
+            _animLastT = double.NaN;
+            RenderAnimatedFrame();
+        }
+        else
+        {
+            RefreshPreview();
+        }
+    }
+
+    partial void OnPageBackgroundPathChanged(string value)
+    {
+        OnPropertyChanged(nameof(CustomBackgroundAvailable));
+        if (PageBackgroundIndex == 2 && !CustomBackgroundAvailable) PageBackgroundIndex = 0;
+        else if (IsPageLayout) RefreshPreview();
+    }
+
+    partial void OnSafeZonesEnabledChanged(bool value)
+    {
+        if (IsPageLayout) RefreshPreview();
+    }
+
+    /// <summary>Uses <paramref name="path"/> as the Lyrics Page background and remembers it.</summary>
+    public async Task SetPageBackgroundFileAsync(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        PageBackgroundPath = path;
+        PageBackgroundIndex = 2;
+        await SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundPath = path);
+    }
+
+    /// <summary>Forgets the chosen background file; the artwork takes its place when it was showing.</summary>
+    [RelayCommand]
+    private Task RemovePageBackground()
+    {
+        PageBackgroundPath = "";
+        return SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundPath = "");
+    }
+
+    /// <summary>
+    /// The remembered background and strength, as the settings hold them: a file that still
+    /// exists is the pick again (index 2), a gone one is dropped; the strength is clamped,
+    /// settings.json may hold anything.
+    /// </summary>
+    internal void ApplyPageSettings(string path, int strength)
+    {
+        PageBackgroundStrength = Math.Clamp(strength, 0, 100);
+        _savedPageStrength = PageBackgroundStrength;
+        bool exists = !string.IsNullOrWhiteSpace(path) && File.Exists(path);
+        PageBackgroundPath = exists ? path : "";
+        if (exists) PageBackgroundIndex = 2;
+    }
+
+    /// <summary>Reads the remembered page settings off the UI thread and applies them on it.
+    /// Without the app's services (tests, design time) the defaults stay.</summary>
+    private async Task LoadPageSettingsAsync(Dispatcher dispatcher)
+    {
+        if (App.Services?.GetService<IPersistenceService>() is not { } persistence) return;
+        try
+        {
+            var settings = await persistence.LoadSettingsAsync().ConfigureAwait(false);
+            var path = settings.ShareLyricsPageBackgroundPath ?? "";
+            var strength = settings.ShareLyricsPageBackgroundStrength;
+            dispatcher.Post(() => { if (!_detached) ApplyPageSettings(path, strength); });
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn,
+                "Share lyrics page settings load failed", ex.Message);
+        }
+    }
+
+    private static async Task SavePageSettingsAsync(Action<AppSettings> change)
+    {
+        if (App.Services?.GetService<IPersistenceService>() is not { } persistence) return;
+        try
+        {
+            await persistence.UpdateSettingsAsync(change);
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn,
+                "Share lyrics page settings save failed", ex.Message);
+        }
+    }
 
     // ── Background color ────────────────────────────────────────────────
     // Default to the Spotify-style full-bleed solid (the artwork-derived "Auto" color).
@@ -201,11 +378,20 @@ public partial class LyricShareViewModel : ViewModelBase
         if (!_backgroundUpdating) OnPropertyChanged(nameof(SelectedBackground));
     }
 
-    /// <summary>0 = Card (panel header), 1 = Poster.</summary>
+    /// <summary>0 = Card (panel header), 1 = Poster, 2 = Lyrics Page (ignored for unsynced lyrics).</summary>
     public int LayoutIndex
     {
-        get => IsPosterLayout ? 1 : 0;
-        set { if (value == 1) IsPosterLayout = true; else if (value == 0) IsPanelLayout = true; }
+        get => IsPageLayout ? 2 : IsPosterLayout ? 1 : 0;
+        set
+        {
+            if (value == 2)
+            {
+                if (PageLayoutAvailable) IsPageLayout = true;
+                else OnPropertyChanged(nameof(LayoutIndex));   // the drop-down snaps back
+            }
+            else if (value == 1) IsPosterLayout = true;
+            else if (value == 0) IsPanelLayout = true;
+        }
     }
 
     /// <summary>0 = 1:1, 1 = 9:16.</summary>
@@ -245,8 +431,10 @@ public partial class LyricShareViewModel : ViewModelBase
     /// <summary>The karaoke timing the preview and the clip use for the card's lines (tests).</summary>
     internal IReadOnlyList<KaraokeLine> CardKaraoke => BuildKaraokeLines(CardSelection());
 
-    /// <summary>"3 of 8" next to Clear.</summary>
-    public string SelectionSummary => L("ShareLyrics.SelectedCount", SelectedCount, MaxLines);
+    /// <summary>"3 of 8" next to Clear; in the Lyrics Page, "12 lines · 34 s" (the clip's length).</summary>
+    public string SelectionSummary => IsPageLayout
+        ? L("ShareLyrics.PageRangeSummary", SelectedCount, (int)Math.Round(GetClipTiming().DurationSeconds))
+        : L("ShareLyrics.SelectedCount", SelectedCount, MaxLines);
 
     private void RaiseSelectionChanged()
     {
@@ -269,8 +457,52 @@ public partial class LyricShareViewModel : ViewModelBase
         }
     }
 
-    /// <summary>A tap on a row: picks or drops the line (the 8-line cap still applies).</summary>
-    public void ToggleLine(SelectableLyricLine line) => line.IsSelected = !line.IsSelected;
+    /// <summary>
+    /// A tap on a row. On a card it picks or drops the line (the 8-line cap still applies).
+    /// In the Lyrics Page the picks are one unbroken range: a tap outside it extends it to the
+    /// line, a tap inside ends it there, and tapping the only picked line clears it. A range
+    /// longer than the 60 s clip is refused with a status.
+    /// </summary>
+    public void ToggleLine(SelectableLyricLine line)
+    {
+        if (!IsPageLayout)
+        {
+            line.IsSelected = !line.IsSelected;
+            return;
+        }
+
+        int index = Lines.IndexOf(line);
+        if (index < 0) return;
+        int first = -1, last = -1;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            if (!Lines[i].IsSelected) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+
+        if (first < 0) { SetRange(index, index); return; }
+        if (first == last && index == first) { SetRange(0, -1); return; }
+
+        int newFirst = Math.Min(first, index);
+        int newLast = index < first ? last : index;
+        if (!PageRangeFits(newFirst, newLast))
+        {
+            StatusText = L("ShareLyrics.PageMaxLength", (int)ShareClipTiming.MaxSeconds);
+            return;
+        }
+        SetRange(newFirst, newLast);
+    }
+
+    /// <summary>A manual range change in the Lyrics Page: takes over from playback, as a tap
+    /// on a card does, then picks lines <paramref name="first"/>..<paramref name="last"/>
+    /// (none when last &lt; first).</summary>
+    private void SetRange(int first, int last)
+    {
+        if (SyncEnabled) SyncEnabled = false;
+        StatusText = string.Empty;
+        ApplyRange(first, last);
+    }
 
     /// <summary>Starts editing one line (any other open edit is kept first).</summary>
     public void BeginEdit(SelectableLyricLine line)
@@ -278,8 +510,13 @@ public partial class LyricShareViewModel : ViewModelBase
         foreach (var other in Lines)
             if (!ReferenceEquals(other, line)) other.EndEdit(keep: true);
         // An edited line is one meant for the card. When the 8-line cap refuses it, no edit
-        // box: the typing would change a line the card does not show.
-        if (!line.IsSelected) line.IsSelected = true;
+        // box: the typing would change a line the card does not show. In the Lyrics Page the
+        // range first grows to the line (or, past 60 s, refuses it the same way).
+        if (!line.IsSelected)
+        {
+            if (IsPageLayout) ToggleLine(line);
+            else line.IsSelected = true;
+        }
         if (!line.IsSelected) return;
         line.BeginEdit();
     }
@@ -342,8 +579,22 @@ public partial class LyricShareViewModel : ViewModelBase
     /// (in-place WriteableBitmap updates don't notify the binding).</summary>
     public event Action? AnimatedFrameRendered;
 
-    private ShareCardRenderer.KaraokeCardAnimator? _animator;
+    private IShareFrameAnimator? _animator;
     private WriteableBitmap? _animBitmap;
+
+    // The Lyrics Page preview: its frames are drawn on a worker (a clip background can block
+    // a draw), one at a time into _pageFrame, then copied into _animBitmap on the UI thread.
+    // An animator is disposed only once the draw in flight (_pageDraw) has finished.
+    private readonly System.Diagnostics.Stopwatch _pagePreviewClock = new();
+    private ShareClipTiming _pagePreviewTiming;
+    private bool _keepPageClock;
+    private Task _pageDraw = Task.CompletedTask;
+    private bool _pageDrawBusy;
+    private byte[]? _pageFrame;
+
+    /// <summary>A copy of the last page frame drawn (tests: the headless WriteableBitmap is a
+    /// stub that reads back blank). Null while none was drawn or one is drawing.</summary>
+    internal byte[]? PageFrameSnapshot() => _pageDrawBusy ? null : (byte[]?)_pageFrame?.Clone();
     private DispatcherTimer? _animTimer;
     private double _animLastT = double.NaN;
 
@@ -367,7 +618,7 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         get
         {
-            var layout = IsPosterLayout ? "Poster" : "Card";
+            var layout = IsPageLayout ? L("LyricShare.LyricsPage") : IsPosterLayout ? "Poster" : "Card";
             var aspect = IsStory ? "9:16" : "1:1";
             var text = TextColor switch
             {
@@ -430,6 +681,7 @@ public partial class LyricShareViewModel : ViewModelBase
     public bool CanExportVideo =>
         !IsRendering
         && HasSelection
+        && (!IsPageLayout || PageLayoutAvailable)
         && !string.IsNullOrWhiteSpace(_track.FilePath)
         && File.Exists(_track.FilePath);
 
@@ -461,7 +713,8 @@ public partial class LyricShareViewModel : ViewModelBase
         PlayerViewModel? player,
         IReadOnlyList<IReadOnlyList<WordTiming>?>? wordTimings = null,
         IReadOnlyList<TimeSpan?>? endTimestamps = null,
-        int preselectIndex = 0)
+        int preselectIndex = 0,
+        IReadOnlyList<LyricLine>? sources = null)
     {
         _track = track;
         _player = player;
@@ -488,10 +741,15 @@ public partial class LyricShareViewModel : ViewModelBase
             var ts = timestamps != null && i < timestamps.Count ? timestamps[i] : null;
             var words = wordTimings != null && i < wordTimings.Count ? wordTimings[i] : null;
             var end = endTimestamps != null && i < endTimestamps.Count ? endTimestamps[i] : null;
-            Lines.Add(new SelectableLyricLine(OneLine(lines[i]), ts, words, end));
+            var source = sources != null && i < sources.Count ? sources[i] : null;
+            Lines.Add(new SelectableLyricLine(OneLine(lines[i]), ts, words, end, source));
         }
 
         SyncAvailable = player != null && Lines.Any(l => l.Timestamp.HasValue);
+        PageLayoutAvailable = Lines.Any(l => l.Timestamp.HasValue);
+        AnimatedCoverPath = App.Services?.GetService<IAnimatedCoverService>()?.Resolve(track);
+        _safeZonesEnabled = IsStory;
+        _ = LoadPageSettingsAsync(Dispatcher.UIThread);
 
         // Pre-select the active line and the next few, like Spotify does.
         if (Lines.Count > 0)
@@ -530,7 +788,8 @@ public partial class LyricShareViewModel : ViewModelBase
             if (SyncEnabled)
                 SyncEnabled = false;
 
-            if (line.IsSelected && Lines.Count(l => l.IsSelected) > MaxLines)
+            // The 8-line cap is the card's; the Lyrics Page is limited by its 60 s clip instead.
+            if (!IsPageLayout && line.IsSelected && Lines.Count(l => l.IsSelected) > MaxLines)
             {
                 // Revert the toggle that exceeded the cap.
                 line.IsSelected = false;
@@ -590,7 +849,7 @@ public partial class LyricShareViewModel : ViewModelBase
         }
 
         // Small lookahead so the highlight lands as the line begins, matching the lyrics page.
-        var adjusted = position + TimeSpan.FromMilliseconds(350);
+        var adjusted = position + TimeSpan.FromSeconds(SyncLeadSeconds);
         int index = -1;
         for (int i = 0; i < Lines.Count; i++)
         {
@@ -632,8 +891,22 @@ public partial class LyricShareViewModel : ViewModelBase
         RaiseSelectionChanged();
         OnPropertyChanged(nameof(KaraokeAvailable));
         OnPropertyChanged(nameof(CardOptionsSummary));
+        // The page preview follows playback by itself: rebuilding it at each line would snap its
+        // list (a new animator's first frame). Only once playback has left its clip is it redone.
+        if (IsPageLayout && _animator is LyricsPageAnimator && _player != null
+            && PlaybackInPagePreview(_player.Position.TotalSeconds))
+            return;
         RefreshPreview();
     }
+
+    /// <summary>How far ahead of a line Sync picks it (<see cref="UpdateSyncHighlight"/>).</summary>
+    private const double SyncLeadSeconds = 0.35;
+
+    /// <summary>Whether playback at <paramref name="seconds"/> is inside the page preview's clip
+    /// (from Sync's lead before its start).</summary>
+    private bool PlaybackInPagePreview(double seconds) =>
+        seconds >= _pagePreviewTiming.StartSeconds - SyncLeadSeconds
+        && seconds < _pagePreviewTiming.StartSeconds + _pagePreviewTiming.DurationSeconds;
 
     partial void OnSyncEnabledChanged(bool value)
     {
@@ -685,28 +958,176 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(FormatIndex));
-        if (value) { IsStory = false; RefreshPreview(); }
+        if (value) { IsStory = false; SafeZonesEnabled = false; RefreshPreview(); }
     }
 
     partial void OnIsStoryChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(FormatIndex));
-        if (value) { IsSquare = false; RefreshPreview(); }
+        if (value) { IsSquare = false; SafeZonesEnabled = true; RefreshPreview(); }
     }
 
     partial void OnIsPanelLayoutChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(LayoutIndex));
-        if (value) { IsPosterLayout = false; RefreshPreview(); }
+        if (value) { IsPosterLayout = false; IsPageLayout = false; }
+        RaiseSelectionChanged();   // the selection summary reads differently per layout
+        if (value) RefreshPreview();
     }
 
     partial void OnIsPosterLayoutChanged(bool value)
     {
         OnPropertyChanged(nameof(CardOptionsSummary));
         OnPropertyChanged(nameof(LayoutIndex));
-        if (value) { IsPanelLayout = false; RefreshPreview(); }
+        if (value) { IsPanelLayout = false; IsPageLayout = false; }
+        RaiseSelectionChanged();
+        if (value) RefreshPreview();
+    }
+
+    partial void OnIsPageLayoutChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        OnPropertyChanged(nameof(CanExportVideo));
+        OnPropertyChanged(nameof(LayoutIndex));
+        if (value)
+        {
+            IsPanelLayout = false;
+            IsPosterLayout = false;
+            // The page's picks set the clip's time window; following playback would re-pick
+            // them, and rebuild the preview, at every line.
+            if (SyncEnabled) SyncEnabled = false;
+            FillPageRange();
+        }
+        else
+        {
+            KeepFirstCardLines();
+            // The 60 s warning is the page's; a card has no such limit.
+            if (StatusText == L("ShareLyrics.PageMaxLength", (int)ShareClipTiming.MaxSeconds))
+                StatusText = string.Empty;
+        }
+        RaiseSelectionChanged();
+        if (value) RefreshPreview();
+    }
+
+    /// <summary>
+    /// Entering the Lyrics Page: the video plays one stretch of the song, so the picks become
+    /// every line from the first pick to the last, cut where the 60 s clip would end.
+    /// </summary>
+    private void FillPageRange()
+    {
+        StatusText = string.Empty;   // a card's status says nothing about the page
+        int first = -1, last = -1;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            if (!Lines[i].IsSelected) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+        if (first < 0) return;
+
+        int end = last;
+        while (end > first && !PageRangeFits(first, end)) end--;
+        ApplyRange(first, end);
+        if (end < last)
+            StatusText = L("ShareLyrics.PageMaxLength", (int)ShareClipTiming.MaxSeconds);
+    }
+
+    /// <summary>Leaving the Lyrics Page for a card: the card holds 8 lines, so the first 8 picks stay.</summary>
+    private void KeepFirstCardLines()
+    {
+        int kept = 0;
+        bool changed = false;
+        _syncUpdatingSelection = true;
+        foreach (var line in Lines)
+        {
+            if (!line.IsSelected || ++kept <= MaxLines) continue;
+            line.IsSelected = false;
+            changed = true;
+        }
+        _syncUpdatingSelection = false;
+        if (!changed) return;
+        RaiseSelectionChanged();
+        OnPropertyChanged(nameof(KaraokeAvailable));
+        OnPropertyChanged(nameof(CardOptionsSummary));
+    }
+
+    /// <summary>
+    /// Whether lines <paramref name="first"/>..<paramref name="last"/> fit one Lyrics Page clip:
+    /// <see cref="PageClipWindow"/> is at most 60 s. The clip clamps to 60 s, so a longer range
+    /// would cut its last line. Nothing timed in the range: the clip uses its fallback length.
+    /// </summary>
+    private bool PageRangeFits(int first, int last)
+        => PageClipWindow(first, last) is not { } window
+           || window.End - window.Start <= ShareClipTiming.MaxSeconds;
+
+    /// <summary>
+    /// The Lyrics Page clip of lines <paramref name="first"/>..<paramref name="last"/>, in track
+    /// seconds, its end not yet capped: from the range's earliest timestamp to the next timed
+    /// line's start. When no timed line follows (the range ends on the song's last timed line),
+    /// to where that line is sung out: its end tag, else its last word's end, or its adlib's end
+    /// when that is later, but at least 4 s after it starts, not the card's flat 15 s. Null when no line in the range is timed.
+    /// One function for the 60 s check, the clip and the page spec, so the three agree.
+    /// </summary>
+    private (double Start, double End)? PageClipWindow(int first, int last)
+    {
+        double? start = null;
+        SelectableLyricLine? lastTimed = null;
+        for (int i = first; i <= last; i++)
+        {
+            if (Lines[i].Timestamp is not { } ts) continue;
+            start = start is { } s ? Math.Min(s, ts.TotalSeconds) : ts.TotalSeconds;
+            lastTimed = Lines[i];
+        }
+        if (start is not { } startSeconds || lastTimed?.Timestamp is not { } lastStart)
+            return null;
+        startSeconds = Math.Max(0, startSeconds);
+
+        for (int i = last + 1; i < Lines.Count; i++)
+            if (Lines[i].Timestamp is { } next) return (startSeconds, next.TotalSeconds);
+
+        double lineStart = lastStart.TotalSeconds;
+        // No line follows, so an open last word gets the lyrics page's 2 s sweep.
+        double? sungEnd = lastTimed.EndTimestamp?.TotalSeconds
+            ?? (lastTimed.Words is { Count: > 0 } words
+                ? (words[^1].End ?? KaraokeSweep.ResolveOpenLastWordEnd(words[^1].Start, null)).TotalSeconds
+                : null);
+        // An adlib can run on past the main line: the clip waits for it too.
+        double? adlibEnd = lastTimed.BackgroundEndTimestamp?.TotalSeconds;
+        return (startSeconds, Math.Max(Math.Max(sungEnd ?? lineStart, adlibEnd ?? lineStart),
+            lineStart + PageLastLineMinSeconds));
+    }
+
+    /// <summary>The first and last picked line, or null when none is picked.</summary>
+    private (int First, int Last)? PickedSpan()
+    {
+        int first = -1, last = -1;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            if (!Lines[i].IsSelected) continue;
+            if (first < 0) first = i;
+            last = i;
+        }
+        return first < 0 ? null : (first, last);
+    }
+
+    /// <summary>Picks exactly lines <paramref name="first"/>..<paramref name="last"/> in one go
+    /// (an empty range, last &lt; first, picks none), then refreshes like a sync step does.</summary>
+    private void ApplyRange(int first, int last)
+    {
+        _syncUpdatingSelection = true;
+        for (int i = 0; i < Lines.Count; i++)
+        {
+            bool sel = i >= first && i <= last;
+            if (Lines[i].IsSelected != sel)
+                Lines[i].IsSelected = sel;
+        }
+        _syncUpdatingSelection = false;
+        RaiseSelectionChanged();
+        OnPropertyChanged(nameof(KaraokeAvailable));
+        OnPropertyChanged(nameof(CardOptionsSummary));
+        RefreshPreview();
     }
 
     [RelayCommand]
@@ -720,6 +1141,12 @@ public partial class LyricShareViewModel : ViewModelBase
 
     [RelayCommand]
     private void SelectPosterLayout() => IsPosterLayout = true;
+
+    [RelayCommand]
+    private void SelectPageLayout()
+    {
+        if (PageLayoutAvailable) IsPageLayout = true;
+    }
 
     [RelayCommand]
     private void ToggleSync() => SyncEnabled = !SyncEnabled;
@@ -807,13 +1234,19 @@ public partial class LyricShareViewModel : ViewModelBase
     {
         var selectedLines = CardSelection();
         var selected = selectedLines.Select(l => l.Text).ToList();
-        if (selected.Count == 0)
+        if (IsPageLayout ? PickedSpan() == null : selected.Count == 0)
         {
             var old = Preview;
             Preview = null;
             // Deferred, as below: the last frame may still reference it.
             if (old != null) Dispatcher.UIThread.Post(old.Dispose);
             TeardownAnimator();
+            return;
+        }
+
+        if (IsPageLayout)
+        {
+            RefreshPagePreview();
             return;
         }
 
@@ -829,14 +1262,10 @@ public partial class LyricShareViewModel : ViewModelBase
         Task.Run(() =>
         {
             Bitmap? bitmap = null;
-            ShareCardRenderer.KaraokeCardAnimator? animator = null;
+            IShareFrameAnimator? animator = null;
             try
             {
-                if (!_previewArtLoaded)
-                {
-                    _previewArt = ShareCardRenderer.LoadCardArtwork(spec.ArtworkPath);
-                    _previewArtLoaded = true;
-                }
+                LoadPreviewArt(spec.ArtworkPath);
                 // Preview size only: it fills a ~310 px box. Save/Copy render at full
                 // scale on demand (RenderExportPngAsync).
                 using (var card = ShareCardRenderer.RenderLyricCardBitmap(spec, PreviewRenderScale, _previewArt))
@@ -860,14 +1289,62 @@ public partial class LyricShareViewModel : ViewModelBase
         });
     }
 
-    /// <summary>Shows a finished render (UI thread), then draws again when the card changed meanwhile.</summary>
-    private void OnPreviewRendered(Bitmap? bitmap, ShareCardRenderer.KaraokeCardAnimator? animator)
+    /// <summary>Decodes the cover on the first render's worker; later renders reuse it.</summary>
+    private void LoadPreviewArt(string? artworkPath)
+    {
+        if (_previewArtLoaded) return;
+        _previewArt = ShareCardRenderer.LoadCardArtwork(artworkPath);
+        _previewArtLoaded = true;
+    }
+
+    /// <summary>
+    /// The Lyrics Page preview: the page animator at preview scale, built on a worker (a clip
+    /// background starts ffmpeg) from a spec built here once, with no still card under it:
+    /// the animated frame fills the well.
+    /// </summary>
+    private void RefreshPagePreview()
+    {
+        var spec = BuildPageSpec();   // once per refresh: it walks the range with IndexOf
+        var timing = GetClipTiming();
+        bool showZones = SafeZonesEnabled;
+        _previewRendering = true;
+        var dispatcher = Dispatcher.UIThread;   // captured here, as in the card path
+        Task.Run(() =>
+        {
+            IShareFrameAnimator? animator = null;
+            try
+            {
+                LoadPreviewArt(spec.ArtworkPath);
+                animator = new LyricsPageAnimator(spec, PreviewAnimatorScale, _previewArt,
+                    blockingBackground: false, backgroundFps: 30) { ShowSafeZones = showZones };
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                    "Lyrics Page preview failed", ex.Message);
+            }
+            dispatcher.Post(() =>
+            {
+                if (animator != null)
+                {
+                    // Same clip (an option changed, not the range): the loop goes on where it was.
+                    _keepPageClock = _animator is LyricsPageAnimator && _pagePreviewTiming == timing;
+                    _pagePreviewTiming = timing;
+                }
+                OnPreviewRendered(null, animator);
+            });
+        });
+    }
+
+    /// <summary>Shows a finished render (UI thread), then draws again when the card changed meanwhile.
+    /// A page render brings an animator and no still: that is a success too.</summary>
+    private void OnPreviewRendered(Bitmap? bitmap, IShareFrameAnimator? animator)
     {
         _previewRendering = false;
-        if (_detached || bitmap == null)
+        if (_detached || (bitmap == null && animator == null))
         {
             bitmap?.Dispose();
-            animator?.Dispose();
+            DisposeAnimator(animator);
             if (_detached) { _previewArt?.Dispose(); _previewArt = null; return; }
         }
         else
@@ -886,7 +1363,7 @@ public partial class LyricShareViewModel : ViewModelBase
 
     /// <summary>Installs the freshly built animator (or tears everything down when null),
     /// reusing the WriteableBitmap when the pixel size is unchanged. UI thread only.</summary>
-    private void SwapAnimator(ShareCardRenderer.KaraokeCardAnimator? animator)
+    private void SwapAnimator(IShareFrameAnimator? animator)
     {
         if (animator == null)
         {
@@ -894,9 +1371,12 @@ public partial class LyricShareViewModel : ViewModelBase
             return;
         }
 
-        _animator?.Dispose();
+        DisposeAnimator(_animator);
         _animator = animator;
         _animLastT = double.NaN;
+        if (animator is not LyricsPageAnimator) _pagePreviewClock.Reset();
+        else if (!_keepPageClock || !_pagePreviewClock.IsRunning) _pagePreviewClock.Restart();
+        _keepPageClock = false;
 
         if (_animBitmap == null
             || _animBitmap.PixelSize.Width != animator.PixelWidth
@@ -931,13 +1411,37 @@ public partial class LyricShareViewModel : ViewModelBase
     private void TeardownAnimator()
     {
         _animTimer?.Stop();
-        _animator?.Dispose();
+        DisposeAnimator(_animator);
         _animator = null;
+        _pagePreviewClock.Reset();
         var old = AnimatedPreview;
         AnimatedPreview = null;
         old?.Dispose();
         _animBitmap = null;
         _animLastT = double.NaN;
+    }
+
+    /// <summary>Disposes an animator no longer shown. A page animator may still be drawing on a
+    /// worker (its clip background must not be torn down mid-draw), so it goes once that draw ends.</summary>
+    private void DisposeAnimator(IShareFrameAnimator? animator)
+    {
+        if (animator is LyricsPageAnimator)
+            _pageDraw.ContinueWith(_ => animator.Dispose(), TaskScheduler.Default);
+        else
+            animator?.Dispose();
+    }
+
+    /// <summary>The track time the animated preview shows now. The card follows playback. The
+    /// page loops its clip, and follows playback only with Sync on while this song plays inside
+    /// that clip: it previews the clip, not wherever the song is.</summary>
+    internal double AnimatedPreviewTime()
+    {
+        if (_animator is not LyricsPageAnimator)
+            return GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+        bool playing = SyncEnabled && IsOurTrackPlaying && _player?.State == PlaybackState.Playing;
+        double position = playing ? GetSmoothedPositionSeconds() : 0;
+        return PagePreviewClock.TrackTime(playing && PlaybackInPagePreview(position), position,
+            _pagePreviewClock.Elapsed.TotalSeconds, _pagePreviewTiming);
     }
 
     private void OnAnimTick()
@@ -947,22 +1451,76 @@ public partial class LyricShareViewModel : ViewModelBase
             _animTimer?.Stop();
             return;
         }
-        double t = GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds;
+        double t = AnimatedPreviewTime();
         // Paused (or between coarse position updates while paused) → nothing moved.
         if (!double.IsNaN(_animLastT) && Math.Abs(t - _animLastT) < 0.0005)
             return;
         RenderAnimatedFrameAt(t);
     }
 
-    private void RenderAnimatedFrame()
-        => RenderAnimatedFrameAt(GetSmoothedPositionSeconds() + PreviewWordLookaheadSeconds);
+    private void RenderAnimatedFrame() => RenderAnimatedFrameAt(AnimatedPreviewTime());
 
     private void RenderAnimatedFrameAt(double t)
     {
         if (_animator == null || _animBitmap == null) return;
+        if (_animator is LyricsPageAnimator page)
+        {
+            RequestPageFrame(page, t);
+            return;
+        }
         _animLastT = t;
         using (var fb = _animBitmap.Lock())
             _animator.RenderFrame(t, fb.Address, fb.RowBytes);
+        AnimatedFrameRendered?.Invoke();
+    }
+
+    /// <summary>Draws the page frame at <paramref name="t"/> on a worker, unless one is still
+    /// drawing (the next tick asks again). UI thread.</summary>
+    private void RequestPageFrame(LyricsPageAnimator page, double t)
+    {
+        if (_pageDrawBusy) return;
+        _pageDrawBusy = true;
+        _animLastT = t;
+        int rowBytes = page.PixelWidth * 4;
+        int length = rowBytes * page.PixelHeight;
+        if (_pageFrame?.Length != length) _pageFrame = new byte[length];
+        var frame = _pageFrame;
+        var dispatcher = Dispatcher.UIThread;
+        _pageDraw = Task.Run(() =>
+        {
+            bool drawn = false;
+            var handle = System.Runtime.InteropServices.GCHandle.Alloc(frame, System.Runtime.InteropServices.GCHandleType.Pinned);
+            try
+            {
+                page.RenderFrame(t, handle.AddrOfPinnedObject(), rowBytes);
+                drawn = true;
+            }
+            catch (Exception ex)
+            {
+                DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                    "Lyrics Page preview frame failed", ex.Message);
+            }
+            finally { handle.Free(); }
+            dispatcher.Post(() => OnPageFrameDrawn(page, frame, rowBytes, drawn));
+        });
+    }
+
+    /// <summary>Shows a page frame drawn on the worker while its animator is still the one shown. UI thread.</summary>
+    private void OnPageFrameDrawn(LyricsPageAnimator page, byte[] frame, int rowBytes, bool drawn)
+    {
+        _pageDrawBusy = false;
+        if (_animator != page || _animBitmap == null)
+        {
+            // Swapped meanwhile: the new animator's first frame was skipped while this one drew.
+            if (_animator is LyricsPageAnimator next) RequestPageFrame(next, AnimatedPreviewTime());
+            return;
+        }
+        if (!drawn) return;
+        using (var fb = _animBitmap.Lock())
+        {
+            for (int y = 0; y < page.PixelHeight; y++)
+                System.Runtime.InteropServices.Marshal.Copy(frame, y * rowBytes, fb.Address + y * fb.RowBytes, rowBytes);
+        }
         AnimatedFrameRendered?.Invoke();
     }
 
@@ -1029,43 +1587,119 @@ public partial class LyricShareViewModel : ViewModelBase
         for (int i = 0; i < selected.Count; i++)
         {
             var line = selected[i];
-            // The next line of the song, not the next picked one: picks can skip lines, and
-            // the last pick has none. Either way the open word swept on over lines that are
-            // sung meanwhile (or ran 2 s past the next line's start).
-            TimeSpan? nextLineStart = null;
-            for (int j = Lines.IndexOf(line) + 1; j > 0 && j < Lines.Count; j++)
-                if (Lines[j].Timestamp is { } ts) { nextLineStart = ts; break; }
             if (line.Words is not { Count: > 0 } words)
             {
                 result.Add(new KaraokeLine { StartSeconds = line.Timestamp?.TotalSeconds });
                 continue;
             }
 
-            var karaokeWords = new List<KaraokeWord>(words.Count);
-            for (int k = 0; k < words.Count; k++)
-            {
-                var token = ShareCardRenderer.SanitizeForRender(words[k].Text);
-                if (token.Length == 0)
-                    continue;   // pure-whitespace word carries no rendered token
-                double start = words[k].Start.TotalSeconds;
-                double end = words[k].End?.TotalSeconds
-                    ?? (k + 1 < words.Count ? words[k + 1].Start.TotalSeconds
-                        : line.EndTimestamp?.TotalSeconds
-                          ?? KaraokeSweep.ResolveOpenLastWordEnd(words[k].Start, nextLineStart).TotalSeconds);
-                karaokeWords.Add(new KaraokeWord(token, start, end));
-            }
             result.Add(new KaraokeLine
             {
                 StartSeconds = line.Timestamp?.TotalSeconds,
-                Words = karaokeWords,
+                Words = ToKaraokeWords(line, words, line.EndTimestamp),
             });
         }
         return result;
     }
 
+    /// <summary>
+    /// One word layer of <paramref name="line"/> (its words, or its adlib row) as sanitized
+    /// tokens with resolved end times: explicit end, next word, <paramref name="layerEnd"/>,
+    /// then the lyrics page's open-word end (the next lyric line's start, capped at +2 s).
+    /// </summary>
+    private List<KaraokeWord> ToKaraokeWords(SelectableLyricLine line, IReadOnlyList<WordTiming> words, TimeSpan? layerEnd)
+    {
+        // The next line of the song, not the next picked one: picks can skip lines, and
+        // the last pick has none. Either way the open word swept on over lines that are
+        // sung meanwhile (or ran 2 s past the next line's start).
+        TimeSpan? nextLineStart = null;
+        for (int j = Lines.IndexOf(line) + 1; j > 0 && j < Lines.Count; j++)
+            if (Lines[j].Timestamp is { } ts) { nextLineStart = ts; break; }
+
+        var karaokeWords = new List<KaraokeWord>(words.Count);
+        for (int k = 0; k < words.Count; k++)
+        {
+            var token = ShareCardRenderer.SanitizeForRender(words[k].Text);
+            if (token.Length == 0)
+                continue;   // pure-whitespace word carries no rendered token
+            double start = words[k].Start.TotalSeconds;
+            double end = words[k].End?.TotalSeconds
+                ?? (k + 1 < words.Count ? words[k + 1].Start.TotalSeconds
+                    : layerEnd?.TotalSeconds
+                      ?? KaraokeSweep.ResolveOpenLastWordEnd(words[k].Start, nextLineStart).TotalSeconds);
+            karaokeWords.Add(new KaraokeWord(token, start, end));
+        }
+        return karaokeWords;
+    }
+
+    /// <summary>The Lyrics Page video's spec from the dialog as it stands (tests).</summary>
+    internal LyricsPageSpec PageSpec => BuildPageSpec();
+
+    /// <summary>
+    /// The Lyrics Page video's spec: the picked range plus up to <see cref="PageContextLines"/>
+    /// lines either side, as the lyrics page shows its neighbours. Edits count only inside
+    /// the range (outside, the lines read as the lyrics page has them); an edited line drops
+    /// its word timing, which belongs to the words it replaced, and lights as a whole line.
+    /// </summary>
+    private LyricsPageSpec BuildPageSpec()
+    {
+        var lines = new List<LyricsPageLine>();
+        if (PickedSpan() is { } span)
+        {
+            int from = Math.Max(0, span.First - PageContextLines);
+            int to = Math.Min(Lines.Count - 1, span.Last + PageContextLines);
+            for (int i = from; i <= to; i++)
+            {
+                var line = Lines[i];
+                bool inRange = i >= span.First && i <= span.Last;
+                bool edited = inRange && line.Text != line.OriginalText;
+                lines.Add(new LyricsPageLine
+                {
+                    Text = inRange ? line.Text : line.OriginalText,
+                    StartSeconds = line.Timestamp?.TotalSeconds,
+                    EndSeconds = line.EndTimestamp?.TotalSeconds,
+                    Words = !edited && line.Words is { Count: > 0 } words
+                        ? ToKaraokeWords(line, words, line.EndTimestamp) : null,
+                    BackgroundWords = line.BackgroundWords is { Count: > 0 } adlibs
+                        ? ToKaraokeWords(line, adlibs, line.BackgroundEndTimestamp) : null,
+                    Voice = line.Voice,
+                    IsBackgroundOnly = line.IsBackgroundOnly,
+                });
+            }
+        }
+
+        var (kind, media) = PageBackgroundIndex switch
+        {
+            1 when AnimatedCoverAvailable => (LyricsPageBackgroundKind.AnimatedCover, AnimatedCoverPath),
+            2 when CustomBackgroundAvailable => (LyricsPageBackgroundKind.Custom, PageBackgroundPath),
+            _ => (LyricsPageBackgroundKind.ArtworkWash, (string?)null),
+        };
+
+        return new LyricsPageSpec
+        {
+            Title = _track.Title,
+            Artist = _track.ArtistDisplay,
+            ArtworkPath = _track.AlbumArtworkPath,
+            IsExplicit = _track.IsExplicit,
+            Format = IsStory ? ShareCardFormat.Story : ShareCardFormat.Square,
+            Lines = lines,
+            SafeZones = SafeZonesEnabled,
+            BackgroundKind = kind,
+            BackgroundMediaPath = media,
+            BackgroundStrength = PageBackgroundStrength,
+            FfmpegPath = App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath(),
+            ClipStartSeconds = GetClipTiming().StartSeconds,
+        };
+    }
+
     /// <summary>Derives the clip's audio window from the selected lines and playback position.</summary>
     public ShareClipTiming GetClipTiming()
     {
+        // The Lyrics Page ends a range on the song's last line with that line, not 15 s on.
+        if (IsPageLayout && PickedSpan() is { } span && PageClipWindow(span.First, span.Last) is { } page)
+            return new ShareClipTiming(page.Start,
+                Math.Clamp(page.End - page.Start, ShareClipTiming.MinSeconds, ShareClipTiming.MaxSeconds));
+
         var lines = Lines.Select(l => new ShareClipLine(l.Timestamp, l.IsSelected)).ToList();
         double? position = IsOurTrackPlaying ? _player?.Position.TotalSeconds : null;
         return ShareClipTiming.Compute(lines, position);
@@ -1080,6 +1714,9 @@ public partial class LyricShareViewModel : ViewModelBase
     /// </summary>
     public async Task<byte[]?> RenderExportPngAsync()
     {
+        if (IsPageLayout)
+            return await RenderPageStillPngAsync();
+
         var selected = CardSelection().Select(l => l.Text).ToList();
         if (selected.Count == 0) return null;
 
@@ -1093,6 +1730,36 @@ public partial class LyricShareViewModel : ViewModelBase
         {
             DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
                 "Share card export render failed", ex.Message);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The Lyrics Page still for Save Card and Copy: the page's frame halfway through the range's
+    /// first line (<see cref="LyricsPageRenderer.StillTime"/>), at Save Card's 2× scale.
+    /// </summary>
+    private async Task<byte[]?> RenderPageStillPngAsync()
+    {
+        if (PickedSpan() is not { } span) return null;
+        var spec = BuildPageSpec();
+        var timing = GetClipTiming();
+        double? nextStart = Lines.Skip(span.First + 1)
+            .Select(l => l.Timestamp?.TotalSeconds).FirstOrDefault(s => s != null);
+        var t = LyricsPageRenderer.StillTime(timing, nextStart);
+        try
+        {
+            // Off the UI thread: a clip background waits for its frame.
+            var ct = _lifetime.Token;
+            return await Task.Run(() => LyricsPageRenderer.RenderStillPng(spec, t, ShareCardRenderer.CardExportScale, ct), ct);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;   // the dialog closed meanwhile
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Error,
+                "Lyrics Page still render failed", ex.Message);
             return null;
         }
     }
@@ -1139,7 +1806,17 @@ public partial class LyricShareViewModel : ViewModelBase
             var timing = GetClipTiming();
             string error;
 
-            if (!(KaraokeEnabled && KaraokeAvailable))
+            if (IsPageLayout)
+            {
+                // Lyrics Page: the page's motion frame by frame at 60 fps, on a worker (a clip
+                // background waits for each frame), with the short audio fade in and out.
+                var pageSpec = BuildPageSpec();
+                (ok, error) = await RenderFrameClipAsync(ffmpeg, LyricsPageFrames.Fps, timing, workPath, cts,
+                    (frameDir, report, ct) => LyricsPageRenderer.RenderFrames(
+                        pageSpec, timing, LyricsPageFrames.Fps, frameDir, report, ct),
+                    ShareClipRenderer.PageFadeSeconds);
+            }
+            else if (!(KaraokeEnabled && KaraokeAvailable))
             {
                 // Base-resolution still: the clip is 1080p-bound, so the 2× supersampled
                 // export card would only quadruple the encode cost.
@@ -1150,39 +1827,10 @@ public partial class LyricShareViewModel : ViewModelBase
             {
                 // Karaoke path: per-frame word sweep → JPEG sequence → ffmpeg mux.
                 var karaoke = BuildKaraokeLines(selected);
-                var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
-                Directory.CreateDirectory(frameDir);
-                try
-                {
-                    // Progress: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
-                    // work, so the footer counts it. Reports still queued when the run ends
-                    // (cancel, done) must not overwrite the final status.
-                    StatusText = L("ShareLyrics.Saving", 0);
-                    var progress = new Progress<(int Done, int Total)>(p =>
-                    {
-                        if (p.Total <= 0) return;
-                        var pct = (int)Math.Round(100.0 * p.Done / p.Total);
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            if (IsRendering && !token.IsCancellationRequested && ReferenceEquals(_exportCts, cts))
-                                StatusText = L("ShareLyrics.Saving", pct);
-                        });
-                    });
-
-                    await Task.Run(() => ShareCardRenderer.RenderKaraokeFrames(
-                        spec, karaoke, timing, KaraokeFps, frameDir,
-                        (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)),
-                        token), token);
-
-                    StatusText = L("ShareLyrics.Encoding");
-                    var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
-                    (ok, error) = await ShareClipRenderer.RenderFramesAsync(
-                        ffmpeg, pattern, KaraokeFps, _track.FilePath, workPath, timing, token);
-                }
-                finally
-                {
-                    try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
-                }
+                (ok, error) = await RenderFrameClipAsync(ffmpeg, KaraokeFps, timing, workPath, cts,
+                    (frameDir, report, ct) => ShareCardRenderer.RenderKaraokeFrames(
+                        spec, karaoke, timing, KaraokeFps, frameDir, report, ct),
+                    fadeSeconds: 0);
             }
 
             // ShareClipRenderer turns a killed ffmpeg into (false, "cancelled"): that is a
@@ -1216,6 +1864,50 @@ public partial class LyricShareViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// A frame-sequence clip (karaoke card, Lyrics Page): <paramref name="renderFrames"/> writes
+    /// JPEGs into a temp frame folder on a worker while the footer counts the pass, then ffmpeg
+    /// muxes them with the audio slice into <paramref name="workPath"/>. The frame folder is
+    /// always deleted.
+    /// </summary>
+    private async Task<(bool ok, string error)> RenderFrameClipAsync(string ffmpeg, int fps, ShareClipTiming timing,
+        string workPath, CancellationTokenSource cts, Action<string, Action<int, int>, CancellationToken> renderFrames,
+        double fadeSeconds)
+    {
+        var token = cts.Token;
+        var frameDir = Path.Combine(Path.GetTempPath(), $"noctis-karaoke-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(frameDir);
+        try
+        {
+            // Progress: a 60s Story clip is 3600 frames at 1080x1920 — minutes of
+            // work, so the footer counts it. Reports still queued when the run ends
+            // (cancel, done) must not overwrite the final status.
+            StatusText = L("ShareLyrics.Saving", 0);
+            var progress = new Progress<(int Done, int Total)>(p =>
+            {
+                if (p.Total <= 0) return;
+                var pct = (int)Math.Round(100.0 * p.Done / p.Total);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (IsRendering && !token.IsCancellationRequested && ReferenceEquals(_exportCts, cts))
+                        StatusText = L("ShareLyrics.Saving", pct);
+                });
+            });
+
+            await Task.Run(() => renderFrames(frameDir,
+                (done, total) => ((IProgress<(int, int)>)progress).Report((done, total)), token), token);
+
+            StatusText = L("ShareLyrics.Encoding");
+            var pattern = Path.Combine(frameDir, "frame-%05d.jpg");
+            return await ShareClipRenderer.RenderFramesAsync(
+                ffmpeg, pattern, fps, _track.FilePath, workPath, timing, token, fadeSeconds);
+        }
+        finally
+        {
+            try { Directory.Delete(frameDir, true); } catch { /* best effort */ }
+        }
+    }
+
     /// <summary>Removes a clip the run left unfinished. ffmpeg is killed by then, but Windows
     /// can hold the handle a moment after the process exits, so a few short retries.</summary>
     private static async Task DeletePartialAsync(string path)
@@ -1245,11 +1937,15 @@ public partial class LyricShareViewModel : ViewModelBase
 
     private CancellationTokenSource? _exportCts;
 
+    /// <summary>Cancelled when the dialog closes (<see cref="Detach"/>): stops a still render.</summary>
+    private readonly CancellationTokenSource _lifetime = new();
+
     /// <summary>Unsubscribes from the player so the dialog can be garbage-collected.</summary>
     public void Detach()
     {
         // A preview render still running disposes what it made (and the cover) when it lands.
         _detached = true;
+        _lifetime.Cancel();
         if (!_previewRendering) { _previewArt?.Dispose(); _previewArt = null; }
 
         // Stop a running export. Detach() previously tore down only the preview animator,
@@ -1266,5 +1962,13 @@ public partial class LyricShareViewModel : ViewModelBase
         TeardownAnimator();
         if (_player != null)
             _player.PropertyChanged -= OnPlayerPropertyChanged;
+
+        // The readability slider is saved once, on close, not at every step of a drag.
+        if (PageBackgroundStrength != _savedPageStrength)
+        {
+            int strength = PageBackgroundStrength;
+            _savedPageStrength = strength;
+            _ = SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundStrength = strength);
+        }
     }
 }

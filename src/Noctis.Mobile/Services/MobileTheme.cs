@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using Noctis.Helpers;
 
 namespace Noctis.Mobile.Services;
@@ -102,6 +103,7 @@ public sealed class MobileTheme
 
     public void Apply(Application app, string themeName, string? accentHex)
     {
+        StopBlend();
         Remove(app);
         var light = themeName == "Light";
         app.RequestedThemeVariant = light ? ThemeVariant.Light : ThemeVariant.Dark;
@@ -133,15 +135,127 @@ public sealed class MobileTheme
         _palette = BuildPalette(light ? null : themeName);
         app.Resources.MergedDictionaries.Add(_palette);
 
-        var color = !string.IsNullOrWhiteSpace(accentHex) && Color.TryParse(accentHex, out var parsed)
-            ? parsed
-            : Color.Parse(DefaultAccent);
         // Last: every overlay defines its own AccentColorBrush et al., and the user's accent must win.
-        _accent = AccentPalette.Build(color, light);
-        GuardAccent(_accent, color, light ? null : themeName);
+        _accent = BuildAccent(accentHex, themeName);
         app.Resources.MergedDictionaries.Add(_accent);
         ThemeName = themeName;
     }
+
+    /// <summary>The accent overlay for <paramref name="accentHex"/> (Crimson when unreadable) on
+    /// <paramref name="themeName"/>, with the phone's contrast guards.</summary>
+    private static ResourceDictionary BuildAccent(string? accentHex, string themeName)
+    {
+        var color = !string.IsNullOrWhiteSpace(accentHex) && Color.TryParse(accentHex, out var parsed)
+            ? parsed
+            : Color.Parse(DefaultAccent);
+        var light = themeName == "Light";
+        var accent = AccentPalette.Build(color, light);
+        GuardAccent(accent, color, light ? null : themeName);
+        return accent;
+    }
+
+    /// <summary>How long Match Artwork's accent takes to blend into the next cover's.</summary>
+    public static readonly TimeSpan AccentBlend = TimeSpan.FromMilliseconds(450);
+
+    private DispatcherTimer? _blendTimer;
+    private Action<double>? _blendStep;
+    private Action? _blendDone;
+    private DateTime _blendStart;
+    private TimeSpan _blendLength;
+
+    /// <summary>The accent changes on the theme already applied, nothing else re-merged: Match
+    /// Artwork on a track change (a full <see cref="Apply"/> re-resolves every resource in the app
+    /// and rebuilds the palette). Over <paramref name="blend"/> the colours on screen glide from
+    /// the old accent to the new one: each brush of the old overlay is recoloured in place, frame by
+    /// frame, so only what is drawn with the accent repaints; at the end the new overlay (its
+    /// brushes the same colours by then) takes the old one's place. A change mid-blend glides on
+    /// from where the colours are. No-op before the first <see cref="Apply"/>.</summary>
+    public void SetAccent(Application app, string? accentHex, TimeSpan blend = default)
+    {
+        if (_accent == null || ThemeName == null) return;
+        StopBlend();
+        var next = BuildAccent(accentHex, ThemeName);
+        var pairs = BlendPairs(_accent, next);
+        void Swap()
+        {
+            var list = app.Resources.MergedDictionaries;
+            var index = _accent == null ? -1 : list.IndexOf(_accent);
+            if (index >= 0) list[index] = next;
+            else list.Add(next);
+            _accent = next;
+        }
+        if (blend <= TimeSpan.Zero || pairs.Count == 0)
+        {
+            Swap();
+            return;
+        }
+        _blendStep = t =>
+        {
+            var e = 1 - Math.Pow(1 - t, 3);   // ease out: quick to leave, soft to land
+            foreach (var (brush, from, to) in pairs) brush.Color = Lerp(from, to, e);
+        };
+        _blendDone = Swap;
+        _blendStart = DateTime.UtcNow;
+        _blendLength = blend;
+        _blendTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, (_, _) =>
+        {
+            var t = (DateTime.UtcNow - _blendStart) / _blendLength;
+            if (t >= 1) FinishBlend();
+            else _blendStep?.Invoke(t);
+        });
+        _blendTimer.Start();
+    }
+
+    /// <summary>A blend is under way (<see cref="SetAccent"/>).</summary>
+    public bool IsBlending => _blendDone != null;
+
+    /// <summary>Paints the blend at <paramref name="t"/> (0-1) of its course. Internal for tests:
+    /// the headless platform never fires a DispatcherTimer.</summary>
+    internal void AdvanceBlend(double t) => _blendStep?.Invoke(Math.Clamp(t, 0, 1));
+
+    /// <summary>Lands a blend under way at once: the new overlay in place.</summary>
+    public void FinishBlend()
+    {
+        var done = _blendDone;
+        _blendStep?.Invoke(1);
+        StopBlend();
+        done?.Invoke();
+    }
+
+    private void StopBlend()
+    {
+        _blendTimer?.Stop();
+        _blendTimer = null;
+        _blendStep = null;
+        _blendDone = null;
+    }
+
+    /// <summary>Every brush of the overlay on screen, with its colour now and the one the same key
+    /// takes in <paramref name="next"/> (the per-variant text brushes too). A brush two keys share
+    /// (the slider keys are AccentTextExactBrush itself) is listed once.</summary>
+    private static List<(SolidColorBrush Brush, Color From, Color To)> BlendPairs(ResourceDictionary current, ResourceDictionary next)
+    {
+        var pairs = new List<(SolidColorBrush, Color, Color)>();
+        var seen = new HashSet<SolidColorBrush>(ReferenceEqualityComparer.Instance);
+        void Add(IResourceDictionary from, IResourceDictionary to)
+        {
+            foreach (var key in to.Keys)
+                if (from.TryGetValue(key, out var a) && a is SolidColorBrush brush && to[key] is ISolidColorBrush b && seen.Add(brush))
+                    pairs.Add((brush, brush.Color, b.Color));
+        }
+        Add(current, next);
+        foreach (var variant in new[] { ThemeVariant.Light, ThemeVariant.Dark })
+            if (current.ThemeDictionaries.TryGetValue(variant, out var from) && next.ThemeDictionaries.TryGetValue(variant, out var to)
+                && from is IResourceDictionary f && to is IResourceDictionary n)
+                Add(f, n);
+        return pairs;
+    }
+
+    private static Color Lerp(Color a, Color b, double t) => Color.FromArgb(
+        (byte)Math.Round(a.A + (b.A - a.A) * t),
+        (byte)Math.Round(a.R + (b.R - a.R) * t),
+        (byte)Math.Round(a.G + (b.G - a.G) * t),
+        (byte)Math.Round(a.B + (b.B - a.B) * t));
 
     /// <summary>The floor every accent glyph, label and outline keeps against the surface it
     /// sits on, and every glyph on an accent fill against that fill: WCAG's 3:1 for large text
@@ -231,6 +345,7 @@ public sealed class MobileTheme
 
     public void Remove(Application app)
     {
+        StopBlend();
         if (_overlay != null) app.Resources.MergedDictionaries.Remove(_overlay);
         if (_lightText != null) app.Resources.MergedDictionaries.Remove(_lightText);
         if (_palette != null) app.Resources.MergedDictionaries.Remove(_palette);

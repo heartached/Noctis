@@ -6929,7 +6929,7 @@
   <data name="Mobile.Cancel" xml:space="preserve"><value>إلغاء</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>المزامنة الآن</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>تنزيل الكل</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>يحتفظ بكل أغاني الكمبيوتر على هذا الهاتف لتشغيلها دون اتصال.</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>احتفظ بكل أغنية على هذا الهاتف للاستماع دون اتصال</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>تم تنزيلها</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>إزالة كل التنزيلات</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>إزالة التنزيلات</value></data>
@@ -6971,13 +6971,19 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>البحث في قوائم التشغيل</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>لا توجد قوائم تشغيل بعد. اضغط مطولًا على أغنية لإنشاء قائمة.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>لا توجد قوائم تشغيل مطابقة</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>البحث في قوائم التشغيل</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>فرز قوائم التشغيل</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>قائمة تشغيل جديدة</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>إنشاء</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>التشغيل تاليًا</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>إضافة إلى قائمة الانتظار</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>إضافة قبل الأغنية الحالية</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>أُضيفت قبل الأغنية الحالية</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>الانتقال إلى الألبوم</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>الانتقال إلى الفنان</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>إعادة التسمية</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>تغيير الغلاف</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>إزالة الغلاف</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>هذا الملف ليس صورة يمكن استخدامها كغلاف.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>إزالة من قائمة التشغيل</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>حذف قائمة التشغيل</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>إضافة مجلد…</value></data>
@@ -6987,6 +6993,9 @@
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>التالي</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>مسح</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>لا شيء تاليًا</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>السجل</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>إخفاء</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>إظهار</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>تكرار</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>لا شيء هنا بعد</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>بحث</value></data>
@@ -7015,7 +7024,7 @@
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>تتطابق أعداد التشغيل وقائمة تم تشغيلها مؤخرًا على الجهازين</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>مسح سجل الاستماع</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>مسح سجل الاستماع…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>يمسح مرات التشغيل على هذا الهاتف. ما أُرسل منها إلى Last.fm يبقى هناك.</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>مرات التشغيل المرسلة إلى Last.fm تبقى هناك</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>هذا الهاتف</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>الكمبيوتر</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>الخدمات</value></data>
@@ -7035,6 +7044,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>الغلاف</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>أسطوانة</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>قرص CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>ألوان أغمق أو أفتح خلف شاشة التشغيل الحالي</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>مجلدات الموسيقى</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>التنزيلات</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>الاستماع</value></data>
@@ -7059,38 +7071,42 @@
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>فُقد الوصول. أضف هذا المجلد مرة أخرى لتشغيل أغانيه.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>غير متاح. أعد توصيل وحدة التخزين ثم أعد الفحص.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>لا توجد مجلدات موسيقى بعد</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>مكتبتك على هذا الهاتف هي الموسيقى الموجودة في هذه المجلدات.</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>مكتبتك هي الموسيقى في هذه المجلدات</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>إضافة مجلد</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>الفحص عند بدء التشغيل</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>يبحث عن أغانٍ جديدة في هذه المجلدات في كل مرة يُفتح فيها Noctis.</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>يبحث عن أغانٍ جديدة في كل مرة يفتح فيها Noctis</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>ألوان الألبوم</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>تلوين الصفحات من صورة الغلاف</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>تأخذ صفحات الألبومات والفنانين درجة داكنة من لون الغلاف مع نص أبيض. عند الإيقاف، تستخدم السمة الفاتحة أو الداكنة العادية.</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>صفحات الألبوم والفنان تأخذ لون الغلاف</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>لون التقدّم</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>خط التقدّم</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>يملأ لون التقدّم شريط المشغّل بلون الغلاف أثناء تشغيل الأغنية. ويرسم خط التقدّم خطًا رفيعًا على حافته السفلية. عند إيقاف الاثنين يصبح الشريط زجاجًا عاديًا.</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>املأ الشريط أو ارسم خطًا رفيعًا أثناء تشغيل الأغنية</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>التنزيل عبر Wi-Fi فقط</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>تُنزَّل أغاني الكمبيوتر عبر Wi-Fi فقط، ولا تُنزَّل أبدًا عبر بيانات الجوال. لا يتأثر البث.</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>التنزيلات تنتظر شبكة Wi-Fi لكن البث يعمل</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>حركة سلسة</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>حتى 120 هرتز</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>تتيح للشاشة التحديث حتى 120 مرة في الثانية على الهواتف التي تدعم ذلك، لتمرير ورسوم متحركة أكثر سلاسة. أوقفها لإبقاء الشاشة على 60 هرتز وتوفير البطارية.</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>تمرير أكثر سلاسة على شاشات 120 هرتز لكنه يستهلك بطارية أكثر</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>علامة تبويب Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>تبقى علامة التبويب المحددة زجاجًا شفافًا</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>الأغاني المشغّلة في قائمة الانتظار</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>تبقى الأغاني التي شغّلتها فوق الأغنية الحالية</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>مساحة التخزين المستخدمة</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>إزالة كل التنزيلات</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>تبقى التنزيلات المزالة على الكمبيوتر ويمكن بثها كالمعتاد.</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis نفسه مرخّص بموجب رخصة MIT.</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>تبقى على حاسوبك ويمكن بثها</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis نفسه مرخّص بترخيص MIT</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>إظهار الترجمات</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>إظهار الكتابة بالحروف اللاتينية</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>إظهار الأصوات الخلفية</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>تظهر أسفل السطر بخط أصغر، عندما تتضمنها كلمات الأغنية.</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>نص أصغر تحت السطر عندما تحتويه كلمات الأغنية</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>حجم النص</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>حجم نص الكلمات</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>أدنى شفافية للسطر</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>أدنى شفافية للسطر</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>يُبقي كل سطر ظاهرًا بشكل خافت لتتمكن من الضغط على أي سطر والانتقال إليه. عند 0% تُخفى الأسطر البعيدة عن السطر الحالي.</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>مدى ظهور الأسطر البعيدة عن السطر الحالي</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>دمج الكلمات المقسّمة</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>يُبقي الكلمات كاملة عندما تقسّمها كلمات TTML إلى مقاطع.</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>يُبقي الكلمات كاملة في كلمات TTML</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>البحث عن الكلمات عبر الإنترنت</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>عندما لا يكون للأغنية ملف كلمات أو كلمات في وسومها، يبحث في LRCLIB حسب عنوانها وفنانها ومدتها، كما يفعل تطبيق الكمبيوتر. تُحفظ الكلمات التي يُعثر عليها على الهاتف.</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>يبحث عن الكلمات الناقصة في LRCLIB ويحتفظ بها</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>إظهار علامات التبويب</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>البحث في هذه القائمة</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} أغنية|{0} أغنية|{0} أغنيتان|{0} أغانٍ|{0} أغنية|{0} أغنية</value></data>
@@ -7167,7 +7183,7 @@
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>معاينة · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>عنوان الأغنية</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>وضع توفير البطارية مفعّل، لذا تبقى الألوان ثابتة.</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>تستهلك الحركة قدرًا أكبر قليلًا من البطارية. تتوقف مؤقتًا عند تفعيل وضع توفير البطارية.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>يستهلك بطارية أكثر قليلًا ويتوقف في وضع توفير الطاقة</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>دائمًا</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>سنة واحدة</value></data>
@@ -7201,8 +7217,8 @@
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>إحصاءات استماع مفتوحة ومجانية</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>على الكمبيوتر</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>الإعداد على الكمبيوتر</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>تُحتسب مرة التشغيل بعد نصف الأغنية أو 4 دقائق. تنتظر مرات التشغيل دون اتصال هنا حتى المزامنة التالية.</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>تُحتسب مرة التشغيل بعد نصف الأغنية أو 4 دقائق. تنتظر مرات التشغيل دون اتصال هنا حتى يعود الهاتف إلى الاتصال بالإنترنت.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>يُحتسب بعد نصف الأغنية أو 4 دقائق ويُرسل التشغيل دون اتصال في المزامنة التالية</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>يُحتسب بعد نصف الأغنية أو 4 دقائق ويُرسل التشغيل دون اتصال عند عودتك للاتصال</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>تعذّر الوصول إلى Last.fm. حاول مرة أخرى.</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>وافق على Noctis في Last.fm</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>سجّل الدخول إلى Last.fm واضغط على Allow، ثم عُد إلى هنا واضغط على تم.</value></data>
@@ -7246,6 +7262,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>نيلي</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>أوركيد</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>وردي</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>خوخي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>ليموني</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>أخضر غابي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>نعناعي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>سماء</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>ليلكي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>فضي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>أردوازي</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>مطابقة الغلاف</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>مخصص</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>النظام</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>فاتح</value></data>
@@ -7255,11 +7280,11 @@
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>منتصف الليل</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>النظام، {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>مطابقة الجهاز</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>يكون Noctis فاتحًا عندما يكون هاتفك في الوضع الفاتح، و{0} عندما يكون في الوضع الداكن.</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>فاتح في الوضع الفاتح و{0} في الوضع الداكن</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>فاتح وداكن</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>تلوّن السمة الملوّنة الصفحات والبطاقات والزجاج، وتتناسق مع الخلفية التي تحمل الاسم نفسه.</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>سمات الألوان تلوّن التطبيق كله</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>مطابقة السمة</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>للسمات الملوّنة لون مميّز خاص بها. اختيار لون أدناه يوقف هذا الخيار.</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>اختيار لون بالأسفل يوقف هذا</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>هل تريد إزالة “{0}”؟ ستخرج أغانيه من مكتبتك على هذا الهاتف. تبقى الملفات في مكانها.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>هل تريد إزالة “{0}”؟</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>ستخرج أغانيه من مكتبتك على هذا الهاتف. تبقى الملفات في مكانها.</value></data>
@@ -7278,8 +7303,8 @@
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>كلاهما</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>الترجمات</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>الحروف اللاتينية</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>عند فتح Noctis على {0}، يعرض عليك المتابعة من الأغنية التي كنت تشغّلها هنا.</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>عند فتح Noctis على الكمبيوتر، يعرض عليك المتابعة من الأغنية التي كنت تشغّلها هنا.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>تابع من هذه الأغنية عند فتح Noctis على {0}</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>تابع من هذه الأغنية عند فتح Noctis على حاسوبك</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Wi-Fi فقط</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>أي شبكة</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>هل تريد إزالة كل التنزيلات؟</value></data>
@@ -7287,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>إزالة التنزيلات</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} قائمة تشغيل|{0} قائمة تشغيل|{0} قائمتا تشغيل|{0} قوائم تشغيل|{0} قائمة تشغيل|{0} قائمة تشغيل</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>تصميم جديد للإعدادات: ملفك الشخصي وأرقام مكتبتك في الأعلى، ثم المظهر والمكتبة والاستماع والمساعدة وحول.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>للتنزيلات صفحة خاصة بها، تتضمن التنزيل عبر Wi-Fi فقط (مفعّل افتراضيًا) وإزالة كل التنزيلات.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>تعرض تراخيص المصادر المفتوحة المكونات التي بُني بها Noctis.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis يتحدث لغتك: اخترها من الإعدادات › اللغة، أو اتبع لغة الهاتف.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>لون التمييز فيه 17 لونًا، و«مطابقة الغلاف» يتبع غلاف الأغنية الجارية.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>مؤقت نوم في شاشة التشغيل الحالي؛ و«تأجيل لمدة شهر» و«إخفاء الأغنية» في قائمة الأغنية.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>أنشئ قائمة تشغيل بزر + وامنحها غلافك الخاص؛ تتم مزامنة الأغلفة مع حاسوبك.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>«إضافة قبل الحالية» في قائمة الأغنية، ويمكن أن تبقى الأغاني المُشغّلة في قائمة الانتظار.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>الأغنية الموجودة على هاتفك ونفس الأغنية من حاسوبك تظهران مرة واحدة.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>تمرير أكثر سلاسة وصفحات أسرع، وكلمات الأغاني بجانب الغلاف في الوضع الأفقي.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>مفكّك ترميز ALAC المضمّن، مبني من مصدر FFmpeg 6.0 دون تعديل ودون أجزاء GPL أو غير حرة: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>التشغيل وجلسة الوسائط وغلاف JNI لمفكّك الترميز.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>إطار عمل واجهة المستخدم.</value></data>
@@ -7386,17 +7413,18 @@
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>مقطع غير معروف</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>بطاقة SD</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>القوائم</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>يتبع Noctis لغة هاتفك ما لم تختر لغة هنا. الترجمات من إعداد المجتمع.</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>يتبع لغة هاتفك ما لم تختر لغة</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>جارٍ الفحص… {0} ملف|جارٍ الفحص… {0} ملف|جارٍ الفحص… {0} ملفان|جارٍ الفحص… {0} ملفات|جارٍ الفحص… {0} ملفًا|جارٍ الفحص… {0} ملف</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>المزيد لـ {0}</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>إزالة {0}</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. يلوّن لون التمييز الأزرار ومفاتيح التبديل والعناصر المميزة.</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} يلوّن الأزرار والتمييزات</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>يأخذ لون الغلاف الجاري أو {0} إن لم يوجد</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>مساحة التخزين المستخدمة، {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>العرض في صفوف الأغاني</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>إيقاف</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>التقييمات</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>المفضلة</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>تنتهي صفوف الأغاني بنجوم الأغنية أو بقلب للمفضلة.</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>نجوم أو قلب في نهاية كل صف أغنية</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>تقييم</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>تقييم {0} من 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>مسح التقييم</value></data>
@@ -7422,7 +7450,7 @@
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>تعذّرت قراءة «{0}»</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>فتح قائمة التشغيل</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>العثور على كل الموسيقى تلقائيًا</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>يضيف كل الأغاني الموجودة على هذا الهاتف وبطاقة SD الخاصة به دون اختيار مجلدات. لا تُقرأ ملفات الكلمات (.lrc و.ttml) الموجودة بجانب الأغنية إلا من المجلدات التي تضيفها أدناه.</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>يضيف كل أغنية على الهاتف وبطاقة SD لكن ملفات الكلمات تُقرأ فقط من المجلدات بالأسفل</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>كل الموسيقى</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>لم يُسمح لـ Noctis بقراءة الموسيقى على هذا الهاتف. لتفعيل ذلك، اسمح بإذن الموسيقى والصوت في إعدادات Noctis.</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>لم يعد بإمكان Noctis قراءة الموسيقى على هذا الهاتف. تبقى أغانيها في القائمة لكنها لن تُشغَّل حتى تسمح بإذن الموسيقى والصوت في إعدادات Noctis.</value></data>
@@ -7652,5 +7680,43 @@
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>ضمن أفضل فنانيك</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>فتح {0} على Last.fm</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>مزيجات وتوصيات</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>تعرض الصفحة الرئيسية مزيجات من أغانيك وفنانين لاكتشافهم من قوائم Last.fm الخاصة بك. يُستخدم اسم حسابك فقط؛ ولا يُرسل أي شيء.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>تحصل الرئيسية على مزيجات من قوائم Last.fm الخاصة بك ولا يُرسل شيء</value></data>
+  <!-- LyricShareDialog Lyrics Page -->
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>تأجيل لمدة شهر</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>إلغاء التأجيل</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>تم التأجيل لمدة شهر</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>تم إلغاء التأجيل</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>مؤقت النوم</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} دقيقة</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>ساعة واحدة</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>نهاية الأغنية الحالية</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>إيقاف المؤقت</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>إيقاف مؤقت بعد {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>إيقاف مؤقت بعد هذه الأغنية</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>إخفاء الأغنية</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>تم الإخفاء. يمكنك إظهارها من الإعدادات › المكتبة › المخفية.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>المخفية</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>الأغاني المخفية تبقى على هاتفك لكن خارج مكتبتك والمزيجات</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>لا يوجد شيء مخفي</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>إظهار</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>إظهار {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>مجلد</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>غير موجودة على هذا الهاتف الآن</value></data>
 </root>

@@ -159,6 +159,20 @@ public static class PhoneThemes
     public static string EffectiveAccent(string resolvedTheme, string accentHex, bool followsTheme) =>
         followsTheme && Find(resolvedTheme)?.Accent is { } own ? $"#{own.R:X2}{own.G:X2}{own.B:X2}" : accentHex;
 
+    /// <summary>The same with Settings › Accent › Match Artwork: while on, the playing cover's
+    /// colour (<paramref name="cover"/>, its vibrant colour: <see cref="Noctis.Services.ArtworkVibrantColor.GetAccentSourceHex"/>) stands
+    /// in for the chosen accent, which comes back with no cover or a grey one. Match Theme still
+    /// wins on a colour theme.</summary>
+    public static string EffectiveAccent(string resolvedTheme, string accentHex, bool followsTheme, bool followsArtwork, Color? cover) =>
+        EffectiveAccent(resolvedTheme, followsArtwork && ArtworkAccentHex(cover) is { } artwork ? artwork : accentHex, followsTheme);
+
+    /// <summary>A cover colour as an accent: the desktop's "Accent follows album art" taming
+    /// (<see cref="Noctis.Helpers.ArtworkAccent.TameForAccent"/>: real chroma at mid lightness),
+    /// null for no cover or a grey one. The phone's contrast guards (MobileTheme) then fit it to
+    /// the theme like any other accent.</summary>
+    public static string? ArtworkAccentHex(Color? cover) =>
+        cover is { } c ? Noctis.Helpers.ArtworkAccent.TameForAccent($"#{c.R:X2}{c.G:X2}{c.B:X2}") : null;
+
     /// <summary><paramref name="light"/> as translucent text: the first alpha from
     /// <paramref name="startAlpha"/> up that keeps <see cref="MinSecondaryContrast"/> on every surface.</summary>
     internal static Color Secondary(Color light, byte startAlpha, params Color[] surfaces)

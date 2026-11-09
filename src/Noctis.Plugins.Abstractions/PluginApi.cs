@@ -27,7 +27,8 @@ public static class PluginPermissions
     public const string Network = "network";
     /// <summary><see cref="IPluginHost.RegisterLyricsProvider"/>.</summary>
     public const string LyricsProvider = "lyrics.provider";
-    /// <summary><see cref="IPluginHost.RegisterTrackCommand(string, string?, Action{TrackInfo})"/>.</summary>
+    /// <summary><see cref="IPluginHost.RegisterTrackCommand(string, string?, Action{TrackInfo})"/>; since API 1.7
+    /// also <see cref="IPluginHost.RegisterLibraryCommand"/>.</summary>
     public const string MenuCommands = "menu.commands";
     /// <summary><see cref="IPluginHost.Notify"/>.</summary>
     public const string Notifications = "notifications";
@@ -144,6 +145,13 @@ public interface IPlaybackControl
         add => throw new NotSupportedException("This Noctis build does not implement plugin API 1.5. Set minAppVersion in plugin.json.");
         remove { }
     }
+
+    /// <summary>API 1.7. Play Next (<paramref name="playNext"/> true: to the front of Up Next, in
+    /// this order) or Add to Queue (false: to the end), exactly as the app's own menu entries do:
+    /// Shuffle stays as it is, the queue notice shows, and <see cref="TracksQueued"/> is raised.
+    /// Unknown ids are skipped.</summary>
+    void QueueTracks(IReadOnlyList<string> trackIds, bool playNext)
+        => throw new NotSupportedException("This Noctis build does not implement plugin API 1.7. Set minAppVersion in plugin.json.");
 }
 
 /// <summary>API 1.5. A copy of the play queue (<see cref="IPlaybackControl.GetQueue"/>).</summary>
@@ -271,3 +279,21 @@ public interface IPluginSettings
     /// <summary>Raised on the UI thread with the key the user changed.</summary>
     event EventHandler<string>? Changed;
 }
+
+/// <summary>API 1.7. Where a library command shows (<see cref="IPluginHost.RegisterLibraryCommand"/>).
+/// Combine them: <c>ArtistPage | SongsPage</c>.</summary>
+[Flags]
+public enum LibraryCommandPlaces
+{
+    /// <summary>Nowhere (not accepted by <see cref="IPluginHost.RegisterLibraryCommand"/>).</summary>
+    None = 0,
+    /// <summary>The "…" options menu on an artist's page.</summary>
+    ArtistPage = 1,
+    /// <summary>A button in the Songs page's top bar (next to Shuffle), with the command's icon.</summary>
+    SongsPage = 2,
+}
+
+/// <summary>API 1.7. What a library command was clicked on.</summary>
+/// <param name="Place">The one place it was clicked in (a single flag).</param>
+/// <param name="Artist">The artist's name on <see cref="LibraryCommandPlaces.ArtistPage"/>; null elsewhere.</param>
+public sealed record LibraryCommandContext(LibraryCommandPlaces Place, string? Artist);

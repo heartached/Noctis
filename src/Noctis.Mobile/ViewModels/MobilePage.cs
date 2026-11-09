@@ -37,6 +37,25 @@ public abstract partial class MobilePage : ObservableObject
 
     [ObservableProperty] private Vector _scrollOffset;
 
+    /// <summary>The page this one was pushed over (null: the tab's root) and the tab it was
+    /// pushed on; set by <see cref="ShellViewModel.Navigate"/>. The header's back label names it.</summary>
+    internal MobilePage? PushedOver { get; set; }
+    internal MobileTab PushedOnTab { get; set; }
+
+    /// <summary>The header's "‹ Library" (PageHeader): the page Back returns to, by its title,
+    /// in the current language (a language switch re-reads it through <see cref="Relabel"/>).</summary>
+    public string BackTitle => PushedOver?.Title ?? TabTitle(PushedOnTab);
+
+    /// <summary>A tab root's large title (the tab headers': Nav.Home, Tab.Library, …).</summary>
+    public static string TabTitle(MobileTab tab) => Loc.T(tab switch
+    {
+        MobileTab.Favorites => "Nav.Favorites",
+        MobileTab.Playlists => "Nav.Playlists",
+        MobileTab.Library => "Tab.Library",
+        MobileTab.Search => "Mobile.Search",
+        _ => "Nav.Home",
+    });
+
     /// <summary>The page left the stack for good (Back, a tab switch): drop
     /// event subscriptions so a closed page stops rebuilding on every library refresh.</summary>
     public virtual void OnClosed() { }
@@ -44,6 +63,11 @@ public abstract partial class MobilePage : ObservableObject
     /// <summary>Android Back, before the page itself is popped: a page with pages of its own
     /// (Settings' Music Folders, Appearance, Lyrics) returns to its top level and says so.</summary>
     public virtual bool TryGoBackWithin() => false;
+
+    /// <summary>The page's view is kept, hidden, when the page closes, and handed the next page
+    /// of the same kind (<see cref="Views.PageStack"/>): for a page whose view is costly to build
+    /// and that is opened again and again (Settings).</summary>
+    public virtual bool KeepsView => false;
 
     public override string ToString() => Title;
 

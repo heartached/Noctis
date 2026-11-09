@@ -572,7 +572,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
         return user is null ? (null, null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password") : (user, null, 0, "");
     }
 
-    // ── Binary endpoints: stream / download / getCoverArt / getAvatar ───────
+    // ── Binary endpoints: stream / download / getCoverArt / getNoctisPlaylistCover / getAvatar
 
     private async Task<bool> TryHandleBinaryAsync(HttpContext ctx, string method, Params p)
     {
@@ -641,6 +641,9 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 await Results.File(path, ContentTypeFor(path)).ExecuteAsync(ctx).ConfigureAwait(false);
                 return true;
             }
+            case "getnoctisplaylistcover":
+                await ServePlaylistCoverAsync(ctx, p).ConfigureAwait(false);
+                return true;
             case "getavatar":
             {
                 // The caller's own picture only: another account's name is 70, never the owner's
@@ -706,6 +709,8 @@ public sealed partial class NoctisServer : IAsyncDisposable
             // Songs sent from the phone (NoctisServer.Upload.cs): body streamed to disk, not to a snapshot.
             case "noctisuploadtrack":
                 return await UploadTrackAsync(p, ctx).ConfigureAwait(false);
+            case "noctisuploadplaylistcover":
+                return await UploadPlaylistCoverAsync(ctx).ConfigureAwait(false);
             case "noctishastracks":
                 return await HasTracksAsync(p, ctx).ConfigureAwait(false);
             case "noctissignout":

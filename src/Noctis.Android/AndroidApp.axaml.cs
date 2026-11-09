@@ -30,7 +30,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     private const string LogTag = "Noctis";
 
     private readonly MobileTheme _theme = new();
-    private (string Appearance, string DarkTheme, string Accent, bool AccentFollowsTheme) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent, true);
+    private (string Appearance, string DarkTheme, string Accent, bool AccentFollowsTheme, bool AccentFollowsArtwork) _themeChoice = ("System", "Ink", MobileTheme.DefaultAccent, true, false);
+
+    // Match Artwork: the playing cover's vibrant colour (ShellViewModel.AccentFollowsArtwork), and the accent last worn.
+    private Avalonia.Media.Color? _coverColour;
+    private string? _wornAccent;
     private PlatformThemeVariant? _appliedSystem;
     private ShellViewModel? _shell;
     private Media3AudioPlayer? _player;
@@ -171,6 +175,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _shell = shell;
         // A fast word is one search, not one per letter (SearchPageViewModel.TypingDebounce).
         shell.Search.TypingDebounce = TimeSpan.FromMilliseconds(150);
+        // The same for the list pages' Find fields (Songs, Albums, Artists).
+        Noctis.Mobile.Views.FindField.TypingDebounce = TimeSpan.FromMilliseconds(150);
 
         if (account != null)
         {
@@ -336,7 +342,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // Themes came in after the dark styles: the first start migrates Theme + Background once.
             if (await PhoneThemes.MigrateAsync(persistence, settings))
                 DebugLog.Write("Theme", $"Migrated to the {settings.MobileThemeName} theme (Match Theme {settings.MobileAccentFollowsTheme})");
-            ApplyTheme(settings.MobileAppearance, PhoneThemes.DarkThemeFor(settings), settings.AccentColorHex, settings.MobileAccentFollowsTheme);
+            ApplyTheme(settings.MobileAppearance, PhoneThemes.DarkThemeFor(settings), settings.AccentColorHex, settings.MobileAccentFollowsTheme, settings.MobileAccentFollowsArtwork);
             // Settings › Appearance › Smooth Motion: up to 120 Hz unless the user chose Standard.
             AndroidFrameRate.Instance.Request(settings.MobileSmoothMotion);
             // Settings › Background, before the first page paints rather than after the library loads.
@@ -406,22 +412,42 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
     /// <summary>Settings (and startup, and a system dark-mode switch) re-theme through here.</summary>
     public void ApplyTheme(string appearance, string darkTheme, string accentHex) =>
-        ApplyTheme(appearance, darkTheme, accentHex, _themeChoice.AccentFollowsTheme);
+        ApplyTheme(appearance, darkTheme, accentHex, _themeChoice.AccentFollowsTheme, _themeChoice.AccentFollowsArtwork);
 
     /// <summary>A colour theme's own accent wins while <paramref name="accentFollowsTheme"/> (Match Theme).</summary>
-    public void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme)
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme) =>
+        ApplyTheme(appearance, darkTheme, accentHex, accentFollowsTheme, _themeChoice.AccentFollowsArtwork);
+
+    /// <summary>The playing cover's colour stands in for the accent while <paramref name="accentFollowsArtwork"/> (Match Artwork).</summary>
+    public void ApplyTheme(string appearance, string darkTheme, string accentHex, bool accentFollowsTheme, bool accentFollowsArtwork)
     {
-        _themeChoice = (appearance, darkTheme, accentHex, accentFollowsTheme);
+        _themeChoice = (appearance, darkTheme, accentHex, accentFollowsTheme, accentFollowsArtwork);
         var system = SystemVariant();
         _appliedSystem = system;
         var resolved = MobileTheme.Resolve(appearance, darkTheme, system);
-        var accent = PhoneThemes.EffectiveAccent(resolved, accentHex, accentFollowsTheme);
+        var accent = PhoneThemes.EffectiveAccent(resolved, accentHex, accentFollowsTheme, accentFollowsArtwork, _coverColour);
         DebugLog.Write("Theme", $"{appearance}/{darkTheme} on a {system} system -> {resolved}, accent {accent}");
         _theme.Apply(this, resolved, accent);
+        _wornAccent = accent;
+        // Match Artwork: the shell decodes the playing cover's colour only while on (CoverColourChanged).
+        if (_shell != null) _shell.AccentFollowsArtwork = accentFollowsArtwork;
         // The theme rebuilt its palette: the background mesh goes back on top, its glass in the theme's colours.
         _shell?.Background.Reassert(PhoneThemes.DarkOrInk(darkTheme).Id);
         // Avalonia resets the status bar icons to the new theme; a page's own choice wins again.
         Dispatcher.UIThread.Post(ReassertStatusBarIcons, DispatcherPriority.Background);
+    }
+
+    /// <summary>The playing cover's vibrant colour (ShellViewModel, under Match Artwork). Under Match Artwork the
+    /// accent blends into it, or back to the chosen one without a cover; only the accent overlay
+    /// changes (<see cref="MobileTheme.SetAccent"/>), not the whole theme.</summary>
+    public void CoverColourChanged(Avalonia.Media.Color? cover)
+    {
+        _coverColour = cover;
+        if (!_themeChoice.AccentFollowsArtwork || _theme.ThemeName is not { } resolved) return;
+        var accent = PhoneThemes.EffectiveAccent(resolved, _themeChoice.Accent, _themeChoice.AccentFollowsTheme, true, cover);
+        if (string.Equals(accent, _wornAccent, StringComparison.OrdinalIgnoreCase)) return;
+        _wornAccent = accent;
+        _theme.SetAccent(this, accent, MobileTheme.AccentBlend);
     }
 
     /// <summary>The status bar icons a page asked for (<see cref="SetStatusBarIcons"/>); null = the theme's.</summary>
@@ -473,7 +499,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     public void OnConfigurationChanged()
     {
         if (SystemVariant() == _appliedSystem) return;   // rotation, font scale, our own night-mode echo
-        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent, _themeChoice.AccentFollowsTheme);
+        ApplyTheme(_themeChoice.Appearance, _themeChoice.DarkTheme, _themeChoice.Accent, _themeChoice.AccentFollowsTheme, _themeChoice.AccentFollowsArtwork);
     }
 
     /// <summary>

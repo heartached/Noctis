@@ -18,6 +18,12 @@ public interface ILastFmService
     void Logout();
 
     Task ScrobbleAsync(Track track, DateTime startedAt);
+
+    /// <summary>GitHub #197: sends up to <see cref="ScrobbleQueue.MaxBatch"/> queued plays in one
+    /// track.scrobble call and says how it went, so the queue knows what to keep. The default (test
+    /// doubles) sends nothing and keeps them.</summary>
+    Task<ScrobbleSendResult> SendScrobblesAsync(IReadOnlyList<ScrobbleEntry> plays, CancellationToken ct = default)
+        => Task.FromResult(ScrobbleSendResult.Retry);
     Task UpdateNowPlayingAsync(Track track);
     Task<string?> GetAlbumDescriptionAsync(string artistName, string albumName, CancellationToken ct = default);
     Task<string?> GetAlbumDescriptionFullAsync(string artistName, string albumName, CancellationToken ct = default);

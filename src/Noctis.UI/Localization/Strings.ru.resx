@@ -142,10 +142,31 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PinSidebarOpenAt" xml:space="preserve"><value>Боковая панель всегда открыта.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HoverExpandSidebar" xml:space="preserve"><value>Раскрывать боковую панель при наведении</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SlideSidebarOpenHover" xml:space="preserve"><value>Боковая панель выезжает при наведении курсора.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPage" xml:space="preserve"><value>Стартовая страница</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Страница, с которой открывается Noctis. Вместо скрытой страницы откроется Главная.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPages" xml:space="preserve"><value>Страницы</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Показывайте, скрывайте и меняйте порядок страниц на боковой панели. Настройки видны всегда.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Переместить вверх</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Переместить вниз</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Объединять издания альбомов</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve"><value>Одна плитка на релиз. Другие издания показываются в разделе «Другие версии».</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumGrouping" xml:space="preserve"><value>Объединять альбомы без исполнителя альбома</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
+  <data name="Settings.AlbumGroupingHint" xml:space="preserve"><value>Песни без тега «Исполнитель альбома» с одинаковым названием альбома в одной папке показываются как один альбом, например саундтрек, где в каждой песне свой исполнитель. Если выключено, каждая песня остаётся в альбоме своего исполнителя.</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
+  <data name="Settings.AlbumGroupingWriteTags" xml:space="preserve"><value>Сохранять объединение в файлы</value><comment>Text in SettingsView.axaml (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingWriteTagsHint" xml:space="preserve"><value>Записывает исполнителя альбома в файлы объединённых песен, чтобы другие плееры и устройства показывали тот же альбом. Это изменяет файлы: они останутся одним альбомом, даже если позже выключить объединение.</value><comment>Text in SettingsView.axaml (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingGrouping" xml:space="preserve"><value>Объединение альбомов…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingSplitting" xml:space="preserve"><value>Разделение объединённых альбомов…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingMoved" xml:space="preserve"><value>Песен перенесено в другой альбом: {0:N0}.</value><comment>Settings status line (GitHub #193/#190); {0} song count</comment></data>
+  <data name="Settings.AlbumGroupingUpToDate" xml:space="preserve"><value>Альбомы уже актуальны.</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingFailed" xml:space="preserve"><value>Не удалось обновить альбомы.</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingWriting" xml:space="preserve"><value>Сохранение исполнителей альбомов в файлы…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingWritten" xml:space="preserve"><value>Исполнитель альбома сохранён в файлах: {0:N0}.</value><comment>Settings status line (GitHub #193/#190); {0} file count</comment></data>
+  <data name="Settings.AlbumGroupingWrittenSome" xml:space="preserve"><value>Исполнитель альбома сохранён в файлах: {0:N0}; не удалось сохранить: {1:N0}.</value><comment>Settings status line (GitHub #193/#190); {0} files written, {1} files not written</comment></data>
+  <data name="Settings.AlbumGroupingNotWritten" xml:space="preserve"><value>Не удалось сохранить файлов: {0} (отсутствуют, только для чтения или открыты в другом приложении). В Noctis они остаются объединёнными; выключите и снова включите «Сохранять объединение в файлы», чтобы повторить.</value><comment>{0} file count; list of file names follows (GitHub #190)</comment></data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve"><value>Брать приглашённых исполнителей из названий</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TurnFeatXTrack" xml:space="preserve"><value>Переносить «(feat. X)» из названий в исполнителей.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowArtistsAsTagged" xml:space="preserve"><value>Показывать исполнителей как в тегах</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
+  <data name="Settings.ShowArtistsAsTaggedHint" xml:space="preserve"><value>Строки исполнителей в списках, очереди, плеере и на странице текста показывают текст тега исполнителя («Kraak &amp; Smaak», «A feat. B», «A x B»), а не разделители в виде запятых. Раздел «Исполнители» по-прежнему делит авторов на исполнителей.</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
   <data name="Settings.GroupArtistsBy" xml:space="preserve"><value>Группировать исполнителей по</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhichTagArtistsSection" xml:space="preserve"><value>«Исполнитель альбома» не разбивает сборники и не учитывает гостей в отдельных треках.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FirstCreditedArtistEachTip" xml:space="preserve"><value>Первый исполнитель, указанный в теге «Исполнитель» каждой песни</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -298,6 +319,26 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve"><value>Сердечко справа, чтобы добавить текущую песню в избранное одним щелчком.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>Мини-плеер</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>Кнопка справа для переключения на мини-плеер.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButton" xml:space="preserve"><value>Кнопка текста</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButtonHint" xml:space="preserve"><value>Кнопка справа, открывающая страницу текста. Если её скрыть, страница по-прежнему открывается сочетанием клавиш или щелчком по обложке (см. «Щелчок по обложке»).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylistButton" xml:space="preserve"><value>Быстрое добавление в плейлист</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylistButtonHint" xml:space="preserve"><value>Кнопка справа: добавляет текущую песню в один из трёх плейлистов, выбранных ниже.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylist1" xml:space="preserve"><value>Быстрый плейлист 1</value><comment>Accessible name of the first quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylist2" xml:space="preserve"><value>Быстрый плейлист 2</value><comment>Accessible name of the second quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylist3" xml:space="preserve"><value>Быстрый плейлист 3</value><comment>Accessible name of the third quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Нет</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
+  <data name="Settings.TrashButton" xml:space="preserve"><value>Переместить в корзину</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Кнопка справа: одним нажатием, без вопросов, убирает текущую песню из медиатеки. Песня переносится в папку корзины ниже, а если она не задана, в корзину системы.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashFolder" xml:space="preserve"><value>Папка корзины</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
+  <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Куда кнопка переносит песни, чтобы их можно было просмотреть позже. Выберите папку вне ваших музыкальных папок, иначе следующее сканирование добавит их снова.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Не задана: корзина системы</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
+  <data name="Settings.TrashFolderMissing" xml:space="preserve"><value>Этой папки сейчас нет, поэтому песни попадают в корзину системы, пока она не появится.</value><comment>Shown when the Trash folder set is not on disk (SettingsView.axaml)</comment></data>
+  <data name="Settings.ArtworkClick" xml:space="preserve"><value>Щелчок по обложке</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>Что открывает щелчок по обложке песни в плеере-острове.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Мини-плеер</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.LyricsPage" xml:space="preserve"><value>Страница текста</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.FullScreenLyrics" xml:space="preserve"><value>Текст на весь экран</value><comment>Clicking the artwork choice: lyrics page with the window in full screen (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClickLyricsHiddenHint" xml:space="preserve"><value>Кнопка текста скрыта. Выберите «Страница текста» или «Текст на весь экран», чтобы открывать текст из острова, или используйте сочетание клавиш.</value><comment>Shown when the lyrics button is off and the artwork opens the mini player (SettingsView.axaml)</comment></data>
   <data name="Settings.IdleQueuePill" xml:space="preserve"><value>Капсула очереди в простое</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Когда ничего не играет, вместо плеера показывать небольшую капсулу «Ничего не играет · Очередь».</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Ширина островка плеера</value><comment>Text in SettingsView.axaml</comment></data>
@@ -388,6 +429,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Пропетые слова плавно поднимаются, а протяжные ноты светятся, как в Apple Music. Если выключено, текст с синхронизацией по словам остаётся неподвижным.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Центрировать плеер, если у песни нет текста</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Если у песни нет текста или это инструментал, страница текста переносит обложку, сведения о песне и кнопки в центр.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Фон под боковой панелью</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Фон страницы текста (обложка, плавный фон, видео или цвет) доходит до края окна, а боковая панель лежит поверх него.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Волновая форма в полосе прогресса</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Показывать волновую форму песни в полосе прогресса на странице текста; нажмите или перетащите, чтобы перемотать. Она вычисляется в фоне для текущей и следующих песен и затем запоминается.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>Показывать переводы</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Показывать перевод из файла TTML под каждой строкой.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>Показывать транслитерацию</value><comment>Text in SettingsView.axaml</comment></data>
@@ -768,6 +813,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
 
   <!-- ArtworkViewerDialog.axaml -->
   <data name="ArtworkViewer.Title" xml:space="preserve"><value>Обложка альбома</value><comment>Title of ArtworkViewerDialog.axaml (the full-size album cover)</comment></data>
+  <data name="ArtworkViewer.PauseAnimated" xml:space="preserve"><value>Pause animated cover</value><comment>ArtworkViewerDialog.axaml: button that shows the still cover instead of the animated one</comment></data>
+  <data name="ArtworkViewer.PlayAnimated" xml:space="preserve"><value>Play animated cover</value><comment>ArtworkViewerDialog.axaml: button that plays the album's animated cover</comment></data>
 
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve"><value>Слушать</value><comment>Header in ArtistDetailView.axaml</comment></data>
@@ -1813,6 +1860,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.ShuffleTip" xml:space="preserve"><value>Перемешать</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.EqualizerTip" xml:space="preserve"><value>Эквалайзер вкл./выкл.</value><comment>ToolTip.Tip of the island EQ button (GitHub #94)</comment></data>
   <data name="PlaybackBar.MiniPlayerTip" xml:space="preserve"><value>Мини-плеер</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.FullScreenLyricsTip" xml:space="preserve"><value>Текст на весь экран</value><comment>Island artwork tooltip when it opens full-screen lyrics (PlayerViewModel.IslandArtworkTip)</comment></data>
+  <data name="PlaybackBar.QuickPlaylistTip" xml:space="preserve"><value>Быстро добавить в плейлист</value><comment>ToolTip.Tip and accessible name of the island Quick Add to Playlist button (GitHub #186)</comment></data>
+  <data name="PlaybackBar.ChooseQuickPlaylists" xml:space="preserve"><value>Выбрать быстрые плейлисты…</value><comment>Quick playlist menu row when none are picked: opens Settings &gt; Player (GitHub #186)</comment></data>
+  <data name="PlaybackBar.MoveToTip" xml:space="preserve"><value>Переместить в {0}</value><comment>ToolTip.Tip and accessible name of the island Move to Trash button; {0} = Trash folder name, or RemoveFromLibrary.RecycleBin / Trash</comment></data>
+  <data name="PlaybackBar.MovedTo" xml:space="preserve"><value>Перемещено в {0}</value><comment>Pill after the island Move to Trash button; {0} = Trash folder name, or RemoveFromLibrary.RecycleBin / Trash</comment></data>
+  <data name="PlaybackBar.CouldNotMove" xml:space="preserve"><value>Не удалось переместить в {0}</value><comment>Pill when the island Move to Trash button could not move the file; {0} = as in MovedTo</comment></data>
+  <data name="PlaybackBar.AddedToPlaylist" xml:space="preserve"><value>Добавлено в «{0}»</value><comment>Pill after a quick playlist add; {0} = playlist name</comment></data>
+  <data name="PlaybackBar.AlreadyInPlaylist" xml:space="preserve"><value>Уже в «{0}»</value><comment>Pill when the song is in the quick playlist already; {0} = playlist name</comment></data>
   <data name="PlaybackBar.ViewAlbumTip" xml:space="preserve"><value>Перейти к альбому</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve"><value>Ненормативная лексика</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve"><value>Перейти к исполнителю</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
@@ -2506,6 +2561,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
   <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Также улучшать обычный или построчный текст</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Снова искать для песен, уже проверенных раньше</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Проверить найденное перед сохранением</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
+  <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Сохранить выбранное ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.ReviewReady" xml:space="preserve"><value>Найден текст лучше для {0} песни. Снимите отметки с ненужного и сохраните.|Найден текст лучше для {0} песен. Снимите отметки с ненужного и сохраните.|Найден текст лучше для {0} песен. Снимите отметки с ненужного и сохраните.</value><comment>Status after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindWord" xml:space="preserve"><value>По словам</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindLine" xml:space="preserve"><value>По строкам</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Обычный</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>не сохранено</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
+  <data name="BulkLyrics.Saving" xml:space="preserve"><value>Сохранение…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Найти тексты…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Остановить</value><comment>Button: stops a bulk run</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value><comment>Dialog title (window)</comment></data>
@@ -2548,6 +2612,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.HeadphoneSurround" xml:space="preserve"><value>Объёмный звук в наушниках</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Превращает файлы 5.1 и 7.1 в пространственный звук для наушников вместо плоского стереомикса. Стереозаписи не меняются.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Перезапустите Noctis, чтобы применить изменение.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutput" xml:space="preserve"><value>Многоканальный вывод</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Воспроизводит 5.1 и 7.1 через все колонки. Не действует при объёмном звуке в наушниках.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputRestart" xml:space="preserve"><value>Перезапустите Noctis, чтобы применить изменение.</value><comment>Shown under Multichannel Output after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Аккаунты и синхронизация устройств управляются в разделе «Аккаунт и синхронизация».</value><comment>Integrations → Noctis Server card footer</comment></data>
   <data name="Server.OpenAccountSync" xml:space="preserve"><value>Открыть «Аккаунт и синхронизация»</value><comment>Integrations → Noctis Server card button</comment></data>
@@ -2839,6 +2906,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Когда экран текста открыт для песни без текста, искать его в интернете и сохранять найденное. Уже имеющийся у песни текст никогда не заменяется.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>Предпочтительный тип текста</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Что Noctis сохраняет, когда сам выбирает текст из интернета.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>Улучшать обычные тексты</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Если у песни есть только обычный текст, ищет синхронизированный текст выбранного типа. Если ничего не найдено, обычный текст остаётся.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Искать тексты для новых песен</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Ищет тексты в фоне для песен, добавленных в медиатеку. Песни с синхронизированным текстом не трогаются.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>По словам (лучшее из доступного)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>По строкам</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Обычный текст</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -3117,7 +3188,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 мин</value><comment>Songs page top bar summary</comment></data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} мин</value><comment>Songs page top bar summary</comment></data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Импорт числа прослушиваний</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
-  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Перенести число прослушиваний в Noctis. Ничего не отправляется обратно.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
+  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Нажмите «Импорт», чтобы перенести прослушивания из вашей истории в счётчики Noctis. Ничего не отправляется обратно.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
   <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Импорт</value><comment>Settings › Integrations: starts the play count import</comment></data>
   <data name="Settings.PlayCountImport.Cancel" xml:space="preserve"><value>Отмена</value><comment>Settings › Integrations: stops a running play count import</comment></data>
   <data name="Settings.PlayCountImport.ModeName" xml:space="preserve"><value>Если счётчики различаются</value><comment>Screen-reader name of the play count import mode list</comment></data>
@@ -3134,6 +3205,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>История прослушиваний {0} скрыта.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Не удалось связаться с {0}. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} прислал непонятный ответ. Попробуйте позже.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Sync.Title" xml:space="preserve"><value>Синхронизировать число прослушиваний</value><comment>Settings › Integrations, under Last.fm / ListenBrainz: background play count sync toggle (GitHub #160)</comment></data>
+  <data name="Settings.PlayCountImport.Sync.Line" xml:space="preserve"><value>Новые прослушивания переносятся в фоне при запуске Noctis.</value><comment>Settings › Integrations: what Keep Play Counts in Sync does</comment></data>
+  <data name="Settings.PlayCountImport.Synced" xml:space="preserve"><value>Синхронизировано. Новых прослушиваний: {0} · обновлено песен: {1}</value><comment>Background play count sync summary; {0} = new plays read since the last sync, {1} = songs changed</comment></data>
   <data name="Features.Section" xml:space="preserve"><value>Встроенные функции</value></data>
   <data name="Features.SectionLine" xml:space="preserve"><value>Часть Noctis, включены с самого начала — как плагины, которые можно отключить. После повторного включения всё возвращается как было.</value></data>
   <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Мини-плеер</value></data>
@@ -3165,6 +3239,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Размер кэша</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>Когда кэш заполнен, старые обложки удаляются.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>Использовано {0} из {1}</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Animated Artwork Quality</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
+  <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>For covers found automatically. 2160p looks sharper but each cover is about 3× the size, so the cache fills sooner. Albums without a 2160p cover get 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>
+  <data name="Settings.AnimArtQuality2160" xml:space="preserve"><value>2160p (Max)</value><comment>Animated Artwork Quality option</comment></data>
+  <data name="Metadata.CancelDownload" xml:space="preserve"><value>Cancel download</value><comment>Edit Info artwork chooser: the download bar's Cancel button (accessible name and tooltip)</comment></data>
   <data name="Settings.DataFolder" xml:space="preserve"><value>Папка данных</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderHint" xml:space="preserve"><value>Здесь Noctis хранит библиотеку, обложки и кэш. Перенесите на другой диск, чтобы освободить место.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderChange" xml:space="preserve"><value>Изменить папку</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
@@ -3214,7 +3292,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Cancel" xml:space="preserve"><value>Отмена</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Синхронизировать</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Скачать всё</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Все песни с компьютера будут храниться на этом телефоне и играть без подключения.</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Хранить все песни на телефоне для прослушивания без сети</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>Скачанные</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>Удалить загрузки</value></data>
@@ -3256,13 +3334,19 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Поиск в плейлистах</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Плейлистов пока нет. Нажмите и удерживайте песню, чтобы создать первый.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Плейлисты не найдены</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Поиск плейлистов</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Сортировка плейлистов</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Новый плейлист</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Создать</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Воспроизвести далее</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Добавить в очередь</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Добавить перед текущей песней</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Добавлено перед текущей песней</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Перейти к альбому</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Перейти к исполнителю</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Переименовать</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Сменить обложку</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Удалить обложку</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Этот файл не является изображением, которое можно использовать как обложку.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Удалить из плейлиста</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Удалить плейлист</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Добавить папку…</value></data>
@@ -3272,6 +3356,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Далее</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Очистить</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Дальше ничего нет</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>История</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Скрыть</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Показать</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Повтор</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Здесь пока пусто</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Поиск</value></data>
@@ -3300,7 +3387,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Счётчики и «Недавно прослушанные» совпадают на обоих</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>Очистить историю прослушиваний</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Очистить историю прослушиваний…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Удаляет прослушивания на этом телефоне. Уже отправленные в Last.fm останутся там.</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Прослушивания, уже отправленные в Last.fm, останутся там</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>Этот телефон</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Компьютер</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Сервисы</value></data>
@@ -3320,6 +3407,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Обложка</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Винил</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Фон плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Яркость фона плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Темнее или светлее цвета за экраном воспроизведения</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Папки с музыкой</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Загрузки</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Прослушивание</value></data>
@@ -3344,38 +3434,42 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Доступ потерян. Добавьте эту папку снова, чтобы слушать её песни.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>Недоступна. Подключите хранилище и пересканируйте.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>Папок с музыкой пока нет</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Ваша медиатека на этом телефоне — это музыка в этих папках.</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Ваша медиатека — это музыка в этих папках</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>Добавить папку</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Сканировать при запуске</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Ищет новые песни в этих папках при каждом запуске Noctis.</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Ищет новые песни при каждом запуске Noctis</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Цвета альбомов</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Цвет страниц из обложки</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Страницы альбомов и исполнителей окрашиваются в глубокий оттенок цвета обложки с белым текстом. Если выключено, используется обычная светлая или тёмная тема.</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Страницы альбомов и исполнителей берут цвет обложки</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>Цвет прогресса</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>Линия прогресса</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>«Цвет прогресса» заполняет панель плеера цветом обложки по ходу песни. «Линия прогресса» рисует тонкую линию вдоль её нижнего края. Если оба выключены, панель — просто стекло.</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Заливка панели или тонкая линия во время песни</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Скачивать только по Wi‑Fi</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Песни с компьютера скачиваются только по Wi‑Fi, никогда через мобильный интернет. На потоковое воспроизведение это не влияет.</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Загрузки ждут Wi-Fi а стриминг работает</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Плавное движение</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>До 120 Гц</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Экран обновляется до 120 раз в секунду на телефонах, которые это поддерживают, — прокрутка и анимация становятся плавнее. Выключите, чтобы оставить 60 Гц и сэкономить заряд.</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Плавнее прокрутка на экранах 120 Гц но больше расход батареи</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Вкладка Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Выбранная вкладка остаётся прозрачным стеклом</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Прослушанные песни в очереди</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Прослушанные песни остаются над текущей</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Удалённые загрузки остаются на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Сам Noctis распространяется по лицензии MIT.</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Они останутся на компьютере и будут стримиться</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Сам Noctis распространяется по лицензии MIT</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Показывать переводы</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Показывать транслитерацию</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Показывать бэк-вокал</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Показывается под строкой мелким шрифтом, если он есть в тексте песни.</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Мелкий текст под строкой если он есть в тексте песни</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Размер текста</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Размер текста песни</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>Мин. непрозрачность строк</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>Минимальная непрозрачность строк</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Каждая строка остаётся слегка видимой, и к любой можно перейти нажатием. При 0% строки вдали от текущей скрываются.</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Насколько видны строки далеко от текущей</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Объединять разбитые слова</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Сохраняет слова целыми, когда текст TTML разбивает их на слоги.</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Сохраняет слова целыми в текстах TTML</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Искать тексты в интернете</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Если у песни нет файла с текстом или текста в тегах, Noctis ищет его в LRCLIB по названию, исполнителю и длительности, как и приложение для компьютера. Найденные тексты сохраняются на телефоне.</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Ищет недостающие тексты на LRCLIB и сохраняет их</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>Показать вкладки</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>Поиск в этом списке</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} песня|{0} песни|{0} песен</value></data>
@@ -3452,7 +3546,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Предпросмотр · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Название песни</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Включён режим энергосбережения, поэтому цвета неподвижны.</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Движение расходует немного больше заряда. Оно приостанавливается в режиме энергосбережения.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Тратит чуть больше батареи и замирает в режиме энергосбережения</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Всегда</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 год</value></data>
@@ -3486,8 +3580,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Открытая бесплатная статистика прослушиваний</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>На вашем компьютере</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Настройте на компьютере</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Прослушивание засчитывается после половины песни или 4 минут. Прослушивания без сети ждут здесь до следующей синхронизации.</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Прослушивание засчитывается после половины песни или 4 минут. Прослушивания без сети ждут здесь, пока телефон снова не подключится к интернету.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Засчитывается после половины песни или 4 минут а офлайн-прослушивания уходят при следующей синхронизации</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Засчитывается после половины песни или 4 минут а офлайн-прослушивания уходят когда вы снова в сети</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Не удалось связаться с Last.fm. Повторите попытку.</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Разрешите Noctis в Last.fm</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Войдите в Last.fm, нажмите «Allow», затем вернитесь сюда и нажмите «Готово».</value></data>
@@ -3531,6 +3625,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Индиго</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Орхидея</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Розовый</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Персиковый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Лаймовый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Лесной</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Мятный</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Небесный</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Сиреневый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Серебристый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Сланцевый</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Как обложка</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Свой</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>Как в системе</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Светлая</value></data>
@@ -3540,11 +3643,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Полночь</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Как в системе, {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Как на устройстве</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis светлый, когда телефон в светлом режиме, и «{0}», когда в тёмном.</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Светлая в светлом режиме и {0} в тёмном</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Светлая и тёмные</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Цветная тема окрашивает страницы, карточки и стекло и сочетается с одноимённым фоном.</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Цветные темы окрашивают всё приложение</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Как в теме</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>У цветных тем свой акцентный цвет. Выбор цвета ниже отключает этот переключатель.</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Выбор цвета ниже выключает это</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>Удалить «{0}»? Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>Удалить «{0}»?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
@@ -3563,8 +3666,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>Оба вкл.</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Переводы вкл.</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Транслитерация вкл.</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Когда вы откроете Noctis на {0}, он предложит продолжить с песни, которая играла здесь.</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Когда вы откроете Noctis на компьютере, он предложит продолжить с песни, которая играла здесь.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Продолжить с этой песни при открытии Noctis на {0}</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Продолжить с этой песни при открытии Noctis на компьютере</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Только Wi‑Fi</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Любая сеть</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>Удалить все загрузки?</value></data>
@@ -3572,10 +3675,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Удалить загрузки</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} плейлист|{0} плейлиста|{0} плейлистов</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Настройки обновлены: сверху профиль и статистика медиатеки, затем «Оформление», «Медиатека», «Прослушивание», «Помощь» и «О приложении».</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>У загрузок теперь своя страница с параметром «Скачивать только по Wi‑Fi» (включён по умолчанию) и кнопкой «Удалить все загрузки».</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>В разделе «Лицензии открытого ПО» перечислено, на чём построен Noctis.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis говорит на вашем языке: выберите его в «Настройки › Язык» или используйте язык телефона.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>У акцента 17 цветов, а «Цвет обложки» следует за играющей обложкой.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Таймер сна на экране воспроизведения; «Отложить на месяц» и «Скрыть песню» в меню песни.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Создайте плейлист кнопкой + и задайте ему свою обложку; обложки синхронизируются с компьютером.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>«Добавить перед текущей» в меню песни, а прослушанные песни могут оставаться в очереди.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Песня на телефоне и та же песня с компьютера показываются один раз.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Плавнее прокрутка, быстрее страницы, а в альбомной ориентации текст рядом с обложкой.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Встроенный декодер ALAC, собранный из неизменённых исходников FFmpeg 6.0 без GPL и несвободных частей: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Воспроизведение, медиасеанс и JNI-обёртка декодера.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Фреймворк пользовательского интерфейса.</value></data>
@@ -3671,17 +3776,18 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Неизвестный трек</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD-карта</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Плейлисты</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Noctis использует язык телефона, если вы не выберете другой здесь. Переводы делает сообщество.</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Как на телефоне если не выбрать другой</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Сканирование… {0} файл|Сканирование… {0} файла|Сканирование… {0} файлов</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Ещё для «{0}»</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Акцентный цвет окрашивает кнопки, переключатели и выделение.</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} окрашивает кнопки и выделения</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Берёт цвет играющей обложки или {0} если её нет</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Занято, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Показывать в строках песен</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Выкл.</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Оценки</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Избранное</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>В конце строки песни — её звёзды или сердечко для избранного.</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Звёзды или сердце в конце каждой строки песни</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Оценить</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Оценка {0} из 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Сбросить оценку</value></data>
@@ -3707,7 +3813,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Не удалось прочитать «{0}»</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Открыть плейлист</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Находить всю музыку автоматически</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Добавляет все песни на этом телефоне и его SD-карте без выбора папок. Файлы текстов (.lrc, .ttml) рядом с песней читаются только в папках, добавленных ниже.</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Добавляет все песни телефона и SD-карты но файлы текстов читаются только из папок ниже</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Вся музыка</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis не получил доступ к музыке на этом телефоне. Чтобы включить функцию, разрешите «Музыка и аудио» в настройках Noctis.</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis больше не может читать музыку на этом телефоне. Песни остаются в списке, но не будут воспроизводиться, пока вы не разрешите «Музыка и аудио» в настройках Noctis.</value></data>
@@ -3824,6 +3930,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ConnectedAs" xml:space="preserve"><value>Подключено как {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ConnectedTo" xml:space="preserve"><value>Подключено к {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.WindowsOnly" xml:space="preserve"><value>Доступно только в Windows.</value><comment>Settings status line</comment></data>
+  <data name="Settings.Scrobble.OtherComputer" xml:space="preserve"><value>Вход выполнен на другом компьютере. Подключитесь, чтобы скробблить и отсюда.</value><comment>Settings › Scrobbling card (Last.fm / ListenBrainz): the saved sign-in belongs to another computer or Windows user and can't be read here (GitHub #197)</comment></data>
+  <data name="Settings.Scrobble.OneWaiting" xml:space="preserve"><value>1 прослушивание ждёт отправки.</value><comment>Settings › Scrobbling card: one play queued while offline or signed out, sent once the service can be reached</comment></data>
+  <data name="Settings.Scrobble.Waiting" xml:space="preserve"><value>Ждут отправки: {0:N0}.</value><comment>Settings › Scrobbling card: plays queued while offline or signed out; {0} is how many</comment></data>
   <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis удалён из списка «Открыть с помощью».</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Зарегистрировано. Выберите Noctis в «Параметры → Приложения → Приложения по умолчанию» или щёлкните песню правой кнопкой → «Открыть с помощью».</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Не удалось обновить типы файлов: {0}</value><comment>Settings status line</comment></data>
@@ -3961,7 +4070,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>В ваших топ-исполнителях</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Открыть {0} на Last.fm</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Миксы и рекомендации</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>На главной — миксы из ваших песен и исполнители для открытия по вашим чартам Last.fm. Используется только имя аккаунта; ничего не отправляется.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>На главной миксы из ваших чартов Last.fm и ничего не отправляется обратно</value></data>
   <data name="GroupAlbums.Menu" xml:space="preserve"><value>Объединить в один альбом</value><comment>Album menu row (GitHub #178)</comment></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Объединить в один альбом</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Альбом</value><comment>Field label</comment></data>
@@ -3970,4 +4079,50 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Объединить</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Других альбомов с таким названием нет. В сетке альбомов выделите нужные альбомы щелчком с Ctrl, затем щёлкните правой кнопкой по одному из них.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Объединено в Noctis, но не удалось сохранить файлов: {0} (только для чтения или открыты в другом приложении). Если такой файл изменится, при следующем сканировании он вернётся в прежний альбом.</value><comment>{0} file count; list of file names follows</comment></data>
+  <!-- LyricShareDialog Lyrics Page -->
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>Отложить на месяц</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>Вернуть</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Отложено на месяц</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Откладывание отменено</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Таймер сна</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} минут</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 час</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>В конце текущей песни</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Выключить таймер</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Пауза через {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Пауза после этой песни</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Скрыть песню</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Скрыто. Вернуть можно в Настройки › Медиатека › Скрытые.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Скрытые</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Скрытые песни остаются на телефоне но не видны в медиатеке и миксах</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Ничего не скрыто</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Показать</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Показать {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Папка</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Сейчас нет на телефоне</value></data>
+  <data name="Menu.OtherVersions" xml:space="preserve"><value>Другие версии</value></data>
+  <data name="Menu.OriginalVersion" xml:space="preserve"><value>Оригинал</value></data>
+  <data name="Search.LyricsTip" xml:space="preserve"><value>Искать в текстах песен</value></data>
+  <data name="Search.LyricsIncludeOn" xml:space="preserve"><value>Поиск по названиям, исполнителям, альбомам и текстам</value></data>
+  <data name="Search.LyricsOnlyOn" xml:space="preserve"><value>Поиск только по текстам песен</value></data>
+  <data name="Search.LyricsOff" xml:space="preserve"><value>Не искать в текстах</value></data>
+  <data name="Search.LyricsInclude" xml:space="preserve"><value>Включая тексты песен</value></data>
+  <data name="Search.LyricsOnly" xml:space="preserve"><value>Только тексты песен</value></data>
 </root>

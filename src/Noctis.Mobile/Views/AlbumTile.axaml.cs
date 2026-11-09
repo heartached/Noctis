@@ -7,5 +7,6 @@ public partial class AlbumTile : UserControl
     public AlbumTile()
     {
         InitializeComponent();
+        Services.FrameStallMonitor.Count("album tiles built");
     }
 }

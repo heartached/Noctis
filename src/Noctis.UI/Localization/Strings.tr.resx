@@ -2013,7 +2013,7 @@
   <data name="Mobile.Cancel" xml:space="preserve"><value>Vazgeç</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Şimdi eşitle</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Tümünü indir</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Bilgisayarındaki her şarkıyı bağlantı olmadan çalmak için bu telefonda tutar.</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Çevrimdışı dinlemek için her şarkıyı bu telefonda tut</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>İndirilenler</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Tüm indirilenleri kaldır</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>İndirilenleri kaldır</value></data>
@@ -2055,13 +2055,19 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Çalma listelerinde ara</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Henüz çalma listesi yok. Başlatmak için bir şarkıya uzun bas.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Eşleşen çalma listesi yok</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Çalma listelerini ara</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Çalma listelerini sırala</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Yeni Çalma Listesi</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Oluştur</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Sonra Çal</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Kuyruğa Ekle</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Çalan şarkıdan önce ekle</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Çalan şarkıdan önce eklendi</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Albüme Git</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Sanatçıya Git</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Yeniden Adlandır</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Kapağı Değiştir</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Kapağı Kaldır</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Bu dosya kapak olarak kullanılabilecek bir resim değil.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Çalma Listesinden Kaldır</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Çalma Listesini Sil</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Klasör Ekle…</value></data>
@@ -2071,6 +2077,9 @@
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Sıradaki</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Temizle</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Sırada bir şey yok</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>Geçmiş</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Gizle</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Göster</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Yinele</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Burada henüz bir şey yok</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Ara</value></data>
@@ -2099,7 +2108,7 @@
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Çalma sayıları ve Son Çalınanlar her ikisinde de aynı olur</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>Dinleme Geçmişini Temizle</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Dinleme Geçmişini Temizle…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Bu telefondaki çalmaları temizler. Last.fm’e zaten gönderilenler orada kalır.</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Last.fm'e gönderilmiş dinlemeler orada kalır</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>Bu telefon</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Bilgisayar</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Servisler</value></data>
@@ -2119,6 +2128,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Kapak</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Plak</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Çalan Ekran Arka Planı</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Çalan ekran arka plan parlaklığı</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Çalan ekranının arkasında daha koyu ya da açık renkler</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Müzik Klasörleri</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>İndirilenler</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Dinleme</value></data>
@@ -2143,38 +2155,42 @@
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Erişim kayboldu. Şarkılarını çalmak için bu klasörü yeniden ekle.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>Kullanılamıyor. Depolama birimini yeniden bağla, sonra yeniden tara.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>Henüz Müzik Klasörü Yok</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Bu telefondaki kitaplığın, bu klasörlerdeki müziklerden oluşur.</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Kitaplığınız bu klasörlerdeki müziktir</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>Klasör Ekle</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Açılışta Tara</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctis her açıldığında bu klasörlerde yeni şarkı arar.</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctis her açıldığında yeni şarkı arar</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Albüm Renkleri</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Sayfaları Kapağa Göre Renklendir</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Albüm ve sanatçı sayfaları, kapak renginin koyu bir tonunu ve beyaz metin alır. Kapalıyken düz Açık veya Koyu temayı kullanırlar.</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Albüm ve sanatçı sayfaları kapağın rengini alır</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>İlerleme Rengi</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>İlerleme Çizgisi</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>İlerleme Rengi, şarkı çaldıkça oynatıcı çubuğunu kapak rengiyle doldurur. İlerleme Çizgisi, alt kenarı boyunca ince bir çizgi çizer. İkisi de kapalıyken çubuk düz camdır.</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Şarkı çalarken çubuğu doldur ya da ince bir çizgi çiz</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Yalnızca Wi-Fi ile İndir</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Bilgisayarındaki şarkılar yalnızca Wi-Fi ile indirilir, asla mobil veriyle indirilmez. Akış etkilenmez.</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>İndirmeler Wi-Fi bekler ama akış çalışmaya devam eder</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Akıcı Hareket</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>120 Hz’e kadar</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Destekleyen telefonlarda ekranın saniyede 120 kereye kadar yenilenmesini sağlar; kaydırma ve animasyonlar daha akıcı olur. Ekranı 60 Hz’de tutup pil tasarrufu yapmak için kapatın.</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz ekranlarda daha akıcı kaydırma ama daha fazla pil</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass sekme kapsülü</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Seçili sekme şeffaf cam kalır</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Kuyrukta çalınan şarkılar</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Çaldığın şarkılar çalanın üstünde kalır</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Kullanılan Alan</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Tüm İndirilenleri Kaldır</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Kaldırılan indirmeler bilgisayarında kalır ve yine akışla dinlenebilir.</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis’in kendisi MIT lisanslıdır.</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Bilgisayarınızda kalır ve akışla çalmaya devam eder</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis MIT lisanslıdır</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Çevirileri Göster</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Latin Harfli Okunuşu Göster</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Arka Vokalleri Göster</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Şarkının sözlerinde varsa, satırın altında daha küçük yazıyla gösterilir.</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Şarkı sözlerinde varsa satırın altında küçük yazı</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Metin Boyutu</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Şarkı sözü metin boyutu</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>En Düşük Satır Opaklığı</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>En düşük satır opaklığı</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Her satırı hafifçe görünür tutar, böylece herhangi bir satıra dokunup oraya atlayabilirsin. %0, geçerli satırdan uzak satırları gizler.</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Geçerli satırdan uzak satırların ne kadar görüneceği</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Bölünmüş Sözcükleri Birleştir</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML sözleri sözcükleri hecelere böldüğünde sözcükleri bütün tutar.</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML sözlerinde kelimeleri bütün tutar</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Sözleri Çevrimiçi Bul</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Bir şarkının söz dosyası veya etiketlerinde sözü yoksa, masaüstü uygulamasında olduğu gibi LRCLIB’e adı, sanatçısı ve süresiyle sorar. Bulunan sözler telefonda saklanır.</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Eksik sözleri LRCLIB'de arar ve saklar</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>Sekmeleri göster</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>Bu listede ara</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} şarkı|{0} şarkı</value></data>
@@ -2251,7 +2267,7 @@
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Önizleme · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Şarkı Adı</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Pil Tasarrufu açık, bu yüzden renkler sabit kalır.</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Hareket biraz daha fazla pil kullanır. Pil Tasarrufu açıkken duraklar.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Biraz daha fazla pil harcar ve Pil Tasarrufu'nda durur</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Süresiz</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Yıl</value></data>
@@ -2285,8 +2301,8 @@
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Açık ve ücretsiz dinleme istatistikleri</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>Bilgisayarında</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Bilgisayarında ayarla</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Bir çalma, şarkının yarısından veya 4 dakikadan sonra sayılır. Çevrimdışı çalmalar bir sonraki eşitlemeye kadar burada bekler.</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Bir çalma, şarkının yarısından veya 4 dakikadan sonra sayılır. Çevrimdışı çalmalar telefon yeniden çevrimiçi olana kadar burada bekler.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Şarkının yarısından ya da 4 dakikadan sonra sayılır ve çevrimdışı dinlemeler sonraki eşitlemede gönderilir</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Şarkının yarısından ya da 4 dakikadan sonra sayılır ve çevrimdışı dinlemeler tekrar çevrimiçi olunca gönderilir</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Last.fm’e ulaşılamadı. Yeniden dene.</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Last.fm’de Noctis’e izin ver</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Last.fm’de oturum aç, Allow’a dokun, sonra buraya dönüp Bitti’ye dokun.</value></data>
@@ -2330,6 +2346,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Çivit</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Orkide</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Gül</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Şeftali</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Limon Yeşili</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Orman</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Nane</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Gök</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Leylak</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Gümüş</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Arduvaz</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Kapakla Eşleştir</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Özel</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>Sistem</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Açık</value></data>
@@ -2339,11 +2364,11 @@
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Gece Yarısı</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Sistem, {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Cihazla Eşleştir</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Telefonunuz açık moddayken Noctis Açık, koyu moddayken {0} olur.</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Açık modda açık ve koyu modda {0}</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Açık ve Koyu</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Renkli tema sayfaları, kartları ve camı renklendirir; aynı adlı arka planla uyumludur.</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Renk temaları tüm uygulamayı renklendirir</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Temayla Eşleştir</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Renkli temaların kendi vurgu rengi vardır. Aşağıdan bir renk seçmek bunu kapatır.</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Aşağıdan bir renk seçmek bunu kapatır</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>“{0}” kaldırılsın mı? Şarkıları bu telefondaki kitaplığından çıkar. Dosyalar olduğu yerde kalır.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>“{0}” kaldırılsın mı?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Şarkıları bu telefondaki kitaplığından çıkar. Dosyalar olduğu yerde kalır.</value></data>
@@ -2362,8 +2387,8 @@
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>İkisi de açık</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Çeviriler açık</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Okunuş açık</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Noctis’i {0} üzerinde açtığında, burada çaldığın şarkıdan devam etmeyi önerir.</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Noctis’i bilgisayarında açtığında, burada çaldığın şarkıdan devam etmeyi önerir.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Noctis'i {0} üzerinde açınca bu şarkıdan devam et</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Noctis'i bilgisayarınızda açınca bu şarkıdan devam et</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Yalnızca Wi-Fi</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Tüm Ağlar</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>Tüm indirilenler kaldırılsın mı?</value></data>
@@ -2371,10 +2396,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>İndirilenleri Kaldır</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} çalma listesi|{0} çalma listesi</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Ayarlar yeniden tasarlandı: üstte profilin ve kitaplık sayıların, ardından Görünüm, Kitaplık, Dinleme, Yardım ve Hakkında.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>İndirilenler artık kendi sayfasında; Yalnızca Wi-Fi ile İndir (varsayılan olarak açık) ve Tüm İndirilenleri Kaldır burada.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>Açık Kaynak Lisansları, Noctis’in neyle yapıldığını listeler.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis senin dilini konuşuyor: Ayarlar › Dil bölümünden seç ya da telefonun dilini kullan.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Vurgu rengi 17 renk sunuyor; Kapağa Uydur çalan kapağı takip ediyor.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Çalan ekranında uyku zamanlayıcısı; şarkı menüsünde Bir Ay Ertele ve Şarkıyı Gizle.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>+ ile çalma listesi oluşturup kendi kapağını verin; kapaklar bilgisayarınızla eşitlenir.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Şarkı menüsünde Mevcuttan Önce Ekle; çalınan şarkılar kuyrukta kalabilir.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Telefonunuzdaki bir şarkı ile bilgisayarınızdaki aynı şarkı tek kez görünür.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Daha akıcı kaydırma, daha hızlı sayfalar ve yatay modda kapağın yanında şarkı sözleri.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Paketle gelen ALAC kod çözücü; değiştirilmemiş FFmpeg 6.0 kaynağından, GPL ve özgür olmayan bölümler olmadan derlenmiştir: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Çalma, medya oturumu ve kod çözücünün JNI sarmalayıcısı.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Kullanıcı arayüzü çatısı.</value></data>
@@ -2470,17 +2497,18 @@
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Bilinmeyen parça</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD kart</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Listeler</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Burada bir dil seçmediğin sürece Noctis telefonunun dilini kullanır. Çeviriler topluluk tarafından yapılır.</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Siz seçmedikçe telefonun dilini kullanır</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Taranıyor… {0} dosya|Taranıyor… {0} dosya</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0} için diğer seçenekler</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} klasörünü kaldır</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Vurgu rengi düğmeleri, anahtarları ve vurguları renklendirir.</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} düğmeleri ve vurguları renklendirir</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Çalan kapağın rengini ya da kapak yoksa {0} rengini alır</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Kullanılan Alan, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Şarkı satırlarında göster</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Kapalı</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Puanlar</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoriler</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Şarkı satırları şarkının yıldızlarıyla ya da favoriler için bir kalple biter.</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Her şarkı satırının sonunda yıldızlar ya da kalp</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Puanla</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>5 üzerinden {0} puan ver</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Puanı temizle</value></data>
@@ -2506,7 +2534,7 @@
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>“{0}” okunamadı</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Çalma Listesini Aç</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Tüm müziği otomatik bul</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Klasör seçmeden bu telefondaki ve SD kartındaki tüm şarkıları ekler. Bir şarkının yanındaki şarkı sözü dosyaları (.lrc, .ttml) yalnızca aşağıda eklediğiniz klasörlerden okunur.</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Telefondaki ve SD karttaki her şarkıyı ekler ama söz dosyaları yalnızca aşağıdaki klasörlerden okunur</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Tüm müzik</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis'in bu telefondaki müziği okumasına izin verilmedi. Açmak için Noctis ayarlarında Müzik ve ses iznini verin.</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis artık bu telefondaki müziği okuyamıyor. Şarkıları listede kalır ancak Noctis ayarlarında Müzik ve ses iznini verene kadar çalınmaz.</value></data>
@@ -2736,5 +2764,43 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>En çok dinlediğin sanatçılarda</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0} öğesini Last.fm’de aç</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Miksler ve Öneriler</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Ana sayfa, Last.fm listelerinden şarkılarının mikslerini ve keşfedilecek sanatçıları gösterir. Yalnızca hesap adın kullanılır; hiçbir şey geri gönderilmez.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Ana Sayfa Last.fm listelerinizden karışımlar alır ve geri hiçbir şey gönderilmez</value></data>
+  <!-- LyricShareDialog Lyrics Page -->
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>Bir ay ertele</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>Ertelemeyi kaldır</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Bir ay ertelendi</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Erteleme kaldırıldı</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Uyku zamanlayıcısı</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} dakika</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 saat</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Çalan şarkının sonunda</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Zamanlayıcıyı kapat</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} sonra duraklatılır</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Bu şarkıdan sonra duraklatılır</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Şarkıyı gizle</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Gizlendi. Ayarlar › Kitaplık › Gizlenenler'den geri getirebilirsiniz.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Gizlenenler</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Gizli şarkılar telefonda kalır ama kitaplığınızda ve karışımlarda görünmez</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Gizlenen bir şey yok</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Göster</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} göster</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Klasör</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Şu an bu telefonda yok</value></data>
 </root>

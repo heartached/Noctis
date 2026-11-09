@@ -116,7 +116,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.ClickEditNameTip" xml:space="preserve"><value>Click to edit your name</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.SearchSettings" xml:space="preserve"><value>Search settings</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.OpenAudioFilesNoctis" xml:space="preserve"><value>Open Audio Files with Noctis</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve"><value>Add Noctis to Windows' Open-with list and Default apps for the formats it plays.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve"><value>Lists Noctis under Open with and Default apps for the formats it plays.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Register" xml:space="preserve"><value>Register</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Unregister" xml:space="preserve"><value>Unregister</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StartupWindowBehaviour" xml:space="preserve"><value>Startup &amp; Window Behaviour</value><comment>Text in SettingsView.axaml</comment></data>
@@ -142,10 +142,31 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.PinSidebarOpenAt" xml:space="preserve"><value>Pin the sidebar open at all times.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HoverExpandSidebar" xml:space="preserve"><value>Hover to expand sidebar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SlideSidebarOpenHover" xml:space="preserve"><value>Slide the sidebar open on hover.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPage" xml:space="preserve"><value>Start page</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>The page Noctis opens on. A hidden page falls back to Home.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPages" xml:space="preserve"><value>Pages</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Show, hide and reorder the pages in the sidebar. Settings always shows.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Move up</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Move down</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Collapse Album Editions</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve"><value>One tile per release. Other editions appear under &quot;Other Versions&quot;.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumGrouping" xml:space="preserve"><value>Group Untagged Albums</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
+  <data name="Settings.AlbumGroupingHint" xml:space="preserve"><value>Songs with no Album Artist tag that share an album name in one folder show as one album.</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
+  <data name="Settings.AlbumGroupingWriteTags" xml:space="preserve"><value>Save Grouping to Files</value><comment>Text in SettingsView.axaml (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingWriteTagsHint" xml:space="preserve"><value>Saves the grouping into the files so other players show one album too. This changes your files.</value><comment>Text in SettingsView.axaml (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingGrouping" xml:space="preserve"><value>Grouping albums…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingSplitting" xml:space="preserve"><value>Splitting grouped albums…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingMoved" xml:space="preserve"><value>{0:N0} songs moved to another album.</value><comment>Settings status line (GitHub #193/#190); {0} song count</comment></data>
+  <data name="Settings.AlbumGroupingUpToDate" xml:space="preserve"><value>Albums already up to date.</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingFailed" xml:space="preserve"><value>Albums could not be updated.</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingWriting" xml:space="preserve"><value>Saving album artists to files…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
+  <data name="Settings.AlbumGroupingWritten" xml:space="preserve"><value>Album artist saved to {0:N0} file(s).</value><comment>Settings status line (GitHub #193/#190); {0} file count</comment></data>
+  <data name="Settings.AlbumGroupingWrittenSome" xml:space="preserve"><value>Album artist saved to {0:N0} file(s); {1:N0} could not be saved.</value><comment>Settings status line (GitHub #193/#190); {0} files written, {1} files not written</comment></data>
+  <data name="Settings.AlbumGroupingNotWritten" xml:space="preserve"><value>{0} file(s) could not be saved (missing, read-only or open in another app). They stay grouped in Noctis; turn Save Grouping to Files off and on to try again.</value><comment>{0} file count; list of file names follows (GitHub #190)</comment></data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve"><value>Merge Featured Artists From Titles</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TurnFeatXTrack" xml:space="preserve"><value>Turn &quot;(feat. X)&quot; in titles into artist credits.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowArtistsAsTagged" xml:space="preserve"><value>Show Artists as Written in the Tags</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
+  <data name="Settings.ShowArtistsAsTaggedHint" xml:space="preserve"><value>Shows artists exactly as written in the tags, like &quot;Kraak &amp; Smaak&quot; or &quot;A feat. B&quot;.</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
   <data name="Settings.GroupArtistsBy" xml:space="preserve"><value>Group Artists By</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhichTagArtistsSection" xml:space="preserve"><value>Album Artist keeps compilations together and ignores per-track features.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FirstCreditedArtistEachTip" xml:space="preserve"><value>The first credited artist of each song's Artist tag</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -155,13 +176,13 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.AlbumArtist" xml:space="preserve"><value>Album Artist</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ReleaseSAlbumArtist" xml:space="preserve"><value>Release's album artist tag</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve"><value>Artist Tag Separators</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve"><value>Text that splits one artist tag into several. Remove one to keep names like &quot;Simon &amp; Garfunkel&quot; whole.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TextSplitsOneArtist" xml:space="preserve"><value>Splits one artist tag into several. Remove one to keep names like &quot;Simon &amp; Garfunkel&quot; whole.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Reset" xml:space="preserve"><value>Reset</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.Text" xml:space="preserve"><value>&#x2715;</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.RemoveSeparatorTip" xml:space="preserve"><value>Remove separator</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.AddSeparatorEG" xml:space="preserve"><value>Add a separator, e.g. feat. or /</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.KeepNamesTogether" xml:space="preserve"><value>Keep these names together</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.KeepNamesTogetherHint" xml:space="preserve"><value>Artist names the separators never split, like &quot;Tyler, The Creator&quot; or &quot;AC/DC&quot;. Collaborations such as &quot;A, B&quot; still split.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepNamesTogetherHint" xml:space="preserve"><value>Names that never get split, like &quot;Tyler, The Creator&quot; or &quot;AC/DC&quot;.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RemoveNameTip" xml:space="preserve"><value>Remove name</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.AddArtistNameEG" xml:space="preserve"><value>Add an artist, e.g. Tyler, The Creator</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.Add" xml:space="preserve"><value>Add</value><comment>Content in SettingsView.axaml</comment></data>
@@ -176,8 +197,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.InstallRestart" xml:space="preserve"><value>Install &amp; Restart</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cancel" xml:space="preserve"><value>Cancel</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AutoInstallUpdates" xml:space="preserve"><value>Update automatically</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AutoInstallUpdatesCaption" xml:space="preserve"><value>Downloads new versions in the background and installs them the next time you open Noctis. Playback is never interrupted.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Downloads new versions in the background. Click Install &amp; Restart when you're ready to finish.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoInstallUpdatesCaption" xml:space="preserve"><value>Downloads updates in the background and installs them next time you open Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve"><value>Downloads updates in the background. Click Install &amp; Restart when ready.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Postpone" xml:space="preserve"><value>Postpone</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhatsNew" xml:space="preserve"><value>What's new</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve"><value>See recent releases</value><comment>Advanced: collapses the release history</comment></data>
@@ -223,16 +244,16 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.CreateCustomThemeTip" xml:space="preserve"><value>Create custom theme</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Custom" xml:space="preserve"><value>Custom</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AccentFollowsArtwork" xml:space="preserve"><value>Accent follows album art</value><comment>Appearance toggle in SettingsView.axaml</comment></data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve"><value>Recolour the accent from the playing cover. Your chosen accent returns when nothing is playing.</value><comment>Appearance toggle hint in SettingsView.axaml</comment></data>
+  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve"><value>Takes the accent colour from the playing cover.</value><comment>Appearance toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve"><value>Accent colour on artist and album names</value><comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment></data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve"><value>Artist, album and genre names in playlists, Songs and the player take the accent colour. Off shows them in the regular text colour.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment></data>
+  <data name="Settings.AccentTrackLinksHint" xml:space="preserve"><value>Artist, album and genre names use the accent colour.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment></data>
   <data name="Playlist.DragCount" xml:space="preserve"><value>{0} songs</value><comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>Accent Color</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PickPresetOpenPicker" xml:space="preserve"><value>Pick a preset or open the picker for any custom color.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CustomColorTip" xml:space="preserve"><value>Custom Color</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LiquidGlass" xml:space="preserve"><value>Liquid Glass</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BETA" xml:space="preserve"><value>BETA</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve"><value>Frost the window, sidebar, settings and playback bar with translucent, blurred glass surfaces.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve"><value>Gives the window, sidebar, settings and player a frosted glass look.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve"><value>Animated Artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowAnimatedCoverArt" xml:space="preserve"><value>Show animated cover art when available.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumPageColour" xml:space="preserve"><value>Album Page Colour</value><comment>Text in SettingsView.axaml</comment></data>
@@ -255,7 +276,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover Flow Layout</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>How the Cover Flow page arranges the queue's covers.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumsView" xml:space="preserve"><value>Albums View</value><comment>Settings › Player card title</comment></data>
-  <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>How the Albums page shows your albums, and how the carousel dresses each one.</value><comment>Settings › Player Albums View card subtitle</comment></data>
+  <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>How the Albums page and carousel show your albums.</value><comment>Settings › Player Albums View card subtitle</comment></data>
   <data name="Settings.CarouselCase" xml:space="preserve"><value>Carousel case</value><comment>Settings › Player Albums View card: case style row label</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>The classic row: playing cover centred, history and up next to each side</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Carousel</value><comment>Text in SettingsView.axaml</comment></data>
@@ -289,7 +310,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Playback time</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Elapsed and remaining time of the current title in the track box.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Waveform seek bar</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Show the song's waveform in the player island and mini player seek bars. It is worked out in the background for the current and next songs, then remembered.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Shows the song's waveform in the seek bar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Track Box Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowSolidTrackBox" xml:space="preserve"><value>How solid the box around the song info in the player bar is. 0% hides it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RepeatButton" xml:space="preserve"><value>Repeat</value><comment>Text in SettingsView.axaml</comment></data>
@@ -298,23 +319,43 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve"><value>A heart on the right to favorite the playing song in one click.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>Mini player</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerButtonHint" xml:space="preserve"><value>A button on the right to switch to the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButton" xml:space="preserve"><value>Lyrics button</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsButtonHint" xml:space="preserve"><value>Opens the lyrics page. Hidden, you can still open it with its shortcut or the artwork.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylistButton" xml:space="preserve"><value>Quick Add to Playlist</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylistButtonHint" xml:space="preserve"><value>Adds the playing song to one of up to three playlists you pick below.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QuickPlaylist1" xml:space="preserve"><value>Quick playlist 1</value><comment>Accessible name of the first quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylist2" xml:space="preserve"><value>Quick playlist 2</value><comment>Accessible name of the second quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylist3" xml:space="preserve"><value>Quick playlist 3</value><comment>Accessible name of the third quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
+  <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>None</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
+  <data name="Settings.TrashButton" xml:space="preserve"><value>Move to Trash</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Removes the playing song in one click. It goes to the Trash folder below, or the Recycle Bin if none is set.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashFolder" xml:space="preserve"><value>Trash folder</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
+  <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Pick a folder outside your music folders, or the next scan adds the songs back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Not set: the Recycle Bin / Trash</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
+  <data name="Settings.TrashFolderMissing" xml:space="preserve"><value>This folder isn't there, so songs go to the Recycle Bin until it's back.</value><comment>Shown when the Trash folder set is not on disk (SettingsView.axaml)</comment></data>
+  <data name="Settings.ArtworkClick" xml:space="preserve"><value>Clicking the artwork</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>What a click on the song's artwork in the player island opens.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Mini Player</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClick.FullScreenLyrics" xml:space="preserve"><value>Full Screen Lyrics</value><comment>Clicking the artwork choice: lyrics page with the window in full screen (GitHub #183, SettingsViewModel)</comment></data>
+  <data name="Settings.ArtworkClickLyricsHiddenHint" xml:space="preserve"><value>The lyrics button is hidden. Pick Lyrics Page or Full Screen Lyrics to open lyrics from here.</value><comment>Shown when the lyrics button is off and the artwork opens the mini player (SettingsView.axaml)</comment></data>
   <data name="Settings.IdleQueuePill" xml:space="preserve"><value>Idle queue pill</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>While nothing is playing, show a small "Nothing playing · Queue" pill in place of the player.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Shows a small Queue pill when nothing is playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player Island Width</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Wider gives the seek bar more room. You can also drag the island's edges. Double-click the knob to reset.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Wider gives the seek bar more room. Double-click the knob to reset.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Narrower</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Wider</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Song Progress on Taskbar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowHowFarAlong" xml:space="preserve"><value>Show song progress on the taskbar button. Amber while paused.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MediaControlsTaskbar" xml:space="preserve"><value>Media Controls on Taskbar</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.MediaControlsTaskbarDesc" xml:space="preserve"><value>Show Previous, Play/Pause, Forward and Favorite buttons when you hover the taskbar icon.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MediaControlsTaskbarDesc" xml:space="preserve"><value>Shows player buttons when you hover the taskbar icon.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AutomaticAlbumCoverSize" xml:space="preserve"><value>Automatic Album Cover Size</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumCoverSize" xml:space="preserve"><value>Album cover size</value><comment>Accessible name of the cover size slider (Smaller / Larger) in SettingsView.axaml</comment></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Five covers per row. Turn off to pick your own cover size.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Smaller</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Larger</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Flowing Lyrics Background</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>Drift moves the cover and pulses with the beat. Kawarp melts it into a slow liquid flow. Plugin styles appear here too.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve"><value>Drift moves the cover with the beat. Kawarp turns it into a slow liquid flow.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AudioVisualizer" xml:space="preserve"><value>Audio Visualizer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>A live spectrum along the bottom of the lyrics page.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork colour</value><comment>Text in SettingsView.axaml</comment></data>
@@ -381,23 +422,27 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Fullscreen Lyrics Focus</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Dim every line except the current one and its neighbours.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>Minimum Line Opacity</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Keep every lyric line faintly visible so you can click any line to jump there. 0% hides lines far from the current one.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Keeps every line faintly visible so you can click any of them. 0% hides far lines.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Join Split Words</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Keep words whole when TTML lyrics split them into syllables.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Glow &amp; Lift</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Sung words float up and long held notes glow, like Apple Music. Off keeps word-synced lyrics still.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Sung words float up and long notes glow.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Center the Player When a Song Has No Lyrics</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>When a song has no lyrics or is instrumental, the lyrics page moves the artwork, song info and controls to the middle.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Moves the artwork and controls to the middle when a song has no lyrics.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Background Behind the Sidebar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Lets the lyrics background reach behind the sidebar.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Waveform Progress Bar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Shows the song's waveform in the lyrics page's progress bar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>Show Translations</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Show the translation a TTML lyrics file carries under each line.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>Show Romanization</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Show the romanized lyrics a TTML file carries (romaji, pinyin…) under each line.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Shows romanized lyrics (romaji, pinyin) under each line when the file has them.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>Show Background Vocals</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Show background vocals and adlibs in a smaller row under the line.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Glass Opacity</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the playback bar, queue and menus look. The queue and menus use it when Liquid Glass is on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>How solid the player, queue and menus look.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Background Blur</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
-  <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>How blurred the app looks behind pop-ups like the metadata editor and behind Settings. Slide all the way left to turn it off.</value><comment>Settings slider description (Background Blur)</comment></data>
+  <data name="Settings.BackgroundBlurHint" xml:space="preserve"><value>How much the app blurs behind pop-ups and Settings. All the way left turns it off.</value><comment>Settings slider description (Background Blur)</comment></data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve"><value>Off</value><comment>Background Blur slider readout at 0 (blur turned off)</comment></data>
   <data name="Settings.UiScale" xml:space="preserve"><value>Interface Size</value><comment>Settings heading (Appearance): scale of the whole interface, GitHub #145</comment></data>
   <data name="Settings.UiScaleHint" xml:space="preserve"><value>Makes text, buttons and icons larger or smaller.</value><comment>Settings description (Interface Size)</comment></data>
@@ -421,10 +466,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.SoundCheck" xml:space="preserve"><value>Sound Check</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepSongVolumeAt" xml:space="preserve"><value>Keep song volume at a consistent level.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayPauseFade" xml:space="preserve"><value>Fade on play and pause</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlayPauseFadeHint" xml:space="preserve"><value>Fade the sound out when pausing and back in when resuming instead of stopping dead.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayPauseFadeHint" xml:space="preserve"><value>Fades out when you pause and back in when you play.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FadeDuration" xml:space="preserve"><value>Fade duration</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayCountAfter" xml:space="preserve"><value>Count a play after</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlayCountAfterHint" xml:space="preserve"><value>How much of a song you need to hear before it counts as played.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlayCountAfterHint" xml:space="preserve"><value>How much of a song has to play before it counts.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayCountAfterImmediately" xml:space="preserve"><value>Immediately</value><comment>"Count a play after" choice: counted as soon as the song starts (SettingsViewModel)</comment></data>
   <data name="Settings.PlayCountAfterPercent" xml:space="preserve"><value>{0}%</value><comment>"Count a play after" choice; {0} = percent of the song (SettingsViewModel)</comment></data>
   <data name="Settings.GaplessPlayback" xml:space="preserve"><value>Gapless Playback</value><comment>Text in SettingsView.axaml</comment></data>
@@ -432,9 +477,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Autoplay" xml:space="preserve"><value>Autoplay</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue list, above the playing song, and the last song stays loaded when the queue ends.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue above the one playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>When a queued song's file was moved or deleted, playback skips to the next song that can play. Choose what happens to the missing song.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MissingSongsHint" xml:space="preserve"><value>If a queued song's file is gone, Noctis skips it. Choose what happens to it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
   <data name="Settings.MissingSongsRemove" xml:space="preserve"><value>Remove from Queue</value><comment>Missing Songs picker option: take the song off the queue</comment></data>
   <data name="Queue.MissingBadge" xml:space="preserve"><value>Missing</value><comment>Badge on a queue row whose file can't be found</comment></data>
@@ -449,18 +494,18 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.ExplicitContent" xml:space="preserve"><value>Explicit Content</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve"><value>Off skips explicit songs unless you play them directly.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OutputDevice" xml:space="preserve"><value>Output Device</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Where Noctis plays. Exclusive Mode opens the selected device directly, so bit-perfect output follows this setting instead of the Windows default.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.OutputDeviceDesc" xml:space="preserve"><value>Where Noctis plays your music.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OutputDeviceDefault" xml:space="preserve"><value>System Default</value><comment>Output Device picker: follow-the-Windows-default entry</comment></data>
   <data name="Settings.OutputDeviceDefaultMarker" xml:space="preserve"><value>default</value><comment>Suffix marking the current Windows default endpoint</comment></data>
   <data name="Settings.OutputDeviceMissingEntry" xml:space="preserve"><value>Selected device</value><comment>Output Device picker: disconnected pinned endpoint</comment></data>
   <data name="Settings.OutputDeviceDisconnected" xml:space="preserve"><value>not connected</value><comment>Suffix for a disconnected endpoint in the picker</comment></data>
-  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>The selected device is not connected right now. Playback uses the system default until it returns.</value><comment>Shown under Output Device when the pin is missing</comment></data>
+  <data name="Settings.OutputDeviceMissingHint" xml:space="preserve"><value>This device isn't connected. Noctis uses the system default until it's back.</value><comment>Shown under Output Device when the pin is missing</comment></data>
   <data name="Settings.ExclusiveMode" xml:space="preserve"><value>Exclusive Mode</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect output that bypasses the Windows mixer. Other apps go silent and transitions are off.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve"><value>Bit-perfect sound straight to your device. Other apps go silent and transitions are off.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve"><value>Analyze Tempo &amp; Key</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DetectBPMKeyAutoMix" xml:space="preserve"><value>Detect BPM and key for AutoMix and Track Radio.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve"><value>Save analysis to file tags</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve"><value>Write BPM and key into the file's tags. This modifies your files.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.WriteBPMKeyInto" xml:space="preserve"><value>Saves BPM and key into the tags. This changes your files.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Equalizer" xml:space="preserve"><value>Equalizer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ParametricEQTuneEach" xml:space="preserve"><value>Tune each band's frequency, gain and width.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Preamp" xml:space="preserve"><value>Preamp</value><comment>Text in SettingsView.axaml</comment></data>
@@ -495,14 +540,14 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve"><value>Right-click a song to open its file in this program. Blank asks each time.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NotSet" xml:space="preserve"><value>(not set)</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Adjust volume from ReplayGain tags. Scan tracks via right-click.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Evens out loudness with ReplayGain tags.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Mode" xml:space="preserve"><value>Mode</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PreAmpDB" xml:space="preserve"><value>Pre-amp (dB)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanNewFilesReplayGain" xml:space="preserve"><value>Scan new files automatically</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Writes ReplayGain tags into new songs once their album has finished copying.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ScanNewFilesReplayGainDesc" xml:space="preserve"><value>Adds ReplayGain tags to new songs once their album finishes copying.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.REMOTECONTROL" xml:space="preserve"><value>REMOTE CONTROL</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WebRemote" xml:space="preserve"><value>Web Remote</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Control what's playing from your phone's browser. No app needed. Only use it on Wi-Fi you trust.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve"><value>Control Noctis from your phone's browser. Only use it on Wi-Fi you trust.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve"><value>Tap to enlarge</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.IfPhoneBlocksLink" xml:space="preserve"><value>If your phone says the link isn't secure, tap Continue.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OPENPHONE" xml:space="preserve"><value>OPEN ON YOUR PHONE</value><comment>Text in SettingsView.axaml</comment></data>
@@ -511,14 +556,14 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.WaitingPhoneScanCode" xml:space="preserve"><value>Waiting for a phone. Tap the code to make it bigger.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PhoneConnected" xml:space="preserve"><value>Phone connected</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApi" xml:space="preserve"><value>Local API</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LocalApiDesc" xml:space="preserve"><value>Lets apps on this PC, like Stream Deck or OBS, see what's playing and control Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LocalApiDesc" xml:space="preserve"><value>Lets apps on this PC, like Stream Deck or OBS, control Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiAddress" xml:space="preserve"><value>ADDRESS</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiToken" xml:space="preserve"><value>TOKEN</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiShowToken" xml:space="preserve"><value>Show</value><comment>Reveals the Local API token</comment></data>
   <data name="Settings.LocalApiHideToken" xml:space="preserve"><value>Hide</value><comment>Masks the Local API token</comment></data>
   <data name="Settings.LocalApiRegenerate" xml:space="preserve"><value>Regenerate token</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LocalApiRegenerateTip" xml:space="preserve"><value>Make a new token. Apps using the old one stop working until you give them the new one.</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
-  <data name="Settings.LocalApiWarning" xml:space="preserve"><value>Any app with this token can control Noctis and read your library. Only give it to apps you trust.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LocalApiRegenerateTip" xml:space="preserve"><value>Makes a new token. Apps using the old one stop working.</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.LocalApiWarning" xml:space="preserve"><value>Any app with this token can control Noctis. Only share it with apps you trust.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiDiscovery" xml:space="preserve"><value>Apps can also read it from local-api.json in the Noctis data folder.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ACCOUNTS" xml:space="preserve"><value>ACCOUNTS</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DiscordRichPresence" xml:space="preserve"><value>Discord Rich Presence</value><comment>Text in SettingsView.axaml</comment></data>
@@ -540,7 +585,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.SendPlaysListenBrainz" xml:space="preserve"><value>Send plays to ListenBrainz.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ListenBrainzUserToken" xml:space="preserve"><value>ListenBrainz user token</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.ListenBrainzApiUrl" xml:space="preserve"><value>API URL (optional)</value><comment>Watermark in SettingsView.axaml</comment></data>
-  <data name="Settings.ListenBrainzApiUrlHint" xml:space="preserve"><value>Leave this empty to use ListenBrainz. Using your own server, like Koito? Paste its ListenBrainz address here.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ListenBrainzApiUrlHint" xml:space="preserve"><value>Leave empty for ListenBrainz, or paste your own server address.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ListenBrainzServer" xml:space="preserve"><value>SERVER</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ListenBrainzUrlInvalid" xml:space="preserve"><value>Enter a valid http:// or https:// URL.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
   <data name="Settings.ListenBrainzTokenRejected" xml:space="preserve"><value>The server rejected this token.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
@@ -571,12 +616,12 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Kugou" xml:space="preserve"><value>Kugou</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.KugouHint" xml:space="preserve"><value>Word-synced lyrics catalog</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LrcRed" xml:space="preserve"><value>lrc.red</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.LrcRedHint" xml:space="preserve"><value>Word- and line-synced lyrics with duets. Songs it has only line-synced can be word-synced by its model from the lyrics page.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LrcRedHint" xml:space="preserve"><value>Word-synced lyrics with duets.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics community lyrics · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Synced lyrics · slower lookups</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Choose Source on the lyrics page searches any of these, even when switched off here.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
+  <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Choose Source on the lyrics page can still use sources switched off here.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
   <data name="Settings.METADATA" xml:space="preserve"><value>METADATA</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TagSourcesSearchMetadata" xml:space="preserve"><value>Tag sources for Search metadata, in order.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Deezer" xml:space="preserve"><value>Deezer</value><comment>Text in SettingsView.axaml</comment></data>
@@ -586,11 +631,11 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.MediaFolderLocations" xml:space="preserve"><value>Media Folder Locations</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FoldersWhereMusicStored" xml:space="preserve"><value>Folders where your music is stored.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HiddenFolders" xml:space="preserve"><value>Hidden Folders</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HiddenFoldersHint" xml:space="preserve"><value>Hidden from every view except Folders. Nothing is deleted; show a folder to bring its songs back.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HiddenFoldersHint" xml:space="preserve"><value>Hidden everywhere except Folders. Nothing is deleted.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowHiddenFolder" xml:space="preserve"><value>Show</value><comment>Button in SettingsView.axaml (Hidden Folders list)</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Add Folder</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Import dropped files</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Files dropped onto Noctis are moved into the Noctis Imports folder and added to the library. Off: files stay where they are; drop them to play, to add them to the library or a playlist, or to make a new playlist.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Moves dropped files into the Noctis Imports folder and adds them to your library. Off, files stay where they are.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve"><value>Playlist page</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeaders" xml:space="preserve"><value>Album headers</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeadersHint" xml:space="preserve"><value>Show the album name above each run of tracks from the same album.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -599,7 +644,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.PlaylistAddedColumn" xml:space="preserve"><value>Added column</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Show the date each track was added.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Favorite column</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Show the heart on each row. Off: favorite from the row menu or the song page.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Shows a heart on each row.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Library Scan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Find new tracks and update search.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Scan Library</value><comment>Text in SettingsView.axaml</comment></data>
@@ -619,7 +664,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.WatchFolders" xml:space="preserve"><value>Watch Folders</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UpdateLibraryAutomaticallyAs" xml:space="preserve"><value>Update the library automatically as files change.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Inbox" xml:space="preserve"><value>Inbox for New Music</value><comment>Settings › Library switch</comment></data>
-  <data name="Settings.InboxHint" xml:space="preserve"><value>New songs found in your music folders wait in the sidebar's Inbox until you add them to the library or delete them. Turning this off adds everything waiting to the library.</value><comment>Settings › Library switch hint</comment></data>
+  <data name="Settings.InboxHint" xml:space="preserve"><value>New songs wait in the Inbox until you add or delete them. Off adds them all to the library.</value><comment>Settings › Library switch hint</comment></data>
   <data name="Settings.UseEmbeddedArtwork" xml:space="preserve"><value>Use Embedded Artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UseArtworkEmbeddedFile" xml:space="preserve"><value>Use artwork embedded in file tags for album covers.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SnoozedTracks" xml:space="preserve"><value>Snoozed Tracks</value><comment>Text in SettingsView.axaml</comment></data>
@@ -650,7 +695,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Note: This removes all artwork from your library.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Clear Cache</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Keyboard shortcuts</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Click a key to change it. Esc cancels, Backspace unbinds. Media keys always work.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Click a key to change it. Esc cancels and Backspace clears it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetAll" xml:space="preserve"><value>Reset all</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ResetDefaultTip" xml:space="preserve"><value>Reset to default</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LIBRARYOVERVIEW" xml:space="preserve"><value>LIBRARY OVERVIEW</value><comment>Text in SettingsView.axaml</comment></data>
@@ -768,6 +813,8 @@ Deezer and TIDAL: paste the link.</value></data>
 
   <!-- ArtworkViewerDialog.axaml -->
   <data name="ArtworkViewer.Title" xml:space="preserve"><value>Album Artwork</value><comment>Title of ArtworkViewerDialog.axaml (the full-size album cover)</comment></data>
+  <data name="ArtworkViewer.PauseAnimated" xml:space="preserve"><value>Pause animated cover</value><comment>ArtworkViewerDialog.axaml: button that shows the still cover instead of the animated one</comment></data>
+  <data name="ArtworkViewer.PlayAnimated" xml:space="preserve"><value>Play animated cover</value><comment>ArtworkViewerDialog.axaml: button that plays the album's animated cover</comment></data>
 
   <!-- ArtistDetailView.axaml (auto-migrated) -->
   <data name="ArtistDetail.Play" xml:space="preserve"><value>Play</value><comment>Header in ArtistDetailView.axaml</comment></data>
@@ -1813,6 +1860,14 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.ShuffleTip" xml:space="preserve"><value>Shuffle</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.EqualizerTip" xml:space="preserve"><value>Equalizer on/off</value><comment>ToolTip.Tip of the island EQ button (GitHub #94)</comment></data>
   <data name="PlaybackBar.MiniPlayerTip" xml:space="preserve"><value>Mini Player</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.FullScreenLyricsTip" xml:space="preserve"><value>Full Screen Lyrics</value><comment>Island artwork tooltip when it opens full-screen lyrics (PlayerViewModel.IslandArtworkTip)</comment></data>
+  <data name="PlaybackBar.QuickPlaylistTip" xml:space="preserve"><value>Quick Add to Playlist</value><comment>ToolTip.Tip and accessible name of the island Quick Add to Playlist button (GitHub #186)</comment></data>
+  <data name="PlaybackBar.ChooseQuickPlaylists" xml:space="preserve"><value>Choose Quick Playlists…</value><comment>Quick playlist menu row when none are picked: opens Settings &gt; Player (GitHub #186)</comment></data>
+  <data name="PlaybackBar.MoveToTip" xml:space="preserve"><value>Move to {0}</value><comment>ToolTip.Tip and accessible name of the island Move to Trash button; {0} = Trash folder name, or RemoveFromLibrary.RecycleBin / Trash</comment></data>
+  <data name="PlaybackBar.MovedTo" xml:space="preserve"><value>Moved to {0}</value><comment>Pill after the island Move to Trash button; {0} = Trash folder name, or RemoveFromLibrary.RecycleBin / Trash</comment></data>
+  <data name="PlaybackBar.CouldNotMove" xml:space="preserve"><value>Couldn't move to {0}</value><comment>Pill when the island Move to Trash button could not move the file; {0} = as in MovedTo</comment></data>
+  <data name="PlaybackBar.AddedToPlaylist" xml:space="preserve"><value>Added to {0}</value><comment>Pill after a quick playlist add; {0} = playlist name</comment></data>
+  <data name="PlaybackBar.AlreadyInPlaylist" xml:space="preserve"><value>Already in {0}</value><comment>Pill when the song is in the quick playlist already; {0} = playlist name</comment></data>
   <data name="PlaybackBar.ViewAlbumTip" xml:space="preserve"><value>View Album</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve"><value>Explicit</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve"><value>View Artist</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
@@ -2279,7 +2334,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Content.Languages" xml:space="preserve"><value>{0} languages</value></data>
   <data name="Plugins.InstalledContent" xml:space="preserve"><value>Installed {0} {1}. Its themes and presets are ready to use.</value></data>
   <data name="Settings.LyricsPresets.Title" xml:space="preserve"><value>Style presets</value></data>
-  <data name="Settings.LyricsPresets.Description" xml:space="preserve"><value>Lyrics page looks from your content packs. Applying one changes the settings below; adjust them freely afterwards.</value></data>
+  <data name="Settings.LyricsPresets.Description" xml:space="preserve"><value>Ready-made lyrics page looks. You can still change everything after.</value></data>
   <data name="Settings.LyricsPresets.Apply" xml:space="preserve"><value>Apply</value></data>
   <data name="Settings.LyricsPresets.Applied" xml:space="preserve"><value>Applied {0}.</value></data>
   <data name="Plugins.Status.Running" xml:space="preserve"><value>Running</value></data>
@@ -2349,7 +2404,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Submit" xml:space="preserve"><value>Submit a Plugin</value></data>
   <!-- Settings → Plugins → Make your own plugin -->
   <data name="Plugins.Make.Title" xml:space="preserve"><value>Make your own plugin</value></data>
-  <data name="Plugins.Make.Line" xml:space="preserve"><value>Build something for Noctis and share it. If it passes our review, it shows up under Community plugins with your name on it.</value></data>
+  <data name="Plugins.Make.Line" xml:space="preserve"><value>Build a plugin and share it. If it passes review, it shows up under Community.</value></data>
   <data name="Plugins.Make.Step1Title" xml:space="preserve"><value>Build it</value></data>
   <data name="Plugins.Make.Step1" xml:space="preserve"><value>Follow the guide. You need the free .NET SDK and a code editor.</value></data>
   <data name="Plugins.Make.Step2Title" xml:space="preserve"><value>Submit it</value></data>
@@ -2359,7 +2414,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Plugins.Make.Guide" xml:space="preserve"><value>Read the Guide</value></data>
   <data name="Plugins.OfficialSection" xml:space="preserve"><value>Official Noctis plugins</value></data>
   <data name="Plugins.CommunitySection" xml:space="preserve"><value>Community plugins</value></data>
-  <data name="Plugins.CommunityEmpty" xml:space="preserve"><value>Plugins made by the community show up here once you install one. Use Install from file, or make your own below.</value></data>
+  <data name="Plugins.CommunityEmpty" xml:space="preserve"><value>Plugins made by the community show up here once you install one.</value></data>
   <data name="Plugins.Search" xml:space="preserve"><value>Search plugins</value></data>
   <data name="Plugins.SearchEmpty" xml:space="preserve"><value>No plugins match your search.</value></data>
   <data name="Plugins.Refresh" xml:space="preserve"><value>Refresh plugins</value></data>
@@ -2506,6 +2561,15 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
   <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Also upgrade songs with plain or line-synced lyrics</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Look again at songs an earlier run already checked</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
+  <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Review what's found before saving</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
+  <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Save Selected ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.ReviewReady" xml:space="preserve"><value>Found better lyrics for {0} song. Untick what you don't want, then save.|Found better lyrics for {0} songs. Untick what you don't want, then save.</value><comment>Status after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindWord" xml:space="preserve"><value>Word-synced</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindLine" xml:space="preserve"><value>Line-synced</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Plain</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
+  <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>not saved</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
+  <data name="BulkLyrics.Saving" xml:space="preserve"><value>Saving…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Find Lyrics…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Open Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Stop</value><comment>Button: stops a bulk run</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Dialog title (window)</comment></data>
@@ -2513,7 +2577,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Look again at albums an earlier run found nothing for</value><comment>Checkbox</comment></data>
   <data name="BulkArtwork.Find" xml:space="preserve"><value>Find</value><comment>Button: starts the run</comment></data>
   <data name="Settings.FindLibraryLyrics" xml:space="preserve"><value>Find Lyrics</value><comment>Settings Tools row</comment></data>
-  <data name="Settings.FindLibraryLyricsSub" xml:space="preserve"><value>Look up lyrics for the whole library, word-synced first, and upgrade plain ones.</value><comment>Settings Tools row</comment></data>
+  <data name="Settings.FindLibraryLyricsSub" xml:space="preserve"><value>Finds lyrics for your whole library and upgrades plain ones.</value><comment>Settings Tools row</comment></data>
   <data name="Settings.FindLibraryArtwork" xml:space="preserve"><value>Find Animated Artwork</value><comment>Settings Tools row</comment></data>
   <data name="Settings.FindLibraryArtworkSub" xml:space="preserve"><value>Add moving covers to albums from Apple Music, clear matches only.</value><comment>Settings Tools row</comment></data>
 
@@ -2546,8 +2610,11 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Upmix.SurroundHint" xml:space="preserve"><value>Ambience to the rears, wide stage in front</value><comment>Upmix mode hint</comment></data>
   <data name="Upmix.Note" xml:space="preserve"><value>Built-in output engine only. Exclusive Mode keeps the file's own layout.</value><comment>Upmix footnote</comment></data>
   <data name="Settings.HeadphoneSurround" xml:space="preserve"><value>Headphone Surround</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Turns 5.1 and 7.1 files into spatial headphone sound instead of a flat stereo mix. Stereo songs are not changed.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Makes 5.1 and 7.1 files sound like surround in headphones. Stereo songs stay the same.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutput" xml:space="preserve"><value>Multichannel Output</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Plays 5.1 and 7.1 files on every speaker. Off while Headphone Surround is on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Multichannel Output after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Accounts and device sync are managed in Account &amp; Sync.</value><comment>Integrations → Noctis Server card footer</comment></data>
   <data name="Server.OpenAccountSync" xml:space="preserve"><value>Open Account &amp; Sync</value><comment>Integrations → Noctis Server card button</comment></data>
@@ -2574,7 +2641,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="AccountSync.OtherHelp" xml:space="preserve"><value>Extra accounts that can sign in from their own devices.</value><comment>Other accounts card help</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve"><value>In the Noctis app on your phone, go to Settings, then Account. Enter this address and sign in with your email or username and password.</value><comment>Pairing block help above the address and fingerprint</comment></data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve"><value>New code in {0}</value><comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment></data>
-  <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Anyone who scans this code can sign in to your account, so only show it to your own phone. It works once and changes every two minutes.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
+  <data name="AccountSync.PairQrWarning" xml:space="preserve"><value>Anyone who scans this can sign in to your account. Only show it to your own phone.</value><comment>Under the sign-in QR code: who can use it and for how long</comment></data>
   <data name="AccountSync.PairQrName" xml:space="preserve"><value>Sign-in QR code</value><comment>Screen-reader name of the sign-in QR code image</comment></data>
   <data name="Pair.Subtitle" xml:space="preserve"><value>Sign in to Noctis on your phone in a few seconds.</value><comment>Phone app card, Connect a phone row subtitle</comment></data>
   <data name="Pair.ModeQr" xml:space="preserve"><value>Scan QR code</value><comment>Connect a phone: switch segment for the QR code way</comment></data>
@@ -2587,13 +2654,13 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Pair.ManualStep3" xml:space="preserve"><value>Sign in with your account's email and password.</value><comment>Connect a phone, manual way, step 3</comment></data>
   <data name="Pair.ManualStep4" xml:space="preserve"><value>Check that your phone shows this security code:</value><comment>Connect a phone, manual way, step 4; the security code follows below it</comment></data>
   <data name="Pair.NewCode" xml:space="preserve"><value>New code</value><comment>Small link under the QR code: replace it with a new one now</comment></data>
-  <data name="Pair.QrUnavailable" xml:space="preserve"><value>The QR code can't be shown right now. Create your account above, or use Enter manually.</value><comment>Connect a phone, QR way, when no code can be shown</comment></data>
+  <data name="Pair.QrUnavailable" xml:space="preserve"><value>The QR code can't be shown right now. Create your account or use Enter manually.</value><comment>Connect a phone, QR way, when no code can be shown</comment></data>
   <data name="Phone.AdvancedDesc" xml:space="preserve"><value>This PC's name and access for other music apps.</value><comment>Phone app card, Advanced row subtitle (folded by default)</comment></data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve"><value>YOUR PHONES</value><comment>Account card list label</comment></data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve"><value>No phone connected yet.</value><comment>Account card list empty state</comment></data>
 
   <data name="Sync.Title" xml:space="preserve"><value>Sync with your phone</value><comment>Sync card title</comment></data>
-  <data name="Sync.Description" xml:space="preserve"><value>Favourites, ratings, play counts and this PC's playlists match on your phone and this PC. Playlists you make on the phone stay on the phone.</value><comment>Sync card description</comment></data>
+  <data name="Sync.Description" xml:space="preserve"><value>Favorites, ratings, play counts and playlists stay the same on your phone and PC.</value><comment>Sync card description</comment></data>
   <data name="Sync.DeviceName" xml:space="preserve"><value>Name of this PC</value><comment>Sync card row label</comment></data>
   <data name="Sync.WhatSyncs" xml:space="preserve"><value>Music files stay where they are. Needs Noctis Server to be on.</value><comment>Sync card footnote</comment></data>
 
@@ -2831,14 +2898,18 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.Section.OnlineLyrics" xml:space="preserve"><value>Online lyrics</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.SavingLyrics" xml:space="preserve"><value>Saving lyrics</value><comment>Settings section label</comment></data>
   <data name="Settings.LyricsSaveTarget" xml:space="preserve"><value>Save lyrics to</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsSaveTargetHint" xml:space="preserve"><value>Where Noctis puts lyrics it saves: Save Lyrics to File, Lyrics Studio, the sync editor, Edit Info, and lyrics found online.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsSaveTargetHint" xml:space="preserve"><value>Where Noctis saves lyrics.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSaveTarget.Sidecar" xml:space="preserve"><value>Separate file (.lrc)</value><comment>Save lyrics to choice: .lrc/.elrc files beside the song (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsSaveTarget.Embedded" xml:space="preserve"><value>Inside the audio file</value><comment>Save lyrics to choice: the audio file's own tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsSaveTarget.Both" xml:space="preserve"><value>Both</value><comment>Save lyrics to choice: files and the audio file's tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsAutoDownload" xml:space="preserve"><value>Automatically download lyrics</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>When the lyrics view opens on a song without lyrics, search online and save what is found. Lyrics a song already has are never replaced.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Finds and saves lyrics for songs that have none. Existing lyrics are never replaced.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>Preferred lyrics type</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>What Noctis keeps when it picks lyrics online by itself.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>Upgrade plain lyrics</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>When a song only has plain lyrics, looks for your preferred synced type. If none is found, the plain lyrics stay.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Find lyrics for new songs</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Looks up lyrics in the background for songs added to your library. Songs with synced lyrics are left alone.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>Word-synced (best available)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>Line-synced</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Plain text</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -3041,7 +3112,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Repeat.OneTip" xml:space="preserve"><value>Repeat One: this song loops</value><comment>Tooltip/name of the Repeat buttons in Repeat One: the playing song loops forever (GitHub #144)</comment></data>
   <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Show played songs</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
   <data name="Settings.AppIcon" xml:space="preserve"><value>App Icon</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
-  <data name="Settings.AppIconDesc" xml:space="preserve"><value>Changes the icon in the title bar, taskbar and tray right away. The desktop shortcut and the .exe keep the classic icon.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
+  <data name="Settings.AppIconDesc" xml:space="preserve"><value>Changes the icon in the title bar, taskbar and tray. The desktop shortcut keeps the classic one.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Classic</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Light" xml:space="preserve"><value>Light</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Dark</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
@@ -3053,16 +3124,16 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.AppIcon.Midnight" xml:space="preserve"><value>Midnight</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve"><value>Ruby</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.MonoAudio" xml:space="preserve"><value>Mono Audio</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Plays the left and right channels together in both ears. For hearing in one ear or listening with a single earbud.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MonoAudioDesc" xml:space="preserve"><value>Plays both channels in both ears. Handy with one earbud.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Balance" xml:space="preserve"><value>Balance</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Moves the sound toward the left or right ear. Snaps to the center.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.BalanceDesc" xml:space="preserve"><value>Shifts the sound to the left or right.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BalanceCenter" xml:space="preserve"><value>Center</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BalanceLeftFormat" xml:space="preserve"><value>L {0}</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BalanceRightFormat" xml:space="preserve"><value>R {0}</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ChannelMixExclusiveNote" xml:space="preserve"><value>Off while Exclusive Mode is on, which plays files bit-perfect.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ChannelMixUnavailableNote" xml:space="preserve"><value>Not available on the current audio output. Restart Noctis to bring it back.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepTimerFadeOut" xml:space="preserve"><value>Sleep Timer Fade Out</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SleepTimerFadeOutDesc" xml:space="preserve"><value>Fades the music out over the last seconds of the sleep timer, and at the end of the track with Stop After Current Track. Your volume stays as it is.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SleepTimerFadeOutDesc" xml:space="preserve"><value>Fades the music out at the end of the sleep timer.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFadeOff" xml:space="preserve"><value>Off</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade10" xml:space="preserve"><value>10 s</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SleepFade30" xml:space="preserve"><value>30 s</value><comment>Text in SettingsView.axaml</comment></data>
@@ -3070,14 +3141,14 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.ExclusiveModePaused" xml:space="preserve"><value>Exclusive Mode is paused: the device couldn't be opened. It will try again next launch or when you turn it off and on.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.Queue" xml:space="preserve"><value>Queue</value><comment>Settings section label</comment></data>
   <data name="Settings.QueueRows" xml:space="preserve"><value>Queue Rows</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.QueueRowsHint" xml:space="preserve"><value>What each song in the queue shows. A line can add a second field after a dot.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueRowsHint" xml:space="preserve"><value>What each song in the queue shows.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.QueueFirstLine" xml:space="preserve"><value>First line</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.QueueFirstLineExtra" xml:space="preserve"><value>First line, added field</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
   <data name="Settings.QueueSecondLine" xml:space="preserve"><value>Second line</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.QueueSecondLineExtra" xml:space="preserve"><value>Second line, added field</value><comment>Accessible name of a picker in SettingsView.axaml</comment></data>
   <data name="Settings.QueueRightSide" xml:space="preserve"><value>Right side</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.QueueWidth" xml:space="preserve"><value>Queue Width</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.QueueWidthHint" xml:space="preserve"><value>How wide the queue opens. You can also drag the queue's left edge. Double-click the knob or the edge to reset.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.QueueWidthHint" xml:space="preserve"><value>How wide the queue opens. Double-click the knob to reset.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.QueueField.None" xml:space="preserve"><value>None</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
   <data name="Settings.QueueField.Title" xml:space="preserve"><value>Title</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
   <data name="Settings.QueueField.Artist" xml:space="preserve"><value>Artist</value><comment>Queue row field choice (SettingsViewModel)</comment></data>
@@ -3117,7 +3188,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>1 minute</value><comment>Songs page top bar summary</comment></data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} minutes</value><comment>Songs page top bar summary</comment></data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>Import Play Counts</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
-  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Copy your play counts into Noctis. Nothing is sent back.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
+  <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>Brings your listening history into Noctis play counts. Nothing is sent back.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
   <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>Import</value><comment>Settings › Integrations: starts the play count import</comment></data>
   <data name="Settings.PlayCountImport.Cancel" xml:space="preserve"><value>Cancel</value><comment>Settings › Integrations: stops a running play count import</comment></data>
   <data name="Settings.PlayCountImport.ModeName" xml:space="preserve"><value>When the counts differ</value><comment>Screen-reader name of the play count import mode list</comment></data>
@@ -3134,8 +3205,11 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.PlayCountImport.Error.PrivateHistory" xml:space="preserve"><value>This {0} listening history is private.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.Unreachable" xml:space="preserve"><value>Couldn't reach {0}. Try again later.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
   <data name="Settings.PlayCountImport.Error.BadReply" xml:space="preserve"><value>{0} sent an unexpected reply. Try again later.</value><comment>Play count import error; {0} = Last.fm or ListenBrainz</comment></data>
+  <data name="Settings.PlayCountImport.Sync.Title" xml:space="preserve"><value>Keep Play Counts in Sync</value><comment>Settings › Integrations, under Last.fm / ListenBrainz: background play count sync toggle (GitHub #160)</comment></data>
+  <data name="Settings.PlayCountImport.Sync.Line" xml:space="preserve"><value>Brings in new plays in the background when Noctis starts.</value><comment>Settings › Integrations: what Keep Play Counts in Sync does</comment></data>
+  <data name="Settings.PlayCountImport.Synced" xml:space="preserve"><value>Synced. {0} new plays · {1} songs updated</value><comment>Background play count sync summary; {0} = new plays read since the last sync, {1} = songs changed</comment></data>
   <data name="Features.Section" xml:space="preserve"><value>Built-in Features</value><comment>Plugins page: section title above the switches for features that ship with Noctis</comment></data>
-  <data name="Features.SectionLine" xml:space="preserve"><value>Part of Noctis and on from the start, like plugins you can switch off. Turned back on, each comes back as you left it.</value><comment>Plugins page: line under the Built-in Features title</comment></data>
+  <data name="Features.SectionLine" xml:space="preserve"><value>Built into Noctis. Switch off any you don't need.</value><comment>Plugins page: line under the Built-in Features title</comment></data>
   <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Mini Player</value><comment>Settings › Plugins › Built-in Features</comment></data>
   <data name="Features.MiniPlayer.Line" xml:space="preserve"><value>The small always-on-top player: its button, the artwork click and the shortcut.</value><comment>Settings › Plugins › Built-in Features</comment></data>
   <data name="Features.AnimatedArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Settings › Plugins › Built-in Features</comment></data>
@@ -3156,7 +3230,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Features.PlaylistSideRail.Title" xml:space="preserve"><value>Featured Artists &amp; Suggestions</value><comment>Settings › Plugins › Built-in Features</comment></data>
   <data name="Features.PlaylistSideRail.Line" xml:space="preserve"><value>The panel on the right of a playlist with its artists and suggested songs.</value><comment>Settings › Plugins › Built-in Features</comment></data>
   <data name="Settings.PlaylistSideRail" xml:space="preserve"><value>Featured Artists &amp; Suggestions</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
-  <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Show the panel with the playlist's artists and suggested songs on the right.</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
+  <data name="Settings.PlaylistSideRailHint" xml:space="preserve"><value>Shows the playlist's artists and suggested songs on the right.</value><comment>Text in SettingsView.axaml (Playlist Page section)</comment></data>
   <data name="Playlist.HideSideRail" xml:space="preserve"><value>Hide Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: hides the right-hand panel</comment></data>
   <data name="Playlist.ShowSideRail" xml:space="preserve"><value>Show Featured Artists &amp; Suggestions</value><comment>Playlist page options menu: shows the right-hand panel again</comment></data>
   <data name="AlbumDetail.RemoveAnimatedArtwork" xml:space="preserve"><value>Remove Animated Artwork</value><comment>Header in AlbumDetailView.axaml</comment></data>
@@ -3165,6 +3239,10 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.AnimArtCacheSize" xml:space="preserve"><value>Cache Size</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheSizeDesc" xml:space="preserve"><value>When it's full, the oldest covers are removed.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimArtCacheUsedOf" xml:space="preserve"><value>{0} of {1} used</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AnimArtQuality" xml:space="preserve"><value>Animated Artwork Quality</value><comment>Settings › Appearance › Artwork: quality fetched loops are downloaded at (GitHub #185)</comment></data>
+  <data name="Settings.AnimArtQualityDesc" xml:space="preserve"><value>2160p looks sharper but takes about 3x the space. Covers without 2160p use 1080p.</value><comment>Settings › Appearance › Artwork › Animated Artwork Quality hint</comment></data>
+  <data name="Settings.AnimArtQuality2160" xml:space="preserve"><value>2160p (Max)</value><comment>Animated Artwork Quality option</comment></data>
+  <data name="Metadata.CancelDownload" xml:space="preserve"><value>Cancel download</value><comment>Edit Info artwork chooser: the download bar's Cancel button (accessible name and tooltip)</comment></data>
   <data name="Settings.DataFolder" xml:space="preserve"><value>Data Folder</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderHint" xml:space="preserve"><value>Your library, covers and caches. Move them to another drive to save space.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderChange" xml:space="preserve"><value>Change Folder</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
@@ -3214,7 +3292,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Cancel" xml:space="preserve"><value>Cancel</value><comment>Button</comment></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Sync now</value><comment>Account page tile</comment></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Download everything</value><comment>Account page tile</comment></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Keeps every song from your computer on this phone, to play without a connection.</value><comment>Account page footnote</comment></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Keep every song on this phone to play offline</value><comment>Account page footnote</comment></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>Downloaded</value><comment>Songs kept on the phone (label, filter, Library row)</comment></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Remove all downloads</value><comment>Screen reader name of the Remove downloads button</comment></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>Remove downloads</value><comment>Account page button</comment></data>
@@ -3256,13 +3334,19 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Search in playlists</value><comment>Search field placeholder on Playlists</comment></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>No playlists yet. Long-press a song to start one.</value><comment>Empty Playlists page</comment></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>No playlists match</value><comment>Playlists search found nothing</comment></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Search playlists</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Sort playlists</value><comment>Screen reader name</comment></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>New Playlist</value><comment>Playlists page: the + button's name and the prompt's title</comment></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Create</value><comment>Button: makes the new playlist</comment></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Play Next</value><comment>Menu action</comment></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Add to Queue</value><comment>Menu action</comment></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Add Before Current</value><comment>Menu action: the song goes just before the playing one (Previous plays it)</comment></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Added before the current song</value><comment>Banner after Add Before Current Song</comment></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Go to Album</value><comment>Menu action</comment></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Go to Artist</value><comment>Menu action</comment></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Rename</value><comment>Menu action</comment></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Change Cover</value><comment>Playlist menu action: pick a picture on the phone as the playlist cover</comment></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Remove Cover</value><comment>Playlist menu action: back to the automatic cover</comment></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>That file isn't a picture Noctis can use as a cover.</value><comment>Notice when the picked file is not a usable picture</comment></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Remove from Playlist</value><comment>Menu action</comment></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Delete Playlist</value><comment>Menu action and confirm button</comment></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Add Folder…</value><comment>Library … menu</comment></data>
@@ -3272,6 +3356,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>Up Next</value><comment>Queue section (Apple Music: Up Next)</comment></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Clear</value><comment>Clears Up Next</comment></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>Nothing up next</value><comment>Empty Up Next</comment></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>History</value><comment>Queue section above the current track: songs already played</comment></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Hide</value><comment>Folds the Queue History section</comment></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Show</value><comment>Unfolds the Queue History section</comment></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Repeat</value><comment>Screen reader name</comment></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Nothing here yet</value><comment>Empty grid page</comment></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Search</value><comment>Search tab label and title</comment></data>
@@ -3300,7 +3387,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Counts and Recently Played match on both</value><comment>Under Share with Computer</comment></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>Clear Listening History</value><comment>Screen reader name and confirm button</comment></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Clear Listening History…</value><comment>Settings row</comment></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Clears this phone's plays. Plays already sent to Last.fm stay there.</value><comment>Footnote</comment></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Plays already sent to Last.fm stay there</value><comment>Footnote</comment></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>This phone</value><comment>Diagram caption</comment></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Computer</value><comment>Diagram caption and summary value</comment></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Services</value><comment>Diagram caption and group header</comment></data>
@@ -3320,6 +3407,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Cover</value><comment>Now Playing Artwork choice: the plain square cover</comment></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Now Playing Artwork choice: the cover as a spinning record's label</comment></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value><comment>Now Playing Artwork choice: the cover printed on a spinning compact disc</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Now Playing Background</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Now Playing background brightness</value><comment>Screen reader name of the slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Darker or brighter colours behind Now Playing</value><comment>Footnote under the slider</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Music Folders</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Downloads</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Listening</value><comment>Settings group</comment></data>
@@ -3344,38 +3434,42 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Access lost. Add this folder again to play its songs.</value><comment>Under a music folder</comment></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>Not available. Reconnect its storage, then rescan.</value><comment>Under a music folder</comment></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>No Music Folders Yet</value><comment>Music Folders, empty</comment></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Your library on this phone is the music in these folders.</value><comment>Music Folders footnote</comment></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Your library is the music in these folders</value><comment>Music Folders footnote</comment></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>Add Folder</value><comment>Button</comment></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Scan on Startup</value><comment>Setting switch</comment></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Looks for new songs in these folders each time Noctis opens.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Checks for new songs each time Noctis opens</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Album Colours</value><comment>Group header</comment></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Colour Pages from Artwork</value><comment>Setting switch</comment></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Album and artist pages take a deep shade of the cover's colour, with white text. Off, they use the plain Light or Dark theme.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Album and artist pages take the cover's colour</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>Progress Colour</value><comment>Player Bar switch and value</comment></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>Progress Line</value><comment>Player Bar switch and value</comment></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Progress Colour fills the player bar in the cover's colour as the song plays. Progress Line draws a thin line along its bottom edge. With both off the bar is plain glass.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Fill the bar or draw a thin line as the song plays</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Download on Wi-Fi Only</value><comment>Setting switch</comment></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Songs from your computer download only on Wi-Fi, never over mobile data. Streaming is not affected.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Downloads wait for Wi-Fi but streaming still works</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Smooth Motion</value><comment>Setting switch (screen refresh rate)</comment></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Up to 120 Hz</value><comment>Switch subtitle</comment></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Lets the screen refresh up to 120 times a second on phones that support it, for smoother scrolling and animation. Turn it off to keep the screen at 60 Hz and save battery.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Smoother scrolling on 120 Hz screens but uses more battery</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass Tab Pill</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>The selected tab stays clear glass</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Played Songs in Queue</value><comment>Setting switch: Queue page shows played songs</comment></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Songs you've played stay above the current one</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Storage Used</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Remove All Downloads</value><comment>Button</comment></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Removed downloads stay on your computer and still stream.</value><comment>Footnote</comment></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis itself is MIT licensed.</value><comment>Licenses footnote</comment></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>They stay on your computer and still stream</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis itself is MIT licensed</value><comment>Licenses footnote</comment></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Show Translations</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Show Romanization</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Show Background Vocals</value><comment>Lyrics setting</comment></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Shown under a line, in smaller text, when the song's lyrics have them.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Smaller text under the line when the lyrics have them</value><comment>Footnote</comment></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Text Size</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Lyrics text size</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>Minimum Line Opacity</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>Minimum line opacity</value><comment>Screen reader name</comment></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Keeps every line faintly visible, so you can tap any line to jump there. 0% hides lines far from the current one.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>How visible lines far from the current one stay</value><comment>Footnote</comment></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Join Split Words</value><comment>Lyrics setting</comment></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Keeps words whole when TTML lyrics split them into syllables.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Keeps words whole in TTML lyrics</value><comment>Footnote</comment></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Find Lyrics Online</value><comment>Lyrics setting</comment></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>When a song has no lyrics file or lyrics in its tags, asks LRCLIB by its title, artist and length, as the desktop app does. Found lyrics are kept on the phone.</value><comment>Footnote. LRCLIB is a service name</comment></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Looks up missing lyrics on LRCLIB and keeps them</value><comment>Footnote. LRCLIB is a service name</comment></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>Show tabs</value><comment>Screen reader name of the folded tab bar</comment></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>Search in this list</value><comment>Search field placeholder on a song list</comment></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} song|{0} songs</value><comment>Plural forms separated by |, CLDR order (en one|other; ru one|few|many; ar zero|one|two|few|many|other; ja/ko/zh one form). {0} = count</comment></data>
@@ -3452,7 +3546,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Preview · {0}</value><comment>Background preview card. {0} = the chosen background</comment></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Song Title</value><comment>Stand-in title in the background preview</comment></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Battery Saver is on, so the colours stay still.</value><comment>Background footnote</comment></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Motion uses a little more battery. It pauses when Battery Saver is on.</value><comment>Background footnote</comment></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Uses a little more battery and pauses in Battery Saver</value><comment>Background footnote</comment></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Forever</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Year</value><comment>Keep History choice</comment></data>
@@ -3486,8 +3580,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Open, free listening stats</value><comment>Under ListenBrainz before connecting</comment></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>On your computer</value><comment>Under a service connected on the computer</comment></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Set up on your computer</value><comment>Under a service; also a prompt title</comment></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>A play counts after half the song or 4 minutes. Plays made offline wait here until the next sync.</value><comment>Scrobbling footnote</comment></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>A play counts after half the song or 4 minutes. Plays made offline wait here until the phone is back online.</value><comment>Scrobbling footnote</comment></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Counts after half the song or 4 minutes and sends offline plays at the next sync</value><comment>Scrobbling footnote</comment></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Counts after half the song or 4 minutes and sends offline plays once you're back online</value><comment>Scrobbling footnote</comment></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Couldn't reach Last.fm. Try again.</value><comment>Error</comment></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Approve Noctis on Last.fm</value><comment>Prompt title</comment></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Sign in on Last.fm, tap Allow, then come back here and tap Done.</value><comment>Prompt. "Allow" is Last.fm’s button; "Done" is this prompt’s button</comment></data>
@@ -3531,6 +3625,15 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Indigo</value><comment>Accent colour name</comment></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Orchid</value><comment>Accent colour name</comment></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Rose</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Peach</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Lime</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Forest</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Mint</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Sky</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Lilac</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Silver</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Slate</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Match Artwork</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Custom</value><comment>Accent value: a colour that is not one of the presets</comment></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>System</value><comment>Theme choice: follow the phone</comment></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Light</value><comment>Theme choice</comment></data>
@@ -3540,11 +3643,11 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Midnight</value><comment>Dark style name (deep blue)</comment></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>System, {0}</value><comment>Theme row value with Match Device on. {0} = the dark theme</comment></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Match Device</value><comment>Theme page switch: follow the phone's light/dark mode</comment></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis is Light while your phone is in light mode and {0} while it is in dark mode.</value><comment>Under Match Device. {0} = the dark theme</comment></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Light in light mode and {0} in dark mode</value><comment>Under Match Device. {0} = the dark theme</comment></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Light and Dark</value><comment>Theme page group header</comment></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>A colour theme tints the pages, cards and glass, and pairs with the background of the same name.</value><comment>Theme page footnote under the colour themes</comment></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Colour themes tint the whole app</value><comment>Theme page footnote under the colour themes</comment></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Match Theme</value><comment>Accent page switch: use the colour theme's own accent</comment></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Colour themes have their own accent. Picking a colour below turns this off.</value><comment>Under Match Theme</comment></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Picking a colour below turns this off</value><comment>Under Match Theme</comment></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>Remove “{0}”? Its songs leave your library on this phone. The files stay where they are.</value><comment>Screen reader. {0} = folder</comment></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>Remove “{0}”?</value><comment>Prompt title. {0} = folder</comment></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Its songs leave your library on this phone. The files stay where they are.</value><comment>Prompt</comment></data>
@@ -3563,8 +3666,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>Both on</value><comment>Lyrics row value: translations and romanization on</comment></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Translations on</value><comment>Lyrics row value</comment></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Romanization on</value><comment>Lyrics row value</comment></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>When you open Noctis on {0}, it offers to carry on from the song you were playing here.</value><comment>Footnote. {0} = computer name</comment></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>When you open Noctis on your computer, it offers to carry on from the song you were playing here.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Carry on from this song when you open Noctis on {0}</value><comment>Footnote. {0} = computer name</comment></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Carry on from this song when you open Noctis on your computer</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Wi-Fi Only</value><comment>Downloads row value</comment></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Any Network</value><comment>Downloads row value</comment></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>Remove all downloads?</value><comment>Prompt title</comment></data>
@@ -3572,10 +3675,12 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Remove Downloads</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} song|{0:N0} songs</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Settings is redesigned: your profile and library numbers on top, then Appearance, Library, Listening, Help and About.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>Open-Source Licenses lists what Noctis is built with.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis speaks your language: choose it in Settings › Language, or follow the phone.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Accent has 17 colours, and Match Artwork follows the cover that's playing.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>A sleep timer on Now Playing; Snooze for a Month and Hide Song in a song's menu.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Make a playlist with + and give it your own cover; covers sync with your computer.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Add Before Current in a song's menu, and played songs can stay in the queue.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>A song on your phone and the same song from your computer show once.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Smoother scrolling, quicker pages, and lyrics beside the cover in landscape.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>The bundled ALAC decoder, built from the unmodified FFmpeg 6.0 source without GPL or non-free parts: git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Playback, media session and the decoder's JNI wrapper.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>The user interface framework.</value><comment>Open-source licenses</comment></data>
@@ -3671,17 +3776,18 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Unknown track</value><comment>Notification title for a song with no title tag</comment></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD card</value><comment>Storage name of a memory card</comment></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Playlists</value><comment>Tab bar label (short; the tab is narrow)</comment></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Noctis follows your phone's language unless you choose one here. Translations are made by the community.</value><comment>Settings › Language footnote</comment></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Follows your phone's language unless you pick one</value><comment>Settings › Language footnote</comment></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Scanning… {0} file|Scanning… {0} files</value><comment>Library scan progress. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>More for {0}</value><comment>Screen reader: a playlist’s … button. {0} = playlist</comment></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Remove {0}</value><comment>Screen reader: a folder’s remove button. {0} = folder</comment></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. The accent colours buttons, switches and highlights.</value><comment>Accent page footnote. {0} = accent name</comment></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} colours buttons and highlights</value><comment>Accent page footnote. {0} = accent name</comment></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Takes the colour of the playing cover or {0} when there isn't one</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Storage Used, {0}</value><comment>Screen reader. {0} = "312 songs · 4.2 GB"</comment></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Show in Song Rows</value><comment>Settings › Library row: what song rows show at the end of the artist line</comment></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Off</value><comment>Show in Song Rows choice: nothing</comment></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Ratings</value><comment>Show in Song Rows choice: star ratings</comment></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favorites</value><comment>Show in Song Rows choice: a heart on favorites</comment></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Song rows end in the song's stars or a heart for a favorite.</value><comment>Library group footnote</comment></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Stars or a heart at the end of each song row</value><comment>Library group footnote</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Rate</value><comment>Song menu row: set the star rating</comment></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Rate {0} of 5</value><comment>Screen reader for a star in the song menu. {0} = 1-5</comment></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Clear Rating</value><comment>Song menu: remove the rating</comment></data>
@@ -3707,7 +3813,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Couldn’t read “{0}”</value><comment>Import result: a picked file that could not be read. {0} = file name</comment></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Open Playlist</value><comment>Import result button: open the new playlist</comment></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Find All Music Automatically</value><comment>Setting switch (Music Folders)</comment></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Adds every song on this phone and its SD card, without choosing folders. Lyrics files (.lrc, .ttml) beside a song are read only from folders you add below.</value><comment>Footnote under the switch</comment></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Adds every song on this phone and SD card but lyrics files only load from folders below</value><comment>Footnote under the switch</comment></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>All Music</value><comment>Music Folders row value: all the phone's music, no folders</comment></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis wasn't allowed to read the music on this phone. To turn this on, allow Music and audio in Noctis's settings.</value><comment>Shown after the permission was refused</comment></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis can no longer read the music on this phone. Its songs stay listed but won't play until you allow Music and audio in Noctis's settings.</value><comment>Shown when the permission was taken away later</comment></data>
@@ -3824,6 +3930,9 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.ConnectedAs" xml:space="preserve"><value>Connected as {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ConnectedTo" xml:space="preserve"><value>Connected to {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.WindowsOnly" xml:space="preserve"><value>Only available on Windows.</value><comment>Settings status line</comment></data>
+  <data name="Settings.Scrobble.OtherComputer" xml:space="preserve"><value>Signed in on another computer. Connect to scrobble from this one too.</value><comment>Settings › Scrobbling card (Last.fm / ListenBrainz): the saved sign-in belongs to another computer or Windows user and can't be read here (GitHub #197)</comment></data>
+  <data name="Settings.Scrobble.OneWaiting" xml:space="preserve"><value>1 play waiting to send.</value><comment>Settings › Scrobbling card: one play queued while offline or signed out, sent once the service can be reached</comment></data>
+  <data name="Settings.Scrobble.Waiting" xml:space="preserve"><value>{0:N0} plays waiting to send.</value><comment>Settings › Scrobbling card: plays queued while offline or signed out; {0} is how many</comment></data>
   <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis removed from the Open-with list.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registered. Pick Noctis under Settings → Apps → Default apps, or right-click a song → Open with.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Couldn't update file types: {0}</value><comment>Settings status line</comment></data>
@@ -3944,7 +4053,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Home.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · in your Last.fm top albums</value><comment>Discover album entry detail; {0} = the album's artist</comment></data>
   <data name="Home.LastFm.ArtistYouPlay" xml:space="preserve"><value>In your Last.fm top artists</value><comment>Discover artist entry detail: a top artist with no songs in the library</comment></data>
   <data name="Settings.LastFmTaste.Title" xml:space="preserve"><value>Mixes and Recommendations</value><comment>Settings › Integrations › Last.fm toggle (GitHub #177)</comment></data>
-  <data name="Settings.LastFmTaste.Line" xml:space="preserve"><value>Home shows mixes of your songs and artists to discover, from your Last.fm charts. Nothing is sent back.</value><comment>Settings › Integrations › Last.fm: what the mixes toggle does</comment></data>
+  <data name="Settings.LastFmTaste.Line" xml:space="preserve"><value>Shows mixes and artists to discover on Home from your Last.fm. Nothing is sent back.</value><comment>Settings › Integrations › Last.fm: what the mixes toggle does</comment></data>
   <data name="Mobile.LastFm.Title" xml:space="preserve"><value>From Your Last.fm</value><comment>Home section title (GitHub #177)</comment></data>
   <data name="Mobile.LastFm.TopSongs" xml:space="preserve"><value>Your Last.fm Top Songs</value><comment>Home Last.fm mix: the account's top songs found in the library</comment></data>
   <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Loved on Last.fm</value><comment>Home Last.fm mix: loved songs found in the library</comment></data>
@@ -3961,7 +4070,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>In your top artists</value><comment>Discover artist entry detail: a top artist with no songs in the library</comment></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Open {0} on Last.fm</value><comment>Screen-reader name of a Discover entry; {0} = the artist or album</comment></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mixes and Recommendations</value><comment>Settings › Scrobbling switch (GitHub #177)</comment></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Home shows mixes of your songs and artists to discover, from your Last.fm charts. Only your account name is used; nothing is sent back.</value><comment>Settings › Scrobbling: what the mixes switch does</comment></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Home gets mixes from your Last.fm charts and nothing is sent back</value><comment>Settings › Scrobbling: what the mixes switch does</comment></data>
   <data name="GroupAlbums.Menu" xml:space="preserve"><value>Group into One Album</value><comment>Album menu row (GitHub #178)</comment></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Group into One Album</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Album</value><comment>Field label</comment></data>
@@ -3970,4 +4079,50 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Group</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>No other album has this name. Ctrl-click the albums that belong together in the Albums grid, then right-click one of them.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Grouped in Noctis, but {0} file(s) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
+  <!-- LyricShareDialog Lyrics Page -->
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>Snooze for a Month</value><comment>Song menu row: Shuffle and mixes skip the song for 30 days (the desktop's Snooze for a Month)</comment></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>Unsnooze</value><comment>Song menu row on a snoozed song: ends the snooze now</comment></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Snoozed for a month</value><comment>Banner after Snooze for a Month</comment></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Snooze removed</value><comment>Banner after Unsnooze</comment></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Sleep Timer</value><comment>Now Playing menu row and the sleep timer menu's title (the desktop's Sleep timer)</comment></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} Minutes</value><comment>Sleep timer choice; {0} is 15, 30 or 45</comment></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 Hour</value><comment>Sleep timer choice</comment></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>End of Current Song</value><comment>Sleep timer choice: pause when the playing song ends</comment></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Turn Off Timer</value><comment>Sleep timer menu: cancels the running timer</comment></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Pauses in {0}</value><comment>Sleep timer running; {0} is the time left, e.g. 29:54</comment></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Pauses after this song</value><comment>Sleep timer set to the end of the playing song</comment></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Hide Song</value><comment>Song menu row: leaves the song out of the library (Settings › Library › Hidden brings it back)</comment></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Hidden. Settings › Library › Hidden brings it back.</value><comment>Banner after Hide Song</comment></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Hidden</value><comment>Settings › Library row and page: hidden songs and folders</comment></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Hidden songs stay on your phone but out of your library and mixes</value><comment>Settings › Hidden footnote</comment></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>Nothing hidden</value><comment>Settings › Hidden when nothing is hidden</comment></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Unhide</value><comment>Settings › Hidden: the row's button that shows the song again</comment></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Unhide {0}</value><comment>Screen reader name of a row's Unhide; {0} is the song or folder</comment></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Folder</value><comment>Settings › Hidden: second line of a hidden folder</comment></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Not on this phone now</value><comment>Settings › Hidden: a hidden song the library no longer has</comment></data>
+  <data name="Menu.OtherVersions" xml:space="preserve"><value>Other Versions</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
+  <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
+  <data name="Search.LyricsTip" xml:space="preserve"><value>Search lyrics</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>
+  <data name="Search.LyricsIncludeOn" xml:space="preserve"><value>Searching titles, artists, albums and lyrics</value><comment>Search box: tooltip of the lyrics button while Include lyrics is on</comment></data>
+  <data name="Search.LyricsOnlyOn" xml:space="preserve"><value>Searching lyrics only</value><comment>Search box: tooltip of the lyrics button while Lyrics only is on</comment></data>
+  <data name="Search.LyricsOff" xml:space="preserve"><value>Don't Search Lyrics</value><comment>Search box lyrics button menu: search titles, artists, albums only</comment></data>
+  <data name="Search.LyricsInclude" xml:space="preserve"><value>Include Lyrics</value><comment>Search box lyrics button menu: also find songs whose lyrics contain the words</comment></data>
+  <data name="Search.LyricsOnly" xml:space="preserve"><value>Lyrics Only</value><comment>Search box lyrics button menu: find songs by their lyrics only</comment></data>
 </root>

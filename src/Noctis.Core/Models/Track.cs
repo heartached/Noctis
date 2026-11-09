@@ -32,6 +32,29 @@ public partial class Track : ObservableObject
     }
     private string _artist = "Unknown Artist";
 
+    /// <summary>
+    /// GitHub #187: the artist tag's own credit, kept for "Show artists as written in the
+    /// tags" because <see cref="Artist"/> may carry names merged in from a "(feat. X)" title.
+    /// The scan stores it whenever the title names featured artists (the only case where the
+    /// two can differ); null means <see cref="Artist"/> is the tag's credit — or, for songs
+    /// indexed before this existed, not known yet (LibraryService.ResolveArtistTagTextAsync
+    /// re-reads those). Not written to the library file while null, so old files load as is.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ArtistAsTagged { get; set; }
+
+    /// <summary>
+    /// The artist tag's credit as written: <see cref="ArtistAsTagged"/> while
+    /// <see cref="Artist"/> still starts with it (title merging only appends names), else
+    /// <see cref="Artist"/> — so an edit of the credit that missed clearing the stored value
+    /// never shows a stale one.
+    /// </summary>
+    [JsonIgnore]
+    public string ArtistTagText =>
+        ArtistAsTagged is { Length: > 0 } tagged && _artist.StartsWith(tagged, StringComparison.Ordinal)
+            ? tagged
+            : _artist;
+
     /// <summary>Album artist (TPE2), used to group "Various Artists" compilations.</summary>
     public string AlbumArtist
     {
@@ -149,6 +172,28 @@ public partial class Track : ObservableObject
     /// </summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? AlbumArtistFromTag { get; set; }
+
+    /// <summary>
+    /// GitHub #193: <see cref="Album"/> is the file's folder name, filled in by
+    /// <see cref="Helpers.FolderMetadata"/> because the file has no album tag. Such a name says
+    /// where the file sits, not which album it belongs to, so <see cref="Services.AlbumGrouping"/>
+    /// never groups by it (a folder of loose singles became one album).
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AlbumFromFolder { get; set; }
+
+    /// <summary>
+    /// GitHub #193: the album artist <see cref="Services.AlbumGrouping"/> replaced when it
+    /// re-keyed this song into a grouped album (the file's own value), so switching the grouping
+    /// off can put the song back. Null when the song was never re-keyed.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UngroupedAlbumArtist { get; set; }
+
+    /// <summary>GitHub #193: the album name spelling the song had before the grouping re-keyed it
+    /// (see <see cref="UngroupedAlbumArtist"/>).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? UngroupedAlbum { get; set; }
 
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
@@ -340,7 +385,7 @@ public partial class Track : ObservableObject
     public string Lyrics
     {
         get => _lyricsOverride ?? _legacyLyrics ?? ReadStoredLyrics().Plain;
-        set { _lyricsOverride = value ?? string.Empty; _lyricsAssigned = true; }
+        set { _lyricsOverride = value ?? string.Empty; _lyricsAssigned = true; LyricsEditVersion++; }
     }
 
     /// <summary>Time-synced lyrics in LRC format. See <see cref="Lyrics"/>.</summary>
@@ -348,8 +393,44 @@ public partial class Track : ObservableObject
     public string SyncedLyrics
     {
         get => _syncedLyricsOverride ?? _legacySyncedLyrics ?? ReadStoredLyrics().Synced;
-        set { _syncedLyricsOverride = value ?? string.Empty; _lyricsAssigned = true; }
+        set { _syncedLyricsOverride = value ?? string.Empty; _lyricsAssigned = true; LyricsEditVersion++; }
     }
+
+    /// <summary>Bumped by every lyric assignment, so the lyric search index
+    /// (<see cref="Services.LyricsSearchIndex"/>) re-reads only the songs whose lyrics changed.</summary>
+    internal int LyricsEditVersion { get; private set; }
+
+    /// <summary>
+    /// Both lyric fields for the lyric search index: pending/legacy values as the getters return
+    /// them, else the store entry read past the store's LRU (<see cref="Services.LyricsStore.Peek"/>).
+    /// <paramref name="storedIds"/> (<see cref="Services.LyricsStore.StoredIds"/>) skips the disk
+    /// probe for the many songs with nothing stored.
+    /// </summary>
+    internal (string Plain, string Synced) ReadLyricsForSearch(IReadOnlySet<Guid>? storedIds)
+    {
+        Services.LyricsStore.LyricsPair stored = Services.LyricsStore.LyricsPair.Empty;
+        var needStore = (_lyricsOverride ?? _legacyLyrics) == null || (_syncedLyricsOverride ?? _legacySyncedLyrics) == null;
+        if (needStore && _lyricsStore != null && (storedIds == null || storedIds.Contains(Id)))
+            stored = _lyricsStore.Peek(Id);
+        return (_lyricsOverride ?? _legacyLyrics ?? stored.Plain,
+                _syncedLyricsOverride ?? _legacySyncedLyrics ?? stored.Synced);
+    }
+
+    /// <summary>The store this track's lyrics live in (null until the library's first load/save
+    /// attaches one); the lyric search index lists it once per pass.</summary>
+    internal Services.LyricsStore? AttachedLyricsStore => _lyricsStore;
+
+    /// <summary>
+    /// The lyric line a Songs search matched ("Include lyrics" / "Lyrics only"), shown under the
+    /// title; null when the row matched on its tags or no lyric search is on. Session-only.
+    /// </summary>
+    [JsonIgnore]
+    public string? LyricsSearchSnippet
+    {
+        get => _lyricsSearchSnippet;
+        set => SetProperty(ref _lyricsSearchSnippet, value);
+    }
+    private string? _lyricsSearchSnippet;
 
     private Services.LyricsStore.LyricsPair ReadStoredLyrics()
         => _lyricsStore?.Read(Id) ?? Services.LyricsStore.LyricsPair.Empty;
@@ -1065,13 +1146,30 @@ public partial class Track : ObservableObject
 
     /// <summary>
     /// Artist text to show in list views. When ShowComposerInAllViews is set and a Composer exists,
-    /// returns "Artist — Composer". Separators read as commas (<see cref="ArtistCredit.Display"/>).
+    /// returns "Artist — Composer". The credit part is <see cref="ArtistCreditDisplay"/>.
     /// </summary>
     [JsonIgnore]
     public string ArtistDisplay =>
         ShowComposerInAllViews && !string.IsNullOrWhiteSpace(Composer)
-            ? $"{ArtistCredit.Display(Artist)} \u2014 {Composer}"
-            : ArtistCredit.Display(Artist);
+            ? $"{ArtistCreditDisplay} \u2014 {Composer}"
+            : ArtistCreditDisplay;
+
+    /// <summary>
+    /// The artist credit as every surface shows it (rows, island, lyrics page, mini player,
+    /// media controls, Discord): separators read as commas (<see cref="ArtistCredit.Display(string?)"/>),
+    /// or the tag's text exactly as written while <see cref="ArtistCredit.ShowAsTagged"/> is on
+    /// (GitHub #187). Never the composer.
+    /// </summary>
+    [JsonIgnore]
+    public string ArtistCreditDisplay => ArtistCredit.Display(Artist, ArtistTagText);
+
+    /// <summary>Re-reads the computed artist lines in bindings after the display mode flips
+    /// (<see cref="ArtistCredit.ShowAsTagged"/>), which no property of this track notices.</summary>
+    public void NotifyArtistDisplayChanged()
+    {
+        OnPropertyChanged(nameof(ArtistCreditDisplay));
+        OnPropertyChanged(nameof(ArtistDisplay));
+    }
 
     /// <summary>
     /// Title text to show in list views. When UseWorkAndMovement is set and a Work/Movement exists,

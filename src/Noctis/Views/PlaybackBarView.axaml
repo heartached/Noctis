@@ -12,7 +12,6 @@
 
     <UserControl.Resources>
         <conv:TrackDisplayTitleConverter x:Key="DisplayTitle" />
-        <conv:TrackArtistConverter x:Key="DisplayArtist" />
         <conv:BoolToOpacityConverter x:Key="BoolToOpacity" />
         <conv:VolumeToIconConverter x:Key="VolumeToIcon" />
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
@@ -229,6 +228,14 @@
         </Style>
         <Style Selector="Button.artist-link-btn:pressed Border.artist-text-hover">
             <Setter Property="Background" Value="#33FFFFFF" />
+        </Style>
+        <!-- Light surface under the island (a light album page through the translucent fill,
+             PlaybackBarView.UpdateSurfaceContrast): the hover box darkens instead. -->
+        <Style Selector="Border#IslandBorder.on-light Button.artist-link-btn:pointerover Border.artist-text-hover">
+            <Setter Property="Background" Value="#1A000000" />
+        </Style>
+        <Style Selector="Border#IslandBorder.on-light Button.artist-link-btn:pressed Border.artist-text-hover">
+            <Setter Property="Background" Value="#29000000" />
         </Style>
         <!-- Artist name in the track box: accent, or the bar's secondary text colour when
              Settings → "Accent colour on artist and album names" is off (GitHub #125;
@@ -539,7 +546,7 @@
                  With Liquid Glass on the same brush becomes the tint over a live frost of the
                  content scrolling under the pill. Negative margin reaches back across the
                  Border's 12px padding so the fill covers the whole pill as before. -->
-            <controls:GlassPanel CornerRadius="999" Margin="-12,0" Padding="12,0" BlurRadius="14">
+            <controls:GlassPanel x:Name="IslandGlass" CornerRadius="999" Margin="-12,0" Padding="12,0" BlurRadius="14">
               <controls:GlassPanel.Background>
                 <SolidColorBrush Color="{DynamicResource IslandBackgroundColor}" Opacity="{Binding IslandBackgroundOpacity}"/>
               </controls:GlassPanel.Background>
@@ -924,7 +931,9 @@
                        radius left a bright sliver of card fill inside the card's corner. -->
                   <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="3,0,3,0">
 
-                    <!-- Album art thumbnail (a click opens the Mini Player). 32px, not 34: the
+                    <!-- Album art thumbnail (a click opens the Mini Player by default, or the lyrics
+                         page / full-screen lyrics: Settings → Player → Clicking the artwork, GitHub
+                         #183; the tooltip and accessible name say which). 32px, not 34: the
                          2px it gives up is a gap above the seek line, and the seek hit strip
                          below reaches up over the art's bottom edge. Flush against the line,
                          a seek aimed a pixel high opened the Mini Player (Discord Luwi
@@ -942,7 +951,8 @@
                             Margin="1,1,8,0"
                             VerticalAlignment="Top"
                             Cursor="Hand"
-                            ToolTip.Tip="{loc:T PlaybackBar.MiniPlayerTip}"
+                            ToolTip.Tip="{Binding IslandArtworkTip}"
+                            AutomationProperties.Name="{Binding IslandArtworkTip}"
                             ToolTip.Placement="Top"
                             ToolTip.VerticalOffset="-6"
                             PointerPressed="OnAlbumArtPressed"
@@ -1112,13 +1122,13 @@
                                         <Border CornerRadius="2"
                                                 Padding="1,0,2,0"
                                                 Margin="0,0,0,-2">
-                                            <!-- Converter form (same shape as the title above): binding through
-                                                 CurrentTrack.Artist broke mid-chain while no track was playing
-                                                 and logged a warning at every startup. Artist raises no INPC, so
-                                                 re-evaluating on CurrentTrack change is exactly equivalent. -->
+                                            <!-- Not a path through CurrentTrack.Artist: that broke mid-chain while
+                                                 no track was playing and logged a warning at every startup.
+                                                 CurrentArtistLine is raised on a track change and when the
+                                                 artist display form flips (GitHub #187). -->
                                             <TextBlock x:Name="ArtistNameTextBlock"
                                                        Classes="bar-artist"
-                                                       Text="{Binding CurrentTrack, Converter={StaticResource DisplayArtist}, FallbackValue=''}"
+                                                       Text="{Binding CurrentArtistLine}"
                                                        FontSize="10"
                                                        MaxLines="1"
                                                        Margin="0,1,0,0">
@@ -1132,7 +1142,7 @@
                                              the text; it rides the same offset as the text. -->
                                         <TextBlock x:Name="ArtistNameLoopCopy"
                                                    Classes="bar-artist"
-                                                   Text="{Binding CurrentTrack, Converter={StaticResource DisplayArtist}, FallbackValue=''}"
+                                                   Text="{Binding CurrentArtistLine}"
                                                    FontSize="10"
                                                    MaxLines="1"
                                                    Margin="45,1,0,0"
@@ -1302,6 +1312,40 @@
                                             IsFavorite="{Binding CurrentTrack.IsFavorite, FallbackValue=False}" />
                     </Button>
 
+                    <!-- GitHub #186: Quick Add to Playlist and Move to Trash, each opt-in (Settings →
+                         Player → Player island buttons) and budgeted with the extras above. The quick
+                         playlist menu is a MenuFlyout (overlay-hosted and frosted by GlassMenus like
+                         the "…" menu), filled per open with the picked playlists
+                         (OnQuickPlaylistMenuOpening). Trash sits last, away from the heart. -->
+                    <Button x:Name="QuickPlaylistButton"
+                            Classes="secondary-btn"
+                            IsEnabled="{Binding CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}"
+                            IsVisible="{Binding IslandShowQuickPlaylist}"
+                            ToolTip.Tip="{loc:T PlaybackBar.QuickPlaylistTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.QuickPlaylistTip}"
+                            Width="34" Height="34">
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLinePlaylistAdd}" Foreground="{DynamicResource IslandIconFill}" />
+                        <Button.Flyout>
+                            <!-- The hidden first row keeps the menu from ever being empty: a
+                                 MenuFlyout opened with no items never shows the rows its Opening
+                                 handler adds (IslandBarActions186Tests). -->
+                            <MenuFlyout Placement="Top"
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <Separator IsVisible="False" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button x:Name="TrashButton"
+                            Classes="secondary-btn"
+                            Command="{Binding TrashCurrentTrackCommand}"
+                            IsVisible="{Binding IslandShowTrash}"
+                            ToolTip.Tip="{Binding TrashButtonTip}"
+                            AutomationProperties.Name="{Binding TrashButtonTip}"
+                            Width="34" Height="34">
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineTrash}" Foreground="{DynamicResource IslandIconFill}" />
+                    </Button>
+
                     <!-- More options: the everyday "…" lives inside the track box
                          (BoxOptionsButton). This one owns the MenuFlyout and is the
                          fallback shown only while the box is hidden — the lyrics-page bar
@@ -1363,6 +1407,15 @@
                                           Header="{loc:T PlaybackBar.ViewArtistTip}">
                                     <MenuItem.Icon>
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineArtist}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <!-- Other Versions (Discord, Cosmo 11-08): switches the playing song to
+                                     another recording of it; filled per open, hidden when there is none. -->
+                                <MenuItem x:Name="OtherVersionsMenuItem"
+                                          Header="{loc:T Menu.OtherVersions}"
+                                          IsVisible="False">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
@@ -1665,10 +1718,15 @@
 
                     <!-- Lyrics and Queue: while their page / panel is open, the same faint accent
                          square and accent glyph as Repeat and Shuffle (Discord, Luwi 2026-10-10:
-                         "Show icons in Accent Color when corresponding panels are opened"). -->
-                    <Button Classes="secondary-btn"
+                         "Show icons in Accent Color when corresponding panels are opened").
+                         Settings → Player can hide Lyrics on the main bar (GitHub #183); the
+                         lyrics page keeps it as the button that closes the page. -->
+                    <Button x:Name="LyricsButton"
+                            Classes="secondary-btn"
+                            IsVisible="{Binding IslandLyricsButtonVisible}"
                             Click="OnLyricsButtonClick"
                             ToolTip.Tip="{loc:T PlaybackBar.LyricsTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.LyricsTip}"
                             Width="34" Height="34">
                         <Panel Width="34" Height="34">
                             <Border Width="28" Height="28"

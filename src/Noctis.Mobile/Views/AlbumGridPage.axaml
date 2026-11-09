@@ -7,14 +7,8 @@
              x:Class="Noctis.Mobile.Views.AlbumGridPage"
              x:DataType="vm:AlbumGridPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,4,20,8" IsVisible="{Binding !IsEmbedded}">
-            <Button Classes="icon" Command="{Binding Shell.NavigateBackCommand}">
-                <PathIcon Data="{DynamicResource PhBack}" />
-            </Button>
-            <views:FitWidth Grid.Column="1" Name="TitleFit" VerticalAlignment="Center">
-                <TextBlock Classes="title" FontSize="26" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            </views:FitWidth>
-        </Grid>
+        <!-- The shared header (PageHeader): "‹ Library" over the large title. -->
+        <views:PageHeader Grid.Row="0" Name="Header" IsVisible="{Binding !IsEmbedded}" />
 
         <!-- "Find in Albums": the list pages' shared field (FindField), by album title or artist. -->
         <views:FindField Grid.Row="1" Name="AlbumFindField" Text="{Binding Query}" Placeholder="{loc:T Mobile.Albums.Find}"
@@ -26,21 +20,18 @@
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
         <ScrollViewer Classes="page-scroll" Grid.Row="2" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">
-                <ItemsControl.ItemsPanel>
+            <!-- Rows built once and handed the next row (RowItemsControl), tiles built once per
+                 row and handed the next album (SlotRow): a fling only rebinds. -->
+            <views:RowItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">
+                <views:RowItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <VirtualizingStackPanel />
                     </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
+                </views:RowItemsControl.ItemsPanel>
+                <views:RowItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="models:AlbumRow">
-                        <ItemsControl ItemsSource="{Binding Albums}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="2" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <views:SlotRow Items="{Binding Albums}" Columns="2">
+                            <views:SlotRow.ItemTemplate>
                                 <DataTemplate x:DataType="models:Album">
                                     <Button Classes="row" Margin="6"
                                             views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}"
@@ -49,11 +40,11 @@
                                         <views:AlbumTile />
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:SlotRow.ItemTemplate>
+                        </views:SlotRow>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </views:RowItemsControl.ItemTemplate>
+            </views:RowItemsControl>
         </ScrollViewer>
     </Grid>
 </UserControl>

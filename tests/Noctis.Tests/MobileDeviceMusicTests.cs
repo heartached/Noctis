@@ -89,6 +89,24 @@ public class MobileDeviceMusicTests : IDisposable
         Assert.Equal(new[] { "keep.mp3" }, DeviceMusicScan.Select(rows, Array.Empty<string>()).Select(i => i.Name));
     }
 
+    /// <summary>Discord #mobile-beta: voice messages showed up as songs. MediaProvider sets
+    /// IS_MUSIC for any file outside its special folders, WhatsApp's voice notes included.</summary>
+    [Fact]
+    public void Select_SkipsMessagingAppVoiceNotes_IndexedAsMusic()
+    {
+        var rows = new[]
+        {
+            Row(1, "PTT-20261107-WA0003.opus", relative: "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Voice Notes/202645/"),
+            Row(2, "PTT-20221109-WA0001.opus", relative: "WhatsApp/Media/WhatsApp Voice Notes/"),          // before Android 11
+            Row(3, "PTT-20261101-WA0002.opus", relative: "Android/media/com.whatsapp.w4b/WhatsApp Business/Media/WhatsApp Business Voice Notes/202644/"),
+            Row(4, "PTT-1.opus", volume: null, relative: null,
+                data: "/storage/emulated/0/WhatsApp/Media/WhatsApp Voice Notes/202201/PTT-1.opus"),
+            Row(5, "AUD-20261101-WA0004.mp3", relative: "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Audio/"),   // a shared song stays
+            Row(6, "song.mp3", relative: "Music/Voice Notes Band/"),                                         // only the folder's end counts
+        };
+        Assert.Equal(new[] { "AUD-20261101-WA0004.mp3", "song.mp3" }, DeviceMusicScan.Select(rows, Array.Empty<string>()).Select(i => i.Name));
+    }
+
     [Theory]
     [InlineData(5_000, false)]
     [InlineData(14_999, false)]

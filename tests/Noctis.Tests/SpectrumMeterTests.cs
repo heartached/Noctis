@@ -89,8 +89,9 @@ public class SpectrumMeterTests
     [Fact]
     public void Read_IsLatencyAligned_ShowsWhatIsBeingHeard()
     {
-        // 300 ms of 200 Hz then 300 ms of 4 kHz; the renderer runs 200 ms ahead of the speaker.
-        var (meter, now) = Run(t => (float)Math.Sin(2 * Math.PI * (t < 0.3 ? 200 : 4000) * t), 0.6, latencyMs: 200);
+        // 300 ms of 250 Hz then 300 ms of 4 kHz; the renderer runs 200 ms ahead of the speaker.
+        // (250, not 200 Hz: 200 Hz sits exactly on a band edge of the 20 Hz..20 kHz split.)
+        var (meter, now) = Run(t => (float)Math.Sin(2 * Math.PI * (t < 0.3 ? 250 : 4000) * t), 0.6, latencyMs: 200);
 
         var bands = new float[Bands];
         // Right after the last feed the speaker is still 200 ms behind: only 100 ms of the
@@ -98,10 +99,46 @@ public class SpectrumMeterTests
         Assert.True(meter.TryRead(now(), bands));
         Assert.Equal(BandOf(4000), ArgMax(bands));
 
-        // Rewind the clock so the heard point sits inside the 200 Hz stretch.
-        var (meter2, now2) = Run(t => (float)Math.Sin(2 * Math.PI * (t < 0.3 ? 200 : 4000) * t), 0.35, latencyMs: 200);
+        // Rewind the clock so the heard point sits inside the 250 Hz stretch.
+        var (meter2, now2) = Run(t => (float)Math.Sin(2 * Math.PI * (t < 0.3 ? 250 : 4000) * t), 0.35, latencyMs: 200);
         Assert.True(meter2.TryRead(now2(), bands));
-        Assert.Equal(BandOf(200), ArgMax(bands));
+        Assert.Equal(BandOf(250), ArgMax(bands));
+    }
+
+    /// <summary>GitHub #196: synthetic FFT whose bin magnitudes all differ (a smooth bass
+    /// slope). The bass bands are narrower than one FFT bin; each must still read its own
+    /// level (interpolated at its centre), not repeat a neighbour's bin as a flat plateau.</summary>
+    [Fact]
+    public void MapBands_BassBandsNarrowerThanABin_DoNotRepeatOneBin()
+    {
+        const int n = SpectrumMeter.WindowFrames;
+        var re = new double[n];
+        var im = new double[n];
+        // Magnitude falls 1 dB per bin from -10 dBFS: every bin distinct, all above the floor.
+        for (var k = 1; k < n / 2; k++) re[k] = n / 4.0 * Math.Pow(10, (-10 - Math.Min(k, 40)) / 20.0);
+
+        var bands = new float[64];
+        SpectrumMeter.MapBands(re, im, Rate, bands);
+
+        for (var b = 1; b < bands.Length / 2; b++)
+            Assert.True(bands[b] != bands[b - 1], $"bands {b - 1} and {b} both read {bands[b]} (plateau)");
+    }
+
+    /// <summary>GitHub #196: the bands span the audible range — a 30 Hz tone lands in the
+    /// first bands, an 18 kHz tone in the last ones (both were outside 40 Hz..16 kHz).</summary>
+    [Theory]
+    [InlineData(30.0)]
+    [InlineData(18000.0)]
+    public void Sine_AtTheEdgesOfHearing_IsShown(double hz)
+    {
+        // -10 dBFS so the levels stay under the full-scale clamp.
+        var (meter, now) = Run(t => (float)(0.3 * Math.Sin(2 * Math.PI * hz * t)), 0.5);
+
+        var bands = new float[Bands];
+        Assert.True(meter.TryRead(now(), bands));
+        Assert.InRange(BandOf(hz), 0, Bands - 1);
+        Assert.InRange(bands[BandOf(hz)], 0.6f, 1.0f);
+        Assert.InRange(bands[BandOf(1000)], 0f, 0.15f);
     }
 
     [Fact]

@@ -66,6 +66,9 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private int _volume = 100;
     private int _volumeAdjust;
     private bool _muted;
+    // The sleep timer's fade-out layer (SetPlaybackFadeGain), on top of the volume; back to 1
+    // whenever playback starts, so the song after a timer that paused is heard again.
+    private double _fadeGain = 1.0;
 
     public event EventHandler? TrackEnded;
     public event EventHandler<TimeSpan>? PositionChanged;
@@ -199,6 +202,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             _player.SeekTo(PendingSeekMs);
             PendingSeekMs = -1;
         }
+        _fadeGain = 1.0;
         ApplyVolume();
         _player.Play();
         CurrentMediaPath = filePath;
@@ -222,6 +226,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     public void Resume()
     {
         if (_disposed || State != PlaybackState.Paused) return;
+        ResetFade();
         _player.Play();
         State = PlaybackState.Playing;
         // OnTaskRemoved stops the service when the app is swiped away paused; resuming after a
@@ -460,6 +465,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // Without this the UI freezes (no more PositionChanged ticks) and IsPlaying/State
             // silently disagree until the next unrelated tick, if any.
             State = PlaybackState.Playing;
+            ResetFade();
             StartPositionPump();
         }
     }
@@ -504,8 +510,27 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private void ApplyVolume()
     {
         if (_disposed) return;
-        var gain = _muted ? 0f : (_volume / 100f) * (1f + _volumeAdjust / 100f);
+        var gain = _muted ? 0f : (_volume / 100f) * (1f + _volumeAdjust / 100f) * (float)_fadeGain;
         _player.Volume = Math.Clamp(gain, 0f, 1f);
+    }
+
+    /// <summary>
+    /// The sleep timer's fade (NowPlayingViewModel.SleepTimer): a gain under the volume, which it
+    /// never changes. Set straight away: the ViewModel steps it on every 250 ms position tick, as
+    /// the desktop's ramps do, so the steps are already small.
+    /// </summary>
+    public void SetPlaybackFadeGain(double gain, int rampMs)
+    {
+        if (_disposed) return;
+        _fadeGain = Math.Clamp(gain, 0.0, 1.0);
+        ApplyVolume();
+    }
+
+    private void ResetFade()
+    {
+        if (_fadeGain >= 1.0) return;
+        _fadeGain = 1.0;
+        ApplyVolume();
     }
 
     private void EnsureServiceStarted()

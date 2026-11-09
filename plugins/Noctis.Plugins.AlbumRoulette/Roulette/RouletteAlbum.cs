@@ -5,7 +5,8 @@ namespace Noctis.Plugins.AlbumRoulette.Roulette;
 /// <summary>Album, EP or single, as the filter chips group release types.</summary>
 public enum ReleaseKind { Album, EP, Single }
 
-/// <summary>One album on the reel, built from its library tracks.</summary>
+/// <summary>One album on the reel, built from its library tracks. In Song Roulette a song rides
+/// the reel the same way, as an entry of its own (<see cref="IsSong"/>, see <see cref="SongCatalog"/>).</summary>
 public sealed record RouletteAlbum(
     string Key,
     string Title,
@@ -35,6 +36,52 @@ public sealed record RouletteAlbum(
     public int Decade => Year > 0 ? Year / 10 * 10 : 0;
 
     public bool NeverPlayed => PlayCount <= 0 && LastPlayed is null;
+
+    /// <summary>A song of its own (Song Roulette), not an album.</summary>
+    public bool IsSong => Key.StartsWith(SongCatalog.KeyPrefix, StringComparison.Ordinal);
+
+    /// <summary>The song's album title (Song Roulette); empty for albums.</summary>
+    public string AlbumTitle { get; init; } = "";
+
+    /// <summary>The single genres in <see cref="Genre"/>: Noctis keeps several in one tag as
+    /// "Rock; Indie" (split on ';' only: "Hip-Hop/Rap" is one genre).</summary>
+    public IReadOnlyList<string> Genres { get; } = SplitGenres(Genre);
+
+    /// <summary>Split on ';', trimmed, blanks dropped, case-insensitive duplicates dropped (Noctis's own rule).</summary>
+    public static string[] SplitGenres(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+}
+
+/// <summary>Song Roulette: every song is an entry of its own, as if it were a single.</summary>
+public static class SongCatalog
+{
+    public const string KeyPrefix = "s:";
+
+    /// <summary>One entry per library track, in library order. Songs Noctis's own shuffle leaves
+    /// out (not liked, Skip when shuffling, snoozed until after <paramref name="now"/>) stay off the reel.</summary>
+    public static IReadOnlyList<RouletteAlbum> Build(IEnumerable<TrackInfo> tracks, DateTimeOffset now)
+    {
+        var result = new List<RouletteAlbum>();
+        foreach (var t in tracks)
+        {
+            if (t.IsDisliked || t.SkipWhenShuffling || t.SnoozedUntil is { } until && until > now) continue;
+            var artist = ((string.IsNullOrWhiteSpace(t.Artist) ? t.AlbumArtist : t.Artist) ?? "").Trim();
+            var artists = new[] { t.Artist, t.AlbumArtist }
+                .Where(a => !string.IsNullOrWhiteSpace(a)).Select(a => a.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            result.Add(new RouletteAlbum(
+                KeyPrefix + t.Id, (t.Title ?? "").Trim(), artist, Math.Max(0, t.Year), (t.Genre ?? "").Trim(),
+                string.IsNullOrWhiteSpace(t.ReleaseType) ? "Album" : t.ReleaseType,
+                new[] { t.Id }, t.AlbumId ?? "", t.ArtworkPath, Math.Max(0, t.PlayCount), t.LastPlayed, artists)
+            {
+                AlbumTitle = (t.Album ?? "").Trim(),
+            });
+        }
+        return result;
+    }
 }
 
 /// <summary>Turns library tracks into albums (one per album, a track without an album is a single of its own).</summary>

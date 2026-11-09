@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 12;
+    private const int CurrentMetadataSchemaVersion = 13;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
     // Throttle scan progress so a large library (tens of thousands of files)
@@ -38,6 +38,13 @@ public class LibraryService : ILibraryService
 
     // AppSettings.InboxEnabled as LoadAsync read it: off releases any marked songs on load.
     private bool _inboxEnabledAtLoad;
+
+    // GitHub #193 / #190: AppSettings.AlbumGroupingEnabled / AlbumGroupingWriteTags, read with
+    // the hidden folders before the first index build and switched by SetAlbumGrouping*Async.
+    private volatile bool _albumGroupingEnabled = true;
+    private volatile bool _albumGroupingWriteTags;
+    private readonly SemaphoreSlim _ungroupedResolveGate = new(1, 1);
+    private readonly SemaphoreSlim _groupingWriteGate = new(1, 1);
 
     // Last VisibleTracks result, keyed by the exact _tracks list and hidden array it came
     // from (both are swapped, never edited in place), so Tracks costs one filter per change.
@@ -2125,6 +2132,16 @@ public class LibraryService : ILibraryService
                     // knows which album artists are real tags.
                     await ResolveAlbumArtistSourcesAsync();
 
+                    // GitHub #193: songs a 1.6.8 grouping re-keyed are read once for the album
+                    // they had, and whether their album name is only their folder's.
+                    if (await ResolveUngroupedAlbumsAsync() > 0)
+                        await RebuildAndPersistAlbumKeysAsync(forceSave: true);
+
+                    // GitHub #187: with "Show artists as written in the tags" on, songs indexed
+                    // before the tag's own credit was kept get it re-read once.
+                    if (ArtistCredit.ShowAsTagged)
+                        await ResolveArtistTagTextAsync();
+
                     // Heal albums whose cover was never cached. Scans only extract
                     // art for new/changed files plus a one-shot post-scan pass, so
                     // any interruption or unreadable file left an album artless for
@@ -2135,7 +2152,7 @@ public class LibraryService : ILibraryService
 
                     // Last and on its own task: the v11 label and v12 genre passes can take many minutes on a
                     // hard disk and nothing above should wait for it.
-                    if (_labelBackfillPending || _genreBackfillPending || _tracks.Any(NeedsReplayGainRead))
+                    if (_labelBackfillPending || _genreBackfillPending || _mp3LengthBackfillPending || _tracks.Any(NeedsReplayGainRead))
                         LabelBackfill = Task.Run(RunTagBackfillsAsync);
                 }
                 catch (Exception ex)
@@ -2179,6 +2196,8 @@ public class LibraryService : ILibraryService
                 .Where(f => !string.IsNullOrWhiteSpace(f))
                 .ToArray();
             _inboxEnabledAtLoad = settings.InboxEnabled;
+            _albumGroupingEnabled = settings.AlbumGroupingEnabled;
+            _albumGroupingWriteTags = settings.AlbumGroupingWriteTags;
         }
         catch (Exception ex)
         {
@@ -2505,14 +2524,24 @@ public class LibraryService : ILibraryService
         var allTracks = _tracks;
         var tracks = VisibleTracks(allTracks);
         var persistence = _persistence;
+        var grouping = _albumGroupingEnabled;
         List<AlbumGrouping.Move>? albumMoves = null;
+        var groupedCount = 0;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
         {
             // GitHub #178: untagged songs of one album in one folder become one album before
             // anything groups by AlbumId. Over every track, hidden ones too, so a song's key
             // does not depend on what is shown. A no-op once the library is grouped.
-            albumMoves = AlbumGrouping.Apply(allTracks);
+            // GitHub #193: switched off (or no longer a candidate), a grouped song goes back to
+            // the album it had before; a no-op once nothing is grouped.
+            albumMoves = AlbumGrouping.Restore(allTracks, grouping);
+            if (grouping)
+            {
+                var grouped = AlbumGrouping.Apply(allTracks);
+                groupedCount = grouped.Count;
+                albumMoves.AddRange(grouped);
+            }
             if (albumMoves.Count > 0)
                 CarryAlbumKeyedFiles(persistence, albumMoves);
 
@@ -2648,8 +2677,220 @@ public class LibraryService : ILibraryService
         if (albumMoves is { Count: > 0 })
         {
             DebugLog.Write("Library", $"Album grouping (#178): {albumMoves.Count} song(s) re-keyed into " +
-                $"{albumMoves.Select(m => m.To).Distinct().Count()} album(s)");
+                $"{albumMoves.Select(m => m.To).Distinct().Count()} album(s)" +
+                (grouping ? "" : " (grouping off, #193)"));
             await RepointPinnedAlbumsAsync(albumMoves, allTracks).ConfigureAwait(false);
+        }
+
+        // GitHub #190: newly grouped songs get the album artist written to their files too.
+        // Not awaited: the write takes its own gate and never rebuilds, and a rebuild must not
+        // wait on file I/O.
+        if (groupedCount > 0 && grouping && _albumGroupingWriteTags)
+            _ = WriteAlbumGroupingInBackgroundAsync();
+    }
+
+    /// <inheritdoc />
+    public bool AlbumGroupingEnabled => _albumGroupingEnabled;
+
+    /// <inheritdoc />
+    public async Task<int> SetAlbumGroupingAsync(bool enabled, CancellationToken ct = default)
+    {
+        _albumGroupingEnabled = enabled;
+        // Songs a 1.6.8 grouping re-keyed carry no record of their own album yet: read once.
+        var read = await ResolveUngroupedAlbumsAsync(ct);
+        return await RebuildAndPersistAlbumKeysAsync(forceSave: read > 0);
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
+    {
+        _albumGroupingWriteTags = enabled;
+        if (!enabled || !_albumGroupingEnabled)
+            return new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+        if (await ResolveUngroupedAlbumsAsync(ct) > 0)
+            await RebuildAndPersistAlbumKeysAsync(forceSave: true);
+        return await WriteAlbumGroupingToFilesAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<AlbumGroupResult>? AlbumGroupingWritten;
+
+    /// <summary>
+    /// Rebuilds the indexes, then saves and republishes when a song's album key changed (or
+    /// <paramref name="forceSave"/>: fields only the save keeps were recorded). Returns how
+    /// many songs changed album.
+    /// </summary>
+    private async Task<int> RebuildAndPersistAlbumKeysAsync(bool forceSave)
+    {
+        var snapshot = _tracks;
+        var before = await Task.Run(() =>
+        {
+            var keys = new Dictionary<Guid, Guid>(snapshot.Count);
+            foreach (var t in snapshot) keys[t.Id] = t.AlbumId;
+            return keys;
+        }, CancellationToken.None);
+        await RebuildIndexesAsync();
+        var changed = await Task.Run(() => snapshot
+            .Where(t => before.TryGetValue(t.Id, out var id) && id != t.AlbumId)
+            .ToList(), CancellationToken.None);
+        if (changed.Count == 0 && !forceSave) return 0;
+
+        await SaveAsync();
+        if (changed.Count == 0) return 0;
+        foreach (var t in changed) t.NotifyMetadataUpdated();
+        try { await _sqliteIndex.UpsertTracksAsync(changed, CancellationToken.None); }
+        catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: index update failed: {ex.Message}"); }
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return changed.Count;
+    }
+
+    /// <summary>
+    /// GitHub #193, libraries grouped by 1.6.8: that grouping re-keyed songs without keeping
+    /// the album artist they had (<see cref="Track.UngroupedAlbumArtist"/>), and filed folders
+    /// of loose singles as one album because an album name taken from the folder was not told
+    /// apart (<see cref="Track.AlbumFromFolder"/>). The songs that may have been re-keyed
+    /// (<see cref="AlbumGrouping.UnrecordedRegroupedSongs"/>) are re-read once for both facts;
+    /// nothing else about them changes here (the next rebuild acts on them). Runs once per
+    /// library (AppSettings.AlbumGroupingOriginalsRead). Returns how many songs were read.
+    /// </summary>
+    public async Task<int> ResolveUngroupedAlbumsAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        try { await _ungroupedResolveGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return 0; }
+        try
+        {
+            AppSettings settings;
+            try { settings = await _persistence.LoadSettingsAsync(); }
+            catch { return 0; }
+            if (settings.AlbumGroupingOriginalsRead) return 0;
+
+            var snapshot = _tracks;
+            var read = 0;
+            await Task.Run(() =>
+            {
+                foreach (var track in AlbumGrouping.UnrecordedRegroupedSongs(snapshot))
+                {
+                    if (token.IsCancellationRequested) break;
+                    // Phone documents and server streams cannot be opened here; they keep their album.
+                    if (!track.HasFilesystemPath || track.IsRemoteStream
+                        || track.SourceType is not (SourceType.Local or SourceType.Smb)) continue;
+                    try
+                    {
+                        if (!File.Exists(track.FilePath)) continue;
+                        var own = _metadata.ReadTrackMetadata(track.FilePath);
+                        // Tagged since (another app): the next scan reads the new tag.
+                        if (own == null || own.AlbumArtistFromTag != false) continue;
+                        track.AlbumFromFolder = own.AlbumFromFolder;
+                        if (own.AlbumId != track.AlbumId)
+                        {
+                            track.UngroupedAlbumArtist = own.AlbumArtist;
+                            track.UngroupedAlbum = own.Album;
+                        }
+                        read++;
+                    }
+                    catch
+                    {
+                        // Unreadable now: the song stays where it is.
+                    }
+                }
+            }, CancellationToken.None);
+
+            // Cut short: not recorded as done, so the next launch reads the rest.
+            if (token.IsCancellationRequested) return read;
+            try { await _persistence.UpdateSettingsAsync(s => s.AlbumGroupingOriginalsRead = true); }
+            catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: done flag not saved: {ex.Message}"); }
+            if (read > 0)
+                DebugLog.Write("Library", $"Album grouping (#193): own album artist read for {read} song(s) grouped by an older build");
+            return read;
+        }
+        finally
+        {
+            _ungroupedResolveGate.Release();
+        }
+    }
+
+    /// <summary>
+    /// GitHub #190: writes the grouped album's Album Artist and album name into the files of the
+    /// songs the grouping re-keyed (<see cref="AlbumGrouping.RegroupedSongs"/>), through
+    /// <see cref="IMetadataService.WriteAlbumGrouping"/> only, so no other tag changes. A song
+    /// whose file is written has a real album-artist tag from then on. Files that are missing,
+    /// read-only, not on a local or network drive, or held open are listed in the result and
+    /// tried again on the next pass. Off the UI thread; one pass at a time.
+    /// </summary>
+    public async Task<AlbumGroupResult> WriteAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    {
+        var none = new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        try { await _groupingWriteGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return none; }
+        try
+        {
+            if (!_albumGroupingEnabled) return none;
+            var snapshot = _tracks;
+            var written = new List<Track>();
+            var unwritten = new List<string>();
+            await Task.Run(() =>
+            {
+                foreach (var t in AlbumGrouping.RegroupedSongs(snapshot))
+                {
+                    if (token.IsCancellationRequested) break;
+                    var ok = false;
+                    if (t.HasFilesystemPath && !t.IsRemoteStream && t.SourceType is SourceType.Local or SourceType.Smb)
+                    {
+                        try
+                        {
+                            if (File.Exists(t.FilePath) && !File.GetAttributes(t.FilePath).HasFlag(FileAttributes.ReadOnly))
+                                ok = _metadata.WriteAlbumGrouping(t.FilePath, t.Album, t.AlbumArtist);
+                        }
+                        catch (Exception ex)
+                        {
+                            DebugLog.Write("Library", $"Album grouping write failed for '{t.FilePath}': {ex.Message}");
+                        }
+                    }
+                    if (!ok)
+                    {
+                        unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                        continue;
+                    }
+                    // The file names the album now: a real tag, never put back by Restore.
+                    t.AlbumArtistFromTag = true;
+                    t.UngroupedAlbumArtist = null;
+                    t.UngroupedAlbum = null;
+                    written.Add(t);
+                }
+            }, CancellationToken.None);
+
+            if (written.Count > 0)
+            {
+                await SaveAsync();
+                try { await _sqliteIndex.UpsertTracksAsync(written, CancellationToken.None); }
+                catch (Exception ex) { DebugLog.Write("Library", $"Album grouping: index update failed: {ex.Message}"); }
+            }
+            if (written.Count > 0 || unwritten.Count > 0)
+                DebugLog.Write("Library", $"Album grouping (#190): album artist written to {written.Count} file(s)" +
+                    (unwritten.Count > 0 ? $", {unwritten.Count} not written" : ""));
+            return new AlbumGroupResult(Guid.Empty, written.Count, unwritten);
+        }
+        finally
+        {
+            _groupingWriteGate.Release();
+        }
+    }
+
+    private async Task WriteAlbumGroupingInBackgroundAsync()
+    {
+        try
+        {
+            var result = await WriteAlbumGroupingToFilesAsync().ConfigureAwait(false);
+            if (result.Grouped > 0 || result.UnwrittenFiles.Count > 0)
+                AlbumGroupingWritten?.Invoke(this, result);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Album grouping write pass failed: {ex.Message}");
         }
     }
 
@@ -2755,9 +2996,10 @@ public class LibraryService : ILibraryService
                 try
                 {
                     if (!File.Exists(track.FilePath)) continue;
-                    if (_metadata.ReadTrackMetadata(track.FilePath)?.AlbumArtistFromTag is bool fromTag)
+                    if (_metadata.ReadTrackMetadata(track.FilePath) is { AlbumArtistFromTag: bool fromTag } own)
                     {
                         track.AlbumArtistFromTag = fromTag;
+                        track.AlbumFromFolder = own.AlbumFromFolder; // GitHub #193
                         resolved.Add(track);
                     }
                 }
@@ -2945,6 +3187,9 @@ public class LibraryService : ILibraryService
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         ArtistCredit.Configure(ArtistGroupModes.Parse(settings.ArtistGroupMode), settings.ArtistTagSeparators,
             settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+        // Only ever switched on here (SettingsViewModel owns the flag and loads first): a
+        // default-settings library must not switch off what the settings page turned on.
+        if (settings.ShowArtistsAsTagged) ArtistCredit.ShowAsTagged = true;
         MetadataService.MusicRootFolders = settings.MusicFolders
             .Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
 
@@ -3004,6 +3249,8 @@ public class LibraryService : ILibraryService
         _labelBackfillPending = settings.MetadataSchemaVersion < LabelSchemaVersion;
         // v12 (every genre of multi-genre files) runs after it, the same way.
         _genreBackfillPending = settings.MetadataSchemaVersion < GenreSchemaVersion;
+        // v13 (MP3 lengths an Info/VBRI header states) runs after that.
+        _mp3LengthBackfillPending = settings.MetadataSchemaVersion < Mp3LengthSchemaVersion;
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -3015,6 +3262,7 @@ public class LibraryService : ILibraryService
         // the genre pass v12.
         var stamp = _labelBackfillPending ? LabelSchemaVersion - 1
             : _genreBackfillPending ? GenreSchemaVersion - 1
+            : _mp3LengthBackfillPending ? Mp3LengthSchemaVersion - 1
             : CurrentMetadataSchemaVersion;
         if (settings.MetadataSchemaVersion < stamp)
         {
@@ -3329,9 +3577,12 @@ public class LibraryService : ILibraryService
     private const int LabelSchemaVersion = 11;
     // The schema version the genre pass stamps (GitHub #123 follow-up, 2026-10-10).
     private const int GenreSchemaVersion = 12;
+    // The schema version the MP3 length pass stamps (11-07: ffmpeg's "Info" header).
+    private const int Mp3LengthSchemaVersion = 13;
     // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the passes last.
     private bool _labelBackfillPending;
     private bool _genreBackfillPending;
+    private bool _mp3LengthBackfillPending;
     // A progress line in the session log every this many files.
     private const int LabelBackfillLogInterval = 250;
 
@@ -3397,8 +3648,44 @@ public class LibraryService : ILibraryService
                 // Only over the stale row it was read for: a genre typed meanwhile wins.
                 (t, v) => { if (Track.SplitGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
                 MarkPhoneTracks: false, Reindex: true);
-            await RunTagBackfillAsync(genre);
+            if (!await RunTagBackfillAsync(genre)) return;
         }
+
+        // 11-07: TagLib reads only a "Xing" header, so MP3s with an "Info" (or VBRI) header whose
+        // frame bitrate differs from the audio's (ffmpeg's: a 64 kbps frame before 128 kbps
+        // audio) were indexed at twice their length and half their bitrate, and a rescan skips
+        // unchanged files. Each local MP3's first frame is read once (a few KB) for the length
+        // its header states; only rows more than a second off change.
+        if (_mp3LengthBackfillPending)
+        {
+            var mp3 = new TagBackfill("mp3length", Mp3LengthSchemaVersion, "mp3length-backfill.progress",
+                NeedsMp3LengthCheck, ReadStatedMp3Length, ApplyStatedMp3Length,
+                MarkPhoneTracks: false, Reindex: true);
+            await RunTagBackfillAsync(mp3);
+        }
+    }
+
+    private static bool NeedsMp3LengthCheck(Track t) =>
+        Track.IsFilesystemPath(t.FilePath) && t.FilePath.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase);
+
+    // The MP3 length pass's progress-log value: "ticks|kbps" (invariant); empty = no header.
+    internal static string ReadStatedMp3Length(string path) =>
+        Mp3FrameScan.TryReadStatedLength(path, out var duration, out var kbps)
+            ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{duration.Ticks}|{kbps}")
+            : string.Empty;
+
+    internal static void ApplyStatedMp3Length(Track track, string value)
+    {
+        var parts = value.Split('|');
+        if (parts.Length != 2
+            || !long.TryParse(parts[0], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var ticks)
+            || !int.TryParse(parts[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var kbps)
+            || ticks <= 0 || kbps <= 0)
+            return;
+        var stated = TimeSpan.FromTicks(ticks);
+        if (Math.Abs((stated - track.Duration).TotalSeconds) <= 1.0) return;
+        track.Duration = stated;
+        track.Bitrate = kbps;
     }
 
     /// <summary>A local file whose ReplayGain tags were never read (indexed before #151's column).</summary>
@@ -3752,6 +4039,7 @@ public class LibraryService : ILibraryService
             var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
             if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
             {
+                track.ArtistAsTagged ??= track.Artist; // the tag's credit, before merging (#187)
                 track.Artist = enriched;
                 changedCount++;
             }
@@ -3789,6 +4077,7 @@ public class LibraryService : ILibraryService
                         var enriched = MetadataService.EnrichArtistFromTitle(track.Artist, track.Title);
                         if (!string.Equals(enriched, track.Artist, StringComparison.Ordinal))
                         {
+                            track.ArtistAsTagged ??= track.Artist; // the tag's credit, before merging (#187)
                             track.Artist = enriched;
                             changed.Add(track);
                         }
@@ -3832,6 +4121,7 @@ public class LibraryService : ILibraryService
                                     if (!string.Equals(refreshed.Artist, track.Artist, StringComparison.Ordinal))
                                     {
                                         track.Artist = refreshed.Artist;
+                                        track.ArtistAsTagged = refreshed.ArtistAsTagged;
                                         lock (changed) changed.Add(track);
                                     }
                                 }
@@ -3938,7 +4228,10 @@ public class LibraryService : ILibraryService
                                 lock (changed)
                                 {
                                     if (artistChanged)
+                                    {
                                         track.Artist = refreshed.Artist;
+                                        track.ArtistAsTagged = refreshed.ArtistAsTagged;
+                                    }
                                     if (albumArtistChanged)
                                     {
                                         var oldAlbumId = track.AlbumId;
@@ -4018,6 +4311,73 @@ public class LibraryService : ILibraryService
                 // Non-fatal: the missing-artwork heal re-extracts the cover.
             }
         }
+    }
+
+    /// <summary>GitHub #187: a song indexed before <see cref="Track.ArtistAsTagged"/> existed
+    /// whose artist may carry names merged in from its title, in a file that can be re-read.</summary>
+    internal static bool NeedsArtistTagText(Track track) =>
+        track.ArtistAsTagged == null
+        && track.SourceType is SourceType.Local or SourceType.Smb
+        && track.HasFilesystemPath
+        && MetadataService.MayHaveMergedFeaturedCredit(track.Artist, track.Title);
+
+    /// <inheritdoc />
+    public async Task<int> ResolveArtistTagTextAsync(CancellationToken ct = default)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
+        var token = cts.Token;
+        var snapshot = _tracks;
+        var pending = await Task.Run(() => snapshot.Where(NeedsArtistTagText).ToList(), CancellationToken.None);
+        if (pending.Count == 0) return 0;
+
+        // Serialized with the artist-join pass, which re-reads the same tags.
+        try { await _artistJoinGate.WaitAsync(token); }
+        catch (OperationCanceledException) { return 0; }
+
+        var resolved = 0;
+        try
+        {
+            await Task.Run(() =>
+            {
+                try
+                {
+                    Parallel.ForEach(
+                        pending,
+                        new ParallelOptions
+                        {
+                            MaxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2),
+                            CancellationToken = token
+                        },
+                        track =>
+                        {
+                            try
+                            {
+                                if (!File.Exists(track.FilePath)) return;
+                                var refreshed = _metadata.ReadTrackMetadata(track.FilePath);
+                                if (refreshed == null) return;
+                                // Only the tag's credit is taken; Artist and everything else stay.
+                                track.ArtistAsTagged = refreshed.ArtistAsTagged ?? refreshed.Artist;
+                                Interlocked.Increment(ref resolved);
+                            }
+                            catch
+                            {
+                                // Unreadable now: stays unknown (the indexed credit shows) and is tried next time.
+                            }
+                        });
+                }
+                catch (OperationCanceledException) { }
+            }, CancellationToken.None);
+        }
+        finally
+        {
+            _artistJoinGate.Release();
+        }
+
+        if (resolved == 0 || token.IsCancellationRequested) return resolved;
+        DebugLog.Write("Library", $"Artist credits as tagged (#187): read for {resolved} song(s)");
+        await SaveAsync();
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        return resolved;
     }
 
     private static int EstimateBitrateKbps(long fileSizeBytes, TimeSpan duration)

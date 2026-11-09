@@ -7,11 +7,16 @@ using Noctis.Services.Sync;
 
 namespace Noctis.Mobile.Services.Account;
 
-/// <summary>What the phone last agreed with the desktop about a song: absent = not a favorite, no rating, not disliked.</summary>
-internal sealed record SyncedTrackState(bool Favorite, int Rating, bool Disliked);
+/// <summary>What the phone last agreed with the desktop about a song: absent = not a favorite, no rating, not disliked,
+/// never snoozed. <paramref name="Snoozed"/> is the snooze end last agreed (TrackSyncState.SnoozedUntil; a past
+/// date = not snoozed); null in a file from before it, or when no snooze was ever exchanged.</summary>
+internal sealed record SyncedTrackState(bool Favorite, int Rating, bool Disliked, DateTime? Snoozed = null);
 
-/// <summary>A phone-side favorite/rating/dislike change not yet pushed. Play counts never go this way (scrobbles do).</summary>
-internal sealed record PendingTrackState(bool Favorite, int Rating, bool Disliked, DateTime? FavoritedAt, DateTime UpdatedUtc);
+/// <summary>A phone-side favorite/rating/dislike/snooze change not yet pushed. Play counts never go this way (scrobbles do).
+/// <paramref name="SnoozedUntil"/>: the snooze end to send (TrackSyncState.SnoozedUntil), null to say nothing about it
+/// (and in a file from before it).</summary>
+internal sealed record PendingTrackState(bool Favorite, int Rating, bool Disliked, DateTime? FavoritedAt, DateTime UpdatedUtc,
+    DateTime? SnoozedUntil = null);
 
 /// <summary>A play of a desktop song, sent as a scrobble on the next sync. <paramref name="Scrobble"/>:
 /// null for a play recorded without a verdict (counted only), else a <see cref="PlayScrobble"/>'s wire
@@ -49,6 +54,9 @@ internal sealed class NoctisPendingState
     /// <summary>The computer's playlists deleted on the phone (Guid "N" → when), sent as
     /// tombstones on the next sync.</summary>
     public Dictionary<string, DateTime> DeletedPlaylists { get; set; } = new();
+    /// <summary>The computer's playlists whose custom cover was removed on the phone (Guid "N" →
+    /// when), sent as "no cover" with the next push of the playlist.</summary>
+    public Dictionary<string, DateTime> RemovedCovers { get; set; } = new();
 }
 
 /// <summary>The phone's own songs already sent to (or found on) the computer of one server + user,

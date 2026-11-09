@@ -420,6 +420,16 @@
                                      and text colours were dark-on-dark here. -->
                                 <!-- The cap is a plain round target inside the pill: no global
                                      hover zoom (it would carry the anchored magnifier with it). -->
+                                <Style Selector="Button#SearchLyricsButton ctrl|LineIcon#SearchLyricsGlyph">
+                                    <Setter Property="Opacity" Value="0.55"/>
+                                </Style>
+                                <Style Selector="Button#SearchLyricsButton:pointerover ctrl|LineIcon#SearchLyricsGlyph">
+                                    <Setter Property="Opacity" Value="0.9"/>
+                                </Style>
+                                <Style Selector="Button#SearchLyricsButton.active ctrl|LineIcon#SearchLyricsGlyph">
+                                    <Setter Property="Opacity" Value="1"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
+                                </Style>
                                 <Style Selector="Button#SearchCapButton:pointerover">
                                     <Setter Property="RenderTransform" Value="scale(1)"/>
                                 </Style>
@@ -468,7 +478,7 @@
                                         </Button>
                                         <Grid x:Name="SearchFieldArea"
                                               Grid.Column="1"
-                                              ColumnDefinitions="*,Auto" Width="196" Margin="-6,0,12,0">
+                                              ColumnDefinitions="*,Auto,Auto" Width="196" Margin="-6,0,12,0">
                                             <TextBox x:Name="SearchBox"
                                                      Grid.Column="0"
                                                      Classes="search-box"
@@ -494,6 +504,33 @@
                                                     Foreground="{DynamicResource IslandForeground}"
                                                     Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
                                                 <ctrl:LineIcon Data="{StaticResource MenuLineClose}" Width="12" Height="12" Opacity="0.5"/>
+                                            </Button>
+                                            <!-- Lyric search (Discord, Cosmo 11-08): off / Include lyrics /
+                                                 Lyrics only. Songs only; lit in the accent while on. -->
+                                            <Button x:Name="SearchLyricsButton"
+                                                    Grid.Column="2"
+                                                    IsVisible="{Binding TopBar.IsLyricsSearchAvailable}"
+                                                    Classes.active="{Binding TopBar.IsLyricsSearchActive}"
+                                                    AutomationProperties.Name="{Binding TopBar.LyricsSearchTip}"
+                                                    ToolTip.Tip="{Binding TopBar.LyricsSearchTip}"
+                                                    Background="Transparent" BorderThickness="0"
+                                                    Foreground="{DynamicResource IslandForeground}"
+                                                    Padding="4,2" Cursor="Hand" VerticalAlignment="Center">
+                                                <ctrl:LineIcon x:Name="SearchLyricsGlyph" Data="{StaticResource MenuLineLyrics}" Width="14" Height="14"/>
+                                                <Button.Flyout>
+                                                    <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                                        <MenuItem Header="{loc:T Search.LyricsOff}" Command="{Binding TopBar.SetLyricsSearchModeCommand}" CommandParameter="Off">
+                                                            <MenuItem.Icon><ctrl:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding TopBar.LyricsSearchOff}"/></MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <MenuItem Header="{loc:T Search.LyricsInclude}" Command="{Binding TopBar.SetLyricsSearchModeCommand}" CommandParameter="Include">
+                                                            <MenuItem.Icon><ctrl:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding TopBar.LyricsSearchInclude}"/></MenuItem.Icon>
+                                                        </MenuItem>
+                                                        <MenuItem Header="{loc:T Search.LyricsOnly}" Command="{Binding TopBar.SetLyricsSearchModeCommand}" CommandParameter="Only">
+                                                            <MenuItem.Icon><ctrl:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding TopBar.LyricsSearchOnly}"/></MenuItem.Icon>
+                                                        </MenuItem>
+                                                    </MenuFlyout>
+                                                </Button.Flyout>
                                             </Button>
                                         </Grid>
                                     </Grid>

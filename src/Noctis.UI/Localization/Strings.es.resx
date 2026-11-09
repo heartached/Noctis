@@ -6929,7 +6929,7 @@
   <data name="Mobile.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Sincronizar ahora</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Descargar todo</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Guarda todas las canciones de tu equipo en este teléfono para escucharlas sin conexión.</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Guarda todas las canciones en este teléfono para escuchar sin conexión</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>Descargado</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Eliminar todas las descargas</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>Eliminar descargas</value></data>
@@ -6971,13 +6971,19 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>Buscar en playlists</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Aún no hay playlists. Mantén pulsada una canción para crear una.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Ninguna playlist coincide</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>Buscar playlists</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Ordenar playlists</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>Nueva playlist</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>Crear</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Reproducir a continuación</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>Añadir a la cola</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>Añadir antes de la canción actual</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>Añadida antes de la canción actual</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>Ir al álbum</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>Ir al artista</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>Renombrar</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>Cambiar portada</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>Quitar portada</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>Ese archivo no es una imagen que Noctis pueda usar como portada.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>Quitar de la playlist</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>Eliminar playlist</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>Añadir carpeta…</value></data>
@@ -6987,6 +6993,9 @@
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>A continuación</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>Borrar</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>No hay nada a continuación</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>Historial</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>Ocultar</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>Mostrar</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>Repetir</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>Aún no hay nada aquí</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>Buscar</value></data>
@@ -7015,7 +7024,7 @@
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Los recuentos y Escuchado recientemente coinciden en ambos</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>Borrar historial de escucha</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Borrar historial de escucha…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Borra las reproducciones de este teléfono. Las ya enviadas a Last.fm se quedan allí.</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Las reproducciones ya enviadas a Last.fm se quedan allí</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>Este teléfono</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Equipo</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Servicios</value></data>
@@ -7035,6 +7044,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Portada</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinilo</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fondo de Reproduciendo</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Brillo del fondo de Reproduciendo</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Colores más oscuros o más claros detrás de Reproduciendo</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Carpetas de música</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Descargas</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Escucha</value></data>
@@ -7059,38 +7071,42 @@
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Se perdió el acceso. Vuelve a añadir esta carpeta para reproducir sus canciones.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>No disponible. Vuelve a conectar su almacenamiento y escanea de nuevo.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>Aún no hay carpetas de música</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Tu biblioteca en este teléfono es la música de estas carpetas.</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Tu biblioteca es la música de estas carpetas</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>Añadir carpeta</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Escanear al abrir</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Busca canciones nuevas en estas carpetas cada vez que se abre Noctis.</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Busca canciones nuevas cada vez que se abre Noctis</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Colores del álbum</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Colorear páginas con la portada</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Las páginas de álbumes y artistas toman un tono intenso del color de la portada, con texto blanco. Si se desactiva, usan el tema Claro u Oscuro liso.</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Las páginas de álbum y artista toman el color de la portada</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>Color de progreso</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>Línea de progreso</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Color de progreso rellena la barra del reproductor con el color de la portada mientras suena la canción. Línea de progreso dibuja una línea fina en su borde inferior. Con ambos desactivados, la barra es de cristal liso.</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Rellena la barra o dibuja una línea fina mientras suena la canción</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Descargar solo con Wi-Fi</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Las canciones de tu equipo solo se descargan con Wi-Fi, nunca con datos móviles. No afecta al streaming.</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Las descargas esperan al Wi-Fi pero el streaming sigue funcionando</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Movimiento fluido</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Hasta 120 Hz</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Permite que la pantalla se actualice hasta 120 veces por segundo en los teléfonos compatibles, para un desplazamiento y unas animaciones más fluidos. Desactívalo para mantener la pantalla a 60 Hz y ahorrar batería.</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Desplazamiento más fluido en pantallas de 120 Hz pero gasta más batería</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Pestaña de Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>La pestaña elegida queda en cristal claro</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Canciones reproducidas en la cola</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Las canciones que ya sonaron quedan encima de la actual</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Almacenamiento usado</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Eliminar todas las descargas</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Las descargas eliminadas siguen en tu equipo y se pueden seguir escuchando en streaming.</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis tiene licencia MIT.</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Se quedan en tu ordenador y se siguen pudiendo escuchar en streaming</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis tiene licencia MIT</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Mostrar traducciones</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Mostrar romanización</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Mostrar coros</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Se muestran bajo la línea, en letra más pequeña, cuando la letra de la canción los incluye.</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Texto más pequeño bajo la línea cuando la letra los incluye</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Tamaño del texto</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Tamaño del texto de la letra</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>Opacidad mínima de línea</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>Opacidad mínima de línea</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Mantiene todas las líneas ligeramente visibles para que puedas tocar cualquiera y saltar a ella. Con 0 % se ocultan las líneas lejanas a la actual.</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Cuánto se ven las líneas lejos de la actual</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Unir palabras divididas</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Mantiene las palabras enteras cuando la letra TTML las divide en sílabas.</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Mantiene las palabras enteras en letras TTML</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Buscar letras en internet</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Si una canción no tiene archivo de letra ni letra en sus etiquetas, la busca en LRCLIB por título, artista y duración, como la app de escritorio. Las letras encontradas se guardan en el teléfono.</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Busca en LRCLIB las letras que faltan y las guarda</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>Mostrar pestañas</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>Buscar en esta lista</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} canción|{0} canciones</value></data>
@@ -7167,7 +7183,7 @@
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Vista previa · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Título de la canción</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>El ahorro de batería está activado, así que los colores no se mueven.</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>El movimiento gasta algo más de batería. Se pausa cuando el ahorro de batería está activado.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Gasta un poco más de batería y se pausa en Ahorro de batería</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Siempre</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 año</value></data>
@@ -7201,8 +7217,8 @@
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Estadísticas de escucha abiertas y gratuitas</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>En tu equipo</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Configúralo en tu equipo</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Una reproducción cuenta tras la mitad de la canción o 4 minutos. Las reproducciones sin conexión esperan aquí hasta la próxima sincronización.</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Una reproducción cuenta tras la mitad de la canción o 4 minutos. Las reproducciones sin conexión esperan aquí hasta que el teléfono vuelva a estar en línea.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Cuenta tras la mitad de la canción o 4 minutos y envía lo escuchado sin conexión en la próxima sincronización</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Cuenta tras la mitad de la canción o 4 minutos y envía lo escuchado sin conexión cuando vuelvas a estar en línea</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>No se pudo conectar con Last.fm. Inténtalo de nuevo.</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Autoriza Noctis en Last.fm</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Inicia sesión en Last.fm, toca Allow, vuelve aquí y toca Listo.</value></data>
@@ -7246,6 +7262,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>Índigo</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>Orquídea</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>Rosa</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>Melocotón</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>Lima</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>Bosque</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>Menta</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>Cielo</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>Lila</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>Plata</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>Pizarra</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>Igual que la portada</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>Personalizado</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>Sistema</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>Claro</value></data>
@@ -7255,11 +7280,11 @@
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Medianoche</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Sistema, {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Igual que el dispositivo</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis usa Claro cuando tu teléfono está en modo claro y {0} cuando está en modo oscuro.</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Claro en modo claro y {0} en modo oscuro</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Claro y oscuro</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Un tema de color tiñe las páginas, las tarjetas y el cristal, y combina con el fondo del mismo nombre.</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Los temas de color tiñen toda la app</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Igual que el tema</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Los temas de color tienen su propio color de acento. Elegir un color abajo lo desactiva.</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Elegir un color abajo desactiva esto</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>¿Quitar «{0}»? Sus canciones saldrán de tu biblioteca en este teléfono. Los archivos se quedan donde están.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>¿Quitar «{0}»?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Sus canciones saldrán de tu biblioteca en este teléfono. Los archivos se quedan donde están.</value></data>
@@ -7278,8 +7303,8 @@
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>Ambas</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Traducciones</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Romanización</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Cuando abras Noctis en {0}, te ofrecerá continuar desde la canción que estabas escuchando aquí.</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Cuando abras Noctis en tu equipo, te ofrecerá continuar desde la canción que estabas escuchando aquí.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Sigue con esta canción cuando abras Noctis en {0}</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Sigue con esta canción cuando abras Noctis en tu ordenador</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Solo Wi-Fi</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Cualquier red</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>¿Eliminar todas las descargas?</value></data>
@@ -7287,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Eliminar descargas</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} canción|{0:N0} canciones</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Ajustes tiene un nuevo diseño: tu perfil y las cifras de tu biblioteca arriba, y después Apariencia, Biblioteca, Escucha, Ayuda y Acerca de.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Descargas tiene su propia página, con Descargar solo con Wi-Fi (activado por defecto) y Eliminar todas las descargas.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>Licencias de código abierto muestra con qué está hecho Noctis.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis habla tu idioma: elígelo en Ajustes › Idioma o usa el del teléfono.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Acento tiene 17 colores, y Igualar portada sigue a la portada que suena.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Temporizador de apagado en Reproduciendo; Posponer un mes y Ocultar canción en el menú de una canción.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Crea una playlist con + y ponle tu propia portada; las portadas se sincronizan con tu ordenador.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Añadir antes de la actual en el menú de una canción, y las canciones escuchadas pueden quedarse en la cola.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Una canción de tu teléfono y la misma canción de tu ordenador aparecen una sola vez.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Desplazamiento más fluido, páginas más rápidas y letras junto a la portada en horizontal.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>El decodificador ALAC incluido, compilado a partir del código fuente sin modificar de FFmpeg 6.0, sin partes GPL ni no libres: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Reproducción, sesión multimedia y el contenedor JNI del decodificador.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>El framework de la interfaz de usuario.</value></data>
@@ -7386,17 +7413,18 @@
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Pista desconocida</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>Tarjeta SD</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Playlists</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Noctis usa el idioma de tu teléfono a menos que elijas uno aquí. Las traducciones las hace la comunidad.</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Sigue el idioma de tu teléfono salvo que elijas uno</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Escaneando… {0} archivo|Escaneando… {0} archivos</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Más opciones de {0}</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Quitar {0}</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. El color de énfasis tiñe botones, interruptores y resaltados.</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} colorea botones y resaltados</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Toma el color de la portada que suena o {0} si no hay ninguna</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Almacenamiento usado, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Mostrar en filas de canciones</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Desactivado</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Valoraciones</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoritos</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Las filas de canciones terminan con las estrellas de la canción o un corazón si es favorita.</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Estrellas o un corazón al final de cada fila de canción</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Valorar</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Valorar con {0} de 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Borrar valoración</value></data>
@@ -7422,7 +7450,7 @@
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>No se pudo leer «{0}»</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Abrir playlist</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Buscar toda la música automáticamente</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Añade todas las canciones de este teléfono y su tarjeta SD sin elegir carpetas. Los archivos de letras (.lrc, .ttml) junto a una canción solo se leen en las carpetas que añadas abajo.</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Añade todas las canciones del teléfono y la tarjeta SD pero los archivos de letras solo se leen de las carpetas de abajo</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Toda la música</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis no tiene permiso para leer la música de este teléfono. Para activarlo, permite Música y audio en los ajustes de Noctis.</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis ya no puede leer la música de este teléfono. Sus canciones siguen en la lista, pero no se reproducirán hasta que permitas Música y audio en los ajustes de Noctis.</value></data>
@@ -7652,5 +7680,43 @@
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>En tus artistas top</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Abrir {0} en Last.fm</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mezclas y recomendaciones</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Inicio muestra mezclas de tus canciones y artistas por descubrir, a partir de tus listas de Last.fm. Solo se usa el nombre de tu cuenta; no se envía nada.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Inicio recibe mezclas de tus listas de Last.fm y no se envía nada de vuelta</value></data>
+  <!-- LyricShareDialog Lyrics Page -->
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>Posponer un mes</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>Quitar posposición</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>Pospuesta un mes</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>Posposición quitada</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>Temporizador</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0} minutos</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1 hora</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>Al final de la canción</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>Desactivar temporizador</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>Se pausa en {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>Se pausa tras esta canción</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>Ocultar canción</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Oculta. Vuelve a mostrarla en Ajustes › Biblioteca › Ocultos.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Ocultos</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Las canciones ocultas siguen en tu teléfono pero fuera de tu biblioteca y mezclas</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>No hay nada oculto</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Mostrar</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Mostrar {0}</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Carpeta</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Ya no está en este teléfono</value></data>
 </root>

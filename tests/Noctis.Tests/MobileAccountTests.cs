@@ -985,14 +985,15 @@ public class MobileAccountTests
         var row = MobileFixtures.Named<Button>(page, "SendSongsButton");
         Assert.True(row.IsEffectivelyVisible);
         Assert.True(row.IsEnabled);
-        Assert.Equal("Send to computer", MobileFixtures.Named<TextBlock>(page, "SendSongsLabel").Text);   // the tile's short label
+        Assert.False(MobileFixtures.Named<Avalonia.Controls.Control>(page, "StopSendingIcon").IsVisible);   // icon only: the send arrow
         Assert.Equal("Send phone songs to computer", Avalonia.Automation.AutomationProperties.GetName(row));
         Assert.False(MobileFixtures.Named<TextBlock>(page, "UploadLabel").IsEffectivelyVisible);   // no status yet
 
         account.UploadGate = new TaskCompletionSource();
         row.Command!.Execute(null);
         window.UpdateLayout();
-        Assert.Equal("Stop sending", MobileFixtures.Named<TextBlock>(page, "SendSongsLabel").Text);
+        Assert.True(MobileFixtures.Named<Avalonia.Controls.Control>(page, "StopSendingIcon").IsVisible);
+        Assert.Equal("Stop sending", Avalonia.Automation.AutomationProperties.GetName(row));
         var status = MobileFixtures.Named<TextBlock>(page, "UploadLabel");
         Assert.True(status.IsEffectivelyVisible);
         Assert.Equal("Sending 3 of 40", status.Text);

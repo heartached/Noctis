@@ -332,7 +332,9 @@ public class MetadataService : IMetadataService
             ? Path.GetFileNameWithoutExtension(fileName)
             : tag.Title;
 
-        // Merge featured artists from title into artist field when Performers tag is incomplete
+        // Merge featured artists from title into artist field when Performers tag is incomplete.
+        // The tag's own credit is kept beside it for "Show artists as written" (GitHub #187).
+        var artistAsTagged = ArtistAsTaggedFor(artist, title);
         artist = EnrichArtistFromTitle(artist, title);
 
         var embeddedLyrics = EmbeddedLyrics.Read(file);
@@ -341,6 +343,7 @@ public class MetadataService : IMetadataService
             FilePath = filePath,
             Title = title,
             Artist = artist,
+            ArtistAsTagged = artistAsTagged,
             AlbumArtist = albumArtist,
             AlbumArtistFromTag = albumArtistFromTag,
             Album = album,
@@ -732,6 +735,14 @@ public class MetadataService : IMetadataService
         if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
             track.AlbumArtistFromTag = true;
+        // Likewise the album name: a folder name written above is the file's album tag now.
+        if (ok && Track.IsRealAlbumName(track.Album)
+            && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.AlbumFromFolder = false;
+        // The file's artist tag now holds the credit as indexed (merged names included), so
+        // that is the credit "Show artists as written" shows from here on (GitHub #187).
+        if (ok && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+            track.ArtistAsTagged = ArtistAsTaggedFor(track.Artist, track.Title);
         return ok;
     }
 
@@ -986,6 +997,25 @@ public class MetadataService : IMetadataService
     public bool ClearYear(string filePath)
     {
         return SaveTagsAtomically(filePath, file => file.Tag.Year = 0);
+    }
+
+    /// <inheritdoc />
+    public bool WriteAlbumGrouping(string filePath, string album, string albumArtist)
+    {
+        try
+        {
+            SaveTagsAtomicallyOrThrow(filePath, file =>
+            {
+                file.Tag.AlbumArtists = SplitArtistList(albumArtist);
+                file.Tag.Album = album;
+            }, releaseOpenFile: false); // a background pass must not put a gap in the playing track
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Metadata", $"Album grouping write failed for '{filePath}': {ex.Message}");
+            return false;
+        }
     }
 
     public bool WriteRating(string filePath, int rating, bool isDisliked)
@@ -1317,11 +1347,13 @@ public class MetadataService : IMetadataService
         return estimated > 0 ? estimated : 0;
     }
 
-    // A VBR MP3 with no Xing/VBRI header: TagLib's length is a first-frame bitrate guess
-    // (a 65-minute file read as 14:37), so count the frames instead (see Mp3FrameScan).
+    // TagLib's MP3 length is a first-frame bitrate guess unless the file has a "Xing" header:
+    // a VBR file with no header (a 65-minute file read as 14:37) is counted instead, and a file
+    // with an "Info" or VBRI header uses the length that header states (ffmpeg's 128 kbps MP3s
+    // read as twice their length at 64 kbps). See Mp3FrameScan.TryMeasureLength.
     private static void ApplyCountedMp3Length(string path, string ext, ref int bitrate, ref TimeSpan duration)
     {
-        if (ext == ".mp3" && Mp3FrameScan.TryMeasureHeaderlessVbr(path, out var counted, out var countedKbps))
+        if (ext == ".mp3" && Mp3FrameScan.TryMeasureLength(path, out var counted, out var countedKbps))
         {
             duration = counted;
             bitrate = countedKbps;
@@ -1565,6 +1597,15 @@ public class MetadataService : IMetadataService
         var join = ArtistCredit.JoinText;
         return artist + join + string.Join(join, missing);
     }
+
+    /// <summary>
+    /// GitHub #187: the value for <see cref="Track.ArtistAsTagged"/> — the tag's credit when the
+    /// title names featured artists (the only case <see cref="EnrichArtistFromTitle"/> can add
+    /// to it), else null. Stored even when nothing was merged, so the old-library pass
+    /// (LibraryService.ResolveArtistTagTextAsync) knows the song is resolved.
+    /// </summary>
+    internal static string? ArtistAsTaggedFor(string tagArtist, string title)
+        => ExtractFeaturedNamesFromTitle(title).Length > 0 ? tagArtist : null;
 
     /// <summary>
     /// Rewrites featured names that an older build merged in with a hard-coded " &amp; "

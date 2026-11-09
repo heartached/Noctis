@@ -40,7 +40,7 @@ public sealed class TempoStretchProvider : ISampleProvider
     {
         _source = source;
         _rate = rate;
-        _ch = Math.Clamp(source.WaveFormat.Channels, 1, 2);
+        _ch = Math.Clamp(source.WaveFormat.Channels, 1, 8); // up to 7.1 (Multichannel output)
         var sr = source.WaveFormat.SampleRate;
         _overlapFrames = Math.Max(8, sr * overlapMs / 1000);
         _seekFrames = Math.Max(8, sr * seekMs / 1000);

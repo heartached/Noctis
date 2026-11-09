@@ -44,6 +44,10 @@ public sealed class AnimatedArtworkBulkService
     internal TimeSpan RequestInterval { get; init; } = TimeSpan.FromSeconds(1.5);
     internal Func<DateTime>? Clock { get; init; }
     internal Func<TimeSpan, CancellationToken, Task>? Delay { get; init; }
+
+    /// <summary>GitHub #185: true when the whole-library run should take the 2160p loop
+    /// (Settings › Artwork › Animated Artwork Quality); read per album, so a change mid-run applies.</summary>
+    internal Func<bool> PreferMaxQuality { get; init; } = () => false;
     /// <summary>Confident candidates opened per album before giving up on it.</summary>
     internal const int CandidatesToOpen = 2;
 
@@ -62,11 +66,15 @@ public sealed class AnimatedArtworkBulkService
     }
 
     /// <summary>The app's wiring: the iTunes/Apple Music service and the animated cover cache.</summary>
-    public static AnimatedArtworkBulkService For(ITunesArtworkService itunes, IAnimatedCoverService covers, string? ledgerPath) => new(
+    public static AnimatedArtworkBulkService For(
+        ITunesArtworkService itunes, IAnimatedCoverService covers, string? ledgerPath, Func<bool>? preferMaxQuality = null) => new(
         (q, ct) => itunes.FindAnimatedArtworkCandidatesAsync(q, 5, ct),
         (c, ct) => itunes.GetAnimatedArtworkAlbumAsync(c.ViewUrl, c, ct),
         (v, path, ct) => itunes.DownloadHlsVariantAsMp4Async(v, path, ct),
-        covers, ledgerPath);
+        covers, ledgerPath)
+    {
+        PreferMaxQuality = preferMaxQuality ?? (() => false),
+    };
 
     /// <summary>The library's albums as track groups, one per album id (local songs with an album name).</summary>
     public static IReadOnlyList<IReadOnlyList<Track>> GroupAlbums(IEnumerable<Track> tracks)
@@ -155,7 +163,7 @@ public sealed class AnimatedArtworkBulkService
         var temp = Path.Combine(Path.GetTempPath(), $"noctis-bulkanim-{Guid.NewGuid():N}.mp4");
         try
         {
-            if (await FindAndDownloadAsync(album, gate, temp, ct).ConfigureAwait(false) != AnimatedArtworkLookup.Saved) return false;
+            if (await FindAndDownloadAsync(album, gate, temp, PreferMaxQuality(), ct).ConfigureAwait(false) != AnimatedArtworkLookup.Saved) return false;
             await _covers.ImportAsync(rep, temp, AnimatedCoverScope.Album).ConfigureAwait(false);
             return true;
         }
@@ -172,7 +180,9 @@ public sealed class AnimatedArtworkBulkService
     /// <paramref name="destination"/>. Nothing is written unless the result is
     /// <see cref="AnimatedArtworkLookup.Saved"/>.
     /// </summary>
-    internal async Task<AnimatedArtworkLookup> FindAndDownloadAsync(IReadOnlyList<Track> album, PoliteGate gate, string destination, CancellationToken ct)
+    /// <param name="preferMax">GitHub #185: take the 2160p loop (else the 1080p one); see <see cref="PickVariant"/>.</param>
+    internal async Task<AnimatedArtworkLookup> FindAndDownloadAsync(
+        IReadOnlyList<Track> album, PoliteGate gate, string destination, bool preferMax, CancellationToken ct)
     {
         var rep = album[0];
         var title = rep.Album.Trim();
@@ -193,8 +203,7 @@ public sealed class AnimatedArtworkBulkService
             // Square loops only: a portrait-only loop would be squashed into the square cover.
             if (page is null || page.IsTallOnly || page.Variants.Count == 0) continue;
 
-            // The 1080p tier when there is one (the editor's default pick), not the 4K file.
-            var variant = page.Variants[0];
+            var variant = PickVariant(page.Variants, preferMax);
             await gate.WaitTurnAsync(ct).ConfigureAwait(false);
             if (!await _download(variant, destination, ct).ConfigureAwait(false))
             {
@@ -205,5 +214,20 @@ public sealed class AnimatedArtworkBulkService
             return AnimatedArtworkLookup.Saved;
         }
         return AnimatedArtworkLookup.NoMatch;
+    }
+
+    /// <summary>
+    /// The loop to download from a page's tiers (<c>ITunesArtworkService.PickTierVariants</c>:
+    /// "1080p" and/or "2160p", or one lower-res fallback). The 1080p tier by default (the
+    /// editor's first pill); with <paramref name="preferMax"/> the 2160p tier (GitHub #185),
+    /// falling back to what the album has when it has no 2160p loop, and the other way round.
+    /// </summary>
+    internal static ITunesArtworkService.AnimatedArtworkVariant PickVariant(
+        IReadOnlyList<ITunesArtworkService.AnimatedArtworkVariant> variants, bool preferMax)
+    {
+        var wanted = preferMax ? AnimatedArtworkQualities.P2160 : AnimatedArtworkQualities.P1080;
+        return variants.FirstOrDefault(v => string.Equals(v.Label, wanted, StringComparison.OrdinalIgnoreCase))
+               ?? variants.FirstOrDefault(v => string.Equals(v.Label, AnimatedArtworkQualities.P1080, StringComparison.OrdinalIgnoreCase))
+               ?? variants[0];
     }
 }

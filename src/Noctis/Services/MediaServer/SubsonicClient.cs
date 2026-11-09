@@ -425,6 +425,7 @@ public sealed class SubsonicClient : IMediaServerClient
         var title = GetString(song, "title") is { Length: > 0 } t ? t : "Unknown Title";
         var album = albumName ?? GetString(song, "album") ?? "Unknown Album";
         var artist = ResolveTrackArtist(song, albumArtist ?? string.Empty);
+        var artistAsTagged = MetadataService.ArtistAsTaggedFor(artist, title); // GitHub #187
         artist = MetadataService.EnrichArtistFromTitle(artist, title);
         var resolvedAlbumArtist = string.IsNullOrWhiteSpace(albumArtist) ? artist : albumArtist!;
 
@@ -434,6 +435,7 @@ public sealed class SubsonicClient : IMediaServerClient
             FilePath = BuildStreamUrl(connection, songId) ?? string.Empty,
             Title = title,
             Artist = artist,
+            ArtistAsTagged = artistAsTagged,
             AlbumArtist = resolvedAlbumArtist,
             Album = album,
             Genre = GetString(song, "genre") ?? string.Empty,

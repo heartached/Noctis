@@ -192,6 +192,16 @@
         <Style Selector="ItemsControl.on-tint TextBlock.artist-credit-text">
             <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
         </Style>
+        <!-- Track rows' artist line: its Button's theme resets the text to the theme colour
+             (near-white on a light cover's page, GitHub #180) and hover / press swap the
+             presenter's text again, so the Button and its presenter carry the page colour.
+             Style setters, not local values: the now-playing row's foreground still wins. -->
+        <Style Selector="Button.track-artist-link">
+            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+        </Style>
+        <Style Selector="Button.track-artist-link:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.track-artist-link:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
 
         <!-- Row background moves off the ListBoxItem onto the inner row-body Border so the
              hover box and the now-playing box are one element and cannot drift apart. The
@@ -436,7 +446,7 @@
                                                VerticalAlignment="Center" />
                                 </Button>
                                 <TextBlock Classes="artist-credit-text"
-                                           Text=", "
+                                           Text="{Binding Separator}"
                                            FontSize="20"
                                            LineHeight="24"
                                            VerticalAlignment="Center"

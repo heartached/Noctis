@@ -47,13 +47,36 @@ public static class TrayMenuFrost
         Window.WindowOpenedEvent.AddClassHandler<Window>(OnWindowOpened);
     }
 
+    /// <summary>Windows Settings › Personalization › Colors › Transparency effects. Off, DWM
+    /// draws the blur behind the window as solid black: the frost shows nothing but black
+    /// slivers at the card's corners (the region bleed), so the menu stays unfrosted. Read on
+    /// every open; tests replace it.</summary>
+    internal static Func<bool> TransparencyEffectsOn = ReadTransparencyEffects;
+
+    private static bool ReadTransparencyEffects()
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            // Missing value = Windows default, which is on.
+            return key?.GetValue("EnableTransparency") is not int v || v != 0;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
     internal static bool IsTrayPopup(Window window) =>
         window.Name?.StartsWith(TrayPopupNamePrefix, StringComparison.Ordinal) == true
         && window.Content is MenuFlyoutPresenter;
 
     private static void OnWindowOpened(Window window, RoutedEventArgs e)
     {
-        if (!OperatingSystem.IsWindows() || _isOn?.Invoke() != true || !IsTrayPopup(window)) return;
+        if (!OperatingSystem.IsWindows() || _isOn?.Invoke() != true || !IsTrayPopup(window)
+            || !TransparencyEffectsOn()) return;
         try
         {
             Apply(window, _tint?.Invoke() ?? Color.Parse("#141414"));
@@ -77,16 +100,26 @@ public static class TrayMenuFrost
         card.SizeChanged += (_, _) => Clip();
     }
 
-    /// <summary>The card's outline in window DIPs (layout rect, so the open pop's scale never
-    /// leaks in), or null before layout.</summary>
+    /// <summary>The card's outline in window DIPs (layout rects, so the open pop's scale never
+    /// leaks in), or null before layout. Interface Size wraps the window content in a
+    /// LayoutTransformControl (UiScaleHost); its scale is applied on the way up, or at 150%
+    /// the region cut the menu to its 100% size and hid the bottom rows (Discord report).</summary>
     internal static MiniPlayerWindow.RegionShape? CardShape(Control card)
     {
         if (card.Bounds is not { Width: > 0, Height: > 0 } bounds) return null;
-        var offset = new Point();
+        var rect = new Rect(bounds.Size);
+        var radius = card is TemplatedControl t ? t.CornerRadius.TopLeft : 0;
         for (Visual? v = card; v != null && v is not TopLevel; v = v.GetVisualParent())
-            offset += v.Bounds.Position;
-        return new MiniPlayerWindow.RegionShape(new Rect(offset, bounds.Size),
-            card is TemplatedControl t ? t.CornerRadius.TopLeft : 0, false);
+        {
+            rect = rect.Translate(v.Bounds.Position);
+            if (v.GetVisualParent() is LayoutTransformControl { LayoutTransform: { } transform })
+            {
+                var m = transform.Value;
+                rect = rect.TransformToAABB(m);
+                radius *= Math.Abs(m.M11);
+            }
+        }
+        return new MiniPlayerWindow.RegionShape(rect, radius, false);
     }
 
     private static void ApplyRegion(Window window, Control card)

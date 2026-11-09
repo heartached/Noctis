@@ -18,6 +18,9 @@ public sealed class NoctisStateRecorder : ITrackStateRecorder
 
     internal void Attach(ITrackStateRecorder target) => _target = target;
 
+    /// <summary>Whether <paramref name="target"/> is the service attached last (the live one).</summary>
+    internal bool IsAttached(object target) => ReferenceEquals(_target, target);
+
     public void RecordTrackStates(IEnumerable<Track> tracks) => _target?.RecordTrackStates(tracks);
 }
 
@@ -184,7 +187,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         IndexDownloads();
         LoadCachedAvatar();
         stateRecorder?.Attach(this);
+        _recorder = stateRecorder;
+        _library.TracksAdded += OnLibraryTracksAdded;
     }
+
+    private readonly NoctisStateRecorder? _recorder;
 
     /// <summary>Tests: unpushed favorite/rating edits and queued plays.</summary>
     internal int PendingTrackCount { get { lock (_gate) return _pending.Tracks.Count; } }
@@ -248,7 +255,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     result = await Task.Run(() => client.PairSignInAsync(pairing.Secret, _deviceId, DeviceName, ct), ct).ConfigureAwait(false);
                 if (string.IsNullOrWhiteSpace(result.User))
                     throw new NoctisServerException(NoctisErrorKind.Server, "The server did not say which account signed in.");
-                CompleteSignIn(url, fingerprint, result, result.User!);
+                CompleteSignIn(url, fingerprint, result, result.User!,
+                    pairing.ServerUrls.Where(u => !string.Equals(u, url, StringComparison.OrdinalIgnoreCase)).ToList());
                 return;
             }
             // Nothing reached a server that holds the pin there: the next address may.
@@ -268,11 +276,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     }
 
     /// <summary>A sign-in the server accepted (password or QR): the account is stored, with its pin.</summary>
-    private void CompleteSignIn(string url, string fingerprint, SignInResult result, string user)
+    private void CompleteSignIn(string url, string fingerprint, SignInResult result, string user,
+        IReadOnlyList<string>? otherUrls = null)
     {
         var account = new NoctisAccount
         {
             ServerUrl = url,
+            OtherServerUrls = otherUrls ?? Array.Empty<string>(),
             UserName = string.IsNullOrWhiteSpace(result.User) ? user : result.User!,
             DeviceKey = result.ApiKey,
             Fingerprint = fingerprint,
@@ -378,6 +388,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     await _persistence.SavePlaylistsAsync(playlists).ConfigureAwait(false);
                     removed = true;
                 }
+                foreach (var id in ids) PlaylistCovers.DeleteOthers(id, PlaylistCoversDirectory, except: null);
             }
             if (removeDownloads) DeleteAllDownloadFiles();
             else DeletePartFiles();
@@ -443,12 +454,60 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
     }
 
+    /// <summary>1 while a follow-up sync for newly found phone files is queued.</summary>
+    private int _pairingSyncQueued;
+
+    /// <summary>
+    /// The phone's scan found files it did not have. A desktop song is paired with the phone's
+    /// own copy only while a sync imports the catalog (<see cref="UpdateLinks"/>), and that sync
+    /// reads the library as it is then: signed in while the first scan of a big library was still
+    /// reading files (or a folder added later), every song the scan reached afterwards stayed
+    /// twice, the desktop row and the phone's file, until some later sync (Discord #mobile-beta:
+    /// fixed only by signing out and in). So a sync follows, after the one running if any.
+    /// Only the service attached last answers (an older instance over the same library is dead).
+    /// </summary>
+    private void OnLibraryTracksAdded(object? sender, IReadOnlyList<Track> added)
+    {
+        if (!IsSignedIn || (_recorder is not null && !_recorder.IsAttached(this))) return;
+        if (!added.Any(t => t.SourceType == SourceType.Local)) return;
+        if (Interlocked.Exchange(ref _pairingSyncQueued, 1) == 1) return;
+        Task running;
+        lock (_gate) running = _syncTask ?? Task.CompletedTask;
+        // After the running sync: it may have read the library before these files were in it.
+        _ = running.ContinueWith(_ => PairingSyncAsync(), CancellationToken.None,
+            TaskContinuationOptions.None, TaskScheduler.Default).Unwrap();
+    }
+
+    private async Task PairingSyncAsync()
+    {
+        Interlocked.Exchange(ref _pairingSyncQueued, 0);
+        if (!IsSignedIn) return;
+        try
+        {
+            var result = await SyncNowAsync().ConfigureAwait(false);
+            DebugLog.Write("Account", $"sync after new phone files: {result.Songs} songs");
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"sync after new phone files failed: {(ex as NoctisServerException)?.Kind.ToString() ?? ex.GetType().Name}");
+        }
+    }
+
     private async Task<NoctisSyncResult> RunSyncAsync(CancellationToken ct)
     {
         RaiseStateChanged();
         try
         {
-            var result = await SyncCoreAsync(ct).ConfigureAwait(false);
+            NoctisSyncResult result;
+            try
+            {
+                result = await SyncCoreAsync(ct).ConfigureAwait(false);
+            }
+            catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.Unreachable or NoctisErrorKind.CertificateChanged)
+            {
+                if (!await TryOtherAddressAsync(ct).ConfigureAwait(false)) throw;
+                result = await SyncCoreAsync(ct).ConfigureAwait(false);
+            }
             RaiseSyncProgress(NoctisSyncStage.Done, 1, 1);
             DebugLog.Write("Account", $"sync done: {result.Songs} songs, {result.Playlists} playlists, " +
                 $"{result.StateChangesPulled} pulled, {result.StateChangesPushed} pushed, {result.PlaysSent} plays");
@@ -469,6 +528,58 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             RaiseStateChanged();
         }
     }
+
+    /// <summary>
+    /// The address the phone signed in through stopped answering, or something else answers
+    /// there now (another network, the computer's other adapter, an address handed to another
+    /// device): the computer's other addresses from its QR code are tried, and the first where
+    /// the same pinned computer answers becomes the account's address (the old one joins the
+    /// others). Before, the only way back was to sign out and in again. True when it moved.
+    /// </summary>
+    private async Task<bool> TryOtherAddressAsync(CancellationToken ct)
+    {
+        NoctisAccount? account;
+        lock (_gate) account = _account;
+        if (account is null || account.OtherServerUrls.Count == 0) return false;
+        foreach (var url in account.OtherServerUrls)
+        {
+            string seen;
+            try
+            {
+                seen = await NoctisServerClient.ProbeFingerprintAsync(_handlerFactory, url, ct).ConfigureAwait(false);
+            }
+            catch (NoctisServerException)
+            {
+                continue;
+            }
+            if (PinHex(seen) != PinHex(account.Fingerprint)) continue;
+            lock (_gate)
+            {
+                if (!ReferenceEquals(_account, account)) return false;   // signed out or in meanwhile
+                var moved = account with
+                {
+                    ServerUrl = url,
+                    OtherServerUrls = account.OtherServerUrls.Where(u => u != url).Prepend(account.ServerUrl).ToList(),
+                };
+                // The checkpoint and the unsent edits belong to the same computer: they follow it.
+                if (SameIdentity(_sync.ServerUrl, _sync.UserName, account)) _sync.ServerUrl = url;
+                if (SameIdentity(_pending.ServerUrl, _pending.UserName, account)) _pending.ServerUrl = url;
+                _store.SaveSyncState(_sync);
+                _store.SavePending(_pending);
+                _store.SaveAccount(moved);
+                _client?.Dispose();
+                _client = null;
+                _account = moved;
+            }
+            DebugLog.Write("Account", "the desktop answers at another of its addresses now; moved there");
+            RaiseStateChanged();
+            return true;
+        }
+        return false;
+    }
+
+    private static string PinHex(string? fingerprint) =>
+        new((fingerprint ?? string.Empty).Where(char.IsAsciiHexDigit).Select(char.ToUpperInvariant).ToArray());
 
     private async Task<NoctisSyncResult> SyncCoreAsync(CancellationToken ct)
     {
@@ -581,7 +692,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private async Task<(List<Track> Tracks, int Linked)> ImportCatalogAsync(List<RemoteSong> songs, Dictionary<Guid, string> albumArtists,
         bool keepUnlisted, CancellationToken ct)
     {
-        var known = new HashSet<Guid>(_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
+        // AllTracks: a desktop song hidden on the phone (Hide Song) is still here; read as unknown
+        // it took the catalog's state over the phone's and, with keepUnlisted, was dropped.
+        var known = new HashSet<Guid>(_library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.Id));
         if (songs.Count == 0 && known.Count > 0)
         {
             // Same rule as a scan: an empty answer never wipes a populated set. A desktop that is
@@ -589,7 +702,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             DebugLog.Write("Account", $"catalog: the desktop listed no songs; keeping the {known.Count} already here");
             int kept;
             lock (_gate) kept = _sync.Links.Count;
-            return (_library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList(), kept);
+            return (_library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList(), kept);
         }
         var links = UpdateLinks(songs, keepUnlisted, out var fresh);
         var now = UtcNow;
@@ -628,7 +741,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (keepUnlisted)
         {
             var listed = new HashSet<Guid>(songs.Select(s => s.Id));
-            var unlisted = _library.Tracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id) && !links.ContainsKey(t.Id)).ToList();
+            var unlisted = _library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer && !listed.Contains(t.Id) && !links.ContainsKey(t.Id)).ToList();
             if (unlisted.Count > 0) DebugLog.Write("Account", $"catalog: keeping {unlisted.Count} songs the desktop did not list this time");
             tracks.AddRange(unlisted);
         }
@@ -985,7 +1098,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     else { _pending.Tracks.Remove(hex); pendingChanged = true; }
                 }
                 // Echo guard first: the library save below must not look like a phone edit.
-                if (preferences) SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked);
+                if (preferences) SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked, state.SnoozedUntil);
                 updates.Add((lib, state, preferences));
             }
         }
@@ -1006,6 +1119,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     if (s.Favorite && s.FavoritedAt is { } at && t.FavoritedAt != at) { t.FavoritedAt = at; any = true; }
                     if (t.Rating != s.Rating) { t.Rating = s.Rating; any = true; }
                     if (t.IsDisliked != s.Disliked) { t.IsDisliked = s.Disliked; any = true; }
+                    // Kept as sent, a past date too (not snoozed): it then equals the agreed state
+                    // and the save below is not taken for a phone edit. Absent: an older desktop.
+                    if (s.SnoozedUntil is { } snooze && t.SnoozedUntil != snooze) { t.SnoozedUntil = snooze; any = true; }
                 }
                 // Counts only grow (the desktop's rule): a device that missed plays never rolls them back.
                 if (s.PlayCount > t.PlayCount) { t.PlayCount = s.PlayCount; any = true; }
@@ -1028,7 +1144,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             NoctisServerClient.Bool(p, "disliked"),
             Math.Max(0, NoctisServerClient.Int(p, "playCount")),
             NotFuture(NoctisServerClient.Date(p, "lastPlayed"), now),
-            NotFuture(NoctisServerClient.Date(p, "favoritedAt"), now));
+            NotFuture(NoctisServerClient.Date(p, "favoritedAt"), now),
+            NoctisServerClient.Date(p, "snoozedUntil"));
     }
 
     /// <summary>Untrusted payload → a playlist state: capped strings, only valid non-empty track Guids.</summary>
@@ -1049,11 +1166,15 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         var modified = NoctisServerClient.Date(p, "modifiedAt") ?? updatedUtc;
         if (modified > now) modified = now;
+        // "" = no custom cover, a hash = that picture; absent (an older desktop) or anything else
+        // says nothing, and the phone keeps the cover it has.
+        var cover = NoctisServerClient.Str(p, "cover");
+        if (cover is { Length: > 0 } && !PlaylistCovers.IsHash(cover)) cover = null;
         return new PlaylistSyncState(
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "name"), MaxPlaylistName) ?? string.Empty,
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "description"), MaxPlaylistDescription) ?? string.Empty,
             NoctisServerClient.Cap(NoctisServerClient.Str(p, "color"), 32) ?? string.Empty,
-            ids, modified, NoctisServerClient.Bool(p, "deleted"));
+            ids, modified, NoctisServerClient.Bool(p, "deleted"), cover);
     }
 
     private async Task<int> PushTrackStatesAsync(NoctisServerClient client, CancellationToken ct)
@@ -1067,7 +1188,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             new TrackSyncState(kv.Value.Favorite, Math.Clamp(kv.Value.Rating, 0, 5), kv.Value.Disliked,
                 // Plays travel as scrobbles: 0 and no date leave the desktop's max-merge untouched.
                 PlayCount: 0, LastPlayed: null,
-                FavoritedAt: kv.Value.Favorite ? NotAfter(kv.Value.FavoritedAt, now) : null),
+                FavoritedAt: kv.Value.Favorite ? NotAfter(kv.Value.FavoritedAt, now) : null,
+                SnoozedUntil: kv.Value.SnoozedUntil),
             NotAfter(kv.Value.UpdatedUtc, now) ?? now)));
         foreach (var batch in PushChunks(all, x => x.Item))
         {
@@ -1081,7 +1203,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     // Only if untouched since the snapshot: a newer edit stays queued.
                     if (_pending.Tracks.TryGetValue(hex, out var current) && ReferenceEquals(current, state))
                         _pending.Tracks.Remove(hex);
-                    SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked);
+                    SetBaselineLocked(hex, state.Favorite, state.Rating, state.Disliked, state.SnoozedUntil);
                 }
             }
             sent += items.Count;
@@ -1166,6 +1288,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
 
         if (RepointPlaylists(phone, agreed)) changed = true;
+        if (await SyncPlaylistCoversAsync(client, phone, agreed, ct).ConfigureAwait(false)) changed = true;
 
         var toPush = new List<(string Hex, PlaylistSyncState State)>();
         foreach (var (hex, at) in deleted)
@@ -1176,6 +1299,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             var local = phone.FirstOrDefault(p => NoctisRemoteIds.TryParseSyncId(hex, out var id) && p.Id == id);
             if (local is null || !Newer(local.ModifiedAt, state.ModifiedAt)) continue;
             var modified = NotAfter(Utc(local.ModifiedAt), now) ?? now;
+            var cover = await PushedCoverAsync(client, hex, local, state.Cover, ct).ConfigureAwait(false);
             // Within the server's limits, or it drops the whole item: name ≤ 200, description
             // ≤ 2000, ≤ 10000 songs, colour #RRGGBB[AA] or none (none keeps the desktop's).
             toPush.Add((hex, new PlaylistSyncState(
@@ -1183,7 +1307,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 NoctisServerClient.Cap(local.Description ?? string.Empty, MaxPlaylistDescription)!,
                 IsSyncColor(local.Color) ? local.Color! : string.Empty,
                 DesktopTrackIds(local.TrackIds),
-                modified, Deleted: false)));
+                modified, Deleted: false, cover)));
         }
 
         if (changed)
@@ -1191,7 +1315,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
             RaisePlaylistsChanged();
         }
+        PrunePlaylistCovers(phone);
 
+        var coverMarks = false;
         foreach (var chunk in PushChunks(toPush, p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)))
         {
             var items = chunk.Select(p => new PushItem(SyncKinds.Playlist, p.Hex.ToLowerInvariant(), p.State, p.State.ModifiedAt)).ToList();
@@ -1201,7 +1327,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 if (!state.Deleted)
                 {
-                    agreed[hex] = state;
+                    // No cover said: the computer kept the one agreed before.
+                    agreed[hex] = state.Cover is null && agreed.TryGetValue(hex, out var before) ? state with { Cover = before.Cover } : state;
+                    lock (_gate) coverMarks |= _pending.RemovedCovers.Remove(hex);
                     continue;
                 }
                 // Deleted on the computer now: no longer one of the playlists the phone keeps in step.
@@ -1213,7 +1341,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 }
                 tombstones = true;
             }
-            if (tombstones) SchedulePendingSave();
+            if (tombstones || coverMarks) SchedulePendingSave();
         }
 
         lock (_gate)
@@ -1303,6 +1431,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (IsSyncColor(state.Color)) local.Color = state.Color;
         local.TrackIds = state.TrackIds?.Where(g => g != Guid.Empty).Take(MaxPlaylistTracks).ToList() ?? new List<Guid>();
         local.ModifiedAt = Utc(state.ModifiedAt);
+        // Removed on the computer (its file goes with PrunePlaylistCovers). A new picture is
+        // fetched by SyncPlaylistCoversAsync; none said (an older desktop) keeps the phone's.
+        if (state.Cover is { Length: 0 }) local.CoverArtPath = null;
     }
 
     private async Task<int> SendPlaysAsync(NoctisServerClient client, CancellationToken ct)
@@ -1424,14 +1555,19 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             lock (_gate)
             {
                 var agreed = _sync.Baseline.TryGetValue(hex, out var b) ? b : Default;
-                if (agreed.Favorite == fav && agreed.Rating == rating && agreed.Disliked == disliked)
+                // The snooze as the wire says it: an Unsnooze (null here) of a song agreed snoozed
+                // is "not snoozed"; a song never snoozed says nothing (TrackSyncState.From).
+                var snoozed = TrackSyncState.Utc(t.SnoozedUntil) ?? (agreed.Snoozed != null ? TrackSyncState.NotSnoozed : null);
+                var sameSnooze = snoozed == null || snoozed == agreed.Snoozed;
+                if (agreed.Favorite == fav && agreed.Rating == rating && agreed.Disliked == disliked && sameSnooze)
                 {
                     if (_pending.Tracks.Remove(hex)) changed = true;
                     continue;
                 }
-                if (_pending.Tracks.TryGetValue(hex, out var p) && p.Favorite == fav && p.Rating == rating && p.Disliked == disliked)
+                if (_pending.Tracks.TryGetValue(hex, out var p) && p.Favorite == fav && p.Rating == rating && p.Disliked == disliked
+                    && p.SnoozedUntil == snoozed)
                     continue;
-                _pending.Tracks[hex] = new PendingTrackState(fav, rating, disliked, fav ? t.FavoritedAt : null, now);
+                _pending.Tracks[hex] = new PendingTrackState(fav, rating, disliked, fav ? t.FavoritedAt : null, now, snoozed);
                 changed = true;
             }
         }
@@ -1440,10 +1576,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     private static readonly SyncedTrackState Default = new(false, 0, false);
 
-    private void SetBaselineLocked(string hex, bool favorite, int rating, bool disliked)
+    /// <summary>The state agreed with the desktop for one song. <paramref name="snoozed"/> null:
+    /// nothing was said about the snooze (the catalog, an older desktop), so the agreed one stays.</summary>
+    private void SetBaselineLocked(string hex, bool favorite, int rating, bool disliked, DateTime? snoozed = null)
     {
-        if (!favorite && rating == 0 && !disliked) _sync.Baseline.Remove(hex);
-        else _sync.Baseline[hex] = new SyncedTrackState(favorite, rating, disliked);
+        snoozed ??= _sync.Baseline.TryGetValue(hex, out var old) ? old.Snoozed : null;
+        if (!favorite && rating == 0 && !disliked && snoozed == null) _sync.Baseline.Remove(hex);
+        else _sync.Baseline[hex] = new SyncedTrackState(favorite, rating, disliked, snoozed);
     }
 
     private void SchedulePendingSave() => _ = Task.Run(SavePendingNow);
@@ -1462,6 +1601,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     Tracks = new Dictionary<string, PendingTrackState>(_pending.Tracks),
                     Plays = _pending.Plays.ToList(),
                     DeletedPlaylists = new Dictionary<string, DateTime>(_pending.DeletedPlaylists),
+                    RemovedCovers = new Dictionary<string, DateTime>(_pending.RemovedCovers),
                 };
             }
             try

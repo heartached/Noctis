@@ -214,7 +214,7 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     /// <summary>A send of the phone's songs runs (from this page, or one still running when it opened).</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(UploadLabel), nameof(UploadTileLabel))]
+    [NotifyPropertyChangedFor(nameof(UploadLabel))]
     private bool _isUploading;
 
     /// <summary>The send row's status: "Sending 3 of 40", then "Sent 40 · 2 already on your computer · 1 failed".</summary>
@@ -222,9 +222,6 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     /// <summary>The send row's label: a second tap while sending stops it (what was sent stays sent).</summary>
     public string UploadLabel => IsUploading ? Loc.T("Mobile.Account.StopSending") : Loc.T("Mobile.Account.SendSongs");
-
-    /// <summary>The send tile's short label (its spoken name stays <see cref="UploadLabel"/>).</summary>
-    public string UploadTileLabel => IsUploading ? Loc.T("Mobile.Account.StopSending") : Loc.T("Mobile.Account.SendTile");
 
     /// <summary>Not while signing in or out, nor once the computer's certificate changed.</summary>
     public bool CanUpload => IsIdle && CanUseServer;

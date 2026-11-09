@@ -139,7 +139,8 @@ public class GlassUniform104Tests
             AppGlass.Clear();
             flyout.ShowAt(button);
             Dispatcher.UIThread.RunJobs();
-            Assert.False(flyout.Popup.ShouldUseOverlayLayer);
+            // Plain, but still in the overlay layer: it stays inside the window (11-06).
+            Assert.True(flyout.Popup.ShouldUseOverlayLayer);
             Assert.DoesNotContain(GlassMenus.GlassClass, presenter.Classes);
             flyout.Hide();
         }

@@ -6929,7 +6929,7 @@
   <data name="Mobile.Cancel" xml:space="preserve"><value>취소</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>지금 동기화</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>모두 다운로드</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>컴퓨터의 모든 노래를 이 휴대폰에 저장해 연결 없이도 재생할 수 있습니다.</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>오프라인으로 듣도록 모든 노래를 이 휴대폰에 보관</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>다운로드됨</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>모든 다운로드 제거</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>다운로드 제거</value></data>
@@ -6971,13 +6971,19 @@
   <data name="Mobile.Playlists.Find" xml:space="preserve"><value>재생목록에서 검색</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>아직 재생목록이 없습니다. 노래를 길게 눌러 만들어 보세요.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>일치하는 재생목록 없음</value></data>
-  <data name="Mobile.Playlists.SearchName" xml:space="preserve"><value>재생목록 검색</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>재생목록 정렬</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>새로운 재생목록</value></data>
+  <data name="Mobile.Create" xml:space="preserve"><value>만들기</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>다음 재생</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>대기열에 추가</value></data>
+  <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>현재 곡 앞에 추가</value></data>
+  <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>현재 곡 앞에 추가됨</value></data>
   <data name="Mobile.GoToAlbum" xml:space="preserve"><value>앨범으로 이동</value></data>
   <data name="Mobile.GoToArtist" xml:space="preserve"><value>아티스트로 이동</value></data>
   <data name="Mobile.Rename" xml:space="preserve"><value>이름 변경</value></data>
+  <data name="Mobile.ChangeCover" xml:space="preserve"><value>커버 변경</value></data>
+  <data name="Mobile.RemoveCover" xml:space="preserve"><value>커버 제거</value></data>
+  <data name="Mobile.CoverNotPicture" xml:space="preserve"><value>이 파일은 커버로 사용할 수 있는 이미지가 아닙니다.</value></data>
   <data name="Mobile.RemoveFromPlaylist" xml:space="preserve"><value>재생목록에서 제거</value></data>
   <data name="Mobile.DeletePlaylist" xml:space="preserve"><value>재생목록 삭제</value></data>
   <data name="Mobile.AddFolderMenu" xml:space="preserve"><value>폴더 추가…</value></data>
@@ -6987,6 +6993,9 @@
   <data name="Mobile.Queue.UpNext" xml:space="preserve"><value>다음 재생</value></data>
   <data name="Mobile.Queue.Clear" xml:space="preserve"><value>지우기</value></data>
   <data name="Mobile.Queue.Empty" xml:space="preserve"><value>다음에 재생할 항목 없음</value></data>
+  <data name="Mobile.Queue.History" xml:space="preserve"><value>기록</value></data>
+  <data name="Mobile.Queue.HideHistory" xml:space="preserve"><value>숨기기</value></data>
+  <data name="Mobile.Queue.ShowHistory" xml:space="preserve"><value>보기</value></data>
   <data name="Mobile.Repeat" xml:space="preserve"><value>반복</value></data>
   <data name="Mobile.NothingHere" xml:space="preserve"><value>아직 아무것도 없음</value></data>
   <data name="Mobile.Search" xml:space="preserve"><value>검색</value></data>
@@ -7015,7 +7024,7 @@
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>재생 횟수와 최근 재생한 항목이 양쪽에서 같아집니다</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>감상 기록 지우기</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>감상 기록 지우기…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>이 휴대폰의 재생 기록을 지웁니다. 이미 Last.fm으로 보낸 기록은 그대로 남습니다.</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Last.fm에 이미 보낸 재생 기록은 그대로 남습니다</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>이 휴대폰</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>컴퓨터</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>서비스</value></data>
@@ -7035,6 +7044,9 @@
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>커버</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>LP</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>재생 중 배경</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>재생 중 배경 밝기</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>지금 재생 중 뒤의 색을 더 어둡거나 밝게</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>음악 폴더</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>다운로드</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>감상</value></data>
@@ -7059,38 +7071,42 @@
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>접근 권한이 없어졌습니다. 이 폴더의 노래를 재생하려면 폴더를 다시 추가하세요.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>사용할 수 없습니다. 저장소를 다시 연결한 다음 다시 스캔하세요.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>아직 음악 폴더 없음</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>이 휴대폰의 라이브러리는 이 폴더에 있는 음악으로 구성됩니다.</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>이 폴더의 음악이 보관함이 됩니다</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>폴더 추가</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>시작 시 스캔</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctis를 열 때마다 이 폴더에서 새 노래를 찾습니다.</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctis를 열 때마다 새 노래를 찾습니다</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>앨범 색상</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>아트워크 색상으로 페이지 채우기</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>앨범 및 아티스트 페이지가 커버 색상의 짙은 톤과 흰색 텍스트로 표시됩니다. 끄면 기본 라이트 또는 다크 테마를 사용합니다.</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>앨범과 아티스트 페이지가 커버 색을 따릅니다</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>진행 색상</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>진행 선</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>진행 색상은 노래가 재생되는 동안 플레이어 막대를 커버 색상으로 채웁니다. 진행 선은 막대 아래쪽 가장자리를 따라 얇은 선을 그립니다. 둘 다 끄면 막대는 기본 유리 스타일로 표시됩니다.</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>노래가 재생되는 동안 막대를 채우거나 얇은 선 표시</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Wi-Fi에서만 다운로드</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>컴퓨터의 노래는 Wi-Fi에서만 다운로드되며 모바일 데이터로는 다운로드되지 않습니다. 스트리밍에는 영향을 주지 않습니다.</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>다운로드는 Wi-Fi를 기다리지만 스트리밍은 됩니다</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>부드러운 모션</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>최대 120Hz</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>지원되는 휴대폰에서 화면을 초당 최대 120번 새로 고쳐 스크롤과 애니메이션을 더 부드럽게 합니다. 끄면 화면이 60Hz로 유지되어 배터리를 아낄 수 있습니다.</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120Hz 화면에서 더 부드러운 스크롤 대신 배터리를 더 씁니다</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass 탭 표시</value></data>
+  <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>선택한 탭이 투명한 유리로 유지됩니다</value></data>
+  <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>재생한 곡을 대기열에 표시</value></data>
+  <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>재생한 곡이 현재 곡 위에 남습니다</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>사용 중인 저장 공간</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>모든 다운로드 제거</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>제거한 다운로드는 컴퓨터에 남아 있으며 계속 스트리밍할 수 있습니다.</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis 자체는 MIT 라이선스입니다.</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>컴퓨터에 남아 있고 계속 스트리밍됩니다</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis는 MIT 라이선스입니다</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>번역 표시</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>로마자 표기 표시</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>백그라운드 보컬 표시</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>노래 가사에 포함된 경우 해당 줄 아래에 작은 글씨로 표시됩니다.</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>가사에 있으면 줄 아래에 작은 글씨로 표시</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>텍스트 크기</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>가사 텍스트 크기</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>최소 줄 불투명도</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>최소 줄 불투명도</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>모든 줄을 희미하게 표시해 어느 줄이든 탭하여 이동할 수 있습니다. 0%로 설정하면 현재 줄에서 먼 줄은 숨겨집니다.</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>현재 줄에서 먼 줄이 보이는 정도</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>분리된 단어 합치기</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML 가사가 단어를 음절로 나눌 때 단어를 하나로 유지합니다.</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML 가사에서 단어를 나누지 않습니다</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>온라인에서 가사 찾기</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>노래에 가사 파일이나 태그 속 가사가 없으면 데스크톱 앱처럼 제목, 아티스트, 길이로 LRCLIB에 요청합니다. 찾은 가사는 휴대폰에 저장됩니다.</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>없는 가사를 LRCLIB에서 찾아 저장합니다</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>탭 보기</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>이 목록에서 검색</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0}곡</value></data>
@@ -7167,7 +7183,7 @@
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>미리 보기 · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>노래 제목</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>절전 모드가 켜져 있어 색이 움직이지 않습니다.</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>움직임 효과는 배터리를 조금 더 사용합니다. 절전 모드가 켜지면 일시 정지됩니다.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>배터리를 조금 더 쓰고 절전 모드에서는 멈춥니다</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>영구</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1년</value></data>
@@ -7201,8 +7217,8 @@
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>개방형 무료 감상 통계</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>컴퓨터에서 관리</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>컴퓨터에서 설정</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>노래의 절반 또는 4분을 들으면 재생으로 인정됩니다. 오프라인에서 재생한 기록은 다음 동기화까지 여기서 대기합니다.</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>노래의 절반 또는 4분을 들으면 재생으로 인정됩니다. 오프라인에서 재생한 기록은 휴대폰이 다시 온라인 상태가 될 때까지 여기서 대기합니다.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>노래의 절반이나 4분 후에 기록되고 오프라인 재생은 다음 동기화 때 전송됩니다</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>노래의 절반이나 4분 후에 기록되고 오프라인 재생은 다시 온라인이 되면 전송됩니다</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Last.fm에 연결할 수 없습니다. 다시 시도하세요.</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Last.fm에서 Noctis 승인</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Last.fm에 로그인해 Allow를 탭한 다음, 여기로 돌아와 완료를 탭하세요.</value></data>
@@ -7246,6 +7262,15 @@
   <data name="Mobile.Accent.Indigo" xml:space="preserve"><value>인디고</value></data>
   <data name="Mobile.Accent.Orchid" xml:space="preserve"><value>오키드</value></data>
   <data name="Mobile.Accent.Rose" xml:space="preserve"><value>로즈</value></data>
+  <data name="Mobile.Accent.Peach" xml:space="preserve"><value>피치</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lime" xml:space="preserve"><value>라임</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Forest" xml:space="preserve"><value>포레스트</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Mint" xml:space="preserve"><value>민트</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Sky" xml:space="preserve"><value>스카이</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Lilac" xml:space="preserve"><value>라일락</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Silver" xml:space="preserve"><value>실버</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.Slate" xml:space="preserve"><value>슬레이트</value><comment>Accent colour name</comment></data>
+  <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>아트워크와 동일하게</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
   <data name="Mobile.Accent.Custom" xml:space="preserve"><value>사용자 지정</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>시스템</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>라이트</value></data>
@@ -7255,11 +7280,11 @@
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>미드나이트</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>시스템, {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>기기와 동일하게</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>휴대폰이 라이트 모드일 때는 라이트, 다크 모드일 때는 {0}(으)로 표시됩니다.</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>라이트 모드에서는 라이트 다크 모드에서는 {0}</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>라이트 및 다크</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>컬러 테마는 페이지, 카드, 글래스에 색을 입히며 같은 이름의 배경과 어울립니다.</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>색상 테마가 앱 전체에 색을 입힙니다</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>테마와 동일하게</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>컬러 테마에는 고유한 강조 색상이 있습니다. 아래에서 색상을 선택하면 꺼집니다.</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>아래에서 색을 고르면 이 설정이 꺼집니다</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>‘{0}’을(를) 제거하시겠습니까? 이 폴더의 노래가 이 휴대폰의 라이브러리에서 빠집니다. 파일은 그대로 유지됩니다.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>‘{0}’을(를) 제거하시겠습니까?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>이 폴더의 노래가 이 휴대폰의 라이브러리에서 빠집니다. 파일은 그대로 유지됩니다.</value></data>
@@ -7278,8 +7303,8 @@
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>모두 켬</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>번역 켬</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>로마자 켬</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>{0}에서 Noctis를 열면 여기서 재생하던 노래부터 이어서 들을 수 있도록 제안합니다.</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>컴퓨터에서 Noctis를 열면 여기서 재생하던 노래부터 이어서 들을 수 있도록 제안합니다.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>{0}에서 Noctis를 열면 이 노래부터 이어서 재생</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>컴퓨터에서 Noctis를 열면 이 노래부터 이어서 재생</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Wi-Fi만</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>모든 네트워크</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>모든 다운로드를 제거하시겠습니까?</value></data>
@@ -7287,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>다운로드 제거</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}곡</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>재생목록 {0}개</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>설정이 새롭게 디자인되었습니다. 맨 위에 프로필과 라이브러리 통계가 있고, 그 아래에 모양, 라이브러리, 감상, 도움말, 정보가 이어집니다.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>다운로드에 전용 페이지가 생겨 Wi-Fi에서만 다운로드(기본적으로 켬)와 모든 다운로드 제거를 사용할 수 있습니다.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>오픈 소스 라이선스에서 Noctis를 만드는 데 사용된 구성 요소를 확인할 수 있습니다.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis가 사용자의 언어를 지원합니다. 설정 › 언어에서 선택하거나 휴대폰 언어를 따르세요.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>강조 색상이 17가지로 늘었고, '아트워크에 맞추기'는 재생 중인 커버 색을 따라갑니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>지금 재생 중 화면에 수면 타이머, 노래 메뉴에 '한 달 동안 다시 알림'과 '노래 숨기기'.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>+로 플레이리스트를 만들고 원하는 커버를 지정하세요. 커버는 컴퓨터와 동기화됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>노래 메뉴에 '현재 곡 앞에 추가', 재생한 노래를 대기열에 남길 수 있습니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>휴대폰의 노래와 컴퓨터의 같은 노래가 한 번만 표시됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>더 부드러운 스크롤, 더 빠른 페이지, 가로 모드에서는 커버 옆에 가사.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>내장 ALAC 디코더로, GPL 또는 non-free 구성 요소 없이 수정되지 않은 FFmpeg 6.0 소스에서 빌드되었습니다: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>재생, 미디어 세션 및 디코더의 JNI 래퍼.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>사용자 인터페이스 프레임워크.</value></data>
@@ -7386,17 +7413,18 @@
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>알 수 없는 트랙</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD 카드</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>재생목록</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>여기서 언어를 선택하지 않으면 Noctis는 휴대폰의 언어를 따릅니다. 번역은 커뮤니티에서 제공합니다.</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>직접 고르지 않으면 휴대폰 언어를 따릅니다</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>스캔 중… 파일 {0}개</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0} 더 보기</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} 제거</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. 강조 색상은 버튼, 스위치, 하이라이트에 적용됩니다.</value></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} 색이 버튼과 강조에 쓰입니다</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>재생 중인 커버 색을 쓰고 커버가 없으면 {0}</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>사용 중인 저장 공간, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>노래 행에 표시</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>끔</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>평점</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>즐겨찾기</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>노래 행 끝에 노래의 별점이나 즐겨찾기 하트가 표시됩니다.</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>노래 줄 끝에 별 또는 하트</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>평가</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>5점 중 {0}점으로 평가</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>평점 지우기</value></data>
@@ -7422,7 +7450,7 @@
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>“{0}”을(를) 읽을 수 없습니다</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>플레이리스트 열기</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>모든 음악 자동으로 찾기</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>폴더를 고르지 않고 이 휴대폰과 SD 카드의 모든 곡을 추가합니다. 곡 옆의 가사 파일(.lrc, .ttml)은 아래에서 추가한 폴더에서만 읽습니다.</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>휴대폰과 SD 카드의 모든 노래를 추가하지만 가사 파일은 아래 폴더에서만 읽습니다</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>모든 음악</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis가 이 휴대폰의 음악을 읽도록 허용되지 않았습니다. 켜려면 Noctis 설정에서 음악 및 오디오를 허용하세요.</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis가 더 이상 이 휴대폰의 음악을 읽을 수 없습니다. 곡은 목록에 남지만 Noctis 설정에서 음악 및 오디오를 허용할 때까지 재생되지 않습니다.</value></data>
@@ -7652,5 +7680,43 @@
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>내 인기 아티스트</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Last.fm에서 {0} 열기</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>믹스 및 추천</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>홈에 Last.fm 차트로 만든 내 곡 믹스와 새로 발견할 아티스트가 표시됩니다. 계정 이름만 사용하며 아무것도 보내지 않습니다.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>홈에 Last.fm 차트로 만든 믹스가 나오고 아무것도 보내지 않습니다</value></data>
+  <!-- LyricShareDialog Lyrics Page -->
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>한 달 동안 스누즈</value></data>
+  <data name="Mobile.Unsnooze" xml:space="preserve"><value>스누즈 해제</value></data>
+  <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>한 달 동안 스누즈됨</value></data>
+  <data name="Mobile.UnsnoozedNotice" xml:space="preserve"><value>스누즈 해제됨</value></data>
+  <data name="Mobile.SleepTimer" xml:space="preserve"><value>취침 타이머</value></data>
+  <data name="Mobile.SleepTimer.Minutes" xml:space="preserve"><value>{0}분</value></data>
+  <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>1시간</value></data>
+  <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>현재 곡이 끝날 때</value></data>
+  <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>타이머 끄기</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 후 일시정지</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>이 곡이 끝나면 일시정지</value></data>
+  <data name="Mobile.HideSong" xml:space="preserve"><value>곡 숨기기</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>숨겼습니다. 설정 › 라이브러리 › 숨긴 항목에서 다시 표시할 수 있습니다.</value></data>
+  <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>숨긴 항목</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>숨긴 노래는 휴대폰에 남지만 보관함과 믹스에서는 빠집니다</value></data>
+  <data name="Mobile.Hidden.None" xml:space="preserve"><value>숨긴 항목 없음</value></data>
+  <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>표시</value></data>
+  <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} 표시</value></data>
+  <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>폴더</value></data>
+  <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>지금 이 휴대폰에 없음</value></data>
 </root>

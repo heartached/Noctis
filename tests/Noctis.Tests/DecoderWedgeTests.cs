@@ -198,6 +198,47 @@ public class DecoderWedgeTests
         if (expected >= 0) Assert.Equal(1030, run.ResumeMs);
     }
 
+    [Theory]
+    // writeEndMs, blockEndMs: near the run 1000-1080 (50 ms before, 400 ms after)
+    [InlineData(900, 940, false)]
+    [InlineData(930, 960, true)]
+    [InlineData(1040, 1066, true)]
+    [InlineData(1450, 1476, true)]
+    [InlineData(1480, 1506, false)]
+    public void DecodedJunk_IsLookedForOnlyNearAKnownDamagedRun(long writeEndMs, long blockEndMs, bool expected)
+        => Assert.Equal(expected, VlcAudioPlayer.NearDamage(writeEndMs, blockEndMs, [new Mp3FrameScan.Damage(1000, 1080)]));
+
+    [Theory]
+    // block peak, block RMS, recent peak, recent RMS (full scale 1). The junk rows are the
+    // blocks FFmpeg's decoder made of Tangent's file at 31:14 (harness 11-06).
+    [InlineData(1.0f, 0.299f, 0.553f, 0.253f, true)]   // clipped, peak 1.8x the music's
+    [InlineData(1.0f, 0.877f, 0.553f, 0.253f, true)]   // clipped, 3.5x the level
+    [InlineData(0.443f, 0.127f, 0.553f, 0.253f, false)] // the music after it
+    [InlineData(0.95f, 0.6f, 0.3f, 0.2f, false)]       // a loud hit, short of full scale
+    [InlineData(1.0f, 0.45f, 0.9f, 0.3f, false)]       // a loud master: full scale is normal there
+    [InlineData(1.0f, 0.9f, 0f, 0f, false)]            // a fresh input: nothing to compare with
+    public void DecodedJunk_IsClippedAndFarAboveTheMusicBefore(float peak, float rms, float recentPeak, float recentRms, bool expected)
+        => Assert.Equal(expected, VlcAudioPlayer.IsDecodedJunk(peak, rms, recentPeak, recentRms));
+
+    [Fact]
+    public void DropBlock_FadesTheTailOnce_AndFadesInWhatFollows()
+    {
+        var seg = new GaplessTrackSegment(1000, 1, null, basePositionMs: 2000);
+        Assert.True(seg.Write(Tone(100)));
+        seg.DropBlock(20);
+        seg.DropBlock(20); // a second junk block: the tail is not faded again
+        Assert.Equal(2100, seg.WriteEndMs); // dropped blocks are not played
+        Assert.True(seg.Write(Tone(40)));
+        var all = new float[140];
+        Assert.Equal(140, seg.Read(all, 0, 140));
+        Assert.Equal(0.5f, all[79]);
+        Assert.Equal(0.5f * 10 / 20, all[89], 4);
+        Assert.Equal(0f, all[99]);
+        Assert.Equal(0f, all[100]);  // the fade-in starts from silence
+        Assert.Equal(0.5f * 10 / 20, all[110], 4);
+        Assert.Equal(0.5f, all[139]);
+    }
+
     [Fact]
     public void EndWithFade_FadesTheNewest_KeepsThePadding_AndRefusesMore()
     {

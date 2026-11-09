@@ -127,7 +127,7 @@
                             <views:FitWidth Name="PlaylistsTitleFit" VerticalAlignment="Center">
                                 <TextBlock Name="PlaylistsTitle" Classes="title" Text="{loc:T Nav.Playlists}" TextTrimming="CharacterEllipsis" />
                             </views:FitWidth>
-                            <views:PlaylistTools Grid.Column="1" VerticalAlignment="Center" DataContext="{Binding PlaylistsRoot}" />
+                            <views:PlaylistTools Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" DataContext="{Binding PlaylistsRoot}" />
                             <views:ProfileButton Grid.Column="2" Name="PlaylistsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
                         </Grid>
@@ -139,7 +139,7 @@
                             <views:FitWidth Name="FavoritesTitleFit" VerticalAlignment="Center">
                                 <TextBlock Name="FavoritesTitle" Classes="title" Text="{loc:T Nav.Favorites}" TextTrimming="CharacterEllipsis" />
                             </views:FitWidth>
-                            <views:ListTools Grid.Column="1" VerticalAlignment="Center" DataContext="{Binding FavoritesRoot}" />
+                            <views:ListTools Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" DataContext="{Binding FavoritesRoot}" />
                             <views:ProfileButton Grid.Column="2" Name="FavoritesProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
                         </Grid>
@@ -179,7 +179,7 @@
                                 <!-- The selected tab's inner capsule: the host slides between tabs, the
                                      droplet lifts while it travels (ShellView.LiftSelectionPill). -->
                                 <Panel Name="SelectionPillHost" HorizontalAlignment="Left" Margin="0,4" IsHitTestVisible="False">
-                                    <views:GlassDroplet Name="SelectionPill" Background="{DynamicResource PhoneChromeSelectedBrush}" CornerRadius="27"
+                                    <views:GlassDroplet Name="SelectionPill" Background="{DynamicResource PhoneChromeSelectedBrush}" CornerRadius="27" StaysGlass="{Binding GlassTabPill}"
                                                         UseAppGlass="False" IsGlassActive="True" BlurRadius="0" EdgeThickness="0" />
                                 </Panel>
                                 <!-- Filled glyphs on every tab, as Apple's: the selected one takes the accent. -->

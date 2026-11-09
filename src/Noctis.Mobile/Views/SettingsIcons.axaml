@@ -17,6 +17,8 @@
     <StreamGeometry x:Key="SetIconLyrics">M4 6h10M4 11h10M4 16h6 M18 5v10.5 M13.7 16a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0</StreamGeometry>
     <StreamGeometry x:Key="SetIconScrobbling">M4 18V9M9 18V5M14 18v-6M19 18V8</StreamGeometry>
     <StreamGeometry x:Key="SetIconHistory">M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M12 7.5V12l3 2</StreamGeometry>
+    <!-- Played Songs in Queue: queue lines with an arrow up beside them (played songs stay above). -->
+    <StreamGeometry x:Key="SetIconQueueHistory">M10 6h10M10 12h10M10 18h10 M5 18V6 M2.5 8.5L5 6l2.5 2.5</StreamGeometry>
     <StreamGeometry x:Key="SetIconPickUp">M5 4H14A2 2 0 0 1 16 6V12A2 2 0 0 1 14 14H5A2 2 0 0 1 3 12V6A2 2 0 0 1 5 4Z M16.6 9H19.4A1.6 1.6 0 0 1 21 10.6V18.4A1.6 1.6 0 0 1 19.4 20H16.6A1.6 1.6 0 0 1 15 18.4V10.6A1.6 1.6 0 0 1 16.6 9Z M7 18h5</StreamGeometry>
     <StreamGeometry x:Key="SetIconWarning">M12 3l9 16H3z M12 10v4M12 16.8v.2</StreamGeometry>
     <StreamGeometry x:Key="SetIconDoc">M7 3h7l4 4v14H7z M14 3v4h4M10 12h5M10 16h5</StreamGeometry>
@@ -26,4 +28,6 @@
     <!-- The row's trailing marks: a link that leaves the app, and the Theme row's up/down pair. -->
     <StreamGeometry x:Key="SetIconExternal">M6 18l12-12M8 6h10v10</StreamGeometry>
     <StreamGeometry x:Key="SetIconUpDown">M8 10l4-4 4 4M8 14l4 4 4-4</StreamGeometry>
+    <!-- Library › Hidden: the desktop's Hide Folder eye (MenuLineEyeOff). -->
+    <StreamGeometry x:Key="SetIconHidden">M2.8 12C4.7 8 8 5.8 12 5.8C16 5.8 19.3 8 21.2 12C19.3 16 16 18.2 12 18.2C8 18.2 4.7 16 2.8 12ZM12 14.8a2.8 2.8 0 1 0 0-5.6a2.8 2.8 0 0 0 0 5.6ZM4.5 4.5l15 15</StreamGeometry>
 </ResourceDictionary>

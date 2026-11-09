@@ -11,6 +11,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using Noctis.Localization;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
@@ -19,8 +20,8 @@ using Ellipse = Avalonia.Controls.Shapes.Ellipse;
 
 namespace Noctis.Tests;
 
-/// <summary>Phone Settings › Appearance: the nine accents, an accent saved outside them, the
-/// swatch layout, and the contrast every theme × accent pair keeps.</summary>
+/// <summary>Phone Settings › Appearance: the seventeen accents and Match Artwork, an accent saved
+/// outside them, the swatch layout, and the contrast every theme × accent pair keeps.</summary>
 public class MobileAppearanceTests
 {
     private sealed class FakeThemeHost : IThemeHost
@@ -32,16 +33,22 @@ public class MobileAppearanceTests
     private static readonly string[] Themes = { "Light", "Ink", "Smoke", "Dark", "Midnight" };
 
     [Fact]
-    public void Accents_AreNineDesktopPresets_CrimsonFirst_AndDistinct()
+    public void Accents_AreSeventeenDesktopPresets_CrimsonFirst_AndDistinct()
     {
         var accents = SettingsPageViewModel.Accents;
-        Assert.Equal(9, accents.Count);
+        Assert.Equal(17, accents.Count);
         Assert.Equal(("Crimson", MobileTheme.DefaultAccent), (accents[0].Name, accents[0].Hex));
         // The desktop's own names and colours, exactly.
         Assert.All(accents, a => Assert.Contains(Noctis.App.AccentPresets, p => p.Name == a.Name && p.Hex == a.Hex));
-        Assert.Equal(9, accents.Select(a => a.Hex).Distinct(StringComparer.OrdinalIgnoreCase).Count());
-        // Clearly apart: CIE76 ΔE of at least 25 between any two (the nearest pair, Orchid and
-        // Rose, is 28; Indigo and Violet, left out, were 17).
+        Assert.Equal(17, accents.Select(a => a.Hex).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        // The first nine kept their order (a saved pick reads the same), the eight added after.
+        Assert.Equal(new[] { "Crimson", "Tangerine", "Gold", "Emerald", "Teal", "Cerulean", "Indigo", "Orchid", "Rose" },
+            accents.Select(a => a.Name).Where(n => new[] { "Crimson", "Tangerine", "Gold", "Emerald", "Teal", "Cerulean", "Indigo", "Orchid", "Rose" }.Contains(n)));
+        // Light and dark neutrals among them (beta feedback 11-07).
+        Assert.Contains(accents, a => a.Name == "Silver");
+        Assert.Contains(accents, a => a.Name == "Slate");
+        // Clearly apart: CIE76 ΔE of at least 25 between any two (the nearest pair, Lime and
+        // Emerald, is 25.4; Indigo and Violet, left out, were 17, Crimson and Coral 15).
         foreach (var a in accents)
         foreach (var b in accents.Where(b => b != a))
         {
@@ -108,6 +115,54 @@ public class MobileAppearanceTests
         Assert.Equal("Teal", (await rig.Persistence.LoadSettingsAsync()).AccentPresetName);
     }
 
+    /// <summary>Match Theme on a colour theme wears the theme's own accent, so the grid ticks no
+    /// swatch (Crimson stayed ticked on Forest); tapping the saved swatch picks it and turns Match
+    /// Theme off, and the tick comes back. Match Artwork's swatch hides its tick the same way.</summary>
+    [AvaloniaFact]
+    public async Task MatchTheme_TicksNoSwatch_AndTappingTheSavedOneTurnsItOff()
+    {
+        var crimson = SettingsPageViewModel.Accents.Single(a => a.Name == "Crimson");
+        using var rig = MobileFixtures.MakeRig(theme: new FakeThemeHost(), seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MobileAppearance = "Dark";
+            s.MobileThemeName = "forest";
+            s.MobileAccentFollowsTheme = true;
+            s.AccentColorHex = crimson.Hex;
+            s.AccentPresetName = "Crimson";
+            await p.SaveSettingsAsync(s);
+        });
+        await WithAppearancePane(rig, (page, vm, window) =>
+        {
+            var list = MobileFixtures.Named<ListBox>(page, "AccentList");
+            Assert.True(vm.UsesThemeAccent);
+            Assert.Equal(crimson, vm.SelectedAccent);            // still the saved colour
+            Assert.Null(vm.ShownAccent);
+            Assert.Null(list.SelectedItem);
+            Assert.Equal(Loc.T("Mobile.Accent.MatchTheme"), vm.AccentName);   // the footnote's {0}
+
+            list.SelectedItem = crimson;                          // a tap on the saved swatch
+            Assert.False(vm.AccentFollowsTheme);
+            Assert.Equal(crimson, list.SelectedItem);
+            Assert.Equal(Loc.T("Mobile.Accent.Crimson"), vm.AccentName);
+
+            vm.AccentFollowsTheme = true;                         // the switch back on: the tick goes
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Null(list.SelectedItem);
+            Assert.Equal(crimson, vm.SelectedAccent);
+
+            list.SelectedItem = AccentSwatch.Artwork;             // Match Artwork, same rules
+            Assert.False(vm.AccentFollowsTheme);
+            Assert.True(vm.UsesArtworkAccent);
+            Assert.Same(AccentSwatch.Artwork, list.SelectedItem);
+            vm.AccentFollowsTheme = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Null(list.SelectedItem);
+            Assert.False(vm.UsesArtworkAccent);
+            Assert.Equal(Loc.T("Mobile.Accent.MatchTheme"), vm.AccentName);
+        });
+    }
+
     /// <summary>A colour picked on the desktop's custom picker reads "Custom"; a stale saved name
     /// that is one of the nine is never shown for a colour that is not that swatch.</summary>
     [Theory]
@@ -131,26 +186,29 @@ public class MobileAppearanceTests
         Assert.Equal(expected, vm.AccentName);
     }
 
-    /// <summary>Nine swatches: five across, four centred under them, every cell at least a
-    /// 44 dp touch target on a 412 dp phone (nine in one row would be 40 dp each).</summary>
+    /// <summary>Seventeen swatches and Match Artwork: three full rows of six, each centred, every
+    /// cell at least a 44 dp touch target on a 412 dp phone.</summary>
     [AvaloniaFact]
-    public async Task Swatches_FiveOverFourCentred_WithFullTouchTargets()
+    public async Task Swatches_ThreeRowsOfSix_WithFullTouchTargets()
     {
         using var rig = MobileFixtures.MakeRig();
         await WithAppearancePane(rig, (page, vm, window) =>
         {
             var list = MobileFixtures.Named<ListBox>(page, "AccentList");
             var cells = list.GetVisualDescendants().OfType<ListBoxItem>().ToList();
-            Assert.Equal(9, cells.Count);
+            Assert.Equal(18, cells.Count);
+            Assert.Same(AccentSwatch.Artwork, cells[^1].DataContext);
             var boxes = cells.Select(c => new Rect(c.TranslatePoint(new Point(0, 0), list)!.Value, c.Bounds.Size)).ToList();
             Assert.All(boxes, b => Assert.True(b.Width >= 44 && b.Height >= 44, b.ToString()));
-            Assert.Single(boxes.Take(5).Select(b => b.Y).Distinct());
-            Assert.Single(boxes.Skip(5).Select(b => b.Y).Distinct());
-            Assert.True(boxes[5].Y > boxes[0].Y);
-            // Both rows centred on the list: equal space left and right.
-            foreach (var row in new[] { boxes.Take(5).ToList(), boxes.Skip(5).ToList() })
+            var rows = new[] { boxes.Take(6).ToList(), boxes.Skip(6).Take(6).ToList(), boxes.Skip(12).ToList() };
+            foreach (var row in rows)
+            {
+                Assert.Equal(6, row.Count);
+                Assert.Single(row.Select(b => b.Y).Distinct());
+                // Centred on the list: equal space left and right.
                 Assert.InRange(row[0].X - (list.Bounds.Width - row[^1].Right), -1.5, 1.5);
-            Assert.InRange(boxes[5].X - boxes[0].X - boxes[0].Width / 2, -1.5, 1.5);   // the short row sits half a cell in
+            }
+            Assert.True(rows[1][0].Y > rows[0][0].Y && rows[2][0].Y > rows[1][0].Y);
         });
     }
 
@@ -174,7 +232,9 @@ public class MobileAppearanceTests
         var failures = new System.Collections.Generic.List<string>();
         try
         {
-            foreach (var name in Themes)
+            // Light, the dark styles and every colour theme (a chosen accent shows on a colour
+            // theme too, with Match Theme off).
+            foreach (var name in PhoneThemes.All.Select(t => t.Id))
             {
                 var variant = name == "Light" ? ThemeVariant.Light : ThemeVariant.Dark;
                 foreach (var accent in SettingsPageViewModel.Accents)

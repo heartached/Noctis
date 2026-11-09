@@ -2352,6 +2352,92 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            <!-- Start page and the rail's pages: hide, show and reorder (GitHub #199).
+                 Settings always shows; a hidden page stays reachable from shortcuts and links. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{loc:T Settings.SidebarStartPage}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.SidebarStartPageHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="SidebarStartPageCombo"
+                              AutomationProperties.Name="{loc:T Settings.SidebarStartPage}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding StartPageOptions}"
+                              SelectedItem="{Binding StartPageChoice, Mode=TwoWay}"
+                              MinWidth="180"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SidebarPageOption">
+                                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <StackPanel Spacing="10">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T Settings.SidebarPages}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.SidebarPagesHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ItemsControl x:Name="SidebarPagesList" ItemsSource="{Binding SidebarPages}">
+                        <ItemsControl.Styles>
+                            <!-- Hide the item container, not just its row: a collapsed row inside a
+                                 visible container still took the panel's 6px spacing, so the rows
+                                 around turned-off pages (Inbox, Server, Audio CD) sat further apart. -->
+                            <Style Selector="ItemsControl#SidebarPagesList > ContentPresenter" x:DataType="vm:SidebarPageOption">
+                                <Setter Property="IsVisible" Value="{Binding IsAvailable}"/>
+                            </Style>
+                            <!-- Settings can't be hidden: LottieToggle has no disabled look of its own. -->
+                            <Style Selector="controls|LottieToggle:disabled">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Style>
+                        </ItemsControl.Styles>
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="6"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:SidebarPageOption">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                    <Button Grid.Column="0" Classes="account-icon-btn"
+                                            AutomationProperties.Name="{loc:T Settings.SidebarMoveUp}"
+                                            ToolTip.Tip="{loc:T Settings.SidebarMoveUp}"
+                                            IsEnabled="{Binding CanMoveUp}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveSidebarPageUpCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11"
+                                                  RenderTransform="rotate(180deg)"/>
+                                    </Button>
+                                    <Button Grid.Column="1" Classes="account-icon-btn"
+                                            AutomationProperties.Name="{loc:T Settings.SidebarMoveDown}"
+                                            ToolTip.Tip="{loc:T Settings.SidebarMoveDown}"
+                                            IsEnabled="{Binding CanMoveDown}"
+                                            Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveSidebarPageDownCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11"/>
+                                    </Button>
+                                    <TextBlock Grid.Column="2" Text="{Binding Label}" FontSize="13"
+                                               Margin="8,0,0,0" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <controls:LottieToggle Grid.Column="3"
+                                                          AutomationProperties.Name="{Binding Label}"
+                                                          IsChecked="{Binding IsShown, Mode=TwoWay}"
+                                                          IsEnabled="{Binding CanHide}"
+                                                          VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
             </StackPanel>
             </Border>
 
@@ -3175,6 +3261,24 @@
                 </Grid>
                 <controls:CollapsibleContent IsOpen="{Binding AnimatedArtworkAutoFetch}" Lift="10" Motion="Glide">
                 <StackPanel Classes="sub-setting" Spacing="10" Margin="2,10,0,0">
+                    <!-- GitHub #185: the quality fetched loops download at (also Find Animated
+                         Artwork); 2160p falls back to 1080p when an album has none. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AnimArtQuality}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AnimArtQualityDesc}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1"
+                                  AutomationProperties.Name="{loc:T Settings.AnimArtQuality}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding AnimatedArtworkQualityOptions}"
+                                  SelectedItem="{Binding SelectedAnimatedArtworkQualityOption}"
+                                  MinWidth="96"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.AnimArtCacheSize}" FontSize="13" FontWeight="SemiBold"/>
@@ -3387,6 +3491,101 @@
                                               IsChecked="{Binding PlaybackBarShowFavorite}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #186: Quick Add to Playlist (up to three picked playlists) and Move to
+                         Trash (into a folder picked here, or the Recycle Bin / Trash), both off by default. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.QuickPlaylistButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.QuickPlaylistButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.QuickPlaylistButton}"
+                                              IsChecked="{Binding PlaybackBarShowQuickPlaylist}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel Spacing="8" IsVisible="{Binding PlaybackBarShowQuickPlaylist}">
+                        <ComboBox x:Name="QuickPlaylist1Combo"
+                                  AutomationProperties.Name="{loc:T Settings.QuickPlaylist1}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QuickPlaylistOptions}"
+                                  SelectedItem="{Binding SelectedQuickPlaylist1}"
+                                  HorizontalAlignment="Stretch"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <ComboBox x:Name="QuickPlaylist2Combo"
+                                  AutomationProperties.Name="{loc:T Settings.QuickPlaylist2}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QuickPlaylistOptions}"
+                                  SelectedItem="{Binding SelectedQuickPlaylist2}"
+                                  HorizontalAlignment="Stretch"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <ComboBox x:Name="QuickPlaylist3Combo"
+                                  AutomationProperties.Name="{loc:T Settings.QuickPlaylist3}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding QuickPlaylistOptions}"
+                                  SelectedItem="{Binding SelectedQuickPlaylist3}"
+                                  HorizontalAlignment="Stretch"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.TrashButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.TrashButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.TrashButton}"
+                                              IsChecked="{Binding PlaybackBarShowTrash}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <StackPanel Spacing="6" IsVisible="{Binding PlaybackBarShowTrash}">
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="{loc:T Settings.TrashFolder}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.TrashFolderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBox Grid.Column="0"
+                                     x:Name="TrashFolderBox"
+                                     AutomationProperties.Name="{loc:T Settings.TrashFolder}"
+                                     Text="{Binding PlaybackBarTrashFolder}"
+                                     IsReadOnly="True"
+                                     Watermark="{loc:T Settings.TrashFolderNotSet}"
+                                     CornerRadius="999"
+                                     Padding="14,8"
+                                     BorderThickness="1.5"
+                                     MinHeight="0" />
+                            <Button Grid.Column="1"
+                                    Content="{loc:T Settings.Browse}"
+                                    Command="{Binding BrowseTrashFolderCommand}"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Margin="8,0,0,0"
+                                    Cursor="Hand"/>
+                            <Button Grid.Column="2"
+                                    Content="{loc:T Settings.Clear}"
+                                    Command="{Binding ClearTrashFolderCommand}"
+                                    IsVisible="{Binding PlaybackBarTrashFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                    Padding="14,8"
+                                    CornerRadius="999"
+                                    Margin="8,0,0,0"
+                                    Cursor="Hand"/>
+                        </Grid>
+                        <TextBlock Text="{loc:T Settings.TrashFolderMissing}"
+                                   IsVisible="{Binding ShowTrashFolderMissingHint}"
+                                   FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <!-- GitHub #183: the stock Lyrics button can go; the lyrics page's own bar keeps it. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.LyricsButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LyricsButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LyricsButton}"
+                                              IsChecked="{Binding PlaybackBarShowLyrics}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.MiniPlayerButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3526,6 +3725,31 @@
                                               IsChecked="{Binding PlaybackBarShowTime}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                </StackPanel>
+            </Border>
+            <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.ArtworkClick}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ArtworkClickHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="ArtworkClickCombo"
+                              AutomationProperties.Name="{loc:T Settings.ArtworkClick}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding ArtworkClickOptions}"
+                              SelectedItem="{Binding SelectedArtworkClickOption}"
+                              MinWidth="200"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+                <TextBlock Text="{loc:T Settings.ArtworkClickLyricsHiddenHint}"
+                           IsVisible="{Binding ShowArtworkLyricsHint}"
+                           FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                 </StackPanel>
             </Border>
             <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->
@@ -4301,6 +4525,34 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #184: the page's background reaches under the sidebar rail (off by default). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsBackgroundBehindSidebar}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsBackgroundBehindSidebarHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsBackgroundBehindSidebar}"
+                                          IsChecked="{Binding LyricsBackgroundBehindSidebar}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #181: the lyrics page's progress bar draws the song's waveform (off by default). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsWaveformSeekBar}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsWaveformSeekBarHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsWaveformSeekBar}"
+                                          IsChecked="{Binding LyricsWaveformSeekBarEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Lyric layers (issue #78): display-only, the lyrics are not reloaded. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
@@ -4481,6 +4733,34 @@
                               VerticalAlignment="Center"
                               CornerRadius="999"
                               Padding="14,8"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #194: plain lyrics → look for the preferred synced kind, keep the plain ones when none. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsUpgradePlain}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsUpgradePlainHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsUpgradePlain}"
+                                          IsChecked="{Binding LyricsUpgradePlain}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #195: songs new to the library get a background bulk lyrics run. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindNew}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindNewHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsAutoFindNew}"
+                                          IsChecked="{Binding LyricsAutoFindNew}"
+                                          VerticalAlignment="Center"/>
                 </Grid>
             </Border>
             </StackPanel>
@@ -4840,6 +5120,25 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.ExclusiveMode}"
                                           IsChecked="{Binding ExclusiveAudioEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #200: 5.1/7.1 discrete on a surround device (MultichannelLayout). Applies at
+                 launch, like Headphone Surround, which overrides it. -->
+            <Border Classes="setting-row" IsVisible="{Binding IsUpmixSupported}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.MultichannelOutput}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.MultichannelOutputDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <controls:CollapsibleContent IsOpen="{Binding MultichannelOutputNeedsRestart}" Lift="6">
+                            <TextBlock Text="{loc:T Settings.MultichannelOutputRestart}"
+                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        </controls:CollapsibleContent>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.MultichannelOutput}"
+                                          IsChecked="{Binding MultichannelOutput}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -5555,6 +5854,34 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #193: the automatic grouping of #178 can be switched off (on by default);
+                 #190: and written into the files, only while it is on. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.AlbumGrouping}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.AlbumGrouping}"
+                                              IsChecked="{Binding AlbumGroupingEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding AlbumGroupingEnabled}">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingWriteTags}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingWriteTagsHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.AlbumGroupingWriteTags}"
+                                              IsChecked="{Binding AlbumGroupingWriteTags}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
@@ -5565,6 +5892,20 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.MergeFeaturedArtistsFrom}"
                                           IsChecked="{Binding MergeFeaturedFromTitles}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #187: artist lines as the tag writes them; display only -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.ShowArtistsAsTagged}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowArtistsAsTaggedHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ShowArtistsAsTagged}"
+                                          IsChecked="{Binding ShowArtistsAsTagged}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -7331,6 +7672,11 @@
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <TextBlock Text="{Binding LastFmQueueNote}"
+                                       IsVisible="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
                         </StackPanel>
 
                         <!-- Not connected state -->
@@ -7445,6 +7791,19 @@
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
+                    <!-- GitHub #160: background play count sync (SettingsViewModel.PlayCountImport.cs). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.PlayCountImport.Sync.Title}"
+                                              IsChecked="{Binding LastFmPlayCountSync}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
                 </StackPanel>
@@ -7486,6 +7845,11 @@
                                 <TextBlock Text="{Binding ListenBrainzServerDisplay}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" MaxWidth="420"/>
                             </StackPanel>
+                            <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <TextBlock Text="{Binding ListenBrainzQueueNote}"
+                                       IsVisible="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
 
                             <!-- Token row lives inside the same StackPanel as the title so it sits
                                  right under the description instead of leaving a gap. The Connect
@@ -7620,6 +7984,19 @@
                                 VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Cancel}" FontSize="13" VerticalAlignment="Center"/>
                         </Button>
+                    </Grid>
+                    <!-- GitHub #160: background play count sync (SettingsViewModel.PlayCountImport.cs). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="54,4,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Title}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.PlayCountImport.Sync.Line}"
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
+                                       HorizontalAlignment="Left"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.PlayCountImport.Sync.Title}"
+                                              IsChecked="{Binding ListenBrainzPlayCountSync}"
+                                              VerticalAlignment="Center"/>
                     </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
@@ -8139,7 +8516,10 @@
                             <TextBlock Text="{loc:T Settings.TotalPlays}" FontSize="12" Opacity="0.55"/>
                         </StackPanel>
                         <StackPanel Spacing="2">
-                            <TextBlock Text="{Binding TimeListened}" FontSize="28" FontWeight="Bold" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" Foreground="{DynamicResource AccentTextBrush}"/>
+                            <!-- Shrinks to fit instead of "4d 9h 2..." (seen in Discord screenshots 11-06). -->
+                            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left" Margin="0,0,16,0">
+                                <TextBlock Text="{Binding TimeListened}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource AccentTextBrush}"/>
+                            </Viewbox>
                             <TextBlock Text="{loc:T Settings.TimeListened}" FontSize="12" Opacity="0.55"/>
                         </StackPanel>
                         <StackPanel Spacing="2">

@@ -334,9 +334,6 @@
         <Style Selector="Button.action-tile.danger views|GridIcon">
             <Setter Property="Foreground" Value="{DynamicResource AccountDangerBrush}" />
         </Style>
-        <Style Selector="Button.action-tile.danger TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource AccountDangerBrush}" />
-        </Style>
     </UserControl.Styles>
 
     <Panel Classes="grouped-root">
@@ -615,25 +612,19 @@
                             <Grid ColumnDefinitions="*,12,*,12,*">
                                 <Button Name="SendSongsButton" Classes="action-tile" Command="{Binding SendSongsCommand}"
                                         IsEnabled="{Binding CanUpload}" AutomationProperties.Name="{Binding UploadLabel}">
-                                    <StackPanel>
-                                        <views:GridIcon Data="{StaticResource AccountSendIcon}" />
-                                        <TextBlock Name="SendSongsLabel" Text="{Binding UploadTileLabel}" />
-                                    </StackPanel>
+                                    <Panel>
+                                        <views:GridIcon Data="{StaticResource AccountSendIcon}" IsVisible="{Binding !IsUploading}" />
+                                        <views:GridIcon Name="StopSendingIcon" Data="{DynamicResource PhClose}" IsVisible="{Binding IsUploading}" />
+                                    </Panel>
                                 </Button>
                                 <Button Grid.Column="2" Name="RemoveDownloadsButton" Classes="action-tile danger"
                                         Command="{Binding AskRemoveDownloadsCommand}"
                                         IsEnabled="{Binding CanRemoveDownloads}" AutomationProperties.Name="{loc:T Mobile.Account.RemoveAllDownloads}">
-                                    <StackPanel>
-                                        <views:GridIcon Data="{DynamicResource PhTrash}" />
-                                        <TextBlock Text="{loc:T Mobile.Account.RemoveDownloads}" />
-                                    </StackPanel>
+                                    <views:GridIcon Data="{DynamicResource PhTrash}" />
                                 </Button>
                                 <Button Grid.Column="4" Name="SignOutButton" Classes="action-tile danger" Command="{Binding AskSignOutCommand}"
                                         IsEnabled="{Binding IsIdle}" AutomationProperties.Name="{loc:T Mobile.Account.SignOut}">
-                                    <StackPanel>
-                                        <views:GridIcon Data="{StaticResource AccountSignOutIcon}" />
-                                        <TextBlock Text="{loc:T Mobile.Account.SignOut}" />
-                                    </StackPanel>
+                                    <views:GridIcon Data="{StaticResource AccountSignOutIcon}" />
                                 </Button>
                             </Grid>
                             <TextBlock Name="UploadLabel" Classes="group-footnote" Text="{Binding UploadText}"

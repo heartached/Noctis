@@ -36,6 +36,19 @@ public sealed class PlaybackQueue
     private readonly List<Track> _history = new();
     private List<Track> _repeatCycle = new();
     private List<Track> _originalOrder = new();
+    // Tracks Shuffle holds out of Up Next (snoozed, Skip When Shuffling), by reference: never
+    // dealt into the shuffled order, back in their place on Shuffle off (the desktop's
+    // ToggleShuffle / BuildUnshuffledQueue). Without this set Shuffle off would drop them.
+    private HashSet<Track> _heldOut = new(ReferenceEqualityComparer.Instance);
+    // The generator Shuffle was turned on with, for the reshuffle of each Repeat All pass.
+    private Random? _rng;
+
+    /// <summary>
+    /// Whether Shuffle leaves <paramref name="track"/> out of the order it deals: snoozed (Snooze
+    /// for a Month) or marked Skip When Shuffling, as the desktop's ShuffleHelper.WeightedShuffle
+    /// and ToggleShuffle do. Played on its own (picked, queued while shuffled) it still plays.
+    /// </summary>
+    public static bool IsHeldOutOfShuffle(Track track) => track.IsSnoozed || track.SkipWhenShuffling;
 
     public PlaybackQueue(int historyCap = DefaultHistoryCap) => _historyCap = Math.Max(1, historyCap);
 
@@ -76,6 +89,7 @@ public sealed class PlaybackQueue
         PlayedInQueue = 0;
 
         _originalOrder.Clear();
+        _heldOut.Clear();
         IsShuffleEnabled = false;
         // List order, so Repeat All wraps to the first track (not to the one picked mid-list).
         _repeatCycle = tracks.ToList();
@@ -113,6 +127,79 @@ public sealed class PlaybackQueue
         if (IsShuffleEnabled) _originalOrder.AddRange(list);
     }
 
+    /// <summary>
+    /// "Add Before Current Song": <paramref name="tracks"/> go in just before <see cref="Current"/>,
+    /// in their order, as if they had played last: the newest <see cref="History"/> entries, so
+    /// Previous plays the last of them first and Current keeps playing. They count as played in
+    /// this queue (<see cref="PlayedInQueue"/>), so "Track N of M" moves on with them. Nothing
+    /// happens without a Current (there is no song to go before); returns whether they went in.
+    /// </summary>
+    public bool AddBeforeCurrent(IReadOnlyList<Track> tracks)
+    {
+        if (Current == null || tracks.Count == 0) return false;
+        for (int i = 0; i < tracks.Count; i++) PushHistory(tracks[i]);
+        if (PlayedInQueue is { } played) PlayedInQueue = played + tracks.Count;
+        return true;
+    }
+
+    /// <summary>
+    /// Plays a played song again from where it is: <see cref="Back"/> until History[<paramref name="historyIndex"/>]
+    /// is Current, so the songs played after it go back to the front of UpNext in their order
+    /// and none is copied. Returns the new Current, or null for an index outside History.
+    /// </summary>
+    public Track? JumpBack(int historyIndex)
+    {
+        if ((uint)historyIndex >= (uint)_history.Count) return null;
+        for (int i = 0; i <= historyIndex; i++) Back();
+        return Current;
+    }
+
+    /// <summary>
+    /// A move in the queue read as one list, the way the phone's Queue page shows it with its
+    /// History: the played songs oldest first (indices 0..History.Count-1), then <see cref="Current"/>
+    /// (History.Count), then UpNext. The song at <paramref name="from"/> ends up at <paramref name="to"/>
+    /// (ObservableCollection.Move); Current never moves itself, it only ends up after or before
+    /// the song, so a song of Up Next moved above it plays before it (Previous reaches it) and a
+    /// played song moved below it plays again after it. A played song that leaves or joins this
+    /// queue's newest History entries changes <see cref="PlayedInQueue"/> with it. Returns false
+    /// (and changes nothing) without a Current, for Current itself or an index outside the list.
+    /// </summary>
+    public bool MoveInTimeline(int from, int to)
+    {
+        if (Current == null) return false;
+        int h = _history.Count, count = h + 1 + _upNext.Count;
+        if ((uint)from >= (uint)count || (uint)to >= (uint)count || from == h) return false;
+        if (from == to) return true;
+        var list = new List<Track>(count);
+        for (int i = h - 1; i >= 0; i--) list.Add(_history[i]);
+        list.Add(Current);
+        list.AddRange(_upNext);
+        var song = list[from];
+        var wasPlayed = from < h;
+        var oldHistoryIndex = wasPlayed ? h - 1 - from : -1;
+        list.RemoveAt(from);
+        list.Insert(to, song);
+        // Current's slot by position (the same Track may also sit in History): it shifts down
+        // one when the song lands at or above it.
+        var c0 = wasPlayed ? h - 1 : h;
+        var c = to <= c0 ? c0 + 1 : c0;
+        _history.Clear();
+        for (int i = c - 1; i >= 0; i--) _history.Add(list[i]);
+        _upNext.Clear();
+        for (int i = c + 1; i < list.Count; i++) _upNext.Add(list[i]);
+        var nowPlayed = to < c;
+        if (PlayedInQueue is { } played)
+        {
+            if (wasPlayed && !nowPlayed && oldHistoryIndex < played) PlayedInQueue = played - 1;
+            else if (!wasPlayed && nowPlayed && c - 1 - to <= played) PlayedInQueue = played + 1;
+        }
+        // Shuffle off rebuilds Up Next from the pre-shuffle order: a played song back in Up Next
+        // must be in it (as Play Next's are). One moved out drops from it there on its own.
+        if (wasPlayed && !nowPlayed && IsShuffleEnabled) _originalOrder.Insert(0, song);
+        if (_history.Count > _historyCap) _history.RemoveRange(_historyCap, _history.Count - _historyCap);
+        return true;
+    }
+
     public void RemoveAt(int upNextIndex)
     {
         if ((uint)upNextIndex < (uint)_upNext.Count)
@@ -146,14 +233,17 @@ public sealed class PlaybackQueue
         _history.RemoveAll(t => match(t));
         _repeatCycle.RemoveAll(t => match(t));
         _originalOrder.RemoveAll(t => match(t));
+        _heldOut.RemoveWhere(t => match(t));
         if (Current == null || !match(Current)) return false;
         Current = null;
         return true;
     }
 
     /// <summary>
-    /// Toggle shuffle. On: remember the order and Fisher-Yates UpNext. Off: restore the
-    /// remembered order minus tracks that have since played or been removed.
+    /// Toggle shuffle. On: remember the order, hold out the tracks Shuffle skips
+    /// (<see cref="IsHeldOutOfShuffle"/>) and Fisher-Yates the rest of UpNext. Off: restore the
+    /// remembered order minus tracks that have since played or been removed; the held-out ones
+    /// come back in their places.
     /// </summary>
     public void SetShuffle(bool enabled, Random? rng = null)
     {
@@ -162,21 +252,39 @@ public sealed class PlaybackQueue
 
         if (enabled)
         {
+            _rng = rng;
             _originalOrder = _upNext.ToList();
-            rng ??= Random.Shared;
-            for (int i = _upNext.Count - 1; i > 0; i--)
-            {
-                int j = rng.Next(i + 1);
-                (_upNext[i], _upNext[j]) = (_upNext[j], _upNext[i]);
-            }
+            _heldOut.Clear();
+            HoldOutAndDeal(_upNext);
         }
-        else if (_originalOrder.Count > 0)
+        else
         {
-            var stillQueued = new HashSet<Track>(_upNext, ReferenceEqualityComparer.Instance);
-            _upNext.Clear();
-            foreach (var t in _originalOrder)
-                if (stillQueued.Contains(t)) _upNext.Add(t);
-            _originalOrder.Clear();
+            if (_originalOrder.Count > 0)
+            {
+                var stillQueued = new HashSet<Track>(_upNext, ReferenceEqualityComparer.Instance);
+                _upNext.Clear();
+                foreach (var t in _originalOrder)
+                    if (stillQueued.Contains(t) || _heldOut.Contains(t)) _upNext.Add(t);
+                _originalOrder.Clear();
+            }
+            _heldOut.Clear();
+        }
+    }
+
+    // Takes the held-out tracks out of the list into _heldOut, then shuffles what is left.
+    private void HoldOutAndDeal(List<Track> list)
+    {
+        list.RemoveAll(t =>
+        {
+            if (!IsHeldOutOfShuffle(t)) return false;
+            _heldOut.Add(t);
+            return true;
+        });
+        var rng = _rng ?? Random.Shared;
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = rng.Next(i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
         }
     }
 
@@ -211,8 +319,23 @@ public sealed class PlaybackQueue
                 _repeatCycle = Enumerable.Reverse(_history).ToList();
             var all = new List<Track>(_repeatCycle);
             _originalOrder.Clear();
+            _heldOut.Clear();
             PlayedInQueue = 0;
             if (all.Count == 0) { Current = null; return null; }
+            // Shuffle stays on across the wrap, as on the desktop (BuildRepeatAllPass): each pass
+            // is dealt anew, minus the tracks Shuffle holds out, with the cycle as the Shuffle-off
+            // order. It replayed the cycle in list order with Shuffle still lit.
+            if (IsShuffleEnabled)
+            {
+                var dealt = new List<Track>(all);
+                HoldOutAndDeal(dealt);
+                if (dealt.Count > 0)
+                {
+                    _originalOrder = new List<Track>(all);
+                    all = dealt;
+                }
+                else _heldOut.Clear();   // every one held out: the pass plays in order (the desktop's too)
+            }
             _upNext.Clear();
             _upNext.AddRange(all.Skip(1));
             Current = all[0];
@@ -265,6 +388,8 @@ public sealed class PlaybackQueue
         q._history.AddRange(_history);
         q._repeatCycle = new List<Track>(_repeatCycle);
         q._originalOrder = new List<Track>(_originalOrder);
+        q._heldOut = new HashSet<Track>(_heldOut, ReferenceEqualityComparer.Instance);
+        q._rng = _rng;
         return q;
     }
 
@@ -280,6 +405,14 @@ public sealed class PlaybackQueue
         q._history.AddRange(s.HistoryIds.Select(resolve).OfType<Track>());
         q._repeatCycle = s.RepeatCycleIds.Select(resolve).OfType<Track>().ToList();
         q._originalOrder = s.OriginalOrderIds.Select(resolve).OfType<Track>().ToList();
+        // The held-out tracks are not saved: those of the pre-shuffle order that Up Next lacks
+        // and Shuffle still holds out (a restart does not lose them on Shuffle off).
+        if (q.IsShuffleEnabled && q._originalOrder.Count > 0)
+        {
+            var queued = new HashSet<Track>(q._upNext, ReferenceEqualityComparer.Instance);
+            foreach (var t in q._originalOrder)
+                if (!queued.Contains(t) && IsHeldOutOfShuffle(t) && !ReferenceEquals(t, q.Current)) q._heldOut.Add(t);
+        }
         return q;
     }
 }

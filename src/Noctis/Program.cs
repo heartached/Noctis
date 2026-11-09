@@ -49,7 +49,13 @@ internal class Program
             // starting a second player.
             var ownsInstance = SingleInstanceGuard.TryAcquire();
             if (!ownsInstance && SingleInstanceGuard.SignalFirstInstance(filesToOpen))
+            {
+                // This exit is silent by design, and from a launcher it looks like the app
+                // opening and closing (GitHub #192). Say what happened for terminal runs.
+                if (!OperatingSystem.IsWindows())
+                    Console.Error.WriteLine(HandedToRunningInstanceText(AppPaths.HomeRoot));
                 return;
+            }
 
             // Where the data lives (GitHub #165), settled before anything reads the data root:
             // finish a data folder move the last session copied, and make sure a folder the
@@ -135,6 +141,9 @@ internal class Program
             // load.
             VlcAudioPlayer.HeadphoneSurroundAtLaunch = PersistenceService.ReadBoolSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.HeadphoneSurround));
+            // Multichannel output fixes the engine's channel count when the sink opens (GitHub #200).
+            Noctis.Services.MultichannelLayout.EnabledAtLaunch = PersistenceService.ReadBoolSettingAtLaunch(
+                AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.MultichannelOutput));
             VlcAudioPlayer.OutputDeviceAtLaunch = PersistenceService.ReadStringSettingAtLaunch(
                 AppPaths.DataRoot, nameof(Noctis.Models.AppSettings.AudioOutputDeviceId));
             VlcAudioPlayer.DecoderFallbackListPathAtLaunch = Path.Combine(AppPaths.DataRoot, "mp3_decoder_fallback.txt");
@@ -208,6 +217,11 @@ internal class Program
 
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int MessageBox(IntPtr hWnd, string text, string caption, uint type);
+
+    /// <summary>What a launch that handed itself to the running instance prints. Internal for tests.</summary>
+    internal static string HandedToRunningInstanceText(string homeRoot) =>
+        "Noctis is already running for this data folder (" + homeRoot + "), so this launch asked it to show " +
+        "its window and quit. If no window appears, that copy is stuck: end it (e.g. `pkill -x Noctis`) and start Noctis again.";
 
     /// <summary>The argument a Settings restart passes: the exiting process to wait for.</summary>
     internal const string WaitForPidArgument = "--wait-for-pid";
@@ -583,6 +597,14 @@ internal class Program
                     return list;
                 },
                 Path.Combine(sp.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_bulk_ledger.json")));
+        // GitHub #195: new songs → a background bulk lyrics run. Inert until Settings ▸ Lyrics ▸
+        // "Find lyrics for new songs" is on.
+        services.AddSingleton<Services.Lyrics.LyricsAutoFindService>(sp =>
+            new Services.Lyrics.LyricsAutoFindService(
+                sp.GetRequiredService<Services.Lyrics.ILyricsBulkService>(),
+                sp.GetRequiredService<ILibraryService>(),
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings()
+                      ?? new Noctis.Models.AppSettings()));
         services.AddSingleton<Services.LyricsStudio.ILyricsStudioEngine>(sp =>
             new Services.LyricsStudio.LyricsStudioEngine(
                 sp.GetRequiredService<IAudioConverterService>(),

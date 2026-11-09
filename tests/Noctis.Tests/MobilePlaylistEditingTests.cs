@@ -243,4 +243,44 @@ public class MobilePlaylistEditingTests
             window.Close();
         }
     }
+
+    /// <summary>Beta 2 feedback: "We can make a new playlist with the ⋯ dropdown on a song, but can't
+    /// make it at the Playlists page." The page's tools pill has + (New Playlist), with no playlists
+    /// yet too: the Rename prompt's field, empty, and Create.</summary>
+    [AvaloniaFact]
+    public async Task ThePlaylistsTab_MakesANewPlaylist_FromItsPlusButton()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Alpha") });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        try
+        {
+            rig.Shell.SelectTabCommand.Execute(MobileTab.Playlists);
+            window.UpdateLayout();
+            var root = view.FindControl<Grid>("PlaylistsRoot")!;
+            var plus = root.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "NewPlaylistButton" && b.IsEffectivelyVisible);
+            Assert.Equal("New Playlist", Avalonia.Automation.AutomationProperties.GetName(plus));
+            plus.Command!.Execute(plus.CommandParameter);
+            window.UpdateLayout();
+
+            var prompt = rig.Shell.Prompt!;
+            Assert.Equal("New Playlist", prompt.Title);
+            Assert.True(prompt.HasField);
+            Assert.Equal(string.Empty, prompt.FieldText);
+            Assert.False(prompt.CanConfirm);
+            Assert.Equal("Create", prompt.Actions.Single().Label);
+            var sheet = view.FindControl<PromptSheet>("Prompt")!;
+            Assert.True(MobileFixtures.Named<TextBox>(sheet, "PromptField").IsVisible);
+
+            prompt.FieldText = "  Road Trip ";
+            await prompt.SubmitCommand.ExecuteAsync(null);
+            Assert.False(rig.Shell.IsPromptOpen);
+            Assert.Equal("Road Trip", Assert.Single(await rig.Persistence.LoadPlaylistsAsync()).Name);
+            Assert.Equal(new[] { "Road Trip" }, rig.Shell.PlaylistsRoot.Rows.Select(r => r.Name));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
 }

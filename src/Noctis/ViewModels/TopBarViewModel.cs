@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -59,6 +60,7 @@ public partial class TopBarViewModel : ViewModelBase
         OnPropertyChanged(nameof(PageTitleDisplay));
         OnPropertyChanged(nameof(ReleaseTypeFilterDisplay));
         OnPropertyChanged(nameof(QualityFilterDisplay));
+        OnPropertyChanged(nameof(LyricsSearchTip));
     }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
@@ -356,6 +358,11 @@ public partial class TopBarViewModel : ViewModelBase
     [ObservableProperty] private ICommand? _pageSetShowOnlyFavoritesCommand;
     [ObservableProperty] private ICommand? _pageSortCommand;
     [ObservableProperty] private ICommand? _pageViewOptionsCommand;
+    /// <summary>Songs page: plugin buttons (API 1.7 library commands) before Shuffle.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPagePluginButtons))]
+    private IReadOnlyList<Helpers.PluginPageButton> _pagePluginButtons = Array.Empty<Helpers.PluginPageButton>();
+    public bool HasPagePluginButtons => PagePluginButtons.Count > 0;
 
     // Computed inverses for non-compiled binding compatibility
     public bool PageShowAllItems => !PageShowOnlyFavorites;
@@ -396,6 +403,7 @@ public partial class TopBarViewModel : ViewModelBase
     public void HidePageActions()
     {
         HasPageActions = false;
+        PagePluginButtons = Array.Empty<Helpers.PluginPageButton>();
         PageShuffleCommand = null;
         PageQueueCommand = null;
         PageSetShowAllItemsCommand = null;
@@ -701,6 +709,40 @@ public partial class TopBarViewModel : ViewModelBase
             }
         }, token);
     }
+
+    // ── Lyric search (Discord, Cosmo 11-08) ──
+    // The search pill's lyrics button: off / "Include lyrics" / "Lyrics only". Available where a
+    // search lists songs from the whole library (Songs); MainWindowViewModel forwards the mode.
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(LyricsSearchOff))]
+    [NotifyPropertyChangedFor(nameof(LyricsSearchInclude))]
+    [NotifyPropertyChangedFor(nameof(LyricsSearchOnly))]
+    [NotifyPropertyChangedFor(nameof(IsLyricsSearchActive))]
+    [NotifyPropertyChangedFor(nameof(LyricsSearchTip))]
+    private LyricsSearchMode _lyricsSearchMode = LyricsSearchMode.Off;
+
+    /// <summary>The current page can search lyrics (shows the pill's lyrics button).</summary>
+    [ObservableProperty] private bool _isLyricsSearchAvailable;
+
+    public bool LyricsSearchOff => LyricsSearchMode == LyricsSearchMode.Off;
+    public bool LyricsSearchInclude => LyricsSearchMode == LyricsSearchMode.Include;
+    public bool LyricsSearchOnly => LyricsSearchMode == LyricsSearchMode.Only;
+    /// <summary>Lights the lyrics button in the accent while lyrics are searched.</summary>
+    public bool IsLyricsSearchActive => LyricsSearchMode != LyricsSearchMode.Off;
+
+    /// <summary>The lyrics button's tooltip and accessible name: what it does now.</summary>
+    public string LyricsSearchTip => LyricsSearchMode switch
+    {
+        LyricsSearchMode.Include => Loc.T("Search.LyricsIncludeOn"),
+        LyricsSearchMode.Only => Loc.T("Search.LyricsOnlyOn"),
+        _ => Loc.T("Search.LyricsTip"),
+    };
+
+    /// <summary>Parameter "Off", "Include" or "Only".</summary>
+    [RelayCommand]
+    private void SetLyricsSearchMode(string? mode) =>
+        LyricsSearchMode = Enum.TryParse<LyricsSearchMode>(mode, out var parsed) ? parsed : LyricsSearchMode.Off;
 
     [RelayCommand]
     private void ClearSearch()

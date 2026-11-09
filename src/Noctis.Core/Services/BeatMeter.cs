@@ -111,7 +111,9 @@ public sealed class BeatMeter
         var lp = _lp;
         var frames = count / channels;
         var end = offset + frames * channels;
-        var inv = 1.0 / channels;
+        // Above stereo (Multichannel output) a sum over 2, like a downmix: a stereo song on a 5.1
+        // engine (FL/FR only) reads exactly as on a stereo one instead of a third as loud.
+        var inv = 1.0 / Math.Min(channels, 2);
 
         // Blocks complete mid-buffer; stamp each with where it sits inside this read so
         // a long buffer still yields evenly-timed entries.

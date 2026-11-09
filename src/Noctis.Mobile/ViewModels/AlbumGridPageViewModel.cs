@@ -69,6 +69,13 @@ public sealed partial class AlbumGridPageViewModel : MobilePage
     /// substring of the album's title or artist, or a raw substring for a query of punctuation only.</summary>
     private void ApplyFilter()
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { ApplyFilterCore(); }
+        finally { Services.FrameStallMonitor.AddTime("find filter", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
+
+    private void ApplyFilterCore()
+    {
         var raw = (Query ?? string.Empty).Trim();
         List<Album> albums;
         if (raw.Length == 0)

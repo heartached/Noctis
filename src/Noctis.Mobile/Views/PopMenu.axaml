@@ -148,6 +148,17 @@
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddToQueue}" VerticalAlignment="Center" />
                                                 </Grid>
                                             </Button>
+                                            <!-- Just before the playing song (Previous plays it): Add to Queue's glyph upside down. -->
+                                            <Button Name="MenuAddBeforeCurrent" Classes="row np-row" Command="{Binding AddBeforeCurrentCommand}"
+                                                    IsVisible="{Binding CanAddBeforeCurrent}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhAddToQueue}" RenderTransform="scale(1,-1)" />
+                                                    <!-- Two lines rather than trimmed: the longer translations do not fit the card in one. -->
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddBeforeCurrent}" VerticalAlignment="Center"
+                                                               TextWrapping="Wrap" MaxLines="2" Margin="0,8,12,8" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A song list's Select mode, this song ticked first (an album's: none yet). -->
                                             <Button Name="MenuSelect" Classes="row np-row" Command="{Binding SelectCommand}" IsVisible="{Binding CanSelect}">
                                                 <Grid ColumnDefinitions="56,*">
@@ -207,6 +218,22 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- The desktop's Snooze for a Month (MenuLineSnooze); Unsnooze on a snoozed song. -->
+                                            <Button Name="MenuSnooze" Classes="row np-row" Command="{Binding ToggleSnoozeCommand}" IsVisible="{Binding CanSnooze}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhSnooze}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{Binding SnoozeLabel}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <!-- Out of the library, back from Settings › Hidden (the desktop's Hide Folder eye, MenuLineEyeOff). -->
+                                            <Button Name="MenuHide" Classes="row np-row" Command="{Binding HideCommand}" IsVisible="{Binding CanHide}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhHide}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.HideSong}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <Button Name="MenuGoToAlbum" Classes="row np-row" Command="{Binding GoToAlbumCommand}" IsVisible="{Binding CanGoToAlbum}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhAlbum}" />
@@ -234,6 +261,17 @@
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>
+                                            <!-- The playing song's menu: the sleep timer's choices (the desktop's clock glyph, MenuLineTimer). -->
+                                            <Button Name="MenuSleepTimer" Classes="row np-row" Command="{Binding ShowSleepTimerCommand}" IsVisible="{Binding CanSleepTimer}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhTimer}" />
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,9,16,9">
+                                                        <TextBlock Classes="np-label" Text="{loc:T Mobile.SleepTimer}" />
+                                                        <TextBlock Classes="np-detail" Text="{Binding SleepTimerDetail}" IsVisible="{Binding HasSleepTimerDetail}" />
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <!-- A playlist's own edits, the desktop's glyphs (MenuLineEdit, MenuLineTrash,
                                                  MenuLinePlaylistRemove); the destructive rows last, in red, as the
                                                  desktop's v2 menus and Apple's. -->
@@ -241,6 +279,22 @@
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhEdit}" />
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.Rename}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <!-- Change Cover: a picture from the phone (the desktop's Change cover); Remove
+                                                 Cover while it has one, back to the first song's. -->
+                                            <Button Name="MenuChangeCover" Classes="row np-row" Command="{Binding ChangeCoverCommand}" IsVisible="{Binding CanChangeCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhAlbum}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.ChangeCover}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
+                                            <Button Name="MenuRemoveCover" Classes="row np-row" Command="{Binding RemoveCoverCommand}" IsVisible="{Binding CanRemoveCover}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhClose}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RemoveCover}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>
                                             </Button>

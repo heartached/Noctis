@@ -437,6 +437,32 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _islandShowFavorite;
     /// <summary>GitHub #80: the mini player button in the right cluster (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowMiniPlayer = true;
+    /// <summary>GitHub #183: the lyrics button in the right cluster (Settings → Player).
+    /// The lyrics page's own bar keeps it regardless — see <see cref="IslandLyricsButtonVisible"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IslandLyricsButtonVisible))]
+    private bool _islandShowLyricsButton = true;
+    /// <summary>GitHub #183: what a click on the island's artwork opens ("MiniPlayer",
+    /// "LyricsPage" or "FullScreenLyrics"; see <see cref="Models.IslandArtworkClicks"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IslandArtworkClickAction))]
+    [NotifyPropertyChangedFor(nameof(IslandArtworkTip))]
+    private string _islandArtworkClick = Models.IslandArtworkClicks.DefaultSetting;
+
+    public Models.IslandArtworkClick IslandArtworkClickAction => Models.IslandArtworkClicks.Parse(IslandArtworkClick);
+
+    /// <summary>Tooltip and accessible name of the island artwork: what a click on it opens.</summary>
+    public string IslandArtworkTip => Localization.Loc.T(IslandArtworkClickAction switch
+    {
+        Models.IslandArtworkClick.LyricsPage => "PlaybackBar.LyricsTip",
+        Models.IslandArtworkClick.FullScreenLyrics => "PlaybackBar.FullScreenLyricsTip",
+        _ => "PlaybackBar.MiniPlayerTip",
+    });
+
+    /// <summary>The island's lyrics button: shown unless Settings → Player hides it, and
+    /// always on the lyrics page, where it is the button that closes the page (the artwork
+    /// is hidden there with the track box).</summary>
+    public bool IslandLyricsButtonVisible => IslandShowLyricsButton || IsLyricsPageActive;
     /// <summary>Elapsed / remaining time inside the island's track box (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowTime;
 
@@ -599,6 +625,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page centres the player when the song has no lyrics.
     /// Driven by Settings; display-only.</summary>
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>GitHub #184: the lyrics page's background reaches under the sidebar rail.
+    /// Driven by Settings; display-only (LyricsView extends its backdrop layers).</summary>
+    [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
     /// <summary>Whether the lyrics show TTML translations / romanization / background vocals
     /// under each line (issue #78). Driven by Settings; display-only, no re-parse.</summary>
     [ObservableProperty] private bool _lyricsShowTranslations = true;
@@ -610,11 +639,14 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsAutoDownload;
     /// <summary>What an automatic online pick keeps ("WordSynced" / "LineSynced" / "Plain", GitHub #135). Driven by Settings.</summary>
     [ObservableProperty] private string _lyricsPreferredType = nameof(Models.LyricsPreferredType.WordSynced);
+    /// <summary>Look for synced lyrics when a lyrics view opens on plain ones (GitHub #194). Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsUpgradePlain;
 
     // ── Lyrics page integration (flags + pass-through commands set up by MainWindowViewModel) ──
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanMarkNoLyrics))]
+    [NotifyPropertyChangedFor(nameof(IslandLyricsButtonVisible))]
     private bool _isLyricsPageActive;
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;
@@ -1804,7 +1836,19 @@ public partial class PlayerViewModel : ViewModelBase
         if (choice == Views.RemoveFromLibraryChoice.Cancel)
             return;
 
-        // Advance to next track or stop playback
+        ReleaseCurrentTrackForRemoval();
+
+        if (choice == Views.RemoveFromLibraryChoice.Trash)
+            await Helpers.LibraryRemovalHelper.TrashLocalFilesAsync(new[] { trackToRemove });
+        await _library.RemoveTrackAsync(trackToRemove.Id);
+    }
+
+    /// <summary>Moves off the playing song before its file is trashed or moved (Remove from
+    /// Library, the island's Move to Trash, GitHub #186): the next song plays, or playback
+    /// stops when nothing is queued. The engine lets go of the old file asynchronously, so
+    /// the file operation after this retries while it is still held.</summary>
+    private void ReleaseCurrentTrackForRemoval()
+    {
         if (UpNext.Count > 0)
             AdvanceQueue(QueueAdvanceReason.UserSkip);
         else
@@ -1816,10 +1860,6 @@ public partial class PlayerViewModel : ViewModelBase
             AlbumArt = null;
             CurrentAnimatedCoverPath = null;
         }
-
-        if (choice == Views.RemoveFromLibraryChoice.Trash)
-            await Helpers.LibraryRemovalHelper.TrashLocalFilesAsync(new[] { trackToRemove });
-        await _library.RemoveTrackAsync(trackToRemove.Id);
     }
 
     // ── Public methods for queue management ───────────────────
@@ -1857,6 +1897,53 @@ public partial class PlayerViewModel : ViewModelBase
         _resumePositionMs = start > TimeSpan.Zero ? (long)start.TotalMilliseconds : -1;
         _resumeTrackId = track.Id;
         ReplaceQueueAndPlay(new[] { track }, 0);
+    }
+
+    /// <summary>
+    /// Song menu ▸ Other Versions (Discord, Cosmo 11-08). Picked for the playing song, the playing
+    /// song becomes <paramref name="version"/> in place — same spot in the queue, nothing added
+    /// to the played list — at the same position when the two are about as long
+    /// (<see cref="Helpers.SongVersions.SwitchStartPosition"/>), else from the top. Picked from any
+    /// other row it plays now the way Play Next + Next would, the queue kept.
+    /// </summary>
+    public void SwitchToVersion(Track from, Track version)
+    {
+        if (ReferenceEquals(from, version)) return;
+        var current = CurrentTrack;
+        if (current == null || !(ReferenceEquals(current, from) || current.Id == from.Id))
+        {
+            AddNext(version, announce: false);
+            PlayFromUpNextAt(0);
+            return;
+        }
+
+        // A missing file would make PlayTrack walk on to the next song in the queue and the
+        // playing one would be gone: keep playing instead (the row shows as missing).
+        if (CheckMissing(version)) return;
+
+        var start = Helpers.SongVersions.SwitchStartPosition(Position, Duration, version.Duration);
+        DebugLogger.Info(DebugLogger.Category.Playback, "SwitchToVersion",
+            $"from={current.Id}, to={version.Id}, positionMs={Position.TotalMilliseconds:F0}, startMs={start.TotalMilliseconds:F0}");
+        CancelAutoMixTransition("version switch");
+        MarkQueueChanged();
+        // The queue's other copies of the playing song (Repeat All's cycle, Shuffle's
+        // original order, what preceded it) now mean the new version.
+        ReplaceReferences(_repeatCycleTracks, current, version);
+        ReplaceReferences(_originalQueue, current, version);
+        ReplaceReferences(_precedingInQueue, current, version);
+        _resumePositionMs = start > TimeSpan.Zero ? (long)start.TotalMilliseconds : -1;
+        _resumeTrackId = version.Id;
+        // Choosing another recording of the song is not skipping it (no skip in its history).
+        _switchingVersion = true;
+        try { PlayTrack(version); }
+        finally { _switchingVersion = false; }
+        SaveQueueStateInBackground();
+
+        static void ReplaceReferences(List<Track> list, Track old, Track replacement)
+        {
+            for (var i = 0; i < list.Count; i++)
+                if (ReferenceEquals(list[i], old)) list[i] = replacement;
+        }
     }
 
     /// <summary>
@@ -1991,14 +2078,8 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "AddNext", $"track={track.Title}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        MirrorIntoRepeatCycle(-1, new[] { track });
         UpNext.Insert(0, track);
-        if (_repeatCycleTracks.Count > 0)
-        {
-            // In the cycle it follows the playing track, as it does in this pass.
-            var current = CurrentTrack;
-            var at = current == null ? -1 : _repeatCycleTracks.FindIndex(t => t.Id == current.Id);
-            _repeatCycleTracks.Insert(at < 0 ? _repeatCycleTracks.Count : at + 1, track);
-        }
     }
 
     /// <summary>Appends a track to the end of the UpNext queue ("Add to Queue").</summary>
@@ -2007,8 +2088,8 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "AddToQueue", $"track={track.Title}, newLen={UpNext.Count + 1}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        MirrorIntoRepeatCycle(UpNext.Count, new[] { track });
         UpNext.Add(track);
-        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.Add(track);
         if (announce) AnnounceQueued(new[] { track }, null, playNext: false);
     }
 
@@ -2021,6 +2102,7 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Queue, "AddRangeToQueue", $"count={tracks.Count}, newLen={UpNext.Count + tracks.Count}");
         CancelAutoMixTransition("queue changed");
         MarkQueueChanged();
+        MirrorIntoRepeatCycle(UpNext.Count, tracks.ToList());
         _suppressHasContentNotify = true;
         try { UpNext.AddRange(tracks); }
         finally
@@ -2028,8 +2110,79 @@ public partial class PlayerViewModel : ViewModelBase
             _suppressHasContentNotify = false;
             OnPropertyChanged(nameof(HasContent));
         }
-        if (_repeatCycleTracks.Count > 0) _repeatCycleTracks.AddRange(tracks);
         if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
+    }
+
+    /// <summary>
+    /// GitHub #189: inserts <paramref name="tracks"/> into Up Next at <paramref name="index"/>,
+    /// keeping their order, with ONE <see cref="TracksQueued"/> for the lot: where files dropped
+    /// onto the queue list land. 0 (or less) is Play Next, <see cref="UpNext"/>.Count (or more)
+    /// the end; the Repeat All cycle takes them at the same place.
+    /// </summary>
+    public void InsertIntoQueue(int index, IList<Track> tracks, string? sourceName = null, bool announce = true)
+    {
+        if (tracks.Count == 0) return;
+        if (index <= 0)
+        {
+            AddNextRange(tracks, sourceName, announce);
+            return;
+        }
+        if (index >= UpNext.Count)
+        {
+            AddRangeToQueue(tracks, sourceName, announce);
+            return;
+        }
+        DebugLogger.Info(DebugLogger.Category.Queue, "InsertIntoQueue", $"count={tracks.Count}, at={index}, newLen={UpNext.Count + tracks.Count}");
+        CancelAutoMixTransition("queue changed");
+        MarkQueueChanged();
+        MirrorIntoRepeatCycle(index, tracks.ToList());
+        _suppressHasContentNotify = true;
+        try { UpNext.InsertRange(index, tracks); }
+        finally
+        {
+            _suppressHasContentNotify = false;
+            OnPropertyChanged(nameof(HasContent));
+        }
+        if (announce) AnnounceQueued(tracks, sourceName, playNext: false);
+    }
+
+    /// <summary>
+    /// Mirrors <paramref name="tracks"/>, about to go into Up Next at <paramref name="upNextIndex"/>,
+    /// into the Repeat All cycle at the same place, so a wrap replays the queue as edited:
+    /// -1 is Play Next (after the playing song), <see cref="UpNext"/>.Count the end, anything
+    /// between right after the song they follow. No cycle, nothing to mirror (the wrap falls
+    /// back to what played). GitHub #188: while Clear Queue keeps the playing song off the
+    /// queue (#175), the cycle is what was queued since: the first song queued replaces the
+    /// cleared song in it, and Play Next lands at its front.
+    /// </summary>
+    private void MirrorIntoRepeatCycle(int upNextIndex, IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count == 0) return;
+        if (_currentClearedFromQueue && UpNext.Count == 0)
+            _repeatCycleTracks = new List<Track>();
+        else if (_repeatCycleTracks.Count == 0 && !_currentClearedFromQueue)
+            return;
+
+        int at;
+        if (upNextIndex < 0 || (upNextIndex == 0 && UpNext.Count > 0))
+        {
+            // In the cycle it follows the playing track, as it does in this pass.
+            var current = _currentClearedFromQueue ? null : CurrentTrack;
+            var i = current == null ? -1 : _repeatCycleTracks.FindIndex(t => t.Id == current.Id);
+            at = _currentClearedFromQueue ? 0 : i < 0 ? _repeatCycleTracks.Count : i + 1;
+        }
+        else if (upNextIndex >= UpNext.Count)
+        {
+            at = _repeatCycleTracks.Count;
+        }
+        else
+        {
+            // The last copy: a pending song sits after any copy of it that already played.
+            var before = UpNext[upNextIndex - 1];
+            var i = _repeatCycleTracks.FindLastIndex(t => t.Id == before.Id);
+            at = i < 0 ? _repeatCycleTracks.Count : i + 1;
+        }
+        _repeatCycleTracks.InsertRange(at, tracks);
     }
 
     /// <summary>Removes a track from the UpNext queue by index.</summary>
@@ -2049,8 +2202,10 @@ public partial class PlayerViewModel : ViewModelBase
     /// Clears the queue: every upcoming track, and the playing song's place in it (GitHub
     /// #175). The song plays on uninterrupted but the panel shows the queue empty. Unless
     /// something is queued after it, it is then the whole queue: Repeat replays it, Next with
-    /// Repeat on and Previous restart it, and with Repeat off the queue ends after it. Played
-    /// songs (Keep Played Songs) stay; they have their own Clear Played.
+    /// Repeat on and Previous restart it, and with Repeat off the queue ends after it. Songs
+    /// queued while it plays do not bring it back (GitHub #188): it stays off the panel, the
+    /// first of them follows it, and Repeat All cycles only them. Played songs (Keep Played
+    /// Songs) stay; they have their own Clear Played.
     /// </summary>
     public void ClearQueue()
     {
@@ -2090,7 +2245,8 @@ public partial class PlayerViewModel : ViewModelBase
         _parkedExplicit.Clear();
         IsShuffleEnabled = false;
         _repeatCycleTracks = new List<Track>(tracks.Count + 1);
-        if (CurrentTrack is { } playing) _repeatCycleTracks.Add(playing);
+        // Not a song Clear Queue took out of the queue (GitHub #188).
+        if (CurrentTrack is { } playing && !_currentClearedFromQueue) _repeatCycleTracks.Add(playing);
         _repeatCycleTracks.AddRange(tracks);
         _suppressHasContentNotify = true;
         try
@@ -2382,7 +2538,8 @@ public partial class PlayerViewModel : ViewModelBase
             IsMuted = IsMuted,
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
             OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
-            ExternalTrackPaths = BuildExternalTrackPaths()
+            ExternalTrackPaths = BuildExternalTrackPaths(),
+            CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
         };
         await _persistence.SaveQueueStateAsync(state);
     }
@@ -2441,7 +2598,8 @@ public partial class PlayerViewModel : ViewModelBase
                 IsMuted = IsMuted,
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
                 OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
-                ExternalTrackPaths = BuildExternalTrackPaths()
+                ExternalTrackPaths = BuildExternalTrackPaths(),
+                CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
             };
         }
         catch
@@ -2584,6 +2742,11 @@ public partial class PlayerViewModel : ViewModelBase
                 _resumePositionMs = (long)(positionSeconds * 1000);
                 _resumeTrackId = track.Id;
 
+                // Still off the queue after Clear Queue (GitHub #188): set after CurrentTrack,
+                // whose change resets it. Not for the Up Next song that stood in for a lost one.
+                if (state.CurrentClearedFromQueue && !usedUpNextFallback)
+                    SetCurrentClearedFromQueue(true);
+
                 // Ensure UI updates on UI thread
                 Dispatcher.UIThread.Post(() =>
                 {
@@ -2712,10 +2875,24 @@ public partial class PlayerViewModel : ViewModelBase
         DebugLogger.Info(DebugLogger.Category.Playback, "Mute", "muted=False, source=adjust");
     }
 
+    /// <summary>
+    /// The island's artist line: the playing track's credit as every artist line shows it
+    /// (<see cref="Track.ArtistCreditDisplay"/>). A property of its own rather than a path through
+    /// CurrentTrack, which broke mid-chain while nothing played and logged a warning at every
+    /// startup; raised on a track change and when the display form flips (GitHub #187).
+    /// </summary>
+    public string CurrentArtistLine => CurrentTrack?.ArtistCreditDisplay ?? string.Empty;
+
+    /// <summary>Re-reads <see cref="CurrentArtistLine"/> after "Show artists as written in the
+    /// tags" flips (GitHub #187).</summary>
+    public void NotifyArtistLineChanged() => OnPropertyChanged(nameof(CurrentArtistLine));
+
     partial void OnCurrentTrackChanged(Track? value)
     {
         OnPropertyChanged(nameof(HasContent));
+        OnPropertyChanged(nameof(CurrentArtistLine));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+        OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();
         ResolveMusicVideo();
         ResolveChapters();
@@ -3261,9 +3438,12 @@ public partial class PlayerViewModel : ViewModelBase
     /// off within 30 s (10-09). Not when the song ended by itself, failed, or was stopped, and
     /// not for a play that isn't counted yet (it has no log event, GitHub #101).
     /// </summary>
+    /// <summary>Set while <see cref="SwitchToVersion"/> replaces the playing song.</summary>
+    private bool _switchingVersion;
+
     private void RecordSkipOnReplace()
     {
-        if (_endingByPlayback || CurrentTrack is not { } leaving || _playCountPending) return;
+        if (_endingByPlayback || _switchingVersion || CurrentTrack is not { } leaving || _playCountPending) return;
         if (State is not (PlaybackState.Playing or PlaybackState.Paused)) return;
         if (PositionFraction >= 0.5) return;
         _playHistory?.RecordSkip(leaving);
@@ -3430,6 +3610,19 @@ public partial class PlayerViewModel : ViewModelBase
         if (RepeatMode == RepeatMode.One && CurrentTrack != null &&
             (reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix ||
              (reason == QueueAdvanceReason.UserSkip && _currentClearedFromQueue && UpNext.Count == 0)))
+        {
+            PlayTrack(CurrentTrack);
+            return;
+        }
+
+        // GitHub #175: Repeat All with only the song Clear Queue took out left (nothing queued
+        // since) replays it. #188: once songs are queued after it they are the queue, and the
+        // advance below moves on to them; the cycle never held the cleared song by then. Like
+        // Repeat One this is a replay, not a new History entry: each pass pushed the song onto
+        // History, so with Keep Played Songs on the "empty" queue filled with played copies.
+        if (RepeatMode == RepeatMode.All && _currentClearedFromQueue && CurrentTrack != null &&
+            UpNext.Count == 0 && !IsBlockedExplicit(CurrentTrack) &&
+            reason is QueueAdvanceReason.Natural or QueueAdvanceReason.AutoMix or QueueAdvanceReason.UserSkip)
         {
             PlayTrack(CurrentTrack);
             return;

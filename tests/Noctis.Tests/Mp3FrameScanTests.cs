@@ -153,6 +153,63 @@ public class Mp3FrameScanTests : IDisposable
         Assert.False(Mp3FrameScan.TryMeasureHeaderlessVbr(ms, out _, out _));
     }
 
+    // ffmpeg's mp3 muxer writes its CBR "Info" header in a frame of the smallest bitrate that
+    // holds it (64 kbps) ahead of 128 kbps audio. TagLib skips "Info" and guessed the length from
+    // that frame: 20 s files read as 40 s at 64 kbps (found live 11-07).
+    private static MemoryStream InfoHeaded(int audioFrames, string tag = "Info", bool statesBytes = true)
+    {
+        var ms = new MemoryStream();
+        var header = new byte[144000 * 64 / 44100];
+        header[0] = 0xFF; header[1] = 0xFB; header[2] = 5 << 4; header[3] = 0x40;
+        Encoding.ASCII.GetBytes(tag).CopyTo(header, 4 + 32);
+        var flags = statesBytes ? 3 : 1;
+        var audioBytes = header.Length + audioFrames * (144000 * 128 / 44100);
+        void Be(int at, int v) { header[at] = (byte)(v >> 24); header[at + 1] = (byte)(v >> 16); header[at + 2] = (byte)(v >> 8); header[at + 3] = (byte)v; }
+        Be(4 + 32 + 4, flags);
+        Be(4 + 32 + 8, audioFrames + 1);
+        if (statesBytes) Be(4 + 32 + 12, audioBytes);
+        ms.Write(header);
+        for (var i = 0; i < audioFrames; i++) WriteFrame(ms, 9);
+        ms.Position = 0;
+        return ms;
+    }
+
+    [Theory]
+    [InlineData("Info", true)]
+    [InlineData("Xing", true)]
+    [InlineData("Info", false)]
+    public void StatedLength_ComesFromTheHeader_NotTheHeaderFramesBitrate(string tag, bool statesBytes)
+    {
+        Assert.True(Mp3FrameScan.TryReadStatedLength(InfoHeaded(766, tag, statesBytes), out var duration, out var kbps));
+        Assert.InRange(duration.TotalSeconds, 20.0, 20.05); // 767 frames x 1152 / 44100
+        Assert.InRange(kbps, 127, 129);
+    }
+
+    [Fact]
+    public void StatedLength_IsFalse_WithoutAHeader()
+    {
+        var ms = new MemoryStream();
+        for (var i = 0; i < 300; i++) WriteFrame(ms, 9);
+        ms.Position = 0;
+        Assert.False(Mp3FrameScan.TryReadStatedLength(ms, out _, out _));
+        Assert.False(Mp3FrameScan.TryReadStatedLength(Vbr(300), out _, out _));
+    }
+
+    [Fact]
+    public void Import_FfmpegCbrMp3_GetsItsRealLengthAndBitrate()
+    {
+        var ffmpeg = FindFfmpeg();
+        Assert.SkipWhen(ffmpeg == null, "no ffmpeg on PATH");
+        // ffmpeg defaults (no -b:a): the Info frame goes out at 64 kbps; an explicit 128k puts it at 128.
+        var cbr = Encode(ffmpeg!, "cbr-info.mp3");
+
+        var track = new MetadataService().ReadTrackMetadata(cbr, out _);
+
+        Assert.NotNull(track);
+        Assert.InRange(track!.Duration.TotalSeconds, 39.9, 40.1);
+        Assert.InRange(track.Bitrate, 127, 130);
+    }
+
     [Fact]
     public void NotAnMp3_IsFalse()
     {
@@ -233,6 +290,25 @@ public class Mp3FrameScanTests : IDisposable
         Vbr(500).CopyTo(joined);
         joined.Position = 0;
         Assert.Empty(Mp3FrameScan.FindDamage(joined, minMinutes: 0));
+    }
+
+    // Tangent's file at 31:14, rebuilt on an encoded file (see MakeDamagedMp3): junk, two frames
+    // whose audio data is noise, more junk: one run, from the frame before the first junk to
+    // the frame after the second.
+    [Fact]
+    public void FindDamage_OnAnEncodedFile_ReportsTangentsKindOfDamage()
+    {
+        var ffmpeg = FindFfmpeg();
+        Assert.SkipWhen(ffmpeg == null, "no ffmpeg on PATH");
+        var path = Mp3DamageCrunchHarnessTests.MakeDamagedMp3(ffmpeg!, _root, seconds: 60, damageAtS: 30, out var n);
+        using var stream = File.OpenRead(path);
+        var run = Assert.Single(Mp3FrameScan.FindDamage(stream, minMinutes: 0));
+        var frameMs = 576 * 1000.0 / 22050;
+        Assert.InRange(run.CutMs, (long)(n * frameMs) - 1, (long)(n * frameMs) + 1);
+        Assert.InRange(run.ResumeMs, (long)((n + 3) * frameMs), (long)((n + 3) * frameMs) + 2);
+        // The clean encode has none.
+        using var clean = File.OpenRead(Path.Combine(_root, "clean.mp3"));
+        Assert.Empty(Mp3FrameScan.FindDamage(clean, minMinutes: 0));
     }
 
     [Fact]

@@ -279,6 +279,7 @@ public partial class HomeView : UserControl, ITrackSelectionSource
             searchLyricsCommand: vm.SearchLyricsAlbumCommand,
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
+        _albumMenuBuilder.BindFindLyrics(album, vm.FindLyricsAlbumCommand); // GitHub #195
 
         OpenMenu(_albumMenuBuilder.Menu, owner);
         return true;

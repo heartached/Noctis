@@ -417,6 +417,16 @@
          through Grid.Row/Column/Span attached properties from code-behind. -->
     <Grid x:Name="MainLayoutGrid" ColumnDefinitions="*,*" RowDefinitions="Auto,*"
           Background="{Binding FullBackgroundBrush}">
+        <!-- GitHub #184 (Background Behind the Sidebar): the grid's own colour / gradient,
+             repeated on a layer that can reach under the sidebar rail with the backdrops
+             below (BackdropBleed). Only shown while that setting stretches the layers. -->
+        <Border x:Name="LyricsBackdropFill"
+                Grid.ColumnSpan="2"
+                Grid.RowSpan="2"
+                ZIndex="-1"
+                IsHitTestVisible="False"
+                IsVisible="False"
+                Background="{Binding FullBackgroundBrush}"/>
         <!-- AMLL/Apple-Music–style background: heavily-blurred album cover filling the page.
              A subtle scrim on top keeps lyric text legible against bright art. -->
         <Grid x:Name="LyricsBlurBackdrop"
@@ -555,14 +565,14 @@
              mode (declared after Kawarp and the plugin host, which paint opaquely, so
              it stays on top of them) and under the lyrics. Reads SpectrumMeter, which the output chains feed
              from the same post-gain tap as the beat pulse; runs only while this page is
-             visible and the toggle is on (SpectrumVisualizer parks itself otherwise). -->
+             visible and the toggle is on (SpectrumVisualizer parks itself otherwise). No side
+             margin (GitHub #196): it spans the page from the sidebar edge to the window edge. -->
         <controls:SpectrumVisualizer x:Name="LyricsSpectrum"
                                      Grid.ColumnSpan="2"
                                      Grid.RowSpan="2"
                                      ZIndex="-1"
                                      VerticalAlignment="Bottom"
                                      Height="220"
-                                     Margin="24,0,24,0"
                                      Opacity="0.55"
                                      IsHitTestVisible="False"
                                      Fill="White"
@@ -710,7 +720,7 @@
                                                    FontSize="17"
                                                    Foreground="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"/>
                                     </Button>
-                                    <TextBlock Text=", "
+                                    <TextBlock Text="{Binding Separator}"
                                                FontSize="17"
                                                Opacity="0.7"
                                                Foreground="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).LyricsAccentFg}"
@@ -847,15 +857,34 @@
                     <Grid Grid.Row="1"
                           Height="24"
                           ClipToBounds="False">
+                        <!-- Waveform progress bar (Settings → Lyrics, GitHub #181): replaces the
+                             7px track below while on, with the same brushes, ends and thumb
+                             travel (16px thumb → 8px inset), so until the waveform is worked out
+                             (or for a stream with none) it draws exactly that track. Visual
+                             only — the Slider on top still does the seeking. -->
+                        <controls:WaveformSeekBar x:Name="LyricsTimelineWaveform"
+                                                  IsVisible="{Binding Player.LyricsWaveformSeekBarEnabled}"
+                                                  Waveform="{Binding Player.CurrentWaveform}"
+                                                  Value="{Binding #LyricsTimelineSlider.Value}"
+                                                  PlayedBrush="{Binding LyricsAccentFg}"
+                                                  UnplayedBrush="{Binding LyricsSliderUnfilled}"
+                                                  UnplayedLineOpacity="0.55"
+                                                  TrackInset="8" LineInset="8" LineThickness="7"
+                                                  BarWidth="3" BarGap="2" MinBarHeight="2"
+                                                  MaxBarHeight="20"
+                                                  Height="24"
+                                                  IsHitTestVisible="False"/>
                         <Canvas Height="24"
                                 ClipToBounds="False"
                                 IsHitTestVisible="False">
                             <Border x:Name="LyricsTimelineTrackBackground"
+                                    IsVisible="{Binding !Player.LyricsWaveformSeekBarEnabled}"
                                     Height="7"
                                     CornerRadius="3.5"
                                     Background="{Binding LyricsSliderUnfilled}"
                                     Canvas.Top="8.5"/>
                             <Border x:Name="LyricsTimelineTrackFill"
+                                    IsVisible="{Binding !Player.LyricsWaveformSeekBarEnabled}"
                                     Height="7"
                                     CornerRadius="3.5"
                                     Background="{Binding LyricsAccentFg}"

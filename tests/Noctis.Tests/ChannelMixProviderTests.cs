@@ -223,13 +223,38 @@ public class ChannelMixProviderTests
     }
 
     [Fact]
-    public void NonStereo_GetsTheFadeOnly()
+    public void Mono_GetsTheFadeOnly()
+    {
+        var s = new ChannelMixSettings();
+        s.SetChannelMix(mono: true, balance: 1);
+        var p = new ChannelMixProvider(new ConstantSource(0.5f), s);
+        Assert.Equal(new[] { 0.5f }, Settled(p));
+    }
+
+    // Multichannel output (GitHub #200), Windows' 5.1 order FL FR FC LFE BL BR: mono and balance
+    // act on each left/right pair, centre and LFE stay as they are.
+    [Fact]
+    public void FiveOne_MonoAndBalance_ActOnEachSpeakerPair_CentreAndLfeUntouched()
     {
         var s = new ChannelMixSettings();
         s.SetChannelMix(mono: true, balance: 1);
         var p = new ChannelMixProvider(new ConstantSource(0.5f, 0.25f, -0.5f, 0.1f, 0.2f, 0.3f), s);
         var f = Settled(p);
-        Assert.Equal(new[] { 0.5f, 0.25f, -0.5f, 0.1f, 0.2f, 0.3f }, f);
+        var expected = new[] { 0f, 0.375f, -0.5f, 0.1f, 0f, 0.25f };
+        for (var c = 0; c < 6; c++) Assert.Equal(expected[c], f[c], 5);
+    }
+
+    [Fact]
+    public void SevenOne_FadeReachesEveryChannel()
+    {
+        var s = new ChannelMixSettings();
+        s.SetChannelMix(mono: false, balance: -0.5);
+        s.SetFadeGain(0.5, ChannelMixProvider.RampMs);
+        var p = new ChannelMixProvider(new ConstantSource(0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f, 0.8f), s);
+        var f = Settled(p);
+        // FL FR FC LFE BL BR SL SR: right side ×0.5 from the balance, everything ×0.5 from the fade.
+        var expected = new[] { 0.4f, 0.2f, 0.4f, 0.4f, 0.4f, 0.2f, 0.4f, 0.2f };
+        for (var c = 0; c < 8; c++) Assert.Equal(expected[c], f[c], 5);
     }
 
     [Fact]

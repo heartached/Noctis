@@ -62,6 +62,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+# Beta 2 went up with -VersionCode 2 alone, so Settings still read "Noctis 1.0.0" like beta 1
+# (testers: "you didn't bump the version"). A new versionCode needs a new visible name too.
+if ($VersionCode -gt 0 -and -not $VersionName -and -not $UseDebugKey) {
+    throw "-VersionCode $VersionCode needs -VersionName too (e.g. -VersionName '1.0.0 beta $VersionCode'); otherwise users see the same version as the last upload."
+}
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $jbr = 'C:\Program Files\Android\Android Studio\jbr'
 $java = Join-Path $jbr 'bin\java.exe'

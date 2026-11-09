@@ -21,9 +21,13 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     private readonly string _title;
     private readonly Func<IEnumerable<Track>> _source;
     private readonly Playlist? _playlist;
+    private readonly string? _sortKey;
     private List<Track> _all = new();
 
-    public SongListPageViewModel(ShellViewModel shell, string title, Func<IEnumerable<Track>> source, Playlist? playlist = null)
+    /// <param name="sortKey">The list whose sort is remembered (Songs, Favorites, a playlist):
+    /// the page opens in the sort it was left in. Null for lists that always open in their own
+    /// order (an artist's top songs, a mix).</param>
+    public SongListPageViewModel(ShellViewModel shell, string title, Func<IEnumerable<Track>> source, Playlist? playlist = null, string? sortKey = null)
     {
         Shell = shell;
         _title = title;
@@ -42,9 +46,18 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             new SortChoice("Mobile.RecentlyPlayed", SongSort.RecentlyPlayed),
         };
         Selection = new TrackSelection(shell, () => Songs, () => Title, () => Playlist);
+        _sortKey = sortKey ?? (playlist != null ? PlaylistSortKey(playlist) : null);
+        if (_sortKey != null)
+        {
+            ApplySavedSort();
+            Shell.ListSortChanged += OnListSortChanged;
+        }
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
     }
+
+    /// <summary>The key a playlist's page saves its sort under.</summary>
+    internal static string PlaylistSortKey(Playlist playlist) => "Playlist:" + playlist.Id.ToString("N");
 
     public ShellViewModel Shell { get; }
 
@@ -63,6 +76,20 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     /// <summary>A playlist's page has its own ⋯ (Rename, Delete Playlist and the playlist's actions).</summary>
     public bool IsPlaylist => _playlist != null;
+
+    /// <summary>A playlist page's cover over its songs: the custom cover when it has one, else the
+    /// cover its tiles show (<see cref="LibraryViewModel.PlaylistArtwork"/>); null without art
+    /// (the page shows the placeholder). Re-read on each library refresh, so Change Cover, Remove
+    /// Cover and a synced cover show at once; raised only when the path changes.</summary>
+    public string? CoverPath { get; private set; }
+
+    private void RefreshCover()
+    {
+        var path = Playlist is { } playlist ? Shell.Library.PlaylistArtwork(playlist) : null;
+        if (path == CoverPath) return;
+        CoverPath = path;
+        OnPropertyChanged(nameof(CoverPath));
+    }
 
     /// <summary>The title row's ⋯ on a playlist's page: the playlist's glass menu.</summary>
     [RelayCommand]
@@ -176,19 +203,50 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         IsDescending = sort is SongSort.DateAdded or SongSort.Year or SongSort.MostPlayed or SongSort.RecentlyPlayed;
         Sort = sort;
         Apply();
+        SaveSort();
     }
 
     public void ChooseDirection(bool descending)
     {
         IsDescending = descending;
         Apply();
+        SaveSort();
+    }
+
+    private void SaveSort()
+    {
+        if (_sortKey != null) Shell.SaveListSort(_sortKey, Sort, IsDescending, SongSort.Default);
+    }
+
+    /// <summary>Puts the list in its saved sort (its own order when none is saved); true when that changed it.</summary>
+    private bool ApplySavedSort()
+    {
+        if (_sortKey == null) return false;
+        if (!Shell.TryGetListSort<SongSort>(_sortKey, out var sort, out var descending))
+            (sort, descending) = (SongSort.Default, false);
+        if (sort == Sort && descending == IsDescending) return false;
+        foreach (var c in SortChoices) c.IsSelected = Equals(c.Key, sort);
+        IsDescending = descending;
+        Sort = sort;
+        return true;
+    }
+
+    // The saved sorts were read (a page made during a cold start), or another page of this list
+    // was sorted (the Favorites tab follows a Favorites page opened from Library).
+    private void OnListSortChanged(object? sender, string? key)
+    {
+        if ((key == null || key == _sortKey) && ApplySavedSort()) Apply();
     }
 
     public void Refresh()
     {
         _all = _source().ToList();
         TotalCount = _all.Count;
-        if (_playlist != null) OnPropertyChanged(nameof(Title));   // renamed since
+        if (_playlist != null)
+        {
+            OnPropertyChanged(nameof(Title));   // renamed since
+            RefreshCover();
+        }
         OnPropertyChanged(nameof(HasFilters));   // signed in or out since
         // A filter no longer offered does not stay on: with the filter button gone too (a
         // Favorites list) nothing could turn it off, and the list stayed empty.
@@ -202,6 +260,13 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     }
 
     private void Apply()
+    {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        try { ApplyCore(); }
+        finally { Services.FrameStallMonitor.AddTime("find filter", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
+    }
+
+    private void ApplyCore()
     {
         IEnumerable<Track> rows = _all;
         if (OnlyFavourites) rows = rows.Where(t => t.IsFavorite);
@@ -275,5 +340,6 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     {
         Selection.End();
         Shell.Library.Refreshed -= OnRefreshed;
+        Shell.ListSortChanged -= OnListSortChanged;
     }
 }

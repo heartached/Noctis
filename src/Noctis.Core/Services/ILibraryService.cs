@@ -225,6 +225,31 @@ public interface ILibraryService
     Task<AlbumGroupResult> GroupIntoAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
         CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
 
+    /// <summary>GitHub #193: whether the automatic album grouping (#178) is on.</summary>
+    bool AlbumGroupingEnabled => true;
+
+    /// <summary>
+    /// GitHub #193: switches the automatic album grouping (#178) on or off and rebuilds right
+    /// away. Off puts every song the grouping re-keyed back on the album artist and album name
+    /// it had (cached covers and pins follow); on groups again. Rebuilds, saves and raises
+    /// LibraryUpdated when an album changed. Returns how many songs changed album.
+    /// </summary>
+    Task<int> SetAlbumGroupingAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);
+
+    /// <summary>
+    /// GitHub #190: switches writing the grouping into the files on or off. On (while the
+    /// grouping is on) writes the grouped album's Album Artist and album name into the files of
+    /// the songs the grouping re-keyed now, and into newly grouped songs' files after later
+    /// rebuilds (reported through <see cref="AlbumGroupingWritten"/>). Returns this pass's result:
+    /// files written, and the names of those that could not be.
+    /// </summary>
+    Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
+        => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
+    /// <summary>GitHub #190: a background pass wrote the grouping into files (Grouped = files
+    /// written) or could not write some (UnwrittenFiles).</summary>
+    event EventHandler<AlbumGroupResult>? AlbumGroupingWritten { add { } remove { } }
+
     /// <summary>
     /// Applies a "Merge Featured Artists From Titles" toggle flip to the already-indexed
     /// library immediately — a rescan reuses unchanged files wholesale, so it would never
@@ -243,6 +268,14 @@ public interface ILibraryService
     /// Passes run one at a time. Returns the number of tracks changed.
     /// </summary>
     Task<int> ApplyArtistCreditJoinAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// GitHub #187: songs indexed before <see cref="Track.ArtistAsTagged"/> existed whose
+    /// artist may hold names merged in from the title get the tag's own credit re-read, so
+    /// "Show artists as written in the tags" shows it. Bounded to those songs, local files
+    /// only; nothing else about a song changes. Returns how many songs were resolved.
+    /// </summary>
+    Task<int> ResolveArtistTagTextAsync(CancellationToken ct = default) => Task.FromResult(0);
 
     /// <summary>
     /// Extracts and caches covers for indexed albums that have none (embedded tag art

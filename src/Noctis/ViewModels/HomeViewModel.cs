@@ -1352,6 +1352,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
+    /// <summary>GitHub #195: every song of the album (or the Ctrl-selection it is in) → bulk Find Lyrics.</summary>
+    [RelayCommand]
+    private async Task FindLyricsAlbum(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).Distinct().ToList();
+        CtrlSelectedAlbums.Clear();
+        await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: false);
+    }
+
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {

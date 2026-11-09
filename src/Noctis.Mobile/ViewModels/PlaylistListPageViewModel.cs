@@ -19,9 +19,14 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
             new SortChoice("Mobile.Sort.RecentlyUpdated", PlaylistSort.RecentlyUpdated),
             new SortChoice("Mobile.RecentlyAdded", PlaylistSort.RecentlyAdded),
         };
+        ApplySavedSort();
+        Shell.ListSortChanged += OnListSortChanged;
         Shell.Library.Refreshed += OnRefreshed;
         Refresh();
     }
+
+    /// <summary>The key the list's sort is saved under (the tab's list and Library's Playlists page share it).</summary>
+    internal const string SortKey = "Nav.Playlists";
 
     public ShellViewModel Shell { get; }
 
@@ -34,29 +39,18 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
     public BulkObservableCollection<PlaylistRow> Rows { get; } = new();
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasPlaylists), nameof(HasTools))]
+    [NotifyPropertyChangedFor(nameof(HasPlaylists))]
     private int _playlistCount;
 
     public bool HasPlaylists => PlaylistCount > 0;
 
-    /// <summary>The header's tools pill: search and sort with playlists to show, ⋯ (Import
-    /// Playlist) whenever the phone can import.</summary>
-    public bool HasTools => HasPlaylists || Shell.CanImportPlaylists;
-
     /// <summary>The search found nothing (the tools stay up so it can be cleared).</summary>
     public bool ShowNoMatches => HasPlaylists && Playlists.Count == 0;
 
-    [ObservableProperty] private bool _isSearchOpen;
+    /// <summary>The "Find in Playlists" text (FindField); the list follows it as it changes.</summary>
     [ObservableProperty] private string _filterText = string.Empty;
 
     partial void OnFilterTextChanged(string value) => Refresh();
-
-    [RelayCommand]
-    private void ToggleSearch()
-    {
-        IsSearchOpen = !IsSearchOpen;
-        if (!IsSearchOpen) FilterText = string.Empty;
-    }
 
     public IReadOnlyList<SortChoice> SortChoices { get; }
 
@@ -79,6 +73,22 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
         foreach (var c in SortChoices) c.IsSelected = ReferenceEquals(c, choice);
         Sort = (PlaylistSort)choice.Key;
         Refresh();
+        Shell.SaveListSort(SortKey, Sort, false, PlaylistSort.Title);
+    }
+
+    /// <summary>Puts the list in its saved sort (by name when none is saved); true when that changed it.</summary>
+    private bool ApplySavedSort()
+    {
+        if (!Shell.TryGetListSort<PlaylistSort>(SortKey, out var sort, out _)) sort = PlaylistSort.Title;
+        if (sort == Sort) return false;
+        foreach (var c in SortChoices) c.IsSelected = Equals(c.Key, sort);
+        Sort = sort;
+        return true;
+    }
+
+    private void OnListSortChanged(object? sender, string? key)
+    {
+        if ((key == null || key == SortKey) && ApplySavedSort()) Refresh();
     }
 
     public void Refresh()
@@ -108,7 +118,11 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
 
     private void OnRefreshed(object? sender, EventArgs e) => Refresh();
 
-    public override void OnClosed() => Shell.Library.Refreshed -= OnRefreshed;
+    public override void OnClosed()
+    {
+        Shell.Library.Refreshed -= OnRefreshed;
+        Shell.ListSortChanged -= OnListSortChanged;
+    }
 }
 
 public enum PlaylistSort { Title, RecentlyUpdated, RecentlyAdded }
