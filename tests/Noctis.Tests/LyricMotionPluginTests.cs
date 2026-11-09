@@ -73,10 +73,10 @@ public class LyricMotionPluginTests : IDisposable
         Assert.Equal(new[] { false, false }, rtl);
     }
 
-    // ── The motion ──
+    // ── The motion (ported from Lyric Motion as built into Noctis Plus) ──
 
     [Fact]
-    public void Letters_ComeUpOneAfterAnother_WithTheHighlight_AndRelaxAfterTheWord()
+    public void Letters_ComeUpOneAfterAnother_WithTheHighlight_ThenHoldStillUntilTheLineEnds()
     {
         var t = Tune(Handover.Crisp);
         var w = W(0.5, ms: 500, letters: 4);
@@ -84,37 +84,92 @@ public class LyricMotionPluginTests : IDisposable
         var mid = Enumerable.Range(0, 4).Select(i => LetterMotion.Pose(t, w, i).Scale).ToArray();
         Assert.True(mid[0] > mid[3], "the first letters are up before the last");
         // Crisp: every letter is up exactly when the word is over.
-        Assert.All(Enumerable.Range(0, 4), i => Assert.Equal(1, LetterMotion.Arrival(t, 1.0, i, 4), 6));
-        // Then they relax, and everything is back at rest before Noctis stops sending progress.
-        Assert.All(Enumerable.Range(0, 4), i => Assert.Equal(1, LetterMotion.Pose(t, W(2.0, ms: 500, letters: 4), i).Scale, 6));
-        Assert.All(Enumerable.Range(0, 4), i => Assert.Equal(1, LetterMotion.Pose(t, W(3, ms: 500, letters: 4), i).Scale, 6));
-        Assert.All(Enumerable.Range(0, 4), i => Assert.Equal(1, LetterMotion.Pose(t, W(-2, ms: 500, letters: 4), i).Scale, 6));
+        Assert.All(Enumerable.Range(0, 4), i => Assert.Equal(1, LetterMotion.Rise(t, 1.0, 500, i, 4), 6));
+        // Then nothing moves: not while the next word is sung, not when Noctis stops redrawing the
+        // word (progress 3, or at once after a pause). A word relaxing then dropped in one frame.
+        for (var i = 0; i < 4; i++)
+        {
+            var done = LetterMotion.Pose(t, W(1.0, ms: 500, letters: 4, lift: 1), i);
+            Assert.Equal(done, LetterMotion.Pose(t, W(1.7, ms: 500, letters: 4, lift: 1), i));
+            Assert.Equal(done, LetterMotion.Pose(t, W(2.49, ms: 500, letters: 4, lift: 1), i));
+            Assert.Equal(done, LetterMotion.Pose(t, W(3, ms: 500, letters: 4, lift: 1), i));
+            // Once the line is over the word comes down with Noctis's float, to rest.
+            Assert.Equal(1, LetterMotion.Pose(t, W(3, ms: 500, letters: 4, lift: 0), i).Scale, 6);
+            Assert.Equal(1, LetterMotion.Pose(t, W(-2, ms: 500, letters: 4), i).Scale, 6);
+        }
     }
 
     [Fact]
-    public void Smooth_LetsTheLastLettersFinishAMomentIntoTheNextWord_Crisp_DoesNot()
+    public void Letters_FloatUpOneAfterAnother_AsTheHighlightReachesThem_ThenSitLevel()
     {
-        var crisp = LetterMotion.Arrival(Tune(Handover.Crisp), 1.0, 4, 5);
-        var smooth = LetterMotion.Arrival(Tune(Handover.Smooth), 1.0, 4, 5);
+        var t = Tune(Handover.Flowing);
+        var reach = 2.0 / 46;
+        var w = W(0.5, ms: 500, letters: 6, lift: 1);
+        Assert.Equal(LyricsWordMode.Letters, LetterMotion.Mode(t, w));
+        var first = LetterMotion.Pose(t, w, 0).OffsetYEm;
+        var last = LetterMotion.Pose(t, w, 5).OffsetYEm;
+        Assert.True(first < last - 0.02, $"the first letter is higher ({first}) than the last ({last})");
+        Assert.All(Enumerable.Range(0, 6), i => Assert.Equal(-reach, LetterMotion.Pose(t, W(1 + LetterMotion.RunOn, ms: 120, letters: 6, lift: 1), i).OffsetYEm, 6));
+        // A word Noctis gives no length is sung over 320 ms, as in Noctis Plus.
+        Assert.Equal(320, LetterMotion.Duration(0));
+    }
+
+    [Fact]
+    public void Smooth_LetsTheLastLettersFinishAMomentIntoTheNextWord_Crisp_DoesNot_ALinesLastWordFinishesOnItsNote()
+    {
+        var crisp = LetterMotion.Rise(Tune(Handover.Crisp), 1.0, 500, 4, 5);
+        var smooth = LetterMotion.Rise(Tune(Handover.Smooth), 1.0, 500, 4, 5);
         Assert.Equal(1, crisp, 6);
         Assert.InRange(smooth, 0.05, 0.99);
+        // Noctis stops redrawing a word two words on, or a line's last word once the line is over:
+        // every letter is up by then, quick words included, so nothing jumps.
+        foreach (var a in new[] { Handover.Crisp, Handover.Smooth, Handover.Flowing })
+        foreach (var ms in new[] { 80.0, 150, 500, 2500 })
+        for (var i = 0; i < 6; i++)
+        {
+            Assert.Equal(1, LetterMotion.Rise(Tune(a), 1 + LetterMotion.RunOn, ms, i, 6), 6);
+            Assert.Equal(1, LetterMotion.WholeRise(Tune(a), 1 + LetterMotion.RunOn, ms), 6);
+            Assert.Equal(1, LetterMotion.Rise(Tune(a), 1.0, ms, i, 6, lastInLine: true), 6);
+            Assert.Equal(1, LetterMotion.WholeRise(Tune(a), 1.0, ms, lastInLine: true), 6);
+            var done = LetterMotion.Pose(Tune(a), W(1 + LetterMotion.RunOn, ms, 6, lift: 1), i);
+            Assert.Equal(done, LetterMotion.Pose(Tune(a), W(3, ms, 6, lift: 1), i));
+            var lastDone = LetterMotion.Pose(Tune(a), W(1.0, ms, 6, lift: 1, last: true), i);
+            Assert.Equal(lastDone, LetterMotion.Pose(Tune(a), W(3, ms, 6, lift: 1, last: true), i));
+        }
+    }
+
+    [Fact]
+    public void ALetter_NeverComesUpFasterThanTheEyeCanFollow_InSmoothAndFlowing()
+    {
+        // A 300 ms word: its letters still take at least 0.12 s (Smooth) / 0.2 s (Flowing) to come up.
+        foreach (var (a, floor) in new[] { (Handover.Smooth, Tuning.SmoothRiseSec), (Handover.Flowing, Tuning.LetterRiseSec) })
+        {
+            var t = Tune(a);
+            // Half its minimum rise after the first letter starts (progress 0): at most half way.
+            var p = floor / 2 / 0.3;
+            Assert.InRange(LetterMotion.Rise(t, p, 300, 0, 4), 0, 0.5 + 1e-9);
+        }
+        Assert.Equal(1, LetterMotion.Rise(Tune(Handover.Crisp), 1.0, 100, 0, 4), 6); // crisp: exactly with the fill
     }
 
     [Fact]
     public void Motion_IsContinuous_NothingPopsBetweenFrames()
     {
         foreach (var a in new[] { Handover.Crisp, Handover.Smooth, Handover.Flowing })
-        foreach (var ms in new[] { 200.0, 500, 1200, 3000 })
+        foreach (var ms in new[] { 100.0, 200, 500, 1200, 3000 })
+        foreach (var last in new[] { false, true })
         {
             var t = Tune(a, 1.4);
             for (var i = 0; i < 6; i++)
             {
-                var before = LetterMotion.Pose(t, W(-1.5, ms, 6), i);
+                var before = LetterMotion.Pose(t, W(-1.5, ms, 6, lift: 1, last: last), i);
                 for (var p = -1.5; p <= 2.5; p += 1 / 240.0)
                 {
-                    var now = LetterMotion.Pose(t, W(p, ms, 6), i);
+                    var now = LetterMotion.Pose(t, W(p, ms, 6, lift: 1, last: last), i);
                     Assert.True(Math.Abs(now.Scale - before.Scale) < 0.01, $"{a} {ms} ms letter {i} at {p:0.000}: {before.Scale} -> {now.Scale}");
-                    Assert.True(Math.Abs(now.OffsetYEm - before.OffsetYEm) < 0.01);
+                    Assert.True(Math.Abs(now.OffsetYEm - before.OffsetYEm) < 0.01, $"{a} {ms} ms letter {i} at {p:0.000}: y {before.OffsetYEm} -> {now.OffsetYEm}");
+                    Assert.True(Math.Abs(now.OffsetXEm - before.OffsetXEm) < 0.01, $"{a} {ms} ms letter {i} at {p:0.000}: x {before.OffsetXEm} -> {now.OffsetXEm}");
+                    Assert.True(Math.Abs(now.Glow - before.Glow) < 0.1, $"{a} {ms} ms letter {i} at {p:0.000}: glow {before.Glow} -> {now.Glow}");
                     before = now;
                 }
             }
@@ -136,6 +191,20 @@ public class LyricMotionPluginTests : IDisposable
     }
 
     [Fact]
+    public void GrownLetters_MakeRoomForThemselves_TheWordStayingCentred()
+    {
+        var t = Tune(Handover.Crisp);
+        var w = W(1.0, ms: 2500, letters: 5);
+        var poses = Enumerable.Range(0, 5).Select(i => LetterMotion.Pose(t, w, i)).ToArray();
+        Assert.True(poses[0].OffsetXEm < 0 && poses[4].OffsetXEm > 0);
+        Assert.Equal(0, poses[2].OffsetXEm, 6);
+        Assert.Equal(0, poses.Sum(p => p.OffsetXEm), 6);
+        // Each pushed by what the letters before it grew: neighbours a grown letter's width apart.
+        var g = poses[0].Scale - 1;
+        Assert.Equal(g * LetterMotion.LetterWidthEm, poses[1].OffsetXEm - poses[0].OffsetXEm, 6);
+    }
+
+    [Fact]
     public void QuickWords_DoNotGrow_SoARapVerseDoesNotFlicker()
     {
         var t = Tune();
@@ -144,11 +213,27 @@ public class LyricMotionPluginTests : IDisposable
     }
 
     [Fact]
-    public void TheWordsFloat_WithNoctissOwnFloat()
+    public void ASungWord_FloatsByWholePixels_StaysUpUntilItsLineEnds_AndComesDownWithNoctissFloat()
     {
         var t = Tune();
-        Assert.Equal(0, LetterMotion.Pose(t, W(3, lift: 0), 0).OffsetYEm, 6);
-        Assert.Equal(-0.05, LetterMotion.Pose(t, W(3, lift: 1), 0).OffsetYEm, 6);
+        var reach = 2.0 / 46; // 0.05 em of 46 px, rounded to whole pixels
+        Assert.Equal(-reach, LetterMotion.Pose(t, W(3, ms: 120, lift: 1), 0).OffsetYEm, 6);
+        Assert.Equal(-reach / 2, LetterMotion.Pose(t, W(3, ms: 120, lift: 0.5), 0).OffsetYEm, 6); // the line is over
+        Assert.Equal(-reach, LetterMotion.Pose(t, W(1.5, ms: 120, lift: 1), 0).OffsetYEm, 6);
+        Assert.Equal(0, LetterMotion.Pose(t, W(-2, lift: 0), 0).OffsetYEm, 6);
+        // Noctis's own word float switched off (its lift stays 0): no float from the plugin either.
+        Assert.Equal(0, LetterMotion.Pose(t, W(1.5, ms: 120, lift: 0), 0).OffsetYEm, 6);
+    }
+
+    [Fact]
+    public void ALinesLastWord_KeepsItsLongNoteUntilTheLineEnds_ThenSettlesWithTheFloat()
+    {
+        var t = Tune();
+        var held = LetterMotion.Pose(t, W(1.0, 2500, lift: 1, last: true), 2).Scale;
+        Assert.True(held > 1.05);
+        Assert.Equal(held, LetterMotion.Pose(t, W(3, 2500, lift: 1, last: true), 2).Scale, 6);
+        Assert.Equal(1 + (held - 1) / 2, LetterMotion.Pose(t, W(3, 2500, lift: 0.5, last: true), 2).Scale, 6);
+        Assert.Equal(1, LetterMotion.Pose(t, W(3, 2500, lift: 0, last: true), 2).Scale, 6);
     }
 
     [Fact]
@@ -161,6 +246,7 @@ public class LyricMotionPluginTests : IDisposable
         Assert.Equal(LyricsWordMode.Whole, LetterMotion.Mode(Tune(letters: false), W(0.5)));
         Assert.Equal(LyricsWordMode.Whole, LetterMotion.Mode(Tune(), W(0.5, rtl: true))); // joined letters
         Assert.Equal(LyricsWordMode.Whole, LetterMotion.Mode(Tune(), W(0.5, letters: 20)));
+        Assert.Equal(LyricsWordMode.Letters, LetterMotion.Mode(Tune(Handover.Flowing), W(0.5, ms: 100))); // flowing: every word in letters
     }
 
     [Fact]
@@ -400,7 +486,7 @@ public class LyricMotionPluginTests : IDisposable
     [AvaloniaFact]
     public void ReleaseZip_InstallsFromFile_AndRuns()
     {
-        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.LyricMotion/bin/Release/Noctis.Plugins.LyricMotion-1.0.0.zip");
+        var zip = PluginSandbox.RepoFile("plugins/Noctis.Plugins.LyricMotion/bin/Release/Noctis.Plugins.LyricMotion-1.1.0.zip");
         if (!File.Exists(zip)) Assert.Skip("build it first: dotnet build plugins/Noctis.Plugins.LyricMotion -c Release");
         using (var archive = ZipFile.OpenRead(zip))
         {
@@ -417,7 +503,7 @@ public class LyricMotionPluginTests : IDisposable
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
         var plugin = result.Plugin!;
-        Assert.Equal(("Lyric Motion", "1.0.0", "Alfamin"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
+        Assert.Equal(("Lyric Motion", "1.1.0", "Alfamin"), (plugin.Name, plugin.Version, plugin.Manifest?.Author));
         Assert.Equal(LyricMotionPlugin.About, plugin.Manifest!.Description); // no "By Alfamin." (the card says by X)
         Assert.DoesNotContain("Alfamin", plugin.Manifest.Description);
         Assert.Empty(plugin.Manifest.Permissions);
