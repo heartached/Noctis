@@ -1,19 +1,13 @@
 name: Feature request
-description: Suggest something new or an improvement to what exists.
+description: An idea for something new, or a better way to do something.
 title: "[Feature] "
 labels: ["enhancement"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        Ideas are welcome. Describe the problem first, then the solution you have in mind. The problem is what makes the request easy to act on.
-
   - type: textarea
     id: problem
     attributes:
-      label: What problem are you trying to solve?
-      description: What is annoying, missing, or slower than it should be today?
-      placeholder: I have 40 playlists and there is no way to group them into folders.
+      label: What's missing or annoying today?
+      placeholder: I have 40 playlists and no way to group them.
     validations:
       required: true
 
@@ -21,56 +15,21 @@ body:
     id: solution
     attributes:
       label: What would you like Noctis to do?
-      description: Describe the feature as you imagine using it.
-      placeholder: Let me drag playlists into folders in the sidebar and collapse them.
+      placeholder: Let me drag playlists into folders in the sidebar.
     validations:
       required: true
 
   - type: dropdown
-    id: area
+    id: platform
     attributes:
-      label: Which part of the app is this about?
-      multiple: true
+      label: Desktop or phone?
       options:
-        - Playback / audio
-        - Library scan / import
-        - Lyrics (display, sync, Lyrics Studio)
-        - Artwork / metadata
-        - Playlists
-        - Search
-        - Mini player / island
-        - Visualizer / Cover Flow
-        - Settings / themes
-        - Discord / Last.fm / integrations
-        - Noctis Server / sync
-        - Plugins
-        - Other
-
-  - type: dropdown
-    id: importance
-    attributes:
-      label: How much would this change things for you?
-      options:
-        - Nice to have
-        - Would use it often
-        - Blocking me from using Noctis as my main player
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Workarounds or other apps that do this
-      description: How do you deal with it today? If another player does it well, name it and what you like about its approach.
+        - Desktop app
+        - Phone app (Android)
+        - Both
 
   - type: textarea
     id: extra
     attributes:
-      label: Mockups or anything else
-      description: Sketches, screenshots from other apps, or extra details. Drag images straight in.
-
-  - type: checkboxes
-    id: checks
-    attributes:
-      label: Before you submit
-      options:
-        - label: I searched existing issues and feature requests and this is not a duplicate.
-          required: true
+      label: Anything else
+      description: Mockups, screenshots, or another app that does it well.
