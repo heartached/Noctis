@@ -2613,7 +2613,7 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve"><value>Makes 5.1 and 7.1 files sound like surround in headphones. Stereo songs stay the same.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Headphone Surround after a change, in SettingsView.axaml</comment></data>
   <data name="Settings.MultichannelOutput" xml:space="preserve"><value>Multichannel Output</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Plays 5.1 and 7.1 files on every speaker of a surround system instead of mixing them down to stereo. Stereo songs stay on the front speakers unless Multi-channel upmix is on. Off while Headphone Surround is on.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MultichannelOutputDesc" xml:space="preserve"><value>Plays 5.1 and 7.1 files on every speaker. Off while Headphone Surround is on.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MultichannelOutputRestart" xml:space="preserve"><value>Restart Noctis to apply this change.</value><comment>Shown under Multichannel Output after a change, in SettingsView.axaml</comment></data>
 
   <data name="Server.AccountsMoved" xml:space="preserve"><value>Accounts and device sync are managed in Account &amp; Sync.</value><comment>Integrations → Noctis Server card footer</comment></data>
@@ -3928,9 +3928,9 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.ConnectedAs" xml:space="preserve"><value>Connected as {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ConnectedTo" xml:space="preserve"><value>Connected to {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.WindowsOnly" xml:space="preserve"><value>Only available on Windows.</value><comment>Settings status line</comment></data>
-  <data name="Settings.Scrobble.OtherComputer" xml:space="preserve"><value>Signed in on another computer that shares this data folder. Connect here to send plays from this computer too.</value><comment>Settings › Scrobbling card (Last.fm / ListenBrainz): the saved sign-in belongs to another computer or Windows user and can't be read here (GitHub #197)</comment></data>
-  <data name="Settings.Scrobble.OneWaiting" xml:space="preserve"><value>1 play is waiting to be sent.</value><comment>Settings › Scrobbling card: one play queued while offline or signed out, sent once the service can be reached</comment></data>
-  <data name="Settings.Scrobble.Waiting" xml:space="preserve"><value>{0:N0} plays are waiting to be sent.</value><comment>Settings › Scrobbling card: plays queued while offline or signed out; {0} is how many</comment></data>
+  <data name="Settings.Scrobble.OtherComputer" xml:space="preserve"><value>Signed in on another computer. Connect to scrobble from this one too.</value><comment>Settings › Scrobbling card (Last.fm / ListenBrainz): the saved sign-in belongs to another computer or Windows user and can't be read here (GitHub #197)</comment></data>
+  <data name="Settings.Scrobble.OneWaiting" xml:space="preserve"><value>1 play waiting to send.</value><comment>Settings › Scrobbling card: one play queued while offline or signed out, sent once the service can be reached</comment></data>
+  <data name="Settings.Scrobble.Waiting" xml:space="preserve"><value>{0:N0} plays waiting to send.</value><comment>Settings › Scrobbling card: plays queued while offline or signed out; {0} is how many</comment></data>
   <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>Noctis removed from the Open-with list.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registered. Pick Noctis under Settings → Apps → Default apps, or right-click a song → Open with.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Couldn't update file types: {0}</value><comment>Settings status line</comment></data>
