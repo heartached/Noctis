@@ -360,6 +360,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>Живой спектр вдоль нижнего края страницы текста.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Цвет обложки</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Окрашивать столбцы в цвет обложки. Если выключено — они белые.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FullSpectrum" xml:space="preserve"><value>Полный спектр</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Взвешивать столбцы как студийный анализатор, чтобы тихие высокие частоты до 20 кГц оставались видны.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Частотные столбцы, растущие снизу</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Bars" xml:space="preserve"><value>Столбцы</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>Столбцы, отражённые относительно центральной линии</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

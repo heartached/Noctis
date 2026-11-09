@@ -578,6 +578,7 @@
                                      Fill="White"
                                      ArtworkColor="{Binding Player.ArtworkAccentColor}"
                                      UseArtworkColor="{Binding Player.LyricsVisualizerArtworkColor}"
+                                     FullSpectrum="{Binding Player.LyricsVisualizerFullSpectrum}"
                                      StyleName="{Binding Player.LyricsVisualizerStyle}"
                                      IsActive="{Binding $self.IsVisible}"
                                      IsVisible="{Binding Player.LyricsVisualizerEnabled}"/>

@@ -561,6 +561,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
     /// <summary>Visualizer paints with the artwork's colour (else white/accent). Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+    /// <summary>GitHub #205: the visualizer reads the analyser-weighted spectrum. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
     /// <summary>The current cover's vibrant colour (ShareCardRenderer's path-cached hue-bucket
     /// vote, computed off the UI thread when the track changes); null without artwork.
     /// The visualizer surfaces tint their bars with it.</summary>

@@ -1342,6 +1342,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
     /// <summary>Visualizer bars take the artwork's colour (Appearance tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+    /// <summary>GitHub #205: Full spectrum, the analyser-weighted visualizer (Appearance tab).</summary>
+    [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
 
     /// <summary>One entry of the Language picker: "" = follow the OS, else a shipped culture.</summary>
     public sealed record LanguageOption(string Code, string Display)
@@ -3609,6 +3611,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
+            LyricsVisualizerFullSpectrum = _settings.LyricsVisualizerFullSpectrum;
             LanguageOptions = BuildLanguageOptions(PackContent); // pack languages were preloaded above
             LanguageChoice = LanguageOptions.FirstOrDefault(o => o.Code == (_settings.Language ?? string.Empty)) ?? LanguageOptions[0];
             LyricsBackgroundMediaPath = File.Exists(_settings.LyricsBackgroundMediaPath)
@@ -4157,6 +4160,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
+        _settings.LyricsVisualizerFullSpectrum = LyricsVisualizerFullSpectrum;
         _settings.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _settings.LyricsBackgroundMediaOverrides = new Dictionary<string, string>(_lyricsBackgroundOverrides);
         _settings.ScrobbleExcludedKeys = _scrobbleExclusions.Count > 0 ? _scrobbleExclusions.ToList() : null;
@@ -4534,6 +4538,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled && VisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
+        _player.LyricsVisualizerFullSpectrum = LyricsVisualizerFullSpectrum;
         _player.SetLyricsBackgroundSources(LyricsBackgroundMediaPath ?? string.Empty,
             new Dictionary<string, string>(_lyricsBackgroundOverrides, StringComparer.OrdinalIgnoreCase));
         _player.LyricsBackgroundPausesWithPlayback = LyricsBackgroundPausesWithPlayback;
@@ -6278,6 +6283,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsVisualizerArtworkColorChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsVisualizerFullSpectrumChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -8305,6 +8316,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
+            LyricsVisualizerFullSpectrum = defaultSettings.LyricsVisualizerFullSpectrum;
             LanguageChoice = LanguageOptions[0];
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
             _lyricsBackgroundOverrides.Clear(); // ApplyPlayerSettings below pushes the empty map

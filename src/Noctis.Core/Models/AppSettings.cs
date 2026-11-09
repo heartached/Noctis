@@ -1251,6 +1251,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Visualizer bars take the current artwork's colour (default) instead of white/accent.</summary>
     public bool LyricsVisualizerArtworkColor { get; set; } = true;
 
+    /// <summary>GitHub #205: the visualizer's bars weighted like a studio analyser (tilted up toward
+    /// the treble, deeper floor) so the quiet top octave shows. Off by default: the stock look.</summary>
+    public bool LyricsVisualizerFullSpectrum { get; set; }
+
     /// <summary>Optional looping video/GIF the lyrics page paints behind the lyrics
     /// (copied into the data root by Settings → Appearance). Empty = none; the blurred
     /// artwork background shows as usual.</summary>

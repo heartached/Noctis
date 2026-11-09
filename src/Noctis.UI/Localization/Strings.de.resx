@@ -359,6 +359,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>Ein Live-Spektrum am unteren Rand der Songtextseite.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork-Farbe</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Balken in der aktuellen Coverfarbe tönen. Aus malt sie weiß.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FullSpectrum" xml:space="preserve"><value>Volles Spektrum</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Balken wie ein Studio-Analyzer gewichten, damit leise Höhen bis 20 kHz sichtbar bleiben.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Frequenzbalken von unten aufsteigend</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Bars" xml:space="preserve"><value>Balken</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>An der Mittellinie gespiegelte Balken</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

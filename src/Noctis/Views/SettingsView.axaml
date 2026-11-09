@@ -4403,6 +4403,18 @@
                                               IsChecked="{Binding LyricsVisualizerArtworkColor}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #205: the analyser-weighted spectrum (SpectrumMeter.FullSpectrumTiltDbPerOctave). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.FullSpectrum}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.FullSpectrumHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.FullSpectrum}"
+                                              IsChecked="{Binding LyricsVisualizerFullSpectrum}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,12,0,0">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
