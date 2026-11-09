@@ -2445,6 +2445,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// row; otherwise the grids derive their column count from the target size. The album
     /// and favorites view models react through this view model's PropertyChanged.</summary>
     [ObservableProperty] private bool _albumTileSizeAuto = true;
+    /// <summary>GitHub #213: Masonry layout for the Albums grid.</summary>
+    [ObservableProperty] private bool _albumGridMasonry;
+    /// <summary>GitHub #218: hover zoom in the Albums grid.</summary>
+    [ObservableProperty] private bool _albumHoverZoom;
     [ObservableProperty] private double _albumTileTargetSize = 220;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _sidebarAlwaysExpanded = false;
@@ -3720,6 +3724,8 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
+            AlbumGridMasonry = _settings.AlbumGridMasonry;
+            AlbumHoverZoom = _settings.AlbumHoverZoom;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
@@ -4259,6 +4265,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
+        _settings.AlbumGridMasonry = AlbumGridMasonry;
+        _settings.AlbumHoverZoom = AlbumHoverZoom;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
@@ -5539,6 +5547,18 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumTileSizeAutoChanged(bool value)
     {
         // No Apply* step: the album/favorites view models watch this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumHoverZoomChanged(bool value)
+    {
+        // The Albums view model watches this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumGridMasonryChanged(bool value)
+    {
+        // The Albums view model watches this property.
         if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
     }
 
@@ -8401,6 +8421,8 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
             MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
+            AlbumGridMasonry = defaultSettings.AlbumGridMasonry;
+            AlbumHoverZoom = defaultSettings.AlbumHoverZoom;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings
             // would re-persist the pre-reset width over the freshly defaulted file

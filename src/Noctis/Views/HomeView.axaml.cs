@@ -109,7 +109,13 @@ public partial class HomeView : UserControl, ITrackSelectionSource
         var source = e.Source as Control;
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
-        if (source is not Button tile) return;
+        if (source is not Button tile)
+        {
+            // GitHub #209: a click beside the tiles clears the selection, as in the queue.
+            if (_selectedTiles.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e))
+                ClearSelection();
+            return;
+        }
 
         MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
 
@@ -122,19 +128,17 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     {
         if (e.Key == Key.Escape && _selectedTiles.Count > 0)
         {
-            MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
-            if (DataContext is HomeViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
+            ClearSelection();
             e.Handled = true;
-            return;
         }
+        // GitHub #209: no Ctrl+A here. Home mixes albums, songs and mixes, and select-all
+        // only ever caught the two album rows; Ctrl+click still builds a selection.
+    }
 
-        var allTiles = new List<Button>();
-        foreach (var desc in this.GetVisualDescendants())
-        {
-            if (desc is Button b && b.Classes.Contains("album-tile"))
-                allTiles.Add(b);
-        }
-        MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        if (DataContext is HomeViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
     }
 
     // ── Context menus (shared builders, v2 layout as on the Albums and album pages) ──

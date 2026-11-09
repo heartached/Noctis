@@ -38,15 +38,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// once for the pair rather than once per property.</summary>
     private bool _suspendSortRebuild;
 
-    private const double TileTextHeight = 64;
-
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
     /// <summary>The genre a Genres-page click narrowed the grid to (GitHub #220); empty otherwise.</summary>
     [ObservableProperty] private string _genreFilterName = string.Empty;
-    public double TileRowHeight => TileArtworkSize + TileTextHeight;
 
     /// <summary>Covers per row. Classic five in Automatic mode; otherwise derived from
     /// the view width and the cover-size setting (see <see cref="AlbumGridMetrics"/>).
@@ -299,12 +296,32 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCarouselView))]
     [NotifyPropertyChangedFor(nameof(IsGridView))]
+    [NotifyPropertyChangedFor(nameof(IsMasonryView))]
+    [NotifyPropertyChangedFor(nameof(IsRowGridView))]
     private string _albumViewMode = "grid";
 
     /// <summary>The carousel shows: picked, and the Album Carousel built-in feature is on (off
     /// shows the grid and keeps the pick for when it returns).</summary>
     public bool IsCarouselView => AlbumViewMode == "carousel" && _settings.AlbumCarouselEnabled;
     public bool IsGridView => !IsCarouselView;
+
+    /// <summary>GitHub #213: the grid as Masonry (Settings › Albums "Masonry Album Grid" or the
+    /// View menu). An artist page that interleaves its Songs section keeps the row grid: the
+    /// masonry panel lays out album cards only.</summary>
+    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry && !_rowsHaveSections;
+
+    /// <summary>GitHub #218: Settings › Appearance "Album Hover Zoom".</summary>
+    public bool IsHoverZoom => _settings.AlbumHoverZoom;
+
+    /// <summary>The row grid (the ListBox of album rows) is up.</summary>
+    public bool IsRowGridView => IsGridView && !IsMasonryView;
+
+    /// <summary>The current rows carry an artist page's section headers / song rows.</summary>
+    private bool _rowsHaveSections;
+
+    /// <summary>View menu: Masonry on/off (the same setting Settings shows).</summary>
+    [RelayCommand]
+    private void ToggleMasonry() => _settings.AlbumGridMasonry = !_settings.AlbumGridMasonry;
 
     /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
@@ -344,6 +361,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
         OnPropertyChanged(nameof(CarouselAlbums));
+        var sections = FilteredAlbumRows.Any(r => r is not AlbumRow);
+        if (sections != _rowsHaveSections)
+        {
+            _rowsHaveSections = sections;
+            OnPropertyChanged(nameof(IsMasonryView));
+            OnPropertyChanged(nameof(IsRowGridView));
+        }
     }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
@@ -386,10 +410,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void SetQualityFilter(string key) => QualityFilter = key == "all" ? string.Empty : key;
 
-    partial void OnTileArtworkSizeChanged(double value)
-    {
-        OnPropertyChanged(nameof(TileRowHeight));
-    }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
     /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
@@ -490,6 +510,17 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             {
                 OnPropertyChanged(nameof(IsCarouselView));
                 OnPropertyChanged(nameof(IsGridView));
+                OnPropertyChanged(nameof(IsMasonryView));
+                OnPropertyChanged(nameof(IsRowGridView));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumHoverZoom))
+            {
+                OnPropertyChanged(nameof(IsHoverZoom));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridMasonry))
+            {
+                OnPropertyChanged(nameof(IsMasonryView));
+                OnPropertyChanged(nameof(IsRowGridView));
             }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))

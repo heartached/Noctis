@@ -592,6 +592,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.QualityFilterLabel = _albumsVm.QualityFilterLabel;
             else if (e.PropertyName is nameof(LibraryAlbumsViewModel.AlbumViewMode) or nameof(LibraryAlbumsViewModel.IsCarouselView))
                 TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.IsMasonryView))
+                TopBar.IsAlbumMasonry = Settings.AlbumGridMasonry;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.CarouselStyle))
                 TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
         };
@@ -3121,6 +3123,8 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.AlbumViewToggleCommand = _albumsVm.ToggleAlbumViewCommand;
             TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
             TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
+            TopBar.AlbumMasonryCommand = _albumsVm.ToggleMasonryCommand;
+            TopBar.IsAlbumMasonry = Settings.AlbumGridMasonry;
         }
         else
         {

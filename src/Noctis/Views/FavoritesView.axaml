@@ -17,7 +17,7 @@
 
     <Grid RowDefinitions="*">
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
-        <DockPanel Grid.Row="0" Margin="12,8,2,8">
+        <DockPanel Grid.Row="0" Margin="12,13,2,8">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -51,9 +51,11 @@
                                     <Button Classes="album-tile"
                                             AutomationProperties.Name="{Binding Title}"
                                             Focusable="False"
-                                            Margin="2"
+                                            Margin="3,2"
+                                            Padding="6"
                                             HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Top"
+                                            VerticalAlignment="Stretch"
+                                            VerticalContentAlignment="Top"
                                             helpers:DragFileBehavior.EnableFileDrag="True"
                                             Tag="{Binding}"
                                             Loaded="OnAlbumTileLoaded"

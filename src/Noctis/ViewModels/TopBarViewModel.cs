@@ -551,6 +551,9 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>Flips the Albums page between grid and carousel (GitHub #164 top-right icon).</summary>
     [ObservableProperty] private ICommand? _albumViewToggleCommand;
     [ObservableProperty] private bool _isAlbumCarouselView;
+    /// <summary>GitHub #213: the View menu's Masonry check and its toggle.</summary>
+    [ObservableProperty] private bool _isAlbumMasonry;
+    [ObservableProperty] private ICommand? _albumMasonryCommand;
 
     // GitHub #164: on the Albums page the top-right view-mode icon switches the page between
     // its grid and the album carousel (every album, like the artist page's toggle) instead of

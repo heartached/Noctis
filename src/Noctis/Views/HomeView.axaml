@@ -237,14 +237,17 @@
         <DataTemplate x:Key="HomeAlbumTileTemplate" x:DataType="m:Album">
             <Button Classes="album-tile home-album-tile"
                     AutomationProperties.Name="{Binding Name}"
-                    Margin="2"
-                    Padding="2"
-                    VerticalAlignment="Top"
+                    Margin="3"
+                    Padding="6"
+                    VerticalAlignment="Stretch"
+                    VerticalContentAlignment="Top"
                     helpers:DragFileBehavior.EnableFileDrag="True"
                     ContextRequested="OnRecentAlbumContextRequested"
                     Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
                     CommandParameter="{Binding}">
-                <!-- Width pinned to the cover: the WrapPanel measures tiles unbounded, so
+                <!-- Tile chrome is AlbumGridMetrics.TileChrome (3 margin + 6 padding a side, GitHub #210);
+                     the rows sit 5px outside the section so the covers still line up with the
+                     headings. Width pinned to the cover: the WrapPanel measures tiles unbounded, so
                      without it a long title never wraps and the tile grows past the cover. -->
                 <StackPanel Spacing="0"
                             Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}">
@@ -1011,7 +1014,7 @@
                         <ItemsControl x:Name="AlbumsRow"
                                       ItemsSource="{Binding RecentlyPlayedAlbums}"
                                       ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
-                                      Margin="0,14,0,0"
+                                      Margin="-5,9,-5,0"
                                       SizeChanged="OnAlbumsRowSizeChanged">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -1067,7 +1070,7 @@
                         <ItemsControl x:Name="NewInLibraryRow"
                                       ItemsSource="{Binding NewInLibraryAlbums}"
                                       ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
-                                      Margin="0,14,0,0"
+                                      Margin="-5,9,-5,0"
                                       SizeChanged="OnAlbumsRowSizeChanged">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

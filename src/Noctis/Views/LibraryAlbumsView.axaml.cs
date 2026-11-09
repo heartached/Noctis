@@ -33,6 +33,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     {
         InitializeComponent();
         AlbumCarousel.AlbumContextRequested += OnCarouselAlbumContextRequested;
+        MasonryPanel.ElementPrepared += OnMasonryElementPrepared;
 
         DataContextChanged += OnDataContextChanged;
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
@@ -45,7 +46,13 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         var source = e.Source as Control;
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
-        if (source is not Button tile) return;
+        if (source is not Button tile)
+        {
+            // GitHub #209: a click beside the tiles clears the selection, as in the queue.
+            if (_selectedAlbums.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e, rowsAreLayout: true))
+                ClearSelection();
+            return;
+        }
         if (tile.DataContext is not Album album) return;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
@@ -64,22 +71,69 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
     private void OnAlbumTileLoaded(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button tile)
-            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
+        if (sender is not Button tile) return;
+        MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
+        // Album Hover Zoom (GitHub #218): Loaded can fire again on re-attach, so re-subscribe.
+        tile.PointerEntered -= OnTileHoverEntered;
+        tile.PointerExited -= OnTileHoverExited;
+        tile.PointerEntered += OnTileHoverEntered;
+        tile.PointerExited += OnTileHoverExited;
+    }
+
+    // ── Album Hover Zoom (GitHub #218) ──
+    // The hovered tile's own grow + glow is pure style (Styles.axaml, .hover-zoom). The tiles
+    // around it are found here: realized tiles whose centres sit within ~1.6 tile widths of
+    // the hovered one's (its row and the rows above and below), tagged .hover-neighbor so the
+    // style steps them back. Only realized tiles exist, so this walks a few dozen.
+
+    private const string HoverNeighborClass = "hover-neighbor";
+    private readonly List<Button> _hoverNeighbors = new();
+
+    private void OnTileHoverEntered(object? sender, PointerEventArgs e)
+    {
+        ClearHoverNeighbors();
+        if (_vm?.IsHoverZoom != true || sender is not Button hovered) return;
+        var reach = hovered.Bounds.Width * 1.6;
+        var centre = hovered.TranslatePoint(new Point(hovered.Bounds.Width / 2, hovered.Bounds.Height / 2), this);
+        if (centre is not { } c) return;
+        foreach (var tile in CollectAlbumTiles())
+        {
+            if (ReferenceEquals(tile, hovered) || !tile.IsEffectivelyVisible) continue;
+            var other = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height / 2), this);
+            if (other is not { } o) continue;
+            if (Math.Abs(o.X - c.X) <= reach && Math.Abs(o.Y - c.Y) <= Math.Max(reach, hovered.Bounds.Height * 1.2))
+            {
+                tile.Classes.Add(HoverNeighborClass);
+                _hoverNeighbors.Add(tile);
+            }
+        }
+    }
+
+    private void OnTileHoverExited(object? sender, PointerEventArgs e) => ClearHoverNeighbors();
+
+    private void ClearHoverNeighbors()
+    {
+        foreach (var tile in _hoverNeighbors) tile.Classes.Remove(HoverNeighborClass);
+        _hoverNeighbors.Clear();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape && _selectedAlbums.Count > 0)
         {
-            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
-            if (DataContext is LibraryAlbumsViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
+            ClearSelection();
             e.Handled = true;
             return;
         }
 
         var allAlbums = _vm?.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums) ?? Enumerable.Empty<Album>();
         MultiSelectHelper.HandleAlbumSelectAllByData(e, allAlbums, CollectAlbumTiles(), _selectedAlbums);
+    }
+
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+        if (DataContext is LibraryAlbumsViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
     }
 
     private List<Button> CollectAlbumTiles()
@@ -90,7 +144,21 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             if (desc is Button b && b.Classes.Contains("album-tile"))
                 allTiles.Add(b);
         }
+        foreach (var c in MasonryPanel.RealizedElements)
+            if (c is Button b) allTiles.Add(b);
         return allTiles;
+    }
+
+    /// <summary>The scroller of the layout on screen: the row grid's or the Masonry one (#213).</summary>
+    private ScrollViewer? ActiveScroller() => _vm?.IsMasonryView == true
+        ? MasonryScroller
+        : AlbumListBox.FindDescendantOfType<ScrollViewer>();
+
+    /// <summary>A Masonry tile recycled onto another album takes that album's selection at once.</summary>
+    private void OnMasonryElementPrepared(object? sender, Control element)
+    {
+        if (element is Button tile)
+            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
     }
 
     /// <summary>Returns the list of ctrl-selected albums, or a single-item list with the given album if none are selected.</summary>
@@ -272,7 +340,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
         Dispatcher.UIThread.Post(() =>
         {
-            var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+            var sv = ActiveScroller();
             if (sv != null)
                 sv.Offset = new Vector(0, 0);
         }, DispatcherPriority.Background);
@@ -285,13 +353,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         if (e.NewSize.Width <= 0 || DataContext is not LibraryAlbumsViewModel vm)
             return;
 
-        // DockPanel has Margin="12,8,12,0" → 24px horizontal margin.
-        // Column count and tile size (each tile carries 8px of margin+padding chrome)
-        // are computed in the view model, which folds in the cover-size setting.
-        var usable = e.NewSize.Width - 24;
+        // Column count and tile size (AlbumGridMetrics.TileChrome around each cover) are
+        // computed in the view model, which folds in the cover-size setting.
+        var usable = GridUsableWidth(e.NewSize.Width);
+        // The scroll bar's width is only known once the list has been laid out: settle on
+        // the measured value after this pass (a no-op when the guess was right).
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (DataContext is LibraryAlbumsViewModel v && Bounds.Width > 0)
+                v.UpdateGridMetrics(GridUsableWidth(Bounds.Width));
+        }, DispatcherPriority.Background);
 
         // Save and restore scroll position so sidebar hover doesn't reset scroll
-        var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        var sv = ActiveScroller();
         var savedY = sv?.Offset.Y ?? 0;
 
         if (!vm.UpdateGridMetrics(usable))
@@ -306,13 +380,26 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         }
     }
 
+    /// <summary>
+    /// The width the tile rows really get: the view less the DockPanel's side margins (12 + 2),
+    /// the rows' 1px side margins and the always-shown vertical scroll bar. A flat "- 24" guessed the bar's share and came
+    /// out 15px wide at 1400px, so every cover was 3px wider than its slot and ate into the
+    /// gap between covers (GitHub #210).
+    /// </summary>
+    private double GridUsableWidth(double viewWidth)
+    {
+        var sv = ActiveScroller();
+        var bar = sv is { Bounds.Width: > 0, Viewport.Width: > 0 } ? sv.Bounds.Width - sv.Viewport.Width : 10;
+        return viewWidth - 16 - bar;
+    }
+
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelPendingScrollRestore();
 
         if (DataContext is LibraryAlbumsViewModel vm)
         {
-            var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+            var sv = ActiveScroller();
             if (sv != null)
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
@@ -333,7 +420,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     {
         if (_pendingScrollRestore != null)
         {
-            AlbumListBox.LayoutUpdated -= _pendingScrollRestore;
+            LayoutUpdated -= _pendingScrollRestore;
             _pendingScrollRestore = null;
             AlbumListBox.Opacity = 1;
         }
@@ -351,7 +438,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             // Using a single-shot LayoutUpdated avoids the Opacity=0 blank flash.
             _pendingScrollRestore = (s, args) =>
             {
-                var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+                var sv = ActiveScroller();
                 if (sv == null) return;
 
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
@@ -359,21 +446,21 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
                 CancelPendingScrollRestore();
             };
 
-            AlbumListBox.LayoutUpdated += _pendingScrollRestore;
+            LayoutUpdated += _pendingScrollRestore;
         }
         else if (DataContext is LibraryAlbumsViewModel activeVm
                  && (activeVm.IsPageFiltered || activeVm.HasActiveFilter))
         {
             _pendingScrollRestore = (s, args) =>
             {
-                var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+                var sv = ActiveScroller();
                 if (sv == null) return;
 
                 sv.Offset = new Vector(0, 0);
                 CancelPendingScrollRestore();
             };
 
-            AlbumListBox.LayoutUpdated += _pendingScrollRestore;
+            LayoutUpdated += _pendingScrollRestore;
         }
     }
 

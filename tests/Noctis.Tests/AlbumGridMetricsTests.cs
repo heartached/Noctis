@@ -46,8 +46,8 @@ public class AlbumGridMetricsTests
         => Assert.InRange(AlbumGridMetrics.ComputeColumns(1100, autoSize: false, targetSize: double.NaN), 2, 20);
 
     [Theory]
-    [InlineData(1100, 5, 212)]   // 1100/5 - 8
-    [InlineData(1650, 8, 198.25)]
+    [InlineData(1100, 5, 202)]   // 1100/5 - 18 (GitHub #210 tile chrome)
+    [InlineData(1650, 8, 188.25)]
     public void ComputeTileSize_FillsRowMinusChrome(double width, int columns, double expected)
         => Assert.Equal(expected, AlbumGridMetrics.ComputeTileSize(width, columns), 3);
 

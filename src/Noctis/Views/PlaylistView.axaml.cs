@@ -531,7 +531,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         {
             item.ContextRequested -= OnTrackItemContextRequested;
             item.ContextMenu = null;
-            item.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(item, false, animate: false);
             item.RemoveHandler(PointerPressedEvent, OnTrackRowPointerPressed);
             item.RemoveHandler(PointerMovedEvent, OnTrackRowPointerMoved);
             item.RemoveHandler(PointerReleasedEvent, OnTrackRowPointerReleased);
@@ -831,7 +831,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         _selectedTracks.Clear();
         foreach (var child in TrackList.GetVisualDescendants())
-            if (child is ListBoxItem li) li.Classes.Remove("ctrl-selected");
+            if (child is ListBoxItem li) MultiSelectHelper.SetSelectedVisual(li, false, animate: false);
         if (DataContext is PlaylistViewModel selVm)
         {
             selVm.CtrlSelectedTracks = new List<Track>();

@@ -92,6 +92,11 @@ public static class AccentPalette
             // accent like every other accent-filled surface.
             ["NowPlayingRowBrush"]           = new SolidColorBrush(rowColor),
             ["NowPlayingRowForegroundBrush"] = new SolidColorBrush(nowPlayingRowForeground),
+            // GitHub #209: the Ctrl-selection plate and outline (album tiles, track rows,
+            // queue). The outline takes the page-safe accent so a dark accent on the dark
+            // page (or a pale one on Light) still draws a visible edge.
+            ["SelectionFillBrush"]           = new SolidColorBrush(color, isLightTheme ? 0.16 : 0.2),
+            ["SelectionStrokeBrush"]         = new SolidColorBrush(accentTextExact, 0.9),
             ["ToggleSwitchFillOn"]                 = new SolidColorBrush(color),
             ["ToggleSwitchFillOnPointerOver"]      = new SolidColorBrush(light1),
             ["ToggleSwitchFillOnPressed"]          = new SolidColorBrush(dark1),
