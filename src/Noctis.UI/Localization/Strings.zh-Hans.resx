@@ -188,10 +188,6 @@
     <value>用 Noctis 打开音频文件</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>将Noctis添加到带有开启列表的Windows应用以及它所播放的格式的默认应用。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>注册</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -338,10 +334,6 @@
   </data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve">
     <value>艺人标签分隔符</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>将一个艺术家标签分割成几个标签的文本。删除一个来保存名字，如 &quot;Simon &amp; Garfunkel&quot; 整体。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -552,10 +544,6 @@
     <value>紧随专辑封面</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>从游戏封面重写重音。您选择的重音在没有播放时返回。</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>强调色</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -574,10 +562,6 @@
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>测试版</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>用透明的玻璃表面为窗口、侧边栏、设置和回放栏发光。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -776,10 +760,6 @@
     <value>播放岛宽度</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>更大的范围给寻找栏更多的房间。你也可以拖动岛上的边缘。双击敲击重置。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>更窄</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -814,10 +794,6 @@
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>流动歌词背景</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>漂移将覆盖物和脉冲与蜜蜂一起移动。拳剑将其融入缓慢的液流。插件样式也会出现在这里。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -984,10 +960,6 @@
     <value>最小不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>保持每条歌词直线可见性，您可以单击任何行跳转到那儿。0%隐藏距离当前行的直线。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>合并被拆分的单词</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -998,10 +970,6 @@
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>播放栏不透明度</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>播放栏背景的实色程度。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1092,10 +1060,6 @@
     <value>独占模式</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>绕过Windows混音器的优化输出。其他应用静音并关闭转化。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>分析节奏与调性</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1106,10 +1070,6 @@
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>将分析结果保存到文件标签</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>将BPM和密钥写入文件的标签。这会修改您的文件。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1186,10 +1146,6 @@
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>从ReplayGain 标签调整音量。通过右键扫描曲目。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1590,10 +1546,6 @@
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>键盘快捷键</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>点击键更改它。Esc取消，Backspace 取消绑定。媒体键始终有效。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6184,4 +6136,5 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
