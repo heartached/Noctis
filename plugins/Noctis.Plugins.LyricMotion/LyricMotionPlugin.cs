@@ -12,7 +12,7 @@ public sealed class LyricMotionPlugin : INoctisPlugin
 {
     public const string Id = "dev.noctis.plugins.lyricmotion";
     public const string Author = "Alfamin";
-    public const string Version = "1.0.0";
+    public const string Version = "1.1.0";
     public const string About = "Lyrics that grow letter by letter as they are sung.";
 
     private IPluginHost? _host;
