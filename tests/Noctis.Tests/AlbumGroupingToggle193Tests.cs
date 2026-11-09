@@ -439,6 +439,50 @@ public class AlbumGroupingToggle193Tests : IDisposable
         Assert.Single(reloaded.Albums);
     }
 
+    [Fact]
+    public async Task OlderBuild_GroupIntoOneAlbumWithAFailedWrite_IsFoundByTheOneTimeCheck_AndWritten()
+    {
+        // As 1.6.8 / 1.6.9 left library.json after Group into One Album could not write a file:
+        // the new album and AlbumArtistFromTag = true in the library, the old tags in the file,
+        // and no AlbumGroupingUnwritten (it did not exist). 1.6.7 had no grouping at all.
+        var grouped = WriteMp3(Path.Combine("Rip B", "02.mp3"), "Prem Poojari (OST)", new[] { "K. S. Chithra" });
+        var written = WriteMp3(Path.Combine("Rip A", "01.mp3"), "Prem Poojari", new[] { "K. J. Yesudas" }, new[] { "Ouseppachan" });
+        var untouched = WriteMp3(Path.Combine("Other", "01.mp3"), "Nightfall", new[] { "Nova" }, new[] { "Nova" });
+        var retagged = WriteMp3(Path.Combine("Retagged", "01.mp3"), "Old Name", new[] { "Kite" }, new[] { "Kite" });
+        var folderAlbum = WriteMp3(Path.Combine("Loose", "a.mp3"), null, new[] { "Ada" });
+        var (library, persistence) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != 5) Assert.Fail(ScanMissReport.Describe(library, Music));
+        await library.AlbumGroupingFileCheck;
+        Track Song(string path) => library.AllTracks.Single(t => t.FilePath == path);
+        var g = Song(grouped);
+        g.Album = "Prem Poojari";
+        g.AlbumArtist = "Ouseppachan";
+        g.AlbumArtistFromTag = true;
+        g.AlbumId = Track.ComputeAlbumId("Ouseppachan", "Prem Poojari");
+        // Changed in Noctis too, but the file was retagged elsewhere since: the file wins.
+        var r = Song(retagged);
+        r.Album = "New Name";
+        r.AlbumId = Track.ComputeAlbumId("Kite", "New Name");
+        File.SetLastWriteTimeUtc(retagged, r.LastModified.AddMinutes(5));
+        await library.SaveAsync();
+        await persistence.UpdateSettingsAsync(s => s.AlbumGroupingFilesChecked = false); // an older build's settings
+        var stamps = new[] { written, untouched, folderAlbum }.ToDictionary(f => f, File.GetLastWriteTimeUtc);
+
+        var reloaded = await RestartAsync(persistence);
+        await reloaded.AlbumGroupingFileCheck;
+
+        Assert.Equal(new[] { "Ouseppachan" }, ReadAlbumArtists(grouped));
+        Assert.Equal("Prem Poojari", ReadAlbum(grouped));
+        Assert.All(reloaded.AllTracks, t => Assert.False(t.AlbumGroupingUnwritten));
+        Assert.Equal("Old Name", ReadAlbum(retagged)); // not overwritten
+        foreach (var (file, stamp) in stamps) Assert.Equal(stamp, File.GetLastWriteTimeUtc(file)); // never touched
+        Assert.True((await persistence.LoadSettingsAsync()).AlbumGroupingFilesChecked);
+
+        // Once per library; Save to Files Now looks again on demand.
+        Assert.Equal(0, (await reloaded.SaveAlbumGroupingToFilesAsync()).Grouped);
+    }
+
     // ── FLAC (#190: the reporter copies FLAC and MP3) ──
 
     private string WriteFlac(string relativePath, string album, string performer)

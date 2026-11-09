@@ -992,6 +992,11 @@ public class AppSettings : IJsonOnDeserializing
     /// keeping their own album artist (LibraryService.ResolveUngroupedAlbumsAsync) has run.</summary>
     public bool AlbumGroupingOriginalsRead { get; set; }
 
+    /// <summary>GitHub #201: the one-time check for album changes made in Noctis (Group into One
+    /// Album, 1.6.8 on) whose file write failed in a build that kept no record of it
+    /// (LibraryService.CheckAlbumGroupingFilesOnceAsync) has run to the end.</summary>
+    public bool AlbumGroupingFilesChecked { get; set; }
+
     /// <summary>Windows only (GitHub #53): paint the current song's progress on the app's
     /// taskbar button. Off by default — it is a visible change to the taskbar the user
     /// should opt into.</summary>
