@@ -108,7 +108,13 @@ public sealed class LyricsAutoFindService : IDisposable
     {
         if (_disposed || !LibraryEnabled) return Task.CompletedTask;
         IReadOnlyList<Track> tracks;
-        try { tracks = _library.Tracks.ToList(); }
+        try
+        {
+            var candidates = _library.Tracks.Where(t => IsCandidate(t) && string.IsNullOrWhiteSpace(t.SyncedLyrics)).ToList();
+            // Only songs never looked up or due again: the rest would end "checked before" after a
+            // read of their lyrics files, every day, for nothing.
+            tracks = _bulk.WithoutRecentLookups(candidates);
+        }
         catch { tracks = Array.Empty<Track>(); }
         var added = 0;
         lock (_gate)

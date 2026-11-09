@@ -146,22 +146,34 @@ public sealed class BulkRunLedger
 
     public int Count { get { lock (_gate) return _entries.Count; } }
 
-    /// <summary>Writes the ledger (atomically, through a temp file); stale entries are dropped.</summary>
+    // Ledgers of one file in this process save one at a time.
+    private static readonly object FileLock = new();
+
+    /// <summary>Writes the ledger (atomically, through a temp file); stale entries are dropped. What
+    /// another ledger of the same file saved meanwhile is kept (the newer check of a song wins):
+    /// two runs at once (the background lookup and Find Lyrics) each overwrote the other's entries.</summary>
     public void Save()
     {
         if (_path is null) return;
         try
         {
-            string json;
-            lock (_gate)
+            lock (FileLock)
             {
-                var cutoff = _now() - EntryLifetime;
-                json = JsonSerializer.Serialize(_entries.Where(kv => kv.Value.CheckedUtc >= cutoff).ToDictionary(kv => kv.Key, kv => kv.Value));
+                var onDisk = Load(_path);
+                string json;
+                lock (_gate)
+                {
+                    foreach (var (id, entry) in onDisk)
+                        if (!_entries.TryGetValue(id, out var mine) || entry.CheckedUtc > mine.CheckedUtc)
+                            _entries[id] = entry;
+                    var cutoff = _now() - EntryLifetime;
+                    json = JsonSerializer.Serialize(_entries.Where(kv => kv.Value.CheckedUtc >= cutoff).ToDictionary(kv => kv.Key, kv => kv.Value));
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+                var tmp = _path + ".tmp";
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, _path, overwrite: true);
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _path, overwrite: true);
         }
         catch (Exception ex)
         {

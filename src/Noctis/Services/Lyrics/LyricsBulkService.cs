@@ -69,6 +69,13 @@ public interface ILyricsBulkService
     Task<LyricsBulkSummary> ApplyAsync(IReadOnlyList<LyricsBulkFind> finds, IProgress<LyricsBulkProgress>? progress, CancellationToken ct)
         => Task.FromResult(new LyricsBulkSummary(0, 0, 0, 0, 0));
 
+    /// <summary>
+    /// GitHub #219: of <paramref name="tracks"/>, the ones a default run would not skip as "checked
+    /// before", judged from the ledger and the library rows alone (no file is read). The row's rank
+    /// never exceeds what a run detects, so a song left out here is one a run would skip too.
+    /// </summary>
+    IReadOnlyList<Track> WithoutRecentLookups(IReadOnlyList<Track> tracks) => tracks;
+
     /// <summary>Removes app-written lyrics from the tracks.</summary>
     Task<int> RemoveAsync(IReadOnlyList<Track> tracks, IProgress<LyricsBulkProgress>? progress, CancellationToken ct);
 }
@@ -100,6 +107,11 @@ public sealed class LyricsBulkService : ILyricsBulkService
     /// <summary>Test seam: the gates' clock and wait.</summary>
     internal Func<DateTime>? Clock { get; init; }
     internal Func<TimeSpan, CancellationToken, Task>? Delay { get; init; }
+    /// <summary>Test seam: what each song has now, sidecars included (reads the folders).</summary>
+    internal Func<IReadOnlyList<Track>, CancellationToken, IReadOnlyList<LyricsFormat>> DetectFormats { get; init; }
+        = ExistingLyricsLoader.DetectFormats;
+    // One lock per song: two runs on the same song (the background lookup and Find Lyrics) save one at a time.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, object> _saveLocks = new();
     /// <summary>Retries of one song at one source after a busy answer.</summary>
     internal const int BusyRetries = 2;
 
@@ -139,7 +151,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
 
         // What each song has now, sidecars included (a .elrc next to the file is word-synced even
         // when the store holds nothing) — read off the caller's thread, once for the whole list.
-        var formats = await Task.Run(() => ExistingLyricsLoader.DetectFormats(tracks, ct), ct).ConfigureAwait(false);
+        var formats = await Task.Run(() => DetectFormats(tracks, ct), ct).ConfigureAwait(false);
 
         var gate = new SemaphoreSlim(2, 2);
         var work = tracks.Select(async (track, i) =>
@@ -193,9 +205,14 @@ public sealed class LyricsBulkService : ILyricsBulkService
                             finds.Add((i, new LyricsBulkFind(track, kept, bestSource, rank, have)));
                             outcome = rank >= LyricsSearchSelector.WordSyncedRank ? "found word-synced" : rank >= 2 ? "found synced" : "found plain";
                         }
+                        else if (Save(track, best, found, have, preferred, embed) is not { } r)
+                        {
+                            // Another run saved something at least as rich meanwhile.
+                            Interlocked.Increment(ref skipped);
+                            outcome = "nothing better";
+                        }
                         else
                         {
-                            var r = Save(track, best, found, have, preferred, embed);
                             if (r.KeptOwn) Interlocked.Increment(ref keptOwn);
                             if (have > 0) Interlocked.Increment(ref upgraded);
                             if (r.Synced) Interlocked.Increment(ref synced);
@@ -261,7 +278,11 @@ public sealed class LyricsBulkService : ILyricsBulkService
                 try
                 {
                     // The find is already the preferred type: reducing it again changes nothing.
-                    var r = Save(f.Track, f.Result, f.Rank, f.HadRank, preferred, embed);
+                    if (Save(f.Track, f.Result, f.Rank, f.HadRank, preferred, embed) is not { } r)
+                    {
+                        progress?.Report(new LyricsBulkProgress(i + 1, finds.Count, f.Track.Title ?? string.Empty, "nothing better") { TrackId = f.Track.Id });
+                        continue;
+                    }
                     if (r.KeptOwn) keptOwn++;
                     if (f.HadRank > 0) upgraded++;
                     if (r.Synced) synced++;
@@ -293,10 +314,20 @@ public sealed class LyricsBulkService : ILyricsBulkService
 
     /// <summary>Saves <paramref name="best"/> (format <paramref name="found"/>) for a song that had format
     /// <paramref name="have"/>, reduced to the preferred type, through <see cref="LyricsWriter"/> (so per
-    /// Settings ▸ Lyrics ▸ Save lyrics to, never over the user's own lyrics file).</summary>
-    private (string Outcome, bool Synced, bool Word, bool KeptOwn) Save(
+    /// Settings ▸ Lyrics ▸ Save lyrics to, never over the user's own lyrics file). Null when the song
+    /// meanwhile holds something at least as rich (another run on it saved first): nothing is written.</summary>
+    private (string Outcome, bool Synced, bool Word, bool KeptOwn)? Save(
         Track track, LrcLibResult best, int found, int have, LyricsPreferredType preferred, bool embed)
     {
+        lock (_saveLocks.GetOrAdd(track.Id, _ => new object()))
+            return SaveLocked(track, best, found, have, preferred, embed);
+    }
+
+    private (string Outcome, bool Synced, bool Word, bool KeptOwn)? SaveLocked(
+        Track track, LrcLibResult best, int found, int have, LyricsPreferredType preferred, bool embed)
+    {
+        // "have" was read when this run started; a run that saved this song since has changed the row.
+        if (found <= RowRank(track)) return null;
         var kept = ViewModels.LyricsViewModel.ApplyPreferredType(best, preferred);
         var syncedText = SyncedToWrite(kept);
         var saved = _writer.SaveDetailed(track, kept.PlainLyrics, syncedText, embed, replaceForeignSidecar: false);
@@ -324,6 +355,18 @@ public sealed class LyricsBulkService : ILyricsBulkService
             return found >= LyricsSearchSelector.WordSyncedRank && preferred == LyricsPreferredType.WordSynced
                 ? LyricsSearchSelector.WordSyncedRank : 2;
         return 1;
+    }
+
+    /// <summary>The song's rank from its library row alone (no file read).</summary>
+    private static int RowRank(Track track) => Rank(LyricsFormatDetector.Detect(track.Lyrics, track.SyncedLyrics));
+
+    public IReadOnlyList<Track> WithoutRecentLookups(IReadOnlyList<Track> tracks)
+    {
+        var ledger = new BulkRunLedger(_ledgerPath, Clock);
+        // A run ranks a song by its sidecar when it has a timed one (always rank 2 or 3), else by the
+        // row: so min(row, 2) never exceeds the run's rank, and the ledger can only skip here what it
+        // would skip there (an entry counts when its rank is at most the song's).
+        return tracks.Where(t => !ledger.CheckedRecently(t.Id, Math.Min(RowRank(t), 2))).ToList();
     }
 
     private static int Rank(LyricsFormat f) => f switch
