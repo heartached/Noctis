@@ -272,10 +272,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Ouvrir les fichiers audio avec Noctis</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>Ajouter des Noctis à la liste Open-with de Windows et aux applications par défaut pour les formats qu'il joue.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>Enregistrer</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -428,10 +424,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Séparateurs du tag artiste</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>Texte qui divise un tag artiste en plusieurs. Retirez-en un pour garder des noms comme &quot;Simon &amp; Garfunkel&quot; tout.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Reset" xml:space="preserve">
     <value>Réinitialiser</value>
     <comment>Content in SettingsView.axaml</comment>
@@ -494,14 +486,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.AutoInstallUpdates" xml:space="preserve">
     <value>Mise à jour automatique</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AutoInstallUpdatesCaption" xml:space="preserve">
-    <value>Télécharger les nouvelles versions en arrière-plan et les installer la prochaine fois que vous ouvrirez Noctis. La lecture n'est jamais interrompue</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve">
-    <value>Télécharger de nouvelles versions en arrière-plan. Cliquez sur Installer et Redémarrer lorsque vous êtes prêt à finir.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Postpone" xml:space="preserve">
@@ -676,17 +660,9 @@ Deezer et TIDAL : collez le lien.</value>
     <value>L'accent suit les pochettes d'album</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>Rappelez l'accent de la couverture de jeu. Votre accent choisi revient lorsque rien ne joue.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve">
     <value>Couleur d'accentuation sur les noms d'artiste et d'album</value>
     <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>Les noms d'artiste, d'album et de genre dans les listes de lecture, les chansons et le lecteur prennent la couleur de l'accent.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} chansons</value>
@@ -710,10 +686,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>BÊTA</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>Geler la fenêtre, la barre latérale, les paramètres et la barre de lecture avec des surfaces de verre transparentes et floues.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -936,10 +908,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Largeur de l'îlot de lecture</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>Plus large donne à la barre de recherche plus de place. Vous pouvez également faire glisser les bords de l'île. Double-cliquez sur le bouton pour réinitialiser.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>Plus étroit</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -974,10 +942,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>Arrière-plan fluide des paroles</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>La dérive déplace le couvercle et les impulsions avec le rythme. Kawarp le fait fondre dans un flux liquide lent. Les styles de plugin apparaissent également ici.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -1148,10 +1112,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Opacité minimale de la ligne</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Gardez toutes les lignes lyriques légèrement visibles afin que vous puissiez cliquer sur n'importe quelle ligne pour y sauter. 0% de lignes cachées loin de la ligne actuelle.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Joindre les mots découpés</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1162,10 +1122,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>Opacité de la barre de lecture</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>L'opacité du fond de la barre de lecture.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1256,10 +1212,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Mode exclusif</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>Sortie Bit-perfect qui contourne le mixeur Windows. Les autres applications sont silencieuses et les transitions sont désactivées.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>Analyser le tempo et la tonalité</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1270,10 +1222,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>Enregistrer l'analyse dans les tags du fichier</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>Écrit le BPM et la clé dans les balises du fichier. Cela modifie vos fichiers.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1350,10 +1298,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>Ajustez le volume à partir des tags ReplayGain. Scannez les pistes par clic droit.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1754,10 +1698,6 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>Raccourcis clavier</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>Cliquez sur une touche pour la modifier. Esc annule, Backspace unbinds. Les touches Media fonctionnent toujours.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6344,4 +6284,5 @@ Deezer et TIDAL : collez le lien.</value>
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
