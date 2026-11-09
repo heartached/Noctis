@@ -440,7 +440,69 @@ public class AlbumGroupingToggle193Tests : IDisposable
     }
 
     [Fact]
-    public async Task OlderBuild_GroupIntoOneAlbumWithAFailedWrite_IsFoundByTheOneTimeCheck_AndWritten()
+    public async Task UnwrittenChangeCheck_AnOrdinaryScannedLibrary_MarksNothing_AndWritesNothing()
+    {
+        // Every normalisation the scan applies to Album / Album Artist must read back the same
+        // through ReadTrackMetadata + ComputeAlbumId, or Save to Files Now would rewrite songs
+        // nobody changed.
+        void Compilation(string path)
+        {
+            using var f = TagLib.File.Create(path);
+            ExtendedTagIO.WriteIsCompilation(f, true);
+            f.Save();
+        }
+        var files = new List<string>
+        {
+            // Album artist absent: the first performer stands in.
+            WriteMp3(Path.Combine("NoAA", "01.mp3"), "Plain Album", new[] { "Solo Artist" }),
+            // Several album artists: two values, and one value with a separator.
+            WriteMp3(Path.Combine("Multi", "01.mp3"), "Duets", new[] { "A" }, new[] { "Artist A", "Artist B" }),
+            WriteMp3(Path.Combine("Multi", "02.mp3"), "Duets", new[] { "B" }, new[] { "Artist A", "Artist B" }),
+            WriteMp3(Path.Combine("Semi", "01.mp3"), "Semi Album", new[] { "C" }, new[] { "Artist C; Artist D" }),
+            WriteMp3(Path.Combine("Comma", "01.mp3"), "Comma Album", new[] { "C" }, new[] { "Artist C, Artist D" }),
+            WriteMp3(Path.Combine("Feat", "01.mp3"), "Feat Album", new[] { "Lead feat. Guest" }, new[] { "Lead feat. Guest" }),
+            // Spaces around, and case differing between songs of one album.
+            WriteMp3(Path.Combine("Spaces", "01.mp3"), "  Spaced Album  ", new[] { "S" }, new[] { "  Spaced Artist " }),
+            WriteMp3(Path.Combine("Spaces", "02.mp3"), "spaced album", new[] { "S" }, new[] { "spaced artist" }),
+            // Compilations: flagged without album artist (Various Artists), and tagged so.
+            WriteMp3(Path.Combine("Comp", "01.mp3"), "Hits", new[] { "One" }),
+            WriteMp3(Path.Combine("Comp", "02.mp3"), "Hits", new[] { "Two" }),
+            WriteMp3(Path.Combine("VA", "01.mp3"), "Mix", new[] { "One" }, new[] { Track.VariousArtists }),
+            // #178 split albums: untagged, a disc subfolder, and a partly tagged album.
+            WriteMp3(Path.Combine("OST", "CD1", "01.mp3"), "Soundtrack", new[] { "Singer A" }),
+            WriteMp3(Path.Combine("OST", "CD2", "01.mp3"), "Soundtrack", new[] { "Singer B" }),
+            WriteMp3(Path.Combine("Part", "01.mp3"), "Partly", new[] { "P1" }, new[] { "Composer" }),
+            WriteMp3(Path.Combine("Part", "02.mp3"), "Partly", new[] { "P2" }),
+            // No album tag (folder name), no artist at all (folder artist), accents.
+            WriteMp3(Path.Combine("Loose Folder", "a.mp3"), null, new[] { "Ada" }),
+            WriteMp3(Path.Combine("Folder Artist", "Folder Album", "a.mp3"), null, Array.Empty<string>()),
+            WriteMp3(Path.Combine("Accents", "01.mp3"), "Café Déjà Vu", new[] { "Beyoncé" }, new[] { "Beyoncé" }),
+        };
+        Compilation(files[8]);
+        Compilation(files[9]);
+        Compilation(files[10]);
+        files.Add(WriteFlac(Path.Combine("FlacTagged", "01.flac"), "Flac Album", "Flac Artist"));
+        files.Add(WriteFlac(Path.Combine("FlacSplit", "01.flac"), "Malik", "Sushin Shyam, Anwar Ali"));
+        files.Add(WriteFlac(Path.Combine("FlacSplit", "02.flac"), "Malik", "Sushin Shyam"));
+        var (library, persistence) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != files.Count) Assert.Fail(ScanMissReport.Describe(library, Music));
+        // The check has songs to look at: tagged, unchanged files whose tags it reads.
+        Assert.True(library.AllTracks.Count(t => t.AlbumArtistFromTag == true && !t.AlbumFromFolder
+            && File.GetLastWriteTimeUtc(t.FilePath) == t.LastModified) >= 10);
+        var stamps = files.ToDictionary(f => f, File.GetLastWriteTimeUtc);
+
+        Assert.Equal(0, await library.MarkUnwrittenAlbumChangesAsync());
+        // Also as the next launch reads library.json back.
+        var reloaded = await RestartAsync(persistence);
+        Assert.Equal(0, await reloaded.MarkUnwrittenAlbumChangesAsync());
+
+        Assert.All(reloaded.AllTracks, t => Assert.False(t.AlbumGroupingUnwritten));
+        foreach (var (file, stamp) in stamps) Assert.Equal(stamp, File.GetLastWriteTimeUtc(file));
+    }
+
+    [Fact]
+    public async Task OlderBuild_GroupIntoOneAlbumWithAFailedWrite_IsFoundBySaveToFilesNow_AndWritten()
     {
         // As 1.6.8 / 1.6.9 left library.json after Group into One Album could not write a file:
         // the new album and AlbumArtistFromTag = true in the library, the old tags in the file,
@@ -453,7 +515,6 @@ public class AlbumGroupingToggle193Tests : IDisposable
         var (library, persistence) = await NewLibraryAsync();
         await library.ScanAsync(new[] { Music });
         if (library.AllTracks.Count != 5) Assert.Fail(ScanMissReport.Describe(library, Music));
-        await library.AlbumGroupingFileCheck;
         Track Song(string path) => library.AllTracks.Single(t => t.FilePath == path);
         var g = Song(grouped);
         g.Album = "Prem Poojari";
@@ -466,21 +527,21 @@ public class AlbumGroupingToggle193Tests : IDisposable
         r.AlbumId = Track.ComputeAlbumId("Kite", "New Name");
         File.SetLastWriteTimeUtc(retagged, r.LastModified.AddMinutes(5));
         await library.SaveAsync();
-        await persistence.UpdateSettingsAsync(s => s.AlbumGroupingFilesChecked = false); // an older build's settings
         var stamps = new[] { written, untouched, folderAlbum }.ToDictionary(f => f, File.GetLastWriteTimeUtc);
 
         var reloaded = await RestartAsync(persistence);
-        await reloaded.AlbumGroupingFileCheck;
+        Assert.Equal("Prem Poojari (OST)", ReadAlbum(grouped)); // startup leaves unrecorded ones alone
 
+        var result = await reloaded.SaveAlbumGroupingToFilesAsync();
+
+        Assert.Equal(1, result.Grouped);
+        Assert.Empty(result.UnwrittenFiles);
         Assert.Equal(new[] { "Ouseppachan" }, ReadAlbumArtists(grouped));
         Assert.Equal("Prem Poojari", ReadAlbum(grouped));
         Assert.All(reloaded.AllTracks, t => Assert.False(t.AlbumGroupingUnwritten));
         Assert.Equal("Old Name", ReadAlbum(retagged)); // not overwritten
         foreach (var (file, stamp) in stamps) Assert.Equal(stamp, File.GetLastWriteTimeUtc(file)); // never touched
-        Assert.True((await persistence.LoadSettingsAsync()).AlbumGroupingFilesChecked);
-
-        // Once per library; Save to Files Now looks again on demand.
-        Assert.Equal(0, (await reloaded.SaveAlbumGroupingToFilesAsync()).Grouped);
+        Assert.Equal(0, (await reloaded.SaveAlbumGroupingToFilesAsync()).Grouped); // nothing left
     }
 
     // ── FLAC (#190: the reporter copies FLAC and MP3) ──

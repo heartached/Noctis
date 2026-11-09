@@ -2141,9 +2141,6 @@ public class LibraryService : ILibraryService
                     // missing or held open then, or a pass cut short by closing the app) are
                     // tried again. A no-op once every grouped file names its album.
                     await ResumeAlbumGroupingWritesAsync();
-                    // Groupings 1.6.8 and 1.6.9 failed to write kept no record: found by one
-                    // read of the tags, once per library, on its own task (it reads files).
-                    AlbumGroupingFileCheck = Task.Run(CheckAlbumGroupingFilesOnceAsync);
 
                     // GitHub #187: with "Show artists as written in the tags" on, songs indexed
                     // before the tag's own credit was kept get it re-read once.
@@ -2725,32 +2722,10 @@ public class LibraryService : ILibraryService
         // or the pass below would not know they were grouped.
         if (_albumGroupingEnabled && await ResolveUngroupedAlbumsAsync(ct) > 0)
             await RebuildAndPersistAlbumKeysAsync(forceSave: true);
-        // Groupings an older build failed to write left no record: look for them each time.
+        // Groupings an older build failed to write left no record: looked for here only, when
+        // the user asks (it reads the tags of most files), never at startup.
         await MarkUnwrittenAlbumChangesAsync(ct);
         return await WriteAlbumGroupingToFilesAsync(ct);
-    }
-
-    /// <summary>The startup check for groupings older builds failed to write (tests await it).</summary>
-    internal Task AlbumGroupingFileCheck { get; private set; } = Task.CompletedTask;
-
-    /// <summary>GitHub #201: <see cref="MarkUnwrittenAlbumChangesAsync"/> once per library
-    /// (AppSettings.AlbumGroupingFilesChecked, recorded only when it ran to the end, so a pass
-    /// cut short runs again next launch), then writes what it found.</summary>
-    internal async Task CheckAlbumGroupingFilesOnceAsync()
-    {
-        try
-        {
-            if ((await _persistence.LoadSettingsAsync()).AlbumGroupingFilesChecked) return;
-            var token = _shutdownCts.Token;
-            await MarkUnwrittenAlbumChangesAsync(token);
-            if (token.IsCancellationRequested) return;
-            await _persistence.UpdateSettingsAsync(s => s.AlbumGroupingFilesChecked = true);
-            await ResumeAlbumGroupingWritesAsync();
-        }
-        catch (Exception ex)
-        {
-            DebugLog.Write("Library", $"Album grouping file check failed: {ex.Message}");
-        }
     }
 
     /// <summary>
