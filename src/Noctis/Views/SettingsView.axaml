@@ -3491,6 +3491,17 @@
                                               IsChecked="{Binding PlaybackBarShowFavorite}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Discord "Chapter Button in Player Island": audiobook chapters one click away. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.ChaptersButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ChaptersButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.ChaptersButton}"
+                                              IsChecked="{Binding PlaybackBarShowChapters}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <!-- GitHub #186: Quick Add to Playlist (up to three picked playlists) and Move to
                          Trash (into a folder picked here, or the Recycle Bin / Trash), both off by default. -->
                     <Grid ColumnDefinitions="*,Auto">

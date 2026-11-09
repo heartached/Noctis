@@ -909,6 +909,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #186: a Quick Add to Playlist button in the island's right cluster (off by default).</summary>
     public bool PlaybackBarShowQuickPlaylist { get; set; }
 
+    /// <summary>Discord "Chapter Button in Player Island": a Chapters button in the island's right
+    /// cluster, opening the "…" menu's chapter list; shown only while the track has chapters.
+    /// Off by default, like the #186 buttons.</summary>
+    public bool PlaybackBarShowChapters { get; set; }
+
     /// <summary>GitHub #186: the quick playlists' ids, one per slot (at most three;
     /// <see cref="Guid.Empty"/> = an empty slot).</summary>
     public List<Guid> PlaybackBarQuickPlaylistIds { get; set; } = new();

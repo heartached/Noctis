@@ -1195,6 +1195,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _playbackBarTrashFolder = string.Empty;
     /// <summary>GitHub #186: the island's Quick Add to Playlist button (off by default).</summary>
     [ObservableProperty] private bool _playbackBarShowQuickPlaylist;
+    /// <summary>Discord: the island's Chapters button, for audiobooks (off by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowChapters;
 
     /// <summary>The Trash folder row's status: a set folder that's gone falls back to the bin.</summary>
     public bool ShowTrashFolderMissingHint =>
@@ -3595,6 +3597,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowTrash = _settings.PlaybackBarShowTrash;
             PlaybackBarTrashFolder = _settings.PlaybackBarTrashFolder ?? string.Empty;
             PlaybackBarShowQuickPlaylist = _settings.PlaybackBarShowQuickPlaylist;
+            PlaybackBarShowChapters = _settings.PlaybackBarShowChapters;
             SetQuickPlaylistSlots(_settings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
@@ -4145,6 +4148,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowTrash = PlaybackBarShowTrash;
         _settings.PlaybackBarTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _settings.PlaybackBarShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
+        _settings.PlaybackBarShowChapters = PlaybackBarShowChapters;
         _settings.PlaybackBarQuickPlaylistIds = _quickPlaylistSlots.ToList();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
@@ -4519,6 +4523,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowTrash = PlaybackBarShowTrash;
         _player.IslandTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
+        _player.IslandShowChapters = PlaybackBarShowChapters;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
@@ -6070,6 +6075,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPlaybackBarTrashFolderChanged(string value)
     {
         OnPropertyChanged(nameof(ShowTrashFolderMissingHint));
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowChaptersChanged(bool value)
+    {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -8300,6 +8311,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowTrash = defaultSettings.PlaybackBarShowTrash;
             PlaybackBarTrashFolder = defaultSettings.PlaybackBarTrashFolder;
             PlaybackBarShowQuickPlaylist = defaultSettings.PlaybackBarShowQuickPlaylist;
+            PlaybackBarShowChapters = defaultSettings.PlaybackBarShowChapters;
             SetQuickPlaylistSlots(defaultSettings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;

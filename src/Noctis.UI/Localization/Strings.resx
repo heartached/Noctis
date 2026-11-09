@@ -329,6 +329,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>None</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>Move to Trash</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Removes the playing song in one click. It goes to the Trash folder below, or the Recycle Bin if none is set.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChaptersButton" xml:space="preserve"><value>Chapters</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
+  <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Opens the chapter list. Shows only while an audiobook with chapters plays.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Trash folder</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Pick a folder outside your music folders, or the next scan adds the songs back.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Not set: the Recycle Bin / Trash</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>

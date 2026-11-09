@@ -195,6 +195,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>The current file's chapters sorted by start; empty when it has none.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasChapters))]
+    [NotifyPropertyChangedFor(nameof(IslandChaptersButtonVisible))]
     private IReadOnlyList<TrackChapter> _chapters = Array.Empty<TrackChapter>();
 
     /// <summary>Two or more chapters: something to jump between (a lone chapter is the whole file).</summary>

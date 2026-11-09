@@ -329,6 +329,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Нет</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>Переместить в корзину</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Кнопка справа: одним нажатием, без вопросов, убирает текущую песню из медиатеки. Песня переносится в папку корзины ниже, а если она не задана, в корзину системы.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChaptersButton" xml:space="preserve"><value>Главы</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
+  <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Открывает список глав. Видна, только пока играет аудиокнига с главами.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Папка корзины</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Куда кнопка переносит песни, чтобы их можно было просмотреть позже. Выберите папку вне ваших музыкальных папок, иначе следующее сканирование добавит их снова.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Не задана: корзина системы</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>

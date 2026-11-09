@@ -328,6 +328,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Keine</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>In den Papierkorb</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Eine Schaltfläche rechts, die den laufenden Song mit einem Klick und ohne Rückfrage aus der Bibliothek nimmt. Er kommt in den Papierkorb-Ordner unten oder, wenn keiner gesetzt ist, in den Papierkorb.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChaptersButton" xml:space="preserve"><value>Kapitel</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
+  <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Öffnet die Kapitelliste. Nur sichtbar, während ein Hörbuch mit Kapiteln läuft.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Papierkorb-Ordner</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Hier landen die Songs, damit du sie später durchsehen kannst. Wähle einen Ordner außerhalb deiner Musikordner, sonst fügt der nächste Scan sie wieder hinzu.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Nicht gesetzt: der Papierkorb</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>

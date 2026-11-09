@@ -29,6 +29,15 @@ public partial class PlayerViewModel
     /// <summary>The Quick Add to Playlist button in the right cluster (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowQuickPlaylist;
 
+    /// <summary>Discord "Chapter Button in Player Island": the Chapters button in the right
+    /// cluster (Settings → Player). It shows only while the track has chapters.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IslandChaptersButtonVisible))]
+    private bool _islandShowChapters;
+
+    /// <summary>The island's Chapters button is on screen: switched on and the track has chapters.</summary>
+    public bool IslandChaptersButtonVisible => IslandShowChapters && HasChapters;
+
     /// <summary>The quick playlists' ids, one per slot (<see cref="Guid.Empty"/> = empty).</summary>
     [ObservableProperty] private IReadOnlyList<Guid> _islandQuickPlaylistIds = Array.Empty<Guid>();
 
