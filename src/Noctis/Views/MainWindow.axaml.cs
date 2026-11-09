@@ -2332,11 +2332,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         return true;
     }
 
-    /// <summary>The queue panel's row selection, only while focus is in the panel.</summary>
+    /// <summary>The queue panel's row selection, only while focus is in the panel. Its indices
+    /// are rows of QueueRows (GitHub #134: played songs and the playing one come first with
+    /// Keep Played Songs on), not of Up Next: read against Up Next, rows past the played ones
+    /// mapped to later songs or to nothing, and the shortcut fell back to the playing track
+    /// (GitHub #206).</summary>
     private IReadOnlyList<Track>? QueueSelectedTracks(MainWindowViewModel vm) =>
         _queueSelection is { Count: > 0 } selection && IsFocusInQueuePanel()
-            ? TrackSelection.FromIndices(vm.Player.UpNext, selection.Snapshot())
+            ? QueueSelectionTracks(vm.Player, selection)
             : null;
+
+    internal static List<Track> QueueSelectionTracks(PlayerViewModel player, QueueRowSelection<Track> selection) =>
+        TrackSelection.FromIndices(player.QueueRows, selection.Snapshot());
 
     /// <summary>The Ctrl-selection on the page currently shown, unless the Settings sheet
     /// covers it.</summary>
