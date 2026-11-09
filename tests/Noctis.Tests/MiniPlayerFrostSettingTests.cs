@@ -436,6 +436,41 @@ public class MiniPlayerFrostSettingTests : IDisposable
         Assert.Equal((-3, -3, 184, 184, 186, true), px[1]);
     }
 
+    /// <summary>Discord report: at Interface Size 150% the frosted tray menu was cut to its
+    /// 100% outline (the region ignored the UiScaleHost's layout transform), hiding the last
+    /// rows. The outline must be the card as drawn: scaled size and corner radius.</summary>
+    [AvaloniaFact]
+    public void TrayMenu_CardShape_FollowsInterfaceSize()
+    {
+        var card = new MenuFlyoutPresenter { ItemsSource = new[] { "Open Noctis", "Pause", "Quit" } };
+        var w = new Window
+        {
+            SizeToContent = SizeToContent.WidthAndHeight,
+            WindowDecorations = WindowDecorations.None,
+            Content = new LayoutTransformControl
+            {
+                LayoutTransform = new ScaleTransform(1.5, 1.5),
+                Child = card,
+            },
+        };
+        w.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            var shape = Assert.IsType<MiniPlayerWindow.RegionShape>(TrayMenuFrost.CardShape(card));
+            Assert.Equal(card.Bounds.Width * 1.5, shape.Rect.Width, 3);
+            Assert.Equal(card.Bounds.Height * 1.5, shape.Rect.Height, 3);
+            Assert.Equal(card.CornerRadius.TopLeft * 1.5, shape.Radius, 3);
+            // The scaled card fills the window it sized (layout rounding: within a DIP or so;
+            // the unscaled outline stopped a third short).
+            Assert.InRange(shape.Rect.Bottom, w.ClientSize.Height - 1.5, w.ClientSize.Height + 1.5);
+        }
+        finally
+        {
+            w.Close();
+        }
+    }
+
     /// <summary>GitHub #150: the tray icon's right-click menu is Avalonia's own transparent
     /// window (TrayPopupRoot, Name "AvaloniaTrayPopupRoot_…", a MenuFlyoutPresenter as its
     /// content). While Liquid Glass is on it gets the OS blur and a translucent card; off, or
@@ -444,6 +479,8 @@ public class MiniPlayerFrostSettingTests : IDisposable
     public void TrayMenu_IsFrostedOnlyWhileGlassIsOn()
     {
         var glass = true;
+        var effects = TrayMenuFrost.TransparencyEffectsOn;
+        TrayMenuFrost.TransparencyEffectsOn = () => true; // this machine's setting must not decide
         TrayMenuFrost.Register(() => glass, () => Color.Parse("#202030"));
         Window Open(string name)
         {
@@ -464,6 +501,10 @@ public class MiniPlayerFrostSettingTests : IDisposable
         var other = Open("SomeOtherWindow");
         glass = false;
         var trayNoGlass = Open(TrayMenuFrost.TrayPopupNamePrefix + "Noctis");
+        // Windows Transparency effects off: DWM draws the blur black, so no frost either.
+        glass = true;
+        TrayMenuFrost.TransparencyEffectsOn = () => false;
+        var trayNoEffects = Open(TrayMenuFrost.TrayPopupNamePrefix + "Noctis");
         try
         {
             var card = (MenuFlyoutPresenter)tray.Content!;
@@ -480,13 +521,17 @@ public class MiniPlayerFrostSettingTests : IDisposable
             }
             Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, other.TransparencyLevelHint);
             Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, trayNoGlass.TransparencyLevelHint);
+            Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, trayNoEffects.TransparencyLevelHint);
+            Assert.Null(((MenuFlyoutPresenter)trayNoEffects.Content!).Background as ISolidColorBrush is { Opacity: TrayMenuFrost.CardTintOpacity } ? "frosted" : null);
         }
         finally
         {
             glass = false;
+            TrayMenuFrost.TransparencyEffectsOn = effects;
             tray.Close();
             other.Close();
             trayNoGlass.Close();
+            trayNoEffects.Close();
         }
     }
 }

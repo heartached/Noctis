@@ -1328,7 +1328,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             // The menu above opens in Avalonia's own transparent window; always frost it
             // (GitHub #150 — owner wants it frosted, not only with Liquid Glass), tinted with
-            // the theme's menu colour. Windows draws it solid when Transparency effects are off.
+            // the theme's menu colour. With Windows Transparency effects off it stays unfrosted
+            // (TrayMenuFrost.TransparencyEffectsOn): DWM drew the blur black at the corners.
             TrayMenuFrost.Register(() => true,
                 () => ResolveThemeColor("AppSidebarBackground", Color.Parse("#141414")));
 
