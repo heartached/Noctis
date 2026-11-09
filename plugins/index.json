@@ -22,11 +22,11 @@
       "author": "Noctis",
       "description": "Spin a reel of your albums and let it pick what to play.",
       "version": "1.0.1",
-      "minAppVersion": "1.6.6",
+      "minAppVersion": "1.6.9",
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-albumroulette-v1.0.1/Noctis.Plugins.AlbumRoulette-1.0.1.zip",
-      "sha256": "647eb078ac06f4c0c776049b0c23d5e0d693e37f227fada004d425f1e00750d1",
+      "sha256": "a9190ea60db79eda763e205dd206535605f36ebdbab1ae2362f64033c94ace89",
       "size": 52986,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumRoulette",
       "icon": "Noctis.Plugins.AlbumRoulette/icon.png"
