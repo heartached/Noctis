@@ -673,7 +673,7 @@ public class AlbumRoulettePluginTests
 
         using var box = new PluginSandbox();
         box.Settings.CommunityPluginsEnabled = true;
-        var host = box.NewHost(library: new FakeLibraryService(), appVersion: "1.6.6");
+        var host = box.NewHost(library: new FakeLibraryService(), appVersion: "1.6.9");
         host.LoadAll();
         var result = host.InstallPackage(zip, allowUpdate: false);
         Assert.Equal(PluginInstallOutcome.Installed, result.Outcome);
