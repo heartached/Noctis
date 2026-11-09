@@ -138,11 +138,11 @@
   <!-- Audio playback via libVLC -->
   <ItemGroup>
     <PackageReference Include="LibVLCSharp" Version="3.10.1" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <!-- macOS gets NO libvlc NuGet on purpose: VideoLAN.LibVLC.Mac's 3.0.21 pin
          never existed on nuget.org, so restore floated to the abandoned 2019-era
          3.1.3.1 payload (x86_64-only, no plugins, pre-3.0.8 security state).
-         The CI .app packaging step bundles official VLC 3.0.23 universal dylibs
+         The CI .app packaging step bundles official VLC 3.0.24 universal dylibs
          + plugins at Contents/MacOS/libvlc instead; VlcAudioPlayer probes that
          path (before any user-installed VLC.app). AUDIT H7/H8. -->
     <!-- WASAPI output for click-free per-sample-gain volume (NOCTIS_WASAPI=1,

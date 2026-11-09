@@ -236,14 +236,14 @@ jobs:
           # The VideoLAN.LibVLC.Mac NuGet was dropped: its 3.0.21 pin never
           # existed on nuget.org, so restore silently floated to the abandoned
           # 2019-era 3.1.3.1 payload (x86_64-only, no plugins). Bundle the
-          # official universal (arm64+x86_64) VLC 3.0.23 dylibs + plugins at
+          # official universal (arm64+x86_64) VLC 3.0.24 dylibs + plugins at
           # Contents/MacOS/libvlc/{lib,plugins} — the same sibling layout as
           # VLC.app, which the plugins' @loader_path/../lib install names
           # require. VlcAudioPlayer probes this path before a user-installed
           # VLC.app. Pinned + SHA-256-verified like the ffmpeg bundles above;
           # any failure FAILS the build.
-          curl -sSL https://download.videolan.org/pub/videolan/vlc/3.0.23/macosx/vlc-3.0.23-universal.dmg -o vlc.dmg
-          echo "56ee657c3aaf5c71b4ab7d6e4f4a77f6eca54633e0bf42a93b8116eb1d1f6ec9  vlc.dmg" | shasum -a 256 -c -
+          curl -sSL https://download.videolan.org/pub/videolan/vlc/3.0.24/macosx/vlc-3.0.24-universal.dmg -o vlc.dmg
+          echo "2c8e89f7f42e53c2fb0e87b6dfa39b49f1364b25080aaa2e476ac74c0d7beb3c  vlc.dmg" | shasum -a 256 -c -
           VLC_MOUNT=$(hdiutil attach vlc.dmg -nobrowse -readonly | awk -F$'\t' '/\/Volumes\//{print $NF}')
           mkdir -p "$APP/Contents/MacOS/libvlc"
           cp -R "$VLC_MOUNT/VLC.app/Contents/MacOS/lib" "$APP/Contents/MacOS/libvlc/lib"
