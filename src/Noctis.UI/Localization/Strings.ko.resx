@@ -188,10 +188,6 @@
     <value>오디오 파일을 Noctis로 열기</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>Noctis가 재생하는 형식에 대해 Windows의 연결 프로그램 목록과 기본 앱에 Noctis를 추가합니다.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>등록</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -338,10 +334,6 @@
   </data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve">
     <value>아티스트 태그 구분자</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>하나의 아티스트 태그를 여러 개로 나누는 문자열. "Simon &amp; Garfunkel" 같은 이름을 그대로 두려면 해당 항목을 제거하세요.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -548,10 +540,6 @@
     <value>강조색을 앨범 아트에 맞춤</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>재생 중인 커버에서 강조색을 가져옵니다. 재생 중인 곡이 없으면 선택한 강조색으로 돌아갑니다.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>강조 색상</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -570,10 +558,6 @@
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>베타</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>창, 사이드바, 설정, 재생 바를 반투명 흐림 유리 표면으로 꾸밉니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -772,10 +756,6 @@
     <value>플레이어 아일랜드 너비</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>넓을수록 탐색 바 공간이 커집니다. 아일랜드 가장자리를 드래그할 수도 있습니다. 손잡이를 더블클릭하면 초기화됩니다.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>좁게</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -810,10 +790,6 @@
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>흐르는 가사 배경</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>드리프트는 커버를 움직이며 비트에 맞춰 맥동합니다. Kawarp는 커버를 느린 액체 흐름으로 녹입니다. 플러그인 스타일도 여기에 표시됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -976,10 +952,6 @@
     <value>최소 줄 불투명도</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>모든 가사 줄을 희미하게 보이게 해 아무 줄이나 클릭해 이동할 수 있게 합니다. 0%는 현재 줄에서 먼 줄을 숨깁니다.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>나뉜 단어 합치기</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -990,10 +962,6 @@
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>재생 바 불투명도</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>재생 바 배경이 얼마나 진하게 보일지 설정합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1084,10 +1052,6 @@
     <value>독점 모드</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>Windows 믹서를 거치지 않는 비트 퍼펙트 출력. 다른 앱은 소리가 나지 않고 전환 효과가 꺼집니다.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>템포 및 키 분석</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1098,10 +1062,6 @@
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>분석 결과를 파일 태그에 저장</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>BPM과 키를 파일 태그에 기록합니다. 파일이 수정됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1178,10 +1138,6 @@
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>ReplayGain 태그로 음량을 조정합니다. 마우스 오른쪽 버튼 메뉴에서 트랙을 스캔하세요.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1582,10 +1538,6 @@
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>키보드 단축키</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>키를 클릭해 변경하세요. Esc는 취소, Backspace는 해제합니다. 미디어 키는 항상 작동합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6128,4 +6080,5 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
