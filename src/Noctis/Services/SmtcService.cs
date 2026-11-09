@@ -70,6 +70,10 @@ public sealed class SmtcService : IDisposable
             _smtc.IsEnabled = true;
             _smtc.ButtonPressed += OnButtonPressed;
             _smtc.PlaybackPositionChangeRequested += OnPositionChangeRequested;
+            // The Windows 11 media flyout always draws Shuffle/Repeat buttons; without
+            // these handlers a press did nothing and the buttons never lit (Discord report).
+            _smtc.ShuffleEnabledChangeRequested += OnShuffleChangeRequested;
+            _smtc.AutoRepeatModeChangeRequested += OnRepeatChangeRequested;
             _player.PropertyChanged += OnPlayerPropertyChanged;
             _player.Seeked += OnPlayerSeeked;
 
@@ -77,6 +81,7 @@ public sealed class SmtcService : IDisposable
             UpdatePlaybackStatus();
             UpdateMetadata();
             UpdateTimeline(force: true);
+            UpdateShuffleRepeat();
         }
         catch (Exception ex)
         {
@@ -106,6 +111,10 @@ public sealed class SmtcService : IDisposable
             case nameof(PlayerViewModel.Position):
             case nameof(PlayerViewModel.Duration):
                 UpdateTimeline();
+                break;
+            case nameof(PlayerViewModel.IsShuffleEnabled):
+            case nameof(PlayerViewModel.RepeatMode):
+                UpdateShuffleRepeat();
                 break;
         }
     }
@@ -184,6 +193,57 @@ public sealed class SmtcService : IDisposable
             var fraction = Math.Clamp(requested.Ticks / (double)duration.Ticks, 0.0, 1.0);
             _player.SeekToPositionCommand.Execute(fraction);
         });
+    }
+
+    /// <summary>Flyout Shuffle press. Goes through the same helper MPRIS uses
+    /// (the click command), so Up Next is reshuffled / restored like an in-app click.</summary>
+    private void OnShuffleChangeRequested(SystemMediaTransportControls sender, ShuffleEnabledChangeRequestedEventArgs args)
+    {
+        var requested = args.RequestedShuffleEnabled;
+        Dispatcher.UIThread.Post(() =>
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Smtc.Button", $"Shuffle requested={requested}");
+            MprisService.ApplyShuffle(_player, requested);
+            // A refused change (e.g. empty queue) must still snap the flyout back.
+            UpdateShuffleRepeat();
+        });
+    }
+
+    /// <summary>Flyout Repeat press: None / List / Track map onto Off / All / One.</summary>
+    private void OnRepeatChangeRequested(SystemMediaTransportControls sender, AutoRepeatModeChangeRequestedEventArgs args)
+    {
+        var requested = args.RequestedAutoRepeatMode;
+        Dispatcher.UIThread.Post(() =>
+        {
+            DebugLogger.Info(DebugLogger.Category.Playback, "Smtc.Button", $"Repeat requested={requested}");
+            MprisService.ApplyLoopStatus(_player, requested switch
+            {
+                MediaPlaybackAutoRepeatMode.Track => "Track",
+                MediaPlaybackAutoRepeatMode.List => "Playlist",
+                _ => "None",
+            });
+            UpdateShuffleRepeat();
+        });
+    }
+
+    private void UpdateShuffleRepeat()
+    {
+        var smtc = _smtc;
+        if (smtc == null) return;
+        try
+        {
+            smtc.ShuffleEnabled = _player.IsShuffleEnabled;
+            smtc.AutoRepeatMode = _player.RepeatMode switch
+            {
+                RepeatMode.One => MediaPlaybackAutoRepeatMode.Track,
+                RepeatMode.All => MediaPlaybackAutoRepeatMode.List,
+                _ => MediaPlaybackAutoRepeatMode.None,
+            };
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Playback, "Smtc.ShuffleRepeat", ex.Message);
+        }
     }
 
     private void UpdatePlaybackStatus()
@@ -288,6 +348,8 @@ public sealed class SmtcService : IDisposable
             {
                 _smtc.ButtonPressed -= OnButtonPressed;
                 _smtc.PlaybackPositionChangeRequested -= OnPositionChangeRequested;
+                _smtc.ShuffleEnabledChangeRequested -= OnShuffleChangeRequested;
+                _smtc.AutoRepeatModeChangeRequested -= OnRepeatChangeRequested;
                 _smtc.IsEnabled = false;
             }
             catch { /* best effort on shutdown */ }
