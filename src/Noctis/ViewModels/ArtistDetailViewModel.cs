@@ -139,8 +139,39 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [NotifyPropertyChangedFor(nameof(GenreFact))]
     [NotifyPropertyChangedFor(nameof(HasGenreFact))]
     [NotifyPropertyChangedFor(nameof(HasAboutFacts))]
+    [NotifyPropertyChangedFor(nameof(GenreFactLinks))]
     private string _genreKicker = string.Empty;
     public bool HasGenreKicker => GenreKicker.Length > 0;
+
+    /// <summary>The kicker's genre as the library tags it ("Hip-Hop"); empty when the kicker
+    /// came from MusicBrainz. Only a library genre opens a genre page (GitHub #220).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenKickerGenre))]
+    private string _kickerGenre = string.Empty;
+    public bool CanOpenKickerGenre => KickerGenre.Length > 0;
+
+    /// <summary>Every genre tag on the artist's songs (case-insensitive, as tagged), so a
+    /// MusicBrainz genre in the GENRE fact links to the library genre of the same name.</summary>
+    private HashSet<string> _libraryGenres = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The GENRE fact as links: each name opens its genre when the library has it.</summary>
+    public IReadOnlyList<GenreLink> GenreFactLinks => BuildGenreFactLinks(About, KickerGenre, _libraryGenres);
+
+    internal static IReadOnlyList<GenreLink> BuildGenreFactLinks(ArtistInfo? about, string kickerGenre, HashSet<string> libraryGenres)
+    {
+        if (about is { HasGenres: true })
+        {
+            var genres = about.Genres;
+            return genres
+                .Select((g, i) => new GenreLink(ArtistInfo.Capitalize(g),
+                    libraryGenres.TryGetValue(g.Trim(), out var tagged) ? tagged : null,
+                    i == genres.Count - 1))
+                .ToList();
+        }
+        if (kickerGenre.Length == 0) return Array.Empty<GenreLink>();
+        var title = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(kickerGenre.ToLowerInvariant());
+        return new[] { new GenreLink(title, kickerGenre, true) };
+    }
 
     /// <summary>The About card's GENRE fact: MusicBrainz's genres ("Pop rap · Alternative
     /// pop"), else the library's dominant tag in title case, else nothing.</summary>
@@ -347,6 +378,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [NotifyPropertyChangedFor(nameof(HasAboutFacts))]
     [NotifyPropertyChangedFor(nameof(GenreFact))]
     [NotifyPropertyChangedFor(nameof(HasGenreFact))]
+    [NotifyPropertyChangedFor(nameof(GenreFactLinks))]
     private ArtistInfo? _about;
     public bool HasAbout => About != null;
     /// <summary>True from page open until the web lookup settles; the card says so instead
@@ -427,6 +459,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>A Similar Artists tile for an artist in the library: open their page.</summary>
     public event EventHandler<string>? ArtistOpened;
     public event EventHandler<Track>? SearchLyricsRequested;
+    /// <summary>A genre link (hero kicker or GENRE fact) was clicked: open that genre (GitHub #220).</summary>
+    public event EventHandler<string>? GenreOpened;
 
     public ArtistDetailViewModel(
         string artistName,
@@ -560,7 +594,10 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>The most common non-empty genre tag across the artist's songs, upper-cased
     /// for the hero kicker; ties break alphabetically. Null when nothing is tagged.</summary>
-    internal static string? DominantGenre(IEnumerable<Track> songs)
+    internal static string? DominantGenre(IEnumerable<Track> songs) => DominantGenreName(songs)?.ToUpperInvariant();
+
+    /// <summary><see cref="DominantGenre"/> as tagged (the first spelling met), for opening the genre.</summary>
+    internal static string? DominantGenreName(IEnumerable<Track> songs)
     {
         // Each genre of a multi-genre song counts (GitHub #123 follow-up).
         var top = songs
@@ -569,7 +606,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             .OrderByDescending(g => g.Count())
             .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
-        return top?.Key.ToUpperInvariant();
+        return top?.Key;
     }
 
     /// <summary>Splits releases into the Albums tab (anything that is not a single, EP, live
@@ -669,7 +706,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         ReleaseCount = releases.Count;
         SongCount = songs.Count;
         TotalLengthDisplay = total.TotalHours >= 1 ? $"{(int)total.TotalHours}h {total.Minutes}m" : $"{(int)total.TotalMinutes}m";
-        GenreKicker = DominantGenre(songs) ?? (About?.Genres.FirstOrDefault() ?? string.Empty).ToUpperInvariant();
+        _libraryGenres = new HashSet<string>(songs.SelectMany(t => Track.SplitGenres(t.Genre)), StringComparer.OrdinalIgnoreCase);
+        KickerGenre = DominantGenreName(songs) ?? string.Empty;
+        GenreKicker = KickerGenre.ToUpperInvariant() is { Length: > 0 } kicker
+            ? kicker
+            : (About?.Genres.FirstOrDefault() ?? string.Empty).ToUpperInvariant();
+        OnPropertyChanged(nameof(GenreFactLinks));
 
         // Library-side About facts.
         var mostPlayed = songs.OrderByDescending(t => t.PlayCount).FirstOrDefault();
@@ -1185,6 +1227,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     }
 
     [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (!string.IsNullOrWhiteSpace(genre)) GenreOpened?.Invoke(this, genre);
+    }
+
+    [RelayCommand]
     private void OpenAlbum(Album? album)
     {
         if (album != null) AlbumOpened?.Invoke(this, album);
@@ -1361,4 +1409,11 @@ public sealed partial class SimilarArtistRow : ObservableObject
     /// <summary>True when the library has this artist: the tile opens their page; a
     /// stranger's tile is inert and dimmed.</summary>
     [ObservableProperty] private bool _isInLibrary;
+}
+
+/// <summary>One name in the artist page's GENRE fact; <see cref="Genre"/> is the library genre
+/// it opens, or null when the library has no songs tagged with it (GitHub #220).</summary>
+public sealed record GenreLink(string Text, string? Genre, bool IsLast)
+{
+    public bool CanOpen => Genre != null;
 }

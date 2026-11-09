@@ -91,6 +91,7 @@ public partial class MainWindowViewModel : ViewModelBase
         _albumsVm.IsActive = ReferenceEquals(current, _albumsVm);
         _artistsVm.IsActive = ReferenceEquals(current, _artistsVm);
         _foldersVm.IsActive = ReferenceEquals(current, _foldersVm);
+        _genresVm.IsActive = ReferenceEquals(current, _genresVm);
         _favoritesVm.IsActive = ReferenceEquals(current, _favoritesVm);
         _inboxVm.IsActive = ReferenceEquals(current, _inboxVm);
     }
@@ -108,6 +109,7 @@ public partial class MainWindowViewModel : ViewModelBase
         else if (ReferenceEquals(current, _albumsVm)) _albumsVm.Refresh();
         else if (ReferenceEquals(current, _artistsVm)) _artistsVm.Refresh();
         else if (ReferenceEquals(current, _foldersVm)) _foldersVm.Refresh();
+        else if (ReferenceEquals(current, _genresVm)) _genresVm.Refresh();
         else if (ReferenceEquals(current, _favoritesVm)) _favoritesVm.Refresh();
         else if (ReferenceEquals(current, _inboxVm)) _inboxVm.Refresh();
     }
@@ -332,6 +334,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly LibraryPlaylistsViewModel _playlistsVm;
     private readonly FavoritesViewModel _favoritesVm;
     private readonly LibraryFoldersViewModel _foldersVm;
+    /// <summary>Genres page (GitHub #220); a genre opens on the Albums grid (<see cref="OpenGenre"/>).</summary>
+    private readonly GenresViewModel _genresVm;
     private readonly InboxViewModel _inboxVm;
     private readonly ServerViewModel _serverVm;
     private readonly AudioCdViewModel _audioCdVm;
@@ -648,6 +652,8 @@ public partial class MainWindowViewModel : ViewModelBase
         };
 
         _foldersVm = new LibraryFoldersViewModel(library, Player, persistence, Sidebar);
+        _genresVm = new GenresViewModel(library, Player);
+        _genresVm.GenreOpened += (_, genre) => OpenGenre(genre);
         _inboxVm = new InboxViewModel(library, Player, Sidebar);
         // The Inbox entry follows Settings › Library › Inbox for New Music (and stays while
         // songs still wait in it). Leaving it shown on a page that no longer has an entry
@@ -1971,7 +1977,7 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        if (ReferenceEquals(CurrentView, _albumsVm) && _albumsVm.IsArtistFiltered)
+        if (ReferenceEquals(CurrentView, _albumsVm) && _albumsVm.IsPageFiltered)
         {
             TopBar.ShowBackButton("Back", GoBackInHistoryCommand, _albumsVm.HeaderText);
             return;
@@ -2009,7 +2015,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         return view is AlbumDetailViewModel
 
-               || (ReferenceEquals(view, _albumsVm) && _albumsVm.IsArtistFiltered)
+               || (ReferenceEquals(view, _albumsVm) && _albumsVm.IsPageFiltered)
                || (_navigationHistory.Count > 0 && view is ISearchable && !string.IsNullOrWhiteSpace(TopBar.SearchText));
     }
 
@@ -2066,7 +2072,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private bool IsAlbumsRootSnapshot()
     {
         return (ReferenceEquals(CurrentView, _albumsVm) || ReferenceEquals(CurrentView, _coverFlowVm))
-               && !_albumsVm.IsArtistFiltered
+               && !_albumsVm.IsPageFiltered
                && string.IsNullOrWhiteSpace(TopBar.SearchText);
     }
 
@@ -2093,19 +2099,29 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(view, _albumsVm))
         {
             var artistFilterName = _albumsVm.ArtistFilterName;
+            var genreFilterName = _albumsVm.GenreFilterName;
             var searchQuery = TopBar.SearchText;
             // Read lazily because the view saves its physical scroll offset after
             // this entry is pushed, when it detaches from the visual tree.
 
             return () =>
             {
-                var scrollOffset = string.IsNullOrWhiteSpace(artistFilterName)
+                var scrollOffset = string.IsNullOrWhiteSpace(artistFilterName) && string.IsNullOrWhiteSpace(genreFilterName)
                     ? (_albumsVm.SavedUnfilteredScrollOffset > 0
                         ? _albumsVm.SavedUnfilteredScrollOffset
                         : _albumsVm.SavedScrollOffset)
                     : _albumsVm.SavedScrollOffset;
 
-                if (string.IsNullOrWhiteSpace(artistFilterName))
+                if (!string.IsNullOrWhiteSpace(genreFilterName))
+                {
+                    _albumsVm.SetGenreFilter(genreFilterName);
+                    if (!string.IsNullOrWhiteSpace(searchQuery))
+                        _albumsVm.ApplyFilterImmediate(searchQuery);
+                    TopBar.ShowArtistActions(
+                        _albumsVm.ShuffleAllArtistTracksCommand,
+                        _albumsVm.PlayAllArtistTracksCommand);
+                }
+                else if (string.IsNullOrWhiteSpace(artistFilterName))
                 {
                     _albumsVm.ClearArtistFilter();
                     _albumsVm.ApplyFilterImmediate(searchQuery ?? string.Empty);
@@ -2212,7 +2228,7 @@ public partial class MainWindowViewModel : ViewModelBase
             PlaylistViewModel playlistView => Sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistView.PlaylistId),
             AlbumDetailViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "albums"),
             MoreByArtistViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "artists"),
-            _ when ReferenceEquals(target.View, _albumsVm) => Sidebar.NavItems.FirstOrDefault(n => n.Key == "albums"),
+            _ when ReferenceEquals(target.View, _albumsVm) => Sidebar.NavItems.FirstOrDefault(n => n.Key == (_albumsVm.IsGenreFiltered ? "genres" : "albums")),
             _ => Sidebar.NavItems.FirstOrDefault(n => n.Key == target.SectionKey)
                  ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == target.SectionKey)
         };
@@ -2239,13 +2255,15 @@ public partial class MainWindowViewModel : ViewModelBase
         if (ReferenceEquals(view, _homeVm))
             return GetSectionBackButtonText("home");
         if (ReferenceEquals(view, _albumsVm) || ReferenceEquals(view, _coverFlowVm))
-            return _albumsVm.IsArtistFiltered ? "Back" : GetSectionBackButtonText("albums");
+            return _albumsVm.IsPageFiltered ? "Back" : GetSectionBackButtonText("albums");
         if (ReferenceEquals(view, _songsVm))
             return GetSectionBackButtonText("songs");
         if (ReferenceEquals(view, _artistsVm))
             return GetSectionBackButtonText("artists");
         if (ReferenceEquals(view, _foldersVm))
             return GetSectionBackButtonText("folders");
+        if (ReferenceEquals(view, _genresVm))
+            return GetSectionBackButtonText("genres");
         if (ReferenceEquals(view, _playlistsVm))
             return GetSectionBackButtonText("playlists");
         if (ReferenceEquals(view, _favoritesVm))
@@ -2304,12 +2322,16 @@ public partial class MainWindowViewModel : ViewModelBase
             return "home";
         if (ReferenceEquals(view, _songsVm))
             return "songs";
+        if (ReferenceEquals(view, _albumsVm) && _albumsVm.IsGenreFiltered)
+            return "genres";
         if (ReferenceEquals(view, _albumsVm) || ReferenceEquals(view, _coverFlowVm))
             return "albums";
         if (ReferenceEquals(view, _artistsVm))
             return "artists";
         if (ReferenceEquals(view, _foldersVm))
             return "folders";
+        if (ReferenceEquals(view, _genresVm))
+            return "genres";
         if (ReferenceEquals(view, _playlistsVm))
             return "playlists";
         if (ReferenceEquals(view, _favoritesVm))
@@ -2377,6 +2399,7 @@ public partial class MainWindowViewModel : ViewModelBase
                || ReferenceEquals(view, _albumsVm)
                || ReferenceEquals(view, _artistsVm)
                || ReferenceEquals(view, _foldersVm)
+               || ReferenceEquals(view, _genresVm)
                || ReferenceEquals(view, _playlistsVm)
                || ReferenceEquals(view, _favoritesVm)
                || ReferenceEquals(view, _inboxVm)
@@ -2462,6 +2485,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 "albums" => ResetFilterAndReturnAlbums(),
                 "artists" => ResetAndReturnArtists(),
                 "folders" => RefreshAndReturnFolders(_foldersVm),
+                "genres" => RefreshAndReturnGenres(),
                 "playlists" => RefreshAndReturnPlaylists(_playlistsVm),
                 "favorites" => RefreshAndReturnFavorites(_favoritesVm),
                 "statistics" => RefreshAndReturnStatistics(_statisticsVm),
@@ -2508,6 +2532,7 @@ public partial class MainWindowViewModel : ViewModelBase
             "albums" => "Albums",
             "artists" => "Artists",
             "folders" => "Folders",
+            "genres" => "Genres",
             "playlists" => "Playlists",
             "favorites" => "Favorites",
             "statistics" => "Statistics",
@@ -2597,6 +2622,12 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         vm.Refresh();
         return vm;
+    }
+
+    private GenresViewModel RefreshAndReturnGenres()
+    {
+        _genresVm.Refresh();
+        return _genresVm;
     }
 
     private ServerViewModel RefreshAndReturnServer(ServerViewModel vm)
@@ -2771,6 +2802,7 @@ public partial class MainWindowViewModel : ViewModelBase
         };
         detail.ViewAlbumRequested += OnViewAlbumFromTrack;
         detail.SetViewArtistAction(ViewArtistFromAlbumDetail);
+        detail.SetOpenGenreAction(OpenGenre);
         detail.SetSearchLyricsAction(SearchLyricsForTrack);
         detail.SetOpenMoreByArtistAction(OpenMoreByArtistPage);
         CurrentView = detail;
@@ -2792,6 +2824,31 @@ public partial class MainWindowViewModel : ViewModelBase
         CurrentView = page;
         HighlightSidebarSection("artists");
         TopBar.ShowArtistActions(page.ShuffleAllCommand, page.PlayAllCommand);
+        RefreshBackButton();
+    }
+
+    /// <summary>
+    /// A genre's page (GitHub #220): the Albums grid narrowed to the genre, its most played songs
+    /// on top, Play/Shuffle in the top bar. Opened from the Genres page and from the genre labels
+    /// on album and artist pages; Back returns to where it was opened.
+    /// </summary>
+    public void OpenGenre(string genre)
+    {
+        if (string.IsNullOrWhiteSpace(genre)) return;
+        PushCurrentViewToHistory();
+        ClearAllTopBarActions();
+        IsLyricsPanelOpen = false;
+        _isCoverFlowMode = false;
+        TopBar.IsCoverFlowMode = false;
+        _preCoverFlowView = null;
+        // The originating page's query is captured in history for back-restore.
+        TopBar.SearchText = string.Empty;
+        TopBar.CurrentTabName = "Genres";
+
+        _albumsVm.SetGenreFilter(genre);
+        CurrentView = _albumsVm;
+        HighlightSidebarSection("genres");
+        TopBar.ShowArtistActions(_albumsVm.ShuffleAllArtistTracksCommand, _albumsVm.PlayAllArtistTracksCommand);
         RefreshBackButton();
     }
 
@@ -2822,6 +2879,7 @@ public partial class MainWindowViewModel : ViewModelBase
         page.AlbumOpened += (_, album) => OpenAlbumDetail(album, backButtonText: page.ArtistName);
         // Similar Artists tile for an artist in the library: their page, this one in history.
         page.ArtistOpened += (_, name) => OpenArtistDiscography(name);
+        page.GenreOpened += (_, genre) => OpenGenre(genre);
         page.SearchLyricsRequested += (_, track) => SearchLyricsForTrack(track);
         CurrentView = page;
         HighlightSidebarSection("artists");
@@ -3153,9 +3211,11 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         if (CurrentView == _homeVm) return "home";
         if (CurrentView == _songsVm) return "songs";
+        if (CurrentView == _albumsVm && _albumsVm.IsGenreFiltered) return "genres";
         if (CurrentView == _albumsVm || CurrentView == _coverFlowVm) return "albums";
         if (CurrentView == _artistsVm) return "artists";
         if (CurrentView == _foldersVm) return "folders";
+        if (CurrentView == _genresVm) return "genres";
 
         if (CurrentView == _playlistsVm) return "playlists";
         if (CurrentView == _favoritesVm) return "favorites";

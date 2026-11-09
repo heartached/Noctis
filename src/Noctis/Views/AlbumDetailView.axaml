@@ -458,10 +458,40 @@
                 </ItemsControl>
                 <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0"
                             TextElement.Foreground="{Binding PageForegroundBrush}">
+                    <!-- Genres (GitHub #220): one link per genre, each opens that genre's page. -->
+                    <ItemsControl ItemsSource="{Binding GenreTokens}" Opacity="0.5" VerticalAlignment="Center"
+                                  IsVisible="{Binding HasGenreTokens}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ArtistTokenItem">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Classes="no-hover-scale artist-credit-link"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="0"
+                                            MinHeight="0"
+                                            Cursor="Hand"
+                                            ToolTip.Tip="{loc:T Genres.ShowGenreTip}"
+                                            Command="{Binding $parent[ItemsControl].((vm:AlbumDetailViewModel)DataContext).OpenGenreCommand}"
+                                            CommandParameter="{Binding Name}">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"
+                                                   Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+                                    </Button>
+                                    <TextBlock Text="{Binding Separator}" FontSize="13" VerticalAlignment="Center"
+                                               IsVisible="{Binding !IsLast}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text=" · " FontSize="13" Opacity="0.5" VerticalAlignment="Center"
+                               IsVisible="{Binding HasGenreTokens}" />
                     <TextBlock FontSize="13" Opacity="0.5" VerticalAlignment="Center">
                         <TextBlock.Text>
                             <MultiBinding Converter="{StaticResource MetadataLine}">
-                                <Binding Path="Album.GenreDisplay" />
                                 <Binding Path="Album.ReleaseDateFormatted" />
                                 <Binding Path="Album.TrackCountText" />
                                 <Binding Path="Album.HeaderDurationFormatted" />

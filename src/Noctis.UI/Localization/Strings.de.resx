@@ -26,6 +26,7 @@
   <data name="Nav.Albums" xml:space="preserve"><value>Alben</value><comment>Sidebar</comment></data>
   <data name="Nav.Artists" xml:space="preserve"><value>Künstler</value><comment>Sidebar</comment></data>
   <data name="Nav.Folders" xml:space="preserve"><value>Ordner</value><comment>Sidebar</comment></data>
+  <data name="Nav.Genres" xml:space="preserve"><value>Genres</value><comment>Sidebar</comment></data>
   <data name="Nav.Playlists" xml:space="preserve"><value>Playlists</value><comment>Sidebar</comment></data>
   <data name="Nav.Visualizer" xml:space="preserve"><value>Visualisierung</value><comment>Sidebar</comment></data>
   <data name="Nav.LyricsStudio" xml:space="preserve"><value>Songtext-Studio</value><comment>Sidebar</comment></data>
@@ -1134,6 +1135,13 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="LibraryArtists.ColumnSongs" xml:space="preserve"><value>Songs</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnTime" xml:space="preserve"><value>Dauer</value><comment>List view column header (total length) in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnGenre" xml:space="preserve"><value>Genre</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
+  <data name="Genres.Unknown" xml:space="preserve"><value>Unbekannt</value><comment>Genres page (GitHub #220): songs with no genre tag</comment></data>
+  <data name="Genres.NoGenresFound" xml:space="preserve"><value>Keine Genres gefunden</value><comment>Genres page (GitHub #220): empty state</comment></data>
+  <data name="Genres.NoFilterMatches" xml:space="preserve"><value>Keine passenden Genres</value><comment>Genres page (GitHub #220): empty state while a search is active</comment></data>
+  <data name="Genres.NoFilterMatchesHint" xml:space="preserve"><value>Versuch eine andere Suche oder lösche sie, um alle Genres zu sehen</value><comment>Genres page (GitHub #220): empty state hint while a search is active</comment></data>
+  <data name="Genres.PlayTip" xml:space="preserve"><value>Abspielen</value><comment>Genres page (GitHub #220): row button tooltip</comment></data>
+  <data name="Genres.ShuffleTip" xml:space="preserve"><value>Zufallswiedergabe</value><comment>Genres page (GitHub #220): row button tooltip</comment></data>
+  <data name="Genres.ShowGenreTip" xml:space="preserve"><value>Dieses Genre anzeigen</value><comment>Tooltip on a genre name on album and artist pages (GitHub #220)</comment></data>
 
   <!-- LibraryFoldersView.axaml (auto-migrated) -->
   <data name="LibraryFolders.ExplicitTip" xml:space="preserve"><value>Explizit</value><comment>ToolTip.Tip in LibraryFoldersView.axaml</comment></data>

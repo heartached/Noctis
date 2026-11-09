@@ -114,6 +114,25 @@
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
+        <!-- Genre links (GitHub #220): the hero kicker and the GENRE fact open the genre.
+             The text keeps its look; no hover box or zoom, an underline under the pointer. -->
+        <Style Selector="Button.genre-link">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+        <Style Selector="Button.genre-link:pointerover, Button.genre-link:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.genre-link:pointerover /template/ ContentPresenter, Button.genre-link:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.genre-link:pointerover TextBlock">
+            <Setter Property="TextDecorations" Value="Underline" />
+        </Style>
         <!-- Text links ("Read more", Shuffle). -->
         <Style Selector="Button.text-link">
             <Setter Property="Background" Value="Transparent" />
@@ -722,16 +741,23 @@
                       VerticalAlignment="Bottom"
                       Margin="32,0,300,22">
                     <StackPanel Grid.Column="0" VerticalAlignment="Bottom" Spacing="4">
-                        <!-- Genre kicker ("HIP HOP"): dominant library genre, else MusicBrainz. -->
-                        <TextBlock Text="{Binding GenreKicker}"
-                                   Classes="genre-kicker"
-                                   FontSize="12"
-                                   FontWeight="Bold"
-                                   LetterSpacing="1.5"
-                                   Opacity="0.7"
-                                   Margin="1,0,0,0"
-                                   Padding="0,0,0,2"
-                                   IsVisible="{Binding HasGenreKicker}" />
+                        <!-- Genre kicker ("HIP HOP"): dominant library genre, else MusicBrainz.
+                             A library genre opens its page (GitHub #220); a MusicBrainz one is plain text. -->
+                        <Button Classes="genre-link"
+                                IsVisible="{Binding HasGenreKicker}"
+                                IsHitTestVisible="{Binding CanOpenKickerGenre}"
+                                ToolTip.Tip="{loc:T Genres.ShowGenreTip}"
+                                Command="{Binding OpenGenreCommand}"
+                                CommandParameter="{Binding KickerGenre}">
+                            <TextBlock Text="{Binding GenreKicker}"
+                                       Classes="genre-kicker"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       LetterSpacing="1.5"
+                                       Opacity="0.7"
+                                       Margin="1,0,0,0"
+                                       Padding="0,0,0,2" />
+                        </Button>
                         <!-- LineHeight >= Inter's natural 1.21em box (~51px at 42), else descenders (g, y, p) clip. -->
                         <TextBlock Text="{Binding ArtistName}"
                                    FontSize="42"
@@ -1129,7 +1155,28 @@
                                 </StackPanel>
                                 <StackPanel Spacing="2" IsVisible="{Binding HasGenreFact}">
                                     <TextBlock Classes="fact-label" Text="{loc:T ArtistDetail.GENRE}" />
-                                    <TextBlock Classes="fact-value" Text="{Binding GenreFact}" />
+                                    <!-- One link per genre the library has (GitHub #220); the rest stay plain. -->
+                                    <ItemsControl ItemsSource="{Binding GenreFactLinks}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:GenreLink">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Classes="genre-link"
+                                                            IsHitTestVisible="{Binding CanOpen}"
+                                                            ToolTip.Tip="{loc:T Genres.ShowGenreTip}"
+                                                            Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenGenreCommand, FallbackValue={x:Null}}"
+                                                            CommandParameter="{Binding Genre}">
+                                                        <TextBlock Classes="fact-value" Text="{Binding Text}" />
+                                                    </Button>
+                                                    <TextBlock Classes="fact-value" Text=" · " IsVisible="{Binding !IsLast}" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                 </StackPanel>
                             </StackPanel>
 

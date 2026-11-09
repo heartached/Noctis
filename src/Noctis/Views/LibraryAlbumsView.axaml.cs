@@ -266,7 +266,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             return;
         _scrollResetFilterKey = _vm.FilterKey;
 
-        if (!_vm.HasActiveFilter && !_vm.IsArtistFiltered)
+        if (!_vm.HasActiveFilter && !_vm.IsPageFiltered)
             return;
         if (_pendingScrollRestore != null)
             return;
@@ -363,7 +363,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             AlbumListBox.LayoutUpdated += _pendingScrollRestore;
         }
         else if (DataContext is LibraryAlbumsViewModel activeVm
-                 && (activeVm.IsArtistFiltered || activeVm.HasActiveFilter))
+                 && (activeVm.IsPageFiltered || activeVm.HasActiveFilter))
         {
             _pendingScrollRestore = (s, args) =>
             {

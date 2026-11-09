@@ -208,6 +208,18 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Whether the album has multiple credited artists.</summary>
     public bool HasMultipleArtists => ArtistTokens.Length > 1;
 
+    /// <summary>The header line's genres, one link each (GitHub #220): a click opens that genre.
+    /// Same genres <see cref="Album.GenreDisplay"/> showed as plain text ("Rock · Pop").</summary>
+    public ArtistTokenItem[] GenreTokens { get; private set; } = Array.Empty<ArtistTokenItem>();
+    public bool HasGenreTokens => GenreTokens.Length > 0;
+
+    internal static ArtistTokenItem[] BuildGenreTokens(Album album)
+    {
+        if (album.GenreDisplay.Length == 0) return Array.Empty<ArtistTokenItem>();
+        var genres = Track.SplitGenres(album.Genre);
+        return genres.Select((g, i) => new ArtistTokenItem(g, i == genres.Length - 1, " · ")).ToArray();
+    }
+
     /// <summary>Exposes playlists for the Add to Playlist submenu.</summary>
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
@@ -218,6 +230,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     public event EventHandler<Track>? ViewAlbumRequested;
 
     private Action<string>? _viewArtistAction;
+    private Action<string>? _openGenreAction;
     private Action<Track>? _searchLyricsAction;
     private Action<string, System.Collections.Generic.IEnumerable<Album>>? _openMoreByArtistAction;
 
@@ -229,6 +242,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     /// <summary>Sets the action to navigate to an artist's discography.</summary>
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
+
+    /// <summary>Sets the action to open a genre (GitHub #220).</summary>
+    public void SetOpenGenreAction(Action<string> action) => _openGenreAction = action;
 
     /// <summary>Sets the action to search lyrics for a track.</summary>
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
@@ -250,6 +266,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
         // One link per credited name, separators as the album artist line shows them
         ArtistTokens = ArtistTokenItem.FromCredit(album.ArtistDisplay);
+        GenreTokens = BuildGenreTokens(album);
 
         // Load tracks (single Reset event instead of N Add events)
         Tracks.ReplaceAll(album.Tracks);
@@ -345,6 +362,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         ArtistTokens = ArtistTokenItem.FromCredit(value.ArtistDisplay);
         OnPropertyChanged(nameof(ArtistTokens));
         OnPropertyChanged(nameof(HasMultipleArtists));
+        GenreTokens = BuildGenreTokens(value);
+        OnPropertyChanged(nameof(GenreTokens));
+        OnPropertyChanged(nameof(HasGenreTokens));
         OnPropertyChanged(nameof(MoreByArtistTitle));
         BuildRelatedSections();
     }
@@ -825,6 +845,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (!string.IsNullOrWhiteSpace(artistName))
             _viewArtistAction?.Invoke(artistName);
+    }
+
+    [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (!string.IsNullOrWhiteSpace(genre))
+            _openGenreAction?.Invoke(genre);
     }
 
     [RelayCommand]

@@ -14,7 +14,7 @@ public partial class SidebarViewModel
     /// <summary>Every sidebar page in its built-in order.</summary>
     public static IReadOnlyList<string> DefaultPageOrder { get; } = new[]
     {
-        "home", "songs", "albums", "artists", "folders", "inbox", "playlists",
+        "home", "songs", "albums", "artists", "genres", "folders", "inbox", "playlists",
         "visualizer", "lyricsstudio", "server", "cd", "settings",
     };
 
@@ -24,7 +24,7 @@ public partial class SidebarViewModel
     /// <summary>Icon resource key for a page, by nav key.</summary>
     public static string PageIcon(string key) => key switch
     {
-        "home" => "HomeIcon", "songs" => "SongsIcon", "albums" => "AlbumsIcon", "artists" => "ArtistsIcon",
+        "home" => "HomeIcon", "songs" => "SongsIcon", "albums" => "AlbumsIcon", "artists" => "ArtistsIcon", "genres" => "TagIcon",
         "folders" => "FoldersIcon", "playlists" => "PlaylistsIcon", "visualizer" => "SidebarVisualizerIcon",
         "lyricsstudio" => "SidebarLyricsStudioIcon", "settings" => "SettingsIcon", "inbox" => "SidebarInboxIcon",
         "server" => "ServerIcon", "cd" => "CdIcon",

@@ -1,0 +1,187 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.ViewModels"
+             xmlns:m="using:Noctis.Models"
+             xmlns:ctrl="using:Noctis.Controls"
+             x:Class="Noctis.Views.GenresView"
+             x:DataType="vm:GenresViewModel"
+             Background="{DynamicResource AppMainBackground}">
+
+    <!-- Genres page (GitHub #220): one row per genre, laid out like the Artists page's list
+         view (row-body box, stripe, hover, selection wash). A click opens the genre on the
+         Albums grid; the row's Play / Shuffle buttons play the whole genre. The ListBox
+         virtualizes the rows (default VirtualizingStackPanel) and a row's height is fixed. -->
+    <UserControl.Styles>
+        <Style Selector="ListBox.genre-list ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Focusable" Value="False" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:nth-child(2n)">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:nth-child(2n):pointerover">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:nth-child(2n):selected">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.row-body">
+            <Setter Property="Padding" Value="8,8,8,8" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.04" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:nth-child(2n) Border.row-body">
+            <Setter Property="Background" Value="{DynamicResource TrackListStripeBrush}" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover">
+            <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:selected Border.row-body">
+            <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
+        </Style>
+        <!-- Play / Shuffle show on the hovered or selected row only, like a Songs row's controls. -->
+        <Style Selector="StackPanel.genre-actions">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="Border.row-body:pointerover StackPanel.genre-actions">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+        <Style Selector="ListBox.genre-list ListBoxItem:selected StackPanel.genre-actions">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="*">
+        <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
+        <DockPanel Grid.Row="0" Margin="16,8,2,16">
+
+            <!-- Header: same font, weight and opacity as the Artists list's column buttons;
+                 Margin 1,_,9,_ mirrors the row insets as the Artists list's header does. -->
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,90,90,90,80" Margin="1,0,9,8">
+                <TextBlock Grid.Column="0" Text="{loc:T Main.Genre}" FontSize="12" FontWeight="SemiBold" Opacity="0.7" />
+                <TextBlock Grid.Column="1" Text="{loc:T LibraryArtists.ColumnAlbums}" FontSize="12" FontWeight="SemiBold" Opacity="0.7" HorizontalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{loc:T LibraryArtists.ColumnSongs}" FontSize="12" FontWeight="SemiBold" Opacity="0.7" HorizontalAlignment="Center" />
+                <TextBlock Grid.Column="3" Text="{loc:T LibraryArtists.ColumnTime}" FontSize="12" FontWeight="SemiBold" Opacity="0.7" HorizontalAlignment="Center" />
+            </Grid>
+
+            <Separator DockPanel.Dock="Top" Margin="0,0,0,4" />
+
+            <Grid>
+                <ListBox x:Name="GenreList"
+                         Classes="track-list genre-list"
+                         ItemsSource="{Binding Rows}"
+                         SelectionMode="Single"
+                         AutoScrollToSelectedItem="False"
+                         Focusable="True"
+                         Margin="-8,0,0,0"
+                         Padding="0,0,0,115"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="m:GenreRow">
+                            <Border Classes="row-body" Tapped="OnRowTapped" AutomationProperties.Name="{Binding DisplayName}">
+                                <Grid ColumnDefinitions="*,90,90,90,80" Height="38">
+                                    <!-- Cover of one of the genre's albums + the genre's name. -->
+                                    <Grid Grid.Column="0" ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                        <Border Grid.Column="0" Width="36" Height="36" Margin="0,0,10,0"
+                                                CornerRadius="4"
+                                                ClipToBounds="True"
+                                                Background="{DynamicResource ArtworkPlaceholderBackground}">
+                                            <Panel>
+                                                <Path Data="{StaticResource TagIcon}" Stretch="Uniform" Height="14"
+                                                      Fill="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.35" />
+                                                <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                                                  DecodeWidth="256"
+                                                                  Stretch="UniformToFill"
+                                                                  Width="36" Height="36"
+                                                                  RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                  IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                            </Panel>
+                                        </Border>
+                                        <ctrl:HighlightTextBlock Grid.Column="1"
+                                                                 DisplayText="{Binding DisplayName}"
+                                                                 HighlightText="{Binding $parent[UserControl].((vm:GenresViewModel)DataContext).SearchText, FallbackValue=''}"
+                                                                 FontSize="13"
+                                                                 FontWeight="SemiBold"
+                                                                 TextWrapping="NoWrap"
+                                                                 MaxLines="1"
+                                                                 VerticalAlignment="Center"
+                                                                 TextTrimming="CharacterEllipsis" />
+                                    </Grid>
+
+                                    <TextBlock Grid.Column="1" Text="{Binding AlbumCount}" FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="2" Text="{Binding SongCount}" FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="3" Text="{Binding DurationFormatted}" FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+
+                                    <StackPanel Grid.Column="4" Classes="genre-actions" Orientation="Horizontal" Spacing="4"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                Width="28" Height="28" Cursor="Hand"
+                                                ToolTip.Tip="{loc:T Genres.PlayTip}"
+                                                AutomationProperties.Name="{loc:T Genres.PlayTip}"
+                                                Command="{Binding $parent[UserControl].((vm:GenresViewModel)DataContext).PlayGenreCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding}">
+                                            <PathIcon Classes="row-dots-icon" Data="{StaticResource PlayIcon}" Width="12" Height="12"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Button>
+                                        <Button Background="Transparent" BorderThickness="0" Padding="0"
+                                                Width="28" Height="28" Cursor="Hand"
+                                                ToolTip.Tip="{loc:T Genres.ShuffleTip}"
+                                                AutomationProperties.Name="{loc:T Genres.ShuffleTip}"
+                                                Command="{Binding $parent[UserControl].((vm:GenresViewModel)DataContext).ShuffleGenreCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding}">
+                                            <PathIcon Classes="row-dots-icon" Data="{StaticResource ShuffleIcon}" Width="14" Height="14"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Empty state overlay (same wording pattern as the Artists page). -->
+                <StackPanel IsVisible="{Binding IsEmpty}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="8">
+                    <TextBlock Text="{loc:T Genres.NoGenresFound}"
+                               IsVisible="{Binding !HasActiveFilter}"
+                               FontSize="18" Opacity="0.5"
+                               HorizontalAlignment="Center" TextAlignment="Center" />
+                    <TextBlock Text="{loc:T LibraryArtists.AddMusicFoldersSettings}"
+                               IsVisible="{Binding !HasActiveFilter}"
+                               FontSize="13" Opacity="0.3"
+                               HorizontalAlignment="Center" TextAlignment="Center" />
+                    <TextBlock Text="{loc:T Genres.NoFilterMatches}"
+                               IsVisible="{Binding HasActiveFilter}"
+                               FontSize="18" Opacity="0.5"
+                               HorizontalAlignment="Center" TextAlignment="Center" />
+                    <TextBlock Text="{loc:T Genres.NoFilterMatchesHint}"
+                               IsVisible="{Binding HasActiveFilter}"
+                               FontSize="13" Opacity="0.3"
+                               HorizontalAlignment="Center" TextAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </DockPanel>
+    </Grid>
+
+</UserControl>
