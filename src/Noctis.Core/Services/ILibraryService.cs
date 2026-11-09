@@ -246,6 +246,16 @@ public interface ILibraryService
     Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
         => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
 
+    /// <summary>
+    /// GitHub #201: writes every grouping the files do not carry yet, once, whatever Save
+    /// Grouping to Files is set to: the songs the automatic grouping re-keyed (while it is on),
+    /// and "Group into One Album" songs whose file could not be written then. The same two tags
+    /// a new grouping writes (Album Artist and album name); nothing else in the file changes.
+    /// Missing and read-only files are skipped and listed. Returns files written and not written.
+    /// </summary>
+    Task<AlbumGroupResult> SaveAlbumGroupingToFilesAsync(CancellationToken ct = default)
+        => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
     /// <summary>GitHub #190: a background pass wrote the grouping into files (Grouped = files
     /// written) or could not write some (UnwrittenFiles).</summary>
     event EventHandler<AlbumGroupResult>? AlbumGroupingWritten { add { } remove { } }

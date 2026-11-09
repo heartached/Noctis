@@ -43,6 +43,11 @@ public sealed record RouletteAlbum(
     /// <summary>The song's album title (Song Roulette); empty for albums.</summary>
     public string AlbumTitle { get; init; } = "";
 
+    /// <summary>The Language chip's value (<see cref="ScriptLanguage"/>, GitHub #202): told from
+    /// the script of the titles and artist, and later from the lyrics when those are in Latin
+    /// letters (<see cref="Views.RouletteView.ReadLyricsLanguagesAsync"/>). Null when unknown.</summary>
+    public string? Language { get; set; }
+
     /// <summary>The single genres in <see cref="Genre"/>: Noctis keeps several in one tag as
     /// "Rock; Indie" (split on ';' only: "Hip-Hop/Rap" is one genre).</summary>
     public IReadOnlyList<string> Genres { get; } = SplitGenres(Genre);
@@ -78,6 +83,7 @@ public static class SongCatalog
                 new[] { t.Id }, t.AlbumId ?? "", t.ArtworkPath, Math.Max(0, t.PlayCount), t.LastPlayed, artists)
             {
                 AlbumTitle = (t.Album ?? "").Trim(),
+                Language = ScriptLanguage.Detect(t.Title, t.Album, t.Artist),
             });
         }
         return result;
@@ -118,7 +124,11 @@ public static class AlbumCatalog
                 Most(ordered.Select(t => t.ArtworkPath)),
                 ordered.Sum(t => Math.Max(0, t.PlayCount)),
                 ordered.Max(t => t.LastPlayed),
-                artists));
+                artists)
+            {
+                // The language most of its songs are in (one Korean song does not make a Korean album).
+                Language = Most(ordered.Select(t => ScriptLanguage.Detect(t.Title, t.Album, t.Artist))),
+            });
         }
         // A stable order (the Album of the Day hashes into it).
         result.Sort((a, b) => string.CompareOrdinal(a.Key, b.Key));

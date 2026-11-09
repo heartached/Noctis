@@ -5880,6 +5880,22 @@
                                               IsChecked="{Binding AlbumGroupingWriteTags}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #201: albums grouped earlier (saving off, or a file not writable then) into their files, once. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AlbumGroupingSaveNowHint}" Margin="0,0,12,0"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                AutomationProperties.Name="{loc:T Settings.AlbumGroupingSaveNow}"
+                                Command="{Binding SaveAlbumGroupingToFilesNowCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingSaveNow}" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
+                    </Grid>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">

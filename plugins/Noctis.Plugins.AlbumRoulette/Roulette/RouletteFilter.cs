@@ -14,6 +14,9 @@ public sealed class RouletteFilter
     /// <summary>Genre to match (case-insensitive, any one of the album's or song's genres), or null for any.</summary>
     public string? Genre { get; set; }
 
+    /// <summary>Language (<see cref="RouletteAlbum.Language"/>, case-insensitive), or null for any.</summary>
+    public string? Language { get; set; }
+
     /// <summary>Decade (1990 for the 1990s), or null for any.</summary>
     public int? Decade { get; set; }
 
@@ -29,13 +32,14 @@ public sealed class RouletteFilter
     public bool SkipCompilations { get; set; }
 
     /// <summary>True when any chip is on (the compilations setting is not a chip).</summary>
-    public bool IsActive => Genre is not null || Decade is not null || Albums || EPs || Singles
+    public bool IsActive => Genre is not null || Language is not null || Decade is not null || Albums || EPs || Singles
                             || Played != PlayedFilter.Any || Artist is not null;
 
     /// <summary>Clears every chip (the compilations setting stays).</summary>
     public void Clear()
     {
         Genre = null;
+        Language = null;
         Decade = null;
         Albums = EPs = Singles = false;
         Played = PlayedFilter.Any;
@@ -46,6 +50,7 @@ public sealed class RouletteFilter
     {
         if (SkipCompilations && album.IsCompilation) return false;
         if (Genre is { } g && !album.Genres.Contains(g, StringComparer.OrdinalIgnoreCase)) return false;
+        if (Language is { } l && !string.Equals(album.Language, l, StringComparison.OrdinalIgnoreCase)) return false;
         if (Decade is { } d && album.Decade != d) return false;
         // Albums / EPs / Singles sort albums; in Song Roulette every song is its own pick.
         if (!album.IsSong && (Albums || EPs || Singles))
@@ -84,6 +89,15 @@ public sealed class RouletteFilter
             .GroupBy(g => g, StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(g => g.Count()).ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .Take(max).Select(g => g.First()).ToList();
+
+    /// <summary>The languages for the Language chip: most albums (or songs) first, Latin script
+    /// last (it says the least).</summary>
+    public static IReadOnlyList<string> Languages(IReadOnlyList<RouletteAlbum> albums)
+        => albums.Where(a => a.Language is not null)
+            .GroupBy(a => a.Language!, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key == ScriptLanguage.Latin).ThenByDescending(g => g.Count())
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.Key).ToList();
 
     /// <summary>The decades for the Decade chip, newest first.</summary>
     public static IReadOnlyList<int> Decades(IReadOnlyList<RouletteAlbum> albums)

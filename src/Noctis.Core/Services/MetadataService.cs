@@ -734,7 +734,10 @@ public class MetadataService : IMetadataService
         // (GitHub #178). Only for the track's own file: a converter writes to a new one.
         if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+        {
             track.AlbumArtistFromTag = true;
+            track.AlbumGroupingUnwritten = false; // the file names its album now (GitHub #201)
+        }
         // Likewise the album name: a folder name written above is the file's album tag now.
         if (ok && Track.IsRealAlbumName(track.Album)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))

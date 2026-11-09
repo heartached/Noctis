@@ -28,7 +28,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.6** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.7** (Noctis 1.6.9 and later; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -42,12 +42,12 @@ API **1.6** (Noctis 1.6.6 and later; 1.2 since 1.5.9; 1.1 since 1.5.3):
 | Settings | Settings you declare in plugin.json, drawn by Noctis in Settings → Plugins | — |
 | Storage | A private data folder that survives updates | — |
 | Playback control | Play, pause, next, previous, seek; since 1.3 play a list of library tracks; since 1.5 read the queue, set what is up next and hear when the user queues songs | `playback.control` |
-| Library | Read-only search over the library, or all of it, and since 1.4 the playlists (copies, never live objects) | `library.read` |
+| Library | Read-only search over the library, or all of it, since 1.4 the playlists (copies, never live objects), and since 1.7 the lyric lines Noctis already has for a song | `library.read` |
 | BPM and key | Set the BPM and musical key of library tracks (in Noctis only, never in files) | `library.write.analysis` |
 | Add to library | Add audio files the plugin saved (downloads, conversions) to the library, and read the music folders (1.5) | `library.import` |
 | Decode audio | Decode a song file to mono PCM for offline analysis, with the ffmpeg Noctis ships (1.6) | `audio.decode` |
 | Lyrics | A lyrics provider that joins the online lyrics search | `lyrics.provider` |
-| Track menu | Entries in the track context menu | `menu.commands` |
+| Track menu | Entries in the track context menu; since 1.7 also on the artist page's menu and the Songs page's top bar | `menu.commands` |
 | Notices | A short message in the app's notice pill | `notifications` |
 
 Not available (yet): writing other library fields or file tags, editing single queue entries
@@ -736,7 +736,7 @@ push): the exact commands are in [`plugins/PUBLISHING.md`](../plugins/PUBLISHING
 | Plugin | Folder | Uses |
 |---|---|---|
 | Mixxx | `plugins/Noctis.Plugins.Mixxx` | API 1.2: BPM and key from Mixxx's library |
-| Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.4: a view, `PlayTracks`, `ShowAlbum`, a track command, notices |
+| Album Roulette | `plugins/Noctis.Plugins.AlbumRoulette` | API 1.7: a view, `PlayTracks`, `QueueTracks`, `ShowAlbum`, a track command, library commands (artist page, Songs page), `GetLyricLines` (the Language chip), notices |
 | A-B Loop | `plugins/Noctis.Plugins.ABLoop` | API 1.4: a view, `Seek`/`Play`/`Pause`, a track command |
 | Chords | `plugins/Noctis.Plugins.Chords` | API 1.6: `AudioDecoder`, a view, `Seek`, `PlayTracks`, a track command |
 
@@ -946,6 +946,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
 | 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`); `ILibraryImport` (`host.LibraryImport`) with the `library.import` permission: add audio files to the library, read the music folders; view window size (`IPluginViewProvider.PreferredWindowSize` / `MinWindowSize` / `WindowSizeToContent`). |
 | 1.6 | 1.6.6+ | `IAudioDecoder` (`host.AudioDecoder`) with the `audio.decode` permission: decode a song file to mono PCM for offline analysis. |
+| 1.7 | 1.6.9+ | `ILibraryReader.GetLyricLines` (under `library.read`), `IPlaybackControl.QueueTracks` (under `playback.control`), `RegisterLibraryCommand` / `LibraryCommandPlaces` / `LibraryCommandContext` (under `menu.commands`). A plugin that calls them needs `"minAppVersion": "1.6.9"`: on an older Noctis the call fails with `MissingMethodException` when the calling method is compiled, before any `catch` in that method runs. |
 
 ## Legacy plugins (API 1.0, no plugin.json)
 

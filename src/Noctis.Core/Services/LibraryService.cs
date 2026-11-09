@@ -2137,6 +2137,11 @@ public class LibraryService : ILibraryService
                     if (await ResolveUngroupedAlbumsAsync() > 0)
                         await RebuildAndPersistAlbumKeysAsync(forceSave: true);
 
+                    // GitHub #201: groupings whose files were not written yet (a file read-only,
+                    // missing or held open then, or a pass cut short by closing the app) are
+                    // tried again. A no-op once every grouped file names its album.
+                    await ResumeAlbumGroupingWritesAsync();
+
                     // GitHub #187: with "Show artists as written in the tags" on, songs indexed
                     // before the tag's own credit was kept get it re-read once.
                     if (ArtistCredit.ShowAsTagged)
@@ -2707,9 +2712,98 @@ public class LibraryService : ILibraryService
         _albumGroupingWriteTags = enabled;
         if (!enabled || !_albumGroupingEnabled)
             return new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
-        if (await ResolveUngroupedAlbumsAsync(ct) > 0)
+        return await SaveAlbumGroupingToFilesAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> SaveAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    {
+        // Songs a 1.6.8 grouping re-keyed carry no record of their own album yet: read once,
+        // or the pass below would not know they were grouped.
+        if (_albumGroupingEnabled && await ResolveUngroupedAlbumsAsync(ct) > 0)
             await RebuildAndPersistAlbumKeysAsync(forceSave: true);
+        // Groupings an older build failed to write left no record: looked for here only, when
+        // the user asks (it reads the tags of most files), never at startup.
+        await MarkUnwrittenAlbumChangesAsync(ct);
         return await WriteAlbumGroupingToFilesAsync(ct);
+    }
+
+    /// <summary>
+    /// GitHub #201: "Group into One Album" in 1.6.8 and 1.6.9 set a song's album and album artist
+    /// and marked them as the song's own tag even when its file could not be written, and kept no
+    /// record of the failure, so <see cref="Track.AlbumGroupingUnwritten"/> is not set on those.
+    /// They are found by what the files say: a song is marked when
+    ///   - Noctis holds its album artist as a real tag (AlbumArtistFromTag true; the automatic
+    ///     rule's songs are false and go through <see cref="AlbumGrouping.RegroupedSongs"/>),
+    ///   - its album name is a real one and not its folder's,
+    ///   - its file is a local or network file that has not changed since Noctis last read it
+    ///     (same modification time: a file retagged elsewhere is the newer truth, and the next
+    ///     scan reads it), and
+    ///   - the file's own Album / Album Artist tags put it on another album than Noctis shows
+    ///     (<see cref="Track.ComputeAlbumId"/>, the key Noctis groups by).
+    /// A song nobody changed in Noctis reads back as it was scanned and is never marked. Only
+    /// Noctis's own album changes leave the two apart: Group into One Album, or an Edit Info save
+    /// whose write failed (the editor keeps the edit and reports the file); both are writes the
+    /// user asked for. The in-memory filter runs first; tags are read only for songs it lets
+    /// through, off the UI thread. Returns how many songs were marked.
+    /// </summary>
+    internal async Task<int> MarkUnwrittenAlbumChangesAsync(CancellationToken ct = default)
+    {
+        var snapshot = _tracks;
+        var marked = await Task.Run(() =>
+        {
+            var count = 0;
+            foreach (var t in snapshot)
+            {
+                if (ct.IsCancellationRequested) break;
+                if (t.AlbumArtistFromTag != true || t.AlbumGroupingUnwritten || t.AlbumFromFolder
+                    || !Track.IsRealAlbumName(t.Album) || string.IsNullOrWhiteSpace(t.AlbumArtist)
+                    || !t.HasFilesystemPath || t.IsRemoteStream
+                    || t.SourceType is not (SourceType.Local or SourceType.Smb) || t.LastModified == default)
+                    continue;
+                try
+                {
+                    var info = new FileInfo(t.FilePath);
+                    if (!info.Exists || info.LastWriteTimeUtc != t.LastModified) continue;
+                    if (_metadata.ReadTrackMetadata(t.FilePath) is not { } own) continue;
+                    if (Track.ComputeAlbumId(own.AlbumArtist, own.Album) == t.AlbumId) continue;
+                    // A file with no artist at all takes its folder's artist in the scan
+                    // (FolderMetadata), not a change made in Noctis.
+                    if (FolderMetadata.IsPlaceholderArtist(own.Artist) && FolderMetadata.IsPlaceholderArtist(own.AlbumArtist)) continue;
+                    t.AlbumGroupingUnwritten = true;
+                    count++;
+                }
+                catch
+                {
+                    // Unreadable now: left alone (Save to Files Now looks again).
+                }
+            }
+            return count;
+        }, CancellationToken.None);
+        if (marked > 0)
+        {
+            DebugLog.Write("Library", $"Album grouping (#201): {marked} song(s) whose file does not name the album Noctis shows");
+            await SaveAsync();
+        }
+        return marked;
+    }
+
+    /// <summary>
+    /// GitHub #201, at startup: writes the groupings whose files do not name their album yet.
+    /// "Group into One Album" songs whose write failed (<see cref="Track.AlbumGroupingUnwritten"/>)
+    /// always, since that action always writes the files; songs the automatic rule grouped only
+    /// while Save Grouping to Files is on. Reported through <see cref="AlbumGroupingWritten"/>
+    /// when a file was written.
+    /// </summary>
+    internal async Task ResumeAlbumGroupingWritesAsync()
+    {
+        var rule = _albumGroupingWriteTags && _albumGroupingEnabled;
+        var snapshot = _tracks;
+        var pending = await Task.Run(() => AlbumGrouping.SongsToWrite(snapshot, rule).Count, CancellationToken.None);
+        if (pending == 0) return;
+        var result = await WriteAlbumGroupingCoreAsync(rule, CancellationToken.None);
+        if (result.Grouped > 0)
+            AlbumGroupingWritten?.Invoke(this, result);
     }
 
     /// <inheritdoc />
@@ -2818,8 +2912,14 @@ public class LibraryService : ILibraryService
     /// whose file is written has a real album-artist tag from then on. Files that are missing,
     /// read-only, not on a local or network drive, or held open are listed in the result and
     /// tried again on the next pass. Off the UI thread; one pass at a time.
+    /// GitHub #201: also the "Group into One Album" songs whose file could not be written then
+    /// (<see cref="Track.AlbumGroupingUnwritten"/>), with the same two tags.
     /// </summary>
-    public async Task<AlbumGroupResult> WriteAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    public Task<AlbumGroupResult> WriteAlbumGroupingToFilesAsync(CancellationToken ct = default)
+        => WriteAlbumGroupingCoreAsync(rule: true, ct);
+
+    /// <param name="rule">Also the songs the automatic rule grouped (only while it is on).</param>
+    private async Task<AlbumGroupResult> WriteAlbumGroupingCoreAsync(bool rule, CancellationToken ct)
     {
         var none = new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
@@ -2828,13 +2928,13 @@ public class LibraryService : ILibraryService
         catch (OperationCanceledException) { return none; }
         try
         {
-            if (!_albumGroupingEnabled) return none;
+            rule &= _albumGroupingEnabled;
             var snapshot = _tracks;
             var written = new List<Track>();
             var unwritten = new List<string>();
             await Task.Run(() =>
             {
-                foreach (var t in AlbumGrouping.RegroupedSongs(snapshot))
+                foreach (var t in AlbumGrouping.SongsToWrite(snapshot, rule))
                 {
                     if (token.IsCancellationRequested) break;
                     var ok = false;
@@ -2859,6 +2959,7 @@ public class LibraryService : ILibraryService
                     t.AlbumArtistFromTag = true;
                     t.UngroupedAlbumArtist = null;
                     t.UngroupedAlbum = null;
+                    t.AlbumGroupingUnwritten = false;
                     written.Add(t);
                 }
             }, CancellationToken.None);
@@ -2936,6 +3037,10 @@ public class LibraryService : ILibraryService
                 }
                 if (!written)
                     unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                // GitHub #201: a file that could be written later (read-only or held open now)
+                // is tried again by the next pass; streams and phone documents never can be.
+                t.AlbumGroupingUnwritten = !written && t.HasFilesystemPath && !t.IsRemoteStream
+                                           && t.SourceType is SourceType.Local or SourceType.Smb;
                 // The user's album artist: the grouping pass must not re-key it, written or not.
                 t.AlbumArtistFromTag = true;
                 if (t.AlbumId != albumId)

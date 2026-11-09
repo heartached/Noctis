@@ -223,6 +223,24 @@ public static class AlbumGrouping
     }
 
     /// <summary>
+    /// GitHub #201: the songs whose files do not name their grouped album yet: the rule's
+    /// (<see cref="RegroupedSongs"/>, when <paramref name="rule"/>) and the "Group into One
+    /// Album" songs whose file could not be written then (<see cref="Track.AlbumGroupingUnwritten"/>).
+    /// </summary>
+    public static List<Track> SongsToWrite(IReadOnlyList<Track> tracks, bool rule)
+    {
+        var result = rule ? RegroupedSongs(tracks) : new List<Track>();
+        HashSet<Track>? seen = null;
+        foreach (var t in tracks)
+        {
+            if (!t.AlbumGroupingUnwritten) continue;
+            seen ??= new HashSet<Track>(result, ReferenceEqualityComparer.Instance);
+            if (seen.Add(t)) result.Add(t);
+        }
+        return result;
+    }
+
+    /// <summary>
     /// GitHub #193, libraries grouped by 1.6.8: the rule re-keyed songs before it kept their own
     /// values (<see cref="Track.UngroupedAlbumArtist"/>) and before an album name taken from the
     /// folder was told apart (<see cref="Track.AlbumFromFolder"/>). Returns the songs that may
