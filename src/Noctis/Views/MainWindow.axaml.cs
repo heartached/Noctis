@@ -1056,6 +1056,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // added later and so runs first (newest first); it stands aside through
         // IsOverlayCapturingKeys, so Ctrl+A / Escape inside the queue don't hit the page.
         AddHandler(KeyDownEvent, OnQueueKeyDown, RoutingStrategies.Tunnel);
+        // GitHub #207: a click anywhere in the queue panel (its header too) makes it the
+        // keyboard target, and a click on the island keeps it so; focus alone did not.
+        _queueKeys = new QueueKeyFocus(this, () => _queuePopupPanel,
+            () => this.FindControl<ContentControl>("PageHost"),
+            v => v.FindAncestorOfType<PlaybackBarView>(includeSelf: true) != null);
 
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
@@ -1632,7 +1637,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // Queue popup and lyrics panel share the right edge — mutual exclusion.
             if (vm.Player.IsQueuePopupOpen)
                 vm.IsLyricsPanelOpen = false;
-            else if (_queueSelection is { Count: > 0 } selection)
+            else _queueKeys?.Disarm();
+            if (!vm.Player.IsQueuePopupOpen && _queueSelection is { Count: > 0 } selection)
             {
                 // A closed panel doesn't keep a selection to reappear with (GitHub #85).
                 selection.Clear();
@@ -2294,7 +2300,13 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 return true;
             case ShortcutAction.ScanReplayGain:
             {
-                var tracks = TrackSelection.ForReplayGain(QueueSelectedTracks(vm), PageSelectedTracks(vm), vm.Player.CurrentTrack);
+                // GitHub #206: the selection the keys address first (the queue panel's when it
+                // is the keyboard target), then the other one, then the playing track.
+                var queue = QueueSelectedTracks(vm);
+                var page = PageSelectedTracks(vm);
+                var tracks = IsQueueKeyTarget()
+                    ? TrackSelection.ForReplayGain(queue, page, vm.Player.CurrentTrack)
+                    : TrackSelection.ForReplayGain(page, queue, vm.Player.CurrentTrack);
                 if (tracks.Count == 0) return false;
                 _ = MetadataHelper.OpenReplayGainScannerDialog(tracks);
                 return true;
@@ -2332,11 +2344,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         return true;
     }
 
-    /// <summary>The queue panel's row selection, only while focus is in the panel.</summary>
+    /// <summary>The queue panel's row selection, while the panel is open. Its indices
+    /// are rows of QueueRows (GitHub #134: played songs and the playing one come first with
+    /// Keep Played Songs on), not of Up Next: read against Up Next, rows past the played ones
+    /// mapped to later songs or to nothing, and the shortcut fell back to the playing track
+    /// (GitHub #206).</summary>
     private IReadOnlyList<Track>? QueueSelectedTracks(MainWindowViewModel vm) =>
-        _queueSelection is { Count: > 0 } selection && IsFocusInQueuePanel()
-            ? TrackSelection.FromIndices(vm.Player.UpNext, selection.Snapshot())
+        _queueSelection is { Count: > 0 } selection && _queueKeys?.IsPanelShown == true
+            ? QueueSelectionTracks(vm.Player, selection)
             : null;
+
+    internal static List<Track> QueueSelectionTracks(PlayerViewModel player, QueueRowSelection<Track> selection) =>
+        TrackSelection.FromIndices(player.QueueRows, selection.Snapshot());
 
     /// <summary>The Ctrl-selection on the page currently shown, unless the Settings sheet
     /// covers it.</summary>
@@ -2581,20 +2600,27 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
     }
 
-    private bool IsFocusInQueuePanel() =>
-        _queuePopupPanel is { IsVisible: true } panel
-        && FocusManager?.GetFocusedElement() is Visual focused
-        && (focused == panel || panel.IsVisualAncestorOf(focused));
+    private QueueKeyFocus? _queueKeys;
+
+    /// <summary>
+    /// The queue panel's keys (Ctrl+A, Delete, Escape) and selection are what the keyboard
+    /// addresses (GitHub #207): focus is in the panel, or it was clicked last (header
+    /// included; island clicks since don't count), or the page under it is Lyrics or the
+    /// Visualizer, which have nothing of their own to select. Never under the Settings sheet.
+    /// </summary>
+    private bool IsQueueKeyTarget() =>
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: false } vm
+        && _queueKeys?.IsKeyTarget(pageHasNothingToSelect: vm.IsLyricsViewActive || vm.CurrentView is VisualizerViewModel) == true;
 
     /// <summary>Page shortcuts (Ctrl+A, Escape) stay off the page while the Settings sheet
-    /// covers it or the queue panel holds focus; the sheet and panel handle those keys.</summary>
+    /// covers it or the queue panel takes the keys; the sheet and panel handle those keys.</summary>
     bool IPageKeyOverlayHost.IsOverlayCapturingKeys =>
-        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsFocusInQueuePanel();
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsQueueKeyTarget();
 
     private void OnQueueKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm || _queueSelection is not { } selection) return;
-        if (e.Source is TextBox || !IsFocusInQueuePanel()) return;
+        if (e.Source is TextBox || !IsQueueKeyTarget()) return;
 
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
         {
