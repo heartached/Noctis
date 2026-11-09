@@ -2564,6 +2564,10 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Songtexte finden…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Songtext-Studio öffnen</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Stopp</value><comment>Button: stops a bulk run</comment></data>
+  <data name="BulkLyrics.HasWordSynced" xml:space="preserve"><value>wortsynchrone Songtexte</value><comment>Row status in the bulk lyrics dialog: the song already has word-synced lyrics (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasLineSynced" xml:space="preserve"><value>zeilensynchrone Songtexte</value><comment>Row status in the bulk lyrics dialog: the song already has line-synced lyrics (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasPlain" xml:space="preserve"><value>einfache Songtexte</value><comment>Row status in the bulk lyrics dialog: the song has plain lyrics only (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasNone" xml:space="preserve"><value>keine Songtexte</value><comment>Row status in the bulk lyrics dialog: the song has no lyrics (GitHub #216)</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Animiertes Artwork</value><comment>Dialog title (window)</comment></data>
   <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Bewegt Cover von Apple Music zu Alben, die keines haben. Nur eindeutige Treffer werden gespeichert.</value></data>
   <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Alben erneut prüfen, für die ein früherer Durchlauf nichts fand</value><comment>Checkbox</comment></data>

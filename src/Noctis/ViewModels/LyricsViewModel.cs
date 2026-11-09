@@ -2040,7 +2040,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     internal static string? SyncedToWrite(LrcLibResult result) =>
         (result.HasLyricsfile ? LyricsfileParser.ToElrc(result.Lyricsfile) : null)
-        ?? (string.IsNullOrWhiteSpace(result.SyncedLyrics) ? null : result.SyncedLyrics);
+        // Untimed text in the synced slot is plain lyrics, not synced ones (GitHub #215).
+        ?? (Noctis.Helpers.LyricsTextHelper.ContainsTimestamps(result.SyncedLyrics) ? result.SyncedLyrics : null);
 
     /// <summary>
     /// GitHub #115: saves the online lyrics on the page next to the song, under its name, and

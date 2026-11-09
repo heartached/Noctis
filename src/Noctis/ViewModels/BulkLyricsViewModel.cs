@@ -92,7 +92,13 @@ public partial class BulkLyricsViewModel : ViewModelBase
         var rows = Rows.ToArray();
         return Task.Run(() =>
         {
-            var states = Array.ConvertAll(rows, r => Row.LyricsState(r.Track));
+            // What the find run itself compares against (sidecars, then the synced field, then
+            // timed text in the file's lyrics tag): GitHub #216, a song whose synced lyrics live
+            // in its USLT / LYRICS / ©lyr tag read "plain lyrics" here.
+            IReadOnlyList<Services.LyricsStudio.LyricsFormat> formats;
+            try { formats = Services.LyricsStudio.ExistingLyricsLoader.DetectFormats(rows.Select(r => r.Track).ToList()); }
+            catch { return; }
+            var states = formats.Select(Row.LyricsState).ToArray();
             Dispatcher.UIThread.Post(() =>
             {
                 for (var i = 0; i < rows.Length; i++)
@@ -305,8 +311,13 @@ public partial class BulkLyricsViewModel : ViewModelBase
             Track = track;
         }
 
-        internal static string LyricsState(Track track)
-            => string.IsNullOrWhiteSpace(track.SyncedLyrics) ? (string.IsNullOrWhiteSpace(track.Lyrics) ? "no lyrics" : "plain lyrics") : "synced";
+        internal static string LyricsState(Services.LyricsStudio.LyricsFormat format) => format switch
+        {
+            Services.LyricsStudio.LyricsFormat.Elrc => L("BulkLyrics.HasWordSynced"),
+            Services.LyricsStudio.LyricsFormat.Lrc => L("BulkLyrics.HasLineSynced"),
+            Services.LyricsStudio.LyricsFormat.Plain => L("BulkLyrics.HasPlain"),
+            _ => L("BulkLyrics.HasNone"),
+        };
 
         public Track Track { get; }
         public string Title => Track.Title;

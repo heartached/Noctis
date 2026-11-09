@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -74,11 +75,13 @@ public static partial class LyricsSearchSelector
             .Where(r => !r.Instrumental && MatchesTrack(r, artist, title, durationSeconds))
             .ToList();
 
+        // By what the lyrics are, not which fields are filled (GitHub #215): LRCLIB sends a
+        // Lyricsfile with plain-only entries too, and one listed first beat a synced entry.
         if (requireSynced)
-            return validated.FirstOrDefault(r => r.HasSyncedLyrics);
+            return validated.FirstOrDefault(r => FormatRank(r) >= 2);
 
         return validated.FirstOrDefault(r => r.HasWordSyncedLyricsfile)
-            ?? validated.FirstOrDefault(r => r.HasSyncedLyrics || r.HasLyricsfile)
+            ?? validated.FirstOrDefault(r => FormatRank(r) >= 2)
             ?? validated.FirstOrDefault(r => r.HasLyrics);
     }
 
@@ -118,15 +121,17 @@ public static partial class LyricsSearchSelector
     /// <summary>
     /// How rich a result's lyrics are, for picking between sources: word-synced (a Lyricsfile that
     /// times words, or synced text carrying ELRC word tags) 3, line-synced 2, plain 1, nothing 0.
+    /// Judged by content (GitHub #215): synced text needs line timestamps and a Lyricsfile timed
+    /// lines; LRCLIB's plain-only answers carry an untimed Lyricsfile and are plain.
     /// </summary>
     public static int FormatRank(LrcLibResult? result)
     {
         if (result == null) return 0;
         if (result.HasWordSyncedLyricsfile) return WordSyncedRank;
-        if (result.HasSyncedLyrics)
+        if (result.HasSyncedLyrics && LyricsTextHelper.ContainsTimestamps(result.SyncedLyrics))
             return EnhancedLrcParser.ContainsWordTags(result.SyncedLyrics) ? WordSyncedRank : 2;
         // A Lyricsfile without word timings still times its lines.
-        if (result.HasLyricsfile) return 2;
+        if (result.HasTimedLyricsfile) return 2;
         return result.HasLyrics ? 1 : 0;
     }
 

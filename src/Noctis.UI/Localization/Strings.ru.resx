@@ -2572,6 +2572,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Найти тексты…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Остановить</value><comment>Button: stops a bulk run</comment></data>
+  <data name="BulkLyrics.HasWordSynced" xml:space="preserve"><value>текст с синхронизацией по словам</value><comment>Row status in the bulk lyrics dialog: the song already has word-synced lyrics (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasLineSynced" xml:space="preserve"><value>текст с синхронизацией по строкам</value><comment>Row status in the bulk lyrics dialog: the song already has line-synced lyrics (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasPlain" xml:space="preserve"><value>обычный текст</value><comment>Row status in the bulk lyrics dialog: the song has plain lyrics only (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasNone" xml:space="preserve"><value>нет текста</value><comment>Row status in the bulk lyrics dialog: the song has no lyrics (GitHub #216)</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Анимированные обложки</value><comment>Dialog title (window)</comment></data>
   <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Добавляет анимированные обложки из Apple Music к альбомам без них. Сохраняются только точные совпадения.</value></data>
   <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Снова искать для альбомов, для которых раньше ничего не нашлось</value><comment>Checkbox</comment></data>
