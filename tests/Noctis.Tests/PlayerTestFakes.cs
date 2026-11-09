@@ -279,6 +279,13 @@ internal sealed class FakeLibraryService : ILibraryService
         AlbumGroupingWriteTagsCalls.Add(enabled);
         return Task.FromResult(AlbumGroupingWriteResult);
     }
+    /// <summary>GitHub #201: Save to Files Now.</summary>
+    public int SaveAlbumGroupingToFilesCalls { get; private set; }
+    public Task<AlbumGroupResult> SaveAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    {
+        SaveAlbumGroupingToFilesCalls++;
+        return Task.FromResult(AlbumGroupingWriteResult);
+    }
     public event EventHandler<AlbumGroupResult>? AlbumGroupingWritten;
     public void RaiseAlbumGroupingWritten(AlbumGroupResult result) => AlbumGroupingWritten?.Invoke(this, result);
     public Task<int> ApplyMergeFeaturedFromTitlesAsync(bool enabled, CancellationToken ct = default) => Task.FromResult(0);

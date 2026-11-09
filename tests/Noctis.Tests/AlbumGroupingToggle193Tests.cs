@@ -327,6 +327,118 @@ public class AlbumGroupingToggle193Tests : IDisposable
         Assert.Single(library.Albums);
     }
 
+    // ── Groupings made before the files were written (#201) ──
+
+    private static string ReadAlbum(string path)
+    {
+        using var f = TagLib.File.Create(path);
+        return f.Tag.Album;
+    }
+
+    private async Task<LibraryService> RestartAsync(PersistenceService persistence)
+    {
+        var reloaded = new LibraryService(new MetadataService(), persistence,
+            new SqliteLibraryIndexService(persistence), new NoctisAccountLibraryTests.NoOpAudit());
+        await reloaded.LoadAsync();
+        await reloaded.BackgroundInit;
+        return reloaded;
+    }
+
+    [Fact]
+    public async Task SaveToFilesNow_WritesAGroupingMadeWhileSavingWasOff()
+    {
+        // #201: songs grouped while Save Grouping to Files was off live in Noctis only, and
+        // another player (mtoc) still shows them as one album per singer.
+        var files = WritePremPoojari();
+        var (library, persistence) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != 3) Assert.Fail(ScanMissReport.Describe(library, Music));
+        Assert.Single(library.Albums);
+        Assert.All(files, f => Assert.Empty(ReadAlbumArtists(f))); // DB only so far
+
+        var result = await library.SaveAlbumGroupingToFilesAsync();
+
+        Assert.Equal(3, result.Grouped);
+        Assert.Empty(result.UnwrittenFiles);
+        foreach (var f in files)
+        {
+            Assert.Equal(new[] { Track.VariousArtists }, ReadAlbumArtists(f));
+            Assert.Equal("Prem Poojari", ReadAlbum(f)); // the grouped spelling, as a new grouping writes it
+        }
+        Assert.False((await persistence.LoadSettingsAsync()).AlbumGroupingWriteTags); // a one-off, the setting stays
+        Assert.Equal(0, (await library.SaveAlbumGroupingToFilesAsync()).Grouped); // nothing left
+    }
+
+    [Fact]
+    public async Task Startup_WithSavingOff_LeavesTheFilesAlone()
+    {
+        var files = WritePremPoojari();
+        var (library, persistence) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != 3) Assert.Fail(ScanMissReport.Describe(library, Music));
+        var stamps = files.Select(File.GetLastWriteTimeUtc).ToList();
+
+        var reloaded = await RestartAsync(persistence);
+
+        Assert.Single(reloaded.Albums);
+        Assert.Equal(stamps, files.Select(File.GetLastWriteTimeUtc).ToList());
+        Assert.All(files, f => Assert.Empty(ReadAlbumArtists(f)));
+    }
+
+    [Fact]
+    public async Task WriteTags_On_AFileReadOnlyThen_IsWrittenAtTheNextStart()
+    {
+        var files = WritePremPoojari();
+        var (library, persistence) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != 3) Assert.Fail(ScanMissReport.Describe(library, Music));
+        File.SetAttributes(files[1], FileAttributes.ReadOnly);
+        Assert.Equal(new[] { "02.mp3" }, (await library.SetAlbumGroupingWriteTagsAsync(true)).UnwrittenFiles);
+        await persistence.UpdateSettingsAsync(s => s.AlbumGroupingWriteTags = true); // as Settings saves it
+        Assert.Empty(ReadAlbumArtists(files[1]));
+        File.SetAttributes(files[1], FileAttributes.Normal);
+
+        var reloaded = await RestartAsync(persistence);
+
+        Assert.Equal(new[] { Track.VariousArtists }, ReadAlbumArtists(files[1]));
+        Assert.Equal("Prem Poojari", ReadAlbum(files[1]));
+        Assert.Single(reloaded.Albums);
+        Assert.Empty(AlbumGrouping.SongsToWrite(reloaded.AllTracks, rule: true));
+    }
+
+    [Fact]
+    public async Task GroupIntoOneAlbum_AFileNotWritableThen_IsWrittenAfterARestart()
+    {
+        // The manual action always writes the files; one that was read-only (or held open) kept
+        // its old tags for good, although Noctis showed it in the new album.
+        var a = WriteMp3(Path.Combine("Rip A", "01.mp3"), "Prem Poojari", new[] { "K. J. Yesudas" });
+        var b = WriteMp3(Path.Combine("Rip B", "02.mp3"), "Prem Poojari (OST)", new[] { "K. S. Chithra" });
+        var (library, persistence) = await NewLibraryAsync();
+        await library.ScanAsync(new[] { Music });
+        if (library.AllTracks.Count != 2) Assert.Fail(ScanMissReport.Describe(library, Music));
+        File.SetAttributes(b, FileAttributes.ReadOnly);
+
+        var grouped = await library.GroupIntoAlbumAsync(library.AllTracks.ToList(), "Prem Poojari", "Ouseppachan");
+
+        Assert.Equal(new[] { "02.mp3" }, grouped.UnwrittenFiles);
+        Assert.Equal("Prem Poojari (OST)", ReadAlbum(b));
+        Assert.True(library.AllTracks.Single(t => t.FilePath == b).AlbumGroupingUnwritten);
+        Assert.False(library.AllTracks.Single(t => t.FilePath == a).AlbumGroupingUnwritten);
+        Assert.Equal(new[] { "02.mp3" }, (await library.SaveAlbumGroupingToFilesAsync()).UnwrittenFiles); // still read-only
+
+        File.SetAttributes(b, FileAttributes.Normal);
+        var reloaded = await RestartAsync(persistence); // Save Grouping to Files is off: the manual action writes anyway
+
+        Assert.Equal(new[] { "Ouseppachan" }, ReadAlbumArtists(b));
+        Assert.Equal("Prem Poojari", ReadAlbum(b));
+        Assert.All(reloaded.AllTracks, t => Assert.False(t.AlbumGroupingUnwritten));
+        Assert.Equal(Track.ComputeAlbumId("Ouseppachan", "Prem Poojari"), Assert.Single(reloaded.Albums).Id);
+        // A rescan of the re-written file keeps the album.
+        foreach (var t in reloaded.AllTracks) t.LastModified = default;
+        await reloaded.ScanAsync(new[] { Music });
+        Assert.Single(reloaded.Albums);
+    }
+
     // ── FLAC (#190: the reporter copies FLAC and MP3) ──
 
     private string WriteFlac(string relativePath, string album, string performer)
@@ -497,6 +609,31 @@ public class AlbumGroupingSettings193Tests : IDisposable
         Assert.Equal(new[] { true, false }, library.AlbumGroupingWriteTagsCalls);
     }
 
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task SaveToFilesNow_WritesOnce_ReportsAndListsTheFilesNotSaved_SettingUnchanged()
+    {
+        var (vm, library) = CreateSettings();
+        await vm.LoadAsync();
+        var notices = new List<Noctis.Views.ConfirmationRequest>();
+        vm.ShowAlbumGroupingNotice = r =>
+        {
+            notices.Add(r);
+            return Task.FromResult(new Noctis.Views.ConfirmationResult(true, false));
+        };
+
+        await vm.SaveAlbumGroupingToFilesNowCommand.ExecuteAsync(null);
+        Assert.Equal(Noctis.Localization.Loc.T("Settings.AlbumGroupingFilesUpToDate"), vm.ScanStatusText);
+
+        library.AlbumGroupingWriteResult = new AlbumGroupResult(Guid.Empty, 4, new[] { "02.mp3" });
+        await vm.SaveAlbumGroupingToFilesNowCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, library.SaveAlbumGroupingToFilesCalls);
+        Assert.Equal(Noctis.Localization.Loc.T("Settings.AlbumGroupingWrittenSome", 4, 1), vm.ScanStatusText);
+        Assert.Equal(new[] { "02.mp3" }, Assert.Single(notices).Details);
+        Assert.False(vm.AlbumGroupingWriteTags);
+        Assert.Empty(library.AlbumGroupingWriteTagsCalls);
+    }
+
     [Fact]
     public void SettingsView_HasBothToggles_AndSaveToFilesFollowsGrouping()
     {
@@ -509,5 +646,6 @@ public class AlbumGroupingSettings193Tests : IDisposable
         Assert.Contains("IsChecked=\"{Binding AlbumGroupingEnabled}\"", xaml);
         Assert.Contains("IsChecked=\"{Binding AlbumGroupingWriteTags}\"", xaml);
         Assert.Contains("<Grid ColumnDefinitions=\"*,Auto\" IsEnabled=\"{Binding AlbumGroupingEnabled}\">", xaml);
+        Assert.Contains("Command=\"{Binding SaveAlbumGroupingToFilesNowCommand}\"", xaml); // #201
     }
 }

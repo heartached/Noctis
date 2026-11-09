@@ -195,6 +195,15 @@ public partial class Track : ObservableObject
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? UngroupedAlbum { get; set; }
 
+    /// <summary>
+    /// GitHub #201: "Group into One Album" put this song on an album (<see cref="Album"/> /
+    /// <see cref="AlbumArtist"/>) that its file does not name yet, because the file could not be
+    /// written then (read-only, missing, held open). The next pass writing the grouping into the
+    /// files (at startup, or Settings › Library › Save to Files Now) tries it again.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool AlbumGroupingUnwritten { get; set; }
+
     /// <summary>File size in bytes, used for change detection during rescan.</summary>
     public long FileSize { get; set; }
 

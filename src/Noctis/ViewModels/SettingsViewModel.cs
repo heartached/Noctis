@@ -5488,6 +5488,35 @@ public partial class SettingsViewModel : ViewModelBase
                 Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
     }
 
+    /// <summary>GitHub #201: "Save to Files Now" writes every grouping the files do not carry yet
+    /// (made while saving was off, or a file that could not be written then), once.</summary>
+    [RelayCommand]
+    private async Task SaveAlbumGroupingToFilesNow()
+    {
+        SetScanStatus(Loc.T("Settings.AlbumGroupingWriting"));
+        AlbumGroupResult result;
+        try
+        {
+            result = await _library.SaveAlbumGroupingToFilesAsync();
+        }
+        catch (Exception)
+        {
+            SetScanStatus(Loc.T("Settings.AlbumGroupingFailed"), autoClear: true);
+            return;
+        }
+        if (result.Grouped == 0 && result.UnwrittenFiles.Count == 0)
+        {
+            SetScanStatus(Loc.T("Settings.AlbumGroupingFilesUpToDate"), autoClear: true);
+            return;
+        }
+        ReportAlbumGroupingWrite(result);
+        if (result.UnwrittenFiles.Count > 0)
+            await ShowAlbumGroupingNotice(new Views.ConfirmationRequest(
+                Loc.T("Settings.AlbumGroupingNotWritten", result.UnwrittenFiles.Count),
+                Loc.T("Settings.AlbumGroupingSaveNow"),
+                Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
+    }
+
     private void ReportAlbumGroupingWrite(AlbumGroupResult result) =>
         SetScanStatus(result.UnwrittenFiles.Count > 0
             ? Loc.T("Settings.AlbumGroupingWrittenSome", result.Grouped, result.UnwrittenFiles.Count)
