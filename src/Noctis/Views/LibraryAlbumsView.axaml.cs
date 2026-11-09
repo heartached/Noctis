@@ -297,10 +297,16 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         if (e.NewSize.Width <= 0 || DataContext is not LibraryAlbumsViewModel vm)
             return;
 
-        // DockPanel has Margin="12,8,12,0" → 24px horizontal margin.
-        // Column count and tile size (each tile carries 8px of margin+padding chrome)
-        // are computed in the view model, which folds in the cover-size setting.
-        var usable = e.NewSize.Width - 24;
+        // Column count and tile size (AlbumGridMetrics.TileChrome around each cover) are
+        // computed in the view model, which folds in the cover-size setting.
+        var usable = GridUsableWidth(e.NewSize.Width);
+        // The scroll bar's width is only known once the list has been laid out: settle on
+        // the measured value after this pass (a no-op when the guess was right).
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (DataContext is LibraryAlbumsViewModel v && Bounds.Width > 0)
+                v.UpdateGridMetrics(GridUsableWidth(Bounds.Width));
+        }, DispatcherPriority.Background);
 
         // Save and restore scroll position so sidebar hover doesn't reset scroll
         var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
@@ -316,6 +322,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
                 sv.Offset = new Vector(0, Math.Min(savedY, Math.Max(0, sv.Extent.Height - sv.Viewport.Height)));
             }, DispatcherPriority.Background);
         }
+    }
+
+    /// <summary>
+    /// The width the tile rows really get: the view less the DockPanel's side margins (12 + 2),
+    /// the rows' 1px side margins and the always-shown vertical scroll bar. A flat "- 24" guessed the bar's share and came
+    /// out 15px wide at 1400px, so every cover was 3px wider than its slot and ate into the
+    /// gap between covers (GitHub #210).
+    /// </summary>
+    private double GridUsableWidth(double viewWidth)
+    {
+        var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        var bar = sv is { Bounds.Width: > 0, Viewport.Width: > 0 } ? sv.Bounds.Width - sv.Viewport.Width : 10;
+        return viewWidth - 16 - bar;
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)

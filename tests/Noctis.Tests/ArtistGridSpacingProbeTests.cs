@@ -82,8 +82,8 @@ public class ArtistGridSpacingProbeTests
             _o.WriteLine($"  '{album.Name}': tile {tile.Bounds.Width:0.#}x{tile.Bounds.Height:0.#} grid Width={g.Width:0.#} bounds={g.Bounds.Width:0.#}x{g.Bounds.Height:0.#} cover Width={cover.Width:0.#} bounds={cover.Bounds.Width:0.#} labelBottom={lb:0.#} overflow={lb - tile.Bounds.Height:0.#} titleLines={title.TextLayout.TextLines.Count}");
         }
         // Pins (09-14): Home's column count in Auto, tiles never clipped by their cells
-        // (the tab grids used a hard-coded 8-column UniformGrid), 8px cover-to-cover gap
-        // as on Home (2 margin + 2 padding per side).
+        // (the tab grids used a hard-coded 8-column UniformGrid), 18px cover-to-cover gap
+        // as on Home and Albums (AlbumGridMetrics.TileChrome: 3 margin + 6 padding per side, #210).
         Assert.Equal(AlbumGridMetrics.ClassicColumns, vm.GridColumns);
         Assert.Equal(vm.GridColumns, rows[0].Count());
         foreach (var tile in tiles)
@@ -92,11 +92,11 @@ public class ArtistGridSpacingProbeTests
             Assert.True(tile.Bounds.Width >= g.Bounds.Width + 4 - 0.5, $"tile {tile.Bounds.Width} clips its {g.Bounds.Width} content");
         }
         var first = rows[0].OrderBy(t => t.Bounds.X).Take(2).ToList();
-        var c0 = first[0].GetVisualDescendants().OfType<Border>().First(b => b.CornerRadius.TopLeft == 6);
-        var c1 = first[1].GetVisualDescendants().OfType<Border>().First(b => b.CornerRadius.TopLeft == 6);
+        var c0 = first[0].GetVisualDescendants().OfType<Border>().First(b => b.Classes.Count == 0 && b.CornerRadius.TopLeft == 6);
+        var c1 = first[1].GetVisualDescendants().OfType<Border>().First(b => b.Classes.Count == 0 && b.CornerRadius.TopLeft == 6);
         var coverGap = c1.TranslatePoint(new Point(0, 0), grid)!.Value.X - (c0.TranslatePoint(new Point(0, 0), grid)!.Value.X + c0.Bounds.Width);
         _o.WriteLine($"cover-to-cover gap={coverGap:0.#}");
-        Assert.InRange(coverGap, 7.5, 9.5);
+        Assert.InRange(coverGap, 17.5, 19.5);
         win.Close();
     }
 

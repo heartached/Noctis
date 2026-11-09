@@ -41,7 +41,11 @@
     <Grid RowDefinitions="*">
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits near the window
              edge (Apple Music style) instead of being inset ~12px from it. -->
-        <DockPanel Grid.Row="0" Margin="12,8,2,8">
+        <!-- GitHub #210, one gap everywhere: tiles carry 3px side / 2px top-bottom margins and
+             6px padding, and each grid row (ListBoxItem) adds 1px all round (app style), so
+             cover-to-cover and caption-to-next-cover are both 18px; the 13px top margin puts the
+             first cover as far from the top as from the left (22px). -->
+        <DockPanel Grid.Row="0" Margin="12,13,2,8">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -200,8 +204,9 @@
                     </DataTemplate>
 
                     <DataTemplate DataType="m:AlbumRow">
-                        <ItemsControl ItemsSource="{Binding Albums}"
-                                      Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileRowHeight}">
+                        <!-- Rows size to their tallest caption (GitHub #210): a fixed row height
+                             left a 17px taller gap under rows whose titles all fit on one line. -->
+                        <ItemsControl ItemsSource="{Binding Albums}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <!-- Column count mirrors the VM's row chunk size (cover-size setting) -->
@@ -213,7 +218,8 @@
                                     <Button Classes="album-tile"
                                             AutomationProperties.Name="{Binding Name}"
                                             Focusable="False"
-                                            Margin="2"
+                                            Margin="3,2"
+                                            Padding="6"
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Stretch"
                                             VerticalContentAlignment="Top"

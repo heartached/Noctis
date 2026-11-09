@@ -38,13 +38,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// once for the pair rather than once per property.</summary>
     private bool _suspendSortRebuild;
 
-    private const double TileTextHeight = 64;
-
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
-    public double TileRowHeight => TileArtworkSize + TileTextHeight;
 
     /// <summary>Covers per row. Classic five in Automatic mode; otherwise derived from
     /// the view width and the cover-size setting (see <see cref="AlbumGridMetrics"/>).
@@ -384,10 +381,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void SetQualityFilter(string key) => QualityFilter = key == "all" ? string.Empty : key;
 
-    partial void OnTileArtworkSizeChanged(double value)
-    {
-        OnPropertyChanged(nameof(TileRowHeight));
-    }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
     /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
