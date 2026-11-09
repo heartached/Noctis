@@ -245,8 +245,14 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     partial void OnIsFullScreenPageActiveChanged(bool value)
     {
         OnPropertyChanged(nameof(IsLyricsFocusActive));
+        OnPropertyChanged(nameof(IsLyricsIslandHidden));
         RefreshFocusDimming();
     }
+
+    /// <summary>GitHub #211: the page hides its player island (Settings ▸ Lyrics ▸ Hide the
+    /// Player Island in Full Screen) — full screen only, so it is back the moment the window
+    /// leaves full screen or the page closes. The progress line stays either way.</summary>
+    public bool IsLyricsIslandHidden => IsFullScreenPageActive && Player.LyricsFullScreenHideIsland;
 
     /// <summary>True while the opt-in fullscreen focus dimming is in effect (fullscreen
     /// lyrics page + Appearance toggle). The page view also anchors the active line
@@ -3105,6 +3111,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsLyricsFocusActive));
             RefreshFocusDimming();
         }
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsFullScreenHideIsland))
+            OnPropertyChanged(nameof(IsLyricsIslandHidden));
         // Glow & lift flipped: the running lines settle (off) or pick it up next frame (on).
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsGlowAndLift))
         {

@@ -101,6 +101,8 @@ public class FreshInstallDefaultsTests
         Assert.False(Fresh.LiquidGlassEnabled);
         Assert.False(Fresh.LyricsFlowingLightEnabled);
         Assert.False(Fresh.LyricsFullScreenFocusEnabled);
+        // GitHub #211: the full-screen lyrics page keeps its island unless asked not to.
+        Assert.False(Fresh.LyricsFullScreenHideIsland);
         Assert.False(Fresh.LyricsJoinSplitWords);
         // Minimum line opacity ships ON (15%) so every lyric line can be clicked to seek
         // (Discord, Mistery 09-20); the constant is what the slider's double-tap restores.

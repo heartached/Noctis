@@ -420,6 +420,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.Remove" xml:space="preserve"><value>Entfernen</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Vollbild-Songtext-Fokus</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Alle Zeilen außer der aktuellen und ihren Nachbarn dimmen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Player-Insel im Vollbild ausblenden</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>Im Vollbild zeigt die Songtext-Seite unter dem Song nur noch den Fortschrittsbalken. Tastenkürzel steuern die Wiedergabe weiterhin.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>Minimale Zeilendeckkraft</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Jede Songtextzeile schwach sichtbar lassen, damit du per Klick dorthin springen kannst. 0 % blendet ferne Zeilen aus.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Geteilte Wörter verbinden</value><comment>Text in SettingsView.axaml</comment></data>

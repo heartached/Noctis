@@ -613,6 +613,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
     /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    /// <summary>GitHub #211: the full-screen lyrics page hides the player island. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsFullScreenHideIsland;
     /// <summary>Percent floor (0–60) under the dimmed lyric lines; above 0 every line
     /// stays faintly visible and clickable. Driven by Settings.</summary>
     [ObservableProperty] private int _lyricsMinLineOpacity;

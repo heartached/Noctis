@@ -192,6 +192,7 @@ public partial class LyricsView : UserControl
             }
             // The state may have moved while this view was cached off screen: open on it.
             ApplyNoLyricsCentered(animate: false);
+            ApplyIslandHidden();
             JumpToActiveLineWhenReady(vm.ScrollLineIndex);
 
             // Start the artwork flow if the artwork background mode is active.
@@ -586,6 +587,16 @@ public partial class LyricsView : UserControl
         if (DataContext is LyricsViewModel vm)
             SubscribeVm(vm);
         ApplyNoLyricsCentered(animate: false);
+        ApplyIslandHidden();
+    }
+
+    /// <summary>GitHub #211: Hide the Player Island in Full Screen. Only the island goes —
+    /// the progress line above it stays, and playback stays on the keyboard shortcuts
+    /// (MainWindow handles them for the whole window, focus anywhere).</summary>
+    private void ApplyIslandHidden()
+    {
+        if (LyricsPlaybackBar is null) return;
+        LyricsPlaybackBar.IsVisible = DataContext is not LyricsViewModel { IsLyricsIslandHidden: true };
     }
 
     /// <summary>
@@ -706,6 +717,11 @@ public partial class LyricsView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(LyricsViewModel.IsLyricsIslandHidden))
+        {
+            ApplyIslandHidden();
+            return;
+        }
         if (e.PropertyName == nameof(LyricsViewModel.IsNoLyricsCentered))
         {
             // Off screen (cached view): snap, the next visit shows the settled layout.

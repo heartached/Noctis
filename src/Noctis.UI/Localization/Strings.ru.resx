@@ -421,6 +421,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Remove" xml:space="preserve"><value>Удалить</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Фокус в полноэкранном тексте</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Приглушать все строки, кроме текущей и соседних.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Скрывать островок плеера в полноэкранном режиме</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>В полноэкранном режиме на странице текста под песней остаётся только полоса прогресса. Воспроизведением по-прежнему можно управлять с клавиатуры.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>Минимальная непрозрачность строк</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Все строки текста остаются слегка видимыми, чтобы можно было щёлкнуть по любой и перейти к ней. При 0% далёкие от текущей строки скрыты.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Склеивать разбитые слова</value><comment>Text in SettingsView.axaml</comment></data>

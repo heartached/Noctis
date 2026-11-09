@@ -1015,6 +1015,14 @@
     <value>현재 줄과 인접한 줄을 제외한 모든 줄을 어둡게 합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>전체 화면에서 플레이어 아일랜드 숨기기</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>전체 화면 가사 페이지에서는 곡 아래에 진행 막대만 남깁니다. 재생은 계속 키보드 단축키로 조작할 수 있습니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>최소 줄 불투명도</value>
     <comment>Text in SettingsView.axaml</comment>

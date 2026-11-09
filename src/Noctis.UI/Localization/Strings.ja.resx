@@ -1015,6 +1015,14 @@
     <value>現在のものとその隣のものを除くすべての行を暗くします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>全画面ではプレイヤーアイランドを隠す</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>全画面の歌詞ページでは、曲の下に進行バーだけを表示します。再生はキーボードショートカットで操作できます。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>最小線の不透明度</value>
     <comment>Text in SettingsView.axaml</comment>

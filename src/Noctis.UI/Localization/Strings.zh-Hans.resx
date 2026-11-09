@@ -1015,6 +1015,14 @@
     <value>除了目前的一条线及其邻国外，每条线都变暗。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>全屏时隐藏播放岛</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>全屏时歌词页在歌曲下方只保留进度条。仍可用键盘快捷键控制播放。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>最小不透明度</value>
     <comment>Text in SettingsView.axaml</comment>

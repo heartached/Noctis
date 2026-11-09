@@ -200,6 +200,46 @@ public class LyricsViewIslandFitTests
         }
     }
 
+    /// <summary>GitHub #211: Settings ▸ Lyrics ▸ "Hide the Player Island in Full Screen" hides
+    /// the island's buttons on the full-screen lyrics page only; the progress line stays.</summary>
+    [AvaloniaFact]
+    public async Task HideIslandInFullScreen_HidesOnlyTheButtons_AndOnlyInFullScreen()
+    {
+        var (vm, player) = MakeViewModel();
+        var view = new Noctis.Views.LyricsView { DataContext = vm };
+        var win = new Window { Width = 1366, Height = 768, Content = view };
+        try
+        {
+            win.Show();
+            await SettleAsync(vm);
+            var bar = view.FindControl<Noctis.Views.PlaybackBarView>("LyricsPlaybackBar")!;
+            var timeline = view.FindControl<Grid>("LyricsTimeline")!;
+
+            // Off by default: shown in full screen.
+            vm.IsFullScreenPageActive = true;
+            Assert.False(vm.IsLyricsIslandHidden);
+            Assert.True(bar.IsVisible);
+
+            player.LyricsFullScreenHideIsland = true;
+            Assert.True(vm.IsLyricsIslandHidden);
+            Assert.False(bar.IsVisible);
+            Assert.True(timeline.IsEffectivelyVisible);
+
+            // Leaving full screen brings it back; entering again hides it again.
+            vm.IsFullScreenPageActive = false;
+            Assert.True(bar.IsVisible);
+            vm.IsFullScreenPageActive = true;
+            Assert.False(bar.IsVisible);
+
+            player.LyricsFullScreenHideIsland = false;
+            Assert.True(bar.IsVisible);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
     [AvaloniaFact]
     public async Task NoLyrics_SmallWindowAndWideQueue_KeepsThePlayerOnScreen()
     {

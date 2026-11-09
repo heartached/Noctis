@@ -1015,6 +1015,14 @@
     <value>تغمر كل خط باستثناء الخط الحالي وجيرانه.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>إخفاء جزيرة التشغيل في وضع ملء الشاشة</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>في وضع ملء الشاشة تُبقي صفحة الكلمات شريط التقدم فقط أسفل الأغنية. يظل بإمكانك التحكم في التشغيل باختصارات لوحة المفاتيح.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>الحد الأدنى لشفافية الخط</value>
     <comment>Text in SettingsView.axaml</comment>

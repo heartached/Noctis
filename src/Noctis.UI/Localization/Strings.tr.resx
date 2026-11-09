@@ -285,6 +285,8 @@
   <data name="Settings.Remove" xml:space="preserve"><value>Kaldır</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Tam Ekran Söz Odağı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Geçerli satır ve komşuları dışındaki her satırı karart.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Tam Ekranda Oynatıcı Adasını Gizle</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>Tam ekranda söz sayfası şarkının altında yalnızca ilerleme çubuğunu gösterir. Oynatma klavye kısayollarıyla kontrol edilmeye devam eder.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>En Düşük Satır Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Her söz satırını hafifçe görünür tut; böylece herhangi bir satıra tıklayıp oraya atlayabilirsin. %0 geçerli satırdan uzak satırları gizler.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Bölünmüş Kelimeleri Birleştir</value><comment>Text in SettingsView.axaml</comment></data>

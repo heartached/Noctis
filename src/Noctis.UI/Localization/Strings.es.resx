@@ -1015,6 +1015,14 @@
     <value>Atenuar cada línea excepto la actual y sus vecinos.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>Ocultar la isla de reproducción en pantalla completa</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>En pantalla completa, la página de letras solo muestra la barra de progreso bajo la canción. Los atajos de teclado siguen controlando la reproducción.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>Opacidad de línea mínima</value>
     <comment>Text in SettingsView.axaml</comment>

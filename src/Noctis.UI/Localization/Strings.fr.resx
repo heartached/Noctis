@@ -1015,6 +1015,14 @@
     <value>Diminuer chaque ligne à l'exception de la ligne courante et de ses voisins.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>Masquer l'îlot de lecture en plein écran</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>En plein écran, la page des paroles ne garde que la barre de progression sous le morceau. Les raccourcis clavier contrôlent toujours la lecture.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>Opacité minimale de la ligne</value>
     <comment>Text in SettingsView.axaml</comment>
