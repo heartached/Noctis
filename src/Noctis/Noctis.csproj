@@ -168,12 +168,14 @@
        SDK flags the reference as inert (NU1510). -->
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
-    <!-- Floats the native SQLite past CVE-2025-6965 / GHSA-2m69-gcr7-jv3q (High).
-         Microsoft.Data.Sqlite 8.0.11 pins SQLitePCLRaw.lib.e_sqlite3 2.1.6, which
-         bundles SQLite < 3.50.2 and shipped e_sqlite3.dll in every release. This
-         explicit reference wins over the transitive pin without moving off the 8.0.x
-         Microsoft.Data.Sqlite line. Verify with a vulnerable/transitive package audit. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
+    <!-- The native SQLite ships in every release (e_sqlite3), so it is pinned here rather than
+         left to Microsoft.Data.Sqlite's transitive 2.1.x pin: that is how CVE-2025-6965 /
+         GHSA-2m69-gcr7-jv3q (High, SQLite < 3.50.2) once shipped. Since SQLitePCLRaw 3 the native
+         library is its own "SQLite" package (version = SQLite version), pinned explicitly so it
+         is not left at whatever bundle_e_sqlite3 names (3.0.5 names 3.53.4). Verify with a
+         vulnerable/transitive package audit. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="SQLite" Version="3.54.1" />
     <!-- Windows DPAPI: scrobbler tokens encrypted at rest in settings.json (runtime-guarded, no-op elsewhere) -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
   </ItemGroup>

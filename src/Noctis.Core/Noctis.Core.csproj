@@ -30,7 +30,10 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <!-- SQLitePCLRaw 3: the native library is the separate "SQLite" package; pinned here so it
+         is not left at the version bundle_e_sqlite3 3.0.5 happens to name (3.53.4). -->
+    <PackageReference Include="SQLite" Version="3.54.1" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
   </ItemGroup>
 
