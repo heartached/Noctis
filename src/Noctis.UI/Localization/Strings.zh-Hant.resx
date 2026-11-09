@@ -3580,7 +3580,7 @@
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecIdentification" xml:space="preserve">
-    <value>1. 身份識別</value>
+    <value>識別</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecContent" xml:space="preserve">
