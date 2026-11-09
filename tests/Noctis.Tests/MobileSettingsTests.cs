@@ -1217,7 +1217,7 @@ public class MobileSettingsTests
             Assert.False(toggle.IsChecked);
             toggle.IsChecked = true;
             Assert.True(vm.History.PickUpOnComputer);
-            Assert.Equal("When you open Noctis on Studio PC, it offers to carry on from the song you were playing here.",
+            Assert.Equal("Carry on from this song when you open Noctis on Studio PC",
                 MobileFixtures.Named<TextBlock>(page, "PickUpFootnoteLabel").Text);
         }
         finally

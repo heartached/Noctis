@@ -3283,7 +3283,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Cancel" xml:space="preserve"><value>Abbrechen</value><comment>Button</comment></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Jetzt syncen</value><comment>Account page tile</comment></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Alles herunterladen</value><comment>Account page tile</comment></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Behält jeden Song von deinem Computer auf diesem Smartphone, um ihn ohne Verbindung abzuspielen.</value><comment>Account page footnote</comment></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Behalte jeden Song auf diesem Handy, um offline zu hören</value><comment>Account page footnote</comment></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>Heruntergeladen</value><comment>Songs kept on the phone (label, filter, Library row)</comment></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Alle Downloads entfernen</value><comment>Screen reader name of the Remove downloads button</comment></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>Downloads entfernen</value><comment>Account page button</comment></data>
@@ -3378,7 +3378,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Zähler und „Zuletzt gespielt“ stimmen auf beiden überein</value><comment>Under Share with Computer</comment></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>Hörverlauf löschen</value><comment>Screen reader name and confirm button</comment></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Hörverlauf löschen…</value><comment>Settings row</comment></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Löscht die Wiedergaben dieses Smartphones. Bereits an Last.fm gesendete Wiedergaben bleiben dort.</value><comment>Footnote</comment></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Bereits an Last.fm gesendete Plays bleiben dort</value><comment>Footnote</comment></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>Dieses Smartphone</value><comment>Diagram caption</comment></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Computer</value><comment>Diagram caption and summary value</comment></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Dienste</value><comment>Diagram caption and group header</comment></data>
@@ -3400,7 +3400,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value><comment>Now Playing Artwork choice: the cover printed on a spinning compact disc</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Hintergrund bei „Läuft gerade“</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Helligkeit des Hintergrunds bei „Läuft gerade“</value><comment>Screen reader name of the slider</comment></data>
-  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Macht die Farben hinter „Läuft gerade“ dunkler oder heller. 0 ist das Standardaussehen.</value><comment>Footnote under the slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Dunklere oder hellere Farben hinter „Wird gespielt“</value><comment>Footnote under the slider</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Musikordner</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Downloads</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Hören</value><comment>Settings group</comment></data>
@@ -3425,42 +3425,42 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Zugriff verloren. Füge diesen Ordner erneut hinzu, um seine Songs abzuspielen.</value><comment>Under a music folder</comment></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>Nicht verfügbar. Verbinde seinen Speicher erneut und scanne dann neu.</value><comment>Under a music folder</comment></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>Noch keine Musikordner</value><comment>Music Folders, empty</comment></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Deine Bibliothek auf diesem Smartphone ist die Musik in diesen Ordnern.</value><comment>Music Folders footnote</comment></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Deine Bibliothek ist die Musik in diesen Ordnern</value><comment>Music Folders footnote</comment></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>Ordner hinzufügen</value><comment>Button</comment></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Beim Start scannen</value><comment>Setting switch</comment></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Sucht bei jedem Öffnen von Noctis nach neuen Songs in diesen Ordnern.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Sucht bei jedem Start von Noctis nach neuen Songs</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Albumfarben</value><comment>Group header</comment></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Seiten nach dem Cover färben</value><comment>Setting switch</comment></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Album- und Künstlerseiten nehmen einen dunklen Ton der Coverfarbe an, mit weißem Text. Aus: sie nutzen das schlichte helle oder dunkle Theme.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Album- und Künstlerseiten nehmen die Farbe des Covers an</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>Fortschrittsfarbe</value><comment>Player Bar switch and value</comment></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>Fortschrittslinie</value><comment>Player Bar switch and value</comment></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Die Fortschrittsfarbe füllt die Player-Leiste während des Songs in der Farbe des Covers. Die Fortschrittslinie zieht eine dünne Linie an ihrem unteren Rand. Sind beide aus, ist die Leiste schlichtes Glas.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Die Leiste füllen oder eine dünne Linie zeichnen, während der Song läuft</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Nur über WLAN herunterladen</value><comment>Setting switch</comment></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Songs von deinem Computer werden nur über WLAN geladen, nie über mobile Daten. Streaming ist davon nicht betroffen.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Downloads warten auf WLAN aber Streaming geht weiter</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Flüssige Bewegung</value><comment>Setting switch (screen refresh rate)</comment></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>Bis zu 120 Hz</value><comment>Switch subtitle</comment></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Lässt den Bildschirm auf Smartphones, die das unterstützen, bis zu 120-mal pro Sekunde aktualisieren, für flüssigeres Scrollen und Animationen. Schalte es aus, um bei 60 Hz zu bleiben und Akku zu sparen.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Flüssigeres Scrollen auf 120-Hz-Displays aber mehr Akkuverbrauch</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Tab-Auswahl aus Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Der gewählte Tab bleibt klares Glas</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Gespielte Titel in der Warteschlange</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Gespielte Titel bleiben über dem aktuellen</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Belegter Speicher</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Alle Downloads entfernen</value><comment>Button</comment></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Entfernte Downloads bleiben auf deinem Computer und lassen sich weiter streamen.</value><comment>Footnote</comment></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis selbst steht unter der MIT-Lizenz.</value><comment>Licenses footnote</comment></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Sie bleiben auf deinem Computer und lassen sich weiter streamen</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis selbst steht unter der MIT-Lizenz</value><comment>Licenses footnote</comment></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Übersetzungen anzeigen</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Umschrift anzeigen</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Hintergrundgesang anzeigen</value><comment>Lyrics setting</comment></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Wird in kleinerer Schrift unter einer Zeile gezeigt, wenn der Songtext ihn enthält.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Kleinerer Text unter der Zeile wenn der Liedtext sie enthält</value><comment>Footnote</comment></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Textgröße</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Textgröße des Songtexts</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>Minimale Zeilendeckkraft</value><comment>Lyrics setting</comment></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>Minimale Zeilendeckkraft</value><comment>Screen reader name</comment></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Hält jede Zeile schwach sichtbar, damit du auf jede Zeile tippen und dorthin springen kannst. 0 % blendet Zeilen weit weg von der aktuellen aus.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Wie sichtbar Zeilen fern der aktuellen bleiben</value><comment>Footnote</comment></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Getrennte Wörter zusammenfügen</value><comment>Lyrics setting</comment></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Hält Wörter ganz, wenn TTML-Songtexte sie in Silben aufteilen.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Hält Wörter in TTML-Liedtexten ganz</value><comment>Footnote</comment></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Songtexte online suchen</value><comment>Lyrics setting</comment></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Hat ein Song keine Songtextdatei und keinen Songtext in seinen Tags, fragt Noctis LRCLIB nach Titel, Künstler und Länge, wie die Desktop-App. Gefundene Songtexte bleiben auf dem Smartphone.</value><comment>Footnote. LRCLIB is a service name</comment></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Sucht fehlende Liedtexte bei LRCLIB und behält sie</value><comment>Footnote. LRCLIB is a service name</comment></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>Tabs anzeigen</value><comment>Screen reader name of the folded tab bar</comment></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>In dieser Liste suchen</value><comment>Search field placeholder on a song list</comment></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} Song|{0} Songs</value><comment>Plural forms separated by |, CLDR order (en one|other; ru one|few|many; ar zero|one|two|few|many|other; ja/ko/zh one form). {0} = count</comment></data>
@@ -3537,7 +3537,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Vorschau · {0}</value><comment>Background preview card. {0} = the chosen background</comment></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Songtitel</value><comment>Stand-in title in the background preview</comment></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Der Energiesparmodus ist an, daher bleiben die Farben stehen.</value><comment>Background footnote</comment></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Bewegung braucht etwas mehr Akku. Sie pausiert, wenn der Energiesparmodus an ist.</value><comment>Background footnote</comment></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Braucht etwas mehr Akku und pausiert im Energiesparmodus</value><comment>Background footnote</comment></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Für immer</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Jahr</value><comment>Keep History choice</comment></data>
@@ -3571,8 +3571,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Offene, kostenlose Hörstatistiken</value><comment>Under ListenBrainz before connecting</comment></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>Auf deinem Computer</value><comment>Under a service connected on the computer</comment></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Auf deinem Computer einrichten</value><comment>Under a service; also a prompt title</comment></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Eine Wiedergabe zählt nach der Hälfte des Songs oder nach 4 Minuten. Offline gemachte Wiedergaben warten hier bis zum nächsten Sync.</value><comment>Scrobbling footnote</comment></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Eine Wiedergabe zählt nach der Hälfte des Songs oder nach 4 Minuten. Offline gemachte Wiedergaben warten hier, bis das Smartphone wieder online ist.</value><comment>Scrobbling footnote</comment></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Zählt nach der Hälfte des Songs oder 4 Minuten und sendet Offline-Plays beim nächsten Sync</value><comment>Scrobbling footnote</comment></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Zählt nach der Hälfte des Songs oder 4 Minuten und sendet Offline-Plays sobald du wieder online bist</value><comment>Scrobbling footnote</comment></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Last.fm nicht erreichbar. Versuch es erneut.</value><comment>Error</comment></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Noctis bei Last.fm zulassen</value><comment>Prompt title</comment></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Melde dich bei Last.fm an, tippe auf „Allow“, komm dann hierher zurück und tippe auf „Fertig“.</value><comment>Prompt. "Allow" is Last.fm’s button; "Done" is this prompt’s button</comment></data>
@@ -3634,11 +3634,11 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Mitternacht</value><comment>Dark style name (deep blue)</comment></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>System, {0}</value><comment>Theme row value with Match Device on. {0} = the dark theme</comment></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Wie Gerät</value><comment>Theme page switch: follow the phone's light/dark mode</comment></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis ist hell, solange dein Smartphone im hellen Modus ist, und {0}, solange es im dunklen Modus ist.</value><comment>Under Match Device. {0} = the dark theme</comment></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Hell im hellen Modus und {0} im dunklen Modus</value><comment>Under Match Device. {0} = the dark theme</comment></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Hell und Dunkel</value><comment>Theme page group header</comment></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Ein Farb-Theme tönt Seiten, Karten und Glas und passt zum gleichnamigen Hintergrund.</value><comment>Theme page footnote under the colour themes</comment></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Farbthemen färben die ganze App</value><comment>Theme page footnote under the colour themes</comment></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Wie Theme</value><comment>Accent page switch: use the colour theme's own accent</comment></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Farb-Themes haben einen eigenen Akzent. Wählst du unten eine Farbe, wird das ausgeschaltet.</value><comment>Under Match Theme</comment></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Eine Farbe unten zu wählen schaltet dies aus</value><comment>Under Match Theme</comment></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>„{0}“ entfernen? Seine Songs verlassen deine Bibliothek auf diesem Smartphone. Die Dateien bleiben, wo sie sind.</value><comment>Screen reader. {0} = folder</comment></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>„{0}“ entfernen?</value><comment>Prompt title. {0} = folder</comment></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Seine Songs verlassen deine Bibliothek auf diesem Smartphone. Die Dateien bleiben, wo sie sind.</value><comment>Prompt</comment></data>
@@ -3657,8 +3657,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>Beide an</value><comment>Lyrics row value: translations and romanization on</comment></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Übersetzungen an</value><comment>Lyrics row value</comment></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Umschrift an</value><comment>Lyrics row value</comment></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Wenn du Noctis auf {0} öffnest, bietet es an, beim Song weiterzumachen, den du hier gehört hast.</value><comment>Footnote. {0} = computer name</comment></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Wenn du Noctis auf deinem Computer öffnest, bietet es an, beim Song weiterzumachen, den du hier gehört hast.</value><comment>Footnote</comment></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Mach mit diesem Song weiter wenn du Noctis auf {0} öffnest</value><comment>Footnote. {0} = computer name</comment></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Mach mit diesem Song weiter wenn du Noctis auf deinem Computer öffnest</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Nur WLAN</value><comment>Downloads row value</comment></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Jedes Netzwerk</value><comment>Downloads row value</comment></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>Alle Downloads entfernen?</value><comment>Prompt title</comment></data>
@@ -3767,18 +3767,18 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Unbekannter Titel</value><comment>Notification title for a song with no title tag</comment></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD-Karte</value><comment>Storage name of a memory card</comment></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Playlists</value><comment>Tab bar label (short; the tab is narrow)</comment></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Noctis folgt der Sprache deines Smartphones, außer du wählst hier eine. Übersetzungen stammen aus der Community.</value><comment>Settings › Language footnote</comment></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Folgt der Sprache deines Handys außer du wählst eine</value><comment>Settings › Language footnote</comment></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Scanne… {0} Datei|Scanne… {0} Dateien</value><comment>Library scan progress. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Mehr für {0}</value><comment>Screen reader: a playlist’s … button. {0} = playlist</comment></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0} entfernen</value><comment>Screen reader: a folder’s remove button. {0} = folder</comment></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Der Akzent färbt Schaltflächen, Schalter und Hervorhebungen.</value><comment>Accent page footnote. {0} = accent name</comment></data>
-  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Wie Cover. Der Akzent nimmt die Farbe des Covers vom laufenden Song an. Läuft nichts oder ist das Cover grau, ist er {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} färbt Schaltflächen und Hervorhebungen</value><comment>Accent page footnote. {0} = accent name</comment></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Nimmt die Farbe des laufenden Covers an oder {0} wenn es keins gibt</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Belegter Speicher, {0}</value><comment>Screen reader. {0} = "312 songs · 4.2 GB"</comment></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>In Songzeilen zeigen</value><comment>Settings › Library row: what song rows show at the end of the artist line</comment></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Aus</value><comment>Show in Song Rows choice: nothing</comment></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Bewertungen</value><comment>Show in Song Rows choice: star ratings</comment></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Favoriten</value><comment>Show in Song Rows choice: a heart on favorites</comment></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Songzeilen enden mit den Sternen des Songs oder einem Herz für einen Favoriten.</value><comment>Library group footnote</comment></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Sterne oder ein Herz am Ende jeder Songzeile</value><comment>Library group footnote</comment></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Bewerten</value><comment>Song menu row: set the star rating</comment></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Mit {0} von 5 bewerten</value><comment>Screen reader for a star in the song menu. {0} = 1-5</comment></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Bewertung löschen</value><comment>Song menu: remove the rating</comment></data>
@@ -3804,7 +3804,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>„{0}“ konnte nicht gelesen werden</value><comment>Import result: a picked file that could not be read. {0} = file name</comment></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Playlist öffnen</value><comment>Import result button: open the new playlist</comment></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Alle Musik automatisch finden</value><comment>Setting switch (Music Folders)</comment></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Fügt jeden Song auf diesem Smartphone und seiner SD-Karte hinzu, ohne Ordner auszuwählen. Songtextdateien (.lrc, .ttml) neben einem Song werden nur aus Ordnern gelesen, die du unten hinzufügst.</value><comment>Footnote under the switch</comment></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Fügt jeden Song auf diesem Handy und der SD-Karte hinzu aber Liedtextdateien nur aus den Ordnern unten</value><comment>Footnote under the switch</comment></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Alle Musik</value><comment>Music Folders row value: all the phone's music, no folders</comment></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis durfte die Musik auf diesem Smartphone nicht lesen. Um das einzuschalten, erlaube „Musik und Audio“ in den Einstellungen von Noctis.</value><comment>Shown after the permission was refused</comment></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis kann die Musik auf diesem Smartphone nicht mehr lesen. Ihre Songs bleiben aufgelistet, spielen aber erst, wenn du „Musik und Audio“ in den Einstellungen von Noctis erlaubst.</value><comment>Shown when the permission was taken away later</comment></data>
@@ -4061,7 +4061,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>In deinen Top-Künstlern</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0} auf Last.fm öffnen</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Mixe und Empfehlungen</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Home zeigt Mixe deiner Titel und Künstler zum Entdecken, aus deinen Last.fm-Charts. Nur dein Kontoname wird verwendet; nichts wird zurückgesendet.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>Home bekommt Mixe aus deinen Last.fm-Charts und es wird nichts zurückgesendet</value></data>
   <data name="GroupAlbums.Menu" xml:space="preserve"><value>Zu einem Album zusammenfassen</value><comment>Album menu row (GitHub #178)</comment></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Zu einem Album zusammenfassen</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Album</value><comment>Field label</comment></data>
@@ -4102,7 +4102,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.HideSong" xml:space="preserve"><value>Titel ausblenden</value></data>
   <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Ausgeblendet. Unter Einstellungen › Bibliothek › Ausgeblendet wieder einblenden.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Ausgeblendet</value></data>
-  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Ausgeblendete Titel bleiben auf dem Telefon, erscheinen aber nicht in Mediathek, Suche, Zufallswiedergabe und Mixen.</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Ausgeblendete Songs bleiben auf deinem Handy aber nicht in Bibliothek und Mixen</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>Nichts ausgeblendet</value></data>
   <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Einblenden</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} einblenden</value></data>

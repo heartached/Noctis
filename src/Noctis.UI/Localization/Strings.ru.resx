@@ -3292,7 +3292,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Cancel" xml:space="preserve"><value>Отмена</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>Синхронизировать</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>Скачать всё</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Все песни с компьютера будут храниться на этом телефоне и играть без подключения.</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>Хранить все песни на телефоне для прослушивания без сети</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>Скачанные</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>Удалить загрузки</value></data>
@@ -3387,7 +3387,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>Счётчики и «Недавно прослушанные» совпадают на обоих</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>Очистить историю прослушиваний</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>Очистить историю прослушиваний…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Удаляет прослушивания на этом телефоне. Уже отправленные в Last.fm останутся там.</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Прослушивания, уже отправленные в Last.fm, останутся там</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>Этот телефон</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>Компьютер</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>Сервисы</value></data>
@@ -3409,7 +3409,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Фон плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Яркость фона плеера</value></data>
-  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Делает цвета за экраном «Сейчас играет» темнее или светлее. 0 — стандартный вид.</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Темнее или светлее цвета за экраном воспроизведения</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Папки с музыкой</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Загрузки</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Прослушивание</value></data>
@@ -3434,42 +3434,42 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>Доступ потерян. Добавьте эту папку снова, чтобы слушать её песни.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>Недоступна. Подключите хранилище и пересканируйте.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>Папок с музыкой пока нет</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Ваша медиатека на этом телефоне — это музыка в этих папках.</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>Ваша медиатека — это музыка в этих папках</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>Добавить папку</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>Сканировать при запуске</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Ищет новые песни в этих папках при каждом запуске Noctis.</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Ищет новые песни при каждом запуске Noctis</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>Цвета альбомов</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>Цвет страниц из обложки</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Страницы альбомов и исполнителей окрашиваются в глубокий оттенок цвета обложки с белым текстом. Если выключено, используется обычная светлая или тёмная тема.</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>Страницы альбомов и исполнителей берут цвет обложки</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>Цвет прогресса</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>Линия прогресса</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>«Цвет прогресса» заполняет панель плеера цветом обложки по ходу песни. «Линия прогресса» рисует тонкую линию вдоль её нижнего края. Если оба выключены, панель — просто стекло.</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>Заливка панели или тонкая линия во время песни</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Скачивать только по Wi‑Fi</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Песни с компьютера скачиваются только по Wi‑Fi, никогда через мобильный интернет. На потоковое воспроизведение это не влияет.</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>Загрузки ждут Wi-Fi а стриминг работает</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>Плавное движение</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>До 120 Гц</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Экран обновляется до 120 раз в секунду на телефонах, которые это поддерживают, — прокрутка и анимация становятся плавнее. Выключите, чтобы оставить 60 Гц и сэкономить заряд.</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Плавнее прокрутка на экранах 120 Гц но больше расход батареи</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Вкладка Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Выбранная вкладка остаётся прозрачным стеклом</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Прослушанные песни в очереди</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Прослушанные песни остаются над текущей</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Удалённые загрузки остаются на компьютере и по-прежнему доступны для потокового воспроизведения.</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Сам Noctis распространяется по лицензии MIT.</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Они останутся на компьютере и будут стримиться</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Сам Noctis распространяется по лицензии MIT</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>Показывать переводы</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>Показывать транслитерацию</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>Показывать бэк-вокал</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Показывается под строкой мелким шрифтом, если он есть в тексте песни.</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>Мелкий текст под строкой если он есть в тексте песни</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>Размер текста</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>Размер текста песни</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>Мин. непрозрачность строк</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>Минимальная непрозрачность строк</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Каждая строка остаётся слегка видимой, и к любой можно перейти нажатием. При 0% строки вдали от текущей скрываются.</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>Насколько видны строки далеко от текущей</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>Объединять разбитые слова</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Сохраняет слова целыми, когда текст TTML разбивает их на слоги.</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>Сохраняет слова целыми в текстах TTML</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>Искать тексты в интернете</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Если у песни нет файла с текстом или текста в тегах, Noctis ищет его в LRCLIB по названию, исполнителю и длительности, как и приложение для компьютера. Найденные тексты сохраняются на телефоне.</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>Ищет недостающие тексты на LRCLIB и сохраняет их</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>Показать вкладки</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>Поиск в этом списке</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0} песня|{0} песни|{0} песен</value></data>
@@ -3546,7 +3546,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>Предпросмотр · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Название песни</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Включён режим энергосбережения, поэтому цвета неподвижны.</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Движение расходует немного больше заряда. Оно приостанавливается в режиме энергосбережения.</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Тратит чуть больше батареи и замирает в режиме энергосбережения</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Всегда</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 год</value></data>
@@ -3580,8 +3580,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>Открытая бесплатная статистика прослушиваний</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>На вашем компьютере</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>Настройте на компьютере</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Прослушивание засчитывается после половины песни или 4 минут. Прослушивания без сети ждут здесь до следующей синхронизации.</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Прослушивание засчитывается после половины песни или 4 минут. Прослушивания без сети ждут здесь, пока телефон снова не подключится к интернету.</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>Засчитывается после половины песни или 4 минут а офлайн-прослушивания уходят при следующей синхронизации</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>Засчитывается после половины песни или 4 минут а офлайн-прослушивания уходят когда вы снова в сети</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Не удалось связаться с Last.fm. Повторите попытку.</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Разрешите Noctis в Last.fm</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Войдите в Last.fm, нажмите «Allow», затем вернитесь сюда и нажмите «Готово».</value></data>
@@ -3643,11 +3643,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>Полночь</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>Как в системе, {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>Как на устройстве</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Noctis светлый, когда телефон в светлом режиме, и «{0}», когда в тёмном.</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>Светлая в светлом режиме и {0} в тёмном</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>Светлая и тёмные</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Цветная тема окрашивает страницы, карточки и стекло и сочетается с одноимённым фоном.</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>Цветные темы окрашивают всё приложение</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>Как в теме</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>У цветных тем свой акцентный цвет. Выбор цвета ниже отключает этот переключатель.</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>Выбор цвета ниже выключает это</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>Удалить «{0}»? Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>Удалить «{0}»?</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>Её песни исчезнут из медиатеки на этом телефоне. Файлы останутся на месте.</value></data>
@@ -3666,8 +3666,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>Оба вкл.</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>Переводы вкл.</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>Транслитерация вкл.</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Когда вы откроете Noctis на {0}, он предложит продолжить с песни, которая играла здесь.</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Когда вы откроете Noctis на компьютере, он предложит продолжить с песни, которая играла здесь.</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>Продолжить с этой песни при открытии Noctis на {0}</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>Продолжить с этой песни при открытии Noctis на компьютере</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Только Wi‑Fi</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>Любая сеть</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>Удалить все загрузки?</value></data>
@@ -3776,18 +3776,18 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>Неизвестный трек</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD-карта</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>Плейлисты</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Noctis использует язык телефона, если вы не выберете другой здесь. Переводы делает сообщество.</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>Как на телефоне если не выбрать другой</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>Сканирование… {0} файл|Сканирование… {0} файла|Сканирование… {0} файлов</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>Ещё для «{0}»</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}. Акцентный цвет окрашивает кнопки, переключатели и выделение.</value></data>
-  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Как обложка. Акцентный цвет берётся с обложки играющей песни. Если ничего не играет или обложка серая — {0}.</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0} окрашивает кнопки и выделения</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>Берёт цвет играющей обложки или {0} если её нет</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>Занято, {0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>Показывать в строках песен</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>Выкл.</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>Оценки</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>Избранное</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>В конце строки песни — её звёзды или сердечко для избранного.</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>Звёзды или сердце в конце каждой строки песни</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>Оценить</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>Оценка {0} из 5</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>Сбросить оценку</value></data>
@@ -3813,7 +3813,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>Не удалось прочитать «{0}»</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>Открыть плейлист</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>Находить всю музыку автоматически</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Добавляет все песни на этом телефоне и его SD-карте без выбора папок. Файлы текстов (.lrc, .ttml) рядом с песней читаются только в папках, добавленных ниже.</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>Добавляет все песни телефона и SD-карты но файлы текстов читаются только из папок ниже</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>Вся музыка</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctis не получил доступ к музыке на этом телефоне. Чтобы включить функцию, разрешите «Музыка и аудио» в настройках Noctis.</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctis больше не может читать музыку на этом телефоне. Песни остаются в списке, но не будут воспроизводиться, пока вы не разрешите «Музыка и аудио» в настройках Noctis.</value></data>
@@ -4070,7 +4070,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>В ваших топ-исполнителях</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>Открыть {0} на Last.fm</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>Миксы и рекомендации</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>На главной — миксы из ваших песен и исполнители для открытия по вашим чартам Last.fm. Используется только имя аккаунта; ничего не отправляется.</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>На главной миксы из ваших чартов Last.fm и ничего не отправляется обратно</value></data>
   <data name="GroupAlbums.Menu" xml:space="preserve"><value>Объединить в один альбом</value><comment>Album menu row (GitHub #178)</comment></data>
   <data name="GroupAlbums.Title" xml:space="preserve"><value>Объединить в один альбом</value><comment>Dialog title</comment></data>
   <data name="GroupAlbums.AlbumName" xml:space="preserve"><value>Альбом</value><comment>Field label</comment></data>
@@ -4111,7 +4111,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>Скрыть песню</value></data>
   <data name="Mobile.HiddenNotice" xml:space="preserve"><value>Скрыто. Вернуть можно в Настройки › Медиатека › Скрытые.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>Скрытые</value></data>
-  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Скрытые песни остаются на телефоне, но не показываются в медиатеке, поиске, перемешивании и миксах.</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>Скрытые песни остаются на телефоне но не видны в медиатеке и миксах</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>Ничего не скрыто</value></data>
   <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>Показать</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Показать {0}</value></data>

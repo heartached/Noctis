@@ -6929,7 +6929,7 @@
   <data name="Mobile.Cancel" xml:space="preserve"><value>キャンセル</value></data>
   <data name="Mobile.Account.SyncNow" xml:space="preserve"><value>今すぐ同期</value></data>
   <data name="Mobile.Account.DownloadEverything" xml:space="preserve"><value>すべてダウンロード</value></data>
-  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>コンピュータのすべての曲をこのスマートフォンに保存し、オフラインでも再生できるようにします。</value></data>
+  <data name="Mobile.Account.DownloadEverythingHint" xml:space="preserve"><value>すべての曲をこのスマホに保存してオフラインで再生</value></data>
   <data name="Mobile.Downloaded" xml:space="preserve"><value>ダウンロード済み</value></data>
   <data name="Mobile.Account.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
   <data name="Mobile.Account.RemoveDownloads" xml:space="preserve"><value>ダウンロードを削除</value></data>
@@ -7024,7 +7024,7 @@
   <data name="Mobile.History.ShareHint" xml:space="preserve"><value>再生回数と最近再生した項目が両方で一致します</value></data>
   <data name="Mobile.History.ClearName" xml:space="preserve"><value>再生履歴を消去</value></data>
   <data name="Mobile.History.ClearRow" xml:space="preserve"><value>再生履歴を消去…</value></data>
-  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>このスマートフォンの再生履歴を消去します。Last.fmに送信済みの再生はそのまま残ります。</value></data>
+  <data name="Mobile.History.ClearHint" xml:space="preserve"><value>Last.fmに送信済みの再生はそのまま残ります</value></data>
   <data name="Mobile.Scrobbling.ThisPhone" xml:space="preserve"><value>このスマートフォン</value></data>
   <data name="Mobile.Scrobbling.Computer" xml:space="preserve"><value>コンピュータ</value></data>
   <data name="Mobile.Scrobbling.Services" xml:space="preserve"><value>サービス</value></data>
@@ -7046,7 +7046,7 @@
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>再生中の背景</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>再生中の背景の明るさ</value></data>
-  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生中画面の背景色を暗く、または明るくします。0 が標準です。</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生画面の背景を暗くまたは明るく</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音楽フォルダ</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>ダウンロード</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>リスニング</value></data>
@@ -7071,42 +7071,42 @@
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>アクセス権が失われました。曲を再生するには、このフォルダをもう一度追加してください。</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>利用できません。ストレージを再接続してから再スキャンしてください。</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>音楽フォルダはまだありません</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>このスマートフォンのライブラリは、これらのフォルダ内の音楽で構成されます。</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>このフォルダの音楽がライブラリになります</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>フォルダを追加</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>起動時にスキャン</value></data>
-  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctisを開くたびに、これらのフォルダで新しい曲を探します。</value></data>
+  <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctisを開くたびに新しい曲を探します</value></data>
   <data name="Mobile.Settings.AlbumColours" xml:space="preserve"><value>アルバムの色</value></data>
   <data name="Mobile.Settings.ColourPages" xml:space="preserve"><value>アートワークの色でページを彩る</value></data>
-  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>アルバムとアーティストのページが、ジャケットの色を濃くした色合いになり、文字は白で表示されます。オフにすると、通常のライトまたはダークテーマを使います。</value></data>
+  <data name="Mobile.Settings.ColourPagesHint" xml:space="preserve"><value>アルバムとアーティストのページがジャケットの色になります</value></data>
   <data name="Mobile.Settings.ProgressColour" xml:space="preserve"><value>進行状況の色</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>進行状況のライン</value></data>
-  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>「進行状況の色」は、曲の再生に合わせてプレーヤーバーをジャケットの色で満たします。「進行状況のライン」は、バーの下端に細い線を表示します。両方オフにすると、バーは無地のガラスになります。</value></data>
+  <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>再生中にバーを塗りつぶすか細い線を表示</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>Wi-Fi接続時のみダウンロード</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>コンピュータの曲はWi-Fi接続時にのみダウンロードされ、モバイルデータ通信は使いません。ストリーミングには影響しません。</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>ダウンロードはWi-Fiを待ちますがストリーミングは使えます</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>スムーズモーション</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最大120Hz</value></data>
-  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>対応する端末では画面を毎秒最大120回更新し、スクロールやアニメーションをより滑らかにします。オフにすると画面は60Hzになり、バッテリーを節約できます。</value></data>
+  <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz画面でスクロールがなめらかになりますが電池を多く使います</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass タブ</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>選択中のタブを透明なガラスのままにします</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>再生済みの曲をキューに表示</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>再生した曲を再生中の曲の上に残します</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>使用済みストレージ</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>削除したダウンロードはコンピュータに残り、引き続きストリーミング再生できます。</value></data>
-  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis自体はMITライセンスです。</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>パソコンには残り引き続きストリーミングできます</value></data>
+  <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis自体はMITライセンスです</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>翻訳を表示</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>ローマ字表記を表示</value></data>
   <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>バックボーカルを表示</value></data>
-  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>曲の歌詞に含まれている場合、行の下に小さな文字で表示します。</value></data>
+  <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>歌詞にある場合は行の下に小さく表示</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>文字サイズ</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>歌詞の文字サイズ</value></data>
   <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>行の最小不透明度</value></data>
   <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>行の最小不透明度</value></data>
-  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>すべての行をうっすら表示したままにするので、どの行でもタップしてその位置に移動できます。0%にすると、現在の行から離れた行は非表示になります。</value></data>
+  <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>現在の行から遠い行の見えやすさ</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>分割された単語をつなげる</value></data>
-  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML歌詞が単語を音節に分割している場合も、単語をひとまとまりで表示します。</value></data>
+  <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>TTML歌詞の単語を分けずに表示</value></data>
   <data name="Mobile.Lyrics.FindOnline" xml:space="preserve"><value>オンラインで歌詞を検索</value></data>
-  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>曲に歌詞ファイルもタグ内の歌詞もない場合、デスクトップアプリと同様に、タイトル、アーティスト、長さでLRCLIBに問い合わせます。見つかった歌詞はスマートフォンに保存されます。</value></data>
+  <data name="Mobile.Lyrics.FindOnlineHint" xml:space="preserve"><value>足りない歌詞をLRCLIBで探して保存</value></data>
   <data name="Mobile.ShowTabs" xml:space="preserve"><value>タブを表示</value></data>
   <data name="Mobile.SongList.Find" xml:space="preserve"><value>このリスト内を検索</value></data>
   <data name="Mobile.Count.Songs" xml:space="preserve"><value>{0}曲</value></data>
@@ -7183,7 +7183,7 @@
   <data name="Mobile.Background.PreviewTag" xml:space="preserve"><value>プレビュー · {0}</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>曲のタイトル</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>バッテリーセーバーがオンのため、色は静止したままです。</value></data>
-  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>動きがあると、バッテリーを少し多く消費します。バッテリーセーバーがオンのときは一時停止します。</value></data>
+  <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>電池を少し多く使い省電力モードでは止まります</value></data>
   <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>無期限</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1年</value></data>
@@ -7217,8 +7217,8 @@
   <data name="Mobile.Scrobbling.ListenBrainzPitch" xml:space="preserve"><value>オープンで無料のリスニング統計</value></data>
   <data name="Mobile.Scrobbling.OnYourComputer" xml:space="preserve"><value>コンピュータで接続済み</value></data>
   <data name="Mobile.Scrobbling.SetUpOnComputer" xml:space="preserve"><value>コンピュータで設定</value></data>
-  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>曲の半分または4分を再生すると1回の再生としてカウントされます。オフライン中の再生は、次回の同期までここで待機します。</value></data>
-  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>曲の半分または4分を再生すると1回の再生としてカウントされます。オフライン中の再生は、スマートフォンがオンラインに戻るまでここで待機します。</value></data>
+  <data name="Mobile.Scrobbling.FootnoteSync" xml:space="preserve"><value>曲の半分か4分で記録しオフラインの再生は次の同期で送信</value></data>
+  <data name="Mobile.Scrobbling.FootnoteOnline" xml:space="preserve"><value>曲の半分か4分で記録しオフラインの再生はオンラインに戻ったら送信</value></data>
   <data name="Mobile.Scrobbling.LastFmUnreachable" xml:space="preserve"><value>Last.fmに接続できませんでした。もう一度お試しください。</value></data>
   <data name="Mobile.Scrobbling.ApproveTitle" xml:space="preserve"><value>Last.fmでNoctisを承認</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Last.fmにサインインして「Allow」をタップし、ここに戻って「完了」をタップしてください。</value></data>
@@ -7280,11 +7280,11 @@
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>ミッドナイト</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>システム、{0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>デバイスに合わせる</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>スマートフォンがライトモードのときはライト、ダークモードのときは{0}になります。</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>ライトモードではライトでダークモードでは{0}</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>ライトとダーク</value></data>
-  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>カラーテーマはページ、カード、ガラスに色を付け、同じ名前の背景と調和します。</value></data>
+  <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>カラーテーマはアプリ全体に色をつけます</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>テーマに合わせる</value></data>
-  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>カラーテーマには専用のアクセントカラーがあります。下で色を選ぶとオフになります。</value></data>
+  <data name="Mobile.Accent.MatchThemeFootnote" xml:space="preserve"><value>下の色を選ぶとこれはオフになります</value></data>
   <data name="Mobile.Folders.RemoveQuestionLong" xml:space="preserve"><value>「{0}」を削除しますか？このフォルダの曲は、このスマートフォンのライブラリから外れます。ファイルはそのまま残ります。</value></data>
   <data name="Mobile.Folders.RemoveQuestion" xml:space="preserve"><value>「{0}」を削除しますか？</value></data>
   <data name="Mobile.Folders.RemoveDetail" xml:space="preserve"><value>このフォルダの曲は、このスマートフォンのライブラリから外れます。ファイルはそのまま残ります。</value></data>
@@ -7303,8 +7303,8 @@
   <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>両方オン</value></data>
   <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>翻訳オン</value></data>
   <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>ローマ字オン</value></data>
-  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>{0}でNoctisを開くと、ここで再生していた曲の続きから再生するか確認されます。</value></data>
-  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>コンピュータでNoctisを開くと、ここで再生していた曲の続きから再生するか確認されます。</value></data>
+  <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>パソコンの{0}でNoctisを開くとこの曲から続けます</value></data>
+  <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>パソコンでNoctisを開くとこの曲から続けます</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Wi-Fiのみ</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>すべてのネットワーク</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>すべてのダウンロードを削除しますか？</value></data>
@@ -7413,18 +7413,18 @@
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>不明なトラック</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SDカード</value></data>
   <data name="Mobile.Tab.Playlists" xml:space="preserve"><value>プレイリスト</value></data>
-  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>ここで言語を選ばない限り、Noctisはスマートフォンの言語に従います。翻訳はコミュニティによって作成されています。</value></data>
+  <data name="Mobile.Language.Footnote" xml:space="preserve"><value>選ばない限りスマホの言語に合わせます</value></data>
   <data name="Mobile.Notice.ScanningFiles" xml:space="preserve"><value>スキャン中… {0}個のファイル</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0}のその他のオプション</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0}を削除</value></data>
-  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}。アクセントカラーはボタン、スイッチ、ハイライトに使われます。</value></data>
-  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>アートワークに合わせる。アクセントカラーは再生中の曲のアートワークの色になります。再生していないときやアートワークが灰色のときは{0}です。</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
+  <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}でボタンとハイライトに色をつけます</value></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>再生中のジャケットの色を使い無い時は{0}</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>使用済みストレージ、{0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>曲の行に表示</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>オフ</value></data>
   <data name="Mobile.Settings.SongRows.Ratings" xml:space="preserve"><value>評価</value></data>
   <data name="Mobile.Settings.SongRows.Favorites" xml:space="preserve"><value>お気に入り</value></data>
-  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>曲の行の末尾に、曲の星の数またはお気に入りのハートを表示します。</value></data>
+  <data name="Mobile.Settings.SongRowsHint" xml:space="preserve"><value>曲の行の最後に星かハート</value></data>
   <data name="Mobile.Rate" xml:space="preserve"><value>評価</value></data>
   <data name="Mobile.RateStars" xml:space="preserve"><value>5段階中{0}で評価</value></data>
   <data name="Mobile.ClearRating" xml:space="preserve"><value>評価を消去</value></data>
@@ -7450,7 +7450,7 @@
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>「{0}」を読み込めませんでした</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>プレイリストを開く</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>すべての音楽を自動で検索</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>フォルダを選ばずに、このスマートフォンとSDカード内のすべての曲を追加します。曲の横にある歌詞ファイル（.lrc、.ttml）は、下で追加したフォルダからのみ読み込まれます。</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>スマホとSDカードの全曲を追加します歌詞ファイルは下のフォルダからのみ読み込みます</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>すべての音楽</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctisにこのスマートフォンの音楽を読み取る許可がありません。オンにするには、Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。曲はリストに残りますが、Noctisの設定で「音楽とオーディオ」を許可するまで再生できません。</value></data>
@@ -7680,7 +7680,7 @@
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>トップアーティスト</value></data>
   <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>{0}をLast.fmで開く</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>ミックスとおすすめ</value></data>
-  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>ホームに、Last.fmのチャートから作ったあなたの曲のミックスと新しいアーティストを表示します。使うのはアカウント名だけで、何も送信しません。</value></data>
+  <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>ホームにLast.fmチャートからのミックスを表示し何も送信しません</value></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
@@ -7713,7 +7713,7 @@
   <data name="Mobile.HideSong" xml:space="preserve"><value>曲を非表示</value></data>
   <data name="Mobile.HiddenNotice" xml:space="preserve"><value>非表示にしました。設定 › ライブラリ › 非表示 で戻せます。</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>非表示</value></data>
-  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>非表示の曲は端末に残りますが、ライブラリ、検索、シャッフル、ミックスには表示されません。</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>非表示の曲はスマホに残りますがライブラリとミックスには出ません</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>非表示の項目はありません</value></data>
   <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>表示する</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} を表示する</value></data>
