@@ -188,10 +188,6 @@
     <value>Abrir archivos de audio con Noctis</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>Añadir Noctis al Abierto de Windows con lista y aplicaciones predeterminadas para los formatos que reproducirá.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>Registrar</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -342,10 +338,6 @@
   </data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve">
     <value>Separadores de la etiqueta de artista</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>Texto que divide una etiqueta de artista en varios. Elimina uno para mantener nombres como &quot;Simon &amp; Garfunkel&quot; entero.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -556,10 +548,6 @@
     <value>Acento sigue la imagen del álbum</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>Cambia el color del acento de la cubierta del juego.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Color de acento</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -578,10 +566,6 @@
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>BETA</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>Esconde la ventana, la barra lateral y la barra de reproducción con superficies de cristal traslúcidas y borrosas.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -780,10 +764,6 @@
     <value>Anchura de la isla de reproducción</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>Wider da a la barra de búsqueda más habitación. También puede arrastrar los bordes de la isla. Haga doble clic en el nudo para reiniciar.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>Más estrecha</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -818,10 +798,6 @@
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>Fondo fluido en las letras</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>La derivación mueve la tapa y las pulsaciones con el ritmo. El Kíp lo funde en un flujo lento de líquido. Los estilos de los complementos aparecen aquí también.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -992,10 +968,6 @@
     <value>Opacidad de línea mínima</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Mantén cada línea de letra débil para que puedas hacer clic en cualquier línea para saltar allí. 0% oculta líneas lejos de la actual.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Unir palabras divididas</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1006,10 +978,6 @@
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>Opacidad de la barra de reproducción</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>Cómo de sólido se ve el fondo de la barra de reproducción.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1100,10 +1068,6 @@
     <value>Modo exclusivo</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>Salida perfecta que evita el mezclador de Windows. Otras aplicaciones van en silencio y las transiciones están desactivadas.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>Analizar tempo y tonalidad</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1114,10 +1078,6 @@
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>Guardar el análisis en las etiquetas del archivo</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>Escriba BPM y la clave en las etiquetas del archivo. Esto modifica sus archivos.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1194,10 +1154,6 @@
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>Ajusta el volumen de las etiquetas de ReplayGain. Escanea pistas con el botón derecho del ratón.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1598,10 +1554,6 @@
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>Atajos de teclado</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>Haga clic en una tecla para cambiarla. Esc cancela, Desliga espacio de fondo. Las teclas multimedia siempre funcionan.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6188,4 +6140,5 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
