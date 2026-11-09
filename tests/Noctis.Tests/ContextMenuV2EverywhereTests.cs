@@ -246,7 +246,7 @@ public class ContextMenuV2EverywhereTests
                      vm.PlayAlbumCommand, vm.ShuffleAlbumCommand, vm.PlayNextAlbumCommand, vm.AddAlbumToQueueCommand,
                      vm.AddAlbumToNewPlaylistCommand, vm.ToggleAlbumFavoritesCommand, vm.OpenMetadataCommand,
                      vm.ShowInExplorerAlbumCommand, vm.RemoveFromLibraryCommand, vm.ConvertAlbumCommand,
-                     vm.ScanAlbumReplayGainCommand, vm.SearchLyricsAlbumCommand, LyricsBackgroundOverrides.ChooseForAlbumCommand,
+                     vm.ScanAlbumReplayGainCommand, vm.FindLyricsAlbumCommand, LyricsBackgroundOverrides.ChooseForAlbumCommand,
                      vm.SnoozeAlbumForMonthCommand,
                  })
             Assert.Contains(command, reachable);

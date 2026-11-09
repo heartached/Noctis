@@ -129,13 +129,66 @@ public static class MetadataHelper
         await ShowDialogOwned(new SendToFolderDialog(vm));
     }
 
-    /// <summary>Bulk lyrics: fetch from the enabled sources and save, or remove app-written lyrics.</summary>
+    /// <summary>
+    /// Bulk lyrics: fetch from the enabled sources and save, or remove app-written lyrics.
+    /// GitHub #214: a Find Lyrics run the user hid (or whose results they haven't closed yet)
+    /// comes back instead of a new dialog, as the library run does.
+    /// </summary>
     public static async Task OpenBulkLyricsDialog(IReadOnlyList<Track> tracks, bool remove)
     {
         if (tracks == null || tracks.Count == 0) return;
+        if (ReusableSelectionRun(_selectionLyricsRun, remove) is { } pending)
+        {
+            await ShowDialogOwned(new BulkLyricsDialog(pending));
+            return;
+        }
         var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
-        var vm = new BulkLyricsViewModel(tracks, service, remove, openStudio: OpenLyricsStudio);
+        var vm = new BulkLyricsViewModel(tracks, service, remove, openStudio: OpenLyricsStudio,
+            prefs: LyricsOptionPrefs(), savePrefs: SaveLyricsOptionPrefs);
+        if (!remove) _selectionLyricsRun = vm;
         await ShowDialogOwned(new BulkLyricsDialog(vm));
+    }
+
+    /// <summary>GitHub #214: the last album / selection Find Lyrics run, kept while the user isn't done with it.</summary>
+    private static BulkLyricsViewModel? _selectionLyricsRun;
+
+    /// <summary>The run a fetch should bring back instead of starting anew; null for Remove or when there is none.</summary>
+    internal static BulkLyricsViewModel? ReusableSelectionRun(BulkLyricsViewModel? last, bool remove) =>
+        !remove && last is { NeedsReopen: true } ? last : null;
+
+    /// <summary>
+    /// GitHub #214: the label the song and album menus' Find Lyrics entry shows while a hidden
+    /// run is pending ("…in progress" / "…results"), so the way back to it is visible; null
+    /// when there is none and the entry keeps its own label.
+    /// </summary>
+    internal static string? PendingFindLyricsMenuHeader() => ReusableSelectionRun(_selectionLyricsRun, remove: false) switch
+    {
+        { IsRunning: true } => Noctis.Localization.Loc.T("LibraryAlbums.FindLyricsRunning"),
+        { } => Noctis.Localization.Loc.T("LibraryAlbums.FindLyricsResults"),
+        null => null,
+    };
+
+    /// <summary>GitHub #217: the Find Lyrics options as last ticked.</summary>
+    private static BulkLyricsOptionPrefs? LyricsOptionPrefs()
+    {
+        var s = App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings();
+        return s is null ? null : new BulkLyricsOptionPrefs(s.BulkLyricsUpgrade, s.BulkLyricsRecheck, s.BulkLyricsReviewFirst);
+    }
+
+    /// <summary>GitHub #217: keeps the ticked options, in the live settings and on disk.</summary>
+    private static void SaveLyricsOptionPrefs(BulkLyricsOptionPrefs prefs)
+    {
+        static void Apply(AppSettings s, BulkLyricsOptionPrefs p)
+        {
+            s.BulkLyricsUpgrade = p.Upgrade;
+            s.BulkLyricsRecheck = p.Recheck;
+            s.BulkLyricsReviewFirst = p.ReviewFirst;
+        }
+        if (App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() is { } live) Apply(live, prefs);
+        if (App.Services?.GetService<IPersistenceService>() is { } persistence)
+            _ = persistence.UpdateSettingsAsync(s => Apply(s, prefs)).ContinueWith(
+                t => DebugLogger.Warn(DebugLogger.Category.Lyrics, "Bulk.SavePrefsFailed", t.Exception?.GetBaseException().Message ?? string.Empty),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     // The whole-library runs live here, not in their dialogs: Hide closes the dialog and the
@@ -171,6 +224,8 @@ public static class MetadataHelper
     {
         var lyrics = _libraryLyricsRun;
         var artwork = _libraryArtworkRun;
+        var selection = _selectionLyricsRun;
+        _selectionLyricsRun = null;
         _libraryLyricsRun = null;
         _libraryArtworkRun = null;
         // Its block list and "no match" memory belong to the old data; the next page reloads them.
@@ -184,6 +239,13 @@ public static class MetadataHelper
         {
             lyrics.StopCommand.Execute(null);
             try { await (lyrics.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+        }
+        // GitHub #214: an album / selection Find Lyrics run is kept now, so it stops too.
+        if (selection is { IsRunning: true })
+        {
+            selection.StopCommand.Execute(null);
+            try { await (selection.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+            try { await (selection.ApplyCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
         }
         if (artwork is { IsRunning: true })
         {
@@ -204,7 +266,8 @@ public static class MetadataHelper
                 .Where(t => t.SourceType == SourceType.Local).ToList();
             if (tracks.Count == 0) return;
             var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
-            _libraryLyricsRun = new BulkLyricsViewModel(tracks, service, remove: false, library: true, openStudio: OpenLyricsStudio);
+            _libraryLyricsRun = new BulkLyricsViewModel(tracks, service, remove: false, library: true, openStudio: OpenLyricsStudio,
+                prefs: LyricsOptionPrefs(), savePrefs: SaveLyricsOptionPrefs);
         }
         await ShowDialogOwned(new BulkLyricsDialog(_libraryLyricsRun));
     }

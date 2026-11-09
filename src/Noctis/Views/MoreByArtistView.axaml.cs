@@ -92,7 +92,6 @@ public partial class MoreByArtistView : UserControl
             removeCommand: albumsVm.RemoveFromLibraryCommand,
             convertCommand: albumsVm.ConvertAlbumCommand,
             scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand,
             snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, albumsVm.FindLyricsAlbumCommand); // GitHub #195

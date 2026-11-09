@@ -1317,14 +1317,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
-    /// <summary>Album tile menu: Search Lyrics for the album's first song (as on Home).</summary>
-    [RelayCommand]
-    private void SearchLyricsAlbum(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _searchLyricsAction?.Invoke(album.Tracks[0]);
-    }
-
     [RelayCommand]
     private void PlayNext(Album album)
     {

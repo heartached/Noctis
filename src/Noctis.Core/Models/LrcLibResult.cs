@@ -60,5 +60,12 @@ public class LrcLibResult
     /// </summary>
     public bool HasWordSyncedLyricsfile =>
         HasLyricsfile && HasWordSync != false && Lyricsfile!.Contains("words:", StringComparison.Ordinal);
+    /// <summary>
+    /// A Lyricsfile with timed lines. LRCLIB attaches one to plain-only answers too, with
+    /// "lines: []" and the words under "plain:" (checked 11-09, GitHub #215): counting any
+    /// Lyricsfile as timed labelled those "synced" and let them win over real synced lyrics.
+    /// </summary>
+    public bool HasTimedLyricsfile =>
+        HasLyricsfile && Lyricsfile!.Contains("start_ms:", StringComparison.Ordinal);
     public bool HasLyrics => !string.IsNullOrWhiteSpace(PlainLyrics) || HasSyncedLyrics || HasLyricsfile;
 }

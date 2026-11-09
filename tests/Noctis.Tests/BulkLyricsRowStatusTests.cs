@@ -36,7 +36,7 @@ public class BulkLyricsRowStatusTests
         await vm.RowStatusesLoaded;
         Dispatcher.UIThread.RunJobs();
 
-        Assert.Equal(new[] { "synced", "plain lyrics", "no lyrics" }, vm.Rows.Select(r => r.Status));
+        Assert.Equal(new[] { "line-synced lyrics", "plain lyrics", "no lyrics" }, vm.Rows.Select(r => r.Status));
     }
 
     [AvaloniaFact]

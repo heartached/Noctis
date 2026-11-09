@@ -168,13 +168,18 @@ public sealed class LyricsBulkService : ILyricsBulkService
                     {
                         var (best, bestSource, complete) = await FindBestAsync(track, sources, gates, target, ct).ConfigureAwait(false);
                         var found = LyricsSearchSelector.FormatRank(best);
-                        if (best is null || found == 0)
+                        // Judged by what would be saved, not by the find (GitHub #215/#216): a find
+                        // written as plain text never "upgrades" a song, and synced lyrics are only
+                        // ever replaced by richer ones (word > line > plain).
+                        var kept = best is null || found == 0 ? null : ViewModels.LyricsViewModel.ApplyPreferredType(best, preferred);
+                        var keptRank = kept is null ? 0 : KeptRank(kept, found, preferred);
+                        if (best is null || kept is null)
                         {
                             if (have == 0) Interlocked.Increment(ref notFound); else Interlocked.Increment(ref skipped);
                             outcome = have == 0 ? (complete ? "not found" : "sources busy") : "nothing better";
                             if (have == 1) plainLeft.Add(track);
                         }
-                        else if (found <= have || (options.SyncedOnly && found < 2))
+                        else if (keptRank <= have || (options.SyncedOnly && keptRank < 2))
                         {
                             Interlocked.Increment(ref skipped);
                             outcome = "nothing better";
@@ -183,10 +188,8 @@ public sealed class LyricsBulkService : ILyricsBulkService
                         else if (options.ReviewOnly)
                         {
                             // Nothing is written: the user picks from the finds, then ApplyAsync saves.
-                            var kept = ViewModels.LyricsViewModel.ApplyPreferredType(best, preferred);
-                            var rank = KeptRank(kept, found, preferred);
-                            finds.Add((i, new LyricsBulkFind(track, kept, bestSource, rank, have)));
-                            outcome = rank >= LyricsSearchSelector.WordSyncedRank ? "found word-synced" : rank >= 2 ? "found synced" : "found plain";
+                            finds.Add((i, new LyricsBulkFind(track, kept, bestSource, keptRank, have)));
+                            outcome = keptRank >= LyricsSearchSelector.WordSyncedRank ? "found word-synced" : keptRank >= 2 ? "found synced" : "found plain";
                         }
                         else
                         {
@@ -200,7 +203,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
                         }
                         // Only a complete answer (no source busy or down) counts as looked up. A review
                         // run saved nothing: its songs are looked up again unless their finds get saved.
-                        if (complete && !options.ReviewOnly) ledger.Record(track.Id, Math.Max(have, found));
+                        if (complete && !options.ReviewOnly) ledger.Record(track.Id, Math.Max(have, keptRank));
                     }
                     catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                     catch (Exception ex)
@@ -402,7 +405,8 @@ public sealed class LyricsBulkService : ILyricsBulkService
     /// has them, else its synced lyrics (as the lyrics page saves, LyricsViewModel.SyncedToWrite).</summary>
     internal static string? SyncedToWrite(LrcLibResult result) =>
         (result.HasLyricsfile ? LyricsfileParser.ToElrc(result.Lyricsfile) : null)
-        ?? (string.IsNullOrWhiteSpace(result.SyncedLyrics) ? null : result.SyncedLyrics);
+        // Untimed text in the synced slot is plain lyrics, not synced ones (GitHub #215).
+        ?? (Noctis.Helpers.LyricsTextHelper.ContainsTimestamps(result.SyncedLyrics) ? result.SyncedLyrics : null);
 
     public async Task<int> RemoveAsync(IReadOnlyList<Track> tracks, IProgress<LyricsBulkProgress>? progress, CancellationToken ct)
     {

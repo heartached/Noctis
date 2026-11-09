@@ -1384,13 +1384,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
-    [RelayCommand]
-    private void SearchLyricsAlbum(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _searchLyricsAction?.Invoke(album.Tracks[0]);
-    }
-
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
 

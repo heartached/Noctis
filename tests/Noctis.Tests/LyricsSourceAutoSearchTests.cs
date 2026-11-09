@@ -179,7 +179,8 @@ public class LyricsSourceAutoSearchTests
         Assert.Equal(LyricsSearchSelector.WordSyncedRank, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = WordLyricsfile }));
         // LRCLIB sends a Lyricsfile with line-synced results too: it only times lines (10-05).
         Assert.Equal(2, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = LineLyricsfile, HasWordSync = false }));
-        Assert.Equal(2, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = "lines: []" }));
+        // LRCLIB sends an untimed Lyricsfile ("lines: []" + "plain:") with plain-only answers: plain (GitHub #215).
+        Assert.Equal(1, LyricsSearchSelector.FormatRank(new LrcLibResult { Lyricsfile = "lines: []", PlainLyrics = "just words" }));
         Assert.Equal(2, LyricsSearchSelector.FormatRank(Result(synced: Lrc)));
         Assert.Equal(1, LyricsSearchSelector.FormatRank(Result(plain: "just words")));
         Assert.Equal(0, LyricsSearchSelector.FormatRank(new LrcLibResult()));

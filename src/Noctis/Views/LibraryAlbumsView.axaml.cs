@@ -217,7 +217,6 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             removeCommand: vm.RemoveFromLibraryCommand,
             convertCommand: vm.ConvertAlbumCommand,
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: vm.SearchLyricsAlbumCommand,
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, vm.FindLyricsAlbumCommand); // GitHub #195

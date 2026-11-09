@@ -3471,9 +3471,19 @@ public partial class MainWindowViewModel : ViewModelBase
         WireLyricsPageToPlayer();
     }
 
-    /// <summary>Navigates to lyrics view and searches for lyrics for the given track.</summary>
+    /// <summary>
+    /// Song menus' Search Lyrics. For the player's song: the lyrics page, searching. For any other
+    /// song (GitHub #208): the Search Lyrics dialog for that song alone. The lyrics page follows
+    /// the player, so opening it for another song showed the playing song's page with the other
+    /// song's lyrics loaded into it (LyricsViewModel.SearchLyricsForTrack → LoadLyricsForTrack).
+    /// </summary>
     private void SearchLyricsForTrack(Track track)
     {
+        if (!_lyricsVm.IsPlayerTrack(track))
+        {
+            _ = _lyricsVm.OpenLyricsSearchForTrackAsync(track);
+            return;
+        }
         OpenLyricsView();
         _lyricsVm.SearchLyricsForTrack(track);
     }

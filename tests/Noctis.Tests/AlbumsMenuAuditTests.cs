@@ -108,20 +108,6 @@ public class AlbumsMenuAuditTests
         Assert.Contains(nameof(Album.IsAllTracksFavorite), raised);
     }
 
-    [AvaloniaFact]
-    public void SearchLyrics_OnAnAlbum_SearchesItsFirstSong()
-    {
-        var vm = AlbumsVm();
-        Track? searched = null;
-        vm.SetSearchLyricsAction(t => searched = t);
-        var one = Trk("One", number: 1);
-        var album = Alb("X", one, Trk("Two", number: 2));
-
-        vm.SearchLyricsAlbumCommand.Execute(album);
-
-        Assert.Same(one, searched);
-    }
-
     [Fact]
     public void YearSongsLine_OneSong_IsSingular()
     {

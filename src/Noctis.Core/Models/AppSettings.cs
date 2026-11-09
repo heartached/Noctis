@@ -1345,6 +1345,13 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #195: songs new to the library go through a background bulk lyrics run.</summary>
     public bool LyricsAutoFindNew { get; set; }
 
+    /// <summary>GitHub #217: the Find Lyrics dialog's options as last ticked ("Also upgrade songs with
+    /// plain or line-synced lyrics", "Look again at songs an earlier run already checked", "Review
+    /// what's found before saving"), so the next run starts with them.</summary>
+    public bool BulkLyricsUpgrade { get; set; }
+    public bool BulkLyricsRecheck { get; set; }
+    public bool BulkLyricsReviewFirst { get; set; }
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
