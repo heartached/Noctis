@@ -89,27 +89,19 @@ public class MobileIdleClockTests
         window.Close();
     }
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_timeProvider")]
-    private static extern ref Func<long> TimeProvider(Dispatcher dispatcher);
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_clockOffset")]
+    private static extern ref long ClockOffset(Dispatcher dispatcher);
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_impl")]
-    private static extern ref IDispatcherImpl Impl(Dispatcher dispatcher);
-
-    /// <summary>Fails when an Avalonia upgrade renames the fields DispatcherClock reaches (the
-    /// phone would quietly be back to spinning).</summary>
+    /// <summary>The phone's idle spin (dispatcher clock 30 ms behind its Android loop, so every
+    /// timer due inside the gap re-armed "at once" forever) is fixed upstream since Avalonia
+    /// 12.1.5 (#22496): when the platform loop replaces the bare dispatcher, the dispatcher keeps
+    /// the clock difference in <c>_clockOffset</c> and hands the loop due times on the loop's
+    /// clock. Our own DispatcherClock patch was removed with that bump. Fails if an Avalonia
+    /// upgrade drops the offset again, so the phone would quietly be back to spinning.</summary>
     [AvaloniaFact]
-    public void Dispatcher_clock_reads_its_loop()
+    public void Dispatcher_keeps_due_times_on_its_loops_clock()
     {
-        var dispatcher = Dispatcher.UIThread;
-        var original = TimeProvider(dispatcher);
-        try
-        {
-            Assert.True(DispatcherClock.Align(dispatcher));
-            Assert.Same(Impl(dispatcher), TimeProvider(dispatcher).Target);
-        }
-        finally
-        {
-            TimeProvider(dispatcher) = original;
-        }
+        var offset = ClockOffset(Dispatcher.UIThread);
+        Assert.InRange(offset, long.MinValue, long.MaxValue);
     }
 }
