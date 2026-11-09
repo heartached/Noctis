@@ -26,8 +26,8 @@
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
       "download": "https://github.com/heartached/Noctis/releases/download/plugin-albumroulette-v1.0.1/Noctis.Plugins.AlbumRoulette-1.0.1.zip",
-      "sha256": "3ef20b80d2701a32c1277890d0d8ec053ad9fcf120f08b7d915faae526001678",
-      "size": 52738,
+      "sha256": "647eb078ac06f4c0c776049b0c23d5e0d693e37f227fada004d425f1e00750d1",
+      "size": 52986,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.AlbumRoulette",
       "icon": "Noctis.Plugins.AlbumRoulette/icon.png"
     },

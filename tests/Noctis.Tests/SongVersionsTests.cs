@@ -276,13 +276,24 @@ public class SongVersionsTests
             TrackContextMenuBuilder.BindOtherVersions(item, a);
             Assert.True(item.IsVisible);
             var row = Assert.IsType<MenuItem>(Assert.Single(item.Items));
-            Assert.Equal("Live · Familiar to Millions · 2000", row.Header);
+            // Short row; the album is in the tooltip (owner 11-08).
+            Assert.Equal("Live · 2000", row.Header);
+            Assert.Equal("Live · Familiar to Millions · 2000", ToolTip.GetTip(row));
             row.Command!.Execute(row.CommandParameter);
             Assert.Same(a, picked!.From);
             Assert.Same(live, picked.To);
 
             TrackContextMenuBuilder.BindOtherVersions(item, live);
-            Assert.StartsWith("Original · Morning Glory", (string)((MenuItem)item.Items[0]!).Header!);
+            Assert.Equal("Original · 1995", (string)((MenuItem)item.Items[0]!).Header!);
+
+            // Two rows that would read the same get their album back.
+            var live2 = T("Wonderwall (Live)", album: "Knebworth 1996", year: 2000);
+            library.Add(live2);
+            TrackContextMenuBuilder.BindOtherVersions(item, a);
+            var headers = item.Items.Cast<MenuItem>().Select(m => (string)m.Header!).ToList();
+            Assert.Contains("Live · Familiar to Millions · 2000", headers);
+            Assert.Contains("Live · Knebworth 1996 · 2000", headers);
+            library.Remove(live2);
 
             TrackContextMenuBuilder.BindOtherVersions(item, lonely);
             Assert.False(item.IsVisible);

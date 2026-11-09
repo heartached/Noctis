@@ -369,7 +369,7 @@ public sealed class TrackContextMenuBuilder
         items.Add(ViewAlbum);
         ViewArtist = MenuV2.Row(host, Loc.T("PlaybackBar.ViewArtistTip"), "MenuLineArtist", visible: false);
         items.Add(ViewArtist);
-        OtherVersions = MenuV2.Row(host, Loc.T("Menu.OtherVersions"), "MenuLineAlbum", visible: false);
+        OtherVersions = MenuV2.Row(host, Loc.T("Menu.OtherVersions"), "MenuLineVersions", visible: false);
         items.Add(OtherVersions);
         StartRadio = MenuV2.Row(host, Loc.T("Menu.StartRadio"), "MenuLineRadio", visible: false);
         items.Add(StartRadio);
@@ -716,26 +716,36 @@ public sealed class TrackContextMenuBuilder
             catch { versions = Array.Empty<Track>(); } // a library mid-reload: no versions this open
         }
         item.IsVisible = versions.Count > 0;
-        foreach (var version in versions
-                     .OrderBy(v => v.Year == 0 ? int.MaxValue : v.Year)
-                     .ThenBy(v => v.Album, StringComparer.CurrentCultureIgnoreCase)
-                     .Take(MaxVersionRows))
+        var shown = versions
+            .OrderBy(v => v.Year == 0 ? int.MaxValue : v.Year)
+            .ThenBy(v => v.Album, StringComparer.CurrentCultureIgnoreCase)
+            .Take(MaxVersionRows)
+            .ToList();
+        // Short rows ("Live · 2016", owner 11-08: the album made every row trim). The album comes
+        // back only where two rows would otherwise read the same; the tooltip always has it.
+        var shortTexts = shown.Select(v => VersionRowText(v, withAlbum: false)).ToList();
+        for (var i = 0; i < shown.Count; i++)
         {
-            item.Items.Add(new MenuItem
+            var version = shown[i];
+            var clash = shortTexts.Count(t => t == shortTexts[i]) > 1;
+            var item2 = new MenuItem
             {
-                Header = VersionRowText(version),
+                Header = clash ? VersionRowText(version) : shortTexts[i],
                 Command = SwitchVersionCommand,
                 CommandParameter = new VersionSwitchRequest(track!, version),
-            });
+            };
+            ToolTip.SetTip(item2, VersionRowText(version));
+            item.Items.Add(item2);
         }
     }
 
-    /// <summary>"Live · Live at Wembley · 1986"; the plain title reads "Original". Internal for tests.</summary>
-    internal static string VersionRowText(Track version)
+    /// <summary>"Live · Live at Wembley · 1986" (or "Live · 1986" without the album); the plain
+    /// title reads "Original". Internal for tests.</summary>
+    internal static string VersionRowText(Track version, bool withAlbum = true)
     {
         var label = SongVersions.VersionLabel(version.Title);
         var parts = new List<string> { label.Length > 0 ? label : Loc.T("Menu.OriginalVersion") };
-        if (Track.IsRealAlbumName(version.Album)) parts.Add(version.Album);
+        if (withAlbum && Track.IsRealAlbumName(version.Album)) parts.Add(version.Album);
         if (version.Year > 0) parts.Add(version.Year.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return string.Join(" · ", parts);
     }

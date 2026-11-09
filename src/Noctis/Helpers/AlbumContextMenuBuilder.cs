@@ -218,7 +218,7 @@ public sealed class AlbumContextMenuBuilder
         items.Add(EditDescription);
         SearchLyrics = MenuV2.Row(host, Loc.T("Lyrics.SearchLyrics"), "MenuLineLyrics", visible: false);
         items.Add(SearchLyrics);
-        FindLyrics = MenuV2.Row(host, Loc.T("LibraryAlbums.FindLyrics"), "MenuLineLyrics", visible: false);
+        FindLyrics = MenuV2.Row(host, Loc.T("LibraryAlbums.FindLyrics"), "MenuLineLyricsBulk", visible: false);
         items.Add(FindLyrics);
         LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
         LyricsBackgroundChoose = new MenuItem { Header = Loc.T("AlbumDetail.ChooseAlbumVideo"), Command = LyricsBackgroundOverrides.ChooseForAlbumCommand };
