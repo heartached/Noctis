@@ -34,7 +34,6 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem EditDescription { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
-    public MenuItem SearchLyrics { get; private set; } = null!;
     /// <summary>GitHub #195: every song of the album (or the Ctrl-selection) → the bulk Find Lyrics dialog. Bound by <see cref="BindFindLyrics"/>.</summary>
     public MenuItem FindLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
@@ -132,10 +131,8 @@ public sealed class AlbumContextMenuBuilder
         ScanReplayGain.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(ScanReplayGain);
 
-        SearchLyrics = new MenuItem { Header = "Search Lyrics", IsVisible = false };
-        SearchLyrics.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
-        items.Add(SearchLyrics);
-
+        // No "Search Lyrics" here (GitHub #208): it searched the album's first song only and opened
+        // the lyrics page over whatever was playing. Find Lyrics… covers every song of the album.
         FindLyrics = new MenuItem { Header = Loc.T("LibraryAlbums.FindLyrics"), IsVisible = false };
         FindLyrics.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
         items.Add(FindLyrics);
@@ -175,7 +172,7 @@ public sealed class AlbumContextMenuBuilder
 
     /// <summary>
     /// The v2 layout: [header] [tiles] · [playlist, favorite] · [metadata, description,
-    /// search lyrics, lyrics video ▸] · [folder, tools ▸] · [remove]. Same named items as the
+    /// find lyrics, lyrics video ▸] · [folder, tools ▸] · [remove]. Same named items as the
     /// classic menu, so <see cref="Bind"/> serves both; Play / Shuffle / Play Next / Add to
     /// Queue stay off-menu as the source the tiles copy their command from.
     /// </summary>
@@ -216,8 +213,6 @@ public sealed class AlbumContextMenuBuilder
         items.Add(GroupAlbums);
         EditDescription = MenuV2.Row(host, Loc.T("AlbumDetail.EditDescription"), null, visible: false);
         items.Add(EditDescription);
-        SearchLyrics = MenuV2.Row(host, Loc.T("Lyrics.SearchLyrics"), "MenuLineLyrics", visible: false);
-        items.Add(SearchLyrics);
         FindLyrics = MenuV2.Row(host, Loc.T("LibraryAlbums.FindLyrics"), "MenuLineLyricsBulk", visible: false);
         items.Add(FindLyrics);
         LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
@@ -271,7 +266,6 @@ public sealed class AlbumContextMenuBuilder
         ICommand? editDescriptionCommand = null,
         ICommand? convertCommand = null,
         ICommand? scanReplayGainCommand = null,
-        ICommand? searchLyricsCommand = null,
         ICommand? snoozeCommand = null)
     {
         Menu.DataContext = album;
@@ -311,7 +305,6 @@ public sealed class AlbumContextMenuBuilder
         BindOptional(EditDescription, editDescriptionCommand, album);
         BindOptional(Convert, convertCommand, album);
         BindOptional(ScanReplayGain, scanReplayGainCommand, album);
-        BindOptional(SearchLyrics, searchLyricsCommand, album);
         BindOptional(SnoozeForMonth, snoozeCommand, album);
 
         ShowFolder.Command = showInExplorerCommand;

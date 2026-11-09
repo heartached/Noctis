@@ -1686,12 +1686,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task OpenLyricsSearch()
     {
-        if (_currentTrack == null || ShowLyricsSearchDialog == null) return;
-        var search = CreateLyricsSearchViewModel(_currentTrack);
+        if (_currentTrack == null) return;
+        await OpenLyricsSearchForTrackAsync(_currentTrack);
+    }
+
+    /// <summary>
+    /// Search Lyrics for <paramref name="track"/>, which need not be the song on the page: a pick
+    /// is saved for that song (<see cref="ApplySearchedLyrics"/>). GitHub #208: a song menu's
+    /// Search Lyrics on a song that isn't playing opens this, not the lyrics page, which always
+    /// shows the playing song.
+    /// </summary>
+    public async Task OpenLyricsSearchForTrackAsync(Track track)
+    {
+        if (ShowLyricsSearchDialog == null) return;
+        var search = CreateLyricsSearchViewModel(track);
         // Auto runs straight away, so the dialog opens on results rather than an empty list.
         _ = search.SearchAsync();
         await ShowLyricsSearchDialog(search);
     }
+
+    /// <summary>The song the player is on (playing or paused): the one the lyrics page follows.</summary>
+    public bool IsPlayerTrack(Track track) => _player.CurrentTrack is { } current && current.Id == track.Id;
 
     /// <summary>The source picker for <paramref name="track"/>, searching through this page's providers.</summary>
     internal LyricsSearchViewModel CreateLyricsSearchViewModel(Track track) => new(

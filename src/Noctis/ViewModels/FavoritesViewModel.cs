@@ -547,6 +547,17 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
 
+    /// <summary>GitHub #208: the album menu's lyrics entry is Find Lyrics… for every song (or the Ctrl-selection), as on the Albums page.</summary>
+    [RelayCommand]
+    private async Task FindLyricsItem(FavoriteItem item)
+    {
+        var items = SelectionOr(item);
+        CtrlSelectedItems.Clear();
+        var tracks = ExpandToTracks(items);
+        if (tracks.Count == 0) return;
+        await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: false);
+    }
+
     [RelayCommand]
     private async Task ScanItemReplayGain(FavoriteItem item)
     {
@@ -609,14 +620,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void SearchLyricsTrack(Track track)
     {
         if (track != null) _searchLyricsAction?.Invoke(track);
-    }
-
-    /// <summary>Album menu: Search Lyrics for the album's first song (as on Home).</summary>
-    [RelayCommand]
-    private void SearchLyricsAlbum(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _searchLyricsAction?.Invoke(album.Tracks[0]);
     }
 
     private Action<string>? _viewArtistAction;
