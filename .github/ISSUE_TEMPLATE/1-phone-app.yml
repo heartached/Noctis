@@ -1,0 +1,78 @@
+name: Phone app (Android beta)
+description: A bug, idea or feedback for Noctis on Android.
+title: "[Android] "
+labels: ["android"]
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Is this a bug or feedback?
+      options:
+        - Bug
+        - Idea or feedback
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, or what's your idea?
+      description: For a bug, say what you expected and the steps if you know them. Screenshots help, drag them in.
+      placeholder: The song skips when I lock the screen.
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: On the phone, Settings › About › Version.
+    validations:
+      required: true
+
+  - type: input
+    id: phone-model
+    attributes:
+      label: Phone model
+      placeholder: Samsung Galaxy S23
+    validations:
+      required: true
+
+  - type: dropdown
+    id: android-version
+    attributes:
+      label: Android version
+      options:
+        - Android 16 or newer
+        - Android 15
+        - Android 14
+        - Android 13
+        - Android 12
+        - Android 11
+        - Android 10
+        - Android 8 or 9
+    validations:
+      required: true
+
+  - type: dropdown
+    id: sync
+    attributes:
+      label: Synced with Noctis on your computer?
+      description: Settings › Account on the phone shows whether you're signed in.
+      options:
+        - "Yes, signed in and synced"
+        - "No, phone only"
+        - Not sure
+
+  - type: input
+    id: desktop-version
+    attributes:
+      label: Desktop Noctis version
+      description: Only if synced. Settings › About on the computer.
+      placeholder: "1.6.9"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: For a bug, Settings › Help › Export Logs saves a .txt file (keys and passwords removed). Drag it here.

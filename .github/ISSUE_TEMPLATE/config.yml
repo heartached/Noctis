@@ -1,11 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Ask a question or get help
+  - name: Questions and help (Discord)
     url: https://discord.gg/BNCDZQUVx7
-    about: Quick questions, setup help, and "is this a bug?" chats happen on the Discord. Faster than an issue.
-  - name: Browse existing issues
-    url: https://github.com/heartached/Noctis/issues?q=is%3Aissue
-    about: Someone may have already reported it. Add a thumbs-up or a comment instead of opening a duplicate.
-  - name: Read the README
+    about: Setup help and "is this a bug?" questions. Usually faster than an issue.
+  - name: README
     url: https://github.com/heartached/Noctis#readme
-    about: Install steps, supported formats, and platform notes.
+    about: Install steps, supported formats and platforms.
