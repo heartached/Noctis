@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services.Lyrics;
 
@@ -36,7 +37,8 @@ public partial class BulkLyricsViewModel : ViewModelBase
     /// <summary>Opened for the whole library (Settings > Tools), not a selection.</summary>
     public bool IsLibrary { get; }
 
-    /// <summary>Also look up songs with plain or line-synced lyrics and save a richer find.</summary>
+    /// <summary>Also look up songs with line-synced lyrics and save a word-synced find (songs with plain
+    /// lyrics are looked up either way; see <see cref="LyricsBulkOptions.Upgrade"/>).</summary>
     [ObservableProperty] private bool _upgradeExisting;
     /// <summary>Ask again about songs an earlier run already looked up.</summary>
     [ObservableProperty] private bool _recheck;
@@ -68,9 +70,11 @@ public partial class BulkLyricsViewModel : ViewModelBase
 
     /// <param name="prefs">GitHub #217: the options to start with (the last ones ticked).</param>
     /// <param name="savePrefs">Called with the options whenever the user changes one.</param>
+    /// <param name="settings">Settings ▸ Lyrics as the dialog opens; null reads the app's (defaults without one).</param>
     public BulkLyricsViewModel(IReadOnlyList<Track> tracks, ILyricsBulkService service, bool remove,
         bool library = false, Func<IReadOnlyList<Track>, Task>? openStudio = null,
-        BulkLyricsOptionPrefs? prefs = null, Action<BulkLyricsOptionPrefs>? savePrefs = null)
+        BulkLyricsOptionPrefs? prefs = null, Action<BulkLyricsOptionPrefs>? savePrefs = null,
+        AppSettings? settings = null)
     {
         _tracks = tracks;
         _service = service;
@@ -88,7 +92,14 @@ public partial class BulkLyricsViewModel : ViewModelBase
         var n = tracks.Count;
         var songs = n == 1 ? L("LibrarySongs.SummarySong") : L("LibrarySongs.SummarySongs", n);
         TitleText = remove ? L("BulkLyrics.TitleRemove", songs) : IsLibrary ? L("BulkLyrics.TitleLibrary", songs) : L("BulkLyrics.TitleFetch", songs);
-        SubtitleText = remove ? L("BulkLyrics.SubtitleRemove") : L("BulkLyrics.SubtitleFetch");
+        // GitHub #203: what a run looks for and where it saves follow Settings ▸ Lyrics (the bulk
+        // service stops at the preferred type; LyricsWriter saves per "Save lyrics to").
+        var lyricsSettings = settings ?? CurrentSettings();
+        var preferred = LyricsSaveOptions.ParsePreferredType(lyricsSettings.LyricsPreferredType);
+        SubtitleText = remove ? L("BulkLyrics.SubtitleRemove") : FetchSubtitle(preferred, LyricsSaveOptions.ParseTarget(lyricsSettings.LyricsSaveTarget));
+        // The option only adds line-synced → word-synced (plain lyrics are always looked up): with
+        // line-synced or plain preferred there is nothing to upgrade them to.
+        CanUpgradeLineSynced = !remove && preferred == LyricsPreferredType.WordSynced;
         foreach (var t in tracks)
         {
             var row = new Row(t);
@@ -97,6 +108,38 @@ public partial class BulkLyricsViewModel : ViewModelBase
         }
         StatusMessage = remove ? L("BulkLyrics.NothingRemovedYet") : L("BulkLyrics.Ready");
         RowStatusesLoaded = LoadRowStatusesAsync();
+    }
+
+    /// <summary>The "upgrade line-synced lyrics" option shows: word-synced is the preferred type (GitHub #203).</summary>
+    public bool CanUpgradeLineSynced { get; }
+
+    internal static string FetchSubtitle(LyricsPreferredType preferred, LyricsSaveTarget target)
+    {
+        var finds = preferred switch
+        {
+            LyricsPreferredType.LineSynced => L("BulkLyrics.FetchLine"),
+            LyricsPreferredType.Plain => L("BulkLyrics.FetchPlain"),
+            _ => L("BulkLyrics.FetchWord"),
+        };
+        var saves = target switch
+        {
+            LyricsSaveTarget.Embedded => L("BulkLyrics.SaveEmbedded"),
+            LyricsSaveTarget.Both => L("BulkLyrics.SaveBoth"),
+            _ => L("BulkLyrics.SaveSidecar"),
+        };
+        return $"{finds} {saves} {L("BulkLyrics.FollowsSettings")}";
+    }
+
+    private static AppSettings CurrentSettings()
+    {
+        try
+        {
+            return App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() ?? new AppSettings();
+        }
+        catch
+        {
+            return new AppSettings();
+        }
     }
 
     /// <summary>Completes once the rows' lyrics states have been read and posted to the UI thread.</summary>

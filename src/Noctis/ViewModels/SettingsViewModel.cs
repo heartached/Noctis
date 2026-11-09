@@ -787,6 +787,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Settings ▸ Lyrics ▸ Find lyrics for new songs (GitHub #195).</summary>
     [ObservableProperty] private bool _lyricsAutoFindNew;
+    [ObservableProperty] private bool _lyricsAutoFindLibrary;
 
     /// <summary>One row of a string-valued picker (lyrics saving, Discord status, queue rows): the stored value and its label.</summary>
     public sealed record LyricsChoiceOption(string Value, string Label)
@@ -1009,6 +1010,17 @@ public partial class SettingsViewModel : ViewModelBase
         if (!value)
             _ = App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>()?.ClearAsync();
         if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsAutoFindLibraryChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+        if (!_settingsLoaded) return;
+        // GitHub #219: on, a sweep starts shortly (after the save above, which it reads); off, the
+        // library's waiting songs are dropped (new ones stay while "Find lyrics for new songs" is on).
+        var auto = App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>();
+        if (value) auto?.ScheduleLibrarySweep();
+        else auto?.StopLibrarySweep();
     }
 
     partial void OnLyricsPreferredTypeChanged(string value)
@@ -2628,6 +2640,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _kugouEnabled = true;
     [ObservableProperty] private bool _lrcRedEnabled = true;
     [ObservableProperty] private bool _unisonEnabled = true;
+    [ObservableProperty] private bool _lrcMuxEnabled;
     [ObservableProperty] private bool _youTubeMusicLyricsEnabled;
 
     // ── Metadata Providers ──
@@ -3648,6 +3661,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(_settings.LyricsPreferredType).ToString();
             LyricsUpgradePlain = _settings.LyricsUpgradePlain;
             LyricsAutoFindNew = _settings.LyricsAutoFindNew;
+            LyricsAutoFindLibrary = _settings.LyricsAutoFindLibrary;
             LyricsShowTranslations = _settings.LyricsShowTranslations;
             LyricsShowRomanization = _settings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = _settings.LyricsShowBackgroundVocals;
@@ -3784,6 +3798,7 @@ public partial class SettingsViewModel : ViewModelBase
             KugouEnabled = _settings.KugouEnabled;
             LrcRedEnabled = _settings.LrcRedEnabled;
             UnisonEnabled = _settings.UnisonEnabled;
+            LrcMuxEnabled = _settings.LrcMuxEnabled;
             YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
             LoadBuiltInFeatureSettings();
@@ -4193,6 +4208,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(LyricsPreferredType).ToString();
         _settings.LyricsUpgradePlain = LyricsUpgradePlain;
         _settings.LyricsAutoFindNew = LyricsAutoFindNew;
+        _settings.LyricsAutoFindLibrary = LyricsAutoFindLibrary;
         _settings.LyricsShowTranslations = LyricsShowTranslations;
         _settings.LyricsShowRomanization = LyricsShowRomanization;
         _settings.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
@@ -4316,6 +4332,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.KugouEnabled = KugouEnabled;
         _settings.LrcRedEnabled = LrcRedEnabled;
         _settings.UnisonEnabled = UnisonEnabled;
+        _settings.LrcMuxEnabled = LrcMuxEnabled;
         _settings.YouTubeMusicLyricsEnabled = YouTubeMusicLyricsEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqPreampDb = EqPreampDb;
@@ -6465,6 +6482,12 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnLrcMuxEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnYouTubeMusicLyricsEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -8408,6 +8431,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsPreferredType = defaultSettings.LyricsPreferredType;
             LyricsUpgradePlain = defaultSettings.LyricsUpgradePlain;
             LyricsAutoFindNew = defaultSettings.LyricsAutoFindNew;
+            LyricsAutoFindLibrary = defaultSettings.LyricsAutoFindLibrary;
             LyricsShowTranslations = defaultSettings.LyricsShowTranslations;
             LyricsShowRomanization = defaultSettings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = defaultSettings.LyricsShowBackgroundVocals;
@@ -8546,6 +8570,7 @@ public partial class SettingsViewModel : ViewModelBase
             KugouEnabled = defaultSettings.KugouEnabled;
             LrcRedEnabled = defaultSettings.LrcRedEnabled;
             UnisonEnabled = defaultSettings.UnisonEnabled;
+            LrcMuxEnabled = defaultSettings.LrcMuxEnabled;
             YouTubeMusicLyricsEnabled = defaultSettings.YouTubeMusicLyricsEnabled;
 
             // Metadata providers

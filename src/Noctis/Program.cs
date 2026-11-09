@@ -507,6 +507,7 @@ internal class Program
         services.AddSingleton<ILrcRedLyricsService>(sp =>
             new LrcRedLyricsService(sp.GetRequiredService<HttpClient>(), LrcRedLyricsService.CreateModelHttpClient()));
         services.AddSingleton<IUnisonLyricsService, UnisonLyricsService>();
+        services.AddSingleton<ILrcMuxLyricsService, LrcMuxLyricsService>();
         services.AddSingleton<IYouTubeMusicLyricsService, YouTubeMusicLyricsService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
         services.AddSingleton<PhoneHandoffInbox>();
@@ -592,8 +593,8 @@ internal class Program
                     list.AddRange(Services.Lyrics.OnlineLyricsSource.BuiltIns(
                             sp.GetRequiredService<IMusixmatchService>(), sp.GetRequiredService<IKugouLyricsService>(),
                             sp.GetRequiredService<IYouTubeMusicLyricsService>(), sp.GetRequiredService<ILrcRedLyricsService>(),
-                            sp.GetRequiredService<IUnisonLyricsService>())
-                        .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync)));
+                            sp.GetRequiredService<IUnisonLyricsService>(), sp.GetRequiredService<ILrcMuxLyricsService>())
+                        .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync) { MinInterval = x.MinInterval }));
                     return list;
                 },
                 Path.Combine(sp.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_bulk_ledger.json")));

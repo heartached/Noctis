@@ -7545,7 +7545,6 @@
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>보관함의 가사 찾기({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0}의 가사 가져오기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis가 이 노래에 저장한 가사(.lrc 파일과 캐시된 가사)를 삭제합니다. 직접 만든 가사 파일은 그대로 둡니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>온라인에서 가사를 찾아(단어 싱크 우선) 노래 옆에 저장합니다. 직접 만든 가사 파일은 절대 바꾸지 않습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>아직 제거된 항목이 없습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>준비됨.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>숨기기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>

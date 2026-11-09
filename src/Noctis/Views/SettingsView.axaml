@@ -4741,6 +4741,17 @@
                                               IsChecked="{Binding YouTubeMusicLyricsEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #219: lrcmux, asked last, off by default. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.LrcMux}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LrcMuxHint}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LrcMux}"
+                                              IsChecked="{Binding LrcMuxEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <TextBlock Text="{loc:T Settings.LyricsSourcesPickerHint}"
                                FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
@@ -4826,6 +4837,20 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.LyricsAutoFindNew}"
                                           IsChecked="{Binding LyricsAutoFindNew}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #219: the whole library, gradually, in the background. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindLibrary}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindLibraryHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsAutoFindLibrary}"
+                                          IsChecked="{Binding LyricsAutoFindLibrary}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>

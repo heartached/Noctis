@@ -784,7 +784,8 @@ public partial class MainWindowViewModel : ViewModelBase
             && App.Services.GetService<ILrcRedLyricsService>() is { } lrcRed
             && App.Services.GetService<IUnisonLyricsService>() is { } unison)
         {
-            _lyricsVm.ExtraLyricsSources = Services.Lyrics.OnlineLyricsSource.BuiltIns(musixmatch, kugou, youTubeMusic, lrcRed, unison);
+            _lyricsVm.ExtraLyricsSources = Services.Lyrics.OnlineLyricsSource.BuiltIns(musixmatch, kugou, youTubeMusic, lrcRed, unison,
+                App.Services.GetService<ILrcMuxLyricsService>());
             // "Word-sync with lrc.red's model" on the lyrics page and in Search Lyrics.
             _lyricsVm.LrcRed = lrcRed;
         }

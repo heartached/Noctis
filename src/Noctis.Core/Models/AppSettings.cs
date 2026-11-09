@@ -1374,6 +1374,10 @@ public class AppSettings : IJsonOnDeserializing
     public bool BulkLyricsRecheck { get; set; }
     public bool BulkLyricsReviewFirst { get; set; }
 
+    /// <summary>GitHub #219: every song without synced lyrics is looked up gradually in the background
+    /// (and new songs as they arrive); misses are asked again after a month. Off by default.</summary>
+    public bool LyricsAutoFindLibrary { get; set; }
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
@@ -1400,6 +1404,11 @@ public class AppSettings : IJsonOnDeserializing
     /// automatically. On: keyless, documented for third-party reads (120 a minute per IP), two
     /// small requests per lookup.</summary>
     public bool UnisonEnabled { get; set; } = true;
+
+    /// <summary>GitHub #219: whether lrcmux (lrcmux.dev: Deezer, KuGou, YouTube Music and Musixmatch
+    /// relayed, keyless, 60 requests a minute) is searched automatically, after the other sources.
+    /// Off: a third-party relay whose loose match often credits the composer, so fewer answers validate.</summary>
+    public bool LrcMuxEnabled { get; set; }
 
     /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
     /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
