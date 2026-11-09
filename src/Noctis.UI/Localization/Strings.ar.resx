@@ -188,10 +188,6 @@
     <value>فتح الملفات الصوتية باستخدام Noctis</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>إضافة نوكتيب إلى قائمة ويندوز مفتوحة مع التطبيقات الافتراضية للصيغ التي تشغلها.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>تسجيل</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -342,10 +338,6 @@
   </data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve">
     <value>فواصل وسم الفنان</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>النص الذي يقسم علامة فنان واحد إلى عدة. قم بإزالة واحدة للإبقاء على أسماء مثل &quot;Simon &amp; Garfunkel&quot; كلها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -556,10 +548,6 @@
     <value>اللكنة تتبع صورة الألبوم</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>استعيد اللهجة من غلاف اللعب. اللهجة التي اخترتها تعود عندما لا يلعب أي شيء.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>لون التمييز</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -578,10 +566,6 @@
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>تجريبي</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>قم بتدوين النافذة، الشريط الجانبي، الإعدادات وشريط التشغيل مع أسطح زجاجية شفافة وضبابية.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -780,10 +764,6 @@
     <value>عرض جزيرة التشغيل</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>أوسع يعطي شريط البحث غرفة أكثر. يمكنك أيضًا سحب حواف الجزيرة. انقر نقرًا مزدوجًا لإعادة الضبط.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>أضيق</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -818,10 +798,6 @@
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>خلفية كلمات منسابة</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>يعمل الانجراف على تحريك الغطاء و النبضات مع النبضة. يقوم كاوارب بزرعها في تدفق سائل بطيء. تظهر أنماط الاضافات هنا أيضا.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -992,10 +968,6 @@
     <value>الحد الأدنى لشفافية الخط</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>ابق كل خط لغوي مرئي بشكل معجول حتى يمكنك النقر على أي خط للقفز هناك. 0٪ يخفي خطوطا بعيدة عن الخط الحالي.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>ضم الكلمات المجزأة</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1006,10 +978,6 @@
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>عتامة شريط التشغيل</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>مدى صلابة مظهر خلفية شريط التشغيل.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1100,10 +1068,6 @@
     <value>الوضع الحصري</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>الإخراج المثالي الذي يتجاوز خليط ويندوز. تطبيقات أخرى صامتة والانتقال متوقف.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>تحليل الإيقاع والمقام</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1114,10 +1078,6 @@
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>حفظ التحليل في وسوم الملف</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>كتابة BPM والمفتاح في وسوم الملف. هذا يعدل ملفاتك.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1194,10 +1154,6 @@
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>ضبط مستوى الصوت من علامات ReplayGain. مسح المسارات عن طريق النقر على اليمين.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1598,10 +1554,6 @@
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>اختصارات لوحة المفاتيح</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>انقر فوق مفتاح لتغييره. إلغاء Esc ، إلغاء الارتباطات في الفضاء الخلفي. مفاتيح الوسائط تعمل دائماً.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6196,4 +6148,5 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
