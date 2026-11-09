@@ -81,7 +81,7 @@
     <PackageReference Include="Avalonia.Android" Version="12.1.6" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.3" />
     <PackageReference Include="Xamarin.AndroidX.Media3.ExoPlayer" Version="1.11.1" />
     <PackageReference Include="Xamarin.AndroidX.Media3.Session" Version="1.11.1" />
     <PackageReference Include="Xamarin.AndroidX.DocumentFile" Version="1.1.0.4" />
