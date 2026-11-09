@@ -279,6 +279,8 @@ public class SongVersionsTests
             // Short row; the album is in the tooltip (owner 11-08).
             Assert.Equal("Live · 2000", row.Header);
             Assert.Equal("Live · Familiar to Millions · 2000", ToolTip.GetTip(row));
+            // Each row shows its version's album cover (owner 11-08).
+            Assert.Contains("mv2-cover", Assert.IsType<Border>(row.Icon).Classes);
             row.Command!.Execute(row.CommandParameter);
             Assert.Same(a, picked!.From);
             Assert.Same(live, picked.To);

@@ -735,6 +735,12 @@ public sealed class TrackContextMenuBuilder
                 CommandParameter = new VersionSwitchRequest(track!, version),
             };
             ToolTip.SetTip(item2, VersionRowText(version));
+            // The version's album cover (owner 11-08): the path is already on the track, and the
+            // image decodes through the shared artwork cache only while the submenu is shown.
+            item2.Icon = MenuV2.AlbumThumb(out var cover);
+            cover.DecodeWidth = 64;
+            cover.SourcePath = version.AlbumArtworkPath;
+            cover.IsVisible = version.HasAlbumArt;
             item.Items.Add(item2);
         }
     }
