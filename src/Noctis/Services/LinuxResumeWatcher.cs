@@ -265,7 +265,7 @@ public sealed class LinuxResumeWatcher : IDisposable
                     break;
                 case SleepSignal.SubscriptionEnded:
                     if (!_disposed)
-                        Warn("ResumeWatch.BusLost", $"{signal.Exception?.Message}; relying on the clock check alone");
+                        Warn("ResumeWatch.BusLost", $"{signal.CompletionReason?.Message}; relying on the clock check alone");
                     break;
             }
         }
