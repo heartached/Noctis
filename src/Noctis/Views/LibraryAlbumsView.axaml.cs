@@ -33,6 +33,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     {
         InitializeComponent();
         AlbumCarousel.AlbumContextRequested += OnCarouselAlbumContextRequested;
+        MasonryPanel.ElementPrepared += OnMasonryElementPrepared;
 
         DataContextChanged += OnDataContextChanged;
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
@@ -101,7 +102,21 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             if (desc is Button b && b.Classes.Contains("album-tile"))
                 allTiles.Add(b);
         }
+        foreach (var c in MasonryPanel.RealizedElements)
+            if (c is Button b) allTiles.Add(b);
         return allTiles;
+    }
+
+    /// <summary>The scroller of the layout on screen: the row grid's or the Masonry one (#213).</summary>
+    private ScrollViewer? ActiveScroller() => _vm?.IsMasonryView == true
+        ? MasonryScroller
+        : AlbumListBox.FindDescendantOfType<ScrollViewer>();
+
+    /// <summary>A Masonry tile recycled onto another album takes that album's selection at once.</summary>
+    private void OnMasonryElementPrepared(object? sender, Control element)
+    {
+        if (element is Button tile)
+            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
     }
 
     /// <summary>Returns the list of ctrl-selected albums, or a single-item list with the given album if none are selected.</summary>
@@ -284,7 +299,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
         Dispatcher.UIThread.Post(() =>
         {
-            var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+            var sv = ActiveScroller();
             if (sv != null)
                 sv.Offset = new Vector(0, 0);
         }, DispatcherPriority.Background);
@@ -309,7 +324,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         }, DispatcherPriority.Background);
 
         // Save and restore scroll position so sidebar hover doesn't reset scroll
-        var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        var sv = ActiveScroller();
         var savedY = sv?.Offset.Y ?? 0;
 
         if (!vm.UpdateGridMetrics(usable))
@@ -332,7 +347,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     /// </summary>
     private double GridUsableWidth(double viewWidth)
     {
-        var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        var sv = ActiveScroller();
         var bar = sv is { Bounds.Width: > 0, Viewport.Width: > 0 } ? sv.Bounds.Width - sv.Viewport.Width : 10;
         return viewWidth - 16 - bar;
     }
@@ -343,7 +358,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
         if (DataContext is LibraryAlbumsViewModel vm)
         {
-            var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+            var sv = ActiveScroller();
             if (sv != null)
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
@@ -364,7 +379,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     {
         if (_pendingScrollRestore != null)
         {
-            AlbumListBox.LayoutUpdated -= _pendingScrollRestore;
+            LayoutUpdated -= _pendingScrollRestore;
             _pendingScrollRestore = null;
             AlbumListBox.Opacity = 1;
         }
@@ -382,7 +397,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             // Using a single-shot LayoutUpdated avoids the Opacity=0 blank flash.
             _pendingScrollRestore = (s, args) =>
             {
-                var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+                var sv = ActiveScroller();
                 if (sv == null) return;
 
                 var clampedOffset = Math.Min(targetOffset, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
@@ -390,21 +405,21 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
                 CancelPendingScrollRestore();
             };
 
-            AlbumListBox.LayoutUpdated += _pendingScrollRestore;
+            LayoutUpdated += _pendingScrollRestore;
         }
         else if (DataContext is LibraryAlbumsViewModel activeVm
                  && (activeVm.IsArtistFiltered || activeVm.HasActiveFilter))
         {
             _pendingScrollRestore = (s, args) =>
             {
-                var sv = AlbumListBox.FindDescendantOfType<ScrollViewer>();
+                var sv = ActiveScroller();
                 if (sv == null) return;
 
                 sv.Offset = new Vector(0, 0);
                 CancelPendingScrollRestore();
             };
 
-            AlbumListBox.LayoutUpdated += _pendingScrollRestore;
+            LayoutUpdated += _pendingScrollRestore;
         }
     }
 

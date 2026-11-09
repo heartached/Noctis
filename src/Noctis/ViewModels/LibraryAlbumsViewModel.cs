@@ -294,12 +294,29 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCarouselView))]
     [NotifyPropertyChangedFor(nameof(IsGridView))]
+    [NotifyPropertyChangedFor(nameof(IsMasonryView))]
+    [NotifyPropertyChangedFor(nameof(IsRowGridView))]
     private string _albumViewMode = "grid";
 
     /// <summary>The carousel shows: picked, and the Album Carousel built-in feature is on (off
     /// shows the grid and keeps the pick for when it returns).</summary>
     public bool IsCarouselView => AlbumViewMode == "carousel" && _settings.AlbumCarouselEnabled;
     public bool IsGridView => !IsCarouselView;
+
+    /// <summary>GitHub #213: the grid as Masonry (Settings › Albums "Masonry Album Grid" or the
+    /// View menu). An artist page that interleaves its Songs section keeps the row grid: the
+    /// masonry panel lays out album cards only.</summary>
+    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry && !_rowsHaveSections;
+
+    /// <summary>The row grid (the ListBox of album rows) is up.</summary>
+    public bool IsRowGridView => IsGridView && !IsMasonryView;
+
+    /// <summary>The current rows carry an artist page's section headers / song rows.</summary>
+    private bool _rowsHaveSections;
+
+    /// <summary>View menu: Masonry on/off (the same setting Settings shows).</summary>
+    [RelayCommand]
+    private void ToggleMasonry() => _settings.AlbumGridMasonry = !_settings.AlbumGridMasonry;
 
     /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
@@ -339,6 +356,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
         OnPropertyChanged(nameof(CarouselAlbums));
+        var sections = FilteredAlbumRows.Any(r => r is not AlbumRow);
+        if (sections != _rowsHaveSections)
+        {
+            _rowsHaveSections = sections;
+            OnPropertyChanged(nameof(IsMasonryView));
+            OnPropertyChanged(nameof(IsRowGridView));
+        }
     }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
@@ -473,6 +497,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             {
                 OnPropertyChanged(nameof(IsCarouselView));
                 OnPropertyChanged(nameof(IsGridView));
+                OnPropertyChanged(nameof(IsMasonryView));
+                OnPropertyChanged(nameof(IsRowGridView));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridMasonry))
+            {
+                OnPropertyChanged(nameof(IsMasonryView));
+                OnPropertyChanged(nameof(IsRowGridView));
             }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))

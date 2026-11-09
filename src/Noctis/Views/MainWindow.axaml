@@ -386,6 +386,12 @@
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumCarouselView}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <Separator/>
+                                    <!-- GitHub #213: the grid's Masonry layout (Settings › Appearance has it too). -->
+                                    <MenuItem Header="{loc:T Main.AlbumMasonry}" Command="{Binding AlbumMasonryCommand}"
+                                              IsEnabled="{Binding !IsAlbumCarouselView}">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumMasonry}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
                                     <!-- GitHub #176: the case style only shows in the carousel, so its four
                                          items are greyed (IsEnabled, not just opacity) while the grid is up;
                                          the tooltip, shown on the disabled items only, says why. -->

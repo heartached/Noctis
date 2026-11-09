@@ -14,6 +14,95 @@
 
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
+        <!-- One album tile for the row grid and the Masonry panel (GitHub #213). -->
+        <DataTemplate x:Key="AlbumTileTemplate" x:DataType="m:Album">
+            <Button Classes="album-tile"
+                    AutomationProperties.Name="{Binding Name}"
+                    Focusable="False"
+                    Margin="3,2"
+                    Padding="6"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Stretch"
+                    VerticalContentAlignment="Top"
+                    helpers:DragFileBehavior.EnableFileDrag="True"
+                    Loaded="OnAlbumTileLoaded"
+                    ContextRequested="OnAlbumTileContextRequested"
+                    Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
+                    CommandParameter="{Binding}">
+
+                <!-- Right-click / dots: one shared v2 menu built in code (OnAlbumTileContextRequested). -->
+                <!-- Stretched to the row with its content on top: selected tiles in one row
+                     share one plate height (GitHub #209). -->
+
+                <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
+                    <!-- Album artwork: size computed once in code-behind, no per-tile Bounds binding -->
+                    <Border Width="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
+                            Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
+                            CornerRadius="6"
+                            ClipToBounds="True"
+                            Background="#1AFFFFFF">
+                        <Panel>
+                            <!-- Placeholder -->
+                            <TextBlock Text="{loc:T LibraryAlbums.Text}"
+                                       FontSize="40"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.15"
+                                       IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                            <!-- Async artwork loading: cache hits instant, misses load on background thread -->
+                            <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
+                                              DecodeWidth="768"
+                                              Stretch="UniformToFill"
+                                              RenderOptions.BitmapInterpolationMode="HighQuality"
+                                              IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                            <!-- Hover overlay (09-13): dim + Play/Pause + dots; styles in Styles.axaml -->
+                            <Border Classes="tile-dim" />
+                            <Button Classes="tile-play"
+                                    Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TogglePlayAlbumCommand}"
+                                    CommandParameter="{Binding}">
+                                <Panel>
+                                    <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsNowPlaying}"><Path Data="{StaticResource PlayIcon}" Fill="White" /></Viewbox>
+                                    <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNowPlaying}"><Path Data="{StaticResource PauseIcon}" Fill="White" /></Viewbox>
+                                </Panel>
+                            </Button>
+                            <Button Classes="tile-more" Click="OnTileMoreClick">
+                                <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"><Path Data="{StaticResource MoreDotsIcon}" Fill="White" /></Viewbox>
+                            </Button>
+                        </Panel>
+                    </Border>
+                    <!-- Title + explicit badge; the heart sits at the line's right end (09-13) -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
+                        <ctrl:HighlightTextBlock Grid.Column="0"
+                                                 helpers:TitleWrap.Watch="True"
+                                                 DisplayText="{Binding Name}"
+                                                 HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
+                                                 IsExplicit="{Binding IsExplicit}"
+                                                 FontSize="13"
+                                                 FontWeight="SemiBold"
+                                                 TextWrapping="Wrap"
+                                                 TextTrimming="CharacterEllipsis"
+                                                 MaxLines="2" />
+                        <Panel Grid.Column="1" Classes="heart-title" VerticalAlignment="Top" Margin="6,2,0,0">
+                            <ctrl:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
+                        </Panel>
+                    </Grid>
+                    <!-- Subtitle; the heart lands here instead when the title wraps -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
+                        <ctrl:HighlightTextBlock Grid.Column="0"
+                                                 DisplayText="{Binding TileSubtitle}"
+                                                 HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
+                                                 FontSize="12"
+                                                 FontWeight="Bold"
+                                                 Opacity="0.55"
+                                                 TextTrimming="CharacterEllipsis"
+                                                 MaxLines="1" />
+                        <Panel Grid.Column="1" Classes="heart-sub" VerticalAlignment="Center" Margin="6,0,0,0">
+                            <ctrl:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
+                        </Panel>
+                    </Grid>
+                </StackPanel>
+            </Button>
+        </DataTemplate>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -51,7 +140,7 @@
         <Grid>
             <!-- Album grid: outer ListBox virtualizes rows, inner UniformGrid lays out GridColumns per row -->
             <ListBox x:Name="AlbumListBox"
-                     IsVisible="{Binding IsGridView}"
+                     IsVisible="{Binding IsRowGridView}"
                      ItemsSource="{Binding FilteredAlbumRows}"
                      Background="Transparent"
                      BorderThickness="0"
@@ -206,107 +295,35 @@
                     <DataTemplate DataType="m:AlbumRow">
                         <!-- Rows size to their tallest caption (GitHub #210): a fixed row height
                              left a 17px taller gap under rows whose titles all fit on one line. -->
-                        <ItemsControl ItemsSource="{Binding Albums}">
+                        <ItemsControl ItemsSource="{Binding Albums}" ItemTemplate="{StaticResource AlbumTileTemplate}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <!-- Column count mirrors the VM's row chunk size (cover-size setting) -->
                                     <UniformGrid Columns="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).GridColumns}" Rows="1" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="m:Album">
-                                    <Button Classes="album-tile"
-                                            AutomationProperties.Name="{Binding Name}"
-                                            Focusable="False"
-                                            Margin="3,2"
-                                            Padding="6"
-                                            HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Stretch"
-                                            VerticalContentAlignment="Top"
-                                            helpers:DragFileBehavior.EnableFileDrag="True"
-                                            Loaded="OnAlbumTileLoaded"
-                                            ContextRequested="OnAlbumTileContextRequested"
-                                            Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).OpenAlbumCommand}"
-                                            CommandParameter="{Binding}">
-
-                                        <!-- Right-click / dots: one shared v2 menu built in code (OnAlbumTileContextRequested). -->
-                                        <!-- Stretched to the row with its content on top: selected tiles in one row
-                                             share one plate height (GitHub #209). -->
-
-                                        <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
-                                            <!-- Album artwork: size computed once in code-behind, no per-tile Bounds binding -->
-                                            <Border Width="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
-                                                    Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
-                                                    CornerRadius="6"
-                                                    ClipToBounds="True"
-                                                    Background="#1AFFFFFF">
-                                                <Panel>
-                                                    <!-- Placeholder -->
-                                                    <TextBlock Text="{loc:T LibraryAlbums.Text}"
-                                                               FontSize="40"
-                                                               HorizontalAlignment="Center"
-                                                               VerticalAlignment="Center"
-                                                               Opacity="0.15"
-                                                               IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                                    <!-- Async artwork loading: cache hits instant, misses load on background thread -->
-                                                    <ctrl:CachedImage SourcePath="{Binding ArtworkPath}"
-                                                                      DecodeWidth="768"
-                                                                      Stretch="UniformToFill"
-                                                                      RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                                      IsVisible="{Binding ArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                                    <!-- Hover overlay (09-13): dim + Play/Pause + dots; styles in Styles.axaml -->
-                                                    <Border Classes="tile-dim" />
-                                                    <Button Classes="tile-play"
-                                                            Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TogglePlayAlbumCommand}"
-                                                            CommandParameter="{Binding}">
-                                                        <Panel>
-                                                            <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsNowPlaying}"><Path Data="{StaticResource PlayIcon}" Fill="White" /></Viewbox>
-                                                            <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsNowPlaying}"><Path Data="{StaticResource PauseIcon}" Fill="White" /></Viewbox>
-                                                        </Panel>
-                                                    </Button>
-                                                    <Button Classes="tile-more" Click="OnTileMoreClick">
-                                                        <Viewbox Width="14" Height="14" HorizontalAlignment="Center" VerticalAlignment="Center"><Path Data="{StaticResource MoreDotsIcon}" Fill="White" /></Viewbox>
-                                                    </Button>
-                                                </Panel>
-                                            </Border>
-                                            <!-- Title + explicit badge; the heart sits at the line's right end (09-13) -->
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
-                                                <ctrl:HighlightTextBlock Grid.Column="0"
-                                                                         helpers:TitleWrap.Watch="True"
-                                                                         DisplayText="{Binding Name}"
-                                                                         HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
-                                                                         IsExplicit="{Binding IsExplicit}"
-                                                                         FontSize="13"
-                                                                         FontWeight="SemiBold"
-                                                                         TextWrapping="Wrap"
-                                                                         TextTrimming="CharacterEllipsis"
-                                                                         MaxLines="2" />
-                                                <Panel Grid.Column="1" Classes="heart-title" VerticalAlignment="Top" Margin="6,2,0,0">
-                                                    <ctrl:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
-                                                </Panel>
-                                            </Grid>
-                                            <!-- Subtitle; the heart lands here instead when the title wraps -->
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
-                                                <ctrl:HighlightTextBlock Grid.Column="0"
-                                                                         DisplayText="{Binding TileSubtitle}"
-                                                                         HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
-                                                                         FontSize="12"
-                                                                         FontWeight="Bold"
-                                                                         Opacity="0.55"
-                                                                         TextTrimming="CharacterEllipsis"
-                                                                         MaxLines="1" />
-                                                <Panel Grid.Column="1" Classes="heart-sub" VerticalAlignment="Center" Margin="6,0,0,0">
-                                                    <ctrl:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
-                                                </Panel>
-                                            </Grid>
-                                        </StackPanel>
-                                    </Button>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </DataTemplate>
                 </ListBox.DataTemplates>
             </ListBox>
+
+            <!-- Masonry layout (GitHub #213): the same filtered, sorted albums stacked per
+                 column by their real height. MasonryAlbumPanel realizes only the tiles near the
+                 viewport; the bottom padding clears the floating playback bar as the grid's does. -->
+            <ScrollViewer x:Name="MasonryScroller"
+                          IsVisible="{Binding IsMasonryView}"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Visible"
+                          AllowAutoHide="False"
+                          Background="Transparent">
+                <ctrl:MasonryAlbumPanel x:Name="MasonryPanel"
+                                        Margin="1,1,1,115"
+                                        Spacing="2"
+                                        Albums="{Binding CarouselAlbums}"
+                                        Columns="{Binding GridColumns}"
+                                        ArtworkSize="{Binding TileArtworkSize}"
+                                        ItemTemplate="{StaticResource AlbumTileTemplate}" />
+            </ScrollViewer>
 
             <!-- Carousel layout (GitHub #149, top-bar View menu): the same filtered, sorted
                  albums one at a time, Cover Flow style. Clicking the centred album opens it,
