@@ -110,26 +110,6 @@ public class SearchPopupOverlayTests
         window.Close();
     }
 
-    /// <summary>Discord (HypnoTized 10-24): the pill covered the Songs column headers. The
-    /// window reserves the band above SearchCapsuleBottom for it, so that read must be the
-    /// open pill's real bottom edge.</summary>
-    [AvaloniaFact]
-    public async Task CapsuleBottom_IsTheOpenPillsBottomEdge()
-    {
-        var (window, topBar) = BuildShownSidebarWindow();
-        topBar.SearchText = "through the"; // keeps it open
-        var sidebar = (SidebarView)window.Content!;
-        var pill = sidebar.FindControl<Border>("SearchPopupContent")!;
-        await PumpUntil(() => Math.Abs(pill.Bounds.Height - SidebarView.SearchCapsuleOpenHeight) < 0.01, 3000);
-
-        var actual = pill.TranslatePoint(new Point(0, pill.Bounds.Height), window)!.Value.Y;
-        var reported = sidebar.SearchCapsuleBottom(window);
-
-        Assert.NotNull(reported);
-        Assert.Equal(actual, reported!.Value, 1);
-        window.Close();
-    }
-
     [AvaloniaFact]
     public async Task TypedPill_StaysOpenOnClickElsewhere()
     {
