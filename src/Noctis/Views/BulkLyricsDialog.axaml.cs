@@ -16,6 +16,8 @@ public partial class BulkLyricsDialog : Window
         DataContext = vm;
         // PillDialogHost turns this into the animated close; a running fetch keeps going.
         vm.Closed += (_, _) => Close();
+        // GitHub #214: closed after the run ended = its results were seen; Find Lyrics starts afresh.
+        Closed += (_, _) => vm.OnDialogClosed();
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

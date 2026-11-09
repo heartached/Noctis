@@ -67,6 +67,8 @@ public sealed class TrackContextMenuBuilder
     /// <summary>"Lyrics ▸" submenu: Search Lyrics plus the bulk actions (hidden until a view wires them).</summary>
     public MenuItem Lyrics { get; private set; } = null!;
     public MenuItem FetchLyrics { get; private set; } = null!;
+    /// <summary>The entry's own label, put back once no hidden Find Lyrics run is pending.</summary>
+    private object? _fetchLyricsHeader;
     public MenuItem LyricsStudio { get; private set; } = null!;
     public MenuItem RemoveLyrics { get; private set; } = null!;
     /// <summary>"Rate ▸" submenu: ★ … ★★★★★ and Clear rating. Hidden unless the view passes a rateCommand.</summary>
@@ -257,6 +259,7 @@ public sealed class TrackContextMenuBuilder
         SearchLyrics = new MenuItem { Header = "Search Lyrics" };
         Lyrics.Items.Add(SearchLyrics);
         FetchLyrics = new MenuItem { Header = "Fetch & Save Lyrics", IsVisible = false };
+        _fetchLyricsHeader = FetchLyrics.Header;
         Lyrics.Items.Add(FetchLyrics);
         LyricsStudio = new MenuItem { Header = "Open in Lyrics Studio", IsVisible = false };
         Lyrics.Items.Add(LyricsStudio);
@@ -385,6 +388,7 @@ public sealed class TrackContextMenuBuilder
         SearchLyrics = new MenuItem { Header = Loc.T("Lyrics.SearchLyrics") };
         Lyrics.Items.Add(SearchLyrics);
         FetchLyrics = new MenuItem { Header = Loc.T("Menu.FetchLyrics"), IsVisible = false };
+        _fetchLyricsHeader = FetchLyrics.Header;
         Lyrics.Items.Add(FetchLyrics);
         LyricsStudio = new MenuItem { Header = Loc.T("Menu.LyricsStudio"), IsVisible = false };
         Lyrics.Items.Add(LyricsStudio);
@@ -544,6 +548,8 @@ public sealed class TrackContextMenuBuilder
 
         // Lyrics ▸ bulk entries (optional).
         BindOptional(FetchLyrics, fetchLyricsCommand, track);
+        // GitHub #214: while a hidden Find Lyrics run is pending, this entry brings it back.
+        FetchLyrics.Header = ViewModels.MetadataHelper.PendingFindLyricsMenuHeader() ?? _fetchLyricsHeader;
         BindOptional(LyricsStudio, lyricsStudioCommand, track);
         BindOptional(RemoveLyrics, removeLyricsCommand, track);
         BindOptional(SendToFolder, sendToFolderCommand, track);

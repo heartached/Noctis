@@ -2570,6 +2570,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>не сохранено</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
   <data name="BulkLyrics.Saving" xml:space="preserve"><value>Сохранение…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
   <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Найти тексты…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyricsRunning" xml:space="preserve"><value>Показать поиск текстов (идёт)</value><comment>Album / song menu: brings back a hidden Find Lyrics run that is still looking (GitHub #214)</comment></data>
+  <data name="LibraryAlbums.FindLyricsResults" xml:space="preserve"><value>Показать результаты поиска текстов</value><comment>Album / song menu: brings back a hidden Find Lyrics run that has finished (GitHub #214)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Остановить</value><comment>Button: stops a bulk run</comment></data>
   <data name="BulkLyrics.HasWordSynced" xml:space="preserve"><value>текст с синхронизацией по словам</value><comment>Row status in the bulk lyrics dialog: the song already has word-synced lyrics (GitHub #216)</comment></data>

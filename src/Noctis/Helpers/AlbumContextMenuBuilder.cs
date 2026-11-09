@@ -357,6 +357,8 @@ public sealed class AlbumContextMenuBuilder
     public void BindFindLyrics(Album album, ICommand? findLyricsCommand)
     {
         BindOptional(FindLyrics, findLyricsCommand, album);
+        // GitHub #214: while a hidden Find Lyrics run is pending, this entry brings it back.
+        FindLyrics.Header = ViewModels.MetadataHelper.PendingFindLyricsMenuHeader() ?? Loc.T("LibraryAlbums.FindLyrics");
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 
