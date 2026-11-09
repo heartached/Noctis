@@ -308,6 +308,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// masonry panel lays out album cards only.</summary>
     public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry && !_rowsHaveSections;
 
+    /// <summary>GitHub #218: Settings › Appearance "Album Hover Zoom".</summary>
+    public bool IsHoverZoom => _settings.AlbumHoverZoom;
+
     /// <summary>The row grid (the ListBox of album rows) is up.</summary>
     public bool IsRowGridView => IsGridView && !IsMasonryView;
 
@@ -499,6 +502,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 OnPropertyChanged(nameof(IsGridView));
                 OnPropertyChanged(nameof(IsMasonryView));
                 OnPropertyChanged(nameof(IsRowGridView));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumHoverZoom))
+            {
+                OnPropertyChanged(nameof(IsHoverZoom));
             }
             else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridMasonry))
             {

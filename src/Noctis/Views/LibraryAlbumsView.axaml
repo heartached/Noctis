@@ -10,6 +10,7 @@
              x:Class="Noctis.Views.LibraryAlbumsView"
              x:DataType="vm:LibraryAlbumsViewModel"
              Focusable="True"
+             Classes.hover-zoom="{Binding IsHoverZoom}"
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>

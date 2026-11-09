@@ -169,6 +169,8 @@
                          an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
                     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
                     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
+                    <!-- GitHub #218: the soft glow behind a hovered album (Album Hover Zoom). -->
+                    <BoxShadows x:Key="AlbumHoverGlow">0 0 24 1 #3DFFFFFF</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -332,6 +334,7 @@
                          an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
                     <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
                     <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
+                    <BoxShadows x:Key="AlbumHoverGlow">0 8 24 0 #40000000</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -1402,6 +1405,9 @@
         <Setter Property="Template">
             <ControlTemplate TargetType="Button">
                 <Panel>
+                    <!-- GitHub #218: hover-zoom glow, shown only under .hover-zoom. -->
+                    <Border Name="PART_Glow" Classes="tile-glow"
+                            CornerRadius="{TemplateBinding CornerRadius}" />
                     <Border Name="PART_SelectRing" Classes="select-ring"
                             CornerRadius="{TemplateBinding CornerRadius}" />
                     <ContentPresenter Name="PART_ContentPresenter"
@@ -1688,6 +1694,48 @@
 
     <Style Selector="Button.album-tile.ctrl-selected:pointerover">
         <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <!-- Album Hover Zoom (GitHub #218, Settings › Appearance, off by default): under a view
+         tagged .hover-zoom (the Albums page) the hovered tile grows to 104% with a soft glow
+         and LibraryAlbumsView tags the tiles around it .hover-neighbor, which step back to 97%.
+         Render transforms and opacity only, so nothing re-lays out; declared after the
+         album-tile scale(1) opt-outs above so these win. -->
+    <Style Selector="Border.tile-glow">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BoxShadow" Value="{DynamicResource AlbumHoverGlow}" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile">
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.04" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22">
+                    <TransformOperationsTransition.Easing>
+                        <helpers:CubicBezierEase>
+                            <x:Arguments><x:Double>0.2</x:Double><x:Double>0.9</x:Double><x:Double>0.3</x:Double><x:Double>1</x:Double></x:Arguments>
+                        </helpers:CubicBezierEase>
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile.hover-neighbor">
+        <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.04)" />
+        <Setter Property="ZIndex" Value="1" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile:pointerover /template/ Border.tile-glow">
+        <Setter Property="Opacity" Value="1" />
     </Style>
 
     <Style Selector="Button.browse-item:pointerover">

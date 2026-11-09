@@ -71,8 +71,50 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
     private void OnAlbumTileLoaded(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button tile)
-            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
+        if (sender is not Button tile) return;
+        MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
+        // Album Hover Zoom (GitHub #218): Loaded can fire again on re-attach, so re-subscribe.
+        tile.PointerEntered -= OnTileHoverEntered;
+        tile.PointerExited -= OnTileHoverExited;
+        tile.PointerEntered += OnTileHoverEntered;
+        tile.PointerExited += OnTileHoverExited;
+    }
+
+    // ── Album Hover Zoom (GitHub #218) ──
+    // The hovered tile's own grow + glow is pure style (Styles.axaml, .hover-zoom). The tiles
+    // around it are found here: realized tiles whose centres sit within ~1.6 tile widths of
+    // the hovered one's (its row and the rows above and below), tagged .hover-neighbor so the
+    // style steps them back. Only realized tiles exist, so this walks a few dozen.
+
+    private const string HoverNeighborClass = "hover-neighbor";
+    private readonly List<Button> _hoverNeighbors = new();
+
+    private void OnTileHoverEntered(object? sender, PointerEventArgs e)
+    {
+        ClearHoverNeighbors();
+        if (_vm?.IsHoverZoom != true || sender is not Button hovered) return;
+        var reach = hovered.Bounds.Width * 1.6;
+        var centre = hovered.TranslatePoint(new Point(hovered.Bounds.Width / 2, hovered.Bounds.Height / 2), this);
+        if (centre is not { } c) return;
+        foreach (var tile in CollectAlbumTiles())
+        {
+            if (ReferenceEquals(tile, hovered) || !tile.IsEffectivelyVisible) continue;
+            var other = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height / 2), this);
+            if (other is not { } o) continue;
+            if (Math.Abs(o.X - c.X) <= reach && Math.Abs(o.Y - c.Y) <= Math.Max(reach, hovered.Bounds.Height * 1.2))
+            {
+                tile.Classes.Add(HoverNeighborClass);
+                _hoverNeighbors.Add(tile);
+            }
+        }
+    }
+
+    private void OnTileHoverExited(object? sender, PointerEventArgs e) => ClearHoverNeighbors();
+
+    private void ClearHoverNeighbors()
+    {
+        foreach (var tile in _hoverNeighbors) tile.Classes.Remove(HoverNeighborClass);
+        _hoverNeighbors.Clear();
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)

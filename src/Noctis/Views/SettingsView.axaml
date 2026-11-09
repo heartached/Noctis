@@ -3436,6 +3436,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #218: hover zoom in the Albums grid. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumHoverZoom}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumHoverZoomDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumHoverZoom}"
+                                          IsChecked="{Binding AlbumHoverZoom}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 

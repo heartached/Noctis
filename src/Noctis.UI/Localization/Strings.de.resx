@@ -353,6 +353,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Fünf Cover pro Zeile. Aus schaltet auf deine eigene Covergröße.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Albumraster als Mauerwerk</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Cover stapeln sich spaltenweise nach ihrer echten Höhe, kurze Titel lassen keine Lücken.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Album-Zoom beim Überfahren</value><comment>Settings toggle (GitHub #218)</comment></data>
+  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>Im Albenraster wird das Album unter dem Zeiger etwas größer und leuchtet sanft, die Nachbarn treten zurück.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Kleiner</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Größer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Fließender Songtext-Hintergrund</value><comment>Text in SettingsView.axaml</comment></data>
