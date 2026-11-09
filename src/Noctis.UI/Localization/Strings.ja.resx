@@ -188,10 +188,6 @@
     <value>オーディオファイルを Noctis で開く</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>WindowsにNoctisを追加する 再生されるフォーマットのリストとデフォルトのアプリを開きます。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>登録</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -342,10 +338,6 @@
   </data>
   <data name="Settings.ArtistTagSeparators" xml:space="preserve">
     <value>アーティストタグの区切り文字</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>1つのアーティストタグを複数のタグに分割するテキスト。 &quot;Simon &amp; Garfunkel&quot; 全体のような名前を保持するには1つを削除してください。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -556,10 +548,6 @@
     <value>アルバムアートにアクセントを追従させる</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>表紙のアクセントを変更します。何も再生していないときに選択したアクセントが戻ります。</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>アクセントカラー</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -578,10 +566,6 @@
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>ベータ</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>半透明のぼやけたガラス面で、ウィンドウ、サイドバー、設定および再生バーをフロストします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -780,10 +764,6 @@
     <value>プレイヤーアイランドの幅</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>Widerはシークバーをより多くの部屋に与えます。島の端をドラッグすることもできます。リセットするにはノブをダブルクリックします。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>狭く</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -818,10 +798,6 @@
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>流れる歌詞背景</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>ドリフトはビートでカバーとパルスを移動します。Kawapはそれをゆっくりと液体の流れに溶けます。プラグインスタイルもここに登場します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -988,10 +964,6 @@
     <value>最小線の不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>すべての歌詞の線がかすかに見えるようにしておくと、どこかの線をクリックしてジャンプすることができます。0% 現在の線から遠く離れた線を隠します。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>分割された単語をつなぐ</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1002,10 +974,6 @@
   </data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>再生バーの不透明度</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>再生バーの背景の濃さを設定します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve">
@@ -1096,10 +1064,6 @@
     <value>排他モード</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>Windowsミキサーをバイパスするビットパーフェクトな出力。他のアプリはサイレントになり、トランジションはオフになります。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>テンポとキーを解析</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1110,10 +1074,6 @@
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>解析結果をファイルタグに保存</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>BPMとキーをファイルのタグに書き込みます。これはファイルを変更します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1190,10 +1150,6 @@
   </data>
   <data name="Settings.ReplayGain" xml:space="preserve">
     <value>ReplayGain</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>ReplayGain タグから音量を調整します。右クリックでトラックをスキャンします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1594,10 +1550,6 @@
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>キーボードショートカット</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>キーをクリックして変更します。Escキーをキャンセル、Backspaceキーを解除します。メディアキーは常に機能します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -6168,4 +6120,5 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
