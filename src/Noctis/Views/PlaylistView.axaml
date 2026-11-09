@@ -164,9 +164,7 @@
         <Style Selector="Border.row-body:pointerover">
             <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
         </Style>
-        <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
-            <Setter Property="Background" Value="#3FFFFFFF" />
-        </Style>
+        <!-- Ctrl-selected rows: the row container's select-ring overlay (Styles.axaml, GitHub #209). -->
         <!-- Now-playing: the accent-coloured box (see Styles.axaml) must be re-applied
              at view scope because the stripe/hover/ctrl-select styles above live here
              too and would otherwise outrank the app-level fill. Declared after them

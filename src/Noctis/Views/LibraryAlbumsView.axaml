@@ -215,7 +215,8 @@
                                             Focusable="False"
                                             Margin="2"
                                             HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Top"
+                                            VerticalAlignment="Stretch"
+                                            VerticalContentAlignment="Top"
                                             helpers:DragFileBehavior.EnableFileDrag="True"
                                             Loaded="OnAlbumTileLoaded"
                                             ContextRequested="OnAlbumTileContextRequested"
@@ -223,6 +224,8 @@
                                             CommandParameter="{Binding}">
 
                                         <!-- Right-click / dots: one shared v2 menu built in code (OnAlbumTileContextRequested). -->
+                                        <!-- Stretched to the row with its content on top: selected tiles in one row
+                                             share one plate height (GitHub #209). -->
 
                                         <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
                                             <!-- Album artwork: size computed once in code-behind, no per-tile Bounds binding -->

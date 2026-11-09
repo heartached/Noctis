@@ -45,7 +45,13 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         var source = e.Source as Control;
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
-        if (source is not Button tile) return;
+        if (source is not Button tile)
+        {
+            // GitHub #209: a click beside the tiles clears the selection, as in the queue.
+            if (_selectedAlbums.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e, rowsAreLayout: true))
+                ClearSelection();
+            return;
+        }
         if (tile.DataContext is not Album album) return;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
@@ -72,14 +78,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     {
         if (e.Key == Key.Escape && _selectedAlbums.Count > 0)
         {
-            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
-            if (DataContext is LibraryAlbumsViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
+            ClearSelection();
             e.Handled = true;
             return;
         }
 
         var allAlbums = _vm?.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums) ?? Enumerable.Empty<Album>();
         MultiSelectHelper.HandleAlbumSelectAllByData(e, allAlbums, CollectAlbumTiles(), _selectedAlbums);
+    }
+
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+        if (DataContext is LibraryAlbumsViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
     }
 
     private List<Button> CollectAlbumTiles()

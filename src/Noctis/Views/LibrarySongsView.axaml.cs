@@ -52,6 +52,9 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         // Double-click to play from here
         TrackList.DoubleTapped += OnTrackDoubleTapped;
         TrackList.AddHandler(PointerPressedEvent, OnTrackPointerPressed, RoutingStrategies.Tunnel);
+        // GitHub #209: a click beside the rows (below the last one, the page margins) clears
+        // the selection, as in the queue.
+        AddHandler(PointerPressedEvent, OnViewPointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a row.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
         // A Plays re-rank waits while the user scrolls (see LibrarySongsViewModel.IsUserBusy).
@@ -94,12 +97,23 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             Focus();
     }
 
+    private void OnViewPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_selectedTracks.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e))
+            ClearSelection();
+    }
+
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
+        if (DataContext is LibrarySongsViewModel vm) vm.CtrlSelectedTracks = new List<Track>();
+    }
+
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape && _selectedTracks.Count > 0)
         {
-            MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
-            if (DataContext is LibrarySongsViewModel vm) vm.CtrlSelectedTracks = new List<Track>();
+            ClearSelection();
             e.Handled = true;
             return;
         }
@@ -193,7 +207,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             item.ContextMenu = null;
             // Strip the visual class so the recycled container doesn't display
             // a stale selection on its next track.
-            item.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(item, false, animate: false);
         }
     }
 
@@ -390,7 +404,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         _selectedTracks.Clear();
         foreach (var child in TrackList.GetVisualDescendants())
-            if (child is ListBoxItem li) li.Classes.Remove("ctrl-selected");
+            if (child is ListBoxItem li) MultiSelectHelper.SetSelectedVisual(li, false, animate: false);
         if (DataContext is LibrarySongsViewModel selVm) selVm.CtrlSelectedTracks = new List<Track>();
 
         base.OnDetachedFromVisualTree(e);

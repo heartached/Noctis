@@ -1328,21 +1328,28 @@
                                         </Setter>
                                     </Style>
                                     <!-- Hover highlight on each queue row, matching album track-list. -->
+                                    <!-- The 1px border is always there (transparent until selected, and
+                                         the row's padding is 1px less to match) so selecting never moves
+                                         the row content (GitHub #209). -->
                                     <Style Selector="Border.queue-row">
                                         <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
                                         <Setter Property="Transitions">
                                             <Transitions>
                                                 <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                                                <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
                                             </Transitions>
                                         </Setter>
                                     </Style>
                                     <Style Selector="Border.queue-row:pointerover">
                                         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}"/>
                                     </Style>
-                                    <!-- GitHub #85: selected rows (click / Ctrl / Shift) carry the track
-                                         lists' multi-select wash; declared after hover so it wins. -->
+                                    <!-- GitHub #85: selected rows (click / Ctrl / Shift) carry the app's
+                                         selection plate (GitHub #209); declared after hover so it wins. -->
                                     <Style Selector="ListBoxItem.ctrl-selected Border.queue-row">
-                                        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}"/>
+                                        <Setter Property="Background" Value="{DynamicResource SelectionFillBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionStrokeBrush}"/>
                                     </Style>
                                     <!-- GitHub #134 (Keep Played Songs). Played rows: same size, a
                                          little dimmed, a check in the number slot. -->
@@ -1398,7 +1405,7 @@
                                              drag highlight covers album art + text + number as one card. -->
                                         <Border Classes="queue-row"
                                                 Margin="12,1,12,1"
-                                                Padding="8,4"
+                                                Padding="7,3"
                                                 CornerRadius="10"
                                                 Tag="{Binding}"
                                                 PointerPressed="OnQueueItemPointerPressed"

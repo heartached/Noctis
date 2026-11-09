@@ -153,10 +153,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
 
         foreach (var li in DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>())
         {
-            if (li.DataContext is Track t && _selectedTracks.Contains(t))
-                li.Classes.Add("ctrl-selected");
-            else
-                li.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(li, li.DataContext is Track t && _selectedTracks.Contains(t));
         }
     }
 
@@ -164,7 +161,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     {
         _selectedTracks.Clear();
         foreach (var li in DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>())
-            li.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(li, false);
         if (DataContext is AlbumDetailViewModel vm)
             vm.CtrlSelectedTracks = new List<Track>();
     }
@@ -266,7 +263,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         if (e.Container is ListBoxItem item)
         {
             item.ContextRequested -= OnTrackItemContextRequested;
-            item.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(item, false, animate: false);
         }
     }
 

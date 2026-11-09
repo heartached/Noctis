@@ -290,9 +290,7 @@
         <Style Selector="Border.row-body:pointerover controls|RatingStars.row-rating.rated">
             <Setter Property="Opacity" Value="1" />
         </Style>
-        <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
-            <Setter Property="Background" Value="#3FFFFFFF" />
-        </Style>
+        <!-- Ctrl-selected rows: the row container's select-ring overlay (Styles.axaml, GitHub #209). -->
         <Style Selector="Border.cover-viewable">
             <Setter Property="Cursor" Value="Hand" />
         </Style>
