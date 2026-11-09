@@ -33,6 +33,12 @@ public sealed class SpectrumMeter
     /// (below ~150-200 Hz): 23 Hz bins can't tell 30, 50 and 80 Hz apart (GitHub #205).</summary>
     public const int BassWindowFrames = 8192;
 
+    /// <summary>The bass window is low-passed and decimated by this (times the rate scale) before
+    /// its FFT: the bass bands only need content under a few hundred Hz, so a 512-point FFT at
+    /// ~3 kHz gives the same 5.9 Hz bins as 8192 points at 48 kHz for a fraction of the work.</summary>
+    private const int BassDecimation = 16;
+    private const int BassFftSize = BassWindowFrames / BassDecimation;
+
     /// <summary>Lowest and highest band edges (Hz) for the log-spaced band mapping: the audible
     /// range (GitHub #196: 40 Hz..16 kHz cut both ends off). The top is capped below Nyquist.</summary>
     public const double MinHz = 20;
@@ -61,9 +67,11 @@ public sealed class SpectrumMeter
 
     private readonly Func<double> _nowMs;
 
-    // Reader scratch (UI thread only), sized per rate scale on first use.
+    // Reader scratch, sized per rate scale on first use; guarded by _readGate.
+    private readonly object _readGate = new();
     private double[] _re = Array.Empty<double>(), _im = Array.Empty<double>(), _hann = Array.Empty<double>();
-    private double[] _bassRe = Array.Empty<double>(), _bassIm = Array.Empty<double>(), _bassHann = Array.Empty<double>();
+    private readonly double[] _bassRe = new double[BassFftSize], _bassIm = new double[BassFftSize];
+    private readonly double[] _bassHann = BuildHann(BassFftSize);
 
     public SpectrumMeter() : this(null) { }
 
@@ -135,40 +143,40 @@ public sealed class SpectrumMeter
         var oldestSafe = head - RingFrames + size;
         if (heard < oldestSafe) heard = oldestSafe;
 
-        if (_re.Length != size)
+        // One reader at a time: the visualizer and the row EQ read on the UI thread, but the
+        // plugin API (ISpectrumSource) may call from any thread, and the scratch is resized per rate.
+        lock (_readGate)
         {
-            _re = new double[size];
-            _im = new double[size];
-            _hann = BuildHann(size);
-        }
-        Window(heard - size, _re, _im, _hann);
-        Fft.Forward(_re, _im);
-
-        // The bass window, only when a band needs finer bins than the short one has. Centred on
-        // the short window's centre so the bass lands with the rest; reaches into the frames
-        // already rendered but not yet heard where the output runs that far ahead.
-        double[]? bassRe = null, bassIm = null;
-        var bassSize = BassWindowFrames * scale;
-        if (NeedsBassWindow(rate, size, bands.Length))
-        {
-            var end = Math.Min(head, heard - size / 2 + bassSize / 2);
-            var start = end - bassSize;
-            if (start >= 0 && start >= head - RingFrames)
+            if (_re.Length != size)
             {
-                if (_bassRe.Length != bassSize)
-                {
-                    _bassRe = new double[bassSize];
-                    _bassIm = new double[bassSize];
-                    _bassHann = BuildHann(bassSize);
-                }
-                Window(start, _bassRe, _bassIm, _bassHann);
-                Fft.Forward(_bassRe, _bassIm);
-                bassRe = _bassRe;
-                bassIm = _bassIm;
+                _re = new double[size];
+                _im = new double[size];
+                _hann = BuildHann(size);
             }
-        }
+            Window(heard - size, _re, _im, _hann);
+            Fft.Forward(_re, _im);
 
-        MapBands(_re, _im, bassRe, bassIm, rate, bands, fullSpectrum);
+            // The bass window, only when a band needs finer bins than the short one has. Centred on
+            // the short window's centre so the bass lands with the rest; reaches into the frames
+            // already rendered but not yet heard where the output runs that far ahead.
+            double[]? bassRe = null, bassIm = null;
+            var decimation = BassDecimation * scale;
+            var span = BassFftSize * decimation + decimation; // + the low-pass tail
+            if (NeedsBassWindow(rate, size, bands.Length))
+            {
+                var end = Math.Min(head, heard - size / 2 + span / 2);
+                var start = end - span;
+                if (start >= 0 && start >= head - RingFrames)
+                {
+                    DecimatedWindow(start, decimation);
+                    Fft.Forward(_bassRe, _bassIm);
+                    bassRe = _bassRe;
+                    bassIm = _bassIm;
+                }
+            }
+
+            MapBands(_re, _im, bassRe, bassIm, rate, rate / (double)decimation, bands, fullSpectrum);
+        }
         return true;
     }
 
@@ -190,6 +198,28 @@ public sealed class SpectrumMeter
         return firstHi - MinHz < (double)sampleRate / size;
     }
 
+    /// <summary>The bass window: each output sample is a triangle-weighted mean of 2D-1 input
+    /// frames (two cascaded D-frame moving averages, nulls at multiples of the decimated rate,
+    /// so what would fold into the bass bands is ~40 dB down), then the Hann window.</summary>
+    private void DecimatedWindow(long start, int decimation)
+    {
+        var mask = RingFrames - 1;
+        var taps = 2 * decimation - 1;
+        var gain = 1.0 / ((double)decimation * decimation);
+        for (var j = 0; j < BassFftSize; j++)
+        {
+            var at = start + (long)j * decimation;
+            double sum = 0;
+            for (var m = 0; m < taps; m++)
+            {
+                var w = m < decimation ? m + 1 : taps - m;
+                sum += w * _ring[(int)((at + m) & mask)];
+            }
+            _bassRe[j] = sum * gain * _bassHann[j];
+            _bassIm[j] = 0;
+        }
+    }
+
     private void Window(long start, double[] re, double[] im, double[] hann)
     {
         var mask = RingFrames - 1;
@@ -202,7 +232,7 @@ public sealed class SpectrumMeter
 
     /// <summary>Single-window band mapping (no bass window, no weighting). Exposed for tests.</summary>
     public static void MapBands(double[] re, double[] im, int sampleRate, Span<float> bands)
-        => MapBands(re, im, null, null, sampleRate, bands, fullSpectrum: false);
+        => MapBands(re, im, null, null, sampleRate, sampleRate, bands, fullSpectrum: false);
 
     /// <summary>
     /// Log-spaced band levels from FFT results: each band spans [edge_k, edge_k+1) Hz, takes the
@@ -215,7 +245,7 @@ public sealed class SpectrumMeter
     /// either window. <paramref name="fullSpectrum"/> adds the analyser weighting.
     /// </summary>
     internal static void MapBands(double[] re, double[] im, double[]? bassRe, double[]? bassIm,
-        int sampleRate, Span<float> bands, bool fullSpectrum)
+        int sampleRate, double bassSampleRate, Span<float> bands, bool fullSpectrum)
     {
         var binHz = (double)sampleRate / re.Length;
         var floorDb = fullSpectrum ? FullSpectrumFloorDb : FloorDb;
@@ -227,8 +257,9 @@ public sealed class SpectrumMeter
         {
             var lo = Math.Exp(logMin + logSpan * b / count);
             var hi = Math.Exp(logMin + logSpan * (b + 1) / count);
-            var peak = hi - lo < binHz && bassRe != null && bassIm != null
-                ? BandPeak(bassRe, bassIm, sampleRate, lo, hi)
+            // The decimated bass window is only flat well under its Nyquist.
+            var peak = hi - lo < binHz && bassRe != null && bassIm != null && hi < bassSampleRate / 8
+                ? BandPeak(bassRe, bassIm, bassSampleRate, lo, hi)
                 : BandPeak(re, im, sampleRate, lo, hi);
             var db = peak <= 1e-9 ? floorDb : 20 * Math.Log10(peak);
             if (fullSpectrum)
@@ -237,12 +268,12 @@ public sealed class SpectrumMeter
         }
     }
 
-    /// <summary>Peak magnitude in [lo, hi) Hz of one FFT result (see <see cref="MapBands(double[], double[], double[], double[], int, Span{float}, bool)"/>).</summary>
-    private static double BandPeak(double[] re, double[] im, int sampleRate, double lo, double hi)
+    /// <summary>Peak magnitude in [lo, hi) Hz of one FFT result (see <see cref="MapBands(double[], double[], double[], double[], int, double, Span{float}, bool)"/>).</summary>
+    private static double BandPeak(double[] re, double[] im, double sampleRate, double lo, double hi)
     {
         var n = re.Length;
         var half = n / 2;
-        var binHz = (double)sampleRate / n;
+        var binHz = sampleRate / n;
         // Hann window halves the coherent gain; a full-scale sine puts amplitude n/4 in its bin.
         var norm = 4.0 / n;
         if (hi - lo < binHz)
