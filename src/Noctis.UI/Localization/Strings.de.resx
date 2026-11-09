@@ -2551,7 +2551,6 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="SendToFolder.StateMoved" xml:space="preserve"><value>Verschoben</value><comment>Row chip: moved</comment></data>
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Songtext</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Schließen</value><comment>Secondary button</comment></data>
-  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Auch Songs mit Reintext- oder zeilensynchronem Songtext aufwerten</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Songs erneut prüfen, die ein früherer Durchlauf schon geprüft hat</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Funde vor dem Speichern prüfen</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
   <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Auswahl speichern ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
@@ -3882,7 +3881,14 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Songtexte für deine Bibliothek suchen ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Songtexte für {0} abrufen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Löscht die Songtexte, die Noctis für diese Songs gespeichert hat (seine .lrc-Dateien und zwischengespeicherte Songtexte). Songtext-Dateien, die du selbst erstellt hast, bleiben unberührt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Sucht Songtexte online, wortsynchrone zuerst, und speichert sie neben deinen Songs. Deine eigenen Songtext-Dateien werden nie ersetzt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.UpgradeLine" xml:space="preserve"><value>Auch zeilensynchrone Songtexte auf wortsynchrone aufwerten</value><comment>Checkbox in the bulk lyrics dialog, shown when word-synced is the preferred type</comment></data>
+  <data name="BulkLyrics.FetchWord" xml:space="preserve"><value>Sucht Songtexte online, wortsynchrone zuerst, für Songs ohne Songtext oder nur mit Reintext.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchLine" xml:space="preserve"><value>Sucht zeilensynchrone Songtexte online, ohne Wort-Timings, für Songs ohne Songtext oder nur mit Reintext.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchPlain" xml:space="preserve"><value>Sucht Reintext-Songtexte online für Songs ohne Songtext.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveSidecar" xml:space="preserve"><value>Speichert sie als Songtext-Dateien neben deinen Songs.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveEmbedded" xml:space="preserve"><value>Speichert sie in deinen Musikdateien.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveBoth" xml:space="preserve"><value>Speichert sie in deinen Musikdateien und als Songtext-Dateien daneben.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FollowsSettings" xml:space="preserve"><value>Deine eigenen Songtext-Dateien werden nie ersetzt. Ändern unter Einstellungen › Songtext.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Noch nichts entfernt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>Bereit.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>Ausblenden</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>

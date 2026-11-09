@@ -7528,7 +7528,6 @@
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>为资料库查找歌词（{0}）</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>获取 {0} 的歌词</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>删除 Noctis 为这些歌曲保存的歌词（其 .lrc 文件和缓存的歌词）。你自己制作的歌词文件不受影响。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>在线查找歌词（优先逐字同步），并保存在歌曲旁边。你自己的歌词文件永远不会被替换。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>尚未移除任何内容。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>就绪。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>隐藏</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>

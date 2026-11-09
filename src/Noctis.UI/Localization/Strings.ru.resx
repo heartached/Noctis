@@ -2559,7 +2559,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Тексты песен</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Закрыть</value><comment>Secondary button</comment></data>
-  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Также улучшать обычный или построчный текст</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Снова искать для песен, уже проверенных раньше</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Проверить найденное перед сохранением</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
   <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Сохранить выбранное ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
@@ -3891,7 +3890,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Найти тексты для медиатеки ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Загрузить тексты: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Удаляет тексты, сохранённые Noctis для этих песен (его файлы .lrc и кэш). Файлы текстов, созданные вами, не затрагиваются.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Ищет тексты в интернете (сначала с пословной синхронизацией) и сохраняет их рядом с песнями. Ваши собственные файлы текстов никогда не заменяются.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.UpgradeLine" xml:space="preserve"><value>Также улучшать тексты с синхронизацией по строкам до пословной</value><comment>Checkbox in the bulk lyrics dialog, shown when word-synced is the preferred type</comment></data>
+  <data name="BulkLyrics.FetchWord" xml:space="preserve"><value>Ищет тексты онлайн, сначала с пословной синхронизацией, для песен без текста или только с обычным текстом.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchLine" xml:space="preserve"><value>Ищет тексты с синхронизацией по строкам, без пословной, для песен без текста или только с обычным текстом.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchPlain" xml:space="preserve"><value>Ищет обычные тексты онлайн для песен без текста.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveSidecar" xml:space="preserve"><value>Сохраняет их файлами текстов рядом с песнями.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveEmbedded" xml:space="preserve"><value>Сохраняет их внутри музыкальных файлов.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveBoth" xml:space="preserve"><value>Сохраняет их внутри музыкальных файлов и файлами текстов рядом с ними.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FollowsSettings" xml:space="preserve"><value>Ваши собственные файлы текстов никогда не заменяются. Изменить: Настройки › Тексты песен.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Пока ничего не удалено.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>Готово к запуску.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>Скрыть</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>

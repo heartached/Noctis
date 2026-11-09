@@ -2559,7 +2559,6 @@ Quote phrases: album:"ok computer" · Years: year:1990-1999, year:&gt;2000</valu
 
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Lyrics</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Close</value><comment>Secondary button</comment></data>
-  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Also upgrade songs with plain or line-synced lyrics</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Look again at songs an earlier run already checked</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Review what's found before saving</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
   <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Save Selected ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
@@ -3891,7 +3890,14 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Find lyrics for your library ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Fetch lyrics for {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Deletes the lyrics Noctis saved for these songs (its .lrc files and cached lyrics). Lyrics files you made yourself are left alone.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Finds lyrics online, word-synced first, and saves them next to your songs. Your own lyrics files are never replaced.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.UpgradeLine" xml:space="preserve"><value>Also upgrade line-synced lyrics to word-synced</value><comment>Checkbox in the bulk lyrics dialog, shown when word-synced is the preferred type</comment></data>
+  <data name="BulkLyrics.FetchWord" xml:space="preserve"><value>Finds lyrics online, word-synced first, for songs with no lyrics or plain lyrics only.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchLine" xml:space="preserve"><value>Finds line-synced lyrics online, without word timings, for songs with no lyrics or plain lyrics only.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchPlain" xml:space="preserve"><value>Finds plain lyrics online for songs with no lyrics.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveSidecar" xml:space="preserve"><value>Saves them as lyrics files next to your songs.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveEmbedded" xml:space="preserve"><value>Saves them inside your music files.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveBoth" xml:space="preserve"><value>Saves them inside your music files and as lyrics files next to them.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FollowsSettings" xml:space="preserve"><value>Your own lyrics files are never replaced. Change this in Settings › Lyrics.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Nothing removed yet.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>Ready.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>Hide</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>

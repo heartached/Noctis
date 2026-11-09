@@ -44,9 +44,10 @@
 
         <!-- Fetch options, before a run starts. -->
         <StackPanel Grid.Row="1" Spacing="2" Margin="28,12,28,4" IsVisible="{Binding IsFetch}">
+            <!-- GitHub #203: line → word only, so shown only while word-synced is the preferred type. -->
             <CheckBox x:Name="UpgradeBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding UpgradeExisting}"
-                      IsEnabled="{Binding CanChangeOptions}"
-                      Content="{loc:T BulkLyrics.Upgrade}" />
+                      IsEnabled="{Binding CanChangeOptions}" IsVisible="{Binding CanUpgradeLineSynced}"
+                      Content="{loc:T BulkLyrics.UpgradeLine}" />
             <CheckBox x:Name="RecheckBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding Recheck}"
                       IsEnabled="{Binding CanChangeOptions}"
                       Content="{loc:T BulkLyrics.Recheck}" />
