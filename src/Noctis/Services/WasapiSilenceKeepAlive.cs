@@ -32,7 +32,8 @@ namespace Noctis.Services;
 ///     is invalidated, e.g. unplugged).
 ///   - Uses its own audio-session GUID, distinct from LibVLC's, and publishes
 ///     its session instance id so WindowsSessionVolume can exclude it — the
-///     user's volume must never land on the silent stream.
+///     user's volume must never land on the silent stream. The session is
+///     hidden from the Windows volume mixer (AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE).
 ///
 /// Env gates (A/B testing on real hardware, matching NOCTIS_CACHING et al.):
 ///   NOCTIS_KEEPALIVE=0        — disable entirely
@@ -50,6 +51,11 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
     private const uint CLSCTX_ALL = 23;
     private const int AUDCLNT_SHAREMODE_SHARED = 0;
     private const uint AUDCLNT_BUFFERFLAGS_SILENT = 0x2;
+    // Hides the session's slider in the Windows volume mixer. Applies when this
+    // Initialize creates the session, which it always does (its GUID is ours alone).
+    // Without it the mixer listed a second "Noctis" slider that moved nothing,
+    // since this stream is silent (Discord report).
+    private const uint AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE = 0x20000000;
 
     // Distinct session GUID so this stream never joins LibVLC's audio session;
     // paired with the instance-id exclusion in WindowsSessionVolume.
@@ -162,7 +168,7 @@ internal sealed class WasapiSilenceKeepAlive : IAudioKeepAlive
                 try
                 {
                     var sessionGuid = KeepAliveSessionGuid;
-                    Check(client.Initialize(AUDCLNT_SHAREMODE_SHARED, 0,
+                    Check(client.Initialize(AUDCLNT_SHAREMODE_SHARED, AUDCLNT_SESSIONFLAGS_DISPLAY_HIDE,
                         BufferMs * 10_000L, 0, mixFormat, ref sessionGuid));
                 }
                 finally { Marshal.FreeCoTaskMem(mixFormat); }
