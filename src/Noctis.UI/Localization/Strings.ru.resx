@@ -269,10 +269,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Открывать аудиофайлы в Noctis</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>Добавить Noctis в список «Открыть с помощью» Windows и в приложения по умолчанию для поддерживаемых форматов.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Register" xml:space="preserve">
     <value>Зарегистрировать</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -425,10 +421,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Разделители в теге исполнителя</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>Текст, который делит один тег исполнителя на несколько. Удалите разделитель, чтобы имена вроде «Simon &amp; Garfunkel» оставались целыми.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Reset" xml:space="preserve">
     <value>Сбросить</value>
     <comment>Content in SettingsView.axaml</comment>
@@ -491,14 +483,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.AutoInstallUpdates" xml:space="preserve">
     <value>Обновлять автоматически</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AutoInstallUpdatesCaption" xml:space="preserve">
-    <value>Новые версии загружаются в фоне и устанавливаются при следующем запуске Noctis. Воспроизведение не прерывается.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.AutoDownloadUpdatesCaption" xml:space="preserve">
-    <value>Новые версии загружаются в фоне. Нажмите «Установить и перезапустить», когда будете готовы.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Postpone" xml:space="preserve">
@@ -673,17 +657,9 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Акцентный цвет из обложки</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>Акцентный цвет берётся из обложки текущего трека. Когда ничего не играет, возвращается выбранный вами цвет.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve">
     <value>Акцентный цвет для имён исполнителей и альбомов</value>
     <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
-  </data>
-  <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>Имена исполнителей, альбомов и жанров в плейлистах, в «Песнях» и в плеере окрашиваются в акцентный цвет. Если выключено, они показываются обычным цветом текста.</value>
-    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>Песен: {0}</value>
@@ -707,10 +683,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.BETA" xml:space="preserve">
     <value>БЕТА</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>Матовое полупрозрачное стекло с размытием для окна, боковой панели, настроек и панели воспроизведения.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -925,10 +897,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Волновая форма на полосе перемотки</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.WaveformSeekBarHint" xml:space="preserve">
-    <value>Показывать волновую форму песни на полосе перемотки островка плеера и мини-плеера. Она рассчитывается в фоне для текущей и следующей песни и затем запоминается.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
     <value>Непрозрачность блока трека</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -965,16 +933,8 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Капсула очереди в простое</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.IdleQueuePillHint" xml:space="preserve">
-    <value>Когда ничего не играет, вместо плеера показывать небольшую капсулу «Ничего не играет · Очередь».</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve">
     <value>Ширина островка плеера</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>Чем шире, тем больше места для полосы перемотки. Края островка можно также перетаскивать. Дважды щёлкните по ползунку, чтобы сбросить.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Narrower" xml:space="preserve">
@@ -1011,10 +971,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve">
     <value>Живой фон текста</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>«Дрейф» двигает обложку и пульсирует в такт. Kawarp расплавляет её в медленный жидкий поток. Здесь же появляются стили из плагинов.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -1265,10 +1221,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Минимальная непрозрачность строк</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>Все строки текста остаются слегка видимыми, чтобы можно было щёлкнуть по любой и перейти к ней. При 0% далёкие от текущей строки скрыты.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
     <value>Склеивать разбитые слова</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1289,10 +1241,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Показывать транслитерацию</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve">
-    <value>Показывать транслитерацию из файла TTML (ромадзи, пиньинь…) под каждой строкой.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve">
     <value>Показывать бэк-вокал</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1305,17 +1253,9 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Непрозрачность стекла</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>Насколько плотными выглядят панель воспроизведения, очередь и меню. Очередь и меню используют это значение при включённом Liquid Glass.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.BackgroundBlur" xml:space="preserve">
     <value>Размытие фона</value>
     <comment>Settings slider title: blur of the app behind pop-ups and Settings</comment>
-  </data>
-  <data name="Settings.BackgroundBlurHint" xml:space="preserve">
-    <value>Насколько размыто приложение за всплывающими окнами (например, редактором метаданных) и за настройками. Сдвиньте до упора влево, чтобы выключить.</value>
-    <comment>Settings slider description (Background Blur)</comment>
   </data>
   <data name="Settings.BackgroundBlurOff" xml:space="preserve">
     <value>Выкл.</value>
@@ -1389,20 +1329,12 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Плавный запуск и пауза</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlayPauseFadeHint" xml:space="preserve">
-    <value>Плавно убирать звук при паузе и возвращать при продолжении вместо резкой остановки.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.FadeDuration" xml:space="preserve">
     <value>Длительность затухания</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PlayCountAfter" xml:space="preserve">
     <value>Засчитывать прослушивание после</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.PlayCountAfterHint" xml:space="preserve">
-    <value>Какую часть песни нужно прослушать, чтобы она засчиталась.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PlayCountAfterImmediately" xml:space="preserve">
@@ -1453,10 +1385,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Монопольный режим</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>Бит-в-бит вывод в обход микшера Windows. Звук других приложений отключается, переходы выключены.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
     <value>Анализ темпа и тональности</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1467,10 +1395,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.SaveAnalysisFileTags" xml:space="preserve">
     <value>Сохранять анализ в теги файлов</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>Записывать BPM и тональность в теги файла. Это изменяет ваши файлы.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1605,10 +1529,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>ReplayGain</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>Регулировать громкость по тегам ReplayGain. Сканируйте треки через контекстное меню.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.Mode" xml:space="preserve">
     <value>Режим</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1669,10 +1589,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Создать новый токен</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LocalApiRegenerateTip" xml:space="preserve">
-    <value>Создать новый токен. Приложения со старым токеном перестанут работать, пока вы не передадите им новый.</value>
-    <comment>ToolTip.Tip in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ACCOUNTS" xml:space="preserve">
     <value>АККАУНТЫ</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1732,10 +1648,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Settings.ListenBrainzApiUrl" xml:space="preserve">
     <value>URL API (необязательно)</value>
     <comment>Watermark in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ListenBrainzApiUrlHint" xml:space="preserve">
-    <value>Оставьте пустым, чтобы использовать ListenBrainz. Свой сервер, например Koito? Вставьте сюда его адрес ListenBrainz.</value>
-    <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ListenBrainzServer" xml:space="preserve">
     <value>СЕРВЕР</value>
@@ -1861,10 +1773,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Синхронизированные тексты · поиск медленнее</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve">
-    <value>«Выбрать источник» на странице текста ищет во всех этих сервисах, даже если они здесь выключены.</value>
-    <comment>Text in SettingsView.axaml, under the online lyrics providers</comment>
-  </data>
   <data name="Settings.METADATA" xml:space="preserve">
     <value>МЕТАДАННЫЕ</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1901,10 +1809,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Скрытые папки</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.HiddenFoldersHint" xml:space="preserve">
-    <value>Скрыты везде, кроме раздела «Папки». Ничего не удаляется; покажите папку, чтобы вернуть её песни.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.ShowHiddenFolder" xml:space="preserve">
     <value>Показать</value>
     <comment>Button in SettingsView.axaml (Hidden Folders list)</comment>
@@ -1915,10 +1819,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve">
     <value>Импортировать перетащенные файлы</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve">
-    <value>Файлы, перетащенные в Noctis, перемещаются в папку Noctis Imports и добавляются в медиатеку. Если выключено, файлы остаются на месте; перетащите их, чтобы воспроизвести, добавить в медиатеку или плейлист либо создать новый плейлист.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve">
@@ -1951,10 +1851,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve">
     <value>Столбец «Избранное»</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve">
-    <value>Показывать сердечко в каждой строке. Если выключено, добавляйте в избранное через меню строки или на странице песни.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LibraryScan" xml:space="preserve">
@@ -2147,10 +2043,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve">
     <value>Сочетания клавиш</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
-  <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>Нажмите на клавишу, чтобы изменить её. Esc — отмена, Backspace — снять назначение. Мультимедийные клавиши работают всегда.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -7751,9 +7643,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Settings.LyricsPresets.Title" xml:space="preserve">
     <value>Пресеты стиля</value>
   </data>
-  <data name="Settings.LyricsPresets.Description" xml:space="preserve">
-    <value>Оформление страницы текста из ваших пакетов контента. Применение пресета меняет настройки ниже; потом их можно свободно подстроить.</value>
-  </data>
   <data name="Settings.LyricsPresets.Apply" xml:space="preserve">
     <value>Применить</value>
   </data>
@@ -9470,4 +9359,5 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <comment>v2 right-click menu rating row clear button tooltip</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <!-- LyricShareDialog Lyrics Page -->
 </root>
