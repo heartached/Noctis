@@ -613,6 +613,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
     /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    /// <summary>GitHub #211: the full-screen lyrics page hides the player island. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsFullScreenHideIsland;
     /// <summary>Percent floor (0–60) under the dimmed lyric lines; above 0 every line
     /// stays faintly visible and clickable. Driven by Settings.</summary>
     [ObservableProperty] private int _lyricsMinLineOpacity;
@@ -647,11 +649,14 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanMarkNoLyrics))]
     [NotifyPropertyChangedFor(nameof(IslandLyricsButtonVisible))]
+    [NotifyPropertyChangedFor(nameof(CanEditLyrics))]
     private bool _isLyricsPageActive;
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
-    [ObservableProperty] private bool _canShareLyrics;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EditLyricsHeader))]
+    private bool _canShareLyrics;
     /// <summary>The lyrics page shows synced online lyrics of a local file (GitHub #115): Save Lyrics to File ▸ LRC.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSaveLyricsMenu))]
@@ -668,6 +673,11 @@ public partial class PlayerViewModel : ViewModelBase
     private bool _isLyricsMarkedNoLyrics;
     /// <summary>Lyrics ▸ Mark as No Lyrics: on the lyrics page, for a song not marked yet.</summary>
     public bool CanMarkNoLyrics => IsLyricsPageActive && !IsLyricsMarkedNoLyrics;
+    /// <summary>GitHub #212: Lyrics ▸ Add Lyrics / Edit Lyrics, on the lyrics page, for a song file.</summary>
+    public bool CanEditLyrics => IsLyricsPageActive && CurrentTrack is { IsRemoteStream: false } track
+                                 && !string.IsNullOrWhiteSpace(track.FilePath);
+    /// <summary>"Add Lyrics" while the page shows none (nothing to share), else "Edit Lyrics".</summary>
+    public string EditLyricsHeader => Localization.Loc.T(CanShareLyrics ? "Lyrics.EditLyrics" : "Lyrics.AddLyrics");
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -1527,6 +1537,16 @@ public partial class PlayerViewModel : ViewModelBase
 
     /// <summary>Sets the action to search lyrics for a track.</summary>
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
+
+    private Action? _editLyricsAction;
+    /// <summary>GitHub #212: the lyrics page's Add Lyrics / Edit Lyrics; set by MainWindowViewModel.</summary>
+    public void SetEditLyricsAction(Action action) => _editLyricsAction = action;
+
+    [RelayCommand]
+    private void EditCurrentTrackLyrics()
+    {
+        if (CanEditLyrics) _editLyricsAction?.Invoke();
+    }
 
     [RelayCommand]
     private void SearchCurrentTrackLyrics()
@@ -2891,6 +2911,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasContent));
         OnPropertyChanged(nameof(CurrentArtistLine));
+        OnPropertyChanged(nameof(CanEditLyrics));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
         OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();

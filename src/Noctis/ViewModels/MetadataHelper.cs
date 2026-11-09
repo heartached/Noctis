@@ -470,7 +470,17 @@ public static class MetadataHelper
             string.IsNullOrEmpty(saved.EqPreset) ? null : saved.EqPreset);
     }
 
-    public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
+    /// <summary>
+    /// GitHub #212: the lyrics page's Add Lyrics / Edit Lyrics. Edit Info opened on the song's
+    /// lyrics (<see cref="MetadataViewModel.OpenOnLyrics"/>): type or paste plain text or LRC,
+    /// fix timed lyrics in their raw text. Save writes them the way every Edit Info save does
+    /// (Settings ▸ Lyrics ▸ Save lyrics to); <paramref name="saved"/> then runs, so the page
+    /// can show them at once.
+    /// </summary>
+    public static Task OpenLyricsEditor(Track track, Action? saved = null) =>
+        OpenMetadataWindow(track, albumScoped: false, openOnLyrics: true, saved: saved);
+
+    public static async Task OpenMetadataWindow(Track track, bool albumScoped = false, bool openOnLyrics = false, Action? saved = null)
     {
         // The metadata editor is file-backed end to end (TagLib reads, atomic
         // file rewrites, sidecar renames) — nothing it does is meaningful for a
@@ -516,6 +526,8 @@ public static class MetadataHelper
 
             LiveApplyPlayingOptions(main, albumTracks ?? new List<Track> { track });
         };
+        if (saved != null) vm.ChangesSaved += (_, _) => saved();
+        if (openOnLyrics) vm.OpenOnLyrics();
 
         var window = new MetadataWindow(vm);
         await ShowThenLoad(window, vm);

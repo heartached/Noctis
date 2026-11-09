@@ -34,6 +34,23 @@ public partial class PlaybackBarView : UserControl
     }
 
     /// <summary>
+    /// GitHub #211: the widest the lyrics-page pill may be drawn — the page's player column
+    /// less its edge margins, set by the lyrics page. A pill whose buttons need more (the
+    /// opt-in extras add 36px each) is scaled down to this width instead of running out of
+    /// the window's left edge and over the lyrics. Infinity (the default) never scales.
+    /// </summary>
+    public static readonly StyledProperty<double> LyricsPageFitWidthProperty =
+        AvaloniaProperty.Register<PlaybackBarView, double>(
+            nameof(LyricsPageFitWidth),
+            defaultValue: double.PositiveInfinity);
+
+    public double LyricsPageFitWidth
+    {
+        get => GetValue(LyricsPageFitWidthProperty);
+        set => SetValue(LyricsPageFitWidthProperty, value);
+    }
+
+    /// <summary>
     /// The plain colour under the island (MainWindow: a tinted album page or the whole-window
     /// tint), or null for the theme's own page, which the island's colours are made for. The
     /// fill is translucent, so a light colour here turns the pill light; its text and icons
@@ -216,6 +233,8 @@ public partial class PlaybackBarView : UserControl
             UpdateResizeGripVisibility();
             UpdateIslandWidth();
         }
+        else if (e.Property == LyricsPageFitWidthProperty)
+            UpdateIslandWidth();
 
         if (e.Property == BackdropColorProperty)
             UpdateSurfaceContrast();
@@ -1691,7 +1710,13 @@ public partial class PlaybackBarView : UserControl
             // chopped the pill's rounded ends straight (Discord report, 2026-09-10).
             // Carrying the pill's width as the bar's minimum lets it overflow the column
             // symmetrically (Stretch centres an oversized child) with its ends intact.
-            MinWidth = IslandBorder.Width;
+            // GitHub #211: with many extras the pill outgrew the whole page column (700px
+            // in a 683px column at 1366×768: off the window's left edge, over the lyrics).
+            // Past LyricsPageFitWidth it is drawn scaled down to that width, every button
+            // kept, and the bar takes only that width, so its hit area stays off the lyrics.
+            var scale = LyricsPageIslandScale(IslandBorder.Width, LyricsPageFitWidth);
+            IslandBorder.RenderTransform = scale < 1 ? new ScaleTransform(scale, scale) : null;
+            MinWidth = scale < 1 ? LyricsPageFitWidth : IslandBorder.Width;
         }
         else if (!CompactWhenLyricsPageActive && _observedPlayerViewModel is { } vm)
         {
@@ -1699,9 +1724,13 @@ public partial class PlaybackBarView : UserControl
             if (Math.Abs(width - IslandBaseWidth) < 0.5)
                 width += extra;
             IslandBorder.Width = width;
+            IslandBorder.RenderTransform = null;
         }
         else
+        {
             IslandBorder.Width = IslandBaseWidth + extra;
+            IslandBorder.RenderTransform = null;
+        }
 
         // SizeChanged only fires when the arranged size actually changes, so re-apply
         // here too: a lyrics-page flip must refresh the track-info visibility even
@@ -1735,6 +1764,11 @@ public partial class PlaybackBarView : UserControl
     /// window, enforced live via MaxWidth (see UpdateIslandMaxWidth).</summary>
     private static double ClampUserIslandWidth(double width) =>
         double.IsFinite(width) ? Math.Max(IslandMinUserWidth, width) : IslandBaseWidth;
+
+    /// <summary>How far the lyrics-page pill of <paramref name="width"/> is scaled to fit
+    /// <paramref name="fitWidth"/> (GitHub #211): 1 when it fits or no fit width is known.</summary>
+    internal static double LyricsPageIslandScale(double width, double fitWidth) =>
+        double.IsFinite(fitWidth) && fitWidth > 0 && width > fitWidth ? fitWidth / width : 1;
 
     /// <summary>Adapts the persistent bar's layout to its width, reusing the same
     /// hide-the-track-info trick the 340px lyrics state already relies on: full

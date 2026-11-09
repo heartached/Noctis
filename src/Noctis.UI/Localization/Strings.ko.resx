@@ -1015,6 +1015,14 @@
     <value>현재 줄과 인접한 줄을 제외한 모든 줄을 어둡게 합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>전체 화면에서 플레이어 아일랜드 숨기기</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>전체 화면 가사 페이지에서는 곡 아래에 진행 막대만 남깁니다. 재생은 계속 키보드 단축키로 조작할 수 있습니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
     <value>최소 줄 불투명도</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -3143,6 +3151,14 @@
   <data name="Lyrics.SearchLyrics" xml:space="preserve">
     <value>가사 검색</value>
     <comment>Text in LyricsView.axaml</comment>
+  </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>가사 추가</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>가사 편집</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
   </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>가사 검색 중</value>
@@ -7475,6 +7491,7 @@
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>파일을 읽을 수 없습니다: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} 파일이 비어 있습니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} 가져옴</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>붙여 넣은 가사</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0}을(를) 일반 가사로 가져왔습니다(타임스탬프 없음).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>검색 서비스를 사용할 수 없습니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>제목과 아티스트가 필요합니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>

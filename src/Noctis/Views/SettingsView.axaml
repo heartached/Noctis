@@ -4466,6 +4466,21 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #211: the full-screen lyrics page without the island's buttons; the
+                 progress line stays and the keyboard shortcuts keep working. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsFullScreenHideIsland}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsFullScreenHideIslandHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsFullScreenHideIsland}"
+                                          IsChecked="{Binding LyricsFullScreenHideIsland}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Minimum line opacity: floors the lyrics page's distance ramp so every line
                  stays visible and clickable (jump anywhere in the song from its lyrics). -->
             <Border Classes="setting-row">

@@ -425,6 +425,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Remove" xml:space="preserve"><value>Удалить</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Фокус в полноэкранном тексте</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Приглушать все строки, кроме текущей и соседних.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Скрывать островок плеера в полноэкранном режиме</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>В полноэкранном режиме на странице текста под песней остаётся только полоса прогресса. Воспроизведением по-прежнему можно управлять с клавиатуры.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>Минимальная непрозрачность строк</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Все строки текста остаются слегка видимыми, чтобы можно было щёлкнуть по любой и перейти к ней. При 0% далёкие от текущей строки скрыты.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Склеивать разбитые слова</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1277,6 +1279,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsColor.ArtworkHint" xml:space="preserve"><value>Меняется вместе с обложкой песни. Движение фона настраивается в настройках, в разделе «Тексты песен».</value><comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.VideoNote" xml:space="preserve"><value>Включено фоновое видео, и оно показывается поверх этого фона.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Найти текст</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve"><value>Добавить текст</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve"><value>Изменить текст</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
   <data name="Lyrics.MarkedNoLyrics" xml:space="preserve"><value>Отмечено: без текста</value><comment>LyricsView.axaml / LyricsPanelView.axaml: the song is marked as having no lyrics (GitHub #162)</comment></data>
   <data name="Lyrics.UndoNoLyrics" xml:space="preserve"><value>Отменить</value><comment>LyricsView.axaml: button taking the no-lyrics mark off</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Поиск текста</value><comment>Text in LyricsView.axaml</comment></data>
@@ -3855,6 +3859,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Не удалось прочитать файл: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>Файл {0} пуст.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>Импортирован {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>вставленный текст</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} импортирован как обычный текст (метки времени не найдены).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Сервис поиска недоступен.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Нужны название и исполнитель.</value><comment>Metadata window › Lyrics tab status line</comment></data>

@@ -1507,6 +1507,7 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleMusicVideoAudio() => MusicVideoUseVideoAudio = !MusicVideoUseVideoAudio;
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    [ObservableProperty] private bool _lyricsFullScreenHideIsland;
     /// <summary>Percent floor (0–60) under the dimmed lyric lines; 0 = default ramp.</summary>
     [ObservableProperty] private int _lyricsMinLineOpacity;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
@@ -3626,6 +3627,7 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoUseVideoAudio = _settings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = _settings.MusicVideoAsBackground;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
+            LyricsFullScreenHideIsland = _settings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
@@ -4166,6 +4168,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicVideoUseVideoAudio = MusicVideoUseVideoAudio;
         _settings.MusicVideoAsBackground = MusicVideoAsBackground;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _settings.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
@@ -4542,6 +4545,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.MusicVideoAudioEnabled = MusicVideoUseVideoAudio;
         _player.MusicVideoAsBackground = MusicVideoAsBackground;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _player.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _player.LyricsGlowAndLift = LyricsGlowAndLift;
@@ -6323,6 +6327,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsFullScreenFocusEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsFullScreenHideIslandChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -8343,6 +8353,7 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = defaultSettings.MusicVideoAsBackground;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
+            LyricsFullScreenHideIsland = defaultSettings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;

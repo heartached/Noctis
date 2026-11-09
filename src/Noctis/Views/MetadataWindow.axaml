@@ -1321,6 +1321,7 @@
                         </Border>
                         <ToggleButton Grid.Column="4"
                                       x:Name="SyncedRawToggle"
+                                      IsChecked="{Binding ShowRawSyncedLyrics}"
                                       Content="{loc:T Metadata.Raw}"
                                       FontSize="11.5"
                                       FontWeight="SemiBold"
@@ -1402,9 +1403,9 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Read-only preview; full per-line editing lives in Timestamp Lyrics.
-                         Formatted view parses lines into timestamp pills + clean text;
-                         the Raw toggle swaps in the untouched LRC text. -->
+                    <!-- Formatted view parses lines into timestamp pills + clean text (read-only;
+                         per-line timing lives in Timestamp Lyrics); the Raw toggle swaps in the
+                         LRC text itself, which can be edited. -->
                     <Border x:Name="SyncedPreviewCard"
                             ClipToBounds="True"
                             Classes="pill-well"
@@ -1466,11 +1467,13 @@
                                 </StackPanel>
                             </ScrollViewer>
 
-                            <!-- Raw: untouched LRC text with timing tags -->
-                            <TextBox IsVisible="{Binding #SyncedRawToggle.IsChecked}"
+                            <!-- Raw: the LRC text with its timing tags, editable (GitHub #212: fix a
+                                 word, or paste a whole LRC over it); the rows above follow it. -->
+                            <TextBox x:Name="SyncedRawBox"
+                                     IsVisible="{Binding #SyncedRawToggle.IsChecked}"
                                      AutomationProperties.Name="{loc:T Metadata.SyncedLyrics}"
                                      Text="{Binding SyncedLyrics}"
-                                     IsReadOnly="True"
+                                     IsReadOnly="False"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalContentAlignment="Top"

@@ -1288,6 +1288,11 @@ public class AppSettings : IJsonOnDeserializing
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }
 
+    /// <summary>GitHub #211: the full-screen lyrics page hides the player island (its buttons);
+    /// the progress line under the song stays, and keyboard shortcuts keep controlling
+    /// playback. Windowed, the island shows as always. Off by default.</summary>
+    public bool LyricsFullScreenHideIsland { get; set; }
+
     /// <summary>Fresh-install value of <see cref="LyricsMinLineOpacity"/>; double-tapping the
     /// slider thumb in Settings snaps back to it.</summary>
     public const int LyricsMinLineOpacityDefault = 15;
