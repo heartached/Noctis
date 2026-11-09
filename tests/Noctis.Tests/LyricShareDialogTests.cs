@@ -719,7 +719,7 @@ public class LyricShareDialogTests
                 var combos = all.OfType<ComboBox>().ToList();
                 Assert.Equal(5, combos.Count);
                 Assert.All(combos, c => Assert.Contains("pill-field", c.Classes));
-                Assert.Equal(3, Named<ComboBox>(win, "LayoutBox").ItemCount);
+                Assert.Equal(2, Named<ComboBox>(win, "LayoutBox").ItemCount); // Card, Poster (Lyrics Page out, owner 11-08)
                 Assert.Equal(2, Named<ComboBox>(win, "FormatBox").ItemCount);
                 Assert.Equal(3, Named<ComboBox>(win, "TextColorBox").ItemCount);
                 Assert.Equal(vm.SolidSwatches.Count + 1, Named<ComboBox>(win, "BackgroundBox").ItemCount);

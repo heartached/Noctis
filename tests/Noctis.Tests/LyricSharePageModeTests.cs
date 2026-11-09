@@ -950,8 +950,7 @@ public class LyricSharePageModeTests
         try
         {
             var layout = Named<Avalonia.Controls.ComboBox>(win, "LayoutBox");
-            Assert.Equal(3, layout.ItemCount);
-            Assert.True(Named<Avalonia.Controls.ComboBoxItem>(win, "PageLayoutItem").IsEnabled);
+            Assert.Equal(2, layout.ItemCount); // the picker no longer offers it (owner 11-08)
             Assert.True(Named<Avalonia.Controls.ComboBox>(win, "TextColorBox").IsEffectivelyVisible);
             Assert.False(Named<Avalonia.Controls.ComboBox>(win, "PageBackgroundBox").IsEffectivelyVisible);
             Assert.True(Named<Avalonia.Controls.CheckBox>(win, "KaraokeBox").IsEffectivelyVisible);
@@ -989,20 +988,6 @@ public class LyricSharePageModeTests
         finally
         {
             if (win.IsVisible) { win.Close(); PumpUntil(() => !win.IsVisible); }
-        }
-
-        var plain = new LyricShareViewModel(Song(), new[] { "plain one", "plain two" });
-        var plainWin = new Noctis.Views.LyricShareDialog(plain) { Width = 1280, Height = 860 };
-        plainWin.Show();
-        try
-        {
-            Assert.False(Named<Avalonia.Controls.ComboBoxItem>(plainWin, "PageLayoutItem").IsEnabled);
-            Assert.Equal(Localization.Loc.T("ShareLyrics.PageNeedsSync"),
-                Avalonia.Controls.ToolTip.GetTip(Named<Avalonia.Controls.ComboBoxItem>(plainWin, "PageLayoutItem")));
-        }
-        finally
-        {
-            if (plainWin.IsVisible) { plainWin.Close(); PumpUntil(() => !plainWin.IsVisible); }
         }
     }
 }

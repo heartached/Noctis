@@ -359,10 +359,7 @@
                           SelectedIndex="{Binding LayoutIndex, Mode=TwoWay}">
                     <ComboBoxItem Content="{loc:T LyricShare.Card}" ToolTip.Tip="{loc:T LyricShare.RoundedCardArtworkHeaderTip}" />
                     <ComboBoxItem Content="{loc:T LyricShare.Poster}" ToolTip.Tip="{loc:T LyricShare.BigCenteredArtworkCenteredTip}" />
-                    <ComboBoxItem x:Name="PageLayoutItem"
-                                  Content="{loc:T LyricShare.LyricsPage}"
-                                  IsEnabled="{Binding PageLayoutAvailable}"
-                                  ToolTip.Tip="{Binding PageLayoutTip}" />
+                    <!-- Lyrics Page (index 2) taken out of the picker (owner 11-08). -->
                 </ComboBox>
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="6">
