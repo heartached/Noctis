@@ -705,6 +705,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Opens the Search Lyrics (source picker) dialog; set by MainWindowViewModel.</summary>
     internal Func<LyricsSearchViewModel, Task>? ShowLyricsSearchDialog { get; set; }
 
+    /// <summary>GitHub #212: opens the lyrics editor (Edit Info on the song's lyrics) for a
+    /// track; set by MainWindowViewModel to MetadataHelper.OpenLyricsEditor, which calls
+    /// <see cref="OnLyricsEdited"/> after a save.</summary>
+    internal Func<Track, Task>? OpenLyricsEditor { get; set; }
+
     public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
         _timeline = new LyricsTimeline(LyricLines, WordLookahead, LyricsLookahead);
@@ -763,6 +768,23 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // files keep today's content-hugging layout untouched.
         LyricLines.CollectionChanged += (_, _) =>
             HasDuetLines = LyricLines.Any(l => l.Voice != LyricVoice.Default);
+
+        // GitHub #212: Add Lyrics / Edit Lyrics follow what the page shows and which song it is.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ShareAvailable))
+                OnPropertyChanged(nameof(EditLyricsLabel));
+            else if (e.PropertyName == nameof(IsPreviewActive))
+                OnPropertyChanged(nameof(CanEditLyrics));
+        };
+        _player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
+            {
+                OnPropertyChanged(nameof(CanEditLyrics));
+                OnPropertyChanged(nameof(EditLyricsLabel));
+            }
+        };
 
         // Lines arriving is what ends a centred no-lyrics layout (see UpdateNoLyricsCentered).
         LyricLines.CollectionChanged += (_, _) => UpdateNoLyricsCentered();
@@ -1688,6 +1710,40 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     // ── Search Lyrics with a source picker (issue #113) ──
 
+    // ── Add / edit the song's lyrics by hand (GitHub #212) ──
+    // Lyrics could already be typed or pasted in Edit Info's lyrics tabs, but nothing on the
+    // lyrics page led there: its ⋯ ▸ Lyrics menu had Search / Save / Share / Mark / Remove
+    // only, Edit Info opened on Details with a song's empty Plain Lyrics box switched off, and
+    // LRC could only come in by Import file. The page now offers Add Lyrics (no lyrics shown)
+    // or Edit Lyrics, opening Edit Info on the lyrics themselves.
+
+    /// <summary>The song on the page is a file whose lyrics can be written (not a stream, not a Studio preview).</summary>
+    public bool CanEditLyrics => _player.CurrentTrack is { IsRemoteStream: false } track
+                                 && !string.IsNullOrWhiteSpace(track.FilePath) && !IsPreviewActive;
+
+    /// <summary>"Add Lyrics" while the page shows none, else "Edit Lyrics".</summary>
+    public string EditLyricsLabel => Localization.Loc.T(ShareAvailable ? "Lyrics.EditLyrics" : "Lyrics.AddLyrics");
+
+    [RelayCommand]
+    private async Task EditLyrics()
+    {
+        if (!CanEditLyrics || OpenLyricsEditor == null || _player.CurrentTrack is not { } track) return;
+        await OpenLyricsEditor(track);
+    }
+
+    /// <summary>
+    /// The lyrics editor saved <paramref name="track"/>'s lyrics: show them now, not when the
+    /// library's re-index gets round to LibraryUpdated. A song marked as having no lyrics
+    /// that now has some loses the mark (it would hide them).
+    /// </summary>
+    public void OnLyricsEdited(Track track)
+    {
+        var hasLyrics = !string.IsNullOrWhiteSpace(track.SyncedLyrics) || !string.IsNullOrWhiteSpace(track.Lyrics);
+        if (hasLyrics && track.NoLyrics) SetNoLyricsMark(track, false);
+        if (_currentTrack is not { } current || current.Id != track.Id) return;
+        ReloadCurrentLyrics(current);
+    }
+
     /// <summary>Opens the Search Lyrics dialog for the track on the page.</summary>
     [RelayCommand]
     private async Task OpenLyricsSearch()
@@ -1725,6 +1781,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
             : null,
         CanOfferLrcRedModel = async () => LrcRed != null && await LrcRedModelAllowedAsync(),
+        // GitHub #212: nothing found that fits — add the lyrics by hand.
+        AddOwnLyrics = OpenLyricsEditor is { } openEditor && !track.IsRemoteStream && !string.IsNullOrWhiteSpace(track.FilePath)
+            ? () => _ = openEditor(track)
+            : null,
     };
 
     private IReadOnlyList<Services.Plugins.PluginLyricsSource> CurrentPluginSources()
@@ -2962,6 +3022,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
     }
 
+    /// <summary>Re-reads the page's song's lyrics (files first, as on any load) and restarts the sync timer.</summary>
+    private void ReloadCurrentLyrics(Track track)
+    {
+        LoadLyricsForTrack(track);
+
+        if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
+            _lyricsSyncTimer.Start();
+        else
+            _lyricsSyncTimer.Stop();
+    }
+
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() =>
@@ -2972,14 +3043,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // Reload lyrics only if the track's lyrics content actually changed
             if (_currentTrack.Lyrics != _loadedLyrics ||
                 _currentTrack.SyncedLyrics != _loadedSyncedLyrics)
-            {
-                LoadLyricsForTrack(_currentTrack);
-
-                if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
-                    _lyricsSyncTimer.Start();
-                else
-                    _lyricsSyncTimer.Stop();
-            }
+                ReloadCurrentLyrics(_currentTrack);
 
             // A metadata edit can change Composer without touching the lyrics text —
             // the collection hooks never fire then, so refresh the credit directly.

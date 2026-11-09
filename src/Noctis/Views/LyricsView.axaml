@@ -1027,6 +1027,20 @@
                                Foreground="White"
                                VerticalAlignment="Center"/>
                 </Button>
+                <!-- GitHub #212: or type / paste them (Edit Info opened on the lyrics). -->
+                <Button x:Name="AddLyricsButton"
+                        Classes="pill-btn"
+                        Padding="20,9"
+                        CornerRadius="22"
+                        Command="{Binding EditLyricsCommand}"
+                        IsVisible="{Binding CanEditLyrics}"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="{loc:T Lyrics.AddLyrics}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </Button>
             </StackPanel>
 
             <!-- GitHub #162: the song is marked as having no lyrics — a calm note in the

@@ -3152,6 +3152,14 @@
     <value>Rechercher les paroles</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>Ajouter des paroles</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>Modifier les paroles</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>Recherche des paroles</value>
     <comment>Text in LyricsView.axaml</comment>
@@ -7483,6 +7491,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Impossible de lire le fichier : {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} est vide.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} importé</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>texte collé</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} importé en paroles simples (aucun horodatage trouvé).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Service de recherche indisponible.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Titre et artiste requis.</value><comment>Metadata window › Lyrics tab status line</comment></data>

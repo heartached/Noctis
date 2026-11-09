@@ -68,6 +68,20 @@ public partial class LyricsSearchViewModel : ViewModelBase
 
     public string NoLyricsLabel => Loc.T(IsMarkedNoLyrics ? "LyricsSearch.UnmarkNoLyrics" : "LyricsSearch.MarkNoLyrics");
 
+    /// <summary>GitHub #212: nothing online fits — type or paste the lyrics instead (the lyrics
+    /// page's Add Lyrics). Set by the lyrics page; null: the footer doesn't offer it.</summary>
+    internal Action? AddOwnLyrics { get; init; }
+
+    public bool CanAddOwnLyrics => AddOwnLyrics != null;
+
+    /// <summary>Closes the search, then opens the lyrics editor.</summary>
+    [RelayCommand]
+    private void AddLyrics()
+    {
+        Close();
+        AddOwnLyrics?.Invoke();
+    }
+
     /// <summary>"No Lyrics" / "Has Lyrics": marks or unmarks the song, then closes.</summary>
     [RelayCommand]
     private void ToggleNoLyrics()

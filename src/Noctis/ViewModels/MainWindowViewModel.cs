@@ -781,6 +781,9 @@ public partial class MainWindowViewModel : ViewModelBase
             _lyricsVm.LrcRed = lrcRed;
         }
         _lyricsVm.ShowLyricsSearchDialog = MetadataHelper.OpenLyricsSearchDialog;
+        // GitHub #212: Add Lyrics / Edit Lyrics, and the page shows the saved lyrics at once.
+        _lyricsVm.OpenLyricsEditor = track => MetadataHelper.OpenLyricsEditor(track, () => _lyricsVm.OnLyricsEdited(track));
+        Player.SetEditLyricsAction(() => _ = _lyricsVm.EditLyricsCommand.ExecuteAsync(null));
         // Lyrics saved inside audio files (GitHub #135) wait until the song is not playing.
         _lyricsVm.TagWriter = App.Services?.GetService<IDeferredTagWriter>();
         // Lyrics offset nudges (Ctrl+wheel, GitHub #102) confirm in the notice pill, which

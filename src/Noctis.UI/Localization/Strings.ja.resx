@@ -3152,6 +3152,14 @@
     <value>歌詞を検索</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>歌詞を追加</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>歌詞を編集</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>歌詞を検索中</value>
     <comment>Text in LyricsView.axaml</comment>
@@ -7483,6 +7491,7 @@
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>ファイルを読み込めませんでした: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} は空です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} をインポートしました</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>貼り付けた歌詞</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} を通常の歌詞としてインポートしました（タイムスタンプなし）。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>検索サービスを利用できません。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>タイトルとアーティストが必要です。</value><comment>Metadata window › Lyrics tab status line</comment></data>

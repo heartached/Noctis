@@ -1435,6 +1435,17 @@
                                             <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- GitHub #212: type or paste the song's lyrics (plain or LRC), or fix
+                                         them: Edit Info opened on its lyrics. "Add Lyrics" while the page
+                                         shows none. Lyrics page only. -->
+                                    <MenuItem x:Name="EditLyricsMenuItem"
+                                              Header="{Binding EditLyricsHeader}"
+                                              Command="{Binding EditCurrentTrackLyricsCommand}"
+                                              IsVisible="{Binding CanEditLyrics}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                     <!-- Lyrics page (GitHub #115): save the lyrics next to the song under its
                                          name, replacing its lyrics files (asks first). LRC for online lyrics;
                                          TTML (Discord, nutf!xx) for any time-synced lyrics not read from a .ttml. -->

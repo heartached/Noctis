@@ -875,6 +875,8 @@
   <data name="Lyrics.Solid" xml:space="preserve"><value>Düz</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Gradient" xml:space="preserve"><value>Gradyan</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Söz Ara</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve"><value>Söz Ekle</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve"><value>Sözleri Düzenle</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Sözler Aranıyor</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Söz Yazarı: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Takip et</value><comment>Text in LyricsView.axaml</comment></data>
@@ -2561,6 +2563,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Dosya okunamadı: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} boş.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} içe aktarıldı</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>yapıştırılan sözler</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} düz şarkı sözü olarak içe aktarıldı (zaman damgası bulunamadı).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Arama hizmeti kullanılamıyor.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Başlık ve sanatçı gerekli.</value><comment>Metadata window › Lyrics tab status line</comment></data>
