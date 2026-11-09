@@ -7312,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Supprimer les téléchargements</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} morceau|{0:N0} morceaux</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Les Paramètres font peau neuve : votre profil et les chiffres de votre bibliothèque en haut, puis Apparence, Bibliothèque, Écoute, Aide et À propos.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Les téléchargements ont leur propre page, avec Télécharger en Wi-Fi uniquement (activé par défaut) et Supprimer tous les téléchargements.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>Licences open source liste les composants avec lesquels Noctis est conçu.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis parle votre langue : choisissez-la dans Paramètres › Langue, ou suivez celle du téléphone.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Accent propose 17 couleurs, et Assortir à la pochette suit la pochette en cours.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Une minuterie de veille dans À l’écoute ; Mettre en pause un mois et Masquer le titre dans le menu d’un titre.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Créez une playlist avec + et donnez-lui votre propre pochette ; les pochettes se synchronisent avec votre ordinateur.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Ajouter avant le titre en cours dans le menu d’un titre, et les titres écoutés peuvent rester dans la file.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Un titre sur votre téléphone et le même titre de votre ordinateur n’apparaissent qu’une fois.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Défilement plus fluide, pages plus rapides et paroles à côté de la pochette en paysage.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Le décodeur ALAC intégré, compilé à partir des sources non modifiées de FFmpeg 6.0, sans parties GPL ni non libres : git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Lecture, session multimédia et wrapper JNI du décodeur.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Le framework d’interface utilisateur.</value></data>

@@ -3675,10 +3675,12 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Remove Downloads</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} song|{0:N0} songs</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Settings is redesigned: your profile and library numbers on top, then Appearance, Library, Listening, Help and About.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Downloads has its own page, with Download on Wi-Fi Only (on by default) and Remove All Downloads.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>Open-Source Licenses lists what Noctis is built with.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis speaks your language: choose it in Settings › Language, or follow the phone.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Accent has 17 colours, and Match Artwork follows the cover that's playing.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>A sleep timer on Now Playing; Snooze for a Month and Hide Song in a song's menu.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Make a playlist with + and give it your own cover; covers sync with your computer.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Add Before Current in a song's menu, and played songs can stay in the queue.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>A song on your phone and the same song from your computer show once.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Smoother scrolling, quicker pages, and lyrics beside the cover in landscape.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>The bundled ALAC decoder, built from the unmodified FFmpeg 6.0 source without GPL or non-free parts: git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Playback, media session and the decoder's JNI wrapper.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>The user interface framework.</value><comment>Open-source licenses</comment></data>

@@ -2396,10 +2396,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>İndirilenleri Kaldır</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} çalma listesi|{0} çalma listesi</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Ayarlar yeniden tasarlandı: üstte profilin ve kitaplık sayıların, ardından Görünüm, Kitaplık, Dinleme, Yardım ve Hakkında.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>İndirilenler artık kendi sayfasında; Yalnızca Wi-Fi ile İndir (varsayılan olarak açık) ve Tüm İndirilenleri Kaldır burada.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>Açık Kaynak Lisansları, Noctis’in neyle yapıldığını listeler.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis senin dilini konuşuyor: Ayarlar › Dil bölümünden seç ya da telefonun dilini kullan.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Vurgu rengi 17 renk sunuyor; Kapağa Uydur çalan kapağı takip ediyor.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Çalan ekranında uyku zamanlayıcısı; şarkı menüsünde Bir Ay Ertele ve Şarkıyı Gizle.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>+ ile çalma listesi oluşturup kendi kapağını verin; kapaklar bilgisayarınızla eşitlenir.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Şarkı menüsünde Mevcuttan Önce Ekle; çalınan şarkılar kuyrukta kalabilir.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Telefonunuzdaki bir şarkı ile bilgisayarınızdaki aynı şarkı tek kez görünür.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Daha akıcı kaydırma, daha hızlı sayfalar ve yatay modda kapağın yanında şarkı sözleri.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Paketle gelen ALAC kod çözücü; değiştirilmemiş FFmpeg 6.0 kaynağından, GPL ve özgür olmayan bölümler olmadan derlenmiştir: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Çalma, medya oturumu ve kod çözücünün JNI sarmalayıcısı.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Kullanıcı arayüzü çatısı.</value></data>

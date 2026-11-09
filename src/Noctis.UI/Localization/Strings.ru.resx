@@ -3675,10 +3675,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Удалить загрузки</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} плейлист|{0} плейлиста|{0} плейлистов</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>Настройки обновлены: сверху профиль и статистика медиатеки, затем «Оформление», «Медиатека», «Прослушивание», «Помощь» и «О приложении».</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>У загрузок теперь своя страница с параметром «Скачивать только по Wi‑Fi» (включён по умолчанию) и кнопкой «Удалить все загрузки».</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>В разделе «Лицензии открытого ПО» перечислено, на чём построен Noctis.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis говорит на вашем языке: выберите его в «Настройки › Язык» или используйте язык телефона.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>У акцента 17 цветов, а «Цвет обложки» следует за играющей обложкой.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Таймер сна на экране воспроизведения; «Отложить на месяц» и «Скрыть песню» в меню песни.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Создайте плейлист кнопкой + и задайте ему свою обложку; обложки синхронизируются с компьютером.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>«Добавить перед текущей» в меню песни, а прослушанные песни могут оставаться в очереди.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Песня на телефоне и та же песня с компьютера показываются один раз.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Плавнее прокрутка, быстрее страницы, а в альбомной ориентации текст рядом с обложкой.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Встроенный декодер ALAC, собранный из неизменённых исходников FFmpeg 6.0 без GPL и несвободных частей: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Воспроизведение, медиасеанс и JNI-обёртка декодера.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Фреймворк пользовательского интерфейса.</value></data>

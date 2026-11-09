@@ -7312,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>移除下載項目</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} 首歌曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} 個播放清單</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>「設定」重新設計：最上方是你的個人檔案和資料庫統計，下方依序是外觀、資料庫、聆聽、說明和關於。</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>「下載」有了專屬頁面，包含「僅透過 Wi-Fi 下載」（預設開啟）和「移除所有下載項目」。</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>「開放原始碼授權」列出了建構 Noctis 所用的元件。</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis 支援你的語言：可在「設定」›「語言」中選擇，或跟隨手機設定。</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>強調色有 17 種，「配合封面」會跟隨正在播放的封面。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>正在播放頁面有睡眠定時器；歌曲選單中有「暫停推薦一個月」和「隱藏歌曲」。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>用 + 新增播放清單並設定自己的封面；封面會與電腦同步。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>歌曲選單中有「加到目前歌曲之前」，已播放的歌曲可以留在佇列中。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>手機上的歌曲和電腦上的同一首歌只顯示一次。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>捲動更流暢，頁面更快，橫向時歌詞顯示在封面旁邊。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>內建的 ALAC 解碼器，以未經修改的 FFmpeg 6.0 原始碼建構，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>播放、媒體工作階段以及解碼器的 JNI 包裝層。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>使用者介面框架。</value></data>

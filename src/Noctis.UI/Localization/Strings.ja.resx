@@ -7312,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>ダウンロードを削除</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0}個のプレイリスト</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>設定のデザインを一新しました。プロフィールとライブラリの数値を一番上に、その下に外観、ライブラリ、リスニング、ヘルプ、情報が並びます。</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>ダウンロード専用のページができました。「Wi-Fi接続時のみダウンロード」(デフォルトでオン)と「すべてのダウンロードを削除」があります。</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>「オープンソースライセンス」に、Noctisで使われているソフトウェアの一覧を掲載しました。</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctisがあなたの言語に対応しました。設定 › 言語で選ぶか、スマートフォンの言語に合わせることができます。</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>アクセントは17色に。「アートワークに合わせる」で再生中のジャケットの色になります。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>再生画面にスリープタイマー。曲のメニューに「1か月スヌーズ」と「曲を非表示」。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>＋でプレイリストを作成し、好きなカバーを設定できます。カバーはパソコンと同期されます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>曲のメニューに「再生中の曲の前に追加」。再生済みの曲をキューに残せます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>スマホの曲とパソコンの同じ曲は1つにまとめて表示されます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>スクロールがなめらかに、ページ表示が速くなり、横向きでは歌詞がジャケットの横に表示されます。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>再生、メディアセッション、デコーダのJNIラッパー。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザインターフェイスのフレームワーク。</value></data>

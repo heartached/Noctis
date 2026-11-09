@@ -7312,10 +7312,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>إزالة التنزيلات</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} قائمة تشغيل|{0} قائمة تشغيل|{0} قائمتا تشغيل|{0} قوائم تشغيل|{0} قائمة تشغيل|{0} قائمة تشغيل</value></data>
-  <data name="Mobile.WhatsNew.Settings" xml:space="preserve"><value>تصميم جديد للإعدادات: ملفك الشخصي وأرقام مكتبتك في الأعلى، ثم المظهر والمكتبة والاستماع والمساعدة وحول.</value></data>
-  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>للتنزيلات صفحة خاصة بها، تتضمن التنزيل عبر Wi-Fi فقط (مفعّل افتراضيًا) وإزالة كل التنزيلات.</value></data>
-  <data name="Mobile.WhatsNew.Licenses" xml:space="preserve"><value>تعرض تراخيص المصادر المفتوحة المكونات التي بُني بها Noctis.</value></data>
-  <data name="Mobile.WhatsNew.Language" xml:space="preserve"><value>Noctis يتحدث لغتك: اخترها من الإعدادات › اللغة، أو اتبع لغة الهاتف.</value></data>
+  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>لون التمييز فيه 17 لونًا، و«مطابقة الغلاف» يتبع غلاف الأغنية الجارية.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>مؤقت نوم في شاشة التشغيل الحالي؛ و«تأجيل لمدة شهر» و«إخفاء الأغنية» في قائمة الأغنية.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>أنشئ قائمة تشغيل بزر + وامنحها غلافك الخاص؛ تتم مزامنة الأغلفة مع حاسوبك.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>«إضافة قبل الحالية» في قائمة الأغنية، ويمكن أن تبقى الأغاني المُشغّلة في قائمة الانتظار.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>الأغنية الموجودة على هاتفك ونفس الأغنية من حاسوبك تظهران مرة واحدة.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>تمرير أكثر سلاسة وصفحات أسرع، وكلمات الأغاني بجانب الغلاف في الوضع الأفقي.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>مفكّك ترميز ALAC المضمّن، مبني من مصدر FFmpeg 6.0 دون تعديل ودون أجزاء GPL أو غير حرة: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>التشغيل وجلسة الوسائط وغلاف JNI لمفكّك الترميز.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>إطار عمل واجهة المستخدم.</value></data>

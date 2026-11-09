@@ -838,14 +838,16 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string VersionValue => VersionText.StartsWith("Noctis ", StringComparison.Ordinal) ? VersionText["Noctis ".Length..] : VersionText;
     public string VersionRowName => Named(Loc.T("Mobile.Settings.Version"), VersionValue);
 
-    /// <summary>What's New: the phone has no release feed, so the page says what this build's Settings
-    /// holds; the Downloads line only where there is an account (and so a Downloads page).</summary>
+    /// <summary>What's New: the phone has no release feed, so the page lists this build's changes;
+    /// the lines about the computer only where there is an account.</summary>
     public IReadOnlyList<string> WhatsNewItems => new[]
     {
-        Loc.T("Mobile.WhatsNew.Settings"),
-        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Downloads") : null,
-        Loc.T("Mobile.WhatsNew.Licenses"),
-        Loc.T("Mobile.WhatsNew.Language"),
+        Loc.T("Mobile.WhatsNew.Accent"),
+        Loc.T("Mobile.WhatsNew.Listening"),
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Playlists") : null,
+        Loc.T("Mobile.WhatsNew.Queue"),
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.OneSong") : null,
+        Loc.T("Mobile.WhatsNew.Smoother"),
     }.OfType<string>().ToArray();
 
     /// <summary>Open-Source Licenses: the bundled decoder and the main libraries the phone app is built on.</summary>
