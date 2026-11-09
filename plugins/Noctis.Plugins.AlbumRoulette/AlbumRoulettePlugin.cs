@@ -10,14 +10,15 @@ namespace Noctis.Plugins.AlbumRoulette;
 /// Roulette" opens the reel in a compact window, which spins albums or single songs. "Spin from
 /// this artist" in a track's menu opens it with that artist's albums and spins. On Noctis with
 /// plugin API 1.7, an artist page's "…" menu has Album Roulette and Song Roulette (that artist
-/// only), and the Songs page's top bar a Song Roulette button (the whole library). With Album of
-/// the Day on, one album a day arrives as a notice at the hour the user picked.
+/// only), and the Songs page's top bar a Song Roulette button (the whole library). Both reels filter
+/// by genre and by language (told offline from the script of titles and lyrics, GitHub #202). With
+/// Album of the Day on, one album a day arrives as a notice at the hour the user picked.
 /// </summary>
 public sealed class AlbumRoulettePlugin : INoctisPlugin, IPluginViewProvider
 {
     public const string Id = "dev.noctis.plugins.albumroulette";
-    public const string Version = "1.0.1";
-    public const string About = "Spin a reel of your albums and let it pick what to play.";
+    public const string Version = "1.0.2";
+    public const string About = "Spin a reel of albums or songs and let it pick for you.";
     public const string SpinFromArtistLabel = "Spin from this artist";
     public const string AlbumRouletteLabel = "Album Roulette";
     public const string SongRouletteLabel = "Song Roulette";
