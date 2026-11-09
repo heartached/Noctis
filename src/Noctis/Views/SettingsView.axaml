@@ -4763,6 +4763,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #219: the whole library, gradually, in the background. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindLibrary}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindLibraryHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsAutoFindLibrary}"
+                                          IsChecked="{Binding LyricsAutoFindLibrary}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 

@@ -1345,6 +1345,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #195: songs new to the library go through a background bulk lyrics run.</summary>
     public bool LyricsAutoFindNew { get; set; }
 
+    /// <summary>GitHub #219: every song without synced lyrics is looked up gradually in the background
+    /// (and new songs as they arrive); misses are asked again after a month. Off by default.</summary>
+    public bool LyricsAutoFindLibrary { get; set; }
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
