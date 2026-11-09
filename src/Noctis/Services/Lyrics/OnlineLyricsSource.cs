@@ -11,25 +11,37 @@ public sealed record OnlineLyricsSource(
     Func<AppSettings, bool> IsEnabled,
     Func<string, string, double, CancellationToken, Task<LrcLibResult?>> SearchAsync)
 {
+    /// <summary>Least spacing between two requests of a bulk run to this source; null = the run's default.</summary>
+    public TimeSpan? MinInterval { get; init; }
+
     public const string Musixmatch = "Musixmatch";
     public const string Kugou = "Kugou";
     public const string YouTubeMusic = "YouTube Music";
     public const string LrcRed = "lrc.red";
     public const string Unison = "Unison";
+    public const string LrcMux = "lrcmux";
 
     /// <summary>The built-in extra sources in Auto's priority order: on a format tie the earlier wins,
     /// so Musixmatch's hand-made richsync beats lrc.red's and Unison's TTML, which keep duet voices
-    /// and background vocals and so beat Kugou's KRC; all beat YouTube's line sync.</summary>
+    /// and background vocals and so beat Kugou's KRC; all beat YouTube's line sync. lrcmux (GitHub #219)
+    /// comes last: it relays sources asked before it, so it mostly fills what they missed, and its
+    /// 60-requests-a-minute limit keeps a bulk run's requests to it a second apart.</summary>
     public static IReadOnlyList<OnlineLyricsSource> BuiltIns(
         IMusixmatchService musixmatch, IKugouLyricsService kugou, IYouTubeMusicLyricsService youTubeMusic,
-        ILrcRedLyricsService lrcRed, IUnisonLyricsService unison) =>
-    [
-        new(Musixmatch, s => s.MusixmatchEnabled, musixmatch.SearchLyricsAsync),
-        new(LrcRed, s => s.LrcRedEnabled, lrcRed.SearchLyricsAsync),
-        new(Unison, s => s.UnisonEnabled, unison.SearchLyricsAsync),
-        new(Kugou, s => s.KugouEnabled, kugou.SearchLyricsAsync),
-        new(YouTubeMusic, s => s.YouTubeMusicLyricsEnabled, youTubeMusic.SearchLyricsAsync),
-    ];
+        ILrcRedLyricsService lrcRed, IUnisonLyricsService unison, ILrcMuxLyricsService? lrcMux = null)
+    {
+        var list = new List<OnlineLyricsSource>
+        {
+            new(Musixmatch, s => s.MusixmatchEnabled, musixmatch.SearchLyricsAsync),
+            new(LrcRed, s => s.LrcRedEnabled, lrcRed.SearchLyricsAsync),
+            new(Unison, s => s.UnisonEnabled, unison.SearchLyricsAsync),
+            new(Kugou, s => s.KugouEnabled, kugou.SearchLyricsAsync),
+            new(YouTubeMusic, s => s.YouTubeMusicLyricsEnabled, youTubeMusic.SearchLyricsAsync),
+        };
+        if (lrcMux is not null)
+            list.Add(new(LrcMux, s => s.LrcMuxEnabled, lrcMux.SearchLyricsAsync) { MinInterval = TimeSpan.FromSeconds(1.1) });
+        return list;
+    }
 }
 
 /// <summary>One source's answer in a lyrics search: what it found (null = nothing), or that it could not

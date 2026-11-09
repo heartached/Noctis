@@ -2631,6 +2631,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _kugouEnabled = true;
     [ObservableProperty] private bool _lrcRedEnabled = true;
     [ObservableProperty] private bool _unisonEnabled = true;
+    [ObservableProperty] private bool _lrcMuxEnabled;
     [ObservableProperty] private bool _youTubeMusicLyricsEnabled;
 
     // ── Metadata Providers ──
@@ -3783,6 +3784,7 @@ public partial class SettingsViewModel : ViewModelBase
             KugouEnabled = _settings.KugouEnabled;
             LrcRedEnabled = _settings.LrcRedEnabled;
             UnisonEnabled = _settings.UnisonEnabled;
+            LrcMuxEnabled = _settings.LrcMuxEnabled;
             YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
             LoadBuiltInFeatureSettings();
@@ -4311,6 +4313,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.KugouEnabled = KugouEnabled;
         _settings.LrcRedEnabled = LrcRedEnabled;
         _settings.UnisonEnabled = UnisonEnabled;
+        _settings.LrcMuxEnabled = LrcMuxEnabled;
         _settings.YouTubeMusicLyricsEnabled = YouTubeMusicLyricsEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqPreampDb = EqPreampDb;
@@ -6398,6 +6401,12 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnLrcMuxEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnYouTubeMusicLyricsEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
@@ -8475,6 +8484,7 @@ public partial class SettingsViewModel : ViewModelBase
             KugouEnabled = defaultSettings.KugouEnabled;
             LrcRedEnabled = defaultSettings.LrcRedEnabled;
             UnisonEnabled = defaultSettings.UnisonEnabled;
+            LrcMuxEnabled = defaultSettings.LrcMuxEnabled;
             YouTubeMusicLyricsEnabled = defaultSettings.YouTubeMusicLyricsEnabled;
 
             // Metadata providers

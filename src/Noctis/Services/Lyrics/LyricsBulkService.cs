@@ -49,7 +49,12 @@ public sealed record LyricsBulkOptions(bool Upgrade = false, bool Recheck = fals
 public sealed record LyricsBulkSource(
     string Name,
     Func<AppSettings, bool> IsEnabled,
-    Func<string, string, double, CancellationToken, Task<LrcLibResult?>> SearchAsync);
+    Func<string, string, double, CancellationToken, Task<LrcLibResult?>> SearchAsync)
+{
+    /// <summary>Least spacing between two requests to this source; null = <see cref="LyricsBulkService.SourceInterval"/>
+    /// (lrcmux allows 60 a minute, GitHub #219).</summary>
+    public TimeSpan? MinInterval { get; init; }
+}
 
 public interface ILyricsBulkService
 {
@@ -126,7 +131,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
             _ => LyricsSearchSelector.WordSyncedRank,
         };
         var sources = EnabledSources(settings);
-        var gates = sources.ToDictionary(s => s.Name, _ => new PoliteGate(SourceInterval, Clock, Delay));
+        var gates = sources.ToDictionary(s => s.Name, s => new PoliteGate(s.MinInterval ?? SourceInterval, Clock, Delay));
         var ledger = new BulkRunLedger(_ledgerPath, Clock);
         var plainLeft = new System.Collections.Concurrent.ConcurrentBag<Track>();
         var finds = new System.Collections.Concurrent.ConcurrentBag<(int Index, LyricsBulkFind Find)>();

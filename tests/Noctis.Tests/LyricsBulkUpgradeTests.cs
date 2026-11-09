@@ -240,6 +240,29 @@ public class LyricsBulkUpgradeTests : IDisposable
     }
 
     [Fact]
+    public async Task ASourceWithItsOwnInterval_IsAskedAtThatPace() // GitHub #219: lrcmux, 60 a minute
+    {
+        var calls = 0;
+        var slow = new LyricsBulkSource("slow", _ => true, (a, t, d, c) => { Interlocked.Increment(ref calls); return Task.FromResult<LrcLibResult?>(null); })
+        {
+            MinInterval = TimeSpan.FromSeconds(1.1),
+        };
+        var service = new LyricsBulkService(null!,
+            new LyricsWriter(new LyricsSaveTargetTests.RecordingMetadata(), null,
+                new AppWrittenSidecarRegistry(Path.Combine(_dir, "registry.json")), Path.Combine(_dir, "cache")),
+            _library, () => _settings, () => new[] { slow }, Path.Combine(_dir, "ledger.json"))
+        {
+            Clock = () => _clock,
+            Delay = (t, _) => { lock (_waits) _waits.Add(t); _clock += t; return Task.CompletedTask; },
+        };
+
+        await service.FetchAsync(new[] { NewTrack("p1"), NewTrack("p2") }, new LyricsBulkOptions(), null, CancellationToken.None);
+
+        Assert.Equal(2, calls);
+        Assert.Contains(TimeSpan.FromSeconds(1.1), _waits);
+    }
+
+    [Fact]
     public void Gate_SpacesRequests_AndResetsTheBackoffAfterAGoodAnswer()
     {
         var now = new DateTime(2026, 1, 1);

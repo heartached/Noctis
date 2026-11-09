@@ -618,6 +618,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.LrcRedHint" xml:space="preserve"><value>Wort- und zeilensynchrone Songtexte mit Duetten. Songs mit nur Zeilensync kann sein Modell von der Songtextseite wortgenau syncen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better-Lyrics-Community-Songtexte · Songtexte von Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
+  <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>Songtexte von Deezer, KuGou, YouTube Music und Musixmatch über lrcmux.dev, zuletzt gefragt</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Synchrone Songtexte · langsamere Suche</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>„Quelle wählen“ auf der Songtextseite durchsucht jede davon, auch wenn sie hier aus ist.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>

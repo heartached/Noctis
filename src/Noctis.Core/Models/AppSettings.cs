@@ -1376,6 +1376,11 @@ public class AppSettings : IJsonOnDeserializing
     /// small requests per lookup.</summary>
     public bool UnisonEnabled { get; set; } = true;
 
+    /// <summary>GitHub #219: whether lrcmux (lrcmux.dev: Deezer, KuGou, YouTube Music and Musixmatch
+    /// relayed, keyless, 60 requests a minute) is searched automatically, after the other sources.
+    /// Off: a third-party relay whose loose match often credits the composer, so fewer answers validate.</summary>
+    public bool LrcMuxEnabled { get; set; }
+
     /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
     /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
     public bool YouTubeMusicLyricsEnabled { get; set; }

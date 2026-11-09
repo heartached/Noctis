@@ -4675,6 +4675,17 @@
                                               IsChecked="{Binding YouTubeMusicLyricsEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #219: lrcmux, asked last, off by default. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.LrcMux}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LrcMuxHint}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LrcMux}"
+                                              IsChecked="{Binding LrcMuxEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <TextBlock Text="{loc:T Settings.LyricsSourcesPickerHint}"
                                FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
