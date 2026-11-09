@@ -111,13 +111,13 @@
       "name": "Lyric Motion",
       "author": "Alfamin",
       "description": "Lyrics that grow letter by letter as they are sung.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "minAppVersion": "1.6.6",
       "type": "dotnet",
       "platforms": ["windows", "macos", "linux"],
-      "download": "https://github.com/heartached/Noctis/releases/download/plugin-lyricmotion-v1.0.0/Noctis.Plugins.LyricMotion-1.0.0.zip",
-      "sha256": "387b8cca25deb753281335b932f162e3e1a9ca6423b868c836224483c5c1cf7d",
-      "size": 27351,
+      "download": "https://github.com/heartached/Noctis/releases/download/plugin-lyricmotion-v1.1.0/Noctis.Plugins.LyricMotion-1.1.0.zip",
+      "sha256": "ac81ede0a419d6aacd31ea88622e2ecc6a500bbdd25176fcb5ea4ee353e4a3af",
+      "size": 28100,
       "homepage": "https://github.com/heartached/Noctis/tree/main/plugins/Noctis.Plugins.LyricMotion",
       "icon": "Noctis.Plugins.LyricMotion/icon.png"
     }
