@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Noctis.Models;
 
 /// <summary>
@@ -5,6 +7,11 @@ namespace Noctis.Models;
 /// </summary>
 public class QueueState
 {
+    /// <summary>Members a newer Noctis saved that this build does not know, written back
+    /// unchanged so an older build sharing the data folder does not erase them (GitHub #230).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     /// <summary>ID of the track that was playing (or paused) when the app closed.</summary>
     public Guid? CurrentTrackId { get; set; }
 
