@@ -1176,7 +1176,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var album = LatestRelease;
         if (album == null || album.Tracks.Count == 0) return;
-        var tracks = album.Tracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+        var tracks = album.EditionTracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
         _player.ReplaceQueueAndPlay(tracks, 0);
     }
 
