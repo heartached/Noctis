@@ -228,6 +228,16 @@ public interface ILibraryService
     /// <summary>GitHub #193: whether the automatic album grouping (#178) is on.</summary>
     bool AlbumGroupingEnabled => true;
 
+    /// <summary>Albums that also list another album's songs (<see cref="Services.AlbumLinks"/>).</summary>
+    IReadOnlyList<AlbumLink> AlbumLinks => Array.Empty<AlbumLink>();
+
+    /// <summary>Makes <paramref name="albumId"/> list <paramref name="sourceAlbumId"/>'s songs too
+    /// (a deluxe edition and its original): saved, rebuilt, LibraryUpdated. No file changes.</summary>
+    Task LinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId) => Task.CompletedTask;
+
+    /// <summary>Undoes <see cref="LinkAlbumTracksAsync"/>.</summary>
+    Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId) => Task.CompletedTask;
+
     /// <summary>
     /// GitHub #193: switches the automatic album grouping (#178) on or off and rebuilds right
     /// away. Off puts every song the grouping re-keyed back on the album artist and album name
