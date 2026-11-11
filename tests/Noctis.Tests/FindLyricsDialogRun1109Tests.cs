@@ -110,7 +110,7 @@ public class FindLyricsDialogRun1109Tests
         Assert.Empty(saved); // restoring is not a change
 
         var run = vm.StartCommand.ExecuteAsync(null);
-        Assert.Equal(new LyricsBulkOptions(Upgrade: true, Recheck: false, ReviewOnly: true), service.Options);
+        Assert.Equal(new LyricsBulkOptions(Upgrade: true, Recheck: false, ReviewOnly: true, RetryBusy: true), service.Options);
         service.Finish.SetResult(new LyricsBulkSummary(0, 0, 0, 0, 0));
         await run;
     }
