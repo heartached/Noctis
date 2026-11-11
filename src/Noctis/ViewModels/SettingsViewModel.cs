@@ -1528,6 +1528,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _lyricsMinLineOpacity;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
     [ObservableProperty] private bool _lyricsGlowAndLift = true;
+    /// <summary>Plugin API 1.8: the lyrics renderer key ("" = Noctis's own). See <see cref="AppSettings.LyricsRenderer"/>.</summary>
+    [ObservableProperty] private string _lyricsRenderer = "";
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
     /// <summary>Discord (f7uh): the lyrics page shows the centred player with its lyrics hidden.</summary>
     [ObservableProperty] private bool _lyricsPageHideLyrics;
@@ -3661,6 +3663,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
+            LyricsRenderer = _settings.LyricsRenderer ?? "";
             LyricsCenterWhenNoLyrics = _settings.LyricsCenterWhenNoLyrics;
             LyricsPageHideLyrics = _settings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = _settings.LyricsBackgroundBehindSidebar;
@@ -4226,6 +4229,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
+        _settings.LyricsRenderer = LyricsRenderer ?? "";
         _settings.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
         _settings.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _settings.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
@@ -6334,6 +6338,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (oldValue is not null)
         {
             oldValue.VisualLayersChanged -= OnPluginVisualLayersChanged;
+            oldValue.LyricsRenderersChanged -= OnPluginLyricsRenderersChanged;
             oldValue.CommunityPluginsChanged -= OnCommunityPluginsChanged;
             oldValue.Content.Changed -= OnPluginContentChanged;
             oldValue.Plugins.CollectionChanged -= OnInstalledPluginsChanged;
@@ -6342,6 +6347,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (newValue is not null)
         {
             newValue.VisualLayersChanged += OnPluginVisualLayersChanged;
+            newValue.LyricsRenderersChanged += OnPluginLyricsRenderersChanged;
             newValue.CommunityPluginsChanged += OnCommunityPluginsChanged;
             newValue.Content.Changed += OnPluginContentChanged;
             newValue.Plugins.CollectionChanged += OnInstalledPluginsChanged;
@@ -6349,8 +6355,71 @@ public partial class SettingsViewModel : ViewModelBase
         }
         SyncCommunityPluginsSwitch();
         RefreshFlowingStyleOptions();
+        RefreshLyricsRendererOptions();
         RefreshOfficialPluginStates();
         OnPropertyChanged(nameof(PluginsFolderTip));
+    }
+
+    // ── Lyrics renderer (plugin API 1.8) ──
+    // Noctis's own lines, then every renderer the running plugins offer. A choice whose plugin is
+    // off stays listed and stored (Noctis draws its own lines meanwhile); nothing picks a renderer
+    // but the user.
+
+    /// <summary>Noctis's own renderer, then the plugins' (Key = what is stored).</summary>
+    public ObservableCollection<FlowingOption> LyricsRendererOptions { get; } = new();
+
+    /// <summary>The row shows only when there is something to choose (a renderer plugin, or a
+    /// stored choice whose plugin is off): without renderer plugins Settings looks as it always did.</summary>
+    public bool HasLyricsRendererChoice => LyricsRendererOptions.Count > 1;
+
+    public FlowingOption? SelectedLyricsRendererOption
+    {
+        get => LyricsRendererOptions.FirstOrDefault(o => o.Key == (LyricsRenderer ?? "")) ?? LyricsRendererOptions.FirstOrDefault();
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            LyricsRenderer = value.Key;
+            OnPropertyChanged();
+        }
+    }
+
+    private void OnPluginLyricsRenderersChanged(object? sender, EventArgs e)
+        => Dispatcher.UIThread.Post(RefreshLyricsRendererOptions);
+
+    private void RefreshLyricsRendererOptions()
+    {
+        var options = new List<FlowingOption> { new("", Loc.T("Settings.LyricsRendererBuiltIn")) };
+        if (Plugins is not null)
+            foreach (var r in Plugins.LyricsRenderers)
+                if (!r.Failed && options.All(o => !string.Equals(o.Key, r.Key, StringComparison.OrdinalIgnoreCase)))
+                    options.Add(new FlowingOption(r.Key, r.Label));
+        var stored = LyricsRenderer ?? "";
+        if (options.All(o => !string.Equals(o.Key, stored, StringComparison.OrdinalIgnoreCase)))
+            options.Add(new FlowingOption(stored, Loc.T("Settings.LyricsRendererOff", StoredRendererName(stored))));
+
+        if (!options.SequenceEqual(LyricsRendererOptions))
+        {
+            LyricsRendererOptions.Clear();
+            foreach (var o in options) LyricsRendererOptions.Add(o);
+        }
+        OnPropertyChanged(nameof(SelectedLyricsRendererOption));
+        OnPropertyChanged(nameof(HasLyricsRendererChoice));
+    }
+
+    /// <summary>"dev.example.lines/Lines" → "Lines".</summary>
+    private static string StoredRendererName(string key)
+    {
+        var slash = key.LastIndexOf('/');
+        return slash >= 0 && slash < key.Length - 1 ? key[(slash + 1)..] : key;
+    }
+
+    partial void OnLyricsRendererChanged(string value)
+    {
+        if (value is null) { LyricsRenderer = ""; return; }
+        Plugins?.SelectLyricsRenderer(value);
+        RefreshLyricsRendererOptions();
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     private void OnCommunityPluginsChanged(object? sender, EventArgs e) => SyncCommunityPluginsSwitch();
@@ -8467,6 +8536,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;
+            LyricsRenderer = defaultSettings.LyricsRenderer;
             LyricsCenterWhenNoLyrics = defaultSettings.LyricsCenterWhenNoLyrics;
             LyricsPageHideLyrics = defaultSettings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = defaultSettings.LyricsBackgroundBehindSidebar;

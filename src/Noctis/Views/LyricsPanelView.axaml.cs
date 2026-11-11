@@ -68,6 +68,8 @@ public partial class LyricsPanelView : UserControl
     public LyricsPanelView()
     {
         InitializeComponent();
+        // Plugin API 1.8: a lyrics renderer chosen in Settings draws these lines (none: untouched).
+        Controls.PluginLyricLines.Attach(PanelItemsControl, Noctis.Plugins.LyricsSurface.SidePanel, () => DataContext as LyricsViewModel);
 
         _flow = new FlowingArtworkAnimator(this, PanelFlowBackdrop, PanelFlowLayer1, PanelFlowLayer2, PanelBeatGlow, GetBeatContext);
 
