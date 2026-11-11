@@ -30,6 +30,9 @@ public partial class ArtistDetailView : UserControl
         // LayoutUpdated covers width changes and text swaps; the check is a few property
         // reads on the already-computed text layout, and the VM write is change-gated.
         BioText.LayoutUpdated += OnBioLayoutUpdated;
+        // Closing Edit Info / Find Lyrics gave focus back to the clicked tab and the page
+        // scrolled up to it (GitHub #223); only keyboard focus moves the page now.
+        KeyboardFocusScroll.Apply(PageScrollViewer);
     }
 
     /// <summary>The header "…" menu: plugin entries (API 1.7) for this artist go at the end.</summary>
