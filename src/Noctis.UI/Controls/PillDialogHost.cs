@@ -47,11 +47,38 @@ namespace Noctis.Controls;
 [TemplatePart(BackdropLayerPart, typeof(Panel))]
 [TemplatePart(BackdropPart, typeof(Image))]
 [TemplatePart(CardPart, typeof(Control))]
+[TemplatePart(CardGlassPart, typeof(GlassPanel))]
+[TemplatePart(CardFillPart, typeof(Border))]
 public class PillDialogHost : ContentControl
 {
     private const string BackdropLayerPart = "PART_BackdropLayer";
     private const string BackdropPart = "PART_Backdrop";
     private const string CardPart = "PART_Card";
+    private const string CardGlassPart = "PART_CardGlass";
+    private const string CardFillPart = "PART_CardFill";
+
+    /// <summary>
+    /// The glass card's lowest tint (GitHub #234). The card frosts the dimmed, blurred app,
+    /// which can be anything from black (a dark cover) to the scrim over white; at Glass
+    /// Opacity's 40% default the Light theme's black text then fell under WCAG AA on a dark
+    /// patch. From this tint up every built-in theme's text reads at 4.5:1 or better over
+    /// either extreme (PillDialogGlass234Tests); Glass Opacity above it is used as set.
+    /// </summary>
+    internal const double GlassMinTintOpacity = 0.5;
+
+    /// <summary>The glass card's tint: Glass Opacity (the menus' GlassMenuTintOpacity), at
+    /// least <see cref="GlassMinTintOpacity"/>.</summary>
+    internal static double GlassTintOpacityFor(double glassOpacity) =>
+        Math.Clamp(double.IsFinite(glassOpacity) ? Math.Max(glassOpacity, GlassMinTintOpacity) : GlassMinTintOpacity, 0, 1);
+
+    /// <summary>
+    /// Whether the card frosts: Liquid Glass on (AppGlass, already off on Linux) and the
+    /// blurred owner snapshot up. The pop-up window is transparent, so without the snapshot
+    /// (Background Blur off, no owner, a backend that can't snapshot) the glass would show the
+    /// live app through the card, unblurred: the card stays the solid one instead. No OS blur
+    /// is asked for, so Windows' Transparency effects switch plays no part.
+    /// </summary>
+    internal static bool WantsGlassCard(bool appGlassActive, bool hasBackdrop) => appGlassActive && hasBackdrop;
 
     /// <summary>Open: backdrop and card fade over this; the card's rise/scale takes
     /// <see cref="OpenMoveDuration"/> on a long ease-out, so it settles just after the fade.</summary>
@@ -98,6 +125,9 @@ public class PillDialogHost : ContentControl
     private Panel? _backdropLayer;
     private Image? _backdrop;
     private Control? _card;
+    private GlassPanel? _cardGlass;
+    private Border? _cardFill;
+    private EventHandler? _appGlassChanged;
     private Bitmap? _backdropBitmap;
     private int _backdropGeneration;
     private Window? _window;
@@ -107,6 +137,8 @@ public class PillDialogHost : ContentControl
     private DoubleTransition? _backdropFade;
     private DoubleTransition? _cardFade;
     private TransformOperationsTransition? _cardMove;
+    private DoubleTransition? _glassFade;
+    private TransformOperationsTransition? _glassMove;
 
     private bool _openRequested;
     private bool _closeAnimating;
@@ -154,6 +186,11 @@ public class PillDialogHost : ContentControl
     }
     internal Control? Card => _card;
     internal Panel? BackdropLayer => _backdropLayer;
+    /// <summary>The card's Liquid Glass (shown only while it frosts) and its solid fill (tests).</summary>
+    internal GlassPanel? CardGlass => _cardGlass;
+    internal Border? CardFill => _cardFill;
+    /// <summary>True while the card paints as glass instead of its solid fill.</summary>
+    internal bool IsGlassCard => _cardGlass is { IsVisible: true };
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
@@ -161,6 +198,8 @@ public class PillDialogHost : ContentControl
         _backdropLayer = e.NameScope.Find<Panel>(BackdropLayerPart);
         _backdrop = e.NameScope.Find<Image>(BackdropPart);
         _card = e.NameScope.Find<Control>(CardPart);
+        _cardGlass = e.NameScope.Find<GlassPanel>(CardGlassPart);
+        _cardFill = e.NameScope.Find<Border>(CardFillPart);
 
         // Hidden pose with no transitions attached, so it is set instantly; the open
         // attaches them and moves to the shown pose (the 2-step pattern RenderTransform
@@ -177,8 +216,16 @@ public class PillDialogHost : ContentControl
             _card.RenderTransformOrigin = RelativePoint.Center;
             _card.RenderTransform = CardHidden;
         }
+        if (_cardGlass != null)
+        {
+            _cardGlass.Transitions = null;
+            _cardGlass.Fade = 0;
+            _cardGlass.RenderTransformOrigin = RelativePoint.Center;
+            _cardGlass.RenderTransform = CardHidden;
+        }
         if (_backdrop != null && _backdropBitmap != null)
             _backdrop.Source = _backdropBitmap;
+        UpdateGlassCard();
 
         if (_openRequested)
             Dispatcher.UIThread.Post(PlayOpen, DispatcherPriority.Loaded);
@@ -187,6 +234,12 @@ public class PillDialogHost : ContentControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        if (_appGlassChanged is null)
+        {
+            _appGlassChanged = (_, _) => UpdateGlassCard();
+            AppGlass.Changed += _appGlassChanged;
+        }
+        UpdateGlassCard();
         if (TopLevel.GetTopLevel(this) is not Window window || ReferenceEquals(window, _window))
             return;
         _window = window;
@@ -210,6 +263,8 @@ public class PillDialogHost : ContentControl
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        if (_appGlassChanged != null) AppGlass.Changed -= _appGlassChanged;
+        _appGlassChanged = null;
         Unhook();
         // Whichever comes first, Closed or leaving the tree, frees the snapshot.
         ReleaseBackdrop();
@@ -278,6 +333,11 @@ public class PillDialogHost : ContentControl
         _card.IsHitTestVisible = true;
         _card.Opacity = 1;
         _card.RenderTransform = CardShown;
+        if (_cardGlass != null)
+        {
+            _cardGlass.Fade = 1;
+            _cardGlass.RenderTransform = CardShown;
+        }
     }
 
     private void PlayClose()
@@ -291,6 +351,11 @@ public class PillDialogHost : ContentControl
             _card.Opacity = 0;
             _card.RenderTransform = CardHidden;
             ReleaseFocusFromCard();
+        }
+        if (_cardGlass != null)
+        {
+            _cardGlass.Fade = 0;
+            _cardGlass.RenderTransform = CardHidden;
         }
     }
 
@@ -312,8 +377,11 @@ public class PillDialogHost : ContentControl
         _backdropFade = new DoubleTransition { Property = OpacityProperty };
         _cardFade = new DoubleTransition { Property = OpacityProperty };
         _cardMove = new TransformOperationsTransition { Property = RenderTransformProperty };
+        _glassFade = new DoubleTransition { Property = GlassPanel.FadeProperty };
+        _glassMove = new TransformOperationsTransition { Property = RenderTransformProperty };
         if (_backdropLayer != null) _backdropLayer.Transitions = new Transitions { _backdropFade };
         if (_card != null) _card.Transitions = new Transitions { _cardFade, _cardMove };
+        if (_cardGlass != null) _cardGlass.Transitions = new Transitions { _glassFade, _glassMove };
     }
 
     /// <summary>Retimes the transitions in place. Duration/Easing are read when a value
@@ -324,6 +392,9 @@ public class PillDialogHost : ContentControl
         if (_backdropFade != null) { _backdropFade.Duration = fade; _backdropFade.Easing = easing; }
         if (_cardFade != null) { _cardFade.Duration = fade; _cardFade.Easing = easing; }
         if (_cardMove != null) { _cardMove.Duration = move; _cardMove.Easing = easing; }
+        // The glass moves and fades exactly with the card it paints.
+        if (_glassFade != null) { _glassFade.Duration = fade; _glassFade.Easing = easing; }
+        if (_glassMove != null) { _glassMove.Duration = move; _glassMove.Easing = easing; }
     }
 
     private void OnWindowClosing(object? sender, WindowClosingEventArgs e)
@@ -372,6 +443,27 @@ public class PillDialogHost : ContentControl
         if (_backdrop != null) _backdrop.Source = null;
         _backdropBitmap?.Dispose();
         _backdropBitmap = null;
+        UpdateGlassCard();
+    }
+
+    /// <summary>
+    /// Glass card or solid card (GitHub #234, see <see cref="WantsGlassCard"/>): with glass the
+    /// fill is hidden and the GlassPanel paints card, tint and shadow; without it the GlassPanel
+    /// is hidden and nothing about the card differs from before. Re-run when Liquid Glass or the
+    /// snapshot changes.
+    /// </summary>
+    private void UpdateGlassCard()
+    {
+        if (_cardGlass is null) return;
+        var glass = WantsGlassCard(AppGlass.IsActive, _backdropBitmap != null);
+        if (glass)
+        {
+            var opacity = this.TryFindResource("GlassMenuTintOpacity", ActualThemeVariant, out var value) && value is double d ? d : 0.4;
+            _cardGlass.GlassTintOpacity = GlassTintOpacityFor(opacity);
+        }
+        _cardGlass.IsGlassActive = glass;
+        _cardGlass.IsVisible = glass;
+        if (_cardFill != null) _cardFill.IsVisible = !glass;
     }
 
     /// <summary>
@@ -425,10 +517,19 @@ public class PillDialogHost : ContentControl
             (ownerOrigin.X - hostOrigin.X) / scaling,
             (ownerOrigin.Y - hostOrigin.Y) / scaling, size.Width, size.Height));
 
+        ShowBackdrop(bitmap);
+    }
+
+    /// <summary>Shows <paramref name="bitmap"/> as the blurred owner (the host owns it from
+    /// here) and re-decides the glass card. Internal for tests: the headless test renderer
+    /// cannot take the snapshot itself.</summary>
+    internal void ShowBackdrop(Bitmap bitmap)
+    {
         // Swap, then free the old one a frame later: the last frame drawn may still use it.
         var old = _backdropBitmap;
         _backdropBitmap = bitmap;
-        _backdrop.Source = bitmap;
+        if (_backdrop != null) _backdrop.Source = bitmap;
+        UpdateGlassCard();
         if (old != null) Dispatcher.UIThread.Post(old.Dispose, DispatcherPriority.Background);
     }
 }
