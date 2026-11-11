@@ -441,6 +441,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Не разбивать слова на слоги в текстах TTML.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Свечение и подъём</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Пропетые слова плавно поднимаются, а протяжные ноты светятся, как в Apple Music. Если выключено, текст с синхронизацией по словам остаётся неподвижным.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRenderer" xml:space="preserve"><value>Отрисовка текста</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Рисовать строки текста песни плагином. Прокрутка, тайминг и переход по щелчку остаются за Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (плагин выключен)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Центрировать плеер, если у песни нет текста</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Если у песни нет текста или это инструментал, страница текста переносит обложку, сведения о песне и кнопки в центр.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Фон под боковой панелью</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2469,6 +2473,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Удалить плагин</value></data>
   <data name="Plugins.Detail.ShowInSidebar" xml:space="preserve"><value>Показывать в боковой панели</value><comment>Plugin page row: the plugin's screen gets a sidebar entry</comment></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Может {0}</value></data>
+  <data name="Plugins.LyricsRendererFailed" xml:space="preserve"><value>отрисовка текста перестала работать, Noctis снова рисует текст сам.</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
   <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>управлять воспроизведением</value></data>
   <data name="Plugins.PermVerb.LibraryRead" xml:space="preserve"><value>читать вашу медиатеку</value></data>

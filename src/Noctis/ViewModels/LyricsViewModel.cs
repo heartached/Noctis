@@ -4128,6 +4128,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // moves the lyrics, not the audio, so read the timeline that much behind it.
         position -= LyricsOffset;
         if (position < TimeSpan.Zero) position = TimeSpan.Zero;
+        _rendererClockMs = position.TotalMilliseconds;
+        _rendererClockAt = System.Diagnostics.Stopwatch.GetTimestamp();
         var step = _timeline.Update(position);
         // The set also changes without a line change: an overlapping (duet) line that
         // stays lit under the active one finishes, so the ramp re-centres on what's left.
@@ -4151,6 +4153,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     private static readonly TimeSpan ScrollLead = TimeSpan.FromMilliseconds(Helpers.LineMotion.ScrollLeadMs);
+
+    // Plugin API 1.8: the position plugin lyrics renderers draw from (LyricsLineFrame.PositionMs).
+    private double _rendererClockMs;
+    private long _rendererClockAt;
+
+    /// <summary>
+    /// The lyrics position (offset applied, as <see cref="LyricsTimeline"/> last saw it), carried
+    /// forward at the playback rate since then while playing, so a plugin renderer reads a smooth
+    /// value every frame between the timeline's updates (every frame of the word clock, or every
+    /// 100 ms of the line timer). Never more than half a second ahead of the last update. Reading
+    /// it changes nothing.
+    /// </summary>
+    internal double LyricsClockMs
+    {
+        get
+        {
+            if (_player.State != Models.PlaybackState.Playing || _rendererClockAt == 0) return _rendererClockMs;
+            var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_rendererClockAt).TotalMilliseconds;
+            return _rendererClockMs + Math.Min(elapsed, 500) * _player.PlaybackRate;
+        }
+    }
 
     /// <summary>
     /// Continuous playback clock for the sweep and line engine. The raw position
