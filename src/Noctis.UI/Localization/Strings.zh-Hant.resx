@@ -4538,6 +4538,10 @@
     <value>純文字</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>隱藏歌詞</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
     <value>背景顏色</value>
     <comment>Header in PlaybackBarView.axaml</comment>

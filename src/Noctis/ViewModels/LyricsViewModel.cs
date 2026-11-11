@@ -254,6 +254,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// leaves full screen or the page closes. The progress line stays either way.</summary>
     public bool IsLyricsIslandHidden => IsFullScreenPageActive && Player.LyricsFullScreenHideIsland;
 
+    /// <summary>Discord (f7uh): the page hides its lyrics and shows the centred player
+    /// (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics), lyrics or not. View-only: the lyrics stay
+    /// loaded and in sync, nothing is searched, and the side panel / mini player ignore it.</summary>
+    public bool IsLyricsHiddenOnPage => Player.LyricsPageHideLyrics;
+
     /// <summary>True while the opt-in fullscreen focus dimming is in effect (fullscreen
     /// lyrics page + Appearance toggle). The page view also anchors the active line
     /// near center while this is on (FocusAnchorRatio), since the dimmed-away lines
@@ -3193,6 +3198,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsFullScreenHideIsland))
             OnPropertyChanged(nameof(IsLyricsIslandHidden));
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsPageHideLyrics))
+            OnPropertyChanged(nameof(IsLyricsHiddenOnPage));
         // Glow & lift flipped: the running lines settle (off) or pick it up next frame (on).
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsGlowAndLift))
         {

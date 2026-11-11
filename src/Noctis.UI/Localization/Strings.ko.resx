@@ -4538,6 +4538,10 @@
     <value>일반</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>가사 숨기기</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
     <value>배경 색상</value>
     <comment>Header in PlaybackBarView.axaml</comment>

@@ -4538,6 +4538,10 @@
     <value>Sin sincronizar</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>Ocultar letras</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
     <value>Color de fondo</value>
     <comment>Header in PlaybackBarView.axaml</comment>
