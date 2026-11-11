@@ -367,28 +367,28 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.Tracks, 0);
+        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.Tracks);
+        _player.PlayShuffled(album.EditionTracks);
     }
 
     [RelayCommand]
     private void PlayNextAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.AddNextRange(album.Tracks.ToList(), album.Name);
+        _player.AddNextRange(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
     private void AddAlbumToQueue(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
+        _player.AddRangeToQueue(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -445,7 +445,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         {
             var album = item.Album!;
             if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
-            var ordered = Helpers.AlbumTile.OrderedTracks(album);
+            var ordered = Helpers.AlbumTile.EditionOrder(album);
             if (ordered.Count == 0) return;
             _player.ReplaceQueueAndPlay(ordered, 0);
             return;

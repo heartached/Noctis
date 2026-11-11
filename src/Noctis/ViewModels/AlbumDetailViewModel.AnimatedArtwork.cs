@@ -23,18 +23,18 @@ public partial class AlbumDetailViewModel
     /// (saved, per-song or fetched). A cover.mp4 beside the music is the user's file and stays.
     /// </summary>
     public bool CanRemoveAnimatedArtwork =>
-        !string.IsNullOrEmpty(AnimatedCoverPath) && _animatedCovers.HasStoredCover(Tracks);
+        !string.IsNullOrEmpty(AnimatedCoverPath) && _animatedCovers.HasStoredCover(Album.Tracks);
 
     /// <summary>The page is on screen: fetch its loop when the setting asks for it.</summary>
     internal void StartAutoFetch()
     {
         StopAutoFetch();
         if (_settings is not { EnableAnimatedCovers: true, AnimatedArtworkAutoFetch: true }) return;
-        if (Tracks.Count == 0 || AutoFetcherProvider() is not { } fetcher) return;
+        if (Album.Tracks.Count == 0 || AutoFetcherProvider() is not { } fetcher) return;
 
         var cts = new CancellationTokenSource();
         _autoFetchCts = cts;
-        AutoFetchTask = AutoFetchAsync(fetcher, Tracks.ToList(), _settings.AnimatedArtworkCacheBytes,
+        AutoFetchTask = AutoFetchAsync(fetcher, Album.Tracks.ToList(), _settings.AnimatedArtworkCacheBytes,
             _settings.AnimatedArtworkPrefersMax, cts.Token);
     }
 
@@ -82,7 +82,8 @@ public partial class AlbumDetailViewModel
     [RelayCommand]
     private async Task RemoveAnimatedArtwork()
     {
-        if (Tracks.Count == 0) return;
+        // The album's own files: songs linked in from another album keep that album's loop.
+        if (Album.Tracks.Count == 0) return;
         StopAutoFetch();
         var albumId = Album.Id;
         AutoFetcherProvider()?.Cache.Block(albumId);
@@ -92,7 +93,7 @@ public partial class AlbumDetailViewModel
         var playing = _player.CurrentTrack?.AlbumId == albumId;
         if (playing) _player.CurrentAnimatedCoverPath = null;
 
-        foreach (var track in Tracks.ToList())
+        foreach (var track in Album.Tracks.ToList())
             await _animatedCovers.RemoveAsync(track, AnimatedCoverScope.Album);
 
         ShowStoredAnimatedCover();

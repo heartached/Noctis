@@ -52,6 +52,13 @@ public static class AlbumTile
             .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
             .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+    /// <summary>What a single album's Play / Shuffle / Play Next / Add to Queue play: the
+    /// album page's list, songs linked in from another album included (<see cref="Album.EditionTracks"/>,
+    /// already in album order). Lists that join several albums keep <see cref="OrderedTracks"/>
+    /// so a linked song never plays twice.</summary>
+    public static List<Track> EditionOrder(Album album)
+        => album.HasLinkedTracks ? album.EditionTracks.ToList() : OrderedTracks(album);
 }
 
 /// <summary>
