@@ -107,3 +107,5 @@ Target release: 1.7.0. Order followed: security → patch → minor → majors. 
 ### Plugin note
 
 Avalonia's and Microsoft.Data.Sqlite's assembly versions carry the patch number (12.1.6.0, 10.0.14.0). Plugins use the host's copy, so a plugin rebuilt from this branch references the new versions: set its minAppVersion to the release that ships this branch (next app version: 1.7.0) before publishing it. UNVERIFIED whether an older host refuses such a plugin (expected: the default load context won't bind a higher requested version than it has).
+
+Final (2026-11-11, HEAD after f28102d3): full solution build 0 errors, 1046 warning lines (baseline 1047; only NU1510 gone). Full suite 9896 pass / 5 fail / 94 skip; the 5 (BlurredBackdropTests, timing) pass when re-run alone (7/0/2) and passed in every earlier group run. The previous final run hit TopBarCornerOrderTests failing by test order (fixed in f28102d3: the class now installs AccessibleNames itself) plus 3 timing tests that passed alone.
