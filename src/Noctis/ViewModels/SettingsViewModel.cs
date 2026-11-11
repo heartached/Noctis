@@ -3960,6 +3960,20 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// GitHub #230: when the data folder was last saved by a newer Noctis than this one, the
+    /// notice to show — once per newer version (remembered in the shared settings) — else null.
+    /// </summary>
+    public string? TakeNewerVersionNotice()
+    {
+        if (!_settingsLoaded || _settings.OpenedFromNewerVersion is not { Length: > 0 } newer) return null;
+        if (string.Equals(_settings.NewerVersionNoticeShownFor, newer, StringComparison.Ordinal)) return null;
+        _settings.NewerVersionNoticeShownFor = newer;
+        // Straight to the file: SaveAsync re-bases on the file first, which would undo it.
+        _ = _persistence.UpdateSettingsAsync(s => s.NewerVersionNoticeShownFor = newer);
+        return Loc.T("Settings.DataFolderNewerVersion", newer);
+    }
+
     /// <summary>Saves current settings to disk.</summary>
     public async Task SaveAsync()
     {
@@ -4077,7 +4091,9 @@ public partial class SettingsViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(ActiveCustomThemeId)) _settings.Theme = "Custom:" + ActiveCustomThemeId;
         else if (!string.IsNullOrEmpty(ActivePackThemeKey)) _settings.Theme = App.PackThemePrefix + ActivePackThemeKey;
 
-        _settings.CustomThemes = CustomThemes.Select(t => new CustomThemeDefinition
+        // GitHub #230: these lists are rebuilt from the view on every save; what a newer Noctis
+        // stored on an entry (members this build does not know) goes over to the rebuilt entry.
+        _settings.CustomThemes = JsonExtensible.CarryOver(_settings.CustomThemes, CustomThemes.Select(t => new CustomThemeDefinition
         {
             Id = t.Id,
             Name = t.Name,
@@ -4085,7 +4101,7 @@ public partial class SettingsViewModel : ViewModelBase
             MainBackgroundHex = t.MainHex,
             SidebarBackgroundHex = t.SidebarHex,
             AccentHex = t.AccentHex,
-        }).ToList();
+        }).ToList(), t => t.Id);
 
         _settings.ThemeV2Migrated = true;
         _settings.ProfileName = ProfileName ?? string.Empty;
@@ -4114,7 +4130,7 @@ public partial class SettingsViewModel : ViewModelBase
         // back, and the file was saved with the old value.
         _settings.Language = LanguageChoice?.Code ?? string.Empty;
         _settings.MusicFolders = _collectionSnapshot?.MusicFolders ?? MusicFolders.ToList();
-        _settings.FolderRules = _collectionSnapshot?.FolderRules ?? FolderRules
+        _settings.FolderRules = JsonExtensible.CarryOver(_settings.FolderRules, _collectionSnapshot?.FolderRules ?? FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
             .Select(r => new FolderRule
             {
@@ -4122,7 +4138,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Include = r.Include,
                 Enabled = r.Enabled
             })
-            .ToList();
+            .ToList(), r => r.Path);
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
@@ -4338,10 +4354,15 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.EqPreampDb = EqPreampDb;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
         _settings.SelectedUserEqPreset = FindUserEqPreset(SelectedEqPresetName)?.Name;
-        _settings.UserEqPresets = _userEqPresets.Select(CloneUserEqPreset).ToList();
+        _settings.UserEqPresets = JsonExtensible.CarryOver(_settings.UserEqPresets, _userEqPresets.Select(CloneUserEqPreset).ToList(), p => p.Name);
         _settings.HiddenEqPresets = EqPresetNames.Where(_hiddenEqPresets.Contains).ToList();
+        var earlierBands = _settings.ParametricEqBands;
         _settings.ParametricEqBands = EqBands
-            .Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })
+            .Select((b, i) => new ParametricEqBand
+            {
+                FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q,
+                ExtensionData = earlierBands is { } e && i < e.Count ? e[i]?.ExtensionData : null,
+            })
             .ToList();
         // Downgrade-safe mirror of the applied 10-band curve.
         _settings.EqualizerBands = GetGraphicEqBands().bands;
@@ -7320,7 +7341,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         Name = p.Name,
         PreampDb = p.PreampDb,
-        Bands = p.Bands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q }).ToList(),
+        Bands = p.Bands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q, ExtensionData = b.ExtensionData }).ToList(),
+        ExtensionData = p.ExtensionData,
     };
 
     /// <summary>Built-in names (Custom and Flat included) and "None" — the metadata editor's
