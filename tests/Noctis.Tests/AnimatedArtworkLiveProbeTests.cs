@@ -32,23 +32,42 @@ public class AnimatedArtworkLiveProbeTests
     [InlineData("Short n' Sweet Sabrina Carpenter")]
     [InlineData("https://music.apple.com/gb/album/short-n-sweet-deluxe/1795512297")]
     [InlineData("https://music.apple.com/us/playlist/todays-hits/pl.f4d106fed2bd41149aaacabb233eb5eb")]
-    public async Task TypedQuery(string typed)
+    [InlineData("Thomas Dybdahl Teenage Astronauts")] // GitHub #229
+    public Task TypedQuery(string typed) => ProbeAsync(typed, null, null);
+
+    /// <summary>Searches from the tags (nothing typed) as a user of the given storefront would:
+    /// GitHub #229 missed "Teenage Astronauts" because only the US store was asked.</summary>
+    [Theory]
+    [InlineData("Teenage Astronauts", "Thomas Dybdahl", "us")]
+    [InlineData("Teenage Astronauts", "Thomas Dybdahl", "de")]
+    [InlineData("Happier Than Ever", "Billie Eilish", "us")]
+    [InlineData("Happier Than Ever", "Billie Eilish", "de")]
+    [InlineData("YHLQMDLG", "Bad Bunny", "us")]
+    [InlineData("MAYHEM", "Lady Gaga", "de")]
+    [InlineData("Short n' Sweet", "Sabrina Carpenter", "us")]
+    [InlineData("HIT ME HARD AND SOFT", "Billie Eilish", "us")]
+    public Task TagQuery(string album, string artist, string home) => ProbeAsync(album, artist, home);
+
+    private async Task ProbeAsync(string typedOrAlbum, string? artist, string? home)
     {
         if (Environment.GetEnvironmentVariable("NOCTIS_LIVE_ANIMATED") != "1")
             return;
 
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         using var p = new TestPersistenceService();
-        var track = new Track { Title = "x", Artist = "Someone Else", Album = "Unrelated", FilePath = "C:\\nope.mp3" };
+        var track = artist == null
+            ? new Track { Title = "x", Artist = "Someone Else", Album = "Unrelated", FilePath = "C:\\nope.mp3" }
+            : new Track { Title = "x", Artist = artist, AlbumArtist = artist, Album = typedOrAlbum, FilePath = "C:\\nope.mp3" };
+        var itunes = home == null ? new ITunesArtworkService(http) : new ITunesArtworkService(http) { HomeStorefront = home };
         var vm = new MetadataViewModel(track, new MetadataService(), new FakeLibraryService(), p,
-            new FakeAnimatedCoverService(), itunes: new ITunesArtworkService(http));
+            new FakeAnimatedCoverService(), itunes: itunes);
 
-        vm.AnimatedSearchInput = typed;
+        vm.AnimatedSearchInput = artist == null ? typedOrAlbum : string.Empty;
         var before = new HashSet<string>(DebugLog.Snapshot().Split('\n'));
         var sw = System.Diagnostics.Stopwatch.StartNew();
         await vm.SearchAnimatedCoverCommand.ExecuteAsync(null);
 
-        _out.WriteLine($"'{typed}' -> {vm.AnimatedArtworkSearchResults.Count} result(s) in {sw.ElapsedMilliseconds} ms, " +
+        _out.WriteLine($"'{typedOrAlbum}'{(artist == null ? "" : $" by {artist} from {home}")} -> {vm.AnimatedArtworkSearchResults.Count} result(s) in {sw.ElapsedMilliseconds} ms, " +
                        $"status '{vm.AnimatedSearchStatus}'");
         foreach (var r in vm.AnimatedArtworkSearchResults)
             _out.WriteLine($"   [{r.Score:0.#}] \"{r.CollectionName}\" by {r.ArtistName} ({r.Detail}) " +

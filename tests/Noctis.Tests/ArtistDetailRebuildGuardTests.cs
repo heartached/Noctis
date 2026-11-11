@@ -146,6 +146,56 @@ public class ArtistDetailRebuildGuardTests
         Assert.Equal(expected, LibraryAlbumsViewModel.ContainsArtistToken(field, name, Track.ParseArtistTokens(name)));
     }
 
+    /// <summary>
+    /// GitHub #223: Edit Info or Find Lyrics on an album far down an artist page, then save and
+    /// close, and the page was back at the top. The save rebuilt the library's indexes, which
+    /// makes new Album objects (and a re-read file a new Track object) for the same releases;
+    /// the lists compared by reference, so every one cleared and refilled, the tab grids from
+    /// one row, and the scroll viewer clamped its offset to the collapsed page.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("overview")]
+    [InlineData("singles")] // three songs: an EP
+    [InlineData("songs")]
+    public void ARebuildWithTheSameReleases_SwapsTheNewObjectsInPlace(string tab)
+    {
+        var (vm, lib, tracks) = Make();
+        vm.SelectedTab = tab;
+        Dispatcher.UIThread.RunJobs();
+
+        // What a metadata save publishes: the same album and songs, as new objects.
+        var albums = (List<Album>)lib.Albums;
+        var old = albums[0];
+        var rebuilt = new Album { Id = old.Id, Name = old.Name, Artist = old.Artist, Year = old.Year };
+        rebuilt.Tracks = tracks.Select(t => new Track
+        {
+            Id = t.Id, Title = t.Title, Artist = t.Artist, AlbumArtist = t.AlbumArtist, Album = t.Album, AlbumId = t.AlbumId,
+            PlayCount = t.PlayCount, Duration = t.Duration, FilePath = t.FilePath, Lyrics = "new lyrics",
+        }).ToList();
+        albums[0] = rebuilt;
+        lib.TrackList.Clear();
+        lib.TrackList.AddRange(rebuilt.Tracks);
+
+        var lists = new INotifyCollectionChanged[]
+        {
+            vm.Releases, vm.OverviewSingles, vm.SingleReleases, vm.AlbumReleases, vm.PopularSongs, vm.AllSongs,
+        };
+        var actions = new List<NotifyCollectionChangedAction>();
+        void H(object? s, NotifyCollectionChangedEventArgs e) => actions.Add(e.Action);
+        foreach (var l in lists) l.CollectionChanged += H;
+        lib.RaiseLibraryUpdated();
+        Dispatcher.UIThread.RunJobs();
+        foreach (var l in lists) l.CollectionChanged -= H;
+
+        Assert.NotEmpty(actions);
+        Assert.All(actions, a => Assert.Equal(NotifyCollectionChangedAction.Replace, a));
+        Assert.Same(rebuilt, Assert.Single(vm.Releases));
+        Assert.Equal(3, vm.PopularSongs.Count);
+        Assert.All(vm.PopularSongs, r => Assert.Contains(r.Track, rebuilt.Tracks));
+        if (tab == "singles") Assert.Same(rebuilt, Assert.Single(vm.SingleReleases));
+        if (tab == "songs") Assert.All(vm.AllSongs, r => Assert.Contains(r.Track, rebuilt.Tracks));
+    }
+
     [Fact]
     public void SameRows_ComparesTrackAndRank()
     {

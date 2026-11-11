@@ -43,7 +43,13 @@ public static class SkiaArtworkDecoder
             var longest = Math.Max(info.Width, info.Height);
             var sample = 1;
             while (longest / sample > maxDimension) sample *= 2;
-            if (sample == 1) return SKBitmap.Decode(codec);
+            if (sample == 1)
+            {
+                // As SKBitmap.Decode(codec) picks it: the codec's own info, premultiplied.
+                var native = codec.Info;
+                if (native.AlphaType == SKAlphaType.Unpremul) native.AlphaType = SKAlphaType.Premul;
+                return DecodeWhole(codec, native, path);
+            }
 
             // Only ask the codec for a size it can actually produce: JPEG shrinks by 1/2,
             // 1/4, 1/8; PNG and WebP-lossless decode at native size only, and requesting a
@@ -53,8 +59,8 @@ public static class SkiaArtworkDecoder
             // bounded bitmap it asked for.
             var dims = codec.GetScaledDimensions(1f / sample);
             if (dims.Width <= 0 || dims.Height <= 0) dims = new SKSizeI(info.Width, info.Height);
-            var decoded = SKBitmap.Decode(codec, new SKImageInfo(dims.Width, dims.Height,
-                SKColorType.Bgra8888, SKAlphaType.Premul));
+            var decoded = DecodeWhole(codec, new SKImageInfo(dims.Width, dims.Height,
+                SKColorType.Bgra8888, SKAlphaType.Premul), path);
             if (decoded == null) return null;
             if (Math.Max(decoded.Width, decoded.Height) <= maxDimension) return decoded;
 
@@ -109,8 +115,8 @@ public static class SkiaArtworkDecoder
             if (dims.Width < targetWidth || dims.Height <= 0)
                 dims = new SKSizeI(info.Width, info.Height);
 
-            var decoded = SKBitmap.Decode(codec, new SKImageInfo(dims.Width, dims.Height,
-                SKColorType.Bgra8888, SKAlphaType.Premul));
+            var decoded = DecodeWhole(codec, new SKImageInfo(dims.Width, dims.Height,
+                SKColorType.Bgra8888, SKAlphaType.Premul), path);
             if (decoded == null) return null;
 
             if (decoded.Width == targetWidth && decoded.Height == targetHeight)
@@ -125,6 +131,24 @@ public static class SkiaArtworkDecoder
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// Decodes the whole image, or nothing. <c>SKBitmap.Decode(codec, info)</c> also hands back
+    /// a decode that ran out of data (<see cref="SKCodecResult.IncompleteInput"/>): a JPEG cut
+    /// short comes out as its top rows over flat grey, and that picture went into the memory
+    /// cache and the thumbnail cache as if it were the cover (GitHub #224: a cover read while it
+    /// was being written). Null here instead; the next load reads the file again.
+    /// </summary>
+    private static SKBitmap? DecodeWhole(SKCodec codec, SKImageInfo info, string path)
+    {
+        var bitmap = new SKBitmap(info);
+        var result = codec.GetPixels(bitmap.Info, bitmap.GetPixels());
+        if (result == SKCodecResult.Success) return bitmap;
+        bitmap.Dispose();
+        Noctis.Services.DebugLog.WriteOnce("Artwork", "incomplete:" + path,
+            $"cover not shown, its file did not decode whole ({result}): {path}");
+        return null;
     }
 
     /// <summary>
