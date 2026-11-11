@@ -818,6 +818,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="AlbumDetail.ConvertAlbum" xml:space="preserve"><value>Convert Album</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ScanReplayGain" xml:space="preserve"><value>Scan ReplayGain</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve"><value>Show Folder</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.LinkTracksFrom" xml:space="preserve"><value>Link Tracks From</value><comment>Submenu in AlbumDetailView.axaml: list another album's songs on this one (deluxe edition)</comment></data>
+  <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Unlink Tracks From</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Remove from Library</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Other Versions</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Play Next</value><comment>Header in AlbumDetailView.axaml</comment></data>

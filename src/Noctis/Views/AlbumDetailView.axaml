@@ -821,6 +821,18 @@
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineFolder}"/>
                             </MenuItem.Icon>
                         </MenuItem>
+                        <!-- Discord 11-11: a deluxe edition lists the original's songs. Items are
+                             filled from LinkCandidates / LinkedSourceAlbums when the menu opens. -->
+                        <MenuItem Header="{loc:T AlbumDetail.LinkTracksFrom}" Tag="LinkTracksFrom">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{loc:T AlbumDetail.UnlinkTracksFrom}" Tag="UnlinkTracksFrom">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <Separator />
                         <MenuItem Header="{loc:T AlbumDetail.RemoveFromLibrary}" Classes="danger"
                                   Command="{Binding RemoveAlbumFromLibraryCommand}">
