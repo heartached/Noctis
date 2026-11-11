@@ -21,6 +21,8 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     // virtualization recycling the tiles on scroll doesn't drop the ctrl-selected
     // highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
     private readonly HashSet<FavoriteItem> _selectedItems = new();
+    /// <summary>The item a Shift+click spans from: the last one clicked (GitHub #226).</summary>
+    private FavoriteItem? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => FavoritesViewModel.ExpandToTracks(_selectedItems);
@@ -40,6 +42,20 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
             source = source.Parent as Control;
         if (source is not Button tile) return;
         if (tile.DataContext is not FavoriteItem item) return;
+
+        // GitHub #226: Shift+click spans from the last clicked item, in grid order.
+        if (MultiSelectHelper.IsRangePress(e) && DataContext is FavoritesViewModel vm)
+        {
+            e.Handled = true;
+            _rangeAnchor = MultiSelectHelper.SelectRange(vm.FavoriteItemRows.SelectMany(r => r.Items).ToList(),
+                _rangeAnchor, item, e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier), _selectedItems);
+            foreach (var t in CollectTiles())
+                MultiSelectHelper.SyncAlbumTileVisual(t, _selectedItems, animate: true);
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = item;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, item, e, _selectedItems)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
@@ -290,6 +306,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
+        _rangeAnchor = null;
         if (DataContext is FavoritesViewModel selVm) selVm.CtrlSelectedItems = new List<FavoriteItem>();
 
         base.OnDetachedFromVisualTree(e);
