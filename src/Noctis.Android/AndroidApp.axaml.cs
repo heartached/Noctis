@@ -55,10 +55,6 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
     public override void Initialize()
     {
-        // First thing after the platform set the dispatcher up: until then every timer due
-        // within ~30 ms spins the main thread at a full core (see DispatcherClock).
-        if (!DispatcherClock.Align(Dispatcher.UIThread))
-            ALog.Warn(LogTag, "Dispatcher clock not aligned: this Avalonia renamed its fields");
         AvaloniaXamlLoader.Load(this);
     }
 
