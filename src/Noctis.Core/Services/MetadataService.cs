@@ -65,6 +65,17 @@ public class MetadataService : IMetadataService
         ".dsf", ".dff"
     };
 
+    /// <summary>
+    /// The copy a tag write is made on before it is renamed over the song
+    /// (<see cref="SaveTagsAtomicallyOrThrow"/>): ".noctis-&lt;guid&gt;.mp3" beside it. It has an
+    /// audio extension, so the folder watcher imported it as a new song (the lyrics and
+    /// ReplayGain auto runs had to filter it back out) and read its tags and picture while
+    /// TagLib was still rewriting it (GitHub #224). It is never a library file.
+    /// </summary>
+    public static bool IsOwnTempFile(string? path)
+        => !string.IsNullOrEmpty(path)
+           && Path.GetFileName(path).StartsWith(".noctis-", StringComparison.OrdinalIgnoreCase);
+
     public Track? ReadTrackMetadata(string filePath) => ReadTrackMetadata(filePath, out _);
 
     /// <summary>

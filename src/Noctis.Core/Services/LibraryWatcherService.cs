@@ -106,7 +106,7 @@ public sealed class LibraryWatcherService : ILibraryWatcherService
     }
 
     private static bool IsAudio(string path)
-        => MetadataService.SupportedExtensions.Contains(Path.GetExtension(path));
+        => MetadataService.SupportedExtensions.Contains(Path.GetExtension(path)) && !MetadataService.IsOwnTempFile(path);
 
     // Paths the app itself is about to move, mapped to the UTC tick at which the
     // suppression expires. See ILibraryWatcherService.SuppressPaths.
