@@ -4532,6 +4532,21 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Hide Lyrics on the Lyrics page (Discord, f7uh): also in the island's Lyrics Display
+                 menu, which is out of reach while the island is hidden in full screen. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsPageHideLyrics}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsPageHideLyricsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsPageHideLyrics}"
+                                          IsChecked="{Binding LyricsPageHideLyrics}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Minimum line opacity: floors the lyrics page's distance ramp so every line
                  stays visible and clickable (jump anywhere in the song from its lyrics). -->
             <Border Classes="setting-row">
