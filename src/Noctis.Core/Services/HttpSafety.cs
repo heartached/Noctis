@@ -17,6 +17,30 @@ public static class HttpSafety
     /// <summary>Cap for downloaded artwork (high-res covers run 1–5 MB).</summary>
     public const long MaxImageBytes = 24 * 1024 * 1024;
 
+    /// <summary>
+    /// <see cref="HttpResponseMessage.EnsureSuccessStatusCode"/>, except that a busy answer (429 / 503)
+    /// throws <see cref="BusyResponseException"/> carrying the server's Retry-After (GitHub #228).
+    /// </summary>
+    public static void EnsureSuccess(HttpResponseMessage response)
+    {
+        if (response.StatusCode is System.Net.HttpStatusCode.TooManyRequests or System.Net.HttpStatusCode.ServiceUnavailable)
+            throw new BusyResponseException($"Busy ({(int)response.StatusCode})", response.StatusCode, RetryAfter(response));
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>The response's Retry-After as a wait from now (seconds or a date), or null.</summary>
+    public static TimeSpan? RetryAfter(HttpResponseMessage response, DateTimeOffset? now = null)
+    {
+        var header = response.Headers.RetryAfter;
+        if (header?.Delta is { } delta) return delta < TimeSpan.Zero ? TimeSpan.Zero : delta;
+        if (header?.Date is { } date)
+        {
+            var wait = date - (now ?? DateTimeOffset.UtcNow);
+            return wait < TimeSpan.Zero ? TimeSpan.Zero : wait;
+        }
+        return null;
+    }
+
     /// <summary>Reads the response body as a string, failing once <paramref name="maxBytes"/> is exceeded.</summary>
     public static async Task<string> ReadStringBoundedAsync(HttpContent content, long maxBytes = MaxTextBytes, CancellationToken ct = default)
     {

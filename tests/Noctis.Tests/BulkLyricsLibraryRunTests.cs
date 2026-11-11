@@ -52,8 +52,59 @@ public class BulkLyricsLibraryRunTests
         Assert.Equal("Find lyrics for your library (2 songs)", vm.TitleText);
         Assert.True(vm.CanChangeOptions);
         await vm.StartCommand.ExecuteAsync(null);
-        Assert.Equal(new LyricsBulkOptions(Upgrade: true, Recheck: true), service.Options);
+        Assert.Equal(new LyricsBulkOptions(Upgrade: true, Recheck: true, RetryBusy: true), service.Options);
         Assert.False(vm.CanChangeOptions);
+    }
+
+    // ── GitHub #232: search as another artist name ──
+
+    [AvaloniaFact]
+    public async Task OneArtist_GetsASearchAsField_PrefilledWithItsName_AndAChangedNameIsPassedOn()
+    {
+        var service = new Service();
+        var tracks = new[]
+        {
+            new Track { Title = "a", Artist = "Tim Neuhaus & The Cabinet" },
+            new Track { Title = "b", Artist = "Tim Neuhaus & The Cabinet " },
+        };
+        var vm = new BulkLyricsViewModel(tracks, service, remove: false);
+        var row = Assert.Single(vm.ArtistNames);
+        Assert.True(vm.CanRenameArtists);
+        Assert.Equal(("Tim Neuhaus & The Cabinet", "Tim Neuhaus & The Cabinet"), (row.Original, row.SearchAs));
+
+        row.SearchAs = "Tim Neuhaus ";
+        await vm.StartCommand.ExecuteAsync(null);
+
+        var map = service.Options!.ArtistOverrides!;
+        Assert.Equal("Tim Neuhaus", map["Tim Neuhaus & The Cabinet"]);
+        Assert.Equal("Tim Neuhaus", service.Options.LookupArtist(tracks[1]));
+        Assert.Equal("Tim Neuhaus & The Cabinet", tracks[0].Artist); // the tags stay as they are
+    }
+
+    [AvaloniaFact]
+    public async Task UnchangedNames_PassNoOverrides()
+    {
+        var service = new Service();
+        var vm = new BulkLyricsViewModel(new[] { new Track { Title = "a", Artist = "GusGus" } }, service, remove: false);
+        await vm.StartCommand.ExecuteAsync(null);
+        Assert.Null(service.Options!.ArtistOverrides);
+    }
+
+    [AvaloniaFact]
+    public void SeveralArtists_OneRowEach_UpToTheLimit_ThenAHint_AndNoneForTheLibrary()
+    {
+        var four = new[] { "A", "B", "a", "C", "D", "Unknown Artist" }.Select(n => new Track { Title = "t", Artist = n }).ToArray();
+        var vm = new BulkLyricsViewModel(four, new Service(), remove: false);
+        Assert.Equal(new[] { "A", "B", "C", "D" }, vm.ArtistNames.Select(a => a.Original));
+        Assert.False(vm.TooManyArtists);
+
+        var many = Enumerable.Range(0, BulkLyricsViewModel.MaxArtistNames + 1).Select(i => new Track { Title = "t", Artist = "Artist " + i }).ToArray();
+        var crowded = new BulkLyricsViewModel(many, new Service(), remove: false);
+        Assert.False(crowded.CanRenameArtists);
+        Assert.True(crowded.TooManyArtists);
+
+        Assert.Empty(new BulkLyricsViewModel(four, new Service(), remove: false, library: true).ArtistNames);
+        Assert.Empty(new BulkLyricsViewModel(four, new Service(), remove: true).ArtistNames);
     }
 
     [AvaloniaFact]

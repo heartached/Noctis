@@ -88,6 +88,27 @@ public class ToolDialogVirtualizationTests
         AssertVirtualized(RealizedRows(new BulkLyricsDialog(vm), vm.Rows));
     }
 
+    /// <summary>GitHub #232: the selection's artist shows with an editable "search as" name.</summary>
+    [AvaloniaFact]
+    public void BulkLyrics_ShowsAnEditableSearchAsName_ForTheSelectionsArtist()
+    {
+        EnsureAppResources();
+        var vm = new BulkLyricsViewModel(Tracks(), new StubLyricsBulk(), remove: false);
+        var window = new BulkLyricsDialog(vm) { Width = 1000, Height = 800 };
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var box = window.GetVisualDescendants().OfType<TextBox>().Single(t => t.DataContext is BulkLyricsViewModel.ArtistName);
+            Assert.True(box.IsEffectivelyVisible);
+            Assert.True(box.IsEffectivelyEnabled);
+            Assert.Equal("Artist", box.Text);
+            box.Text = "Another Name";
+            Assert.Equal("Another Name", vm.ArtistNames[0].SearchAs);
+        }
+        finally { window.Close(); }
+    }
+
     private sealed class StubCovers : IAnimatedCoverService
     {
         public string? Resolve(Track track) => null;

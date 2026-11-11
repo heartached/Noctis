@@ -162,6 +162,52 @@ public class LyricsAutoDownloadTests : IDisposable
         Assert.True(rig.Vm.ShowSearchButton);
     }
 
+    /// <summary>
+    /// GitHub #221: after the automatic search came back empty, island ⋯ › Lyrics › Search Lyrics
+    /// ran the same empty search again (nothing appeared); it opens the Search Lyrics dialog, as
+    /// the island's search button does.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task MenuSearchLyrics_AfterAnEmptyAutomaticSearch_OpensTheDialogLikeTheIslandButton()
+    {
+        var rig = Mount(new StubLrcLib());
+        var dialogs = 0;
+        rig.Vm.ShowLyricsSearchDialog = _ => { dialogs++; return Task.CompletedTask; };
+        rig.Vm.SetLyricsSurfaceVisible(true);
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+        Assert.Equal(1, rig.LrcLib.Calls);
+        Assert.True(rig.Vm.ShowSearchButton);
+
+        rig.Vm.SearchLyricsForTrack(rig.Track); // the menu entry
+        await PumpUntilAsync(() => dialogs > 0);
+        await SettleAsync(rig.Vm);
+
+        Assert.Equal(1, dialogs);
+        Assert.Equal(2, rig.LrcLib.Calls); // the dialog's own search; the page did not repeat its empty one
+
+        rig.Vm.OpenLyricsSearchCommand.Execute(null); // the island button
+        await PumpUntilAsync(() => dialogs > 1);
+        Assert.Equal(2, dialogs);
+    }
+
+    [AvaloniaFact]
+    public async Task MenuSearchLyrics_SongNotYetSearched_SearchesOnThePage()
+    {
+        var rig = Mount(new StubLrcLib { GetImpl = () => Task.FromResult<LrcLibResult?>(Result(synced: Lrc)) }, autoDownload: false);
+        var dialogs = 0;
+        rig.Vm.ShowLyricsSearchDialog = _ => { dialogs++; return Task.CompletedTask; };
+        rig.Vm.SetLyricsSurfaceVisible(true);
+        rig.Vm.EnsureLyricsForCurrentTrack();
+        await SettleAsync(rig.Vm);
+
+        rig.Vm.SearchLyricsForTrack(rig.Track);
+        await PumpUntilAsync(() => rig.Vm.LyricsSourceName == "LRCLIB");
+
+        Assert.Equal(1, rig.LrcLib.Calls);
+        Assert.Equal(0, dialogs);
+    }
+
     [AvaloniaFact]
     public async Task SettingOff_NoSearch()
     {

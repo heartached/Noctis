@@ -99,7 +99,7 @@ public class KugouLyricsService : IKugouLyricsService
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Add("User-Agent", UserAgent);
         using var response = await _http.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpSafety.EnsureSuccess(response);
         return await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
     }
 

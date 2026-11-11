@@ -117,7 +117,7 @@ public partial class YouTubeMusicLyricsService : IYouTubeMusicLyricsService
             Content = new StringContent(JsonSerializer.Serialize(fields), Encoding.UTF8, "application/json"),
         };
         using var response = await _http.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpSafety.EnsureSuccess(response);
         return await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
     }
 

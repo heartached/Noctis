@@ -68,7 +68,7 @@ public class LrcLibService : ILrcLibService
                 return null;
             }
 
-            response.EnsureSuccessStatusCode();
+            HttpSafety.EnsureSuccess(response);
             var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             var result = JsonSerializer.Deserialize<LrcLibResult>(json);
 
@@ -109,7 +109,7 @@ public class LrcLibService : ILrcLibService
                 return empty;
             }
 
-            response.EnsureSuccessStatusCode();
+            HttpSafety.EnsureSuccess(response);
             var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             var results = JsonSerializer.Deserialize<List<LrcLibResult>>(json) ?? new List<LrcLibResult>();
 
