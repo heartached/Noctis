@@ -210,6 +210,10 @@ public class LibraryFilterScrollResetTests
 
         var resets = 0;
         vm.FilteredAlbumRows.CollectionChanged += (_, _) => resets++;
+        // A reload that rebuilt every album (a reload of the very same albums leaves the
+        // grid alone altogether, GitHub #225).
+        for (var i = 0; i < albums.Count; i++)
+            albums[i] = new Album { Id = albums[i].Id, Name = albums[i].Name, Artist = "Artist", Year = 2020, Tracks = new List<Track>() };
         lib.RaiseLibraryUpdated();
         await PumpUntil(() => resets > 0);
 
