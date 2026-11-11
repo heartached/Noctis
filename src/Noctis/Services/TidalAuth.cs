@@ -176,6 +176,7 @@ public sealed class TidalAuthService : ITidalAuthService
 
     private readonly HttpClient _http;
     private readonly string _storePath;
+    private readonly string _dataDirectory;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private string? _refreshToken;
     private string? _accessToken;
@@ -184,6 +185,7 @@ public sealed class TidalAuthService : ITidalAuthService
     public TidalAuthService(HttpClient http, string dataDirectory)
     {
         _http = http;
+        _dataDirectory = dataDirectory;
         _storePath = Path.Combine(dataDirectory, "tidal-auth.json");
         _refreshToken = Load();
     }
@@ -375,18 +377,45 @@ public sealed class TidalAuthService : ITidalAuthService
     {
         _accessToken = null;
         _refreshToken = null;
-        try { if (File.Exists(_storePath)) File.Delete(_storePath); }
+        try
+        {
+            ComputerStore.UpdateSlot(_dataDirectory, SecretProtector.Current.ComputerId,
+                slot => ComputerStore.WriteSecret(slot, SlotField, "", SecretProtector.Current));
+            // Another computer's sign-in (GitHub #230) stays for that computer.
+            if (File.Exists(_storePath) && !HoldsOtherComputersToken()) File.Delete(_storePath);
+        }
         catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.Error, "Tidal.Store", ex.Message); }
+    }
+
+    /// <summary>This computer's copy in computers.json (GitHub #230): tidal-auth.json holds one
+    /// copy only, and with the data folder shared by two computers it may be the other one's.</summary>
+    private const string SlotField = "tidalRefreshToken";
+
+    private string? ReadStoredToken()
+    {
+        if (!File.Exists(_storePath)) return null;
+        using var doc = JsonDocument.Parse(File.ReadAllText(_storePath));
+        return doc.RootElement.TryGetProperty("refreshToken", out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+    }
+
+    /// <summary>tidal-auth.json holds a copy another computer or Windows user protected.</summary>
+    private bool HoldsOtherComputersToken()
+    {
+        try
+        {
+            var stored = ReadStoredToken() ?? string.Empty;
+            return stored.StartsWith("enc:dpapi:", StringComparison.Ordinal) && PersistenceService.UnprotectSecret(stored).Length == 0;
+        }
+        catch { return false; }
     }
 
     private string? Load()
     {
         try
         {
-            if (!File.Exists(_storePath)) return null;
-            using var doc = JsonDocument.Parse(File.ReadAllText(_storePath));
-            if (!doc.RootElement.TryGetProperty("refreshToken", out var v) || v.ValueKind != JsonValueKind.String) return null;
-            var raw = PersistenceService.UnprotectSecret(v.GetString() ?? string.Empty);
+            var raw = PersistenceService.UnprotectSecret(ReadStoredToken() ?? string.Empty);
+            if (string.IsNullOrEmpty(raw))
+                raw = ComputerStore.ReadSecret(ComputerStore.ReadSlot(_dataDirectory, SecretProtector.Current.ComputerId), SlotField, SecretProtector.Current);
             return string.IsNullOrEmpty(raw) ? null : raw;
         }
         catch (Exception ex)
@@ -401,7 +430,12 @@ public sealed class TidalAuthService : ITidalAuthService
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_storePath)!);
-            var json = JsonSerializer.Serialize(new { refreshToken = PersistenceService.ProtectSecret(refreshToken) });
+            string stored = "";
+            ComputerStore.UpdateSlot(_dataDirectory, SecretProtector.Current.ComputerId,
+                slot => stored = ComputerStore.WriteSecret(slot, SlotField, refreshToken, SecretProtector.Current));
+            // The other computer's copy stays where older Noctis reads it; this one's is in its slot.
+            if (HoldsOtherComputersToken()) return;
+            var json = JsonSerializer.Serialize(new { refreshToken = stored.Length > 0 ? stored : PersistenceService.ProtectSecret(refreshToken) });
             File.WriteAllText(_storePath, json);
         }
         catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.Error, "Tidal.Store", ex.Message); }

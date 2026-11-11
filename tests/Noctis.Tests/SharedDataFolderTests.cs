@@ -194,6 +194,28 @@ public class SharedDataFolderTests : IDisposable
         Assert.Equal("pw-B", onB.SourceConnections[0].TokenOrPassword);
     }
 
+    [Fact]
+    public void ServerCertificate_OfAnotherComputer_IsKept_AndThisOneKeepsItsOwn()
+    {
+        if (!OperatingSystem.IsWindows()) return; // the password file is only protected on Windows
+
+        var dir = Path.Combine(_root, "server");
+        Directory.CreateDirectory(dir);
+        var otherPfx = new byte[] { 1, 2, 3 };
+        const string otherKey = "enc:dpapi:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        File.WriteAllBytes(Path.Combine(dir, Noctis.Services.Server.ServerCertificate.FileName), otherPfx);
+        File.WriteAllText(Path.Combine(dir, Noctis.Services.Server.ServerCertificate.KeyFileName), otherKey);
+
+        using var first = Noctis.Services.Server.ServerCertificate.LoadOrCreate(dir);
+        using var second = Noctis.Services.Server.ServerCertificate.LoadOrCreate(dir);
+
+        // Same certificate on every start here (phones paired with this computer stay paired) …
+        Assert.Equal(first.Thumbprint, second.Thumbprint);
+        // … and the other computer's pair is left exactly as it was.
+        Assert.Equal(otherPfx, File.ReadAllBytes(Path.Combine(dir, Noctis.Services.Server.ServerCertificate.FileName)));
+        Assert.Equal(otherKey, File.ReadAllText(Path.Combine(dir, Noctis.Services.Server.ServerCertificate.KeyFileName)));
+    }
+
     // ── Part 3: settings that belong to the computer ──
 
     [Fact]
