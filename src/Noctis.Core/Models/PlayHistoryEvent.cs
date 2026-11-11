@@ -8,6 +8,11 @@ namespace Noctis.Models;
 /// </summary>
 public class PlayHistoryEvent
 {
+    /// <summary>Members a newer Noctis saved that this build does not know, written back
+    /// unchanged so an older build sharing the data folder does not erase them (GitHub #230).</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     public Guid TrackId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Artist { get; set; } = string.Empty;

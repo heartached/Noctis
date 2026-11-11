@@ -88,7 +88,7 @@ public class PersistenceService : IPersistenceService
     /// Best-effort chmod to owner-only (0700 for directories, 0600 for files) on Unix.
     /// No-op on Windows, where ACL inheritance from %APPDATA% already restricts access.
     /// </summary>
-    private static void TryRestrictToOwner(string path, bool isDirectory)
+    internal static void TryRestrictToOwner(string path, bool isDirectory)
     {
         if (OperatingSystem.IsWindows()) return;
         try
@@ -134,7 +134,14 @@ public class PersistenceService : IPersistenceService
         // host would read them as an install that predates the switch and approve and start
         // every plugin still in the plugins folder.
         var settings = loaded ?? new AppSettings { CommunityPluginsEnabled = false };
+        // GitHub #230: this computer's own slot (its window places, output device, interface
+        // size and sign-ins) wins over what another computer sharing the folder saved last.
+        var slot = ComputerStore.ReadSlot(DataDirectory, Protector.ComputerId);
+        ApplyComputerSettings(settings, slot);
         settings.ClampToValidRanges();
+        settings.OpenedFromNewerVersion = !string.IsNullOrEmpty(RunningVersion) && IsNewerVersion(settings.WrittenByVersion, RunningVersion)
+            ? settings.WrittenByVersion
+            : null;
         // Decrypt at-rest-protected credentials (see SaveSettingsAsync).
         // Legacy plaintext values pass through unchanged.
         // GitHub #197: copies this computer cannot decrypt (another PC or Windows user shares the
@@ -142,10 +149,10 @@ public class PersistenceService : IPersistenceService
         // the empty value the field reads here — which used to sign the other PC out as well.
         var stored = settings.OtherComputerSecrets;
         settings.OtherComputerSecrets = null;
-        settings.LastFmSessionKey = UnprotectOrKeep(settings, stored, LastFmSessionKeyField, settings.LastFmSessionKey);
-        settings.ListenBrainzToken = UnprotectOrKeep(settings, stored, ListenBrainzTokenField, settings.ListenBrainzToken);
+        settings.LastFmSessionKey = UnprotectOrKeep(settings, stored, LastFmSessionKeyField, settings.LastFmSessionKey, slot);
+        settings.ListenBrainzToken = UnprotectOrKeep(settings, stored, ListenBrainzTokenField, settings.ListenBrainzToken, slot);
         foreach (var conn in settings.SourceConnections)
-            conn.TokenOrPassword = UnprotectOrKeep(settings, stored, SourceConnectionField(conn.Id), conn.TokenOrPassword);
+            conn.TokenOrPassword = UnprotectOrKeep(settings, stored, SourceConnectionField(conn.Id), conn.TokenOrPassword, slot);
         // Full paths into the data folder: after a data folder move (GitHub #165), or with the
         // folder copied from another computer, they still name the old place.
         settings.ProfileAvatarPath = Helpers.DataLocation.Rebase(settings.ProfileAvatarPath, DataDirectory, "profile") ?? "";
@@ -163,19 +170,7 @@ public class PersistenceService : IPersistenceService
     /// </summary>
     public static bool ReadBoolSettingAtLaunch(string dataDirectory, string propertyName)
     {
-        try
-        {
-            var path = Path.Combine(dataDirectory, "settings.json");
-            if (!File.Exists(path)) return false;
-            using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
-            return doc.RootElement.ValueKind == JsonValueKind.Object &&
-                   doc.RootElement.TryGetProperty(JsonNamingPolicy.CamelCase.ConvertName(propertyName), out var value) &&
-                   value.ValueKind == JsonValueKind.True;
-        }
-        catch
-        {
-            return false;
-        }
+        return TryReadSettingAtLaunch(dataDirectory, propertyName, out var value) && value.ValueKind == JsonValueKind.True;
     }
 
     /// <summary>
@@ -185,21 +180,9 @@ public class PersistenceService : IPersistenceService
     /// </summary>
     public static string ReadStringSettingAtLaunch(string dataDirectory, string propertyName)
     {
-        try
-        {
-            var path = Path.Combine(dataDirectory, "settings.json");
-            if (!File.Exists(path)) return "";
-            using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
-            return doc.RootElement.ValueKind == JsonValueKind.Object &&
-                   doc.RootElement.TryGetProperty(JsonNamingPolicy.CamelCase.ConvertName(propertyName), out var value) &&
-                   value.ValueKind == JsonValueKind.String
-                ? value.GetString() ?? ""
-                : "";
-        }
-        catch
-        {
-            return "";
-        }
+        return TryReadSettingAtLaunch(dataDirectory, propertyName, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? ""
+            : "";
     }
 
     /// <summary>
@@ -209,20 +192,42 @@ public class PersistenceService : IPersistenceService
     /// </summary>
     public static int ReadIntSettingAtLaunch(string dataDirectory, string propertyName, int fallback)
     {
+        return TryReadSettingAtLaunch(dataDirectory, propertyName, out var value) &&
+               value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)
+            ? number
+            : fallback;
+    }
+
+    /// <summary>
+    /// The launch readers' shared lookup: this computer's slot in computers.json for the settings
+    /// kept per computer (GitHub #230: the output device and interface size of the computer that
+    /// is starting, not of the one that saved the shared folder last), else settings.json.
+    /// Missing files, a missing key or a damaged file read as not found.
+    /// </summary>
+    private static bool TryReadSettingAtLaunch(string dataDirectory, string propertyName, out JsonElement value)
+    {
+        value = default;
+        var key = JsonNamingPolicy.CamelCase.ConvertName(propertyName);
         try
         {
+            if (ComputerLocalSettings.Contains(propertyName) &&
+                ComputerStore.ReadSlot(dataDirectory, SecretProtector.Current.ComputerId)?[ComputerStore.SettingsKey]?[key] is JsonValue local)
+            {
+                value = JsonSerializer.SerializeToElement(local);
+                return true;
+            }
+
             var path = Path.Combine(dataDirectory, "settings.json");
-            if (!File.Exists(path)) return fallback;
+            if (!File.Exists(path)) return false;
             using var doc = JsonDocument.Parse(File.ReadAllBytes(path));
-            return doc.RootElement.ValueKind == JsonValueKind.Object &&
-                   doc.RootElement.TryGetProperty(JsonNamingPolicy.CamelCase.ConvertName(propertyName), out var value) &&
-                   value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number)
-                ? number
-                : fallback;
+            if (doc.RootElement.ValueKind != JsonValueKind.Object || !doc.RootElement.TryGetProperty(key, out var found))
+                return false;
+            value = found.Clone();
+            return true;
         }
         catch
         {
-            return fallback;
+            return false;
         }
     }
 
@@ -298,11 +303,14 @@ public class PersistenceService : IPersistenceService
         var node = JsonSerializer.SerializeToNode(settings, JsonOptions);
         if (node is JsonObject obj)
         {
+            // GitHub #230: this computer's sign-ins and its own settings go to its slot in
+            // computers.json first, where no other computer (nor an older Noctis) touches them.
+            var ownCopies = SaveComputerSlot(settings, obj);
             // Rebuilt below from what each field keeps for the other computers.
             obj.Remove("otherComputerSecrets");
             var others = new JsonObject();
-            ProtectField(obj, LastFmSessionKeyField, settings, LastFmSessionKeyField, others);
-            ProtectField(obj, ListenBrainzTokenField, settings, ListenBrainzTokenField, others);
+            ProtectField(obj, LastFmSessionKeyField, settings, LastFmSessionKeyField, others, ownCopies);
+            ProtectField(obj, ListenBrainzTokenField, settings, ListenBrainzTokenField, others, ownCopies);
             // Remote-source (Navidrome/WebDAV/SMB) passwords get the same
             // at-rest protection as the scrobbler tokens.
             if (obj["sourceConnections"] is System.Text.Json.Nodes.JsonArray connections)
@@ -311,8 +319,12 @@ public class PersistenceService : IPersistenceService
                         ProtectField(connObj, "tokenOrPassword", settings,
                             connObj["id"] is JsonValue id && id.TryGetValue<Guid>(out var connId)
                                 ? SourceConnectionField(connId)
-                                : null, others);
+                                : null, others, ownCopies);
             if (others.Count > 0) obj["otherComputerSecrets"] = others;
+            // The newest Noctis that has saved this folder: an older one opening it can tell
+            // that some settings here are not its own (they are kept, see AppSettings.ExtensionData).
+            var newest = IsNewerVersion(RunningVersion, settings.WrittenByVersion) ? RunningVersion : settings.WrittenByVersion;
+            if (!string.IsNullOrEmpty(newest)) obj["writtenByVersion"] = newest;
         }
         await SaveJsonAsync(SettingsPath, node);
     }
@@ -425,9 +437,18 @@ public class PersistenceService : IPersistenceService
 
     // ── Playlists ─────────────────────────────────────────────
 
+    /// <summary>playlists.json exists but could not be read this session (damaged, or a value a
+    /// newer Noctis wrote that this one cannot parse): it is never overwritten until a restart.</summary>
+    private bool _playlistsLoadFailed;
+
     public async Task<List<Playlist>> LoadPlaylistsAsync()
     {
-        var playlists = await LoadJsonAsync<List<Playlist>>(PlaylistsPath) ?? new List<Playlist>();
+        var (loaded, outcome) = await LoadJsonWithOutcomeAsync<List<Playlist>>(PlaylistsPath);
+        // The empty list handed back here used to be saved over the unreadable file by the next
+        // playlist change, destroying every playlist (with a shared data folder: the newer
+        // computer's too). The file stays as it is instead.
+        _playlistsLoadFailed = outcome == LoadOutcome.Corrupt;
+        var playlists = loaded ?? new List<Playlist>();
         // Custom covers are saved as full paths into the data folder (see LoadSettingsAsync).
         foreach (var p in playlists)
             if (p is not null) p.CoverArtPath = Helpers.DataLocation.Rebase(p.CoverArtPath, DataDirectory, "playlist_covers");
@@ -436,6 +457,11 @@ public class PersistenceService : IPersistenceService
 
     public async Task SavePlaylistsAsync(List<Playlist> playlists)
     {
+        if (_playlistsLoadFailed)
+        {
+            DebugLog.Write("Persistence", "Refusing to save playlists.json — the existing file failed to load this session.");
+            return;
+        }
         await SaveJsonAsync(PlaylistsPath, playlists);
     }
 
@@ -560,13 +586,151 @@ public class PersistenceService : IPersistenceService
     /// <summary>Copies kept per field for other computers; older ones beyond this are let go.</summary>
     internal const int MaxOtherComputerSecrets = 4;
 
+    /// <summary>Who this computer is and how it protects secrets (GitHub #230). Tests act as
+    /// other computers sharing one data folder by setting their own.</summary>
+    internal SecretProtector Protector { get; init; } = SecretProtector.Current;
+
+    /// <summary>The Noctis version that saves, stamped into settings.json (GitHub #230).</summary>
+    internal string? RunningVersion { get; init; } = DefaultRunningVersion;
+
+    private static readonly string? DefaultRunningVersion =
+        System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3);
+
+    /// <summary>True when <paramref name="candidate"/> is a later version than <paramref name="baseline"/>
+    /// (both "1.7.0"-style; a suffix such as "-beta" or "+sha" is ignored). Unreadable reads as not newer.</summary>
+    internal static bool IsNewerVersion(string? candidate, string? baseline)
+    {
+        if (!TryParseVersion(candidate, out var c)) return false;
+        return !TryParseVersion(baseline, out var b) || c > b;
+
+        static bool TryParseVersion(string? text, out Version version)
+        {
+            version = new Version();
+            if (string.IsNullOrWhiteSpace(text)) return false;
+            var core = text.Trim().TrimStart('v', 'V');
+            var cut = core.IndexOfAny(new[] { '-', '+', ' ' });
+            if (cut >= 0) core = core[..cut];
+            if (!Version.TryParse(core, out var parsed)) return false;
+            version = new Version(parsed.Major, parsed.Minor, Math.Max(parsed.Build, 0));
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Settings that belong to the computer, not to the library (GitHub #230): with one data
+    /// folder used from two computers each save used to put the other computer's window back
+    /// where this one left it, pick an output device that computer does not have, and size its
+    /// interface for this screen. Each computer keeps its own in computers.json; settings.json
+    /// still holds the last saved values for computers without a slot and for older Noctis.
+    /// </summary>
+    internal static readonly string[] ComputerLocalSettings =
+    {
+        nameof(AppSettings.WindowWidth),
+        nameof(AppSettings.WindowHeight),
+        nameof(AppSettings.WindowX),
+        nameof(AppSettings.WindowY),
+        nameof(AppSettings.MainWindowState),
+        nameof(AppSettings.MiniPlayerWidth),
+        nameof(AppSettings.MiniPlayerHeight),
+        nameof(AppSettings.MiniPlayerX),
+        nameof(AppSettings.MiniPlayerY),
+        nameof(AppSettings.AudioOutputDeviceId),
+        // Both follow the output device: exclusive mode opens it directly, and multichannel
+        // output needs that computer's speakers.
+        nameof(AppSettings.ExclusiveAudioEnabled),
+        nameof(AppSettings.MultichannelOutput),
+        nameof(AppSettings.UiScalePercent),
+        // Programs on this computer's disks, and its graphics card.
+        nameof(AppSettings.FfmpegPath),
+        nameof(AppSettings.YtDlpPath),
+        nameof(AppSettings.ExternalOpenAppPath),
+        nameof(AppSettings.LyricsStudioUseGpu),
+    };
+
+    private static void ApplyComputerSettings(AppSettings settings, JsonObject? slot)
+    {
+        if (slot?[ComputerStore.SettingsKey] is not JsonObject local) return;
+        foreach (var name in ComputerLocalSettings)
+        {
+            if (!local.TryGetPropertyValue(JsonNamingPolicy.CamelCase.ConvertName(name), out var node)) continue;
+            var prop = typeof(AppSettings).GetProperty(name)!;
+            try
+            {
+                if (node is null)
+                {
+                    if (Nullable.GetUnderlyingType(prop.PropertyType) != null) prop.SetValue(settings, null);
+                    continue;
+                }
+                prop.SetValue(settings, node.Deserialize(prop.PropertyType, JsonOptions));
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or ArgumentException or FormatException)
+            {
+                // One damaged value keeps the shared one; it is rewritten on the next save.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Writes this computer's slot in computers.json from the settings being saved: its own
+    /// settings (<see cref="ComputerLocalSettings"/>) and its own sign-ins. Returns the protected
+    /// copy stored for each sign-in, so settings.json can carry the same copy. Never touches
+    /// another computer's slot. A failure here must not fail the settings save itself.
+    /// </summary>
+    private Dictionary<string, string> SaveComputerSlot(AppSettings settings, JsonObject serialized)
+    {
+        var ownCopies = new Dictionary<string, string>(StringComparer.Ordinal);
+        var plain = new List<(string Field, string Value)>
+        {
+            (LastFmSessionKeyField, settings.LastFmSessionKey ?? ""),
+            (ListenBrainzTokenField, settings.ListenBrainzToken ?? ""),
+        };
+        foreach (var conn in settings.SourceConnections)
+            if (conn != null) plain.Add((SourceConnectionField(conn.Id), conn.TokenOrPassword ?? ""));
+
+        try
+        {
+            ComputerStore.UpdateSlot(DataDirectory, Protector.ComputerId, slot =>
+            {
+                // The sign-ins settings.json owns are rebuilt from this save (a removed
+                // connection's password goes with it); others in the slot (TIDAL) stay.
+                if (slot[ComputerStore.SecretsKey] is JsonObject secrets)
+                    foreach (var key in secrets.Select(p => p.Key).Where(IsSettingsSecretField).ToList())
+                        if (!plain.Any(p => p.Field == key)) secrets.Remove(key);
+                foreach (var (field, value) in plain)
+                {
+                    var stored = ComputerStore.WriteSecret(slot, field, value, Protector);
+                    if (stored.Length > 0) ownCopies[field] = stored;
+                }
+
+                var local = new JsonObject();
+                foreach (var name in ComputerLocalSettings)
+                {
+                    var key = JsonNamingPolicy.CamelCase.ConvertName(name);
+                    local[key] = serialized[key]?.DeepClone();
+                }
+                slot[ComputerStore.SettingsKey] = local;
+            });
+        }
+        catch (Exception ex)
+        {
+            ownCopies.Clear();
+            DebugLog.Write("Persistence", $"Could not save this computer's part of {ComputerStore.FileName}: {ex.Message}");
+        }
+        return ownCopies;
+
+        static bool IsSettingsSecretField(string key) =>
+            key == LastFmSessionKeyField || key == ListenBrainzTokenField ||
+            key.StartsWith("sourceConnection:", StringComparison.Ordinal);
+    }
+
     /// <summary>
     /// The value of <paramref name="field"/> on this computer: the field itself, else the first
     /// copy from <paramref name="stored"/> (the other computers' copies, GitHub #197) this computer
-    /// can decrypt. Protected copies it cannot decrypt read as nothing here and are remembered in
+    /// can decrypt, else this computer's own copy in computers.json (GitHub #230). Protected copies
+    /// it cannot decrypt read as nothing here and are remembered in
     /// <see cref="AppSettings.OtherComputerSecrets"/>, so the save puts them back untouched.
     /// </summary>
-    private static string UnprotectOrKeep(AppSettings settings, Dictionary<string, List<string>>? stored, string field, string value)
+    private string UnprotectOrKeep(AppSettings settings, Dictionary<string, List<string>>? stored, string field, string value, JsonObject? slot)
     {
         var candidates = new List<string>();
         if (!string.IsNullOrEmpty(value)) candidates.Add(value);
@@ -577,7 +741,7 @@ public class PersistenceService : IPersistenceService
         List<string>? unreadable = null;
         foreach (var candidate in candidates.Distinct(StringComparer.Ordinal))
         {
-            var raw = UnprotectSecret(candidate);
+            var raw = Protector.Unprotect(candidate);
             if (raw.Length > 0)
             {
                 if (result.Length == 0) result = raw;
@@ -586,6 +750,12 @@ public class PersistenceService : IPersistenceService
             if (candidate.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
                 (unreadable ??= new()).Add(candidate);
         }
+
+        // GitHub #230: settings.json may hold another computer's copy (it is left there for
+        // Noctis 1.6.7-1.6.9, which look nowhere else) or none at all after an older Noctis
+        // saved; this computer's own copy is in its slot.
+        if (result.Length == 0)
+            result = ComputerStore.ReadSecret(slot, field, Protector);
 
         if (unreadable != null)
         {
@@ -604,23 +774,34 @@ public class PersistenceService : IPersistenceService
     /// on this computer (never signed in here) the first copy kept for another computer goes back
     /// into the field unchanged, instead of the empty value that signed that computer out; the
     /// rest of the kept copies go to <paramref name="others"/> under <paramref name="field"/>.
+    /// GitHub #230: the same happens when this computer IS signed in but its own copy is safe in
+    /// computers.json (<paramref name="ownCopies"/>): the field is the only place Noctis 1.6.7-1.6.9
+    /// look, so leaving the other computer's copy there keeps an older Noctis on that computer
+    /// signed in too, instead of handing it this computer's copy it cannot decrypt.
     /// </summary>
-    private static void ProtectField(JsonObject obj, string propertyName, AppSettings settings, string? field, JsonObject others)
+    private void ProtectField(JsonObject obj, string propertyName, AppSettings settings, string? field, JsonObject others,
+        IReadOnlyDictionary<string, string> ownCopies)
     {
         if (obj[propertyName] is not JsonValue value || !value.TryGetValue<string>(out var raw)) return;
 
         var kept = field != null && settings.OtherComputerSecrets is { } map && map.TryGetValue(field, out var list) && list != null
             ? list.Where(b => !string.IsNullOrEmpty(b)).Distinct(StringComparer.Ordinal).ToList()
             : new List<string>();
+        string? ownCopy = null;
+        var ownCopySaved = !string.IsNullOrEmpty(raw) && field != null && ownCopies.TryGetValue(field, out ownCopy);
 
-        if (string.IsNullOrEmpty(raw) && kept.Count > 0)
+        if (kept.Count > 0 && (string.IsNullOrEmpty(raw) || ownCopySaved))
         {
             obj[propertyName] = kept[0];
             kept.RemoveAt(0);
         }
+        else if (ownCopySaved)
+        {
+            obj[propertyName] = ownCopy;
+        }
         else
         {
-            var protectedValue = ProtectSecret(raw);
+            var protectedValue = Protector.Protect(raw);
             if (!ReferenceEquals(protectedValue, raw))
                 obj[propertyName] = protectedValue;
         }

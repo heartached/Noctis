@@ -37,7 +37,7 @@ public class ResetEverythingTests : IDisposable
     /// <summary>Written again, empty or with defaults, as a fresh install's first run writes them.</summary>
     private static readonly string[] RewrittenFiles =
     {
-        "settings.json", "library.json", "playlists.json", "queue.json",
+        "settings.json", "computers.json", "library.json", "playlists.json", "queue.json",
         "library.db", "library.db-wal", "library.db-shm",
     };
 
@@ -46,7 +46,7 @@ public class ResetEverythingTests : IDisposable
         "indexes.json", "crash.log", "crashlog-20261101-120000.log", "play_history.recent.json",
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json", "queue-position.json",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json", "mp3_decoder_fallback.txt",
-        "musixmatch_token", "replaygain-backfill.progress", "label-backfill.progress",
+        "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",
         "genre-backfill.progress", "library.json.corrupt-20261101-120000", "settings.json.bak",
         "artwork/album.jpg", "artwork/artists/a.jpg", "artwork/similar/s.jpg", "animated_covers/a.mp4",
         "playlist_covers/p.jpg", "cache/artwork_thumbs/t.png", "cache/waveforms/w.bin",

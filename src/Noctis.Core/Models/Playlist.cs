@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Noctis.Models;
 
 /// <summary>
@@ -6,6 +8,11 @@ namespace Noctis.Models;
 /// </summary>
 public class Playlist
 {
+    /// <summary>Members a newer Noctis saved that this build does not know, written back
+    /// unchanged so an older build sharing the data folder does not erase them (GitHub #230).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     public Guid Id { get; set; } = Guid.NewGuid();
 
     /// <summary>User-editable playlist name.</summary>
