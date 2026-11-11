@@ -171,4 +171,23 @@ public class LyricsSearchSelectorTests
         Assert.Null(LyricsSearchSelector.PickFromSearchResults(
             new[] { wrongDuration }, "Unknown Artist", "Test Song", 200));
     }
+
+    /// <summary>GitHub #232, live 11-11: Kugou's search for "Gus Gus Remembrance" credits "Gusgus"
+    /// (486 s); spacing and case aside it is the same artist.</summary>
+    [Fact]
+    public void ArtistSpelledWithoutTheSpace_StillMatches_ButAnotherArtistDoesNot()
+    {
+        Assert.True(LyricsSearchSelector.MatchesTrack(Result(track: "Remembrance", artist: "Gusgus", duration: 486), "Gus Gus", "Remembrance", 485));
+        Assert.True(LyricsSearchSelector.MatchesTrack(Result(track: "Remembrance", artist: "Gus Gus", duration: 486), "GusGus", "Remembrance", 485));
+        Assert.False(LyricsSearchSelector.MatchesTrack(Result(track: "Remembrance", artist: "Gus Dapperton", duration: 486), "Gus Gus", "Remembrance", 485));
+    }
+
+    [Theory]
+    [InlineData("Tim Neuhaus & The Cabinet", "Tim Neuhaus")]
+    [InlineData("Sid Sriram feat. Yuvan Shankar Raja", "Sid Sriram")]
+    [InlineData("Simon and Garfunkel", "Simon")]
+    [InlineData("GusGus", "GusGus")]
+    [InlineData("AC/DC", "AC/DC")]
+    public void PrimaryArtist_IsTheFirstNameOfAJoinedCredit(string credit, string expected)
+        => Assert.Equal(expected, LyricsSearchSelector.PrimaryArtist(credit));
 }
