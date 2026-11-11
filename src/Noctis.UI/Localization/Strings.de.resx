@@ -1146,6 +1146,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="LibraryArtists.ColumnAlbums" xml:space="preserve"><value>Alben</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnSongs" xml:space="preserve"><value>Songs</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnTime" xml:space="preserve"><value>Dauer</value><comment>List view column header (total length) in LibraryArtistsView.axaml</comment></data>
+  <data name="LibraryArtists.ColumnPlays" xml:space="preserve"><value>Wiedergaben</value><comment>List view column header (summed plays, GitHub #231) in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnGenre" xml:space="preserve"><value>Genre</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="Genres.Unknown" xml:space="preserve"><value>Unbekannt</value><comment>Genres page (GitHub #220): songs with no genre tag</comment></data>
   <data name="Genres.NoGenresFound" xml:space="preserve"><value>Keine Genres gefunden</value><comment>Genres page (GitHub #220): empty state</comment></data>

@@ -48,6 +48,7 @@ public static class LibraryColumns
         new ColumnSpec { Key = "Albums", Label = Loc.T("LibraryArtists.ColumnAlbums"), Width = 80, MinWidth = 50, SortKey = "albums" },
         new ColumnSpec { Key = "Songs", Label = Loc.T("LibraryArtists.ColumnSongs"), Width = 80, MinWidth = 50, SortKey = "songs" },
         new ColumnSpec { Key = "Time", Label = Loc.T("LibraryArtists.ColumnTime"), Width = 90, MinWidth = 56, SortKey = "time" },
+        new ColumnSpec { Key = "Plays", Label = Loc.T("LibraryArtists.ColumnPlays"), Width = 70, MinWidth = 44, SortKey = "plays" },
         new ColumnSpec { Key = "Genre", Label = Loc.T("LibraryArtists.ColumnGenre"), Width = 170, MinWidth = 70, SortKey = "genre" },
         new ColumnSpec { Key = More, Width = 42, Pinned = true },
     }));

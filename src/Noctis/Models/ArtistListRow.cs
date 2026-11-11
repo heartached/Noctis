@@ -17,6 +17,9 @@ public sealed class ArtistListRow
     /// fact; empty when none of the songs is tagged.</summary>
     public string Genre { get; init; } = string.Empty;
 
+    /// <summary>Plays of the artist's library songs, summed like Home's Top Artists (GitHub #231).</summary>
+    public long PlayCount { get; init; }
+
     public string Name => Artist.Name;
     public int AlbumCount => Artist.AlbumCount;
     public int TrackCount => Artist.TrackCount;
