@@ -39,6 +39,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a tile.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
+        MultiSelectHelper.KeepRowsUnselected(AlbumListBox);
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)

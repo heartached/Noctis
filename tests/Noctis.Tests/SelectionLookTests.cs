@@ -145,6 +145,21 @@ public class SelectionLookTests
     }
 
     [AvaloniaFact]
+    public async Task Albums_PressesBesideTheTiles_NeverSelectARow()
+    {
+        var (_, view, win) = await MountAlbums(3); // one partial row
+        var last = Tiles(view)[^1];
+        var beside = last.TranslatePoint(new Point(last.Bounds.Width + 40, last.Bounds.Height / 2), win)!.Value;
+        foreach (var mods in new[] { RawInputModifiers.None, RawInputModifiers.Control, RawInputModifiers.Shift })
+        {
+            win.MouseDown(beside, MouseButton.Left, mods); win.MouseUp(beside, MouseButton.Left, mods); Pump(2);
+            var rows = view.FindControl<ListBox>("AlbumListBox")!.GetVisualDescendants().OfType<ListBoxItem>().ToList();
+            Assert.DoesNotContain(rows, r => r.IsSelected);
+        }
+        win.Close();
+    }
+
+    [AvaloniaFact]
     public async Task Albums_ClickBesideTheTiles_ClearsTheSelection()
     {
         var (_, view, win) = await MountAlbums(6); // two rows, lots of empty grid below
