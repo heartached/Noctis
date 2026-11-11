@@ -41,6 +41,9 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     public AlbumDetailView()
     {
         InitializeComponent();
+        // Closing a modal editor gave focus back to a header button and the page scrolled
+        // up to it (GitHub #223); only keyboard focus moves the page now.
+        KeyboardFocusScroll.Apply(TrackScrollViewer);
 
         DiscGroupList.ContainerPrepared += OnDiscGroupContainerPrepared;
         DiscGroupList.ContainerClearing += OnDiscGroupContainerClearing;
