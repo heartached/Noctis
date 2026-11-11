@@ -5,7 +5,8 @@ namespace Noctis.Helpers;
 
 /// <summary>
 /// Process-wide Liquid Glass state, published by MainWindow.ApplyLiquidGlass and
-/// consumed by every <see cref="Noctis.Controls.GlassPanel"/> (dialog windows never read it).
+/// consumed by every <see cref="Noctis.Controls.GlassPanel"/>, the glass menus and the pop-ups'
+/// card (<see cref="Noctis.Controls.PillDialogHost"/>, GitHub #234).
 /// Hosts never read settings themselves: the window decides (platform gate, theme
 /// tint), this flag carries the decision. UI thread only.
 /// </summary>
