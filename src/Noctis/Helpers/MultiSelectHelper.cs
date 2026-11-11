@@ -67,7 +67,14 @@ public static class MultiSelectHelper
         if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed) return false;
         if (e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             return false;
-        for (var v = e.Source as Visual; v != null; v = v.GetVisualParent())
+        return HitsNoControl(e.Source, rowsAreLayout);
+    }
+
+    /// <summary>The press source is empty space: no button, row container (unless rows are
+    /// layout), text box, scroll bar, splitter thumb, slider, combo box or menu item.</summary>
+    public static bool HitsNoControl(object? source, bool rowsAreLayout = false)
+    {
+        for (var v = source as Visual; v != null; v = v.GetVisualParent())
         {
             if (v is Button or TextBox or Avalonia.Controls.Primitives.ScrollBar
                 or Avalonia.Controls.Primitives.Thumb or Slider or ComboBox or MenuItem)
@@ -76,6 +83,62 @@ public static class MultiSelectHelper
         }
         return true;
     }
+
+    // ── Shift+click ranges (GitHub #226) ──
+    //
+    // The anchor is the item of the last plain or Ctrl click. A Shift+click selects every
+    // item from the anchor to the clicked one in display order, by data, so items between
+    // them that are scrolled out of view (unrealized) are selected too. Ctrl+Shift adds the
+    // range to the selection; Shift alone replaces it. The anchor stays put, so further
+    // Shift+clicks re-span from the same place, as in Explorer.
+
+    /// <summary>A left press with Shift held: extend the selection to the clicked item.</summary>
+    public static bool IsRangePress(PointerPressedEventArgs e) =>
+        e.GetCurrentPoint(null).Properties.IsLeftButtonPressed && e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+
+    /// <summary>Selects <paramref name="ordered"/> from <paramref name="anchor"/> to
+    /// <paramref name="target"/> (inclusive). Without an anchor in the list the target alone is
+    /// selected and becomes the anchor. Returns the anchor to keep.</summary>
+    public static T SelectRange<T>(IReadOnlyList<T> ordered, T? anchor, T target, bool additive, HashSet<T> selected) where T : class
+    {
+        var to = IndexOf(ordered, target);
+        if (to < 0) return anchor ?? target;
+        var from = anchor == null ? -1 : IndexOf(ordered, anchor);
+        if (from < 0) { from = to; anchor = target; }
+        if (!additive) selected.Clear();
+        for (var i = Math.Min(from, to); i <= Math.Max(from, to); i++)
+            selected.Add(ordered[i]);
+        return anchor!;
+    }
+
+    private static int IndexOf<T>(IReadOnlyList<T> list, T item) where T : class
+    {
+        for (var i = 0; i < list.Count; i++)
+            if (ReferenceEquals(list[i], item)) return i;
+        return -1;
+    }
+
+    /// <summary>
+    /// Shift+click on a data-tracked track row: selects the range from the anchor in the list's
+    /// display order and repaints the realized rows. Marks the press handled so the ListBox's
+    /// own (invisible) range selection and the row's drag gesture stay out of it.
+    /// </summary>
+    public static T HandleTrackRangeClickByData<T>(IReadOnlyList<T> ordered, T? anchor, T target, PointerPressedEventArgs e,
+        HashSet<T> selected, IEnumerable<ListBoxItem> realizedRows) where T : class
+    {
+        e.Handled = true;
+        anchor = SelectRange(ordered, anchor, target, e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier), selected);
+        foreach (var row in realizedRows)
+            SetSelectedVisual(row, row.DataContext is T d && selected.Contains(d));
+        return anchor;
+    }
+
+    /// <summary>The ListBox's items of type <typeparamref name="T"/> in display order.</summary>
+    public static List<T> ItemsOf<T>(ItemsControl list) where T : class =>
+        list.ItemsSource is System.Collections.IEnumerable items ? items.OfType<T>().ToList() : new List<T>();
+
+    /// <summary>The ListBox's realized rows.</summary>
+    public static IEnumerable<ListBoxItem> RealizedRows(Control list) => list.GetVisualDescendants().OfType<ListBoxItem>();
 
     /// <summary>
     /// Handles Ctrl+Click on an album-tile Button.

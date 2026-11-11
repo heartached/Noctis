@@ -594,7 +594,8 @@ public class GroupAlbums178Tests : IDisposable
         var src = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Noctis", "Views", "LibraryAlbumsView.axaml.cs"));
         Assert.Contains("_vm.CtrlSelectionConsumed += OnCtrlSelectionConsumed;", src);
         Assert.Contains("_vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;", src);
-        Assert.Contains("_selectedAlbums.RemoveWhere(a => !shown.Contains(a));", src);
+        // Kept only when still shown, under the album's current object (GitHub #225).
+        Assert.Contains("var kept = _selectedAlbums.Select(a => shown.GetValueOrDefault(a.Id)).OfType<Album>().ToList();", src);
         var vmSrc = File.ReadAllText(Path.Combine(RepoRoot(), "src", "Noctis", "ViewModels", "LibraryAlbumsViewModel.cs"));
         // Every command that used the selection goes through ConsumeCtrlSelection.
         Assert.Single(System.Text.RegularExpressions.Regex.Matches(vmSrc, @"CtrlSelectedAlbums\.Clear\(\);"));

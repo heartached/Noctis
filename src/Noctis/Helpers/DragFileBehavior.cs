@@ -119,6 +119,14 @@ public static class DragFileBehavior
         state.Pressed = e;   // DoDragDropAsync wants the press that began the gesture
     }
 
+    /// <summary>Forgets the press on <paramref name="control"/> so the drag that follows starts
+    /// no file drag (the Albums grid's rubber band took it, GitHub #226).</summary>
+    public static void CancelGesture(Control control)
+    {
+        if (_states.TryGetValue(control, out var state))
+            state.Pressed = null;
+    }
+
     private static async void OnMoved(object? sender, PointerEventArgs e)
     {
         if (sender is not Control ctl) return;

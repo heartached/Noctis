@@ -22,6 +22,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     private AlbumDetailViewModel? _trackedVm;
     // Multi-select tracked by Track (data) so it survives container recycling.
     private readonly HashSet<Track> _selectedTracks = new();
+    /// <summary>The song a Shift+click spans from: the last row clicked (GitHub #226).</summary>
+    private Track? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
@@ -117,6 +119,17 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             src = src.Parent as Control;
         if (src is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
+
+        // GitHub #226: Shift+click spans from the last clicked row, in album order (across discs).
+        if (MultiSelectHelper.IsRangePress(e) && DataContext is AlbumDetailViewModel vm)
+        {
+            _rangeAnchor = MultiSelectHelper.HandleTrackRangeClickByData(vm.Tracks.ToList(),
+                _rangeAnchor, track, e, _selectedTracks, MultiSelectHelper.RealizedRows(DiscGroupList));
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = track;
 
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
         if (_selectedTracks.Count > 0)
