@@ -15,7 +15,7 @@ public class AnimatedArtworkBulkTests : IDisposable
     private DateTime _clock = new(2026, 11, 2, 12, 0, 0, DateTimeKind.Utc);
     private readonly List<TimeSpan> _waits = new();
     private readonly Covers _covers = new();
-    private int _finds, _opens, _downloads;
+    private int _finds, _otherStages, _opens, _downloads;
 
     public AnimatedArtworkBulkTests() => Directory.CreateDirectory(_dir);
 
@@ -55,7 +55,8 @@ public class AnimatedArtworkBulkTests : IDisposable
 
     private AnimatedArtworkBulkService Service(Func<AnimatedArtworkQuery, IReadOnlyList<RankedAlbumCandidate>> find,
         Func<ArtworkCandidate, AnimatedArtworkAlbum?> open) => new(
-        (q, _) => { _finds++; return Task.FromResult(find(q)); },
+        // Albums asked about: a miss's second stage (other storefronts, GitHub #229) is the same lookup.
+        (q, _) => { if (q.OtherStorefronts) _otherStages++; else _finds++; return Task.FromResult(find(q)); },
         (c, _) => { _opens++; return Task.FromResult(open(c)); },
         (v, path, _) => { _downloads++; File.WriteAllText(path, "mp4"); return Task.FromResult(true); },
         _covers,
@@ -75,6 +76,7 @@ public class AnimatedArtworkBulkTests : IDisposable
         var s = await svc.RunAsync(new[] { album }, recheck: false, null, CancellationToken.None);
 
         Assert.Equal(1, s.Found);
+        Assert.Equal(0, _otherStages); // a hit at home never asks the other storefronts
         Assert.Equal((album[0].AlbumId, AnimatedCoverScope.Album), Assert.Single(_covers.Imported));
         Assert.Empty(Directory.GetFiles(Path.GetTempPath(), "noctis-bulkanim-*.mp4"));
     }
@@ -157,7 +159,9 @@ public class AnimatedArtworkBulkTests : IDisposable
         var albums = Enumerable.Range(0, 3).Select(i => Album("A" + i, "X")).ToArray();
         await Service(_ => Array.Empty<RankedAlbumCandidate>(), _ => null).RunAsync(albums, false, null, CancellationToken.None);
         Assert.Equal(3, _finds);
-        Assert.Equal(2, _waits.Count(w => w == TimeSpan.FromSeconds(1.5)));
+        Assert.Equal(3, _otherStages);
+        // Every request after the first waits its turn, the other storefronts' stage included.
+        Assert.Equal(5, _waits.Count(w => w == TimeSpan.FromSeconds(1.5)));
     }
 
     [Fact]

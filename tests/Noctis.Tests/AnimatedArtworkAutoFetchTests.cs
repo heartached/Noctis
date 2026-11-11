@@ -54,7 +54,8 @@ public class AnimatedArtworkAutoFetchTests : IDisposable
     private AnimatedArtworkAutoFetcher Fetcher(int bytes = 100)
     {
         var lookup = new AnimatedArtworkBulkService(
-            (q, _) => { _finds++; return Task.FromResult(_find(q)); },
+            // Albums asked about: a miss's second stage (other storefronts, GitHub #229) is the same lookup.
+            (q, _) => { if (!q.OtherStorefronts) _finds++; return Task.FromResult(_find(q)); },
             (_, _) => Task.FromResult<AnimatedArtworkAlbum?>(Loop()),
             async (_, path, ct) =>
             {

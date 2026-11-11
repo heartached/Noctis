@@ -102,21 +102,37 @@ public partial class MetadataViewModel
                 DebugLog.Write(ITunesArtworkService.LogSource,
                     typed ? $"search: typed \"{albumTerm}\"" : $"search: tags \"{albumTerm}\" by \"{artist}\"");
 
-                var ranked = await _itunes.FindAnimatedArtworkCandidatesAsync(
-                    new ITunesArtworkService.AnimatedArtworkQuery(albumTerm, artist, trackArtist, typed)
-                    {
-                        // Tie-breaks between editions only; a typed query is about something else.
-                        Year = !typed && int.TryParse(Year, out var year) ? year : 0,
-                        TrackCount = !typed && _albumScoped ? SongCount : 0,
-                    },
-                    AnimatedCandidatesToOpen, ct);
+                var query = new ITunesArtworkService.AnimatedArtworkQuery(albumTerm, artist, trackArtist, typed)
+                {
+                    // Tie-breaks between editions only; a typed query is about something else.
+                    Year = !typed && int.TryParse(Year, out var year) ? year : 0,
+                    TrackCount = !typed && _albumScoped ? SongCount : 0,
+                };
+                var ranked = await _itunes.FindAnimatedArtworkCandidatesAsync(query, AnimatedCandidatesToOpen, ct);
                 if (!Current()) return;
 
                 await ProbeAnimatedCandidatesAsync(ranked, generation, ct);
                 if (!Current()) return;
-                noneDetail = ranked.Count == 0
+                var matches = ranked.Count;
+
+                // GitHub #229: no edition in the home and US storefronts has a loop; another
+                // storefront's edition (its own id) may.
+                if (AnimatedArtworkSearchResults.Count == 0)
+                {
+                    var seen = ranked.Select(r => r.Candidate.CollectionId).ToHashSet();
+                    var wider = (await _itunes.FindAnimatedArtworkCandidatesAsync(
+                            query with { OtherStorefronts = true }, AnimatedCandidatesToOpen, ct))
+                        .Where(r => seen.Add(r.Candidate.CollectionId))
+                        .ToList();
+                    if (!Current()) return;
+                    await ProbeAnimatedCandidatesAsync(wider, generation, ct);
+                    if (!Current()) return;
+                    matches += wider.Count;
+                }
+
+                noneDetail = matches == 0
                     ? Loc.T("Metadata.AnimNoMatches")
-                    : Loc.T("Metadata.AnimNoneOfMatches", ranked.Count);
+                    : Loc.T("Metadata.AnimNoneOfMatches", matches);
             }
 
             HasAnimatedArtworkSearchResults = AnimatedArtworkSearchResults.Count > 0;

@@ -200,7 +200,7 @@ public sealed class AnimatedArtworkAutoFetcher
         _lookup = lookup;
         _covers = covers;
         Cache = cache;
-        _misses = new BulkRunLedger(missLedgerPath, clock) { EntryLifetime = MissLifetime };
+        _misses = new BulkRunLedger(missLedgerPath, clock) { EntryLifetime = MissLifetime, Generation = AnimatedArtworkBulkService.LookupGeneration };
         _gate = new PoliteGate(RequestInterval, clock, delay);
     }
 
