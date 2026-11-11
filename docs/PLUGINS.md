@@ -28,7 +28,7 @@ deciding whether to install one.
 
 ## What a plugin can do
 
-API **1.7** (Noctis 1.6.9 and later; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
+API **1.8** (Noctis 1.7.0 and later; 1.7 since 1.6.9; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.1 since 1.5.3):
 
 | Area | What | Permission |
 |---|---|---|
@@ -36,6 +36,7 @@ API **1.7** (Noctis 1.6.9 and later; 1.3 to 1.6 since 1.6.6; 1.2 since 1.5.9; 1.
 | Audio taps | Live beat pulse and spectrum of what is playing | — |
 | Visual layers | A control drawn behind the lyrics (offered as a style in Settings' Flowing background picker) | — |
 | Lyrics motion | How the letters of word-synced lyrics move, and which lines read right to left (1.5) | — |
+| Lyrics renderer | Draw the lyric lines yourself, in place of Noctis's own, once the user picks your renderer in Settings → Lyrics (1.8) | — |
 | Views | A page of your own, opened from Settings → Plugins ("Open &lt;name&gt;") in its own window (1.3), at the size it asks for (1.5) | — |
 | Album page | Show an album's page in the main window (1.3) | — |
 | Scrobble hook | Called when a track counts as listened (half its length or 4 minutes) | — (`playback.read`) |
@@ -271,6 +272,7 @@ Everything lives in the `Noctis.Plugins` namespace.
 | `IDisposable RegisterLyricsEffect(ILyricsEffect)` | 1.5 | | How word-synced lyrics move; see [Lyrics effects](#lyrics-effects). |
 | `ILibraryImport LibraryImport` | 1.5 | `library.import` | Adds audio files the plugin saved to the library; see [Adding files to the library](#adding-files-to-the-library). |
 | `IAudioDecoder AudioDecoder` | 1.6 | `audio.decode` | Decodes a song file to mono PCM; see [Decoding songs for analysis](#decoding-songs-for-analysis). |
+| `IDisposable RegisterLyricsRenderer(ILyricsRenderer)` | 1.8 | | Draws the lyric lines in place of Noctis's own, once the user picks it; see [Lyrics renderers](#lyrics-renderers). |
 
 Using a hook without declaring its permission throws `PluginPermissionException`.
 
@@ -344,6 +346,85 @@ switch the plugin off) and Noctis's own motion comes back.
 
 Noctis draws words of joining scripts (Arabic, Persian, Syriac, N'Ko and others) in one piece in any
 case, with or without an effect: drawn letter by letter they lost their joined forms.
+
+### Lyrics renderers
+
+```csharp
+public interface ILyricsRenderer
+{
+    string Name { get; }                                       // shown in the Settings picker
+    bool SupportsSurface(LyricsSurface surface) => true;       // Page, SidePanel, MiniPlayer
+    ILyricsLineView? CreateLine(LyricsLineInfo line);          // null: Noctis draws this line
+}
+
+public interface ILyricsLineView
+{
+    Size Measure(double availableWidth, in LyricsLineStyle style);
+    bool Render(DrawingContext context, Size size, in LyricsLineFrame frame); // true: draw me next frame too
+}
+```
+
+API 1.8, no permission, `"minAppVersion": "1.7.0"`. Where an effect only poses the letters
+Noctis draws, a renderer draws each lyric line itself, for example on a canvas of its own with its
+own motion. Register it in `Initialize` with `host.RegisterLyricsRenderer(renderer)`; it then shows
+in **Settings → Lyrics → Lyrics Renderer** (the row appears only while a renderer is installed).
+Noctis never switches to it by itself: the user picks it, the default stays Noctis's own lines, and
+the choice is stored as `<plugin id>/<renderer name>`. While the plugin is off the choice is kept
+and Noctis draws its own lines; they switch back when the plugin returns.
+
+What Noctis keeps, so every renderer gets it for free and the page behaves the same:
+
+- the list of lines, its layout (from the size you measure), scrolling to the sung line and the
+  glide, auto-follow and its pause, which lines are active (duets light two at once);
+- each line's button: click-to-seek, the screen reader name, the active line's growth, the depth
+  blur of lines away from the sung one, the fade of far lines, duet alignment of the line box;
+- loading, timing and offsets of the lyrics, the tabs, the Written By credit, the background.
+
+What the renderer does: measure and draw the inside of a line.
+
+- `CreateLine` gets a copy of the line (`LyricsLineInfo`): `Text`, `StartMs`/`EndMs` (null when
+  unknown), `Words` (each `Text`, `StartMs`, `EndMs`), `Voice` (`Main`, `Second`, `Group`),
+  `IsInterlude` (the intro or gap dots, empty text), `BackgroundWords`, `Romanization` and
+  `RomanizationWords`, `Translation`. It is called each time Noctis builds the line (lyrics load,
+  the renderer is picked, a lyrics view opens); return null to let Noctis draw that one line.
+- `Measure(availableWidth, style)` returns the size of the line at the column's width; the height
+  must hold every row you draw. It runs when the width, the font size (it follows the window) or a
+  colour changes, not per frame: build your text layouts here. `LyricsLineStyle` carries the
+  `FontFamily`, `FontSize`, `Foreground` and `Accent` colours Noctis would use on that surface, the
+  `Surface`, and whether Settings shows background vocals, romanization and translations.
+- `Render(context, size, frame)` draws at (0, 0) to `size`. `LyricsLineFrame` carries
+  `PositionMs` (the audible position with the lyrics offset applied: smooth while playing, still
+  while paused; compare it with the words' `StartMs`), `State` (`Unsynced`, `Upcoming`, `Active`,
+  `Past`), `IsLeading` (the list is gliding to this line just before it starts),
+  `InterludeProgress` (0 to 1 through an active gap, else NaN), `IsRightToLeft`, `IsPlaying` and the
+  `Style`. Return true while the line moves (words sweeping, a spring settling) and Noctis draws it
+  again next frame; return false at rest and it is drawn again only when its state, size or style
+  changes. Do not allocate in `Render` (no strings, LINQ, closures, new brushes or layouts): a
+  per-frame allocation on every line turns into garbage-collection stutter on the whole page.
+
+Rules:
+
+- Everything is called on the UI thread, from inside Noctis's own line control: one line never
+  draws twice at once, and you need no locks. Keep both calls quick.
+- An exception from `SupportsSurface`, `CreateLine`, `Measure` or `Render` stops that line at once;
+  right after the frame Noctis's own lines come back on every surface, the plugin is stopped
+  (**Failed**, with the reason on its card) and a notice says so. The user's choice stays stored,
+  so switching the plugin on again brings the renderer back. Noctis cannot catch what your own
+  timers or callbacks throw later: catch that yourself.
+- Lyrics effects (`RegisterLyricsEffect`) keep working on Noctis's own lines; a renderer does not
+  switch them off, and Noctis still asks the effect which lines read right to left
+  (`frame.IsRightToLeft`).
+- A renderer draws; it gets no Avalonia control of its own in the list, no access to Noctis's view
+  models, and no way to change scrolling, timing, the active line or the lyrics themselves.
+- `SupportsSurface` says where it draws: the lyrics page, the side panel and the mini player by
+  default. Where it says no, Noctis draws.
+- `DrawingContext`, `Size`, `FontFamily` and `Color` are Avalonia types: the app supplies Avalonia,
+  as it does for visual layers and views, so build against the kit that matches the Noctis you
+  target.
+
+A renderer built against API 1.8 must set `"minAppVersion": "1.7.0"`: on an older Noctis
+`RegisterLyricsRenderer` is missing, and the call fails with `MissingMethodException` when the
+method that calls it is compiled, before any `catch` in it runs.
 
 ### Views
 
@@ -534,8 +615,8 @@ Be clear about what protects users and what does not:
    the UI thread; the budget is enforced when the call returns.
 6. **Clean unload.** Disabling or removing a plugin calls `Shutdown()`, then drops every
    subscription and registration the plugin made (player events, lyrics providers, menu
-   commands, scrobble handlers, setting handlers, visual layers) even if the plugin forgot to,
-   and makes the host object it holds inert.
+   commands, scrobble handlers, setting handlers, visual layers, lyrics effects and renderers)
+   even if the plugin forgot to, and makes the host object it holds inert.
 7. **Install checks.** A package is validated before anything is written: plugin.json must
    parse, the entry DLL must be present, the archive must stay under 2000 files / 256 MB, and
    any entry with an absolute path, a drive letter, `:` or `..` rejects the whole file
@@ -931,6 +1012,11 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
   keep their signatures and behaviour, so a plugin built for 1.0 runs unchanged on 1.1 (the
   host binds it to its own kit). Use `minAppVersion` to require the first Noctis that has the
   minor you need.
+- The kit assembly's **AssemblyVersion stays 1.6.0.0** for all of 1.x (the API level is
+  `PluginApi.Minor` and the package version). Noctis supplies its own copy of the kit to every
+  plugin, and .NET will not bind a plugin compiled against a higher AssemblyVersion than the one
+  loaded: raising it would make every plugin built afterwards fail to load on older Noctis versions,
+  whatever its `minAppVersion` says.
 - Deprecated members are marked `[Obsolete]` with the replacement for at least one minor
   release (and at least three months) before a major removes them.
 - Permission names, manifest fields and the package layout follow the same rule: new ones may
@@ -946,6 +1032,7 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
 | 1.4 | 1.6.6+ | `ILibraryReader.GetPlaylists()` and `PlaylistInfo` (under `library.read`). |
 | 1.5 | 1.6.6+ | `IPlaybackControl.GetQueue()` / `SetUpNext()` / `TracksQueued` (under `playback.control`), `TrackInfo.IsDisliked` / `IsExplicit` / `SkipWhenShuffling` / `SnoozedUntil`, lyrics effects (`RegisterLyricsEffect`, `ILyricsEffect`); `ILibraryImport` (`host.LibraryImport`) with the `library.import` permission: add audio files to the library, read the music folders; view window size (`IPluginViewProvider.PreferredWindowSize` / `MinWindowSize` / `WindowSizeToContent`). |
 | 1.6 | 1.6.6+ | `IAudioDecoder` (`host.AudioDecoder`) with the `audio.decode` permission: decode a song file to mono PCM for offline analysis. |
+| 1.8 | 1.7.0+ | Lyrics renderers: `RegisterLyricsRenderer`, `ILyricsRenderer`, `ILyricsLineView`, `LyricsLineInfo`, `LyricsLineWord`, `LyricsLineVoice`, `LyricsLineState`, `LyricsLineStyle`, `LyricsLineFrame` (no permission); the user picks one in Settings → Lyrics. Needs `"minAppVersion": "1.7.0"`. `PluginApi.Minor` reads 8 from this kit on (the 1.7 kit still reported 6). |
 | 1.7 | 1.6.9+ | `ILibraryReader.GetLyricLines` (under `library.read`), `IPlaybackControl.QueueTracks` (under `playback.control`), `RegisterLibraryCommand` / `LibraryCommandPlaces` / `LibraryCommandContext` (under `menu.commands`). A plugin that calls them needs `"minAppVersion": "1.6.9"`: on an older Noctis the call fails with `MissingMethodException` when the calling method is compiled, before any `catch` in that method runs. |
 
 ## Legacy plugins (API 1.0, no plugin.json)

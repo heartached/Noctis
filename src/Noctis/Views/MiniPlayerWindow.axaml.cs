@@ -87,6 +87,8 @@ public partial class MiniPlayerWindow : Window
     public MiniPlayerWindow()
     {
         InitializeComponent();
+        // Plugin API 1.8: a lyrics renderer chosen in Settings draws these lines (none: untouched).
+        Controls.PluginLyricLines.Attach(LyricsItems, Noctis.Plugins.LyricsSurface.MiniPlayer, () => (DataContext as MiniPlayerViewModel)?.Lyrics);
 
         // Per-pixel transparency by default — OS acrylic (AcrylicBlur) tints the WHOLE
         // window rect, which painted the transparent corners outside the rounded

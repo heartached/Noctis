@@ -28,7 +28,7 @@ public sealed record PluginInfo(string Id, string Name, string Version, string A
 
 /// <summary>
 /// What the host offers a plugin. Everything here is safe to call from the UI thread.
-/// Members added in API 1.1 to 1.7 have default bodies that throw <see cref="NotSupportedException"/>,
+/// Members added in API 1.1 to 1.8 have default bodies that throw <see cref="NotSupportedException"/>,
 /// so code compiled against an older kit (and any older implementation of this interface) keeps working;
 /// Noctis itself implements all of them. Hooks marked with a permission throw
 /// <see cref="PluginPermissionException"/> unless plugin.json declares it.
@@ -152,6 +152,15 @@ public interface IPluginHost
     /// <param name="handler">Runs on the UI thread with where it was clicked (and the artist).</param>
     IDisposable RegisterLibraryCommand(string label, string? icon, LibraryCommandPlaces places, Action<LibraryCommandContext> handler)
         => throw Missing("1.7");
+
+    // ── API 1.8 ──
+
+    /// <summary>API 1.8: offers a renderer that draws the lyric lines in place of Noctis's own
+    /// (see <see cref="ILyricsRenderer"/>). It shows in Settings → Lyrics → Lyrics Renderer and is
+    /// used only once the user picks it there. Lyrics effects (<see cref="RegisterLyricsEffect"/>)
+    /// keep applying to Noctis's own lines. Dispose the result to withdraw it (Noctis also does
+    /// on disable); Noctis's own lines then come back.</summary>
+    IDisposable RegisterLyricsRenderer(ILyricsRenderer renderer) => throw Missing("1.8");
 
     private static NotSupportedException Missing(string api = "1.1")
         => new($"This Noctis build does not implement plugin API {api}. Set minAppVersion in plugin.json.");

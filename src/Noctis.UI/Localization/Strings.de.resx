@@ -440,6 +440,10 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Wörter ganz lassen, wenn TTML-Songtexte sie in Silben teilen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Glühen &amp; Schweben</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Gesungene Wörter schweben hoch und lange Töne glühen, wie bei Apple Music. Aus lässt Wortsync-Songtexte still stehen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRenderer" xml:space="preserve"><value>Songtext-Darstellung</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Songtextzeilen mit einem Plugin zeichnen. Scrollen, Timing und Springen per Klick bleiben bei Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (Plugin aus)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Player zentrieren, wenn ein Song keinen Songtext hat</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Hat ein Song keinen Songtext oder ist er instrumental, rückt die Songtextseite Cover, Songinfos und Steuerung in die Mitte.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Hintergrund hinter der Seitenleiste</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2488,6 +2492,7 @@ Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Plugin deinstallieren</value></data>
   <data name="Plugins.Detail.ShowInSidebar" xml:space="preserve"><value>In Seitenleiste zeigen</value><comment>Plugin page row: the plugin's screen gets a sidebar entry</comment></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Darf {0}</value></data>
+  <data name="Plugins.LyricsRendererFailed" xml:space="preserve"><value>Die Songtext-Darstellung funktioniert nicht mehr, Noctis zeichnet den Songtext wieder selbst.</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
   <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>Wiedergabe steuern</value></data>
   <data name="Plugins.PermVerb.LibraryRead" xml:space="preserve"><value>deine Bibliothek lesen</value></data>

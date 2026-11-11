@@ -2,15 +2,15 @@ namespace Noctis.Plugins;
 
 /// <summary>
 /// Version of this plugin kit. A plugin states the version it was built against in
-/// plugin.json ("apiVersion": "1.6"). Noctis refuses a plugin whose major version differs
+/// plugin.json ("apiVersion": "1.8"). Noctis refuses a plugin whose major version differs
 /// from <see cref="Major"/>; minor versions only ever add members.
 /// </summary>
 public static class PluginApi
 {
     public const int Major = 1;
-    public const int Minor = 6;
+    public const int Minor = 8;
 
-    /// <summary>"1.6": the value to put in plugin.json's apiVersion.</summary>
+    /// <summary>"1.8": the value to put in plugin.json's apiVersion.</summary>
     public static string Version => $"{Major}.{Minor}";
 }
 

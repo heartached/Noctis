@@ -103,6 +103,8 @@ public partial class LyricsView : UserControl
             LyricsBackdropFill, LyricsBlurBackdrop, LyricsMediaBackdrop, MusicVideoBackdropLayer,
             KawarpLayer, PluginLayerHost);
         AttachedToVisualTree += (_, _) => HookPluginLayers();
+        // Plugin API 1.8: a lyrics renderer chosen in Settings draws these lines (none: untouched).
+        Controls.PluginLyricLines.Attach(LyricsItemsControl, Noctis.Plugins.LyricsSurface.Page, () => DataContext as LyricsViewModel);
         DetachedFromVisualTree += (_, _) => UnhookPluginLayers();
         LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
