@@ -1001,6 +1001,10 @@ public class AppSettings : IJsonOnDeserializing
     /// acts while <see cref="AlbumGroupingEnabled"/> is on.</summary>
     public bool AlbumGroupingWriteTags { get; set; }
 
+    /// <summary>Albums that also list another album's songs (Link Tracks From, a deluxe edition
+    /// borrowing the original's tracks). Read by LibraryService when it builds albums.</summary>
+    public List<AlbumLink> AlbumLinks { get; set; } = new();
+
     /// <summary>GitHub #193: the one-time re-read of songs a 1.6.8 grouping re-keyed without
     /// keeping their own album artist (LibraryService.ResolveUngroupedAlbumsAsync) has run.</summary>
     public bool AlbumGroupingOriginalsRead { get; set; }
