@@ -2550,6 +2550,10 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly object _queueSaveLock = new();
     private Task _queueSaveChain = Task.CompletedTask;
 
+    /// <summary>What a newer Noctis saved in queue.json that this build does not know, written
+    /// back with every queue save (GitHub #230).</summary>
+    private Dictionary<string, System.Text.Json.JsonElement>? _queueExtensionData;
+
     /// <summary>Saves the current queue state so it can be restored on next launch.</summary>
     public async Task SaveQueueStateAsync()
     {
@@ -2561,6 +2565,7 @@ public partial class PlayerViewModel : ViewModelBase
             HistoryIds = History.Select(t => t.Id).ToList(),
             RepeatMode = RepeatMode,
             IsShuffleEnabled = IsShuffleEnabled,
+            ExtensionData = _queueExtensionData,
             IsMuted = IsMuted,
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
             OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
@@ -2621,6 +2626,7 @@ public partial class PlayerViewModel : ViewModelBase
                 HistoryIds = History.Select(t => t.Id).ToList(),
                 RepeatMode = RepeatMode,
                 IsShuffleEnabled = IsShuffleEnabled,
+                ExtensionData = _queueExtensionData,
                 IsMuted = IsMuted,
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
                 OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
@@ -2653,6 +2659,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         var state = await _persistence.LoadQueueStateAsync();
         if (state == null) return;
+        _queueExtensionData = state.ExtensionData;
 
         // GitHub #86: non-library tracks (dropped with "Import dropped files" off) are
         // unknown to the library, so they are re-read from their saved files.

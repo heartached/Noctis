@@ -34,6 +34,15 @@ public static class ServerCertificate
         Directory.CreateDirectory(directory);
         var pfx = Path.Combine(directory, FileName);
         var keyFile = Path.Combine(directory, KeyFileName);
+        // GitHub #230: a data folder shared by two computers holds the certificate of the one
+        // that made it, its password protected for that computer only. Minting a new one over
+        // it here made every switch of computers change the certificate, so each phone paired
+        // with the other computer had to pair again. This computer keeps a pair of its own.
+        if (IsOtherComputersKey(keyFile))
+        {
+            pfx = Path.Combine(directory, $"server-{SecretProtector.Current.ComputerId}.pfx");
+            keyFile = pfx + ".key";
+        }
 
         if (File.Exists(pfx) && File.Exists(keyFile))
         {
@@ -66,6 +75,19 @@ public static class ServerCertificate
         WriteKeyFile(keyFile, PersistenceService.ProtectSecret(password));
         RestrictToOwner(pfx);
         return created;
+    }
+
+    /// <summary>The password file holds a copy protected by another computer or Windows user.</summary>
+    private static bool IsOtherComputersKey(string keyFile)
+    {
+        try
+        {
+            if (!File.Exists(keyFile)) return false;
+            var stored = File.ReadAllText(keyFile).Trim();
+            return stored.StartsWith("enc:dpapi:", StringComparison.Ordinal) && PersistenceService.UnprotectSecret(stored).Length == 0;
+        }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
     }
 
     /// <summary>Writes the password file in one step: a half-written one would mean a new certificate, and re-pairing every phone.</summary>

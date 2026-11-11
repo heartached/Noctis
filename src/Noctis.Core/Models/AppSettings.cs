@@ -1548,6 +1548,29 @@ public class AppSettings : IJsonOnDeserializing
         // Sleep timer Fade Out (2026-10-29): the timer used to pause outright.
         SleepTimerFadeSeconds = 0;
     }
+
+    // ── One data folder, several Noctis versions (GitHub #230) ──
+
+    /// <summary>
+    /// Settings this build does not know, read from a file a newer Noctis saved, written back
+    /// unchanged on every save. Noctis 1.6.9 and older dropped them: opening a shared data
+    /// folder with an older build lost every setting it did not have yet.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>The newest Noctis version that has saved this file (empty before 1.7.0).
+    /// PersistenceService stamps it on every save; it never goes down.</summary>
+    public string WrittenByVersion { get; set; } = "";
+
+    /// <summary>The newer version the "saved by a newer Noctis" notice was last shown for,
+    /// so it shows once per newer version rather than on every start.</summary>
+    public string NewerVersionNoticeShownFor { get; set; } = "";
+
+    /// <summary>Set on load when <see cref="WrittenByVersion"/> is newer than this build:
+    /// that version. Not saved.</summary>
+    [JsonIgnore]
+    public string? OpenedFromNewerVersion { get; set; }
 }
 
 /// <summary>Names of the flowing-lyrics-background styles. Plugins add their own by layer name.</summary>

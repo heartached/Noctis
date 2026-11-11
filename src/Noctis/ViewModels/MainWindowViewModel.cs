@@ -558,6 +558,16 @@ public partial class MainWindowViewModel : ViewModelBase
             }, DispatcherPriority.Background);
         if (Settings.IsSettingsLoaded) LoadPluginsWhenIdle();
         else Settings.SettingsLoaded += (_, _) => LoadPluginsWhenIdle();
+        // GitHub #230: the data folder was last saved by a newer Noctis (another computer
+        // sharing it). Said once per newer version, in the notice pill.
+        void ShowNewerVersionNotice() =>
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (Settings.TakeNewerVersionNotice() is { } text)
+                    TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text, TimeSpan.FromSeconds(8));
+            }, DispatcherPriority.Background);
+        if (Settings.IsSettingsLoaded) ShowNewerVersionNotice();
+        else Settings.SettingsLoaded += (_, _) => ShowNewerVersionNotice();
         Loc.Instance.CultureChanged += (_, _) =>
         {
             TopBar.RefreshLocalizedTitles();
