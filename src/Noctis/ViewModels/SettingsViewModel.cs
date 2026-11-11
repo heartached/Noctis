@@ -1529,6 +1529,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lyricsJoinSplitWords;
     [ObservableProperty] private bool _lyricsGlowAndLift = true;
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>Discord (f7uh): the lyrics page shows the centred player with its lyrics hidden.</summary>
+    [ObservableProperty] private bool _lyricsPageHideLyrics;
+
+    [RelayCommand]
+    private void ToggleLyricsPageHideLyrics() => LyricsPageHideLyrics = !LyricsPageHideLyrics;
     [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
     [ObservableProperty] private bool _lyricsShowTranslations = true;
     [ObservableProperty] private bool _lyricsShowRomanization = true;
@@ -3657,6 +3662,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
             LyricsCenterWhenNoLyrics = _settings.LyricsCenterWhenNoLyrics;
+            LyricsPageHideLyrics = _settings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = _settings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = LyricsSaveOptions.ParseTarget(_settings.LyricsSaveTarget).ToString();
             LyricsAutoDownload = _settings.LyricsAutoDownload;
@@ -4205,6 +4211,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
         _settings.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
+        _settings.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _settings.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
         _settings.LyricsSaveTarget = LyricsSaveOptions.ParseTarget(LyricsSaveTarget).ToString();
         _settings.LyricsAutoDownload = LyricsAutoDownload;
@@ -4589,6 +4596,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _player.LyricsGlowAndLift = LyricsGlowAndLift;
         _player.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
+        _player.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _player.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
         _player.LyricsSaveTarget = LyricsSaveTarget;
         _player.LyricsAutoDownload = LyricsAutoDownload;
@@ -6421,6 +6429,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsCenterWhenNoLyricsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsPageHideLyricsChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -8432,6 +8446,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;
             LyricsCenterWhenNoLyrics = defaultSettings.LyricsCenterWhenNoLyrics;
+            LyricsPageHideLyrics = defaultSettings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = defaultSettings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = defaultSettings.LyricsSaveTarget;
             LyricsAutoDownload = defaultSettings.LyricsAutoDownload;

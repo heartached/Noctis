@@ -1917,6 +1917,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="PlaybackBar.LyricsDisplay" xml:space="preserve"><value>Songtextanzeige</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Synced" xml:space="preserve"><value>Synchron</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Reintext</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve"><value>Songtext ausblenden</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Hintergrundfarbe</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Songtext teilen</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SaveLyrics" xml:space="preserve"><value>Songtext in Datei speichern</value><comment>Submenu header in PlaybackBarView.axaml (lyrics page, time-synced lyrics shown); its items pick the file format</comment></data>
