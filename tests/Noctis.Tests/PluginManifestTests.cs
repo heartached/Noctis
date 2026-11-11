@@ -185,7 +185,9 @@ public class PluginManifestTests
     [Fact]
     public void ApiVersionConstants_MatchTheKitVersion()
     {
-        var v = typeof(PluginApi).Assembly.GetName().Version!;
+        // The package/file version carries the API level; AssemblyVersion is pinned (PluginKitBindingTests).
+        var v = Version.Parse(System.Reflection.CustomAttributeExtensions
+            .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>(typeof(PluginApi).Assembly)!.Version);
         Assert.Equal((PluginApi.Major, PluginApi.Minor), (v.Major, v.Minor));
         Assert.Equal("1.8", PluginApi.Version);
     }
