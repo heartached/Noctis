@@ -45,9 +45,11 @@ public class RescanProgressivePublishTests : IDisposable
         await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
         Assert.Equal(FileCount, library.Tracks.Count);
 
-        // One file gone, every other file unchanged; the walk is slow enough for the
+        // One file gone, the first one walked edited (a walk that only meets unchanged files
+        // publishes nothing, see below), the rest unchanged; the walk is slow enough for the
         // progressive publisher to run several times before it ends.
         File.Delete(Path.Combine(_music, "06 - Song 6.mp3"));
+        Retag(Path.Combine(_music, "01 - Song 1.mp3"), "Song 1 (edit)");
         source.DelayPerEntry = TimeSpan.FromMilliseconds(700);
         var counts = new List<int>();
         library.LibraryUpdated += (_, _) => { lock (counts) counts.Add(library.Tracks.Count); };
@@ -64,6 +66,41 @@ public class RescanProgressivePublishTests : IDisposable
             Assert.All(partial, c => Assert.Equal(FileCount, c));
             Assert.All(counts.Skip(partial.Count), c => Assert.Equal(FileCount - 1, c));
         }
+    }
+
+    /// <summary>GitHub #225: a rescan whose walk meets only unchanged files has nothing new to
+    /// show, so it publishes nothing while it runs. It used to rebuild every album and raise
+    /// LibraryUpdated every 1.5 s, and the Albums grid re-filled itself (flicker, lost
+    /// selection) until a startup scan ended.</summary>
+    [Fact]
+    public async Task UnchangedRescan_PublishesNothingWhileTheWalkRuns()
+    {
+        var source = new SlowSource(_music);
+        var persistence = new PersistenceService(Path.Combine(_root, "data"));
+        var library = new LibraryService(new MetadataService(), persistence, new SqliteLibraryIndexService(persistence),
+            new NoOpAudit(), fileSystem: source);
+        await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
+        var albums = library.Albums.ToList();
+
+        source.DelayPerEntry = TimeSpan.FromMilliseconds(700);
+        var updates = 0;
+        library.LibraryUpdated += (_, _) => Interlocked.Increment(ref updates);
+        await library.ScanAsync(new[] { "fake://tree/music" }, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, updates);
+        Assert.Equal(FileCount, library.Tracks.Count);
+        Assert.Equal(albums, library.Albums); // the very same Album objects
+    }
+
+    private static void Retag(string path, string title)
+    {
+        using (var f = TagLib.File.Create(path))
+        {
+            f.Tag.Title = title;
+            f.Save();
+        }
+        // A rescan notices a change by size + mtime; make sure the clock moved.
+        File.SetLastWriteTimeUtc(path, File.GetLastWriteTimeUtc(path).AddMinutes(1));
     }
 
     private static void WriteMp3(string path, string title, string artist, string album)

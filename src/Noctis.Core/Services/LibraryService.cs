@@ -289,6 +289,12 @@ public class LibraryService : ILibraryService
         async Task RunProgressivePublishAsync(CancellationToken pubCt)
         {
             var lastCount = 0;
+            // GitHub #225: on a startup rescan every unchanged file is the known Track object
+            // itself, so until the walk meets a new or re-read file a publish would show the
+            // library exactly as it is. Publishing anyway rebuilt every view (the Albums grid
+            // flickered and dropped its Ctrl-selection) every 1.5 s until the walk ended.
+            var known = new HashSet<Track>(originalTracks, ReferenceEqualityComparer.Instance);
+            var anythingNew = false;
             try
             {
                 while (!pubCt.IsCancellationRequested)
@@ -298,6 +304,8 @@ public class LibraryService : ILibraryService
                     var snapshot = newTracks.ToArray();
                     if (snapshot.Length == 0 || snapshot.Length == lastCount) continue;
                     lastCount = snapshot.Length;
+                    if (!anythingNew && snapshot.All(known.Contains)) continue;
+                    anythingNew = true;
 
                     // On a rescan the known tracks the walk has not reached yet stay in (the
                     // snapshot alone made the library shrink to the walked part and grow back,
@@ -308,7 +316,7 @@ public class LibraryService : ILibraryService
                         .GroupBy(t => t.Id).Select(g => g.First())
                         .OrderBy(t => t.Artist).ThenBy(t => t.Album)
                         .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true).ConfigureAwait(false);
                     didPublishPartial = true;
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
@@ -692,7 +700,7 @@ public class LibraryService : ILibraryService
                 var refreshed = await RefreshStaleFolderArtworkAsync(_tracks, ct);
                 if (refreshed > 0 && !ct.IsCancellationRequested)
                 {
-                    await RebuildIndexesAsync();
+                    await RebuildIndexesAsync(reuseUnchangedAlbums: true);
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
             }
@@ -708,7 +716,7 @@ public class LibraryService : ILibraryService
             .GroupBy(t => t.Id).Select(g => g.First()) // deduplicate by track ID
             .OrderBy(t => t.Artist).ThenBy(t => t.Album)
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-        await RebuildIndexesAsync(persistCache: false);
+        await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         // #97: a startup scan that found new albums ended the process after this publish
         // with no managed exception logged. Only a scan that found changes runs the steps
@@ -755,7 +763,7 @@ public class LibraryService : ILibraryService
         // Final authoritative rebuild (persists the index cache and attaches all
         // extracted covers), then write through to disk.
         DebugLog.Write("Scan", "rebuild: start");
-        await RebuildIndexesAsync();
+        await RebuildIndexesAsync(reuseUnchangedAlbums: true);
         DebugLog.Write("Scan", "rebuild: done");
 
         // Persist to disk
@@ -886,7 +894,7 @@ public class LibraryService : ILibraryService
                 while (!pubCts.Token.IsCancellationRequested)
                 {
                     await Task.Delay(ProgressivePublishMs, pubCts.Token).ConfigureAwait(false);
-                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true).ConfigureAwait(false);
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
             }
@@ -1214,7 +1222,7 @@ public class LibraryService : ILibraryService
                 // Persist the rebuilt indexes: the launch fast path restores each
                 // album's ArtworkPath straight from the index cache without checking
                 // disk, so an unpersisted heal would look lost again on next start.
-                await RebuildIndexesAsync();
+                await RebuildIndexesAsync(reuseUnchangedAlbums: true);
                 LibraryUpdated?.Invoke(this, EventArgs.Empty);
             }
             return extracted;
@@ -1344,7 +1352,7 @@ public class LibraryService : ILibraryService
                     _tracks = merged.Values
                         .OrderBy(t => t.Artist).ThenBy(t => t.Album)
                         .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true).ConfigureAwait(false);
                     didPublishPartial = true;
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
@@ -2509,12 +2517,19 @@ public class LibraryService : ILibraryService
     // same problem, and its output survives restarts because the cache validates.
     private readonly SemaphoreSlim _rebuildGate = new(1, 1);
 
-    private async Task RebuildIndexesAsync(bool persistCache = true)
+    /// <param name="reuseUnchangedAlbums">Keep the Album object of every album whose songs and
+    /// tile fields came out the same (GitHub #225). Only for passes that never edit a known
+    /// song in place (a scan or import publishes new Track objects for what it re-read, an
+    /// artwork pass changes covers): views compare albums by reference, so an unchanged album
+    /// keeps its tile, its Ctrl-selection and its now-playing flag instead of being rebuilt
+    /// every 1.5 s. A pass that edits songs in place must build fresh albums, or a tile bound
+    /// to the old object would keep showing the old song facts.</param>
+    private async Task RebuildIndexesAsync(bool persistCache = true, bool reuseUnchangedAlbums = false)
     {
         await _rebuildGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            await RebuildIndexesCoreAsync(persistCache).ConfigureAwait(false);
+            await RebuildIndexesCoreAsync(persistCache, reuseUnchangedAlbums).ConfigureAwait(false);
         }
         finally
         {
@@ -2522,11 +2537,12 @@ public class LibraryService : ILibraryService
         }
     }
 
-    private async Task RebuildIndexesCoreAsync(bool persistCache)
+    private async Task RebuildIndexesCoreAsync(bool persistCache, bool reuseUnchangedAlbums)
     {
         // Albums, artists and the id lookup are built from the visible tracks only, so a
         // hidden folder's songs vanish from every view that reads them.
         var allTracks = _tracks;
+        var previousAlbums = reuseUnchangedAlbums ? _albumIndex : null;
         var tracks = VisibleTracks(allTracks);
         var persistence = _persistence;
         var grouping = _albumGroupingEnabled;
@@ -2592,7 +2608,7 @@ public class LibraryService : ILibraryService
                     var first = albumTracks[0];
                     var hasArt = artworkExists.Contains(first.AlbumId);
 
-                    return new Album
+                    var album = new Album
                     {
                         Id = first.AlbumId,
                         Name = first.Album,
@@ -2604,6 +2620,8 @@ public class LibraryService : ILibraryService
                         ArtworkPath = hasArt ? artworkPaths[first.AlbumId] : null,
                         Tracks = albumTracks
                     };
+                    return previousAlbums != null && previousAlbums.TryGetValue(album.Id, out var previous)
+                        && Album.SameContent(previous, album) ? previous : album;
                 })
                 .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Year)
