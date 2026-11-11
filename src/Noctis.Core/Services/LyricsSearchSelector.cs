@@ -146,7 +146,27 @@ public static partial class LyricsSearchSelector
 
         var c = candidate.Trim().Normalize(System.Text.NormalizationForm.FormC);
         var l = local.Trim().Normalize(System.Text.NormalizationForm.FormC);
-        return c.Contains(l, StringComparison.OrdinalIgnoreCase)
-            || l.Contains(c, StringComparison.OrdinalIgnoreCase);
+        if (c.Contains(l, StringComparison.OrdinalIgnoreCase) || l.Contains(c, StringComparison.OrdinalIgnoreCase))
+            return true;
+        // GitHub #232: spacing, punctuation and accents aside — Kugou credits "Gusgus" for a library's
+        // "Gus Gus" (live 11-11), "&" reads as "and".
+        var cf = MetadataSearch.MatchText.Fold(c);
+        var lf = MetadataSearch.MatchText.Fold(l);
+        return cf.Length > 1 && lf.Length > 1 && (cf.Contains(lf, StringComparison.Ordinal) || lf.Contains(cf, StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// GitHub #232: the first name of a joined credit — "Tim Neuhaus &amp; The Cabinet" → "Tim Neuhaus",
+    /// "A and B" → "A", "A feat. B" → "A"; the name itself when it has no join.
+    /// </summary>
+    public static string PrimaryArtist(string? artist)
+    {
+        if (string.IsNullOrWhiteSpace(artist)) return string.Empty;
+        var m = PrimaryJoin().Match(artist);
+        var head = m.Success ? artist[..m.Index].Trim() : artist.Trim();
+        return head.Length > 0 ? head : artist.Trim();
+    }
+
+    [GeneratedRegex(@"\s+(?:&|and|feat\.?|ft\.|featuring)\s+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex PrimaryJoin();
 }
