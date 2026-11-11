@@ -22,4 +22,22 @@ public class LyricsProviderException : Exception
     {
         StatusCode: System.Net.HttpStatusCode.ServiceUnavailable or System.Net.HttpStatusCode.TooManyRequests,
     };
+
+    /// <summary>How long the provider asked to be left alone (its Retry-After), when it said (GitHub #228).</summary>
+    public TimeSpan? RetryAfter => (InnerException as BusyResponseException)?.RetryAfter;
+}
+
+/// <summary>
+/// A provider answered "busy" (429 / 503, or its own rate-limit signal mapped to 429), with the
+/// wait it asked for in Retry-After when it sent one (GitHub #228).
+/// </summary>
+public sealed class BusyResponseException : HttpRequestException
+{
+    public BusyResponseException(string message, System.Net.HttpStatusCode status, TimeSpan? retryAfter = null)
+        : base(message, null, status)
+    {
+        RetryAfter = retryAfter;
+    }
+
+    public TimeSpan? RetryAfter { get; }
 }

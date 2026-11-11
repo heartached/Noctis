@@ -236,10 +236,19 @@ public partial class BulkLyricsViewModel : ViewModelBase
         var progress = new Progress<LyricsBulkProgress>(p => Dispatcher.UIThread.Post(() =>
         {
             Progress = p.Total == 0 ? 1 : p.Done / (double)p.Total;
+            // GitHub #228: the run waits, then asks again about the songs sources were busy for.
+            if (p.Waiting)
+            {
+                if (IsRunning) StatusMessage = L("BulkLyrics.WaitingForSources", p.BusyLeft);
+                return;
+            }
             var row = _rowById.GetValueOrDefault(p.TrackId)
                       ?? Rows.FirstOrDefault(r => r.Track.Title == p.CurrentTitle && !r.Done) ?? Rows.FirstOrDefault(r => !r.Done);
             if (row is not null) { row.Status = p.Outcome; row.Done = true; row.Failed = p.Outcome is "failed" or "not found" or "sources busy"; }
-            if (IsRunning) StatusMessage = L(IsRemove ? "BulkLyrics.RemovingProgress" : "BulkLyrics.LookingUpProgress", p.Done, p.Total);
+            if (IsRunning)
+                StatusMessage = p.Done >= p.Total && p.BusyLeft > 0 && !IsRemove
+                    ? L("BulkLyrics.RetryingBusy", p.BusyLeft)
+                    : L(IsRemove ? "BulkLyrics.RemovingProgress" : "BulkLyrics.LookingUpProgress", p.Done, p.Total);
         }));
         try
         {
@@ -250,7 +259,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
             }
             else
             {
-                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst), progress, _cts.Token);
+                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst, RetryBusy: true), progress, _cts.Token);
                 if (ReviewFirst && s.Finds.Count > 0)
                 {
                     // GitHub #195: nothing saved yet; the finds wait for Save Selected.
@@ -351,6 +360,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         if (s.CheckedBefore > 0) parts.Add(L("BulkLyrics.SumCheckedBefore", s.CheckedBefore));
         if (s.Failed > 0) parts.Add(L("BulkLyrics.SumFailed", s.Failed));
         if (s.KeptOwnFile > 0) parts.Add(L("BulkLyrics.SumKeptOwnFile", s.KeptOwnFile));
+        if (s.StillBusy > 0) parts.Add(L("BulkLyrics.SumStillBusy", s.StillBusy));
         if (s.BusySources.Count > 0) parts.Add(L("BulkLyrics.SumBusy", string.Join(", ", s.BusySources)));
         return parts.Count == 0 ? L("BulkLyrics.SumNothing") : string.Join(" · ", parts);
     }

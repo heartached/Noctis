@@ -52,7 +52,7 @@ public class BulkLyricsLibraryRunTests
         Assert.Equal("Find lyrics for your library (2 songs)", vm.TitleText);
         Assert.True(vm.CanChangeOptions);
         await vm.StartCommand.ExecuteAsync(null);
-        Assert.Equal(new LyricsBulkOptions(Upgrade: true, Recheck: true), service.Options);
+        Assert.Equal(new LyricsBulkOptions(Upgrade: true, Recheck: true, RetryBusy: true), service.Options);
         Assert.False(vm.CanChangeOptions);
     }
 

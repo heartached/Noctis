@@ -84,7 +84,7 @@ public class UnisonLyricsService : IUnisonLyricsService
         request.Headers.Add("User-Agent", UserAgent);
         using var response = await _http.SendAsync(request, ct);
         if (response.StatusCode == HttpStatusCode.NotFound) return null;
-        response.EnsureSuccessStatusCode();
+        HttpSafety.EnsureSuccess(response);
         return await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
     }
 

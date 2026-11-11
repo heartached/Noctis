@@ -7,11 +7,19 @@ public sealed record LyricsBulkProgress(int Done, int Total, string CurrentTitle
 {
     /// <summary>The track this report is about (rows are matched by it, not by title).</summary>
     public Guid TrackId { get; init; }
+    /// <summary>GitHub #228: songs the sources were busy for, still to be asked again at the end of the run.</summary>
+    public int BusyLeft { get; init; }
+    /// <summary>The run waits for busy sources before asking again about <see cref="BusyLeft"/> songs (no track).</summary>
+    public bool Waiting { get; init; }
 }
 
 public sealed record LyricsBulkSummary(int Synced, int PlainOnly, int NotFound, int Skipped, int Failed)
 {
-    public int Total => Synced + PlainOnly + NotFound + Skipped + Failed;
+    public int Total => Synced + PlainOnly + NotFound + Skipped + Failed + StillBusy;
+
+    /// <summary>GitHub #228: songs with nothing found because a source was still busy (or down) after
+    /// the run asked again; not recorded as looked up, so the next run asks about them.</summary>
+    public int StillBusy { get; init; }
 
     /// <summary>Of <see cref="Synced"/>: saved with word timings.</summary>
     public int WordSynced { get; init; }
@@ -43,7 +51,10 @@ public sealed record LyricsBulkFind(Track Track, LrcLibResult Result, string Sou
 /// song without lyrics (the lyrics page's "Upgrade plain lyrics", GitHub #194, keeps the plain lyrics it shows).</param>
 /// <param name="ReviewOnly">Look up but save nothing: the finds come back in <see cref="LyricsBulkSummary.Finds"/>
 /// for the user to pick from, and <see cref="ILyricsBulkService.ApplyAsync"/> saves the picked ones (GitHub #195).</param>
-public sealed record LyricsBulkOptions(bool Upgrade = false, bool Recheck = false, bool SyncedOnly = false, bool ReviewOnly = false);
+/// <param name="RetryBusy">GitHub #228: songs that ended with sources busy are asked again at the end of the run,
+/// after a wait (<see cref="LyricsBulkService.BusyRetryWaits"/>). Find Lyrics' dialog; not the one-song lookups.</param>
+public sealed record LyricsBulkOptions(bool Upgrade = false, bool Recheck = false, bool SyncedOnly = false, bool ReviewOnly = false,
+    bool RetryBusy = false);
 
 /// <summary>One online source a bulk run can ask, in the lyrics page's Auto order.</summary>
 public sealed record LyricsBulkSource(
@@ -114,6 +125,9 @@ public sealed class LyricsBulkService : ILyricsBulkService
     private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, object> _saveLocks = new();
     /// <summary>Retries of one song at one source after a busy answer.</summary>
     internal const int BusyRetries = 2;
+    /// <summary>GitHub #228: the waits before each later pass over the songs sources were busy for. Live
+    /// 11-11: Musixmatch's 403 rate-limit block lasted between one and two minutes.</summary>
+    internal TimeSpan[] BusyRetryWaits { get; init; } = { TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(120) };
 
     public LyricsBulkService(ILrcLibService lrcLib, LyricsWriter writer, ILibraryService library, Func<AppSettings> settings,
         Func<IReadOnlyList<LyricsBulkSource>>? sources = null, string? ledgerPath = null)
@@ -147,6 +161,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
         var ledger = new BulkRunLedger(_ledgerPath, Clock);
         var plainLeft = new System.Collections.Concurrent.ConcurrentBag<Track>();
         var finds = new System.Collections.Concurrent.ConcurrentBag<(int Index, LyricsBulkFind Find)>();
+        var busyLeft = new System.Collections.Concurrent.ConcurrentBag<(int Index, Track Track)>();
         var total = tracks.Count;
 
         // What each song has now, sidecars included (a .elrc next to the file is word-synced even
@@ -181,59 +196,9 @@ public sealed class LyricsBulkService : ILyricsBulkService
                 }
                 else
                 {
-                    try
-                    {
-                        var (best, bestSource, complete) = await FindBestAsync(track, sources, gates, target, ct).ConfigureAwait(false);
-                        var found = LyricsSearchSelector.FormatRank(best);
-                        // Judged by what would be saved, not by the find (GitHub #215/#216): a find
-                        // written as plain text never "upgrades" a song, and synced lyrics are only
-                        // ever replaced by richer ones (word > line > plain).
-                        var kept = best is null || found == 0 ? null : ViewModels.LyricsViewModel.ApplyPreferredType(best, preferred);
-                        var keptRank = kept is null ? 0 : KeptRank(kept, found, preferred);
-                        if (best is null || kept is null)
-                        {
-                            if (have == 0) Interlocked.Increment(ref notFound); else Interlocked.Increment(ref skipped);
-                            outcome = have == 0 ? (complete ? "not found" : "sources busy") : "nothing better";
-                            if (have == 1) plainLeft.Add(track);
-                        }
-                        else if (keptRank <= have || (options.SyncedOnly && keptRank < 2))
-                        {
-                            Interlocked.Increment(ref skipped);
-                            outcome = "nothing better";
-                            if (have == 1) plainLeft.Add(track);
-                        }
-                        else if (options.ReviewOnly)
-                        {
-                            // Nothing is written: the user picks from the finds, then ApplyAsync saves.
-                            finds.Add((i, new LyricsBulkFind(track, kept, bestSource, keptRank, have)));
-                            outcome = keptRank >= LyricsSearchSelector.WordSyncedRank ? "found word-synced" : keptRank >= 2 ? "found synced" : "found plain";
-                        }
-                        else if (Save(track, best, found, have, preferred, embed) is not { } r)
-                        {
-                            // Another run saved something at least as rich meanwhile.
-                            Interlocked.Increment(ref skipped);
-                            outcome = "nothing better";
-                        }
-                        else
-                        {
-                            if (r.KeptOwn) Interlocked.Increment(ref keptOwn);
-                            if (have > 0) Interlocked.Increment(ref upgraded);
-                            if (r.Synced) Interlocked.Increment(ref synced);
-                            else { Interlocked.Increment(ref plainOnly); plainLeft.Add(track); }
-                            if (r.Word) Interlocked.Increment(ref word);
-                            outcome = r.Outcome;
-                        }
-                        // Only a complete answer (no source busy or down) counts as looked up. A review
-                        // run saved nothing: its songs are looked up again unless their finds get saved.
-                        if (complete && !options.ReviewOnly) ledger.Record(track.Id, Math.Max(have, keptRank));
-                    }
-                    catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-                    catch (Exception ex)
-                    {
-                        Interlocked.Increment(ref failed);
-                        outcome = "failed";
-                        DebugLogger.Warn(DebugLogger.Category.Lyrics, "Bulk.FetchFailed", $"{track.Title}: {ex.Message}");
-                    }
+                    var (o, busy) = await LookUpAsync(track, i, have).ConfigureAwait(false);
+                    outcome = o;
+                    if (busy) busyLeft.Add((i, track));
                 }
                 var n = Interlocked.Increment(ref done);
                 progress?.Report(new LyricsBulkProgress(n, total, track.Title ?? string.Empty, outcome) { TrackId = track.Id });
@@ -245,8 +210,98 @@ public sealed class LyricsBulkService : ILyricsBulkService
             }
         }).ToList();
 
+        // One song asked of the sources. Busy: nothing found while a source was busy or down; not
+        // counted yet, the song may be asked again at the end of the run (GitHub #228).
+        async Task<(string Outcome, bool Busy)> LookUpAsync(Track track, int i, int have)
+        {
+            string outcome;
+            try
+            {
+                var (best, bestSource, complete) = await FindBestAsync(track, sources, gates, target, ct).ConfigureAwait(false);
+                var found = LyricsSearchSelector.FormatRank(best);
+                // Judged by what would be saved, not by the find (GitHub #215/#216): a find
+                // written as plain text never "upgrades" a song, and synced lyrics are only
+                // ever replaced by richer ones (word > line > plain).
+                var kept = best is null || found == 0 ? null : ViewModels.LyricsViewModel.ApplyPreferredType(best, preferred);
+                var keptRank = kept is null ? 0 : KeptRank(kept, found, preferred);
+                if (best is null || kept is null)
+                {
+                    if (have == 0 && !complete) return ("sources busy", true);
+                    if (have == 0) Interlocked.Increment(ref notFound); else Interlocked.Increment(ref skipped);
+                    outcome = have == 0 ? "not found" : "nothing better";
+                    if (have == 1) plainLeft.Add(track);
+                }
+                else if (keptRank <= have || (options.SyncedOnly && keptRank < 2))
+                {
+                    Interlocked.Increment(ref skipped);
+                    outcome = "nothing better";
+                    if (have == 1) plainLeft.Add(track);
+                }
+                else if (options.ReviewOnly)
+                {
+                    // Nothing is written: the user picks from the finds, then ApplyAsync saves.
+                    finds.Add((i, new LyricsBulkFind(track, kept, bestSource, keptRank, have)));
+                    outcome = keptRank >= LyricsSearchSelector.WordSyncedRank ? "found word-synced" : keptRank >= 2 ? "found synced" : "found plain";
+                }
+                else if (Save(track, best, found, have, preferred, embed) is not { } r)
+                {
+                    // Another run saved something at least as rich meanwhile.
+                    Interlocked.Increment(ref skipped);
+                    outcome = "nothing better";
+                }
+                else
+                {
+                    if (r.KeptOwn) Interlocked.Increment(ref keptOwn);
+                    if (have > 0) Interlocked.Increment(ref upgraded);
+                    if (r.Synced) Interlocked.Increment(ref synced);
+                    else { Interlocked.Increment(ref plainOnly); plainLeft.Add(track); }
+                    if (r.Word) Interlocked.Increment(ref word);
+                    outcome = r.Outcome;
+                }
+                // Only a complete answer (no source busy or down) counts as looked up. A review
+                // run saved nothing: its songs are looked up again unless their finds get saved.
+                if (complete && !options.ReviewOnly) ledger.Record(track.Id, Math.Max(have, keptRank));
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+            catch (Exception ex)
+            {
+                Interlocked.Increment(ref failed);
+                outcome = "failed";
+                DebugLogger.Warn(DebugLogger.Category.Lyrics, "Bulk.FetchFailed", $"{track.Title}: {ex.Message}");
+            }
+            return (outcome, false);
+        }
+
         try { await Task.WhenAll(work).ConfigureAwait(false); }
         catch (OperationCanceledException) { /* partial results below are still valid */ }
+
+        // GitHub #228: the songs sources were busy for are asked again after a wait, a pass or two,
+        // one song at a time; only those still busy after that end the run "sources busy".
+        var retry = busyLeft.OrderBy(b => b.Index).ToList();
+        try
+        {
+            for (var pass = 0; options.RetryBusy && pass < BusyRetryWaits.Length && retry.Count > 0; pass++)
+            {
+                ct.ThrowIfCancellationRequested();
+                progress?.Report(new LyricsBulkProgress(done, total, string.Empty, "waiting") { BusyLeft = retry.Count, Waiting = true });
+                await (Delay ?? Task.Delay)(BusyRetryWaits[pass], ct).ConfigureAwait(false);
+                foreach (var g in gates.Values) g.Reset();
+                var still = new List<(int Index, Track Track)>();
+                for (var k = 0; k < retry.Count; k++)
+                {
+                    var (i, track) = retry[k];
+                    var (outcome, busy) = await LookUpAsync(track, i, 0).ConfigureAwait(false);
+                    if (busy) still.Add((i, track));
+                    progress?.Report(new LyricsBulkProgress(done, total, track.Title ?? string.Empty, outcome)
+                    {
+                        TrackId = track.Id,
+                        BusyLeft = retry.Count - k - 1 + still.Count,
+                    });
+                }
+                retry = still;
+            }
+        }
+        catch (OperationCanceledException) { /* the songs not asked again stay "sources busy" */ }
 
         ledger.Save();
         if (synced + plainOnly > 0)
@@ -257,6 +312,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
             Upgraded = upgraded,
             CheckedBefore = before,
             KeptOwnFile = keptOwn,
+            StillBusy = retry.Count,
             BusySources = gates.Where(g => g.Value.GaveUp).Select(g => g.Key).ToList(),
             PlainOnlyTracks = plainLeft.Distinct().ToList(),
             Finds = finds.OrderBy(f => f.Index).Select(f => f.Find).ToList(),
@@ -416,7 +472,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 catch (Exception ex) when (IsBusy(ex))
                 {
-                    gate.ReportBusy();
+                    gate.ReportBusy(RetryAfterOf(ex));
                     if (attempt >= BusyRetries || gate.GaveUp) { complete = false; break; }
                 }
                 catch (Exception ex)
@@ -430,6 +486,13 @@ public sealed class LyricsBulkService : ILyricsBulkService
         }
         return (best, bestSource, complete);
     }
+
+    private static TimeSpan? RetryAfterOf(Exception ex) => ex switch
+    {
+        LyricsProviderException p => p.RetryAfter,
+        BusyResponseException b => b.RetryAfter,
+        _ => null,
+    };
 
     private static bool IsBusy(Exception ex) => ex switch
     {
