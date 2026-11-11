@@ -2243,6 +2243,27 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Stats.Yesterday" xml:space="preserve"><value>Вчера</value><comment>Play History day heading</comment></data>
   <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>Истории прослушиваний пока нет</value><comment>Statistics empty state title</comment></data>
   <data name="Stats.Formats" xml:space="preserve"><value>Форматы</value><comment>Library section: format bars title</comment></data>
+  <data name="Stats.SourceLibrary" xml:space="preserve"><value>Эта медиатека</value><comment>Statistics source pill: plays counted in Noctis</comment></data>
+  <data name="Stats.SourceLastFm" xml:space="preserve"><value>Last.fm</value><comment>Statistics source pill: the connected Last.fm account</comment></data>
+  <data name="Stats.SourceTip" xml:space="preserve"><value>Откуда берутся цифры прослушиваний. Last.fm учитывает все плееры и устройства, которые скробблят в ваш аккаунт; «Эта медиатека» учитывает прослушивания в Noctis.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Loading" xml:space="preserve"><value>Загрузка ваших чартов Last.fm…</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Updating" xml:space="preserve"><value>Обновление с Last.fm…</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Unreachable" xml:space="preserve"><value>Не удалось подключиться к Last.fm. Проверьте соединение и попробуйте снова.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.ShowingSaved" xml:space="preserve"><value>Не удалось подключиться к Last.fm. Показаны данные от {0}.</value><comment>Statistics source (GitHub #222); {0} = date and time</comment></data>
+  <data name="Stats.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm не знает аккаунт «{0}».</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Private" xml:space="preserve"><value>Этот аккаунт Last.fm скрывает историю прослушиваний.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.BadReply" xml:space="preserve"><value>Last.fm прислал ответ, который Noctis не смог прочитать. Попробуйте позже.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoYear" xml:space="preserve"><value>У Last.fm нет чарта за календарный год. Выберите 7 дней, 30 дней или всё время.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoYearTip" xml:space="preserve"><value>У Last.fm нет чарта за календарный год.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoHistoryTip" xml:space="preserve"><value>История прослушиваний показывает прослушивания в этой медиатеке. Переключите источник на «Эта медиатека», чтобы её увидеть.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoListeningTime" xml:space="preserve"><value>Last.fm не записывает время прослушивания</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoStreak" xml:space="preserve"><value>Недоступно в Last.fm</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.PlaysTip" xml:space="preserve"><value>Скробблы в {0} со всех плееров и устройств</value><comment>Statistics source (GitHub #222); {0} = Last.fm user name</comment></data>
+  <data name="Stats.LastFm.Coverage" xml:space="preserve"><value>Last.fm · {0} · скробблит с {1}</value><comment>Statistics source (GitHub #222); {0} = user name, {1} = date</comment></data>
+  <data name="Stats.LastFm.CoverageNoDate" xml:space="preserve"><value>Last.fm · {0}</value><comment>Statistics source (GitHub #222); {0} = user name</comment></data>
+  <data name="Stats.LastFm.EmptyTitle" xml:space="preserve"><value>Скробблов пока нет</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.EmptyText" xml:space="preserve"><value>За этот период в {0} ничего не заскробблено.</value><comment>Statistics source (GitHub #222); {0} = user name</comment></data>
+  <data name="Stats.LastFm.TryAgain" xml:space="preserve"><value>Повторить</value><comment>Statistics source (GitHub #222)</comment></data>
 
   <!-- TextPromptDialog.axaml (auto-migrated) -->
   <data name="TextPrompt.EnterName" xml:space="preserve"><value>Введите название</value><comment>Title in TextPromptDialog.axaml</comment></data>

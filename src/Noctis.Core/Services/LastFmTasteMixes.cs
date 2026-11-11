@@ -217,7 +217,7 @@ public static class LastFmTasteMixes
             if (n != whole) yield return n;
     }
 
-    private static string AlbumKey(string? album)
+    internal static string AlbumKey(string? album)
     {
         if (string.IsNullOrWhiteSpace(album)) return string.Empty;
         var normalized = MatchText.Fold(AlbumTitleNormalizer.Normalize(album));
