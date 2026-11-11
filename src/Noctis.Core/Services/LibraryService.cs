@@ -2743,8 +2743,10 @@ public class LibraryService : ILibraryService
             && next.All(n => _albumLinks.Any(l => l.AlbumId == n.AlbumId && l.SourceAlbumId == n.SourceAlbumId)))
             return;
         _albumLinks = next;
-        await SaveAlbumLinksAsync(next).ConfigureAwait(false);
-        await RebuildIndexesAsync().ConfigureAwait(false);
+        // No ConfigureAwait(false): LibraryUpdated goes out on the caller's (UI) thread, as
+        // RemoveTrackAsync's does.
+        await SaveAlbumLinksAsync(next);
+        await RebuildIndexesAsync();
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
     }
 
