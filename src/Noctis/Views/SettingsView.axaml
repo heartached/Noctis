@@ -4576,6 +4576,21 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Plugin API 1.8: a plugin renderer draws the lyric lines. Shown only when a
+                 renderer plugin runs (or a stored choice waits for its plugin). -->
+            <Border Classes="setting-row" IsVisible="{Binding HasLyricsRendererChoice}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.LyricsRenderer}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsRendererHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" MinWidth="200" VerticalAlignment="Center"
+                              AutomationProperties.Name="{loc:T Settings.LyricsRenderer}"
+                              ItemsSource="{Binding LyricsRendererOptions}"
+                              SelectedItem="{Binding SelectedLyricsRendererOption, Mode=TwoWay}"/>
+                </Grid>
+            </Border>
             <!-- Discord request: songs with no lyrics (or instrumentals) centre the player
                  on the lyrics page instead of leaving the lyrics side empty. -->
             <Border Classes="setting-row">
