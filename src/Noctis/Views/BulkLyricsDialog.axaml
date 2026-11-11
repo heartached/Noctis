@@ -55,6 +55,26 @@
             <CheckBox x:Name="ReviewBox" Classes="bl-option metadata-pill-checkbox" IsChecked="{Binding ReviewFirst}"
                       IsEnabled="{Binding CanChangeOptions}"
                       Content="{loc:T BulkLyrics.ReviewFirst}" />
+            <!-- GitHub #232: the artist name to search under, per artist of the selection; lookup only. -->
+            <StackPanel x:Name="SearchAsPanel" Spacing="4" Margin="0,8,0,0" IsVisible="{Binding CanRenameArtists}">
+                <TextBlock Text="{loc:T BulkLyrics.SearchAsHeader}" FontSize="12.5" Opacity="0.75" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding ArtistNames}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:BulkLyricsViewModel+ArtistName">
+                            <Grid ColumnDefinitions="200,10,*" Margin="0,0,0,4">
+                                <TextBlock Grid.Column="0" Text="{Binding Original}" FontSize="12.5" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Original}" />
+                                <TextBox Grid.Column="2" Classes="pill-field" Text="{Binding SearchAs}"
+                                         PlaceholderText="{Binding Original}"
+                                         IsEnabled="{Binding $parent[ItemsControl].((vm:BulkLyricsViewModel)DataContext).CanChangeOptions}"
+                                         AutomationProperties.Name="{Binding AccessibleName}" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+            <TextBlock Text="{Binding TooManyArtistsText}" IsVisible="{Binding TooManyArtists}"
+                       FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,6,0,0" />
         </StackPanel>
 
         <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="28,8,28,8">

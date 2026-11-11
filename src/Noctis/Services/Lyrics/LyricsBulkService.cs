@@ -53,8 +53,24 @@ public sealed record LyricsBulkFind(Track Track, LrcLibResult Result, string Sou
 /// for the user to pick from, and <see cref="ILyricsBulkService.ApplyAsync"/> saves the picked ones (GitHub #195).</param>
 /// <param name="RetryBusy">GitHub #228: songs that ended with sources busy are asked again at the end of the run,
 /// after a wait (<see cref="LyricsBulkService.BusyRetryWaits"/>). Find Lyrics' dialog; not the one-song lookups.</param>
+/// <param name="ArtistOverrides">GitHub #232: the artist name to search under, by the songs' own artist
+/// (trimmed; the dictionary's comparer applies). Used for the lookup and its match check only, never
+/// written to the tags; a song with an override is asked again even when an earlier run checked it.</param>
 public sealed record LyricsBulkOptions(bool Upgrade = false, bool Recheck = false, bool SyncedOnly = false, bool ReviewOnly = false,
-    bool RetryBusy = false);
+    bool RetryBusy = false, IReadOnlyDictionary<string, string>? ArtistOverrides = null)
+{
+    /// <summary>The artist <paramref name="track"/> is looked up under: its override, else its own.</summary>
+    public string LookupArtist(Track track)
+    {
+        var own = track.Artist?.Trim() ?? string.Empty;
+        return ArtistOverrides is { } map && map.TryGetValue(own, out var name) && !string.IsNullOrWhiteSpace(name)
+            ? name.Trim()
+            : own;
+    }
+
+    /// <summary>The user gave <paramref name="track"/>'s artist another name to search under.</summary>
+    public bool HasOverride(Track track) => !string.Equals(LookupArtist(track), track.Artist?.Trim() ?? string.Empty, StringComparison.Ordinal);
+}
 
 /// <summary>One online source a bulk run can ask, in the lyrics page's Auto order.</summary>
 public sealed record LyricsBulkSource(
@@ -187,7 +203,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
                     Interlocked.Increment(ref skipped);
                     outcome = have >= LyricsSearchSelector.WordSyncedRank ? "already word-synced" : have >= 2 ? "already synced" : "already has lyrics";
                 }
-                else if (!options.Recheck && ledger.CheckedRecently(track.Id, have))
+                else if (!options.Recheck && !options.HasOverride(track) && ledger.CheckedRecently(track.Id, have))
                 {
                     Interlocked.Increment(ref skipped);
                     Interlocked.Increment(ref before);
@@ -217,7 +233,7 @@ public sealed class LyricsBulkService : ILyricsBulkService
             string outcome;
             try
             {
-                var (best, bestSource, complete) = await FindBestAsync(track, sources, gates, target, ct).ConfigureAwait(false);
+                var (best, bestSource, complete) = await FindBestAsync(track, options.LookupArtist(track), sources, gates, target, ct).ConfigureAwait(false);
                 var found = LyricsSearchSelector.FormatRank(best);
                 // Judged by what would be saved, not by the find (GitHub #215/#216): a find
                 // written as plain text never "upgrades" a song, and synced lyrics are only
@@ -439,16 +455,28 @@ public sealed class LyricsBulkService : ILyricsBulkService
     /// <summary>
     /// Asks the sources in order until one has the target format; the richest answer wins, an
     /// earlier source a tie. <c>Complete</c> is false when a source that might have done better
-    /// was busy or failed, so the song is looked up again next run.
+    /// was busy or failed, so the song is looked up again next run. GitHub #232: when nothing at
+    /// all is found under a joined credit ("Tim Neuhaus &amp; The Cabinet"), the sources are asked
+    /// once more under its first name ("Tim Neuhaus"; live 11-11: LRCLIB 0 results, then 1 synced).
     /// </summary>
     private async Task<(LrcLibResult? Best, string Source, bool Complete)> FindBestAsync(
-        Track track, IReadOnlyList<LyricsBulkSource> sources, Dictionary<string, PoliteGate> gates, int target, CancellationToken ct)
+        Track track, string artist, IReadOnlyList<LyricsBulkSource> sources, Dictionary<string, PoliteGate> gates, int target, CancellationToken ct)
+    {
+        var first = await FindBestAsAsync(track, artist, sources, gates, target, ct).ConfigureAwait(false);
+        if (first.Best is not null) return first;
+        var primary = LyricsSearchSelector.PrimaryArtist(artist);
+        if (primary.Length == 0 || string.Equals(primary, artist.Trim(), StringComparison.OrdinalIgnoreCase)) return first;
+        var second = await FindBestAsAsync(track, primary, sources, gates, target, ct).ConfigureAwait(false);
+        return (second.Best, second.Source, first.Complete && second.Complete);
+    }
+
+    private async Task<(LrcLibResult? Best, string Source, bool Complete)> FindBestAsAsync(
+        Track track, string artist, IReadOnlyList<LyricsBulkSource> sources, Dictionary<string, PoliteGate> gates, int target, CancellationToken ct)
     {
         LrcLibResult? best = null;
         var bestRank = 0;
         var bestSource = string.Empty;
         var complete = true;
-        var artist = track.Artist ?? string.Empty;
         var title = track.Title ?? string.Empty;
         var duration = track.Duration.TotalSeconds;
         foreach (var source in sources)

@@ -3947,6 +3947,9 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>{0:N0} fehlgeschlagen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>{0:N0} mit deiner eigenen Songtext-Datei belassen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} ausgelastet, versuch es später noch mal</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsHeader" xml:space="preserve"><value>Als Künstler suchen: der Name, den die Songtext-Quellen kennen (nur für diese Suche, deine Tags bleiben unverändert)</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsFor" xml:space="preserve"><value>{0} suchen als</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsTooMany" xml:space="preserve"><value>Die Suche unter einem anderen Künstlernamen gibt es für Auswahlen mit bis zu {0} Künstlern.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumStillBusy" xml:space="preserve"><value>{0} nicht gesucht, Quellen ausgelastet: der nächste Durchlauf fragt erneut</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.WaitingForSources" xml:space="preserve"><value>Warte auf ausgelastete Quellen … noch {0} erneut zu suchen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>Frage ausgelastete Quellen erneut … noch {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
