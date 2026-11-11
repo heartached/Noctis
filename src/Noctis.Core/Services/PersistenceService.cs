@@ -515,8 +515,8 @@ public class PersistenceService : IPersistenceService
 
         try
         {
-            var path = GetArtworkPath(albumId);
-            File.WriteAllBytes(path, imageData);
+            // Never in place: the grid may be decoding this file right now (GitHub #224).
+            Helpers.AtomicFileWriter.WriteAllBytes(GetArtworkPath(albumId), imageData);
         }
         catch
         {
