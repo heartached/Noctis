@@ -112,7 +112,10 @@ public sealed class LinuxTrayHost : IDisposable
                 },
                 (Notification<string> signal) =>
                 {
-                    if (signal.Exception != null) return;
+                    // IsCompletion first: Notification.CompletionReason (was .Exception) throws
+                    // on every ordinary signal, and Tmds drops the bus when a handler throws
+                    // (same trap as LinuxResumeWatcher, 1.5.3/1.5.4).
+                    if (signal.IsCompletion) return;
                     _ownerChangeSeen = true;
                     SetAvailable(!string.IsNullOrEmpty(signal.Value), "TrayHost.Changed");
                 },

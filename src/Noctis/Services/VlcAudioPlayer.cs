@@ -7066,7 +7066,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     {
         // The libvlc payload the CI .app packaging step bundles at
         // Contents/MacOS/libvlc (dylibs + plugins/) comes first: it is the pinned
-        // universal VLC 3.0.23, so it loads on both arm64 and x64 builds and matches
+        // universal VLC 3.0.24, so it loads on both arm64 and x64 builds and matches
         // LibVLCSharp 3's major version. A VLC.app in /Applications may be Intel-only
         // (dlopen fails on the arm64 build) or VLC 4.x (version-mismatch VLCException),
         // and Core.Initialize gets one shot, so preferring it failed startup even with

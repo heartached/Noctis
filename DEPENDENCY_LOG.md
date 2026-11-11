@@ -50,3 +50,62 @@ The csproj pins 3.0.21, which does not exist on nuget.org; restore floats to the
   (a) Drop the package and bundle official libvlc 3.0.23 macOS dylibs+plugins in the CI .app packaging step (real fix; CI work + a mac smoke test);
   (b) Hard-require VLC.app on macOS — VlcAudioPlayer already prefers /Applications/VLC.app dylibs when present (VlcAudioPlayer.cs:308-327), so this is mostly removing the pin + a user-facing "install VLC" error path.
 Note: the L25 CI change (-warnaserror:NU1603) will turn the macOS leg red on the next push precisely because of this pin — that's the intended tripwire, not a regression.
+
+## Round 3 (2026-11-09) — full sweep + dependabot backlog (branch `chore/1109-deps` from main 9c15c6b8)
+
+Target release: 1.7.0. Order followed: security → patch → minor → majors. Full solution build (incl. Android, `--no-incremental`) after each group, compared line by line against the 9c15c6b8 baseline (1047 warning lines; ends at 1046: the NU1510 line gone, nothing new). Full suite after each group (baseline 9899 pass / 2 known-flaky fail / 94 skip; final in the last line of this section). `dotnet list package --vulnerable --include-transitive`: clean for all 18 projects, before and after.
+
+### Security
+
+- VideoLAN.LibVLC.Windows | 3.0.23.1 → 3.0.24 | cc376359 | VLC 3.0.24 is VideoLAN's security release (VideoLAN-SB-VLC-3024: 50+ fixes in VLC, 74+ in bundled libs; FFmpeg 4.4 → 8.1.2 inside libvlc). AUDIO HAND-TEST (Windows): play FLAC, MP3 (gapless album: no gap/click at boundaries), ALAC/AAC, a hi-res 96k/192k file, a 5.1 FLAC (each channel in its speaker), a DSD file; seek a lot, next/prev quickly; EQ + normalization + crossfade on; switch output device. First launch after the update rebuilds plugins.dat (VlcPluginCache); the 2nd launch should idle with ~3 plugin modules again.
+- macOS bundled VLC dylibs (CI) | 3.0.23 → 3.0.24 universal dmg | cc376359 | URL + SHA-256 2c8e89f7…beb3c (matches download.videolan.org's .sha256; re-hashed locally; the dmg still has VLC.app/Contents/MacOS/{lib,plugins}). VERIFY: next CI macOS legs package the dmg; mac smoke test on a machine without VLC.app (shorter version of the battery above).
+- website: astro 7.3.5 → 7.4.8, sharp 0.35.4 → 0.35.5, `npm audit fix` | 0222b3a1 | Clears 5 high advisories (sharp/librsvg CVE-2026-96889, source-map-js, undici, vite, zod). `npm run build:fast` output identical apart from asset hashes/whitespace. HAND-TEST: after deploy, open home, downloads and changelog pages.
+
+### Patch
+
+- Avalonia / .Desktop / .HarfBuzz / .Themes.Fluent / .Fonts.Inter / .Android / .Skia (Kawarp) / .Headless.XUnit | 12.1.3 → 12.1.6 | 831f42a1 (+ 3cbd6151, 50732e9e) | Fixes only. Follow-ups: 12.1.5 gave TreeViewItemAutomationPeer its own ExpandCollapse members, so our FoldingTreeView peer's are marked `new` (3cbd6151, behaviour unchanged); 12.1.5 fixed the dispatcher/loop clock gap upstream (#22496) and removed the field our phone workaround patched, so DispatcherClock is deleted (50732e9e). HAND-TEST: desktop smoke (menus, flyouts, popups, ComboBoxes, text boxes, Folders tree expand/collapse incl. with Narrator, mini player). PHONE (UNVERIFIED on a device): idle on Home after a scan with animations finished — the UI thread must not spin (the 10-14 bug); timers/animations still on time.
+- LibVLCSharp | 3.10.1 → 3.10.2 | fffdd009 | Changelog unreachable (code.videolan.org blocks automated fetches); covered by the audio battery above.
+- Tmds.DBus.Protocol | 0.95.1 → 0.95.2 | 0379c1ce (+ 93c1db2a, b12ae157) | Fd-handling fix; `Notification.Exception` renamed `CompletionReason`. Following the rename exposed LinuxTrayHost reading `.Exception` on ordinary signals (it throws unless IsCompletion), fixed in b12ae157. LINUX HAND-TEST: MPRIS media keys, sleep/resume handling, tray icon appears/disappears when the tray host (e.g. a panel) restarts.
+- SQLitePCLRaw.bundle_e_sqlite3 | 2.1.13 → 2.1.14 | cadb57d5 | Native SQLite 3.53.3 → 3.54.0 (read with sqlite3_libversion). Superseded by the 3.0.5 row below.
+- AndroidX Media3 ExoPlayer/Session 1.11.0 → 1.11.1, Core.Ktx 1.19.0.1 → 1.19.1 | 502e522c | PHONE HAND-TEST: playback, lock-screen/notification controls, Bluetooth next/prev.
+
+### Minor
+
+- Avalonia.Labs.Lottie | 12.0.2 → 12.1.0 | e086127c | Now on stable SkiaSharp/Skottie 3.119.4. HAND-TEST: every Lottie animation.
+- Microsoft.NET.Test.Sdk | 18.10.1 → 18.11.0 | 615104f3 | Test-time only.
+- AndroidX Core.SplashScreen | 1.0.1.15 → 1.2.0.3 | 76d7008a | PHONE HAND-TEST: cold start shows the splash then the app, no white flash.
+- GitHub Actions, all SHA-pinned | checkout 4.4.0 → 7.0.1 (d8c3c690), setup-dotnet 4.3.1 → 6.1.0 (c82e57cd), upload-artifact 4.6.2 → 7.0.2 + download-artifact 4.3.0 → 8.0.2 (22dbd043), setup-node 4.4.0 → 7.1.0 (598fb958), cloudflare/wrangler-action 4.0.0 → 4.1.3 (ad28be5c) | The majors are node24/ESM moves. Checked against our use: no pull_request_target/workflow_run (checkout v7's fork block n/a); every git push runs on the host (checkout v6's separate credentials file works with host git); artifacts are named, zipped multi-file uploads downloaded by name or pattern + merge-multiple (download v8 now errors on a digest mismatch, which we want); setup-node keeps explicit `cache: npm` and package.json has no packageManager field. UNVERIFIED until CI runs: dotnet.yml (push/PR), deploy-website.yml (release/push), package-managers.yml (release), plugin-submission.yml (issue events).
+
+### Majors landed (build clean, suite green, no migration work)
+
+- Microsoft.Data.Sqlite (+ .Core in the Mixxx plugin) | 8.0.31 → 10.0.14 | 361730b7 | .NET 8 support ends 2026-11-10. The three 10.0 breaking changes are DateTimeOffset/GetDateTime time-zone handling; no SQLite store reads GetDateTime/GetDateTimeOffset or writes DateTimeOffset (dates are ISO strings/longs). HAND-TEST: library loads; play counts/ratings/favorites/last-played survive a restart; Settings → Rebuild Index; phone sync; Mixxx import.
+- System.Security.Cryptography.ProtectedData | 8.0.0 → 10.0.14 | 3d836580 | HAND-TEST: Last.fm/ListenBrainz still signed in after a restart (DPAPI tokens decrypt).
+- Microsoft.Extensions.DependencyInjection 8.0.1 | REMOVED | 4ebfa0a3 | NU1510: the AspNetCore.App framework reference already supplies the 10.0.x copy. HAND-TEST: app starts.
+- YamlDotNet | 15.3.0 → 18.1.0 | 41410d6a | Breaking changes are in extension APIs we don't use; 18.1 adds a default max recursion depth (hardening for untrusted .lyricsfile sidecars). HAND-TEST: a track with a .lyricsfile shows word-synced lyrics.
+- SQLitePCLRaw.bundle_e_sqlite3 | 2.1.14 → 3.0.5 + `SQLite` native 3.54.1 pinned | 2159b4d4 | v3 has no code changes in .core; the native library is now its own package, and bundle 3.0.5 alone would have DOWNGRADED SQLite to 3.53.4, hence the explicit pin. Verified: Windows e_sqlite3.dll reports 3.54.1; the Android APK carries libe_sqlite3.so from the same package. Same hand-tests as the Microsoft.Data.Sqlite row, plus the phone library/history.
+
+### Reverted
+
+- NAudio.Core / NAudio.Wasapi | 2.3.0 → 2.4.0 | 3a7d10ea, reverted in 5fa1b0ea | 2.4.0 made BufferedWaveProvider.BufferDuration read-only (CS0200 in WasapiGainOutput.CreateInputChain). Not worth reshaping the WASAPI chain for a minor we don't need.
+
+### Held (majors that need real migration)
+
+- xunit.v3 3.2.2 → 4.0.3 / xunit.runner.visualstudio 3.1.5 → 4.0.1 — tried in a scratch build: needs `[assembly: Parallelization(Mode = None)]` instead of CollectionBehavior; defaults to MTP v2 (`dotnet test` refuses the VSTest target on the .NET 10 SDK, so CI's trx logger/filter calls need the MTP form or the xunit.v3.mtp-off package); and even with mtp-off every [AvaloniaFact] fails discovery because Avalonia.Headless.XUnit 12.1.6 is built on xunit.v3.extensibility.core 3.2.2 (MissingMethodException in TestIntrospectionHelper). Blocked until Avalonia ships a Headless.XUnit for xunit 4.
+- NAudio 3.x — Span-based ISampleProvider/IWaveProvider Read signature across ~27 audio files (WASAPI gapless chain): a real audio migration.
+- SkiaSharp 3.119.4 → 4.155.0 — Avalonia.Skia 12.1.6 depends on SkiaSharp 3.119.4; not before Avalonia moves.
+- DiscordRichPresence 1.143.0 is unlisted on nuget.org; 1.6.1.70 stays.
+- Linux AppImage libvlc comes from Ubuntu 22.04's distro packages (not pinned here); 3.0.24 reaches Linux only via Ubuntu.
+
+### Dependabot PRs
+
+- #140 (Sqlite/ProtectedData 10.0.13; failed NU1605 because only Noctis.Core moved) — superseded by 361730b7 + 3d836580; close.
+- #120 (Avalonia 12.1.4 in Abstractions/UI/Kawarp only; failed NU1605) — superseded by 831f42a1; close.
+- #48 (LibVLCSharp(.Avalonia) 3.10.0 → 3.10.1) — stale (main already on 3.10.1, .Avalonia no longer referenced), superseded by fffdd009; close.
+- #20 (SQLitePCLRaw 3.0.4 in the app only; CI logs expired) — superseded by 2159b4d4; close.
+- #43 / #15 / #14 / #13 / #12 (setup-node, setup-dotnet, upload-artifact, checkout, download-artifact) — superseded by the SHA-pinned commits above at newer versions; close once this branch is merged.
+
+### Plugin note
+
+Avalonia's and Microsoft.Data.Sqlite's assembly versions carry the patch number (12.1.6.0, 10.0.14.0). Plugins use the host's copy, so a plugin rebuilt from this branch references the new versions: set its minAppVersion to the release that ships this branch (next app version: 1.7.0) before publishing it. UNVERIFIED whether an older host refuses such a plugin (expected: the default load context won't bind a higher requested version than it has).
+
+Final (2026-11-11, HEAD after f28102d3): full solution build 0 errors, 1046 warning lines (baseline 1047; only NU1510 gone). Full suite 9896 pass / 5 fail / 94 skip; the 5 (BlurredBackdropTests, timing) pass when re-run alone (7/0/2) and passed in every earlier group run. The previous final run hit TopBarCornerOrderTests failing by test order (fixed in f28102d3: the class now installs AccessibleNames itself) plus 3 timing tests that passed alone.
