@@ -167,6 +167,8 @@
                             Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
                     <Button ctrl:ColumnsPanel.Column="Time" Content="{loc:T LibraryArtists.ColumnTime}" Command="{Binding SortByColumnCommand}" CommandParameter="time"
                             Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
+                    <Button ctrl:ColumnsPanel.Column="Plays" Content="{loc:T LibraryArtists.ColumnPlays}" Command="{Binding SortByColumnCommand}" CommandParameter="plays"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
                     <Button ctrl:ColumnsPanel.Column="Genre" Content="{loc:T LibraryArtists.ColumnGenre}" Command="{Binding SortByColumnCommand}" CommandParameter="genre"
                             Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Left" HorizontalAlignment="Left" />
                 </ctrl:ColumnHeaderPanel>
@@ -293,6 +295,10 @@
                                     </Border>
                                     <Border ctrl:ColumnsPanel.Column="Time">
                                         <TextBlock Text="{Binding DurationFormatted}" FontSize="12" Opacity="0.5"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <Border ctrl:ColumnsPanel.Column="Plays">
+                                        <TextBlock Text="{Binding PlayCount}" FontSize="12" Opacity="0.5"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
                                     <Border ctrl:ColumnsPanel.Column="Genre">

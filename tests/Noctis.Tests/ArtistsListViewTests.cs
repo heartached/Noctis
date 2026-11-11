@@ -185,6 +185,128 @@ public class ArtistsListViewTests : IDisposable
         Assert.False(vm.SortAscending); // Z→A on the second click, as on the Songs headers
     }
 
+    // ── Plays (GitHub #231) ──
+
+    private static Track Played(string artist, int plays)
+    {
+        var t = Song(artist, "Album", 200);
+        t.PlayCount = plays;
+        return t;
+    }
+
+    /// <summary>"Coin" 5 + "Coin feat. X" 3 (the credit's first artist, as Home's Top Artists
+    /// and the Songs count bucket it), "X" 4, "Rich Aucoin" 6, "Adele" never played.</summary>
+    private static List<Track> PlayedTracks() => new()
+    {
+        Played("Coin", 5), Played("Coin feat. X", 3), Played("X", 4), Played("Rich Aucoin", 6), Played("Adele", 0),
+    };
+
+    [Fact]
+    public void ComputeStats_SumsPlays_ByTheSameArtistAsHomeTopArtists()
+    {
+        var tracks = PlayedTracks();
+        var stats = LibraryArtistsViewModel.ComputeStats(tracks, ArtistCredit.GroupMode);
+
+        Assert.Equal(8, stats["Coin"].Plays);
+        Assert.Equal(4, stats["X"].Plays);
+        Assert.Equal(6, stats["Rich Aucoin"].Plays);
+        Assert.Equal(0, stats["Adele"].Plays);
+        // HomeViewModel's Top Artists bucket: PlayCount summed per Track.GroupingArtist.
+        foreach (var g in tracks.GroupBy(t => t.GroupingArtist, StringComparer.OrdinalIgnoreCase))
+            Assert.Equal(g.Sum(t => (long)t.PlayCount), stats[g.Key].Plays);
+    }
+
+    [AvaloniaFact]
+    public void PlaysSort_MostPlayedFirst_ShowsTheCount_AndFlipsOnASecondClick()
+    {
+        var artists = new List<Artist> { A("Adele", 1, 1), A("Coin", 2, 1), A("Rich Aucoin", 1, 1), A("X", 1, 1, favorite: true) };
+        var stats = LibraryArtistsViewModel.ComputeStats(PlayedTracks(), ArtistGroupMode.Artist);
+
+        var rows = LibraryArtistsViewModel.BuildListRows(artists, string.Empty, "plays", ascending: false, stats);
+        Assert.Equal(new[] { "Coin", "Rich Aucoin", "X", "Adele" }, rows.Select(r => r.Name)); // a favorite takes its real rank
+        Assert.Equal(new long[] { 8, 6, 4, 0 }, rows.Select(r => r.PlayCount));
+        Assert.Equal(new[] { "Adele", "X", "Rich Aucoin", "Coin" },
+            LibraryArtistsViewModel.BuildListRows(artists, string.Empty, "plays", ascending: true, stats).Select(r => r.Name));
+
+        var vm = new LibraryArtistsViewModel(new FakeLibraryService());
+        vm.SortByColumnCommand.Execute("plays");
+        Assert.Equal("plays", vm.SortMode);
+        Assert.False(vm.SortAscending); // like Last.fm: most played first
+        Assert.Equal(Noctis.Localization.Loc.T("Main.Plays"), vm.SortLabel);
+        vm.SortByColumnCommand.Execute("plays");
+        Assert.True(vm.SortAscending);
+        vm.SetSortCommand.Execute("name");
+        vm.SetSortCommand.Execute("plays");
+        Assert.False(vm.SortAscending);
+    }
+
+    [AvaloniaFact]
+    public async Task PlaysSort_AgreesWithHomeTopArtists()
+    {
+        var lib = new FakeLibraryService();
+        lib.TrackList.AddRange(PlayedTracks());
+        lib.ArtistList.AddRange(new[] { A("Adele", 1, 1), A("Coin", 2, 1), A("Rich Aucoin", 1, 1), A("X", 1, 1) });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var home = new HomeViewModel(player, lib, new SidebarViewModel(persistence, lib));
+        await home.RefreshAsync();
+
+        var vm = new LibraryArtistsViewModel(lib, player) { ViewMode = "list" };
+        vm.SetSortCommand.Execute("plays");
+        vm.IsActive = true;
+        await PumpUntil(() => vm.ListRows.Count == 4);
+
+        Assert.Equal(home.TopArtists.Select(a => a.Name), vm.ListRows.Take(home.TopArtists.Count).Select(r => r.Name));
+        Assert.Equal(new[] { "Coin", "Rich Aucoin", "X" }, home.TopArtists.Select(a => a.Name));
+    }
+
+    [AvaloniaFact]
+    public async Task ACountedPlay_ReRanksThePlaysSort_WithoutALibraryUpdate()
+    {
+        var lib = new FakeLibraryService();
+        var tracks = PlayedTracks();
+        lib.TrackList.AddRange(tracks);
+        lib.ArtistList.AddRange(new[] { A("Adele", 1, 1), A("Coin", 2, 1), A("Rich Aucoin", 1, 1), A("X", 1, 1) });
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var vm = new LibraryArtistsViewModel(lib, player) { ViewMode = "list" };
+        vm.SetSortCommand.Execute("plays");
+        vm.IsActive = true;
+        await PumpUntil(() => vm.ListRows.Count == 4);
+        Assert.Equal(new[] { "Coin", "Rich Aucoin", "X", "Adele" }, vm.ListRows.Select(r => r.Name));
+
+        var countPlay = typeof(PlayerViewModel).GetMethod("CountPlay",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        var x = tracks.Single(t => t.Artist == "X");
+        for (var i = 0; i < 3; i++) countPlay.Invoke(player, new object[] { x });
+        await PumpUntil(() => vm.ListRows[1].Name == "X");
+
+        Assert.Equal(new[] { "Coin", "X", "Rich Aucoin", "Adele" }, vm.ListRows.Select(r => r.Name));
+        Assert.Equal(7, vm.ListRows[1].PlayCount);
+
+        // Under another sort the Plays column still moves, and a switch back sorts by today's counts.
+        vm.SetSortCommand.Execute("name");
+        await PumpUntil(() => vm.ListRows[0].Name == "Adele");
+        countPlay.Invoke(player, new object[] { tracks.Single(t => t.Artist == "Adele") });
+        await PumpUntil(() => vm.ListRows[0].PlayCount == 1);
+        Assert.Equal(1, vm.ListRows[0].PlayCount);
+        vm.Dispose();
+    }
+
+    [AvaloniaFact]
+    public async Task PlaysSort_SurvivesSaveAndReload()
+    {
+        var settings = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
+        await settings.LoadAsync();
+        settings.ArtistSortMode = "plays";
+        settings.ArtistSortAscending = false;
+        await settings.SaveAsync();
+
+        var reloaded = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
+        await reloaded.LoadAsync();
+        Assert.Equal("plays", reloaded.ArtistSortMode);
+        Assert.False(reloaded.ArtistSortAscending);
+    }
+
     // ── Search ──
 
     [AvaloniaFact]
