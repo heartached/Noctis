@@ -4,7 +4,7 @@ The plugin kit for [Noctis](https://github.com/heartached/Noctis), a desktop mus
 Reference it with `ExcludeAssets="runtime"`: the app supplies this assembly (and Avalonia) at run time.
 
 ```xml
-<PackageReference Include="Noctis.Plugins.Abstractions" Version="1.6.*" ExcludeAssets="runtime" PrivateAssets="all" />
+<PackageReference Include="Noctis.Plugins.Abstractions" Version="1.8.*" ExcludeAssets="runtime" PrivateAssets="all" />
 ```
 
 Implement `INoctisPlugin`, add a `plugin.json` manifest next to your DLL, zip the folder and
@@ -15,7 +15,11 @@ https://github.com/heartached/Noctis/blob/main/docs/PLUGINS.md
 
 ## Release notes
 
-- **1.7** (unreleased): `ILibraryReader.GetLyricLines` (the lyric lines Noctis already has for a
+- **1.8** (Noctis 1.7.0+): lyrics renderers (`RegisterLyricsRenderer`, `ILyricsRenderer`,
+  `ILyricsLineView`, `LyricsLineInfo`, `LyricsLineFrame`, `LyricsLineStyle`): draw the lyric lines
+  in place of Noctis's own once the user picks the renderer in Settings → Lyrics. Needs
+  `"minAppVersion": "1.7.0"`.
+- **1.7** (Noctis 1.6.9+): `ILibraryReader.GetLyricLines` (the lyric lines Noctis already has for a
   track; older Noctis versions throw `NotSupportedException`), `IPlaybackControl.QueueTracks` (Play
   Next / Add to Queue as the app does them), and `RegisterLibraryCommand` with
   `LibraryCommandPlaces` (entries on the artist page's menu and the Songs page's top bar, under
