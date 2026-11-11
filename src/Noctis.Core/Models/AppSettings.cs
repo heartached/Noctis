@@ -1150,6 +1150,11 @@ public class AppSettings : IJsonOnDeserializing
     /// connecting is the opt-in; this lets a connected user turn them off.</summary>
     public bool LastFmTasteEnabled { get; set; } = true;
 
+    /// <summary>GitHub #222: where the Statistics page's listening figures come from: "Library"
+    /// (the play log, default) or "LastFm" (the connected account's charts; offered only while an
+    /// account is connected, and the library is used whenever none is).</summary>
+    public string StatisticsSource { get; set; } = "Library";
+
     /// <summary>GitHub #160: how an imported play count combines with Noctis's count:
     /// "KeepHigher" (default, never lowers a count) or "Replace" (PlayCountImportMode).</summary>
     public string PlayCountImportMode { get; set; } = "KeepHigher";

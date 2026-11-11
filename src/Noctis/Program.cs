@@ -492,6 +492,9 @@ internal class Program
         // GitHub #177: Home's Last.fm mixes and Discover (read-only account charts, cached 12 h).
         services.AddSingleton(sp => new LastFmTasteService(sp.GetRequiredService<HttpClient>(),
             Path.Combine(AppPaths.DataRoot, "cache", "lastfm_taste.json")));
+        // GitHub #222: Statistics with Last.fm as its source (read-only account charts, cached 1 h).
+        services.AddSingleton(sp => new LastFmStatsService(sp.GetRequiredService<HttpClient>(),
+            Path.Combine(AppPaths.DataRoot, "cache", "lastfm_stats.json")));
         services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
         services.AddSingleton<ArtistInfoService>();

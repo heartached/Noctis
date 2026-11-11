@@ -2903,6 +2903,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmStatusText = Loc.T("Settings.NotConnected");
     /// <summary>GitHub #177: Home's Last.fm mixes and Discover; see <see cref="AppSettings.LastFmTasteEnabled"/>.</summary>
     [ObservableProperty] private bool _lastFmTasteEnabled = true;
+    /// <summary>GitHub #222: the Statistics page's source; see <see cref="AppSettings.StatisticsSource"/>.</summary>
+    [ObservableProperty] private string _statisticsSource = "Library";
 
     // ── ListenBrainz ──
     [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
@@ -3855,6 +3857,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = _settings.LastFmScrobblingEnabled;
             LastFmUsername = _settings.LastFmUsername;
             LastFmTasteEnabled = _settings.LastFmTasteEnabled;
+            StatisticsSource = _settings.StatisticsSource ?? "Library";
             LoadPlayCountImportSettings(_settings);
 
             if (_lastFm != null && !string.IsNullOrEmpty(_settings.LastFmSessionKey))
@@ -4351,6 +4354,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
         _settings.LastFmTasteEnabled = LastFmTasteEnabled;
+        _settings.StatisticsSource = StatisticsSource;
         SavePlayCountImportSettings(_settings);
         if (_lastFm is LastFmService lfm)
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
@@ -6878,6 +6882,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLastFmTasteEnabledChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnStatisticsSourceChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     [RelayCommand]
     private async Task LoginLastFm()
@@ -6981,6 +6986,8 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
         // The account's charts behind Home's Last.fm mixes (GitHub #177) go with it.
         _ = App.Services?.GetService<LastFmTasteService>()?.ClearAsync();
+        // And the Statistics page's Last.fm figures (GitHub #222).
+        _ = App.Services?.GetService<LastFmStatsService>()?.ClearAsync();
     }
 
     // ── ListenBrainz handlers ──
@@ -8600,6 +8607,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             LastFmTasteEnabled = defaultSettings.LastFmTasteEnabled;
+            StatisticsSource = defaultSettings.StatisticsSource;
             ResetPlayCountImportSettings(defaultSettings);
             IsLastFmConnected = false;
             LastFmStatusText = Loc.T("Settings.NotConnected");

@@ -54,7 +54,7 @@ public partial class StatisticsViewModel : ViewModelBase
     public bool IsHistoryTabSelected
     {
         get => SelectedTab == TabHistory;
-        set { if (value) SelectedTab = TabHistory; }
+        set { if (value && !IsLastFmSource) SelectedTab = TabHistory; }
     }
 
     partial void OnSelectedTabChanged(string value)
@@ -96,7 +96,7 @@ public partial class StatisticsViewModel : ViewModelBase
     public bool IsThisYearSelected
     {
         get => Period == ListeningPeriod.ThisYear;
-        set { if (value) Period = ListeningPeriod.ThisYear; }
+        set { if (value && !IsLastFmSource) Period = ListeningPeriod.ThisYear; }
     }
 
     public bool IsAllTimeSelected
@@ -139,6 +139,11 @@ public partial class StatisticsViewModel : ViewModelBase
 
     [ObservableProperty] private string _peakHourText = "";
 
+    /// <summary>The "nothing to show" card, and what it says (the play log's or Last.fm's).</summary>
+    [ObservableProperty] private bool _isEmptyNoteVisible;
+    [ObservableProperty] private string _emptyTitle = Loc.T("Stats.NoHistoryTitle");
+    [ObservableProperty] private string _emptyText = Loc.T("Statistics.NoPlaysRecordedYet");
+
     public BulkObservableCollection<StatsArtistTile> TopArtists { get; } = new();
     public BulkObservableCollection<StatsRankRow> TopAlbums { get; } = new();
     public BulkObservableCollection<StatsRankRow> TopTracks { get; } = new();
@@ -175,13 +180,15 @@ public partial class StatisticsViewModel : ViewModelBase
     private readonly StatsHistoryHeader _historyHeader;
 
     public StatisticsViewModel(ILibraryService library, IPlayHistoryService playHistory,
-        ArtistImageService? artistImages = null)
+        ArtistImageService? artistImages = null, SettingsViewModel? settings = null,
+        LastFmStatsService? lastFmStats = null)
     {
         _library = library;
         _playHistory = playHistory;
         _artistImages = artistImages;
         _historyHeader = new StatsHistoryHeader(this);
         HistoryFeed.Add(_historyHeader);
+        InitLastFm(settings, lastFmStats);
     }
 
     // Bumped by every refresh: a pass that finishes after a newer one started is dropped.
@@ -201,6 +208,10 @@ public partial class StatisticsViewModel : ViewModelBase
     public async Task RefreshAsync()
     {
         var generation = ++_refreshGeneration;
+        // GitHub #222: with Last.fm as the source, the listening figures come from the account;
+        // the library facts below still come from here. A read still running for an older
+        // source or period stops now.
+        var lastFm = BeginLastFmRefresh();
 
         // Snapshot on the caller's (UI) thread: the library collections are mutated by
         // scans and watcher batches, so the background pass must not enumerate them live.
@@ -216,9 +227,13 @@ public partial class StatisticsViewModel : ViewModelBase
 
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (generation == _refreshGeneration)
-                Apply(stats);
+            if (generation != _refreshGeneration) return;
+            ApplyLibrary(stats);
+            if (lastFm == null) ApplyListening(stats);
         });
+
+        if (lastFm != null)
+            await RefreshLastFmAsync(lastFm, generation, tracks, albums, artists, images, force: false).ConfigureAwait(false);
     }
 
     /// <summary>Everything the view shows, computed without touching the UI.</summary>
@@ -236,6 +251,8 @@ public partial class StatisticsViewModel : ViewModelBase
         public string StreakText = "", LongestStreakText = "";
         public string UniqueArtistsText = "", UniqueTracksText = "";
         public string PeakHourText = "";
+        public string EmptyTitle = Loc.T("Stats.NoHistoryTitle");
+        public string EmptyText = Loc.T("Statistics.NoPlaysRecordedYet");
         public List<StatsArtistTile> TopArtists = new();
         public List<StatsRankRow> TopAlbums = new();
         public List<StatsRankRow> TopTracks = new();
@@ -286,7 +303,8 @@ public partial class StatisticsViewModel : ViewModelBase
         return r;
     }
 
-    private void Apply(StatisticsResult r)
+    /// <summary>The listening figures (summary, top lists, Play History).</summary>
+    private void ApplyListening(StatisticsResult r)
     {
         HasPlayHistory = r.HasPlayHistory;
         HasPeriodPlays = r.HasPeriodPlays;
@@ -316,7 +334,14 @@ public partial class StatisticsViewModel : ViewModelBase
         ForgottenFavorites.ReplaceAll(r.ForgottenFavorites);
         RecentPlayCount = r.RecentPlayCount;
         HistoryFeed.ReplaceAll(r.HistoryRows.Prepend(_historyHeader));
+        IsEmptyNoteVisible = !r.HasPlayHistory;
+        EmptyTitle = r.EmptyTitle;
+        EmptyText = r.EmptyText;
+    }
 
+    /// <summary>The Library card: what's on disk, whatever the source.</summary>
+    private void ApplyLibrary(StatisticsResult r)
+    {
         TotalTracks = r.TotalTracks;
         TotalTracksText = r.TotalTracksText;
         TotalAlbumsText = r.TotalAlbumsText;
@@ -742,6 +767,8 @@ public sealed class StatsArtistTile
     public string PlaysText { get; init; } = string.Empty;
     public string? ImagePath { get; init; }
     public bool HasImage => !string.IsNullOrEmpty(ImagePath);
+    /// <summary>GitHub #222: a Last.fm artist the library has; a click opens its page.</summary>
+    public bool IsLinked { get; init; }
 }
 
 /// <summary>A ranked album or song (Top Albums / Top Songs), or a Forgotten Favorite (Rank 0).</summary>
@@ -758,6 +785,8 @@ public sealed class StatsRankRow
     /// <summary>Plays relative to the list's leader (0–1).</summary>
     public double Fraction { get; init; }
     public Guid AlbumId { get; init; }
+    /// <summary>GitHub #222: a Last.fm album or song the library has; a click opens its album.</summary>
+    public bool IsLinked { get; init; }
 }
 
 /// <summary>One hour column of the Listening by Hour chart.</summary>
