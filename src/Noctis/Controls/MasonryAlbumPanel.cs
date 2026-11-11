@@ -96,6 +96,31 @@ public sealed class MasonryAlbumPanel : Panel
     /// <summary>The realized (visible) tiles, for the host's selection sweeps.</summary>
     public IEnumerable<Control> RealizedElements => _realized.Values;
 
+    /// <summary>
+    /// The albums whose card meets <paramref name="rect"/> (panel coordinates), realized or
+    /// not: the rubber band selects by the placed stack, so cards it sweeps past while
+    /// scrolling stay selected (GitHub #226). A card is its slot less the tile's margin.
+    /// </summary>
+    public List<Album> AlbumsIn(Rect rect)
+    {
+        var hits = new List<Album>();
+        if (_dirty || _width <= 0) return hits;
+        var margin = ItemTemplateMargin();
+        var cell = CellWidth;
+        for (var i = 0; i < _items.Count && i < _top.Length; i++)
+        {
+            var card = new Rect(_column[i] * cell, _top[i], cell, Math.Max(0, _heights[i] - Spacing)).Deflate(margin);
+            if (card.Intersects(rect)) hits.Add(_items[i]);
+        }
+        return hits;
+    }
+
+    private Thickness ItemTemplateMargin()
+    {
+        foreach (var c in _realized.Values) return c.Margin;
+        return default;
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);

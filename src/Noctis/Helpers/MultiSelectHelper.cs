@@ -53,7 +53,14 @@ public static class MultiSelectHelper
         if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed) return false;
         if (e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
             return false;
-        for (var v = e.Source as Visual; v != null; v = v.GetVisualParent())
+        return HitsNoControl(e.Source, rowsAreLayout);
+    }
+
+    /// <summary>The press source is empty space: no button, row container (unless rows are
+    /// layout), text box, scroll bar, splitter thumb, slider, combo box or menu item.</summary>
+    public static bool HitsNoControl(object? source, bool rowsAreLayout = false)
+    {
+        for (var v = source as Visual; v != null; v = v.GetVisualParent())
         {
             if (v is Button or TextBox or Avalonia.Controls.Primitives.ScrollBar
                 or Avalonia.Controls.Primitives.Thumb or Slider or ComboBox or MenuItem)
