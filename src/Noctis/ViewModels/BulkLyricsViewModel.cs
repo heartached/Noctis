@@ -59,6 +59,28 @@ public partial class BulkLyricsViewModel : ViewModelBase
 
     public ObservableCollection<Row> Rows { get; } = new();
 
+    /// <summary>
+    /// GitHub #232: one row per artist of the selection (as its songs are tagged), each with the
+    /// name to search the lyrics sources under ("Tim Neuhaus &amp; The Cabinet" → "Tim Neuhaus").
+    /// For the lookup only: the tags stay as they are. Not offered for the whole library, nor past
+    /// <see cref="MaxArtistNames"/> artists (<see cref="TooManyArtists"/>).
+    /// </summary>
+    public ObservableCollection<ArtistName> ArtistNames { get; } = new();
+    internal const int MaxArtistNames = 6;
+    public bool CanRenameArtists => ArtistNames.Count > 0;
+    /// <summary>The selection has more artists than the dialog lists names for.</summary>
+    public bool TooManyArtists { get; }
+    public string TooManyArtistsText => L("BulkLyrics.SearchAsTooMany", MaxArtistNames);
+
+    /// <summary>The names changed in <see cref="ArtistNames"/>, by the songs' own artist; null when none was.</summary>
+    internal IReadOnlyDictionary<string, string>? ArtistOverrides()
+    {
+        var map = ArtistNames
+            .Where(a => !string.IsNullOrWhiteSpace(a.SearchAs) && !string.Equals(a.SearchAs.Trim(), a.Original, StringComparison.Ordinal))
+            .ToDictionary(a => a.Original, a => a.SearchAs.Trim(), StringComparer.OrdinalIgnoreCase);
+        return map.Count == 0 ? null : map;
+    }
+
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isDone;
     [ObservableProperty] private double _progress;
@@ -105,6 +127,15 @@ public partial class BulkLyricsViewModel : ViewModelBase
             var row = new Row(t);
             Rows.Add(row);
             _rowById.TryAdd(t.Id, row);
+        }
+        if (!remove && !IsLibrary)
+        {
+            var artists = tracks.Select(t => t.Artist?.Trim() ?? string.Empty)
+                .Where(a => !Noctis.Services.LyricsSearchSelector.IsUnknownArtist(a))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (artists.Count > MaxArtistNames) TooManyArtists = true;
+            else foreach (var a in artists) ArtistNames.Add(new ArtistName(a));
         }
         StatusMessage = remove ? L("BulkLyrics.NothingRemovedYet") : L("BulkLyrics.Ready");
         RowStatusesLoaded = LoadRowStatusesAsync();
@@ -259,7 +290,8 @@ public partial class BulkLyricsViewModel : ViewModelBase
             }
             else
             {
-                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst, RetryBusy: true), progress, _cts.Token);
+                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst, RetryBusy: true,
+                    ArtistOverrides: ArtistOverrides()), progress, _cts.Token);
                 if (ReviewFirst && s.Finds.Count > 0)
                 {
                     // GitHub #195: nothing saved yet; the finds wait for Save Selected.
@@ -396,6 +428,20 @@ public partial class BulkLyricsViewModel : ViewModelBase
     /// <summary>Close, or while running hide: the run carries on in the background.</summary>
     [RelayCommand]
     private void Cancel() => Closed?.Invoke(this, EventArgs.Empty);
+
+    /// <summary>GitHub #232: an artist of the selection and the name to search for its songs' lyrics under.</summary>
+    public sealed partial class ArtistName : ObservableObject
+    {
+        public ArtistName(string original)
+        {
+            Original = original;
+            _searchAs = original;
+        }
+
+        public string Original { get; }
+        [ObservableProperty] private string _searchAs;
+        public string AccessibleName => L("BulkLyrics.SearchAsFor", Original);
+    }
 
     public sealed partial class Row : ObservableObject
     {

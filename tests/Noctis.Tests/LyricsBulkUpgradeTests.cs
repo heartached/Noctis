@@ -182,6 +182,83 @@ public class LyricsBulkUpgradeTests : IDisposable
         Assert.Equal(4, again.WordSynced);
     }
 
+    // ── GitHub #232: search as another artist name; the first name of a joined credit ──
+
+    private sealed class ArtistSource
+    {
+        public readonly List<string> Asked = new();
+        private readonly string _knows;
+        public ArtistSource(string knows) => _knows = knows;
+        public LyricsBulkSource Bulk => new("A", _ => true, (a, t, d, c) =>
+        {
+            lock (Asked) Asked.Add(a);
+            return Task.FromResult<LrcLibResult?>(a == _knows ? Word() : null);
+        });
+    }
+
+    private LyricsBulkService Service(ArtistSource source) => new(
+        null!,
+        new LyricsWriter(new LyricsSaveTargetTests.RecordingMetadata(), null,
+            new AppWrittenSidecarRegistry(Path.Combine(_dir, "registry.json")), Path.Combine(_dir, "cache"))
+        {
+            SaveTarget = () => LyricsSaveTarget.Sidecar,
+        },
+        _library, () => _settings, () => new[] { source.Bulk }, Path.Combine(_dir, "ledger.json"))
+    {
+        Clock = () => _clock,
+        Delay = (t, _) => { _clock += t; return Task.CompletedTask; },
+    };
+
+    [Fact]
+    public async Task ArtistOverride_IsSearched_AndTheSongKeepsItsArtist()
+    {
+        var source = new ArtistSource("GusGus");
+        var t = NewTrack();
+        t.Artist = "Gus Gus";
+        var overrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["gus gus"] = "GusGus" };
+        var s = await Service(source).FetchAsync(new[] { t }, new LyricsBulkOptions(ArtistOverrides: overrides), null, CancellationToken.None);
+
+        Assert.Equal(1, s.WordSynced);
+        Assert.Equal(new[] { "GusGus" }, source.Asked);
+        Assert.Equal("Gus Gus", t.Artist);
+        Assert.True(File.Exists(Side(t, ".elrc")));
+    }
+
+    [Fact]
+    public async Task ArtistOverride_AsksAgainAboutASongAnEarlierRunChecked()
+    {
+        var t = NewTrack();
+        t.Artist = "Gus Gus";
+        var miss = await Service(new ArtistSource("GusGus")).FetchAsync(new[] { t }, new LyricsBulkOptions(), null, CancellationToken.None);
+        Assert.Equal(1, miss.NotFound);
+
+        var overrides = new Dictionary<string, string> { ["Gus Gus"] = "GusGus" };
+        var s = await Service(new ArtistSource("GusGus")).FetchAsync(new[] { t }, new LyricsBulkOptions(ArtistOverrides: overrides), null, CancellationToken.None);
+        Assert.Equal((1, 0), (s.WordSynced, s.CheckedBefore));
+    }
+
+    [Fact]
+    public async Task JoinedCredit_WithNothingFound_IsAskedAgainUnderItsFirstName()
+    {
+        var source = new ArtistSource("Tim Neuhaus");
+        var t = NewTrack();
+        t.Artist = "Tim Neuhaus & The Cabinet";
+        var s = await Service(source).FetchAsync(new[] { t }, new LyricsBulkOptions(), null, CancellationToken.None);
+
+        Assert.Equal(1, s.WordSynced);
+        Assert.Equal(new[] { "Tim Neuhaus & The Cabinet", "Tim Neuhaus" }, source.Asked);
+    }
+
+    [Fact]
+    public async Task JoinedCredit_FoundUnderTheFullName_IsAskedOnce()
+    {
+        var source = new ArtistSource("Simon & Garfunkel");
+        var t = NewTrack();
+        t.Artist = "Simon & Garfunkel";
+        await Service(source).FetchAsync(new[] { t }, new LyricsBulkOptions(), null, CancellationToken.None);
+        Assert.Equal(new[] { "Simon & Garfunkel" }, source.Asked);
+    }
+
     // ── GitHub #228: songs that ended "sources busy" are asked again at the end of the run ──
 
     [Fact]
