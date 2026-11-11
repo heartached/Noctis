@@ -56,7 +56,7 @@ public class LrcMuxLyricsService : ILrcMuxLyricsService
                 Remember(cacheKey, null);
                 return null;
             }
-            response.EnsureSuccessStatusCode();
+            HttpSafety.EnsureSuccess(response);
             var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
             var result = Parse(json);
             if (result is null

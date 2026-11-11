@@ -93,7 +93,7 @@ public class NetEaseService : INetEaseService
         using var response = await _http.SendAsync(request, ct);
         // A non-success status is a provider error, not a miss — a genuine
         // "no results" from NetEase is a 200 with an empty songs list.
-        response.EnsureSuccessStatusCode();
+        HttpSafety.EnsureSuccess(response);
 
         var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
 
@@ -146,7 +146,7 @@ public class NetEaseService : INetEaseService
         request.Headers.Add("Referer", "https://music.163.com/");
 
         using var response = await _http.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
+        HttpSafety.EnsureSuccess(response);
 
         var json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
         var lyricsResponse = JsonSerializer.Deserialize<NetEaseLyricsResponse>(json);

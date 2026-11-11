@@ -3485,21 +3485,12 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// Song menus' Search Lyrics. For the player's song: the lyrics page, searching. For any other
-    /// song (GitHub #208): the Search Lyrics dialog for that song alone. The lyrics page follows
-    /// the player, so opening it for another song showed the playing song's page with the other
-    /// song's lyrics loaded into it (LyricsViewModel.SearchLyricsForTrack → LoadLyricsForTrack).
+    /// Song menus' Search Lyrics: see <see cref="LyricsViewModel.SearchLyricsFromSongMenu"/>.
+    /// <see cref="ShowLyricsPage"/>, not <see cref="OpenLyricsView"/>: from the lyrics page itself
+    /// (island ⋯ › Lyrics) the latter pushed the page onto its own back history, so closing it
+    /// needed two presses.
     /// </summary>
-    private void SearchLyricsForTrack(Track track)
-    {
-        if (!_lyricsVm.IsPlayerTrack(track))
-        {
-            _ = _lyricsVm.OpenLyricsSearchForTrackAsync(track);
-            return;
-        }
-        OpenLyricsView();
-        _lyricsVm.SearchLyricsForTrack(track);
-    }
+    private void SearchLyricsForTrack(Track track) => _lyricsVm.SearchLyricsFromSongMenu(track, ShowLyricsPage);
 
     /// <summary>Opens the lyrics page, or stays on it when it is already up (unlike
     /// <see cref="ToggleLyricsCommand"/>). Used by Lyrics Studio's preview.</summary>

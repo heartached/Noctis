@@ -132,8 +132,10 @@ public class MusixmatchService : IMusixmatchService
             // A concurrent search may already have replaced the rejected token.
             if (_token != null && _token != rejected) return _token;
 
+            // A captcha is Musixmatch's rate limit on tokens: busy, for the rest of the back-off.
             if (DateTime.UtcNow < _tokenRetryAfterUtc)
-                throw new HttpRequestException("Musixmatch refused a new user token recently (captcha); waiting before asking again.");
+                throw new BusyResponseException("Musixmatch refused a new user token recently (captcha); waiting before asking again.",
+                    System.Net.HttpStatusCode.TooManyRequests, _tokenRetryAfterUtc - DateTime.UtcNow);
 
             var json = await GetStringAsync($"{BaseUrl}token.get?format=json&app_id={AppId}", ct);
             var token = ParseToken(json);
@@ -142,7 +144,8 @@ public class MusixmatchService : IMusixmatchService
                 _token = null;
                 SaveToken(null);
                 _tokenRetryAfterUtc = DateTime.UtcNow + TokenRefusedBackoff;
-                throw new HttpRequestException($"Musixmatch gave no user token (status {HeaderStatus(json)}).");
+                throw new BusyResponseException($"Musixmatch gave no user token (status {HeaderStatus(json)}).",
+                    System.Net.HttpStatusCode.TooManyRequests, TokenRefusedBackoff);
             }
 
             _token = token;
@@ -183,7 +186,12 @@ public class MusixmatchService : IMusixmatchService
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await _http.SendAsync(request, ct);
-        response.EnsureSuccessStatusCode();
+        // GitHub #228, live 11-11: past about 60 requests a minute Musixmatch's load balancer answers
+        // 403 Forbidden (an HTML page, no Retry-After) for a minute or two, then serves again. That
+        // is its rate limit, so it counts as busy: a bulk run backs off instead of failing songs.
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            throw new BusyResponseException("Musixmatch is rate limiting (403)", System.Net.HttpStatusCode.TooManyRequests);
+        HttpSafety.EnsureSuccess(response);
         return await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
     }
 
