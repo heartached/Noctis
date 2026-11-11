@@ -597,7 +597,7 @@ public partial class MainWindowViewModel : ViewModelBase
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.CarouselStyle))
                 TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
         };
-        _artistsVm = new LibraryArtistsViewModel(library);
+        _artistsVm = new LibraryArtistsViewModel(library, Player);
         _artistsVm.SetArtistImageService(artistImageService);
         // Artists sort: mirror the grid's sort state into the top-bar chip and persist
         // changes — same shape as the Albums sort. Settings load asynchronously, so the

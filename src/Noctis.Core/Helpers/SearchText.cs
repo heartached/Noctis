@@ -73,4 +73,47 @@ public static class SearchText
         if (queryKey.Length == 0) return false;
         return sourceKey.Contains(queryKey, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Whole-value form of <see cref="Matches(string?, string, string, string)"/> for a quoted
+    /// search (GitHub #227): <paramref name="source"/> equals <paramref name="query"/> ignoring
+    /// case, or their normalized keys are equal (accents, punctuation and spacing folded).
+    /// </summary>
+    public static bool MatchesWhole(string? source, string sourceKey, string query, string queryKey)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return true;
+        if (string.IsNullOrWhiteSpace(source)) return false;
+
+        if (source.AsSpan().Trim().Equals(query.AsSpan().Trim(), StringComparison.OrdinalIgnoreCase))
+            return true;
+        return queryKey.Length > 0 && string.Equals(sourceKey, queryKey, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Words key for whole-word matching (GitHub #227): lower-cased and accent-free like
+    /// <see cref="Normalize"/>, apostrophes dropped ("Don't" → "dont"), every other run of
+    /// non-letters/digits turned into one space, padded with a space at each end so
+    /// <c>FoldWords(source).Contains(FoldWords(phrase))</c> only hits whole words.
+    /// " " when nothing word-like is left.
+    /// </summary>
+    public static string FoldWords(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return " ";
+
+        string decomposed;
+        try { decomposed = value.Normalize(NormalizationForm.FormD); }
+        catch (ArgumentException) { decomposed = value; }
+
+        var sb = new StringBuilder(decomposed.Length + 2);
+        sb.Append(' ');
+        foreach (var c in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
+            if (c is '\'' or '’' or '‘' or 'ʼ' or '`') continue;
+            if (char.IsLetterOrDigit(c)) sb.Append(char.ToLowerInvariant(c));
+            else if (sb[^1] != ' ') sb.Append(' ');
+        }
+        if (sb[^1] != ' ') sb.Append(' ');
+        return sb.ToString();
+    }
 }

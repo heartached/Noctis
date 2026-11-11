@@ -1146,6 +1146,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="LibraryArtists.ColumnAlbums" xml:space="preserve"><value>Alben</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnSongs" xml:space="preserve"><value>Songs</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnTime" xml:space="preserve"><value>Dauer</value><comment>List view column header (total length) in LibraryArtistsView.axaml</comment></data>
+  <data name="LibraryArtists.ColumnPlays" xml:space="preserve"><value>Wiedergaben</value><comment>List view column header (summed plays, GitHub #231) in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnGenre" xml:space="preserve"><value>Genre</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="Genres.Unknown" xml:space="preserve"><value>Unbekannt</value><comment>Genres page (GitHub #220): songs with no genre tag</comment></data>
   <data name="Genres.NoGenresFound" xml:space="preserve"><value>Keine Genres gefunden</value><comment>Genres page (GitHub #220): empty state</comment></data>
@@ -2100,7 +2101,8 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Wörter können jedes Feld treffen: „radiohead ok computer“, „rock 1994“.
 Enge ein Wort mit einem Tag ein: artist:madonna remix
 Tags: title: artist: albumartist: album: genre: composer: year:
-Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
+Anführungszeichen heißen genau: artist:"coin" (nur dieser Künstler), "coin" (ganzes Wort), album:"ok computer"
+Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLUGINS" xml:space="preserve"><value>PLUGINS</value><comment>Sidebar section header above the screens plugins add</comment></data>
