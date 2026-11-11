@@ -798,8 +798,11 @@ public partial class MainWindowViewModel : ViewModelBase
         // Lyrics offset nudges (Ctrl+wheel, GitHub #102) confirm in the notice pill, which
         // shows over both the lyrics page and the side panel.
         _lyricsVm.ShowNotice = text => TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text);
-        _statisticsVm = new StatisticsViewModel(library, playHistory);
-        // Top Artists / Albums rows open their pages, as on Home.
+        _statisticsVm = new StatisticsViewModel(library, playHistory, settings: Settings,
+            lastFmStats: App.Services?.GetService<LastFmStatsService>());
+        // GitHub #222: with Last.fm as the source, rows the library has open their pages.
+        _statisticsVm.ArtistOpened += (_, name) => OpenArtistDiscography(name);
+        _statisticsVm.AlbumOpened += (_, album) => OpenAlbumDetail(album);
         _statisticsVm.BackRequested += (_, _) =>
         {
             // Restore the pre-stats view from history, then reopen the Settings modal
@@ -1878,6 +1881,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // Artist pages kept in history stay subscribed to LibraryUpdated; only the shown
         // one rebuilds, the rest catch up when navigated back to.
         if (oldValue is ArtistDetailViewModel leftArtistPage) leftArtistPage.IsActive = false;
+        // Statistics left: a Last.fm read still running for it stops (GitHub #222).
+        if (ReferenceEquals(oldValue, _statisticsVm) && !ReferenceEquals(newValue, _statisticsVm)) _statisticsVm.OnPageLeft();
         // Settings left: its Connect a phone panel folds, so no sign-in QR stays live off screen.
         if (ReferenceEquals(oldValue, Settings) && !ReferenceEquals(newValue, Settings)) Settings.OnSettingsLeft();
         if (newValue is ArtistDetailViewModel artistPage) artistPage.IsActive = true;

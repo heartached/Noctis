@@ -2236,6 +2236,27 @@ Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Stats.Yesterday" xml:space="preserve"><value>Gestern</value><comment>Play History day heading</comment></data>
   <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>Noch kein Hörverlauf</value><comment>Statistics empty state title</comment></data>
   <data name="Stats.Formats" xml:space="preserve"><value>Formate</value><comment>Library section: format bars title</comment></data>
+  <data name="Stats.SourceLibrary" xml:space="preserve"><value>Diese Bibliothek</value><comment>Statistics source pill: plays counted in Noctis</comment></data>
+  <data name="Stats.SourceLastFm" xml:space="preserve"><value>Last.fm</value><comment>Statistics source pill: the connected Last.fm account</comment></data>
+  <data name="Stats.SourceTip" xml:space="preserve"><value>Woher die Hörzahlen kommen. Last.fm zählt jeden Player und jedes Gerät, das an dein Konto scrobbelt; Diese Bibliothek zählt in Noctis gespielte Titel.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Loading" xml:space="preserve"><value>Deine Last.fm-Charts werden geladen…</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Updating" xml:space="preserve"><value>Wird von Last.fm aktualisiert…</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Unreachable" xml:space="preserve"><value>Last.fm ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fm ist nicht erreichbar. Angezeigt werden die Zahlen vom {0}.</value><comment>Statistics source (GitHub #222); {0} = date and time</comment></data>
+  <data name="Stats.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm kennt das Konto „{0}“ nicht.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Private" xml:space="preserve"><value>Dieses Last.fm-Konto hält seinen Hörverlauf privat.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.BadReply" xml:space="preserve"><value>Last.fm hat eine Antwort gesendet, die Noctis nicht lesen konnte. Versuche es später erneut.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoYear" xml:space="preserve"><value>Last.fm hat keine Charts für ein Kalenderjahr. Wähle 7 Tage, 30 Tage oder Gesamt.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoYearTip" xml:space="preserve"><value>Last.fm hat keine Charts für ein Kalenderjahr.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoHistoryTip" xml:space="preserve"><value>Der Wiedergabeverlauf listet in dieser Bibliothek gespielte Titel. Stelle die Quelle auf Diese Bibliothek, um ihn zu sehen.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoListeningTime" xml:space="preserve"><value>Last.fm erfasst keine Hörzeit</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoStreak" xml:space="preserve"><value>Bei Last.fm nicht verfügbar</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.PlaysTip" xml:space="preserve"><value>Scrobbles an {0} von jedem Player und Gerät</value><comment>Statistics source (GitHub #222); {0} = Last.fm user name</comment></data>
+  <data name="Stats.LastFm.Coverage" xml:space="preserve"><value>Last.fm · {0} · scrobbelt seit {1}</value><comment>Statistics source (GitHub #222); {0} = user name, {1} = date</comment></data>
+  <data name="Stats.LastFm.CoverageNoDate" xml:space="preserve"><value>Last.fm · {0}</value><comment>Statistics source (GitHub #222); {0} = user name</comment></data>
+  <data name="Stats.LastFm.EmptyTitle" xml:space="preserve"><value>Noch keine Scrobbles</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.EmptyText" xml:space="preserve"><value>In diesem Zeitraum wurde nichts an {0} gescrobbelt.</value><comment>Statistics source (GitHub #222); {0} = user name</comment></data>
+  <data name="Stats.LastFm.TryAgain" xml:space="preserve"><value>Erneut versuchen</value><comment>Statistics source (GitHub #222)</comment></data>
 
   <!-- TextPromptDialog.axaml (auto-migrated) -->
   <data name="TextPrompt.EnterName" xml:space="preserve"><value>Namen eingeben</value><comment>Title in TextPromptDialog.axaml</comment></data>
