@@ -401,8 +401,10 @@ public class LibraryService : ILibraryService
                                 // A file we already knew was re-tagged: its embedded cover is
                                 // the freshest truth for the album. Every writer used to
                                 // short-circuit on File.Exists, so a changed cover never
-                                // reached the cache until the user wiped it.
-                                RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
+                                // reached the cache until the user wiped it. Only when the
+                                // picture itself changed, though (EmbeddedArtChanged).
+                                if (EmbeddedArtChanged(existing, track))
+                                    RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
                             }
                             else if (!File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
                             {
@@ -943,6 +945,18 @@ public class LibraryService : ILibraryService
     }
 
     /// <summary>
+    /// False when a known file was rewritten but the picture inside it is the one it already
+    /// had (GitHub #224): saving lyrics, a rating or ReplayGain into the file changes nothing
+    /// about the album's cover. Re-reading it then put whichever track was written last on the
+    /// album, rewrote the cached cover and had every tile showing it decode it again — once per
+    /// song of a Find Lyrics run, while the next song's import could be rewriting it. A file
+    /// with no embedded picture (its cover comes from the folder) or one known from before the
+    /// fingerprint was kept is still re-read.
+    /// </summary>
+    internal static bool EmbeddedArtChanged(Track existing, Track reread)
+        => reread.ArtworkHash == null || !string.Equals(existing.ArtworkHash, reread.ArtworkHash, StringComparison.Ordinal);
+
+    /// <summary>
     /// Replaces the cached cover for <paramref name="albumId"/> when <paramref name="freshBytes"/>
     /// differ from what is on disk, and drops the in-memory bitmap so every
     /// <c>CachedImage</c> showing that path reloads. Returns true when the cover changed.
@@ -1271,6 +1285,7 @@ public class LibraryService : ILibraryService
             .Select(p => p!)
             .Where(File.Exists)
             .Where(p => MetadataService.SupportedExtensions.Contains(Path.GetExtension(p)))
+            .Where(p => !MetadataService.IsOwnTempFile(p))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -1433,7 +1448,7 @@ public class LibraryService : ILibraryService
                 if (artBytes != null)
                     _persistence.SaveArtwork(track.AlbumId, artBytes);
             }
-            else if (existing != null)
+            else if (existing != null && EmbeddedArtChanged(existing, track))
             {
                 // Known file changed on disk (watcher / drop-import): re-read its art
                 // and replace the cached cover when it differs.
