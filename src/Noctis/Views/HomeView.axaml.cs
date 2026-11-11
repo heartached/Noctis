@@ -18,6 +18,8 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     private EventHandler? _pendingScrollRestore;
 
     private readonly HashSet<Button> _selectedTiles = new();
+    /// <summary>The tile a Shift+click spans from: the last one clicked (GitHub #226).</summary>
+    private Button? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(MultiSelectHelper.GetSelectedData<Album>(_selectedTiles));
@@ -116,6 +118,24 @@ public partial class HomeView : UserControl, ITrackSelectionSource
                 ClearSelection();
             return;
         }
+
+        // GitHub #226: Shift+click spans from the last clicked album of the same row.
+        if (MultiSelectHelper.IsRangePress(e))
+        {
+            e.Handled = true;
+            var rowTiles = tile.FindAncestorOfType<ItemsControl>()?.GetVisualDescendants().OfType<Button>()
+                .Where(b => b.Classes.Contains("album-tile")).ToList() ?? new List<Button> { tile };
+            var anchor = _rangeAnchor != null && rowTiles.Contains(_rangeAnchor) ? _rangeAnchor : null;
+            if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
+                MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+            _rangeAnchor = MultiSelectHelper.SelectRange(rowTiles, anchor, tile, additive: true, _selectedTiles);
+            foreach (var t in _selectedTiles)
+                MultiSelectHelper.SetSelectedVisual(t, true);
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = tile;
 
         MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
 
@@ -321,6 +341,7 @@ public partial class HomeView : UserControl, ITrackSelectionSource
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        _rangeAnchor = null;
         if (DataContext is HomeViewModel selVm) selVm.CtrlSelectedAlbums = new List<Album>();
 
         base.OnDetachedFromVisualTree(e);

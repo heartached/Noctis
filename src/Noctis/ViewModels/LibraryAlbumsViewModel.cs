@@ -644,7 +644,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // The sync rebuild this replaces froze the UI thread on every navigation/scan
         // event at large library sizes; the grid keeps showing its previous rows for
         // the few frames the fresh list takes to compute in the background.
-        RebuildFilteredRows(refreshFromLibrary: true);
+        // GitHub #225: a library update that leaves the shown albums as they were (a scan or
+        // artwork pass keeps unchanged Album objects) leaves the grid alone, and one that
+        // changes a few replaces only their rows: re-filling every row flickered the grid
+        // and dropped the Ctrl-selection on each scan tick after launch.
+        RebuildFilteredRows(refreshFromLibrary: true, onlyIfChanged: true);
     }
 
     /// <summary>Sets the artist filter for showing a specific artist's discography.</summary>
@@ -769,6 +773,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                     }
                     if (library != null) _allAlbums = albums;
                     if (onlyIfChanged && SameRows(FilteredAlbumRows, rows)) return;
+                    if (onlyIfChanged && ReplaceChangedRows(FilteredAlbumRows, rows)) return;
                     FilteredAlbumRows.ReplaceAll(rows);
                 });
             else if (library != null)
@@ -783,16 +788,37 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (current.Count != next.Count) return false;
         for (var i = 0; i < current.Count; i++)
+            if (!SameRow(current[i], next[i])) return false;
+        return true;
+    }
+
+    private static bool SameRow(object current, object next) => (current, next) switch
+    {
+        (AlbumRow a, AlbumRow b) => a.Albums.SequenceEqual(b.Albums),
+        (ArtistSongsRow a, ArtistSongsRow b) => a.Songs.Select(s => s.Track).SequenceEqual(b.Songs.Select(s => s.Track)),
+        (ArtistSectionHeader a, ArtistSectionHeader b) => a.Title == b.Title,
+        _ => false,
+    };
+
+    /// <summary>
+    /// GitHub #225: when the new rows line up with the shown ones (same count, and at most a
+    /// few of them differ, e.g. covers arriving or one album re-read), swaps in only the
+    /// rows that differ, so the grid keeps every other row's tiles instead of re-creating the
+    /// whole list. False (nothing touched) when a full refill is the better move.
+    /// </summary>
+    private const int MaxRowsReplacedInPlace = 32;
+
+    internal static bool ReplaceChangedRows(BulkObservableCollection<object> current, IList<object> next)
+    {
+        if (current.Count != next.Count || current.Count == 0) return false;
+        var changed = new List<int>();
+        for (var i = 0; i < current.Count; i++)
         {
-            var same = (current[i], next[i]) switch
-            {
-                (AlbumRow a, AlbumRow b) => a.Albums.SequenceEqual(b.Albums),
-                (ArtistSongsRow a, ArtistSongsRow b) => a.Songs.Select(s => s.Track).SequenceEqual(b.Songs.Select(s => s.Track)),
-                (ArtistSectionHeader a, ArtistSectionHeader b) => a.Title == b.Title,
-                _ => false,
-            };
-            if (!same) return false;
+            if (SameRow(current[i], next[i])) continue;
+            changed.Add(i);
+            if (changed.Count > MaxRowsReplacedInPlace) return false;
         }
+        foreach (var i in changed) current[i] = next[i];
         return true;
     }
 

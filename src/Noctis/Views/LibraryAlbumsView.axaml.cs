@@ -25,6 +25,8 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     // virtualization recycling the tile Buttons on scroll doesn't drop the
     // ctrl-selected highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
     private readonly HashSet<Album> _selectedAlbums = new();
+    /// <summary>The album a Shift+click spans from: the last one clicked (GitHub #226).</summary>
+    private Album? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(_selectedAlbums);
@@ -37,6 +39,10 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
         DataContextChanged += OnDataContextChanged;
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
+        // GitHub #226: rubber-band selection from empty space (see "Rubber band" below).
+        AddHandler(PointerMovedEvent, OnBandPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerReleasedEvent, OnBandPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        AddHandler(PointerCaptureLostEvent, OnBandCaptureLost, RoutingStrategies.Bubble, handledEventsToo: true);
         // Forward Ctrl+A from the window so it works without first clicking a tile.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
         MultiSelectHelper.KeepRowsUnselected(AlbumListBox);
@@ -52,14 +58,32 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             // GitHub #209: a click beside the tiles clears the selection, as in the queue.
             if (_selectedAlbums.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e, rowsAreLayout: true))
                 ClearSelection();
+            ArmBand(e, paddingTile: null);
             return;
         }
         if (tile.DataContext is not Album album) return;
 
+        // GitHub #226: Shift+click spans from the last clicked album, in grid order.
+        if (MultiSelectHelper.IsRangePress(e) && _vm != null)
+        {
+            e.Handled = true;
+            _rangeAnchor = MultiSelectHelper.SelectRange(_vm.CarouselAlbums, _rangeAnchor, album,
+                e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier), _selectedAlbums);
+            foreach (var t in CollectAlbumTiles())
+                MultiSelectHelper.SyncAlbumTileVisual(t, _selectedAlbums, animate: true);
+            Focus();
+            return;
+        }
+
+        // A drag from the gap between covers draws a rubber band (GitHub #226).
+        var inPadding = IsInTilePadding(tile, e);
+        if (inPadding)
+            ArmBand(e, tile);
+
         // GitHub #209: the gap between two covers is the tiles' own padding. With a selection
         // up, a plain press there is a click beside the albums: it clears the selection and
         // does not open the tile it happens to belong to.
-        if (_selectedAlbums.Count > 0 && IsInTilePadding(tile, e)
+        if (_selectedAlbums.Count > 0 && inPadding
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
@@ -68,6 +92,9 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             e.Handled = true;
             return;
         }
+
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = album;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
@@ -340,12 +367,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
     private void OnFilteredRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        // A rebuild replaces the Album objects: selected ones no longer shown can't be seen
-        // or unselected, so they must not ride along into the next command (GitHub #178).
-        if (_vm != null && _selectedAlbums.Count > 0)
+        // A rebuild can replace the Album objects. Selected ones no longer shown can't be seen
+        // or unselected, so they must not ride along into the next command (GitHub #178); the
+        // ones still shown stay selected under their new objects, matched by album id (GitHub
+        // #225: each library update after launch rebuilt the albums and lost the selection).
+        if (_vm != null && (_selectedAlbums.Count > 0 || _rangeAnchor != null))
         {
-            var shown = _vm.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToHashSet();
-            _selectedAlbums.RemoveWhere(a => !shown.Contains(a));
+            var shown = new Dictionary<Guid, Album>();
+            foreach (var a in _vm.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums))
+                shown.TryAdd(a.Id, a);
+            var kept = _selectedAlbums.Select(a => shown.GetValueOrDefault(a.Id)).OfType<Album>().ToList();
+            _selectedAlbums.Clear();
+            _selectedAlbums.UnionWith(kept);
+            _rangeAnchor = _rangeAnchor == null ? null : shown.GetValueOrDefault(_rangeAnchor.Id);
         }
 
         // Scroll to top when an active filter (search text, chips or artist) changes, not on
@@ -433,7 +467,10 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         }
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
+        EndBand();
+        _bandPress = null;
         MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+        _rangeAnchor = null;
         if (DataContext is LibraryAlbumsViewModel selVm) selVm.CtrlSelectedAlbums = new List<Album>();
 
         base.OnDetachedFromVisualTree(e);
@@ -485,6 +522,244 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
             LayoutUpdated += _pendingScrollRestore;
         }
+    }
+
+    // ── Rubber band (GitHub #226) ──
+    // A left mouse press on empty space (page margins, the gaps between rows, a tile's own
+    // padding) and a drag past BandThreshold draws a translucent accent rectangle; the albums
+    // it meets become the selection (Ctrl held: added to it). Near the top or bottom edge the
+    // grid scrolls on its own. Hits are worked out by data, not by realized tiles: the row
+    // grid by row and column index between the band's two ends, the Masonry panel from its
+    // placed stack, so albums swept past while scrolling stay selected. Positions are taken
+    // in the scroller's content coordinates, so the band's start stays put while it scrolls.
+    // Touch and pen presses never start one (they scroll), nor does a press on a cover or
+    // caption (that is a click or a file drag) or anything with Shift.
+
+    private const double BandThreshold = 4;
+    private const double BandEdge = 48;
+
+    private sealed record BandPress(Point Start, Button? PaddingTile, bool Additive);
+
+    private sealed class BandState
+    {
+        public required ScrollViewer Scroller;
+        public required Visual Content;
+        public required Point Start;              // content coordinates
+        public required HashSet<Album> Base;
+        public required bool Masonry;
+        public required DispatcherTimer Timer;
+        public (int Floor, int Ceil) StartRow, StartCol;
+    }
+
+    private BandPress? _bandPress;
+    private BandState? _band;
+    private Point _bandLast;
+
+    private void ArmBand(PointerPressedEventArgs e, Button? paddingTile)
+    {
+        _bandPress = null;
+        if (_vm == null || !(_vm.IsRowGridView || _vm.IsMasonryView)) return;
+        if (e.Pointer.Type != PointerType.Mouse) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed || e.KeyModifiers.HasFlag(KeyModifiers.Shift)) return;
+        if (paddingTile == null && !MultiSelectHelper.HitsNoControl(e.Source, rowsAreLayout: true)) return;
+        _bandPress = new BandPress(e.GetPosition(this), paddingTile, e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier));
+    }
+
+    private void OnBandPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_bandPress is not { } press) return;
+        var pos = e.GetPosition(this);
+        if (_band == null)
+        {
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { _bandPress = null; return; }
+            if (Math.Abs(pos.X - press.Start.X) < BandThreshold && Math.Abs(pos.Y - press.Start.Y) < BandThreshold) return;
+            if (!StartBand(press, e.Pointer)) { _bandPress = null; return; }
+        }
+        _bandLast = pos;
+        UpdateBand();
+    }
+
+    private void OnBandPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        _bandPress = null;
+        if (_band == null) return;
+        _bandLast = e.GetPosition(this);
+        UpdateBand();
+        EndBand();
+        if (ReferenceEquals(e.Pointer.Captured, this)) e.Pointer.Capture(null);
+        e.Handled = true;
+    }
+
+    private void OnBandCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_band != null) EndBand();
+        _bandPress = null;
+    }
+
+    private bool StartBand(BandPress press, IPointer pointer)
+    {
+        if (_vm == null) return false;
+        var masonry = _vm.IsMasonryView;
+        var sv = masonry ? MasonryScroller : AlbumListBox.FindDescendantOfType<ScrollViewer>();
+        if (sv?.Content is not Visual content) return false;
+        if (this.TranslatePoint(press.Start, content) is not { } start) return false;
+
+        // The press was on a tile's padding: the drag is the band's, not a file drag.
+        if (press.PaddingTile != null) DragFileBehavior.CancelGesture(press.PaddingTile);
+        ClearHoverNeighbors();
+
+        var band = new BandState
+        {
+            Scroller = sv,
+            Content = content,
+            Start = start,
+            Base = press.Additive ? new HashSet<Album>(_selectedAlbums) : new HashSet<Album>(),
+            Masonry = masonry,
+            Timer = new DispatcherTimer(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) },
+        };
+        if (!masonry)
+        {
+            var (rows, cols) = RowGridGeometry(band);
+            band.StartRow = Span(rows, start.Y);
+            band.StartCol = Span(cols, start.X);
+        }
+        _band = band;
+        pointer.Capture(this);
+        band.Timer.Tick += (_, _) => OnBandTick();
+        band.Timer.Start();
+        return true;
+    }
+
+    private void EndBand()
+    {
+        if (_band is not { } band) return;
+        _band = null;
+        band.Timer.Stop();
+        BandRect.IsVisible = false;
+        if (_selectedAlbums.Count > 0) Focus();
+    }
+
+    /// <summary>Near the top or bottom edge the grid scrolls under the band, faster the
+    /// further out the pointer is (up to 30 px a tick).</summary>
+    private void OnBandTick()
+    {
+        if (_band is not { } band) return;
+        var sv = band.Scroller;
+        if (this.TranslatePoint(_bandLast, sv) is not { } p) return;
+        var height = sv.Viewport.Height;
+        var dy = p.Y < BandEdge ? -Math.Min(30, (BandEdge - p.Y) / 2 + 2)
+            : p.Y > height - BandEdge ? Math.Min(30, (p.Y - (height - BandEdge)) / 2 + 2)
+            : 0;
+        if (dy == 0) return;
+        var max = Math.Max(0, sv.Extent.Height - height);
+        var y = Math.Clamp(sv.Offset.Y + dy, 0, max);
+        if (Math.Abs(y - sv.Offset.Y) < 0.01) return;
+        sv.Offset = new Vector(sv.Offset.X, y);
+        // Hits are read after the grid has laid out at the new offset.
+        Dispatcher.UIThread.Post(UpdateBand, DispatcherPriority.Background);
+    }
+
+    private void UpdateBand()
+    {
+        if (_band is not { } band || _vm == null) return;
+        var sv = band.Scroller;
+        if (this.TranslatePoint(_bandLast, sv) is not { } inViewport) return;
+        // The band's moving end stays inside the visible grid; beyond it the grid scrolls.
+        var clamped = new Point(Math.Clamp(inViewport.X, 0, sv.Viewport.Width), Math.Clamp(inViewport.Y, 0, sv.Viewport.Height));
+        if (sv.TranslatePoint(clamped, band.Content) is not { } end) return;
+
+        var hits = band.Masonry ? MasonryPanel.AlbumsIn(Between(band.Start, end).Inflate(0.5)) : RowGridHits(band, end);
+        _selectedAlbums.Clear();
+        _selectedAlbums.UnionWith(band.Base);
+        _selectedAlbums.UnionWith(hits);
+        foreach (var tile in CollectAlbumTiles())
+            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums, animate: true);
+
+        // Draw it: both ends through the content, which carries the scroll offset.
+        if (band.Content.TranslatePoint(band.Start, BandLayer) is { } a && band.Content.TranslatePoint(end, BandLayer) is { } b)
+        {
+            var r = Between(a, b);
+            Canvas.SetLeft(BandRect, r.X);
+            Canvas.SetTop(BandRect, r.Y);
+            BandRect.Width = Math.Max(1, r.Width);
+            BandRect.Height = Math.Max(1, r.Height);
+            BandRect.IsVisible = true;
+        }
+    }
+
+    /// <summary>Albums of the rows and columns between the band's two ends. The start's row and
+    /// column were found when the band began (that row may be scrolled away since); the end is
+    /// on screen, so its row is realized.</summary>
+    private List<Album> RowGridHits(BandState band, Point end)
+    {
+        var hits = new List<Album>();
+        var (rows, cols) = RowGridGeometry(band);
+        var endRow = Span(rows, end.Y);
+        var endCol = Span(cols, end.X);
+        var (r0, r1) = end.Y >= band.Start.Y ? (band.StartRow.Ceil, endRow.Floor) : (endRow.Ceil, band.StartRow.Floor);
+        var (c0, c1) = end.X >= band.Start.X ? (band.StartCol.Ceil, endCol.Floor) : (endCol.Ceil, band.StartCol.Floor);
+        if (_vm == null || r0 > r1 || c0 > c1) return hits;
+        var all = _vm.FilteredAlbumRows;
+        for (var r = Math.Max(0, r0); r <= r1 && r < all.Count; r++)
+        {
+            if (all[r] is not AlbumRow row) continue;
+            for (var c = Math.Max(0, c0); c <= c1 && c < row.Albums.Count; c++)
+                hits.Add(row.Albums[c]);
+        }
+        return hits;
+    }
+
+    /// <summary>The realized rows' vertical extents (an album row by its tiles, so the gap
+    /// between rows is no row) and the columns' horizontal extents, in content coordinates,
+    /// each with its index.</summary>
+    private (List<(int Index, double From, double To)> Rows, List<(int Index, double From, double To)> Cols) RowGridGeometry(BandState band)
+    {
+        var rows = new List<(int, double, double)>();
+        var cols = new List<(int, double, double)>();
+        foreach (var container in AlbumListBox.GetRealizedContainers())
+        {
+            if (!container.IsVisible) continue;
+            var index = AlbumListBox.IndexFromContainer(container);
+            if (index < 0) continue;
+            var tiles = container.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
+            if (container.DataContext is AlbumRow && tiles.Count > 0)
+            {
+                double top = double.MaxValue, bottom = double.MinValue;
+                var rowCols = new List<(int, double, double)>();
+                for (var c = 0; c < tiles.Count; c++)
+                {
+                    if (tiles[c].TranslatePoint(default, band.Content) is not { } o) continue;
+                    top = Math.Min(top, o.Y);
+                    bottom = Math.Max(bottom, o.Y + tiles[c].Bounds.Height);
+                    rowCols.Add((c, o.X, o.X + tiles[c].Bounds.Width));
+                }
+                if (top <= bottom) rows.Add((index, top, bottom));
+                if (rowCols.Count > cols.Count) cols = rowCols;
+            }
+            else if (container.TranslatePoint(default, band.Content) is { } o)
+            {
+                rows.Add((index, o.Y, o.Y + container.Bounds.Height));
+            }
+        }
+        return (rows, cols);
+    }
+
+    private static Rect Between(Point a, Point b) =>
+        new(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
+
+    /// <summary>For a coordinate: the last item that starts at or before it (Floor) and the
+    /// first that ends at or after it (Ceil). Inside an item both are that item; in a gap they
+    /// are the items on either side.</summary>
+    private static (int Floor, int Ceil) Span(List<(int Index, double From, double To)> items, double at)
+    {
+        var floor = -1;
+        var ceil = int.MaxValue;
+        foreach (var (index, from, to) in items)
+        {
+            if (from <= at) floor = Math.Max(floor, index);
+            if (to >= at) ceil = Math.Min(ceil, index);
+        }
+        return (floor, ceil);
     }
 
     /// <summary>Tile hover dots: the same menu a right-click on the tile opens.</summary>

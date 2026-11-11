@@ -369,6 +369,17 @@
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
             </StackPanel>
+
+            <!-- Rubber-band selection (GitHub #226): placed from code while a drag that began
+                 on empty space (page margins, the gaps between covers) sweeps the grid. -->
+            <Canvas x:Name="BandLayer" IsHitTestVisible="False" ClipToBounds="True">
+                <Border x:Name="BandRect"
+                        IsVisible="False"
+                        CornerRadius="3"
+                        BorderThickness="1"
+                        Background="{DynamicResource SelectionFillBrush}"
+                        BorderBrush="{DynamicResource SelectionStrokeBrush}" />
+            </Canvas>
         </Grid>
 
         </DockPanel>

@@ -117,6 +117,21 @@ public class Album : ObservableObject
         OnPropertyChanged(nameof(IsAllTracksFavorite));
     }
 
+    /// <summary>Whether two builds of one album hold the same songs (the same Track objects in
+    /// the same order) and the same album fields, so the older object can stand in for the
+    /// newer one (GitHub #225, LibraryService's index rebuilds).</summary>
+    public static bool SameContent(Album a, Album b) =>
+        a.Id == b.Id
+        && a.Name == b.Name
+        && a.Artist == b.Artist
+        && a.Year == b.Year
+        && a.Genre == b.Genre
+        && a.TrackCount == b.TrackCount
+        && a.TotalDuration == b.TotalDuration
+        && a.ArtworkPath == b.ArtworkPath
+        && a.Tracks.Count == b.Tracks.Count
+        && a.Tracks.Zip(b.Tracks).All(p => ReferenceEquals(p.First, p.Second));
+
     /// <summary>Grid-tile subtitle: "Artist · Year"; artist alone when the year is unknown.</summary>
     public string TileSubtitle => Year > 0 ? $"{ArtistDisplay} · {Year}" : ArtistDisplay;
 
