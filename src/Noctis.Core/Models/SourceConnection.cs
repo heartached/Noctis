@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Noctis.Models;
 
 /// <summary>How a Subsonic-family server accepts credentials on each request.</summary>
@@ -18,6 +20,11 @@ public enum SubsonicAuthMode
 /// </summary>
 public class SourceConnection
 {
+    /// <summary>Members a newer Noctis saved that this build does not know, written back
+    /// unchanged so an older build sharing the data folder does not erase them (GitHub #230).</summary>
+    [JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = string.Empty;
     public SourceType Type { get; set; } = SourceType.Local;

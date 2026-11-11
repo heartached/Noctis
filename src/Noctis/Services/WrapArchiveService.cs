@@ -7,6 +7,11 @@ namespace Noctis.Services;
 /// <summary>One archived year's Wrap snapshot.</summary>
 public sealed class ArchivedWrap
 {
+    /// <summary>Members a newer Noctis saved that this build does not know, written back
+    /// unchanged so an older build sharing the data folder does not erase them (GitHub #230).</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     public int Year { get; set; }
     public WrapStats Stats { get; set; } = new();
 

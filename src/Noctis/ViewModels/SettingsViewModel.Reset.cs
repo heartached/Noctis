@@ -34,6 +34,8 @@ namespace Noctis.ViewModels;
 ///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, *-backfill.progress,
 ///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
+///   computers.json (each computer's own sign-ins and window/device/size settings, GitHub #230;
+///     the default settings save writes this computer's part again)
 ///   server/covers/, server/transcode/ (caches; cleared once the server is off)
 ///
 /// KEPT
@@ -61,7 +63,7 @@ public partial class SettingsViewModel
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json",
         "queue-position.json", "queue-position.json.tmp",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json",
-        "mp3_decoder_fallback.txt", "musixmatch_token",
+        "mp3_decoder_fallback.txt", "musixmatch_token", "computers.json",
     };
 
     /// <summary>File patterns deleted in the data folder itself (not below it).</summary>

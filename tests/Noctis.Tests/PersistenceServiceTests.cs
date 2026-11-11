@@ -317,13 +317,14 @@ public class PersistenceServiceTests : IDisposable
         loaded.LastFmSessionKey = "signed-in-here";
         await svc.SaveSettingsAsync(loaded);
 
+        // GitHub #230: the field stays the other computer's (an older Noctis there reads only
+        // the field); this computer's copy is in its slot in computers.json.
         var raw = await ReadRawSettingsAsync();
-        var primary = raw.GetProperty("lastFmSessionKey").GetString()!;
-        Assert.StartsWith("enc:dpapi:", primary);
-        Assert.NotEqual(foreign, primary);
+        Assert.Equal(foreign, raw.GetProperty("lastFmSessionKey").GetString());
         Assert.DoesNotContain("signed-in-here", raw.GetRawText());
-        Assert.Equal(new[] { foreign },
-            raw.GetProperty("otherComputerSecrets").GetProperty("lastFmSessionKey").EnumerateArray().Select(e => e.GetString()));
+        var slots = await File.ReadAllTextAsync(Path.Combine(_root, "computers.json"));
+        Assert.Contains("enc:dpapi:", slots);
+        Assert.DoesNotContain("signed-in-here", slots);
 
         var reloaded = await svc.LoadSettingsAsync();
         Assert.Equal("signed-in-here", reloaded.LastFmSessionKey);
@@ -349,9 +350,10 @@ public class PersistenceServiceTests : IDisposable
 
         await svc.SaveSettingsAsync(loaded);
         var raw = await ReadRawSettingsAsync();
-        Assert.Equal("my-session", PersistenceService.UnprotectSecret(raw.GetProperty("lastFmSessionKey").GetString()!));
-        Assert.Equal(new[] { foreign },
-            raw.GetProperty("otherComputerSecrets").GetProperty("lastFmSessionKey").EnumerateArray().Select(e => e.GetString()));
+        // GitHub #230: the other computer's copy is the field's; this one's moved to computers.json.
+        Assert.Equal(foreign, raw.GetProperty("lastFmSessionKey").GetString());
+        Assert.False(raw.TryGetProperty("otherComputerSecrets", out _));
+        Assert.Equal("my-session", (await svc.LoadSettingsAsync()).LastFmSessionKey);
 
         // Signing out here hands the field back to the other computer, still signed in there.
         loaded.LastFmSessionKey = "";
