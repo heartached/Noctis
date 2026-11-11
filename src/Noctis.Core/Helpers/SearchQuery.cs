@@ -19,6 +19,15 @@ namespace Noctis.Helpers;
 /// ("artist:") is ignored while typing, and a lone "+" or "&amp;" joins words rather than
 /// requiring one.
 /// </para>
+/// <para>
+/// GitHub #227: a closed quote asks for the exact thing. A quoted tag value matches the whole
+/// field (<c>title:"creep"</c>), or one whole artist of a multi-artist credit
+/// (<c>artist:"Coin"</c> finds "COIN" and "Coin feat. X", not "Rich Aucoin"), or one whole
+/// genre (<c>genre:"rock"</c> skips "Alternative Rock"). A quoted phrase without a tag matches
+/// whole words in title, artist, album, album artist or genre (<c>"coin"</c>). Case, accents
+/// and punctuation fold as in unquoted search. Inside quotes <c>\"</c> is a literal quote; a
+/// quote not closed yet keeps "contains", so results don't vanish while typing.
+/// </para>
 /// </summary>
 public sealed class SearchQuery
 {
@@ -30,6 +39,10 @@ public sealed class SearchQuery
         public string Text { get; init; } = string.Empty;
         /// <summary><see cref="SearchText.Normalize"/> of <see cref="Text"/>.</summary>
         public string Key { get; init; } = string.Empty;
+        /// <summary>Closed quotes: whole value / whole word instead of substring (GitHub #227).</summary>
+        public bool Exact { get; init; }
+        /// <summary><see cref="SearchText.FoldWords"/> of <see cref="Text"/>; set for exact terms.</summary>
+        public string WordKey { get; init; } = " ";
         /// <summary>Inclusive year bounds; only set for <see cref="Field.Year"/> terms.</summary>
         public int YearMin { get; init; }
         public int YearMax { get; init; }
@@ -52,14 +65,24 @@ public sealed class SearchQuery
     /// <summary>True when any term is tied to a field (a tag like <c>artist:</c>).</summary>
     public bool HasFieldTerms { get; }
 
+    /// <summary>True when any term was in closed quotes (exact, GitHub #227). The whole-query
+    /// phrase fallback is skipped then: it would find "coin" inside "Aucoin" again.</summary>
+    public bool HasExactTerms { get; }
+
     private SearchQuery(string raw, List<Term> terms)
     {
         Raw = raw;
         RawKey = SearchText.Normalize(raw);
         _terms = terms;
         foreach (var t in terms)
-            if (t.Field != Field.Any) { HasFieldTerms = true; break; }
+        {
+            if (t.Field != Field.Any) HasFieldTerms = true;
+            if (t.Exact) HasExactTerms = true;
+        }
     }
+
+    /// <summary>The whole query as one phrase is only tried for plain, unquoted text.</summary>
+    private bool UsePhraseFallback => !HasFieldTerms && !HasExactTerms;
 
     public static SearchQuery Parse(string? text)
     {
@@ -67,7 +90,7 @@ public sealed class SearchQuery
         if (raw.Length == 0) return Empty;
 
         var terms = new List<Term>();
-        foreach (var (prefix, value, quoted) in Tokenize(raw))
+        foreach (var (prefix, value, quoted, closed) in Tokenize(raw))
         {
             if (prefix != null && TryParseField(prefix, out var field))
             {
@@ -78,7 +101,7 @@ public sealed class SearchQuery
                         terms.Add(new Term { Field = Field.Year, Text = value, YearMin = min, YearMax = max });
                     continue; // "year:19" mid-typing: no constraint yet
                 }
-                terms.Add(new Term { Field = field, Text = value, Key = SearchText.Normalize(value) });
+                terms.Add(NewTerm(field, value, closed));
                 continue;
             }
 
@@ -87,11 +110,20 @@ public sealed class SearchQuery
             // "+", "&", "-" between words are connectors, not something to find. A quoted
             // phrase is kept even so: the user asked for it literally.
             if (key.Length == 0 && !quoted) continue;
-            terms.Add(new Term { Field = Field.Any, Text = word, Key = key });
+            terms.Add(NewTerm(Field.Any, word, closed));
         }
 
         return new SearchQuery(raw, terms);
     }
+
+    private static Term NewTerm(Field field, string text, bool exact) => new()
+    {
+        Field = field,
+        Text = text,
+        Key = SearchText.Normalize(text),
+        Exact = exact,
+        WordKey = exact ? SearchText.FoldWords(text) : " ",
+    };
 
     /// <summary>
     /// True when the track satisfies the query. Without field tags the whole query also
@@ -102,7 +134,7 @@ public sealed class SearchQuery
     {
         if (IsEmpty) return true;
 
-        if (!HasFieldTerms &&
+        if (UsePhraseFallback &&
             (SearchText.Matches(track.Title, track.SearchTitleKey, Raw, RawKey) ||
              SearchText.Matches(track.Artist, track.SearchArtistKey, Raw, RawKey) ||
              SearchText.Matches(track.Album, track.SearchAlbumKey, Raw, RawKey)))
@@ -124,14 +156,15 @@ public sealed class SearchQuery
     public bool MatchesName(string? name, string nameKey)
     {
         if (IsEmpty) return true;
-        if (!HasFieldTerms && SearchText.Matches(name, nameKey, Raw, RawKey)) return true;
+        if (UsePhraseFallback && SearchText.Matches(name, nameKey, Raw, RawKey)) return true;
 
         var any = false;
         foreach (var term in _terms)
         {
             if (term.Field is not (Field.Any or Field.Artist or Field.AlbumArtist)) continue;
             any = true;
-            if (!SearchText.Matches(name, nameKey, term.Text, term.Key)) return false;
+            var ok = term.Field == Field.Any ? Text(name, nameKey, term) : Credit(name, nameKey, term);
+            if (!ok) return false;
         }
         return any || HasFieldTerms;
     }
@@ -144,7 +177,7 @@ public sealed class SearchQuery
     public bool MatchesAlbum(Album album)
     {
         if (IsEmpty) return true;
-        if (!HasFieldTerms &&
+        if (UsePhraseFallback &&
             (SearchText.Matches(album.Name, album.SearchNameKey, Raw, RawKey) ||
              SearchText.Matches(album.Artist, album.SearchArtistKey, Raw, RawKey)))
             return true;
@@ -155,13 +188,13 @@ public sealed class SearchQuery
         {
             var ok = term.Field switch
             {
-                Field.Album => SearchText.Matches(album.Name, album.SearchNameKey, term.Text, term.Key),
-                Field.Artist or Field.AlbumArtist => SearchText.Matches(album.Artist, album.SearchArtistKey, term.Text, term.Key),
-                Field.Genre => SearchText.Matches(album.Genre, term.Text),
+                Field.Album => Whole(album.Name, album.SearchNameKey, term),
+                Field.Artist or Field.AlbumArtist => Credit(album.Artist, album.SearchArtistKey, term),
+                Field.Genre => Genre(album.Genre, null, term),
                 Field.Year => album.Year >= term.YearMin && album.Year <= term.YearMax,
-                Field.Any => SearchText.Matches(album.Name, album.SearchNameKey, term.Text, term.Key)
-                             || SearchText.Matches(album.Artist, album.SearchArtistKey, term.Text, term.Key)
-                             || SearchText.Matches(album.Genre, term.Text)
+                Field.Any => Text(album.Name, album.SearchNameKey, term)
+                             || Text(album.Artist, album.SearchArtistKey, term)
+                             || Text(album.Genre, null, term)
                              || IsYear(album.Year, term.Text),
                 _ => false,
             };
@@ -184,21 +217,67 @@ public sealed class SearchQuery
 
     private static bool MatchesTerm(Track t, Term term) => term.Field switch
     {
-        Field.Title => SearchText.Matches(t.Title, t.SearchTitleKey, term.Text, term.Key),
-        Field.Artist => SearchText.Matches(t.Artist, t.SearchArtistKey, term.Text, term.Key)
-                        || SearchText.Matches(t.AlbumArtist, t.SearchAlbumArtistKey, term.Text, term.Key),
-        Field.AlbumArtist => SearchText.Matches(t.AlbumArtist, t.SearchAlbumArtistKey, term.Text, term.Key),
-        Field.Album => SearchText.Matches(t.Album, t.SearchAlbumKey, term.Text, term.Key),
-        Field.Genre => SearchText.Matches(t.Genre, t.SearchGenreKey, term.Text, term.Key),
-        Field.Composer => SearchText.Matches(t.Composer, term.Text),
+        Field.Title => Whole(t.Title, t.SearchTitleKey, term),
+        Field.Artist => Credit(t.Artist, t.SearchArtistKey, term)
+                        || Credit(t.AlbumArtist, t.SearchAlbumArtistKey, term),
+        Field.AlbumArtist => Credit(t.AlbumArtist, t.SearchAlbumArtistKey, term),
+        Field.Album => Whole(t.Album, t.SearchAlbumKey, term),
+        Field.Genre => Genre(t.Genre, t.SearchGenreKey, term),
+        Field.Composer => Credit(t.Composer, null, term),
         Field.Year => t.Year >= term.YearMin && t.Year <= term.YearMax,
-        _ => SearchText.Matches(t.Title, t.SearchTitleKey, term.Text, term.Key)
-             || SearchText.Matches(t.Artist, t.SearchArtistKey, term.Text, term.Key)
-             || SearchText.Matches(t.Album, t.SearchAlbumKey, term.Text, term.Key)
-             || SearchText.Matches(t.AlbumArtist, t.SearchAlbumArtistKey, term.Text, term.Key)
-             || SearchText.Matches(t.Genre, t.SearchGenreKey, term.Text, term.Key)
+        _ => Text(t.Title, t.SearchTitleKey, term)
+             || Text(t.Artist, t.SearchArtistKey, term)
+             || Text(t.Album, t.SearchAlbumKey, term)
+             || Text(t.AlbumArtist, t.SearchAlbumArtistKey, term)
+             || Text(t.Genre, t.SearchGenreKey, term)
              || IsYear(t.Year, term.Text),
     };
+
+    // Per-field matchers. Unquoted terms are "contains" everywhere; the exact (#227) paths
+    // first run the same cheap contains test, so splitting credits or folding words only
+    // happens for the few values that could match at all. A null sourceKey = not cached.
+
+    /// <summary>A single-value field (title, album): exact = the whole value.</summary>
+    private static bool Whole(string? source, string? sourceKey, Term term)
+    {
+        sourceKey ??= SearchText.Normalize(source);
+        return term.Exact
+            ? SearchText.MatchesWhole(source, sourceKey, term.Text, term.Key)
+            : SearchText.Matches(source, sourceKey, term.Text, term.Key);
+    }
+
+    /// <summary>An artist credit: exact = the whole credit or one of its artists, split the
+    /// way the rest of the app splits credits (<see cref="ArtistCredit.Split(string?)"/>).</summary>
+    private static bool Credit(string? source, string? sourceKey, Term term)
+    {
+        sourceKey ??= SearchText.Normalize(source);
+        if (!SearchText.Matches(source, sourceKey, term.Text, term.Key)) return false;
+        if (!term.Exact || SearchText.MatchesWhole(source, sourceKey, term.Text, term.Key)) return true;
+        foreach (var name in ArtistCredit.Split(source))
+            if (SearchText.MatchesWhole(name, SearchText.Normalize(name), term.Text, term.Key)) return true;
+        return false;
+    }
+
+    /// <summary>A genre list ("Pop; Rock"): exact = one whole genre (<see cref="Track.SplitGenres"/>).</summary>
+    private static bool Genre(string? source, string? sourceKey, Term term)
+    {
+        sourceKey ??= SearchText.Normalize(source);
+        if (!SearchText.Matches(source, sourceKey, term.Text, term.Key)) return false;
+        if (!term.Exact || SearchText.MatchesWhole(source, sourceKey, term.Text, term.Key)) return true;
+        foreach (var genre in Track.SplitGenres(source))
+            if (SearchText.MatchesWhole(genre, SearchText.Normalize(genre), term.Text, term.Key)) return true;
+        return false;
+    }
+
+    /// <summary>A free word or phrase: exact = whole words in order ("coin" skips "Aucoin").</summary>
+    private static bool Text(string? source, string? sourceKey, Term term)
+    {
+        sourceKey ??= SearchText.Normalize(source);
+        if (!SearchText.Matches(source, sourceKey, term.Text, term.Key)) return false;
+        // A punctuation-only phrase ("&") has no words: the raw substring hit above is all there is.
+        if (!term.Exact || term.WordKey.Length <= 1) return true;
+        return SearchText.FoldWords(source).Contains(term.WordKey, StringComparison.Ordinal);
+    }
 
     // A bare four-digit word matches the release year exactly; "99" shouldn't pull in 1999.
     private static bool IsYear(int year, string text) =>
@@ -246,11 +325,12 @@ public sealed class SearchQuery
         int.TryParse(s.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out year) && year is >= 1000 and <= 9999;
 
     /// <summary>
-    /// Splits on whitespace, keeping "quoted phrases" whole. Yields (prefix, value, quoted):
+    /// Splits on whitespace, keeping "quoted phrases" whole. Yields (prefix, value, quoted, closed):
     /// prefix is the text before the first ':' of a word (null when there is none), so
-    /// <c>artist:"pink floyd"</c> yields ("artist", "pink floyd", true).
+    /// <c>artist:"pink floyd"</c> yields ("artist", "pink floyd", true, true). Inside quotes
+    /// <c>\"</c> is a literal quote; closed is false while the closing quote is still missing.
     /// </summary>
-    private static IEnumerable<(string? Prefix, string Value, bool Quoted)> Tokenize(string raw)
+    private static IEnumerable<(string? Prefix, string Value, bool Quoted, bool Closed)> Tokenize(string raw)
     {
         var i = 0;
         var sb = new StringBuilder();
@@ -274,19 +354,24 @@ public sealed class SearchQuery
 
             sb.Clear();
             var quoted = false;
+            var closed = false;
             if (i < raw.Length && raw[i] == '"')
             {
                 quoted = true;
                 i++;
-                while (i < raw.Length && raw[i] != '"') sb.Append(raw[i++]);
-                if (i < raw.Length) i++; // closing quote (an unclosed one runs to the end)
+                while (i < raw.Length && raw[i] != '"')
+                {
+                    if (raw[i] == '\\' && i + 1 < raw.Length && raw[i + 1] == '"') i++; // \" = a literal quote
+                    sb.Append(raw[i++]);
+                }
+                if (i < raw.Length) { i++; closed = true; } // an unclosed quote runs to the end
             }
             else
             {
                 while (i < raw.Length && !char.IsWhiteSpace(raw[i])) sb.Append(raw[i++]);
             }
 
-            yield return (prefix, sb.ToString().Trim(), quoted);
+            yield return (prefix, sb.ToString().Trim(), quoted, closed);
         }
     }
 }
