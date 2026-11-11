@@ -3987,7 +3987,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>{0:N0} failed</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>{0:N0} kept your own lyrics file</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} busy, try again later</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SearchAsHeader" xml:space="preserve"><value>Search as artist: the name the lyrics sources know (used for this search only, your tags stay as they are)</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsHeader" xml:space="preserve"><value>Search under a different artist name. Your tags are not changed.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SearchAsFor" xml:space="preserve"><value>Search {0} as</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SearchAsTooMany" xml:space="preserve"><value>Searching under another artist name is offered for selections of up to {0} artists.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumStillBusy" xml:space="preserve"><value>{0} not looked up, sources busy: the next run asks again</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
