@@ -3956,6 +3956,9 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>{0:N0} failed</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>{0:N0} kept your own lyrics file</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} busy, try again later</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumStillBusy" xml:space="preserve"><value>{0} not looked up, sources busy: the next run asks again</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.WaitingForSources" xml:space="preserve"><value>Waiting for busy sources… {0} left to ask again</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>Asking busy sources again… {0} left</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>nothing to do</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>1 song has plain lyrics only. Lyrics Studio can time them on this PC with its speech model: it can take a minute or more per song (faster on a graphics card), and you check each one before it's saved.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} songs have plain lyrics only. Lyrics Studio can time them on this PC with its speech model: it can take a minute or more per song (faster on a graphics card), and you check each one before it's saved.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>

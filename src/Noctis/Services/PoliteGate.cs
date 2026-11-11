@@ -8,7 +8,10 @@ namespace Noctis.Services;
 /// 429/503) everything waits out a back-off that doubles each time (from
 /// <see cref="FirstBackoff"/> up to <see cref="MaxBackoff"/>) and resets on the next good
 /// answer. After <see cref="GiveUpAfter"/> busy answers in a row the source is left alone for
-/// the rest of the run. One gate is shared by every worker of a run.
+/// the rest of the run. One gate is shared by every worker of a run. GitHub #228: a busy answer
+/// also widens the spacing for the rest of the run (doubling, up to <see cref="MaxInterval"/>), so
+/// a source that has a per-minute limit is not tripped again at the same pace; a Retry-After the
+/// source sent is waited out in full.
 /// </summary>
 public sealed class PoliteGate
 {
@@ -19,10 +22,12 @@ public sealed class PoliteGate
     private DateTime _next = DateTime.MinValue;
     private TimeSpan _backoff = TimeSpan.Zero;
     private int _busyInARow;
+    private TimeSpan _interval;
 
     public PoliteGate(TimeSpan minInterval, Func<DateTime>? now = null, Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
         MinInterval = minInterval;
+        _interval = minInterval;
         _now = now ?? (() => DateTime.UtcNow);
         _delay = delay ?? Task.Delay;
     }
@@ -31,6 +36,8 @@ public sealed class PoliteGate
     public TimeSpan FirstBackoff { get; init; } = TimeSpan.FromSeconds(15);
     public TimeSpan MaxBackoff { get; init; } = TimeSpan.FromMinutes(4);
     public int GiveUpAfter { get; init; } = 4;
+    /// <summary>The widest the spacing grows to after busy answers.</summary>
+    public TimeSpan MaxInterval { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>The source said busy <see cref="GiveUpAfter"/> times in a row: skip it for this run.</summary>
     public bool GaveUp => Volatile.Read(ref _busyInARow) >= GiveUpAfter;
@@ -50,7 +57,7 @@ public sealed class PoliteGate
                     wait = _next - _now();
                     if (wait <= TimeSpan.Zero)
                     {
-                        _next = _now() + MinInterval;
+                        _next = _now() + _interval;
                         return;
                     }
                 }
@@ -63,15 +70,36 @@ public sealed class PoliteGate
         }
     }
 
-    /// <summary>The source answered busy: back off before anyone asks it again.</summary>
-    public void ReportBusy()
+    /// <summary>The source answered busy: back off before anyone asks it again — at least
+    /// <paramref name="retryAfter"/> when it said how long. A wait longer than <see cref="MaxBackoff"/>
+    /// leaves the source alone for now (<see cref="GaveUp"/>) rather than holding every song up.</summary>
+    public void ReportBusy(TimeSpan? retryAfter = null)
     {
         lock (_lock)
         {
             _busyInARow++;
             _backoff = _backoff == TimeSpan.Zero ? FirstBackoff : TimeSpan.FromTicks(Math.Min(_backoff.Ticks * 2, MaxBackoff.Ticks));
-            var until = _now() + _backoff;
+            var wait = retryAfter is { } asked && asked > _backoff ? asked : _backoff;
+            if (wait > MaxBackoff) _busyInARow = Math.Max(_busyInARow, GiveUpAfter);
+            var until = _now() + wait;
             if (until > _next) _next = until;
+            if (_interval < MaxInterval)
+                _interval = TimeSpan.FromTicks(Math.Min(Math.Max(_interval.Ticks, 1) * 2, MaxInterval.Ticks));
+        }
+    }
+
+    /// <summary>
+    /// A later pass over the songs the source was busy for (GitHub #228): a source left alone is
+    /// asked again, unless the wait it asked for is still longer than <see cref="MaxBackoff"/>. The
+    /// widened spacing stays.
+    /// </summary>
+    public void Reset()
+    {
+        lock (_lock)
+        {
+            if (_next - _now() > MaxBackoff) return;
+            _busyInARow = 0;
+            _backoff = TimeSpan.Zero;
         }
     }
 
@@ -87,6 +115,9 @@ public sealed class PoliteGate
 
     /// <summary>The back-off the next busy answer would start from (tests).</summary>
     internal TimeSpan CurrentBackoff { get { lock (_lock) return _backoff; } }
+
+    /// <summary>The spacing in force now (tests).</summary>
+    internal TimeSpan CurrentInterval { get { lock (_lock) return _interval; } }
 }
 
 /// <summary>
