@@ -630,6 +630,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page centres the player when the song has no lyrics.
     /// Driven by Settings; display-only.</summary>
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>Discord (f7uh): the lyrics page hides its lyrics column and centres the player,
+    /// lyrics or not. Driven by Settings (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics); display-only.</summary>
+    [ObservableProperty] private bool _lyricsPageHideLyrics;
     /// <summary>GitHub #184: the lyrics page's background reaches under the sidebar rail.
     /// Driven by Settings; display-only (LyricsView extends its backdrop layers).</summary>
     [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;

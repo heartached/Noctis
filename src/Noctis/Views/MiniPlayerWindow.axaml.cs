@@ -24,9 +24,16 @@ public partial class MiniPlayerWindow : Window
     private const int CloseAnimationMs = 170;
     private bool _closeAnimationDone;
 
-    // Set when the window had to fall back to an opaque surface (no Linux compositor),
-    // in which case the card is squared off and must stay that way through resizes.
+    // Set when the window had to fall back to an opaque surface (no Linux compositor, or the
+    // platform granted no transparency), in which case the card is squared off and must stay
+    // that way through resizes.
     private bool _squareCard;
+    // The opaque surface was asked for up front (no Linux compositor / NOCTIS_MINI_OPAQUE):
+    // the hint is None for good, so nothing that is granted later can round the card again.
+    private bool _forcedOpaque;
+
+    /// <summary>The window colour of the opaque fallback (the dark glass card's base).</summary>
+    private static readonly IBrush OpaqueFallbackBrush = new SolidColorBrush(Color.Parse("#FF141418"));
 
     // Matches the slowest drawer transition (0.18s) so it stays mapped long enough
     // for the fade-out + slide to finish before IsVisible flips to false.
@@ -98,15 +105,15 @@ public partial class MiniPlayerWindow : Window
         // NOCTIS_MINI_OPAQUE=1 forces the fallback, for a desktop where transparency
         // still misbehaves (same escape-hatch convention as NOCTIS_SOFTWARE_RENDER).
         var forceOpaque = Environment.GetEnvironmentVariable("NOCTIS_MINI_OPAQUE") == "1";
+        // Whatever Avalonia paints behind a window it could not make see-through is this
+        // brush (Fluent: the theme's SystemControlBackgroundAltHighBrush); the card's own
+        // base colour keeps that from reading as a frame of another colour.
+        TransparencyBackgroundFallback = OpaqueFallbackBrush;
         if (forceOpaque || (OperatingSystem.IsLinux() && !PlatformHelper.IsLinuxCompositorRunning()))
         {
             TransparencyLevelHint = new[] { WindowTransparencyLevel.None };
-            Background = new SolidColorBrush(Color.Parse("#FF141418"));
-            // Square the card to match the window it can't see past. Rounding it here
-            // buys nothing — the corners outside the arc are opaque either way — and
-            // reads as a broken card rather than a deliberate one.
-            RootBorder.CornerRadius = new CornerRadius(0);
-            _squareCard = true;
+            _forcedOpaque = true;
+            SetSquareCard(true);
         }
         else
         {
@@ -180,13 +187,7 @@ public partial class MiniPlayerWindow : Window
         // acrylic layers to the rounded outline. Kept in sync with the resizable window.
         RootPanel.SizeChanged += (_, e) =>
         {
-            // Radius = RootBorder.CornerRadius - BorderThickness, so the clip follows the
-            // inside of the stroke. On the opaque fallback the card is squared off, so
-            // the clip has to square off with it or the glass layers would pull away
-            // from the corners the border now paints straight through.
-            var radius = _squareCard ? 0 : 26.5;
-            RootPanel.Clip = new RectangleGeometry(
-                new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), radius, radius);
+            UpdateRootClip(e.NewSize);
             // No MaxHeight any more: the drawer no longer competes with the player for the
             // card's height, it adds its own (AnimateDrawer).
         };
@@ -302,10 +303,21 @@ public partial class MiniPlayerWindow : Window
 
         // What the OS actually granted, for "Copy Logs": on macOS a hint that falls back to
         // None paints the window opaque (square card on a dark rectangle).
-        Opened += (_, _) => LogTransparency("opened");
+        // Discord (BEAGLE): our probe above can call a desktop composited while the platform
+        // still grants no transparency (Avalonia's X11 backend asks the _NET_WM_CM_S<n> owner
+        // itself, under XWayland too, where WAYLAND_DISPLAY alone made us expect it — and
+        // macOS can drop a level). The rounded card then sat on an opaque square of
+        // TransparencyBackgroundFallback. What was actually granted decides from here on.
+        Opened += (_, _) =>
+        {
+            LogTransparency("opened");
+            ApplyGrantedTransparency(ActualTransparencyLevel);
+        };
         PropertyChanged += (_, e) =>
         {
-            if (e.Property == ActualTransparencyLevelProperty) LogTransparency("changed");
+            if (e.Property != ActualTransparencyLevelProperty) return;
+            LogTransparency("changed");
+            if (IsVisible) ApplyGrantedTransparency(ActualTransparencyLevel);
         };
 
         // The root border starts faded/scaled-down in XAML; flipping the values once
@@ -1051,17 +1063,67 @@ public partial class MiniPlayerWindow : Window
 
     private bool _frosted;
 
+    /// <summary>Whether to ask for the OS blur: Windows, the setting on, and Windows'
+    /// Transparency effects on. With those off DWM paints the blur-behind as a solid colour
+    /// (see <see cref="Helpers.TrayMenuFrost.TransparencyEffectsOn"/>) — the card would sit
+    /// on a solid slab. Per-pixel transparency is not part of that switch: the plain hint
+    /// stays and the window keeps its see-through corners.</summary>
+    internal static bool WantsFrost(bool isWindows, bool setting, bool transparencyEffectsOn) =>
+        isWindows && setting && transparencyEffectsOn;
+
+    /// <summary>Follows the transparency the platform GRANTED (not the hint): none means
+    /// everything outside the card is painted opaque, so the card squares off on one opaque
+    /// colour (the same fallback as a desktop without a compositor); transparency granted
+    /// again (a compositor started) rounds it back. The hint is left as asked.</summary>
+    internal void ApplyGrantedTransparency(WindowTransparencyLevel actual)
+    {
+        if (_forcedOpaque) return;
+        var opaque = actual == WindowTransparencyLevel.None;
+        if (opaque == _squareCard) return;
+        SetSquareCard(opaque);
+    }
+
+    private void SetSquareCard(bool square)
+    {
+        _squareCard = square;
+        // Square the card to match the window it can't see past. Rounding it here
+        // buys nothing — the corners outside the arc are opaque either way — and
+        // reads as a broken card rather than a deliberate one.
+        if (square)
+        {
+            Background = OpaqueFallbackBrush;
+            RootBorder.CornerRadius = new CornerRadius(0);
+        }
+        else
+        {
+            Background = Brushes.Transparent;
+            RootBorder.CornerRadius = new CornerRadius(28);
+        }
+        if (RootPanel.Bounds.Size is { Width: > 0, Height: > 0 } size) UpdateRootClip(size);
+    }
+
+    /// <summary>Radius = RootBorder.CornerRadius - BorderThickness, so the clip follows the
+    /// inside of the stroke. On the opaque fallback the card is squared off, so the clip has
+    /// to square off with it or the glass layers would pull away from the corners the border
+    /// now paints straight through.</summary>
+    private void UpdateRootClip(Size size)
+    {
+        var radius = _squareCard ? 0 : 26.5;
+        RootPanel.Clip = new RectangleGeometry(new Rect(0, 0, size.Width, size.Height), radius, radius);
+    }
+
     private void ApplyTransparencyHint()
     {
         // The opaque fallback (no compositor / NOCTIS_MINI_OPAQUE) owns the hint.
-        if (_squareCard) return;
+        if (_forcedOpaque) return;
         // Every design (GitHub #76, #150). The Pill and Sleeve were dropped from the frost on
         // 10-05 (e2340d26) because the region below sat ON their outline and cut the
         // anti-aliased edge into stair-steps (1v1ctus). The region now runs FrostRegionBleed
         // past the outline (RegionPixels), so the painted edge stays whole and only the
         // blurred desktop meets the region's edge; the shadows that would be cut there are
         // dropped while frosted (UpdateFrostShadows).
-        var frosted = OperatingSystem.IsWindows() && Vm?.Settings.MiniPlayerFrostedBackground == true;
+        var frosted = WantsFrost(OperatingSystem.IsWindows(), Vm?.Settings.MiniPlayerFrostedBackground == true,
+            OperatingSystem.IsWindows() && Helpers.TrayMenuFrost.TransparencyEffectsOn());
         TransparencyLevelHint = TransparencyLevels(frosted);
         if (frosted == _frosted) return;
         _frosted = frosted;

@@ -1661,6 +1661,16 @@
                                             <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsLyricsPlainActive}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- Discord (f7uh): the centred player look with the lyrics hidden, lyrics
+                                         or not (LyricsView.ApplyNoLyricsCentered). Remembered. -->
+                                    <Separator />
+                                    <MenuItem x:Name="HideLyricsMenuItem"
+                                              Header="{loc:T PlaybackBar.HideLyrics}"
+                                              Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ToggleLyricsPageHideLyricsCommand}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding LyricsPageHideLyrics}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
                                 </MenuItem>
                                 <MenuItem Header="{loc:T PlaybackBar.BackgroundColor}"
                                           Command="{Binding OpenLyricsBackgroundColorCommand}"

@@ -1245,6 +1245,7 @@
   <data name="PlaybackBar.LyricsDisplay" xml:space="preserve"><value>Söz Görünümü</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Synced" xml:space="preserve"><value>Senkronize</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Düz</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve"><value>Şarkı Sözlerini Gizle</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Arka Plan Rengi</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Sözleri paylaş</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.QueueTip" xml:space="preserve"><value>Kuyruk</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>

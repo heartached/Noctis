@@ -1922,6 +1922,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.LyricsDisplay" xml:space="preserve"><value>Lyrics Display</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Synced" xml:space="preserve"><value>Synced</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Plain</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve"><value>Hide Lyrics</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Background Color</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Share lyrics</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SaveLyrics" xml:space="preserve"><value>Save Lyrics to File</value><comment>Submenu header in PlaybackBarView.axaml (lyrics page, time-synced lyrics shown); its items pick the file format</comment></data>
