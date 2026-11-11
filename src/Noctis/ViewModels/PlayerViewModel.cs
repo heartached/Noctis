@@ -4779,6 +4779,12 @@ public partial class PlayerViewModel : ViewModelBase
             // Reload album art in case artwork was changed via metadata editor
             if (CurrentTrack != null)
             {
+                // A rescan of the playing file (every tag save re-imports it) gave the library a
+                // new Track; the player kept the old one, so the bar, lyrics page and Now Playing
+                // showed the tags from before the edit (Discord, NJZ).
+                if (!CurrentTrack.IsExternal && _library.GetTrackById(CurrentTrack.Id) is { } own
+                    && CurrentTrack.CopyTagsFrom(own))
+                    CurrentTrack.NotifyMetadataUpdated();
                 // The decodes LoadAlbumArt starts run on the pool; "album art" brackets
                 // only its UI-thread part (cache hit, CurrentArtPath, animated cover).
                 if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: album art");

@@ -671,6 +671,77 @@ public partial class Track : ObservableObject
     /// </summary>
     public void NotifyMetadataUpdated() => OnPropertyChanged(string.Empty);
 
+    /// <summary>
+    /// Takes the tags and Edit Info options of <paramref name="source"/>, the library's own
+    /// instance of this song, and returns whether anything changed (the caller then raises
+    /// <see cref="NotifyMetadataUpdated"/>). A rescan of a changed file (every tag save, through
+    /// the folder watcher) builds a new Track and the queue keeps the one it had, so the
+    /// playing song showed, and Edit Info opened on it wrote back, the tags from before the
+    /// edit (Discord, NJZ: "the metadata edits itself back"). Favorites, snooze and the
+    /// player's own flags have their own sync and are left alone.
+    /// </summary>
+    public bool CopyTagsFrom(Track source)
+    {
+        if (ReferenceEquals(source, this)) return false;
+        var changed = false;
+        void Set<T>(T current, T value, Action<T> assign)
+        {
+            if (EqualityComparer<T>.Default.Equals(current, value)) return;
+            assign(value);
+            changed = true;
+        }
+
+        Set(Title, source.Title, v => Title = v);
+        Set(Artist, source.Artist, v => Artist = v);
+        Set(ArtistAsTagged, source.ArtistAsTagged, v => ArtistAsTagged = v);
+        Set(AlbumArtist, source.AlbumArtist, v => AlbumArtist = v);
+        Set(AlbumArtistFromTag, source.AlbumArtistFromTag, v => AlbumArtistFromTag = v);
+        Set(Album, source.Album, v => Album = v);
+        Set(AlbumFromFolder, source.AlbumFromFolder, v => AlbumFromFolder = v);
+        Set(AlbumId, source.AlbumId, v => AlbumId = v);
+        Set(Genre, source.Genre, v => Genre = v);
+        Set(Composer, source.Composer, v => Composer = v);
+        Set(TrackNumber, source.TrackNumber, v => TrackNumber = v);
+        Set(TrackCount, source.TrackCount, v => TrackCount = v);
+        Set(DiscNumber, source.DiscNumber, v => DiscNumber = v);
+        Set(DiscCount, source.DiscCount, v => DiscCount = v);
+        Set(Bpm, source.Bpm, v => Bpm = v);
+        Set(MusicalKey, source.MusicalKey, v => MusicalKey = v);
+        Set(Year, source.Year, v => Year = v);
+        Set(ReleaseDate, source.ReleaseDate, v => ReleaseDate = v);
+        Set(IsCompilation, source.IsCompilation, v => IsCompilation = v);
+        Set(ReleaseType, source.ReleaseType, v => ReleaseType = v);
+        Set(IsReleaseTypeOverridden, source.IsReleaseTypeOverridden, v => IsReleaseTypeOverridden = v);
+        Set(ShowComposerInAllViews, source.ShowComposerInAllViews, v => ShowComposerInAllViews = v);
+        Set(Grouping, source.Grouping, v => Grouping = v);
+        Set(UseWorkAndMovement, source.UseWorkAndMovement, v => UseWorkAndMovement = v);
+        Set(WorkName, source.WorkName, v => WorkName = v);
+        Set(MovementName, source.MovementName, v => MovementName = v);
+        Set(MovementNumber, source.MovementNumber, v => MovementNumber = v);
+        Set(MovementCount, source.MovementCount, v => MovementCount = v);
+        Set(Comment, source.Comment, v => Comment = v);
+        Set(Copyright, source.Copyright, v => Copyright = v);
+        Set(IsExplicit, source.IsExplicit, v => IsExplicit = v);
+        Set(PlayCount, source.PlayCount, v => PlayCount = v);
+        Set(LastPlayed, source.LastPlayed, v => LastPlayed = v);
+        Set(Rating, source.Rating, v => Rating = v);
+        Set(IsDisliked, source.IsDisliked, v => IsDisliked = v);
+        Set(SkipWhenShuffling, source.SkipWhenShuffling, v => SkipWhenShuffling = v);
+        Set(RememberPlaybackPosition, source.RememberPlaybackPosition, v => RememberPlaybackPosition = v);
+        Set(MediaKind, source.MediaKind, v => MediaKind = v);
+        Set(StartTimeMs, source.StartTimeMs, v => StartTimeMs = v);
+        Set(StopTimeMs, source.StopTimeMs, v => StopTimeMs = v);
+        Set(VolumeAdjust, source.VolumeAdjust, v => VolumeAdjust = v);
+        Set(EqPreset, source.EqPreset, v => EqPreset = v);
+        Set(ArtworkHash, source.ArtworkHash, v => ArtworkHash = v);
+        Set(AlbumArtworkPath, source.AlbumArtworkPath, v => AlbumArtworkPath = v);
+        Set(FileSize, source.FileSize, v => FileSize = v);
+        Set(LastModified, source.LastModified, v => LastModified = v);
+        Set(Lyrics, source.Lyrics, v => Lyrics = v);
+        Set(SyncedLyrics, source.SyncedLyrics, v => SyncedLyrics = v);
+        return changed;
+    }
+
     /// <summary>Cached artwork path, populated during index build: the track's OWN cover
     /// when its embedded art differs from its album's (<see cref="Services.TrackArtwork"/>),
     /// the album cover otherwise. Not persisted.</summary>

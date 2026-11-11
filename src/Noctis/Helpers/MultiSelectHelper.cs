@@ -40,6 +40,20 @@ public static class MultiSelectHelper
     }
 
     /// <summary>
+    /// A ListBox that only virtualizes ROWS of tiles (Albums grid, Favorites): its rows are
+    /// layout and never selected. A press beside the tiles (plain, Shift or Ctrl) reached the
+    /// ListBox and selected the whole row (Discord, Halil: "its the whole line everytime");
+    /// the tiles keep their own selection.
+    /// </summary>
+    public static void KeepRowsUnselected(ListBox rows)
+    {
+        rows.SelectionChanged += (_, _) =>
+        {
+            if (rows.SelectedItem != null) rows.SelectedItem = null;
+        };
+    }
+
+    /// <summary>
     /// GitHub #209: a plain left press on empty space beside the tiles or rows clears the
     /// selection, as in the queue. "Empty" means the press hit no control of its own: no
     /// button (tiles, pills, play buttons), no row container, text box, scroll bar or splitter
