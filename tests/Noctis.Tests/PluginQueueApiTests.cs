@@ -46,7 +46,7 @@ public class PluginQueueApiTests : IDisposable
     public void Kit_Is15()
     {
         Assert.True(PluginApi.Minor >= 5); // 1.6 added audio.decode on top
-        Assert.Equal((1, PluginApi.Minor), (typeof(PluginApi).Assembly.GetName().Version!.Major, typeof(PluginApi).Assembly.GetName().Version!.Minor));
+        Assert.Equal((1, PluginApi.Minor), (KitFileVersion().Major, KitFileVersion().Minor));
     }
 
     [Fact]
@@ -157,4 +157,9 @@ public class PluginQueueApiTests : IDisposable
         public void Log(string message) { }
         public void RegisterVisualLayer(IVisualLayerProvider provider) { }
     }
+
+    /// <summary>The kit's package/file version (its API level). Its AssemblyVersion stays 1.6.0.0
+    /// on purpose (PluginKitBindingTests).</summary>
+    private static Version KitFileVersion() => Version.Parse(System.Reflection.CustomAttributeExtensions
+        .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>(typeof(PluginApi).Assembly)!.Version);
 }

@@ -67,7 +67,7 @@ public class PluginAudioDecodeTests : IDisposable
     public void Kit_Is16_AndKnowsTheNewPermission()
     {
         Assert.True(PluginApi.Minor >= 6); // 1.8 added lyrics renderers on top
-        Assert.Equal((1, PluginApi.Minor), (typeof(PluginApi).Assembly.GetName().Version!.Major, typeof(PluginApi).Assembly.GetName().Version!.Minor));
+        Assert.Equal((1, PluginApi.Minor), (KitFileVersion().Major, KitFileVersion().Minor));
         Assert.Contains("audio.decode", PluginPermissions.All);
         var manifest = PluginManifest.Parse(M("audio.decode"));
         Assert.Equal(new[] { "audio.decode" }, manifest.Permissions);
@@ -227,4 +227,9 @@ public class PluginAudioDecodeTests : IDisposable
         await p.WaitForExitAsync();
         return p.ExitCode == 0;
     }
+
+    /// <summary>The kit's package/file version (its API level). Its AssemblyVersion stays 1.6.0.0
+    /// on purpose (PluginKitBindingTests).</summary>
+    private static Version KitFileVersion() => Version.Parse(System.Reflection.CustomAttributeExtensions
+        .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>(typeof(PluginApi).Assembly)!.Version);
 }

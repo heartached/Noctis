@@ -1012,6 +1012,11 @@ Planned for phase 2, modelled on Flow Launcher and Obsidian:
   keep their signatures and behaviour, so a plugin built for 1.0 runs unchanged on 1.1 (the
   host binds it to its own kit). Use `minAppVersion` to require the first Noctis that has the
   minor you need.
+- The kit assembly's **AssemblyVersion stays 1.6.0.0** for all of 1.x (the API level is
+  `PluginApi.Minor` and the package version). Noctis supplies its own copy of the kit to every
+  plugin, and .NET will not bind a plugin compiled against a higher AssemblyVersion than the one
+  loaded: raising it would make every plugin built afterwards fail to load on older Noctis versions,
+  whatever its `minAppVersion` says.
 - Deprecated members are marked `[Obsolete]` with the replacement for at least one minor
   release (and at least three months) before a major removes them.
 - Permission names, manifest fields and the package layout follow the same rule: new ones may

@@ -5,8 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Noctis.Plugins</RootNamespace>
     <AssemblyName>Noctis.Plugins.Abstractions</AssemblyName>
-    <!-- API version: major = breaking, minor = additive (docs/PLUGINS.md). Keep PluginApi.Major/Minor in step. -->
+    <!-- API version: major = breaking, minor = additive (docs/PLUGINS.md). Keep PluginApi.Major/Minor in step.
+         Version is the package/file version only. AssemblyVersion is what every plugin references and
+         must stay what Noctis 1.6.6-1.6.9 shipped: the default load context refuses a plugin compiled
+         against a higher one (PluginKitBindingTests). Only a breaking major may move it. -->
     <Version>1.8.0</Version>
+    <AssemblyVersion>1.6.0.0</AssemblyVersion>
+    <FileVersion>1.8.0.0</FileVersion>
     <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, playback control, library search and playlists, BPM/key writes, adding files to the library, decoding songs for analysis, settings, storage) and extension points (views, visual layers, lyrics providers, lyrics effects and renderers, track menu commands).</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- NuGet metadata (not published yet; `dotnet pack -c Release` produces the package). -->
