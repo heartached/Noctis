@@ -1330,6 +1330,12 @@ public class AppSettings : IJsonOnDeserializing
     /// sweep alone marks the vocal).</summary>
     public bool LyricsGlowAndLift { get; set; } = true;
 
+    /// <summary>The plugin renderer that draws the lyric lines (plugin API 1.8, Settings → Lyrics →
+    /// Lyrics Renderer), as "&lt;plugin id&gt;/&lt;renderer name&gt;"; empty (the default) is
+    /// Noctis's own. Kept while that plugin is off or gone: Noctis draws its own lines meanwhile,
+    /// and the choice comes back with the plugin.</summary>
+    public string LyricsRenderer { get; set; } = "";
+
     /// <summary>The full-screen lyrics page slides the cover, track info and controls to the
     /// middle when the song has no lyrics (none found, instrumental, or marked as none),
     /// instead of leaving the lyrics half empty. Ships on.</summary>
