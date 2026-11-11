@@ -4166,4 +4166,5 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Search.LyricsOff" xml:space="preserve"><value>Don't Search Lyrics</value><comment>Search box lyrics button menu: search titles, artists, albums only</comment></data>
   <data name="Search.LyricsInclude" xml:space="preserve"><value>Include Lyrics</value><comment>Search box lyrics button menu: also find songs whose lyrics contain the words</comment></data>
   <data name="Search.LyricsOnly" xml:space="preserve"><value>Lyrics Only</value><comment>Search box lyrics button menu: find songs by their lyrics only</comment></data>
+  <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>This data folder was saved by Noctis {0}. Its newer settings are kept, but this version can't use them until you update.</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
 </root>
