@@ -430,14 +430,16 @@ public static class MetadataHelper
         var itunes = App.Services!.GetService<ITunesArtworkService>();
         var lrcLib = App.Services!.GetService<ILrcLibService>();
 
-        var vm = new MetadataViewModel(tracks[0], metadata, library, persistence, animatedCovers,
-            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true,
+        var opened = tracks;
+        var edited = tracks.Select(t => EditedInstance(t, library)).ToList();
+        var vm = new MetadataViewModel(edited[0], metadata, library, persistence, animatedCovers,
+            albumScoped: true, albumTracks: edited, itunes: itunes, lrcLib: lrcLib, multiSelect: true,
             metadataSearch: App.Services!.GetService<Services.MetadataSearch.IMetadataSearchService>());
         AddUserEqPresets(vm);
 
-        var edited = tracks.ToList();
         vm.ChangesSaved += (_, _) =>
         {
+            for (var i = 0; i < opened.Count; i++) MirrorSavedEdit(opened[i], edited[i]);
             if (App.Services!.GetService<MainWindowViewModel>() is { } main)
                 LiveApplyPlayingOptions(main, edited);
         };
@@ -480,6 +482,23 @@ public static class MetadataHelper
     public static Task OpenLyricsEditor(Track track, Action? saved = null) =>
         OpenMetadataWindow(track, albumScoped: false, openOnLyrics: true, saved: saved);
 
+    /// <summary>
+    /// The song's library instance, which Edit Info edits. The player bar, the queue and the
+    /// lyrics page hand over the queue's Track, and after any rewrite of the file (every tag
+    /// save: the folder watcher re-imports it as a new Track) that is a stale copy: the editor
+    /// showed its old tags and Save wrote them all back into the file, undoing an edit made
+    /// from the Songs list meanwhile (Discord, NJZ: "the metadata edits itself back"); with no
+    /// re-import after the save, the library's row never saw the edit at all.
+    /// </summary>
+    internal static Track EditedInstance(Track track, ILibraryService library) =>
+        !track.IsExternal && library.GetTrackById(track.Id) is { } own ? own : track;
+
+    /// <summary>After a save, the copy Edit Info was opened on shows what was saved.</summary>
+    internal static void MirrorSavedEdit(Track opened, Track edited)
+    {
+        if (opened.CopyTagsFrom(edited)) opened.NotifyMetadataUpdated();
+    }
+
     public static async Task OpenMetadataWindow(Track track, bool albumScoped = false, bool openOnLyrics = false, Action? saved = null)
     {
         // The metadata editor is file-backed end to end (TagLib reads, atomic
@@ -490,6 +509,8 @@ public static class MetadataHelper
         var metadata = App.Services!.GetRequiredService<IMetadataService>();
         var library = App.Services!.GetRequiredService<ILibraryService>();
         var persistence = App.Services!.GetRequiredService<IPersistenceService>();
+        var opened = track;
+        track = EditedInstance(track, library);
 
         List<Track>? albumTracks = null;
         if (albumScoped)
@@ -514,6 +535,8 @@ public static class MetadataHelper
                 main.Player.CurrentAnimatedCoverPath = null;
         };
 
+        // First: the handlers below and `saved` (the lyrics page) read the copy they hold.
+        vm.ChangesSaved += (_, _) => MirrorSavedEdit(opened, track);
         vm.ChangesSaved += (_, _) =>
         {
             var main = App.Services!.GetService<MainWindowViewModel>();

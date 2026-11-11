@@ -31,6 +31,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a tile.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
+        MultiSelectHelper.KeepRowsUnselected(FavoritesList);
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -38,8 +39,26 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         var source = e.Source as Control;
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
-        if (source is not Button tile) return;
+        if (source is not Button tile)
+        {
+            // GitHub #209, as on Albums: a click beside the tiles clears the selection.
+            if (_selectedItems.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e, rowsAreLayout: true))
+                ClearSelection();
+            return;
+        }
         if (tile.DataContext is not FavoriteItem item) return;
+
+        // GitHub #209, as on Albums: with a selection up, a plain press in the gap around a
+        // cover (the tile's padding) is a click beside the tiles, not a click on that tile.
+        if (_selectedItems.Count > 0 && IsInTilePadding(tile, e)
+            && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
+            && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
+            && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            ClearSelection();
+            e.Handled = true;
+            return;
+        }
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, item, e, _selectedItems)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
@@ -52,6 +71,21 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
         if (_selectedItems.Count > 0)
             Focus();
+    }
+
+    /// <summary>The press landed in the tile's padding (the gap around its cover and caption).</summary>
+    private static bool IsInTilePadding(Button tile, PointerPressedEventArgs e)
+    {
+        var p = e.GetPosition(tile);
+        var pad = tile.Padding;
+        return p.X < pad.Left || p.Y < pad.Top
+            || p.X > tile.Bounds.Width - pad.Right || p.Y > tile.Bounds.Height - pad.Bottom;
+    }
+
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
+        if (DataContext is FavoritesViewModel vm) vm.CtrlSelectedItems = new List<FavoriteItem>();
     }
 
     /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
@@ -76,8 +110,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     {
         if (e.Key == Key.Escape && _selectedItems.Count > 0)
         {
-            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
-            if (DataContext is FavoritesViewModel vm) vm.CtrlSelectedItems = new List<FavoriteItem>();
+            ClearSelection();
             e.Handled = true;
             return;
         }
