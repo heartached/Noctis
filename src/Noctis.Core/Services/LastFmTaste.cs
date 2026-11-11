@@ -146,7 +146,8 @@ public sealed class LastFmTasteClient
 
     // ── HTTP ──
 
-    private async Task<JsonDocument> GetAsync(string query, CancellationToken ct)
+    /// <summary>One polite GET (pause, retries, error codes as above); shared with <see cref="LastFmStatsClient"/>.</summary>
+    internal async Task<JsonDocument> GetAsync(string query, CancellationToken ct)
     {
         if (!_first) await _delay(RequestPause, ct);
         _first = false;
@@ -264,6 +265,22 @@ public sealed class LastFmTasteClient
             list.Add(new LastFmSimilarArtist(name, ReadDouble(a, "match"), NullIfEmpty(ReadString(a, "url")), seed));
         }
         return list;
+    }
+
+    /// <summary>The list's "@attr": {"total": n} (how many items the whole chart has), or null.</summary>
+    internal static long? ReadTotal(JsonElement root, string container)
+    {
+        if (!root.TryGetProperty(container, out var box) || box.ValueKind != JsonValueKind.Object ||
+            !box.TryGetProperty("@attr", out var attr) || attr.ValueKind != JsonValueKind.Object) return null;
+        return ReadLong(attr, "total");
+    }
+
+    internal static long? ReadLong(JsonElement e, string name)
+    {
+        if (!e.TryGetProperty(name, out var n)) return null;
+        if (n.ValueKind == JsonValueKind.Number && n.TryGetInt64(out var i)) return i;
+        return n.ValueKind == JsonValueKind.String &&
+               long.TryParse(n.GetString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : null;
     }
 
     /// <summary>Last.fm's JSON turns a one-item list into a bare object, and an empty one into "".</summary>
