@@ -420,7 +420,8 @@ public class LastFmStatsTests : IDisposable
         p.Fetch.Fail = null;
         p.Vm.RetryLastFmCommand.Execute(null);
         var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (p.Vm.TopArtists.Count == 0 && DateTime.UtcNow < deadline) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(2); }
+        // The lists land one UI job before the status line clears: wait for both.
+        while ((p.Vm.TopArtists.Count == 0 || p.Vm.HasLastFmStatus) && DateTime.UtcNow < deadline) { Dispatcher.UIThread.RunJobs(); Thread.Sleep(2); }
         Assert.Equal(2, p.Fetch.Calls); // Try Again skips the cool-down
         Assert.False(p.Vm.HasLastFmStatus);
         Assert.NotEmpty(p.Vm.TopArtists);
