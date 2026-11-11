@@ -128,7 +128,9 @@ public sealed class PoliteGate
 /// </summary>
 public sealed class BulkRunLedger
 {
-    public sealed record Entry(DateTime CheckedUtc, int Rank);
+    /// <param name="Generation">The lookup logic that made the check (<see cref="BulkRunLedger.Generation"/>);
+    /// 0 in files written before it existed.</param>
+    public sealed record Entry(DateTime CheckedUtc, int Rank, int Generation = 0);
 
     private readonly string? _path;
     private readonly Func<DateTime> _now;
@@ -139,6 +141,10 @@ public sealed class BulkRunLedger
 
     /// <summary>How long an entry counts (<see cref="MaxAge"/> unless set).</summary>
     public TimeSpan EntryLifetime { get; init; } = MaxAge;
+
+    /// <summary>The current lookup's generation: entries an older lookup recorded do not count, so
+    /// what it missed is asked again once the lookup improves (GitHub #229). Stamped on new entries.</summary>
+    public int Generation { get; init; }
 
     /// <param name="path">The JSON file; null keeps it in memory only.</param>
     public BulkRunLedger(string? path, Func<DateTime>? now = null)
@@ -167,12 +173,13 @@ public sealed class BulkRunLedger
     public bool CheckedRecently(Guid id, int currentRank)
     {
         lock (_gate)
-            return _entries.TryGetValue(id, out var e) && _now() - e.CheckedUtc < EntryLifetime && e.Rank <= currentRank;
+            return _entries.TryGetValue(id, out var e) && e.Generation >= Generation
+                   && _now() - e.CheckedUtc < EntryLifetime && e.Rank <= currentRank;
     }
 
     public void Record(Guid id, int rank)
     {
-        lock (_gate) _entries[id] = new Entry(_now(), rank);
+        lock (_gate) _entries[id] = new Entry(_now(), rank, Generation);
     }
 
     public int Count { get { lock (_gate) return _entries.Count; } }

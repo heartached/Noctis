@@ -731,6 +731,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     internal static bool SameAlbums(IList<Album> current, IList<Album> next)
         => current.Count == next.Count && current.Zip(next).All(p => ReferenceEquals(p.First, p.Second));
 
+    /// <summary>A row's place in a list: a re-read file is a new Track object with the same id.</summary>
+    private static (Guid, int) RowKey(TopSongRow r) => (r.Track.Id, r.Rank);
+
     /// <summary>Same tracks at the same ranks: TopSongRow is rebuilt per pass, so compare what it shows.</summary>
     internal static bool SameRows(IList<TopSongRow> current, IList<TopSongRow> next)
         => current.Count == next.Count &&
@@ -739,6 +742,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private static void ReplaceAlbums(ObservableCollection<Album> target, IList<Album> next)
     {
         if (SameAlbums(target, next)) return;
+        // A rebuild hands out new Album objects for the same releases (GitHub #223): swap them
+        // in place, or the section empties for a moment and the page scrolls to the top.
+        if (InPlaceUpdate.TryReplace(target, next, a => a.Id)) return;
         target.Clear();
         foreach (var a in next) target.Add(a);
     }
@@ -746,6 +752,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private static void ReplaceRows(ObservableCollection<TopSongRow> target, IList<TopSongRow> next)
     {
         if (SameRows(target, next)) return;
+        if (InPlaceUpdate.TryReplace(target, next, RowKey)) return;
         target.Clear();
         foreach (var r in next) target.Add(r);
     }
@@ -777,13 +784,13 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _tabLive = SortReleases(live, ReleaseSortMode);
         _tabCompilations = SortReleases(compilations, ReleaseSortMode);
         if (IsTabAlbums) FillTabAlbums();
-        else { _albumsFilled = null; ++_albumsGeneration; AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _albumsFilled = null; ++_albumsGeneration; if (AlbumReleases.Count > 0) AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabSingles) FillTabSingles();
-        else { _singlesFilled = null; ++_singlesGeneration; SingleReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _singlesFilled = null; ++_singlesGeneration; if (SingleReleases.Count > 0) SingleReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabLive) FillTabLive();
-        else { _liveFilled = null; ++_liveGeneration; LiveReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _liveFilled = null; ++_liveGeneration; if (LiveReleases.Count > 0) LiveReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabCompilations) FillTabCompilations();
-        else { _compilationsFilled = null; ++_compilationsGeneration; CompilationReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _compilationsFilled = null; ++_compilationsGeneration; if (CompilationReleases.Count > 0) CompilationReleases.ReplaceAll(Array.Empty<Album>()); }
 
         // One full-width row of each on the Overview: the newest GridColumns releases.
         var albumCap = searching ? 0 : GridColumns;
@@ -796,7 +803,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         ReplaceAlbums(AppearsOn, _allAppearsOn.Where(a => AlbumMatches(a, q)).ToList());
 
         if (IsTabSongs) FillAllSongs();
-        else { _allSongsRanking = null; ++_songsGeneration; AllSongs.ReplaceAll(Array.Empty<TopSongRow>()); OnPropertyChanged(nameof(HasAllSongs)); }
+        else { _allSongsRanking = null; ++_songsGeneration; if (AllSongs.Count > 0) AllSongs.ReplaceAll(Array.Empty<TopSongRow>()); OnPropertyChanged(nameof(HasAllSongs)); }
 
         OnPropertyChanged(nameof(HasPopular));
         OnPropertyChanged(nameof(HasFavorites));
@@ -838,6 +845,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var rows = RankPopular(_allSongs, _query.Trim(), 0);
         if (_allSongsRanking != null && SameRows(_allSongsRanking, rows)) return;
+        // Same songs in the same order, the stream finished: new objects swap in place (#223).
+        if (_allSongsRanking != null && InPlaceUpdate.TryReplace(AllSongs, rows, RowKey))
+        {
+            _allSongsRanking = rows;
+            return;
+        }
         _allSongsRanking = rows;
         var generation = ++_songsGeneration;
         StreamingFill.Into(AllSongs, rows, generation, () => _songsGeneration, first: 30, chunk: 40);
@@ -851,6 +864,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabAlbums()
     {
         if (_albumsFilled != null && SameAlbums(_albumsFilled, _tabAlbums)) return;
+        if (_albumsFilled != null && InPlaceUpdate.TryReplace(AlbumReleases, _tabAlbums, x => x.Id))
+        {
+            _albumsFilled = _tabAlbums;
+            return;
+        }
         _albumsFilled = _tabAlbums;
         var generation = ++_albumsGeneration;
         StreamingFill.Into(AlbumReleases, _tabAlbums, generation, () => _albumsGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -859,6 +877,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabSingles()
     {
         if (_singlesFilled != null && SameAlbums(_singlesFilled, _tabSingles)) return;
+        if (_singlesFilled != null && InPlaceUpdate.TryReplace(SingleReleases, _tabSingles, x => x.Id))
+        {
+            _singlesFilled = _tabSingles;
+            return;
+        }
         _singlesFilled = _tabSingles;
         var generation = ++_singlesGeneration;
         StreamingFill.Into(SingleReleases, _tabSingles, generation, () => _singlesGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -867,6 +890,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabLive()
     {
         if (_liveFilled != null && SameAlbums(_liveFilled, _tabLive)) return;
+        if (_liveFilled != null && InPlaceUpdate.TryReplace(LiveReleases, _tabLive, x => x.Id))
+        {
+            _liveFilled = _tabLive;
+            return;
+        }
         _liveFilled = _tabLive;
         var generation = ++_liveGeneration;
         StreamingFill.Into(LiveReleases, _tabLive, generation, () => _liveGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -875,6 +903,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabCompilations()
     {
         if (_compilationsFilled != null && SameAlbums(_compilationsFilled, _tabCompilations)) return;
+        if (_compilationsFilled != null && InPlaceUpdate.TryReplace(CompilationReleases, _tabCompilations, x => x.Id))
+        {
+            _compilationsFilled = _tabCompilations;
+            return;
+        }
         _compilationsFilled = _tabCompilations;
         var generation = ++_compilationsGeneration;
         StreamingFill.Into(CompilationReleases, _tabCompilations, generation, () => _compilationsGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);

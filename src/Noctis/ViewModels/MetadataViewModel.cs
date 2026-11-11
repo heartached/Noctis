@@ -2773,7 +2773,8 @@ public partial class MetadataViewModel : ViewModelBase
             var oldPath = _persistence.GetArtworkPath(oldAlbumId);
             if (File.Exists(oldPath) && _track.AlbumId != Track.UnknownAlbumBucketId)
             {
-                try { File.Copy(oldPath, _persistence.GetArtworkPath(_track.AlbumId), overwrite: true); }
+                // Through SaveArtwork: never written in place under a decode (GitHub #224).
+                try { _persistence.SaveArtwork(_track.AlbumId, File.ReadAllBytes(oldPath)); }
                 catch { /* Non-fatal */ }
             }
             ArtworkCache.Invalidate(oldPath);

@@ -659,4 +659,47 @@ public class ArtistDetailViewMountTests
         Assert.True(popular.Bounds.Width >= 300, $"Top Songs column is {popular.Bounds.Width}px");
         win.Close();
     }
+
+    /// <summary>
+    /// GitHub #223: scrolled far down an artist's Albums tab (or the Overview), Edit Info or Find
+    /// Lyrics on a tile, save, close: the page was back at the top. The save rebuilds the
+    /// library's indexes, which hands the page new Album objects for the same releases.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("albums")]
+    [InlineData("overview")]
+    public void ARebuildWithTheSameReleases_KeepsTheScrollPosition(string tab)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        var albums = (List<Album>)lib.Albums;
+        for (var i = 0; i < 40; i++)
+            albums.Add(MakeAlbum($"Album {i:00}", "Chase Atlantic", 1980 + i, 10));
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var vm = new ArtistDetailViewModel("Chase Atlantic", lib, player) { SelectedTab = tab };
+        var view = new ArtistDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        for (var i = 0; i < 20; i++) Dispatcher.UIThread.RunJobs(); // the tab grid streams in
+
+        var sv = view.FindControl<ScrollViewer>("PageScrollViewer")!;
+        var bottom = sv.Extent.Height - sv.Viewport.Height;
+        Assert.True(bottom > (tab == "albums" ? 1200 : 300), $"page only scrolls {bottom}px");
+        var target = bottom - 50;
+        sv.Offset = new Vector(0, target);
+        Dispatcher.UIThread.RunJobs();
+        var before = sv.Offset.Y;
+
+        // What the metadata save publishes: every release again, as new objects.
+        for (var i = 0; i < albums.Count; i++)
+        {
+            var a = albums[i];
+            albums[i] = new Album { Id = a.Id, Name = a.Name, Artist = a.Artist, Year = a.Year, Tracks = a.Tracks, TrackCount = a.TrackCount };
+        }
+        lib.RaiseLibraryUpdated();
+        for (var i = 0; i < 20; i++) Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(before, sv.Offset.Y, 1);
+        win.Close();
+    }
 }

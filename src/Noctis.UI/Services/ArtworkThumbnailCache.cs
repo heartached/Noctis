@@ -143,9 +143,12 @@ public static class ArtworkThumbnailCache
     /// <summary>
     /// Bumped when the decode's pixels change, so thumbnails from an older resize are
     /// rebuilt instead of served (v2: trilinear, see SkiaArtworkDecoder.Downscale).
-    /// Stale ones age out through the trim.
+    /// Stale ones age out through the trim. v3 (GitHub #224): a v2 thumbnail may hold a cover
+    /// decoded while its file was being rewritten in place (top rows, grey below), and when it
+    /// got the finished file's key (File.WriteAllBytes sizes the file up front) it was served
+    /// for as long as the cover stayed the same. All are rebuilt once.
     /// </summary>
-    private const string Version = "v2";
+    private const string Version = "v3";
 
     internal static string ThumbPath(string dir, string path, int width, long size, long writeTicks)
         => Path.Combine(dir, $"{PathKey(path)}-{width}-{size:x}-{writeTicks:x}-{Version}{Extension}");

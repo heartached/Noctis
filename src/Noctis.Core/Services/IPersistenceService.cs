@@ -98,7 +98,7 @@ public interface IPersistenceService
         {
             var path = GetTrackArtworkPath(trackId);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-            File.WriteAllBytes(path, imageData);
+            Helpers.AtomicFileWriter.WriteAllBytes(path, imageData);
         }
         catch { /* Non-critical: the track just shows its album's cover */ }
     }
