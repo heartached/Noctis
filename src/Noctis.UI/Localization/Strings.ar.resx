@@ -4538,6 +4538,10 @@
     <value>عادية</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>إخفاء الكلمات</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
     <value>لون الخلفية</value>
     <comment>Header in PlaybackBarView.axaml</comment>

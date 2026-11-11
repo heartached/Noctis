@@ -1335,6 +1335,11 @@ public class AppSettings : IJsonOnDeserializing
     /// instead of leaving the lyrics half empty. Ships on.</summary>
     public bool LyricsCenterWhenNoLyrics { get; set; } = true;
 
+    /// <summary>Discord (f7uh): the lyrics page hides the lyrics and shows the centred player
+    /// even when the song has lyrics (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics). The lyrics
+    /// stay loaded; only the page's lyrics column goes. Off by default.</summary>
+    public bool LyricsPageHideLyrics { get; set; }
+
     /// <summary>GitHub #184: the lyrics page's background (blurred cover, flowing style,
     /// background video, colour) reaches the window's left edge under the sidebar rail, so
     /// the rail sits on the artwork instead of a dark column. Off by default.</summary>

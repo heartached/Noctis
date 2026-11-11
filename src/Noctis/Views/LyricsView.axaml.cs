@@ -431,11 +431,18 @@ public partial class LyricsView : UserControl
     // island: PlaybackBarView.ShowLyricsSearch, its states in that button's tooltip). Narrow
     // mode already runs the header full width with the lyrics below it, so it keeps the
     // lyrics column as is.
+    //
+    // The same layout also shows when the user hides the lyrics (Discord, f7uh: island ⋯ ▸
+    // Lyrics Display ▸ Hide Lyrics, LyricsViewModel.IsLyricsHiddenOnPage), lyrics or not. In
+    // narrow mode that fades the lyrics under the header instead. The island's Search Lyrics
+    // stays for songs with none (IsNoLyricsCentered); the ⋯ ▸ Lyrics entries stay either way.
 
     private const int NoLyricsCenterSlideMs = 560;
     private static readonly Avalonia.Animation.Easings.Easing NoLyricsCenterEase = new CubicBezierEase(0.22, 1, 0.36, 1);
     /// <summary>Whether the centred layout is what is applied right now.</summary>
     private bool _noLyricsCenterApplied;
+    /// <summary>Whether the lyrics column is faded out right now (centred, or hidden in narrow mode).</summary>
+    private bool _lyricsColumnHidden;
 
     /// <summary>Applies <see cref="LyricsViewModel.IsNoLyricsCentered"/>. Animated: the left
     /// panel is moved to its new grid slot at once and offset back to where it was drawn,
@@ -446,8 +453,21 @@ public partial class LyricsView : UserControl
     {
         if (LeftPanel is null || RightPanel is null || LyricsPlaybackBar is null) return;
         var lyricsVm = DataContext as LyricsViewModel;
-        var want = !_isNarrowMode && lyricsVm is { IsNoLyricsCentered: true };
-        if (animate && want == _noLyricsCenterApplied) return;
+        var hidden = lyricsVm is { IsLyricsHiddenOnPage: true };
+        var want = !_isNarrowMode && (hidden || lyricsVm is { IsNoLyricsCentered: true });
+        var columnHidden = want || (_isNarrowMode && hidden);
+        // The island's Search Lyrics is for a song with none, not for lyrics the user hid.
+        var islandSearch = want && lyricsVm is { IsNoLyricsCentered: true };
+        if (animate && want == _noLyricsCenterApplied)
+        {
+            // Same layout; the lyrics may still go or come back (narrow mode), and the reason
+            // for centring may have changed (hidden lyrics vs. a song with none).
+            var fade = TimeSpan.FromMilliseconds(NoLyricsCenterSlideMs);
+            if (columnHidden != _lyricsColumnHidden)
+                SetLyricsColumnHidden(columnHidden, VisualRoot != null ? fade : TimeSpan.Zero);
+            LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, islandSearch, VisualRoot != null, fade);
+            return;
+        }
         var changed = want != _noLyricsCenterApplied;
         var gridWidth = MainLayoutGrid.Bounds.Width;
         var fromCentre = LeftPanelCentre(gridWidth);
@@ -465,10 +485,17 @@ public partial class LyricsView : UserControl
         // it now has (the page, or the page beside the open queue), or back.
         GlideLeftPanel(slide ? fromCentre - LeftPanelCentre(gridWidth) : 0, duration);
 
-        FadeTo(RightPanel, want ? 0.0 : 1.0, slide ? duration : TimeSpan.Zero);
-        RightPanel.IsHitTestVisible = !want;
-        LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, want, slide, duration);
+        var fadeColumn = slide || (animate && VisualRoot != null && columnHidden != _lyricsColumnHidden);
+        SetLyricsColumnHidden(columnHidden, fadeColumn ? duration : TimeSpan.Zero);
+        LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, islandSearch, slide, duration);
         ApplyContentSizing(_layoutSize.Width, _layoutSize.Height);
+    }
+
+    private void SetLyricsColumnHidden(bool hidden, TimeSpan duration)
+    {
+        _lyricsColumnHidden = hidden;
+        FadeTo(RightPanel, hidden ? 0.0 : 1.0, duration);
+        RightPanel.IsHitTestVisible = !hidden;
     }
 
     /// <summary>Where LeftPanel's centre sits across the page in the wide layout applied now.</summary>
@@ -722,7 +749,7 @@ public partial class LyricsView : UserControl
             ApplyIslandHidden();
             return;
         }
-        if (e.PropertyName == nameof(LyricsViewModel.IsNoLyricsCentered))
+        if (e.PropertyName is nameof(LyricsViewModel.IsNoLyricsCentered) or nameof(LyricsViewModel.IsLyricsHiddenOnPage))
         {
             // Off screen (cached view): snap, the next visit shows the settled layout.
             ApplyNoLyricsCentered(animate: VisualRoot != null && !_isJumpingOnAttach);

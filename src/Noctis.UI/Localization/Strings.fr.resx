@@ -4538,6 +4538,10 @@
     <value>Simples</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>Masquer les paroles</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
     <value>Couleur d'arrière-plan</value>
     <comment>Header in PlaybackBarView.axaml</comment>

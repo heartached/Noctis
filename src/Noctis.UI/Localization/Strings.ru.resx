@@ -1921,6 +1921,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.LyricsDisplay" xml:space="preserve"><value>Отображение текста</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Synced" xml:space="preserve"><value>Синхронизированный</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Обычный</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve"><value>Скрыть текст</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Цвет фона</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Поделиться текстом</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SaveLyrics" xml:space="preserve"><value>Сохранить текст в файл</value><comment>Header in PlaybackBarView.axaml (lyrics page, online lyrics shown)</comment></data>
