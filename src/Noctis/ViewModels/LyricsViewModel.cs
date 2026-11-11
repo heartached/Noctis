@@ -1309,6 +1309,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         DebugLogger.Info(DebugLogger.Category.Lyrics, "SearchLyrics", $"artist={track.Artist}, title={track.Title}");
         var generation = ++_searchGeneration;
+        _searchedOnline.Add(track.Id);
         IsSearching = true;
         ShowSearchButton = false;
         SearchFailedMessage = string.Empty;
@@ -1765,6 +1766,24 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // Auto runs straight away, so the dialog opens on results rather than an empty list.
         _ = search.SearchAsync();
         await ShowLyricsSearchDialog(search);
+    }
+
+    /// <summary>
+    /// Song menus' Search Lyrics (every page's, and the player island's ⋯ › Lyrics). For the
+    /// player's song: <paramref name="showLyricsPage"/> (which leaves an open page alone) and
+    /// <see cref="SearchLyricsForTrack"/>. For any other song (GitHub #208): the Search Lyrics
+    /// dialog for that song alone. The lyrics page follows the player, so opening it for another
+    /// song showed the playing song's page with the other song's lyrics loaded into it.
+    /// </summary>
+    public void SearchLyricsFromSongMenu(Track track, Action showLyricsPage)
+    {
+        if (!IsPlayerTrack(track))
+        {
+            _ = OpenLyricsSearchForTrackAsync(track);
+            return;
+        }
+        showLyricsPage();
+        SearchLyricsForTrack(track);
     }
 
     /// <summary>The song the player is on (playing or paused): the one the lyrics page follows.</summary>
@@ -2836,8 +2855,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             catch { /* probe failures already surface via the load path */ }
             if (generation != _searchGeneration) return; // another track took over
 
-            // If no local lyrics were found, trigger online search automatically
-            if (ShowSearchButton)
+            // If no local lyrics were found, trigger online search automatically — once. A song the
+            // page already searched online (the automatic download included) gets the dialog, as
+            // the island's search button gives it: repeating the empty search showed nothing (GitHub #221).
+            if (ShowSearchButton && !_searchedOnline.Contains(track.Id))
                 SearchLyricsCommand.Execute(null);
             else if (!IsSearching)
                 await OpenLyricsSearchCommand.ExecuteAsync(null);
@@ -3651,6 +3672,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     // Songs the automatic download already searched for this session: a song with no lyrics
     // online is not searched again every time its lyrics are opened.
     private readonly HashSet<Guid> _autoDownloadTried = new();
+
+    // Songs the page's own online search (SearchLyrics) ran for this session, found or not.
+    private readonly HashSet<Guid> _searchedOnline = new();
 
     /// <summary>
     /// Settings ▸ Lyrics ▸ "Automatically download lyrics" (GitHub #135): when a lyrics view is
