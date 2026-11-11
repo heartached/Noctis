@@ -190,7 +190,7 @@ public class RebuildKeepsScroll223Tests
         public Task FlushAsync() => Task.CompletedTask;
     }
 
-    private sealed class NoLastFm : ILastFmService
+    internal sealed class NoLastFm : ILastFmService
     {
         public bool IsAuthenticated => false;
         public string? Username => null;
