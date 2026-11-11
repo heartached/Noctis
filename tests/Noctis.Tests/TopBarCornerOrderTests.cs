@@ -84,6 +84,9 @@ public class TopBarCornerOrderTests
     private static (Window Window, StackPanel Corner) Mount(Action<TopBarViewModel> setup, string? label = null)
     {
         AddToPlaylistDialogTests.EnsureAppStyles();
+        // As App does at startup: icon buttons take their accessible name from the tooltip.
+        // Without this the "named" assertion only passed when another class ran it first.
+        Noctis.Helpers.AccessibleNames.Install();
         var main = new MainWindow();
         var corner = main.FindControl<StackPanel>("CornerActions")!;
         ((Panel)corner.Parent!).Children.Remove(corner);
