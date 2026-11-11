@@ -25,6 +25,8 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     // virtualization recycling the tile Buttons on scroll doesn't drop the
     // ctrl-selected highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
     private readonly HashSet<Album> _selectedAlbums = new();
+    /// <summary>The album a Shift+click spans from: the last one clicked (GitHub #226).</summary>
+    private Album? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(_selectedAlbums);
@@ -55,6 +57,18 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         }
         if (tile.DataContext is not Album album) return;
 
+        // GitHub #226: Shift+click spans from the last clicked album, in grid order.
+        if (MultiSelectHelper.IsRangePress(e) && _vm != null)
+        {
+            e.Handled = true;
+            _rangeAnchor = MultiSelectHelper.SelectRange(_vm.CarouselAlbums, _rangeAnchor, album,
+                e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier), _selectedAlbums);
+            foreach (var t in CollectAlbumTiles())
+                MultiSelectHelper.SyncAlbumTileVisual(t, _selectedAlbums, animate: true);
+            Focus();
+            return;
+        }
+
         // GitHub #209: the gap between two covers is the tiles' own padding. With a selection
         // up, a plain press there is a click beside the albums: it clears the selection and
         // does not open the tile it happens to belong to.
@@ -67,6 +81,9 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             e.Handled = true;
             return;
         }
+
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = album;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
@@ -339,12 +356,19 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
     private void OnFilteredRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
-        // A rebuild replaces the Album objects: selected ones no longer shown can't be seen
-        // or unselected, so they must not ride along into the next command (GitHub #178).
-        if (_vm != null && _selectedAlbums.Count > 0)
+        // A rebuild can replace the Album objects. Selected ones no longer shown can't be seen
+        // or unselected, so they must not ride along into the next command (GitHub #178); the
+        // ones still shown stay selected under their new objects, matched by album id (GitHub
+        // #225: each library update after launch rebuilt the albums and lost the selection).
+        if (_vm != null && (_selectedAlbums.Count > 0 || _rangeAnchor != null))
         {
-            var shown = _vm.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToHashSet();
-            _selectedAlbums.RemoveWhere(a => !shown.Contains(a));
+            var shown = new Dictionary<Guid, Album>();
+            foreach (var a in _vm.FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums))
+                shown.TryAdd(a.Id, a);
+            var kept = _selectedAlbums.Select(a => shown.GetValueOrDefault(a.Id)).OfType<Album>().ToList();
+            _selectedAlbums.Clear();
+            _selectedAlbums.UnionWith(kept);
+            _rangeAnchor = _rangeAnchor == null ? null : shown.GetValueOrDefault(_rangeAnchor.Id);
         }
 
         // Scroll to top when an active filter (search text, chips or artist) changes, not on
@@ -433,6 +457,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         MultiSelectHelper.ClearAlbumSelectionsByData(_selectedAlbums, CollectAlbumTiles());
+        _rangeAnchor = null;
         if (DataContext is LibraryAlbumsViewModel selVm) selVm.CtrlSelectedAlbums = new List<Album>();
 
         base.OnDetachedFromVisualTree(e);

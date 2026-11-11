@@ -26,6 +26,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     // ctrl-selected class onto a different track when the user scrolls or
     // tabs back to the page. See MultiSelectHelper's "Data-tracked variants".
     private readonly HashSet<Track> _selectedTracks = new();
+    /// <summary>The song a Shift+click spans from: the last row clicked (GitHub #226).</summary>
+    private Track? _rangeAnchor;
     private DateTime _lastScrollUtc;
 
     /// <summary>Rows selected or a scroll in the last moment: the list must hold still.</summary>
@@ -90,6 +92,17 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             source = source.Parent as Control;
         if (source is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
+
+        // GitHub #226: Shift+click spans from the last clicked row, in list order.
+        if (MultiSelectHelper.IsRangePress(e))
+        {
+            _rangeAnchor = MultiSelectHelper.HandleTrackRangeClickByData(MultiSelectHelper.ItemsOf<Track>(TrackList),
+                _rangeAnchor, track, e, _selectedTracks, MultiSelectHelper.RealizedRows(TrackList));
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = track;
 
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
 
@@ -290,6 +303,21 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
 
     private void OnFilteredTracksChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        // GitHub #225: a refill (library update, filter) keeps the selected songs that are
+        // still in the library, matched by id: a scan that re-read a file hands back a new
+        // Track for it. Songs gone from the library leave the selection, so no command acts
+        // on them; songs a search hides stay selected, as before.
+        if (_vm != null && e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset
+            && (_selectedTracks.Count > 0 || _rangeAnchor != null))
+        {
+            var listed = new Dictionary<Guid, Track>();
+            foreach (var t in _vm.AllTracks) listed.TryAdd(t.Id, t);
+            var kept = _selectedTracks.Select(t => listed.GetValueOrDefault(t.Id)).OfType<Track>().ToList();
+            _selectedTracks.Clear();
+            _selectedTracks.UnionWith(kept);
+            _rangeAnchor = _rangeAnchor == null ? null : listed.GetValueOrDefault(_rangeAnchor.Id);
+        }
+
         // Scroll to top only when the filter itself changed: a library reload (metadata
         // save, scan tick, analysis pass) re-fills the same results and keeps the user's place.
         if (_vm == null || _vm.FilterKey == _scrollResetFilterKey)
