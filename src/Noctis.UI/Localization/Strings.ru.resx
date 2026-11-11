@@ -818,6 +818,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="AlbumDetail.ConvertAlbum" xml:space="preserve"><value>Конвертировать альбом</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ScanReplayGain" xml:space="preserve"><value>Сканировать ReplayGain</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve"><value>Показать папку</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.LinkTracksFrom" xml:space="preserve"><value>Связать треки из</value><comment>Submenu in AlbumDetailView.axaml: list another album's songs on this one (deluxe edition)</comment></data>
+  <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Отвязать треки из</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Удалить из медиатеки</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Другие версии</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Играть следующим</value><comment>Header in AlbumDetailView.axaml</comment></data>

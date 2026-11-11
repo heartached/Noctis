@@ -2032,6 +2032,8 @@
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve">
+  <data name="AlbumDetail.LinkTracksFrom" xml:space="preserve"><value>Lier les morceaux de</value><comment>Submenu in AlbumDetailView.axaml: list another album's songs on this one (deluxe edition)</comment></data>
+  <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Délier les morceaux de</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
     <value>Afficher le dossier</value>
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>

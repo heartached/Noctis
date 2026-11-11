@@ -460,7 +460,34 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         e.Handled = true;
     }
 
-    private void OnAlbumFlyoutOpened(object? sender, EventArgs e) { }
+    /// <summary>Fills Link / Unlink Tracks From with the albums they can act on; each submenu is
+    /// hidden when it has none.</summary>
+    private void OnAlbumFlyoutOpened(object? sender, EventArgs e)
+    {
+        if (sender is not MenuFlyout flyout || DataContext is not AlbumDetailViewModel vm) return;
+        foreach (var item in flyout.Items.OfType<MenuItem>())
+        {
+            var (albums, command) = item.Tag switch
+            {
+                "LinkTracksFrom" => (vm.LinkCandidates, vm.LinkTracksFromCommand),
+                "UnlinkTracksFrom" => (vm.LinkedSourceAlbums, vm.UnlinkTracksFromCommand),
+                _ => (null, null),
+            };
+            if (albums == null || command == null) continue;
+            item.Items.Clear();
+            foreach (var album in albums)
+            {
+                // A TextBlock header: a plain string would read "_" in an album name as an access key.
+                item.Items.Add(new MenuItem
+                {
+                    Header = new TextBlock { Text = $"{album.Name} · {album.Tracks.Count}" },
+                    Command = command,
+                    CommandParameter = album,
+                });
+            }
+            item.IsVisible = albums.Count > 0;
+        }
+    }
 
     private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
         => OnTrackRowPointerPressed(e);
