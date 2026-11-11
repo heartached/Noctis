@@ -1193,7 +1193,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.Tracks, 0);
+        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1203,7 +1203,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null) return;
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
-        var ordered = Helpers.AlbumTile.OrderedTracks(album);
+        var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
         _player.ReplaceQueueAndPlay(ordered, 0);
     }
@@ -1212,7 +1212,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.Tracks);
+        _player.PlayShuffled(album.EditionTracks);
     }
 
     /// <summary>Plays all tracks from the current filtered artist view in order.</summary>
@@ -1354,7 +1354,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
         // A copy avoids collection modification issues; AddNextRange keeps album order.
-        _player.AddNextRange(album.Tracks.ToList(), album.Name);
+        _player.AddNextRange(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -1362,7 +1362,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
+        _player.AddRangeToQueue(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]

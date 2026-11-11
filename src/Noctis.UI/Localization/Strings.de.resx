@@ -816,6 +816,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="AlbumDetail.ConvertAlbum" xml:space="preserve"><value>Album konvertieren</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ScanReplayGain" xml:space="preserve"><value>ReplayGain scannen</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve"><value>Ordner anzeigen</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.LinkTracksFrom" xml:space="preserve"><value>Titel verknüpfen aus</value><comment>Submenu in AlbumDetailView.axaml: list another album's songs on this one (deluxe edition)</comment></data>
+  <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Verknüpfung lösen mit</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Aus Bibliothek entfernen</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Andere Versionen</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Als Nächstes abspielen</value><comment>Header in AlbumDetailView.axaml</comment></data>

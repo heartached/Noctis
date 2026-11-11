@@ -44,6 +44,10 @@ public class LibraryService : ILibraryService
     private volatile bool _albumGroupingEnabled = true;
     private volatile bool _albumGroupingWriteTags;
     private readonly SemaphoreSlim _ungroupedResolveGate = new(1, 1);
+
+    // AppSettings.AlbumLinks (Link Tracks From, Discord 11-11), read with the hidden folders and
+    // replaced (never mutated) by Link/UnlinkAlbumTracksAsync and the rebuild's re-key follow.
+    private volatile List<AlbumLink> _albumLinks = new();
     private readonly SemaphoreSlim _groupingWriteGate = new(1, 1);
 
     // Last VisibleTracks result, keyed by the exact _tracks list and hidden array it came
@@ -2218,6 +2222,7 @@ public class LibraryService : ILibraryService
             _inboxEnabledAtLoad = settings.InboxEnabled;
             _albumGroupingEnabled = settings.AlbumGroupingEnabled;
             _albumGroupingWriteTags = settings.AlbumGroupingWriteTags;
+            _albumLinks = settings.AlbumLinks?.ToList() ?? new List<AlbumLink>();
         }
         catch (Exception ex)
         {
@@ -2547,6 +2552,9 @@ public class LibraryService : ILibraryService
         var grouping = _albumGroupingEnabled;
         List<AlbumGrouping.Move>? albumMoves = null;
         var groupedCount = 0;
+        var previousAlbumIndex = _albumIndex;
+        var links = _albumLinks;
+        List<AlbumLink>? remappedLinks = null;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
         {
@@ -2630,6 +2638,12 @@ public class LibraryService : ILibraryService
             foreach (var a in albs)
                 ai[a.Id] = a;
 
+            // Linked albums (a deluxe edition listing the original's songs): a link follows its
+            // album to a new key first, then each edition gets its borrowed songs. Album.Tracks
+            // keeps the own files, so the artwork and artist passes below are unchanged.
+            remappedLinks = Services.AlbumLinks.Remap(links, previousAlbumIndex, ti, ai);
+            Services.AlbumLinks.Attach(ai, remappedLinks ?? links);
+
             // Aggregate artists by their grouping name only (GitHub #51: the primary
             // track artist, or the primary album artist when Settings says so).
             // Collaboration credits remain on Track.Artist for rows/tags, but feature
@@ -2694,6 +2708,12 @@ public class LibraryService : ILibraryService
         if (persistCache)
             _ = SaveIndexCacheAsync(tracks, albums, artists, artistGroupingSignature);
 
+        if (remappedLinks != null && ReferenceEquals(_albumLinks, links))
+        {
+            _albumLinks = remappedLinks;
+            await SaveAlbumLinksAsync(remappedLinks).ConfigureAwait(false);
+        }
+
         if (albumMoves is { Count: > 0 })
         {
             DebugLog.Write("Library", $"Album grouping (#178): {albumMoves.Count} song(s) re-keyed into " +
@@ -2719,6 +2739,43 @@ public class LibraryService : ILibraryService
         // Songs a 1.6.8 grouping re-keyed carry no record of their own album yet: read once.
         var read = await ResolveUngroupedAlbumsAsync(ct);
         return await RebuildAndPersistAlbumKeysAsync(forceSave: read > 0);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<AlbumLink> AlbumLinks => _albumLinks;
+
+    /// <inheritdoc />
+    public Task LinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId)
+        => ChangeAlbumLinksAsync(Services.AlbumLinks.With(_albumLinks, albumId, sourceAlbumId));
+
+    /// <inheritdoc />
+    public Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId)
+        => ChangeAlbumLinksAsync(Services.AlbumLinks.Without(_albumLinks, albumId, sourceAlbumId));
+
+    private async Task ChangeAlbumLinksAsync(List<AlbumLink> next)
+    {
+        if (next.Count == _albumLinks.Count
+            && next.All(n => _albumLinks.Any(l => l.AlbumId == n.AlbumId && l.SourceAlbumId == n.SourceAlbumId)))
+            return;
+        _albumLinks = next;
+        // No ConfigureAwait(false): LibraryUpdated goes out on the caller's (UI) thread, as
+        // RemoveTrackAsync's does.
+        await SaveAlbumLinksAsync(next);
+        await RebuildIndexesAsync();
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private async Task SaveAlbumLinksAsync(List<AlbumLink> links)
+    {
+        try
+        {
+            var copy = links.Select(l => new AlbumLink { AlbumId = l.AlbumId, SourceAlbumId = l.SourceAlbumId }).ToList();
+            await _persistence.UpdateSettingsAsync(s => s.AlbumLinks = copy).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Album links not saved: {ex.Message}");
+        }
     }
 
     /// <inheritdoc />
@@ -4746,6 +4803,7 @@ public class LibraryService : ILibraryService
                         t.AlbumArtworkPath = album.ArtworkPath;
                 }
                 ApplyOwnTrackArtwork(_persistence, tracks);
+                Services.AlbumLinks.Attach(albumIndex, _albumLinks);
 
                 newAlbums = albums
                     .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
@@ -4806,8 +4864,12 @@ public class LibraryService : ILibraryService
                     Artist = album.Artist,
                     Year = album.Year,
                     Genre = album.Genre,
-                    TrackCount = album.TrackCount,
-                    TotalDurationTicks = album.TotalDuration.Ticks,
+                    // The own files: the restore checks the count against them and adds the
+                    // linked songs again (AlbumLinks.Attach).
+                    TrackCount = album.Tracks.Count,
+                    TotalDurationTicks = album.HasLinkedTracks
+                        ? album.Tracks.Sum(t => t.Duration.Ticks)
+                        : album.TotalDuration.Ticks,
                     ArtworkPath = album.ArtworkPath,
                     TrackIds = album.Tracks.Select(t => t.Id).ToList()
                 });

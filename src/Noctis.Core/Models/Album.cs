@@ -66,8 +66,32 @@ public class Album : ObservableObject
     /// </summary>
     public string? ArtworkPath { get; set; }
 
-    /// <summary>Tracks in this album, ordered by disc then track number.</summary>
+    /// <summary>Tracks in this album, ordered by disc then track number. Only the songs whose
+    /// own <see cref="Track.AlbumId"/> is this album: everything that edits, converts, moves or
+    /// deletes "the album" acts on these. Songs linked in from another album are in
+    /// <see cref="EditionTracks"/>.</summary>
     public List<Track> Tracks { get; set; } = new();
+
+    private List<Track>? _editionTracks;
+
+    /// <summary>What the album page lists and plays: <see cref="Tracks"/> plus the songs linked
+    /// in from other albums (<see cref="Services.AlbumLinks"/>), in album order. The same list as
+    /// <see cref="Tracks"/> when nothing is linked.</summary>
+    public List<Track> EditionTracks
+    {
+        get => _editionTracks ?? Tracks;
+        set => _editionTracks = value;
+    }
+
+    /// <summary>The songs <see cref="EditionTracks"/> borrows from other albums (same Track
+    /// instances as on their own album); empty when nothing is linked.</summary>
+    public List<Track> LinkedTracks { get; set; } = new();
+
+    /// <summary>The albums whose songs this one lists too (Unlink Tracks From).</summary>
+    public List<Guid> LinkedAlbumIds { get; set; } = new();
+
+    /// <summary>Some of <see cref="EditionTracks"/> belong to another album.</summary>
+    public bool HasLinkedTracks => LinkedTracks.Count > 0;
 
     private bool _isCurrent;
     private bool _isNowPlaying;
