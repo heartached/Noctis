@@ -830,8 +830,15 @@ public partial class SidebarView : UserControl
         if (!SearchPopup.IsOpen) return;
         StopSearchCloseTimer();
         _searchCollapsing = false;
-        SearchPopup.IsOpen = false;
-        Dispatcher.UIThread.Post(SyncSearchPopupToViewModel, DispatcherPriority.Loaded);
+        var topBar = _topBarVm;
+        var wasOpen = topBar?.IsSearchOpen == true;
+        SearchPopup.IsOpen = false;      // its Closed handler flips IsSearchOpen off
+        if (!wasOpen) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (ReferenceEquals(_topBarVm, topBar) && topBar is { IsSearchOpen: false })
+                topBar.IsSearchOpen = true;
+        }, DispatcherPriority.Loaded);
     }
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
