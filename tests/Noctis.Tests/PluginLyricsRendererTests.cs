@@ -37,12 +37,14 @@ public class PluginLyricsRendererTests : IDisposable
         _box.Dispose();
     }
 
-    private (PluginHost Host, LoadedPlugin Plugin, ScriptedPlugin Script) Load(ILyricsRenderer renderer)
+    private IDisposable? _registration; // what the last Load's RegisterLyricsRenderer returned
+
+    private (PluginHost Host, LoadedPlugin Plugin, ScriptedPlugin Script) Load(ILyricsRenderer renderer, string pluginName = "Test Plugin")
     {
         _box.Approve((Id, Array.Empty<string>()));
         var host = _box.NewHost(appVersion: "1.7.0");
-        var script = new ScriptedPlugin { OnInit = h => h.RegisterLyricsRenderer(renderer) };
-        var loaded = _box.AddInProcess(host, script, PluginSandbox.Manifest(apiVersion: "1.8", minAppVersion: "1.7.0"));
+        var script = new ScriptedPlugin { OnInit = h => _registration = h.RegisterLyricsRenderer(renderer) };
+        var loaded = _box.AddInProcess(host, script, PluginSandbox.Manifest(name: pluginName, apiVersion: "1.8", minAppVersion: "1.7.0"));
         return (host, loaded, script);
     }
 
@@ -375,6 +377,282 @@ public class PluginLyricsRendererTests : IDisposable
         finally { window.Close(); }
     }
 
+    // ── What a hostile or buggy renderer cannot do ──
+
+    /// <summary>A list on screen with <paramref name="renderer"/> chosen.</summary>
+    private (ItemsControl List, IDataTemplate Template, Window Window, PluginHost Host, LoadedPlugin Plugin) Shown(ILyricsRenderer renderer, int lines = 1)
+    {
+        var (list, template) = List(Enumerable.Range(0, lines).Select(i => Line("Hello world " + i, 1000 + i * 1000)).ToArray());
+        var window = new Window { Content = list, Width = 800, Height = 400 };
+        window.Show();
+        var (host, loaded, _) = Load(renderer);
+        host.SelectLyricsRenderer(host.LyricsRenderers[0].Key);
+        Dispatcher.UIThread.RunJobs();
+        return (list, template, window, host, loaded);
+    }
+
+    private static void RenderOnce(Control control)
+    {
+        using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(800, 200));
+        bmp.Render(control);
+    }
+
+    [AvaloniaTheory]
+    [InlineData(1e308, 1e308)]
+    [InlineData(double.PositiveInfinity, double.PositiveInfinity)]
+    [InlineData(double.NaN, double.NaN)]
+    [InlineData(-50, -50)]
+    public void AnAbsurdSize_IsBounded_AndTheListStillLaysOut(double width, double height)
+    {
+        var renderer = new Hostile { MeasureWith = _ => new Size(width, height) };
+        var (list, _, window, _, loaded) = Shown(renderer, lines: 3);
+        try
+        {
+            window.UpdateLayout(); // must not throw (an infinite list height would)
+            var line = Assert.IsType<PluginLyricLine>(ContentOf(list, 0));
+            Assert.InRange(line.Bounds.Width, 0, 640);
+            Assert.InRange(line.Bounds.Height, 0, PluginLyricLine.MaxHeightEm * 46);
+            Assert.True(double.IsFinite(list.DesiredSize.Height));
+            Assert.Equal(PluginStatus.Running, loaded.Status); // bounded, not a fault
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void ALine_IsClippedToItsOwnBox_SoItCannotPaintOverTheWindow()
+    {
+        var renderer = new Hostile
+        {
+            MeasureWith = _ => new Size(200, 40),
+            RenderWith = (ctx, _) => { ctx.FillRectangle(Brushes.Red, new Rect(-5000, -5000, 10000, 10000)); return false; },
+        };
+        var (list, _, window, _, _) = Shown(renderer);
+        try
+        {
+            window.UpdateLayout();
+            var line = Assert.IsType<PluginLyricLine>(ContentOf(list, 0));
+            var clip = Assert.IsType<RectangleGeometry>(line.Clip).Rect;
+            var bounds = new Rect(line.Bounds.Size);
+            Assert.True(clip.Contains(bounds), $"clip {clip} must hold the line {bounds}");
+            var bleed = PluginLyricLine.ClipBleedEm * 46;
+            Assert.True(clip.Left >= -bleed - 0.5 && clip.Top >= -bleed - 0.5
+                        && clip.Right <= bounds.Right + bleed + 0.5 && clip.Bottom <= bounds.Bottom + bleed + 0.5,
+                $"clip {clip} reaches past the line {bounds}");
+            RenderOnce(line);
+            Assert.True(renderer.Renders > 0); // it drew; whatever it drew stays inside the clip
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void ARenderThatLeavesAStateOpen_DoesNotBreakTheFrame()
+    {
+        var renderer = new Hostile { RenderWith = (ctx, _) => { ctx.PushOpacity(0.5); ctx.PushTransform(Matrix.CreateScale(3, 3)); return false; } };
+        var (list, _, window, _, loaded) = Shown(renderer);
+        try
+        {
+            window.UpdateLayout();
+            var line = Assert.IsType<PluginLyricLine>(ContentOf(list, 0));
+            // The app's own path: the compositor records the line's frame.
+            var before = renderer.Renders;
+            line.InvalidateVisual();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(renderer.Renders > before, "the compositor drew the line");
+            // The states it left open stay in the line's own recording: the clip still holds.
+            Assert.IsType<RectangleGeometry>(line.Clip);
+            Assert.Equal(PluginStatus.Running, loaded.Status);
+            // (A RenderTargetBitmap of the line, Avalonia's immediate renderer, throws "Wrong
+            // Push/Pop state order" here; Noctis never draws the lyrics lists that way.)
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData("create")]
+    [InlineData("measure")]
+    [InlineData("render")]
+    public void ARendererThatHoldsTheUiThread_IsDropped_LikeAnySlowCallback(string where)
+    {
+        var (list, template) = List(Line("Hello world", 1000));
+        var window = new Window { Content = list, Width = 800, Height = 400 };
+        window.Show();
+        try
+        {
+            var renderer = new Hostile();
+            var (host, loaded, _) = Load(renderer);
+            host.CallbackBudget = TimeSpan.FromMilliseconds(40);
+            void Slow() => Thread.Sleep(150);
+            if (where == "create") renderer.OnCreate = Slow;
+            if (where == "measure") renderer.MeasureWith = _ => { Slow(); return new Size(100, 40); };
+            if (where == "render") renderer.RenderWith = (_, _) => { Slow(); return false; };
+            host.SelectLyricsRenderer(host.LyricsRenderers[0].Key);
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            if (ContentOf(list, 0) is PluginLyricLine drawn) RenderOnce(drawn);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Null(PluginLyricLines.Current);
+            Assert.Same(template, list.ItemTemplate);
+            Assert.Equal(PluginStatus.Failed, loaded.Status);
+            Assert.Contains("blocked Noctis", loaded.Error);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void AWithdrawnRenderer_IsNeverCalledAgain_EvenByALineStillAround()
+    {
+        var renderer = new Hostile();
+        var (list, template, window, _, _) = Shown(renderer);
+        try
+        {
+            window.UpdateLayout();
+            var line = Assert.IsType<PluginLyricLine>(ContentOf(list, 0));
+            RenderOnce(line);
+            var (measures, renders) = (renderer.Measures, renderer.Renders);
+
+            _registration!.Dispose();               // the plugin withdraws it
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(template, list.ItemTemplate);
+
+            line.InvalidateMeasure();
+            line.Measure(new Size(640, double.PositiveInfinity));
+            RenderOnce(line);                       // a frame already asked for, a stale reference
+            Assert.Equal((measures, renders), (renderer.Measures, renderer.Renders));
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void ADetachedList_LetsGoOfTheRenderer_AndTakesItBackWhenShownAgain()
+    {
+        var renderer = new Hostile();
+        var (list, template, window, host, loaded) = Shown(renderer);
+        try
+        {
+            Assert.True(PluginLyricLines.IsWrapped(list));
+            window.Content = null;                    // the lyrics view closes
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(template, list.ItemTemplate); // holds nothing of the plugin while away
+            Assert.IsNotType<PluginLyricLine>(ContentOf(list, 0));
+
+            window.Content = list;                    // and opens again
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(PluginLyricLines.IsWrapped(list));
+
+            window.Content = null;
+            Dispatcher.UIThread.RunJobs();
+            host.SetEnabled(loaded, false);           // the plugin goes while the view is closed
+            var creates = renderer.Creates;
+            window.Content = list;
+            Dispatcher.UIThread.RunJobs();
+            window.UpdateLayout();
+            Assert.Same(template, list.ItemTemplate);
+            Assert.Equal(creates, renderer.Creates);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaTheory]
+    [InlineData("measure")]
+    [InlineData("render")]
+    public void ARendererWithdrawingItselfMidFrame_DoesNotSwapTheListDuringThePass(string where)
+    {
+        var renderer = new Hostile();
+        var wrappedDuringCall = new List<bool>();
+        ItemsControl? shown = null;
+        void Withdraw()
+        {
+            if (shown is null) return;
+            _registration?.Dispose();
+            wrappedDuringCall.Add(PluginLyricLines.IsWrapped(shown));
+        }
+        if (where == "measure") renderer.MeasureWith = _ => { Withdraw(); return new Size(100, 40); };
+        else renderer.RenderWith = (_, _) => { Withdraw(); return false; };
+        var (list, template, window, _, _) = Shown(renderer);
+        shown = list;
+        try
+        {
+            var line = Assert.IsType<PluginLyricLine>(ContentOf(list, 0));
+            line.InvalidateMeasure();
+            window.UpdateLayout();
+            RenderOnce(line);
+            Assert.NotEmpty(wrappedDuringCall);
+            Assert.All(wrappedDuringCall, Assert.True); // the list is left alone mid-pass
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(template, list.ItemTemplate);   // and handed back right after
+            Assert.Null(PluginLyricLines.Current);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void CommunityPluginsOff_TakesTheRendererAway_AndOnBringsItBack()
+    {
+        var (list, template, window, host, _) = Shown(new Hostile());
+        try
+        {
+            host.SetCommunityPluginsEnabled(false);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Null(PluginLyricLines.Current);
+            Assert.Empty(host.LyricsRenderers);
+            Assert.Same(template, list.ItemTemplate);
+
+            host.SetCommunityPluginsEnabled(true);
+            Dispatcher.UIThread.RunJobs();
+            Assert.NotNull(PluginLyricLines.Current);
+        }
+        finally { window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void ARendererName_IsCleaned_AndBounded()
+    {
+        var (host, _, _) = Load(new Hostile { Name = "  Ev‮il\nName​ " + new string('x', 500) + "\t" });
+        var entry = Assert.Single(host.LyricsRenderers);
+        Assert.StartsWith("Evil Name ", entry.Name);
+        Assert.InRange(entry.Name.Length, 1, PluginHost.MaxLyricsRendererNameLength);
+        Assert.DoesNotContain(entry.Name, c => char.IsControl(c) || char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.Format);
+        Assert.True(PluginHost.IsValidLyricsRendererKey(entry.Key));
+    }
+
+    [AvaloniaFact]
+    public void AStoredChoice_ThatIsNotARendererKey_IsDropped()
+    {
+        var (host, _, _) = Load(new Hostile());
+        var key = host.LyricsRenderers[0].Key;
+        foreach (var bad in new[] { new string('a', 5000), Id + "/Bad\nName", "no-slash", "/Name", Id + "/", Id + "/‮evil" })
+        {
+            host.SelectLyricsRenderer(bad);
+            Assert.Equal("", _box.Settings.LyricsRenderer);
+            Assert.Null(PluginLyricLines.Current);
+        }
+        host.SelectLyricsRenderer(key);
+        Assert.Equal(key, _box.Settings.LyricsRenderer);
+    }
+
+    [AvaloniaFact]
+    public void SettingsPicker_DropsABadStoredChoice_AndNeverShowsARendererAsNoctisItself()
+    {
+        using var persistence = new TestPersistenceService();
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoPlayHistory());
+        _box.Approve((Id, Array.Empty<string>()));
+        var host = _box.NewHost(appVersion: "1.7.0");
+        vm.Plugins = host;
+        _box.AddInProcess(host, new ScriptedPlugin { OnInit = h => h.RegisterLyricsRenderer(new Hostile { Name = "Noctis" }) },
+            PluginSandbox.Manifest(name: "Noctis", apiVersion: "1.8", minAppVersion: "1.7.0"));
+        Dispatcher.UIThread.RunJobs();
+        var labels = vm.LyricsRendererOptions.Select(o => o.Label).ToList();
+        Assert.Equal(2, labels.Count);
+        Assert.Equal(1, labels.Count(l => string.Equals(l, "Noctis", StringComparison.OrdinalIgnoreCase)));
+
+        vm.LyricsRenderer = new string('a', 5000);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("", vm.LyricsRenderer);
+        Assert.Equal(2, vm.LyricsRendererOptions.Count);
+    }
+
     // ── A renderer used only by these tests ──
 
     /// <summary>Draws each word of a line in full once its start has passed, dim before.</summary>
@@ -442,6 +720,29 @@ public class PluginLyricsRendererTests : IDisposable
             LastSung = sung;
             LastAskedForMore = frame.State == LyricsLineState.Active && sung < Math.Max(1, Info.Words.Count);
             return LastAskedForMore;
+        }
+    }
+
+    /// <summary>Does whatever a test tells it to, and counts the calls.</summary>
+    private sealed class Hostile : ILyricsRenderer
+    {
+        public string Name { get; init; } = "Hostile";
+        public Func<double, Size> MeasureWith = _ => new Size(100, 40);
+        public Func<DrawingContext, Size, bool> RenderWith = (_, _) => false;
+        public Action? OnCreate;
+        public int Creates, Measures, Renders;
+
+        public ILyricsLineView? CreateLine(LyricsLineInfo line)
+        {
+            Creates++;
+            OnCreate?.Invoke();
+            return new View(this);
+        }
+
+        private sealed class View(Hostile r) : ILyricsLineView
+        {
+            public Size Measure(double availableWidth, in LyricsLineStyle style) { r.Measures++; return r.MeasureWith(availableWidth); }
+            public bool Render(DrawingContext context, Size size, in LyricsLineFrame frame) { r.Renders++; return r.RenderWith(context, size); }
         }
     }
 
