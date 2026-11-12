@@ -335,6 +335,10 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Removes the playing song in one click. It goes to the Trash folder below, or the Recycle Bin if none is set.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Chapters</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Opens the chapter list. Shows only while an audiobook with chapters plays.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopButton" xml:space="preserve"><value>Stop button</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
+  <data name="Settings.StopButtonHint" xml:space="preserve"><value>A Stop button after Play/Pause. It halts playback, goes back to the start of the song and releases the audio device (Exclusive Mode).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopOnlyInExclusive" xml:space="preserve"><value>Only in Exclusive Mode</value><comment>Text in SettingsView.axaml: sub-toggle under the island Stop button</comment></data>
+  <data name="Settings.StopOnlyInExclusiveHint" xml:space="preserve"><value>Show the Stop button only while Exclusive Mode is on, to save room on the player island.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Trash folder</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Pick a folder outside your music folders, or the next scan adds the songs back.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Not set: the Recycle Bin / Trash</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
@@ -1880,6 +1884,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="PlaybackBar.1Normal" xml:space="preserve"><value>1× (normal)</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.PreviousTip" xml:space="preserve"><value>Previous</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ForwardTip" xml:space="preserve"><value>Forward</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.StopTip" xml:space="preserve"><value>Stop</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the optional island Stop button</comment></data>
   <data name="PlaybackBar.SleepTimerTip" xml:space="preserve"><value>Sleep timer</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pausing" xml:space="preserve"><value>Pausing in</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.15Minutes" xml:space="preserve"><value>15 minutes</value><comment>Header in PlaybackBarView.axaml</comment></data>

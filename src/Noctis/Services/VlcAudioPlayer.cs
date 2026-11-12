@@ -5829,8 +5829,27 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 var oldMedia = _currentMedia;
                 _currentMedia = null;
                 oldMedia?.Dispose();
+
+                // Let go of the Exclusive Mode device (or its shared fallback stream): the sink
+                // stays open across tracks for gapless reuse, so without this a stopped player
+                // kept the endpoint locked and every other app silent. _player.Stop() above has
+                // joined LibVLC's aout, so no callback can reach the sink while it closes; the
+                // next Play reopens it (PrepareExclusiveOutputFor). The keep-warm stream stays
+                // parked: a shared stream would block another app's exclusive open.
+                var releasedExclusive = false;
+                lock (_exclusiveSinkLock)
+                {
+                    if (_exclusiveOut != null)
+                    {
+                        try { _exclusiveOut.Dispose(); } catch { }
+                        _exclusiveOut = null;
+                        releasedExclusive = true;
+                    }
+                }
+                if (releasedExclusive)
+                    ApplyMuteToOwner(); // sink gone: the player owns mute again until the next open
                 DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Stop",
-                    $"session={CurrentSessionId}, engine={_gaplessEngine}");
+                    $"session={CurrentSessionId}, engine={_gaplessEngine}, releasedDevice={releasedExclusive}");
             }
             finally
             {

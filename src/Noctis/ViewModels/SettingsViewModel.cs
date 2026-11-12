@@ -1209,6 +1209,10 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playbackBarShowQuickPlaylist;
     /// <summary>Discord: the island's Chapters button, for audiobooks (off by default).</summary>
     [ObservableProperty] private bool _playbackBarShowChapters;
+    /// <summary>Discord: the island's Stop button, after Play/Pause (off by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowStop;
+    /// <summary>Discord: the Stop button shows only while Exclusive Mode is on.</summary>
+    [ObservableProperty] private bool _playbackBarStopOnlyInExclusiveMode;
 
     /// <summary>The Trash folder row's status: a set folder that's gone falls back to the bin.</summary>
     public bool ShowTrashFolderMissingHint =>
@@ -3625,6 +3629,8 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarTrashFolder = _settings.PlaybackBarTrashFolder ?? string.Empty;
             PlaybackBarShowQuickPlaylist = _settings.PlaybackBarShowQuickPlaylist;
             PlaybackBarShowChapters = _settings.PlaybackBarShowChapters;
+            PlaybackBarShowStop = _settings.PlaybackBarShowStop;
+            PlaybackBarStopOnlyInExclusiveMode = _settings.PlaybackBarStopOnlyInExclusiveMode;
             SetQuickPlaylistSlots(_settings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
@@ -4200,6 +4206,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _settings.PlaybackBarShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
         _settings.PlaybackBarShowChapters = PlaybackBarShowChapters;
+        _settings.PlaybackBarShowStop = PlaybackBarShowStop;
+        _settings.PlaybackBarStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode;
         _settings.PlaybackBarQuickPlaylistIds = _quickPlaylistSlots.ToList();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
@@ -4588,6 +4596,9 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
         _player.IslandShowChapters = PlaybackBarShowChapters;
+        _player.IslandShowStop = PlaybackBarShowStop;
+        _player.IslandStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode;
+        _player.ExclusiveModeEnabled = ExclusiveAudioEnabled;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
@@ -5383,6 +5394,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnExclusiveAudioEnabledChanged(bool value)
     {
         _audioPlayer?.SetExclusiveMode(value);
+        if (_player != null) _player.ExclusiveModeEnabled = value; // the island's Stop button
         if (!value) ExclusiveAudioStatus = "";
         RefreshChannelMixAvailability();
         _ = SaveAsync();
@@ -6187,6 +6199,18 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnPlaybackBarShowChaptersChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowStopChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarStopOnlyInExclusiveModeChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -8506,6 +8530,8 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarTrashFolder = defaultSettings.PlaybackBarTrashFolder;
             PlaybackBarShowQuickPlaylist = defaultSettings.PlaybackBarShowQuickPlaylist;
             PlaybackBarShowChapters = defaultSettings.PlaybackBarShowChapters;
+            PlaybackBarShowStop = defaultSettings.PlaybackBarShowStop;
+            PlaybackBarStopOnlyInExclusiveMode = defaultSettings.PlaybackBarStopOnlyInExclusiveMode;
             SetQuickPlaylistSlots(defaultSettings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
