@@ -226,15 +226,37 @@ public sealed class FileOrganizerFolderCleanupTests : IDisposable
     }
 
     [Fact]
-    public async Task Organize_TracksSplitOverTwoTargets_CoverStays_FolderKept()
+    public async Task Organize_TracksSplitOverTwoTargets_CoverGoesWithTheFirst_NeverTrashed()
     {
         var a = Write(P("Mixed", "01.flac"));
         var b = Write(P("Mixed", "02.flac"));
-        Write(P("Mixed", "cover.jpg"), 2 * 1024 * 1024);
+        Write(P("Mixed", "cover.jpg"), 2000);
 
         await Apply(CreateService(), Move(a, P("X", "1", "01.flac")), Move(b, P("Y", "2", "02.flac")));
 
-        Assert.True(File.Exists(P("Mixed", "cover.jpg")));
+        Assert.True(File.Exists(P("X", "1", "cover.jpg")));
+        Assert.False(Directory.Exists(P("Mixed")));
+        Assert.Empty(_trashed);
+    }
+
+    [Fact]
+    public async Task Undo_OfTwoFoldersMergedIntoOne_CoverReturnsWithMostTracks_NotTrashed()
+    {
+        // Live case: "Old Album" (2 tracks + cover.jpg) and "Dupes" (1 track) organized
+        // into one album folder; undo sends its tracks back to two folders.
+        var a = Write(P("Artist", "Album", "01.flac"));
+        var b = Write(P("Artist", "Album", "02.flac"));
+        var c = Write(P("Artist", "Album", "01 (2).flac"));
+        Write(P("Artist", "Album", "cover.jpg"), 2000);
+
+        await Apply(CreateService(),
+            Move(c, P("Dupes", "copy.flac")),
+            Move(a, P("Old Artist", "Old Album", "01.flac")),
+            Move(b, P("Old Artist", "Old Album", "02.flac")));
+
+        Assert.True(File.Exists(P("Old Artist", "Old Album", "cover.jpg")));
+        Assert.False(File.Exists(P("Dupes", "cover.jpg")));
+        Assert.False(Directory.Exists(P("Artist")));
         Assert.Empty(_trashed);
     }
 

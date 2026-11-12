@@ -269,7 +269,7 @@ public sealed class FileOrganizerService : IFileOrganizerService
         {
             // Source folder → the folders its tracks went to, and the deepest folder any
             // of its moves stayed within (the walk-up stops below it).
-            var groups = new Dictionary<string, (HashSet<string> Targets, string? Boundary)>(
+            var groups = new Dictionary<string, (List<string> Targets, string? Boundary)>(
                 StringComparer.OrdinalIgnoreCase);
             foreach (var (from, to) in done)
             {
@@ -278,7 +278,7 @@ public sealed class FileOrganizerService : IFileOrganizerService
                 if (fromDir is null || toDir is null) continue;
                 var boundary = CommonAncestor(fromDir, toDir) ?? Path.GetDirectoryName(fromDir);
                 if (!groups.TryGetValue(fromDir, out var g))
-                    g = (new HashSet<string>(StringComparer.OrdinalIgnoreCase), boundary);
+                    g = (new List<string>(), boundary);
                 else if (boundary is null || g.Boundary is null || boundary.Length > g.Boundary.Length)
                     g = (g.Targets, boundary);
                 g.Targets.Add(toDir);
@@ -290,8 +290,14 @@ public sealed class FileOrganizerService : IFileOrganizerService
                 if (boundary is null || !IsStrictlyUnder(sourceDir, boundary)) continue;
                 if (protectedRoots.Contains(sourceDir)) continue;
 
-                if (targets.Count == 1)
-                    MoveFolderArt(sourceDir, targets.First());
+                // The cover goes where most of the folder's tracks went (the first such
+                // folder on a tie): skipping it when they split left it behind to be
+                // trashed with the emptied folder, e.g. undoing a merge of two folders.
+                var artTarget = targets
+                    .GroupBy(t => t, StringComparer.OrdinalIgnoreCase)
+                    .OrderByDescending(t => t.Count())
+                    .First().Key;
+                MoveFolderArt(sourceDir, artTarget);
 
                 var current = sourceDir;
                 while (IsStrictlyUnder(current, boundary) && TryRemoveLeftoverFolder(current, protectedRoots))
