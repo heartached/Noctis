@@ -473,6 +473,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini Player Opacity</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>How solid the mini player's background looks.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Frosted Background</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerFrostNeedsTransparency" xml:space="preserve"><value>Windows Transparency effects are off, so the desktop is not blurred. Turn them on in Windows Settings &gt; Personalization &gt; Colors, or raise Mini Player Opacity to keep the text readable.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Blur the desktop behind the mini player.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>PLAYBACK</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Song Transitions</value><comment>Text in SettingsView.axaml</comment></data>
