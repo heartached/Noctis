@@ -81,6 +81,16 @@ public static class FileOrganizePlanner
             }
 
             reserved.Add(finalTarget);
+
+            // A copy that an earlier run renamed to dodge a collision resolves to its own
+            // path again: it is in place, not a move (it was listed as "to move" forever,
+            // and applying it replaced the undo log with a move onto itself).
+            if (PathEquals(finalTarget, source))
+            {
+                result.Add(new OrganizeMove(track.Id, source, source, OrganizeAction.Skip, "Already organized"));
+                continue;
+            }
+
             result.Add(new OrganizeMove(
                 track.Id, source, finalTarget,
                 collided ? OrganizeAction.Conflict : OrganizeAction.Move,
