@@ -692,6 +692,20 @@
                                                  IsPlaying="{Binding State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}" />
                     </Button>
 
+                    <!-- Stop (island extra, Discord): halts playback, back to the song's start, and
+                         lets go of the audio device (Exclusive Mode). Optionally only while
+                         Exclusive Mode is on. -->
+                    <Button x:Name="StopButton"
+                            Classes="pill-btn transport-btn tx"
+                            Command="{Binding StopPlaybackCommand}"
+                            ToolTip.Tip="{loc:T PlaybackBar.StopTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.StopTip}"
+                            IsVisible="{Binding IslandStopButtonVisible}"
+                            Width="34" Height="34">
+                        <controls:TransportGlyph Kind="Stop" Width="18" Height="18"
+                                                 Foreground="{DynamicResource IslandIconFill}" />
+                    </Button>
+
                     <!-- Forward button -->
                     <Button Classes="pill-btn transport-btn tx"
                             Command="{Binding NextCommand}"

@@ -922,6 +922,13 @@ public class AppSettings : IJsonOnDeserializing
     /// Off by default, like the #186 buttons.</summary>
     public bool PlaybackBarShowChapters { get; set; }
 
+    /// <summary>Discord (Major D ark): a Stop button after Play/Pause that halts playback and
+    /// releases the audio device (Exclusive Mode). Off by default.</summary>
+    public bool PlaybackBarShowStop { get; set; }
+
+    /// <summary>Show the Stop button only while Exclusive Mode is on (saves island room).</summary>
+    public bool PlaybackBarStopOnlyInExclusiveMode { get; set; }
+
     /// <summary>GitHub #186: the quick playlists' ids, one per slot (at most three;
     /// <see cref="Guid.Empty"/> = an empty slot).</summary>
     public List<Guid> PlaybackBarQuickPlaylistIds { get; set; } = new();

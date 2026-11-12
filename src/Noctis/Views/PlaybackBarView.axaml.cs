@@ -416,6 +416,7 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowQuickPlaylist) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTrash) ||
             e.PropertyName == nameof(PlayerViewModel.IslandChaptersButtonVisible) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandStopButtonVisible) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTime))
         {
             UpdateIslandWidth();
@@ -1758,6 +1759,7 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowQuickPlaylist ? 1 : 0) // GitHub #186
                         + (vm.IslandShowTrash ? 1 : 0)
                         + (vm.IslandChaptersButtonVisible ? 1 : 0) // Discord: audiobook chapters
+                        + (vm.IslandStopButtonVisible ? 1 : 0) // Discord: Stop after Play/Pause
                         // GitHub #183: Lyrics is a stock button; hidden, it hands its 36px back.
                         - (vm.IslandLyricsButtonVisible ? 0 : 1);
             return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);

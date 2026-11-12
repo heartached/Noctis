@@ -334,6 +334,10 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Eine Schaltfläche rechts, die den laufenden Song mit einem Klick und ohne Rückfrage aus der Bibliothek nimmt. Er kommt in den Papierkorb-Ordner unten oder, wenn keiner gesetzt ist, in den Papierkorb.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Kapitel</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Öffnet die Kapitelliste. Nur sichtbar, während ein Hörbuch mit Kapiteln läuft.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopButton" xml:space="preserve"><value>Stopp-Schaltfläche</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
+  <data name="Settings.StopButtonHint" xml:space="preserve"><value>Eine Stopp-Schaltfläche nach Wiedergabe/Pause. Sie hält die Wiedergabe an, springt an den Anfang des Songs und gibt das Audiogerät frei (Exklusivmodus).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopOnlyInExclusive" xml:space="preserve"><value>Nur im Exklusivmodus</value><comment>Text in SettingsView.axaml: sub-toggle under the island Stop button</comment></data>
+  <data name="Settings.StopOnlyInExclusiveHint" xml:space="preserve"><value>Die Stopp-Schaltfläche nur zeigen, solange der Exklusivmodus an ist. Das spart Platz auf der Player-Insel.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Papierkorb-Ordner</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Hier landen die Songs, damit du sie später durchsehen kannst. Wähle einen Ordner außerhalb deiner Musikordner, sonst fügt der nächste Scan sie wieder hinzu.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Nicht gesetzt: der Papierkorb</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
@@ -1875,6 +1879,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="PlaybackBar.1Normal" xml:space="preserve"><value>1× (normal)</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.PreviousTip" xml:space="preserve"><value>Zurück</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ForwardTip" xml:space="preserve"><value>Weiter</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.StopTip" xml:space="preserve"><value>Stopp</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the optional island Stop button</comment></data>
   <data name="PlaybackBar.SleepTimerTip" xml:space="preserve"><value>Sleep-Timer</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pausing" xml:space="preserve"><value>Pause in</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.15Minutes" xml:space="preserve"><value>15 Minuten</value><comment>Header in PlaybackBarView.axaml</comment></data>

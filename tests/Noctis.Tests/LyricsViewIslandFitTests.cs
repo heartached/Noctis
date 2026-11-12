@@ -65,6 +65,7 @@ public class LyricsViewIslandFitTests
         player.IslandShowQuickPlaylist = true;
         player.IslandShowTrash = true;
         player.IslandShowMiniPlayer = true;
+        player.IslandShowStop = true; // Discord: Stop after Play/Pause
     }
 
     private static async Task PumpAsync(int ms = 900)
