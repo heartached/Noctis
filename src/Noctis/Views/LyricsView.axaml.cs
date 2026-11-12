@@ -641,6 +641,8 @@ public partial class LyricsView : UserControl
         vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
         vm.LyricsSwapPending += OnLyricsSwapPending;
         vm.LyricsSwapped += OnLyricsSwapped;
+        vm.LyricsWindowMoving += OnLyricsWindowMoving;
+        vm.LyricsWindowMoved += OnLyricsWindowMoved;
         // The Settings toggle for the flowing light lives on the Player VM
         // (same live channel as the marquee flags) — watch it so flipping the
         // switch while this page is open starts/stops the drift immediately.
@@ -656,6 +658,8 @@ public partial class LyricsView : UserControl
         _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
         _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
         _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
+        _subscribedVm.LyricsWindowMoving -= OnLyricsWindowMoving;
+        _subscribedVm.LyricsWindowMoved -= OnLyricsWindowMoved;
         _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
         _subscribedVm.Player.Seeked -= OnPlayerSeeked;
         _subscribedVm = null;
@@ -699,6 +703,72 @@ public partial class LyricsView : UserControl
         // in progress and stand down — the jump owns anchoring here.
         _lyricsSwapInProgress = false;
         FadeLyricsHost(1.0, 240);
+    }
+
+    // ── Long transcripts: the VM's window of lines moved (LyricsLineWindow) ──
+    // Lines were dropped at one end and built at the other; the lines on screen must not
+    // move. Noted before the change, put back right after it, in the same UI job.
+
+    private readonly LyricsWindowAnchor _windowAnchor = new();
+    private bool _windowScrollPosted;
+
+    private void OnLyricsWindowMoving(object? sender, EventArgs e)
+    {
+        if (VisualRoot == null || LyricsItemsControl == null || LyricsScrollViewer == null
+            || DataContext is not LyricsViewModel vm) return;
+        CancelScrollAnimation();
+        // The offset settles to the restored value; nothing in between is the user's.
+        _isProgrammaticScroll = true;
+        var index = vm.ScrollLineIndex;
+        var preferred = vm.IsSyncTabSelected && !vm.IsAutoFollowPaused && index >= 0 && index < vm.LyricLines.Count
+            ? vm.LyricLines[index]
+            : null;
+        _windowAnchor.Capture(LyricsItemsControl, LyricsScrollViewer, preferred);
+    }
+
+    private void OnLyricsWindowMoved(object? sender, EventArgs e)
+    {
+        if (!_windowAnchor.IsMoving || LyricsItemsControl == null || LyricsScrollViewer is not { } viewer
+            || DataContext is not LyricsViewModel vm) return;
+        try
+        {
+            var followed = _windowAnchor.Preferred is LyricLine line ? vm.LyricLines.IndexOf(line) : -1;
+            var kept = _windowAnchor.Restore(LyricsItemsControl, viewer, y => ApplyScrollOffset(viewer, y));
+            var index = vm.IsSyncTabSelected ? vm.ScrollLineIndex : -1;
+            // A seek far away: nothing that was on screen is left — jump to the line, laid out already.
+            if (!kept && index >= 0 && !vm.IsAutoFollowPaused && TryComputeAnchorOffset(index) is { } target)
+            {
+                ApplyScrollOffset(viewer, target);
+                followed = index;
+            }
+            _lastScrolledIndex = followed;
+        }
+        finally
+        {
+            _isProgrammaticScroll = false;
+        }
+        // The move came with a line change: glide to the new line as usual.
+        if (vm.IsSyncTabSelected && vm.ScrollLineIndex >= 0 && vm.ScrollLineIndex != _lastScrolledIndex)
+            ScrollToActiveLine(vm.ScrollLineIndex);
+    }
+
+    /// <summary>The reader scrolled near the top or bottom of the window: ask for more lines that way.</summary>
+    private void MaybeScrollLyricsWindow(Vector offset)
+    {
+        if (_windowScrollPosted || _windowAnchor.IsMoving || LyricsScrollViewer is not { } viewer
+            || DataContext is not LyricsViewModel { IsLyricsWindowed: true } vm) return;
+        if (vm.IsSyncTabSelected && !vm.IsAutoFollowPaused) return;
+        var reach = viewer.Viewport.Height * 1.5;
+        var direction = offset.Y < reach && vm.HasLinesAboveWindow ? -1
+            : viewer.Extent.Height - (offset.Y + viewer.Viewport.Height) < reach && vm.HasLinesBelowWindow ? 1
+            : 0;
+        if (direction == 0) return;
+        _windowScrollPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _windowScrollPosted = false;
+            if (DataContext is LyricsViewModel current) current.ScrollLyricsWindow(direction);
+        });
     }
 
     private void FadeLyricsHost(double to, int durationMs)
@@ -768,6 +838,10 @@ public partial class LyricsView : UserControl
                 // Mid-swap index churn must not start an animated glide — the
                 // OnLyricsSwapped jump anchors the new track while hidden.
                 if (_lyricsSwapInProgress)
+                    return;
+
+                // The window of a long transcript moved: OnLyricsWindowMoved puts the lines back.
+                if (_windowAnchor.IsMoving)
                     return;
 
                 // Plain mode: no active-line tracking — keep the list still.
@@ -1268,6 +1342,7 @@ public partial class LyricsView : UserControl
         if (e.Property != ScrollViewer.OffsetProperty) return;
         if (_isProgrammaticScroll) return;
         if (e.NewValue is not Vector v) return;
+        MaybeScrollLyricsWindow(v);
 
         // Nothing has been scrolled by us yet — this is the first layout pass, not a user
         // gesture. Adopt it as the baseline.

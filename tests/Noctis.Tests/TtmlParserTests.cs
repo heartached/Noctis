@@ -544,10 +544,11 @@ public class TtmlParserTests
     [Fact]
     public void Parse_MoreParagraphsThanLineCap_StopsAtCap()
     {
-        // The lyrics list is not virtualized: a hostile sidecar of 200k <p>s realized
-        // every line on the UI thread.
+        // The hard guard against a hostile sidecar of hundreds of thousands of <p>s (a long
+        // transcript's lines are all kept; the lists show a window of them). Half a second
+        // apart, so every begin stays inside TTML's 24 h bound.
         var body = string.Concat(Enumerable.Range(0, EnhancedLrcParser.MaxLyricLines + 50)
-            .Select(i => $"<p begin=\"{i}s\">l{i}</p>"));
+            .Select(i => $"<p begin=\"{i * 500}ms\">l{i}</p>"));
         var ttml = $"<tt {Ns}><body><div>{body}</div></body></tt>";
 
         var (lines, _) = TtmlParser.Parse(ttml);

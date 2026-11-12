@@ -28,15 +28,11 @@ public static partial class EnhancedLrcParser
     internal const int MaxWordsPerLine = 512;
 
     /// <summary>
-    /// Upper bound on lines produced from one lyrics file, whatever its format. The lyrics
-    /// list is not virtualized — every line is realized, and a word-timed line is ~7
-    /// controls per word plus a BlurEffect — so an oversized or hostile sidecar (a 1 MB
-    /// .lrc, one line carrying thousands of stacked [mm:ss.xx] tags, since each tag emits
-    /// its own LyricLine, or a Lyricsfile/TTML with hundreds of thousands of lines) would
-    /// build tens of thousands of controls in a single UI-thread pass. No real song comes
-    /// close to this.
+    /// Upper bound on lines produced from one lyrics file, whatever its format: the hard guard
+    /// against an oversized or hostile file (<see cref="LrcParser.MaxLines"/>). How many lines
+    /// a lyrics list builds at once is bounded separately (<see cref="LrcParser.ListMaxLines"/>).
     /// </summary>
-    internal const int MaxLyricLines = 3000;
+    internal const int MaxLyricLines = LrcParser.MaxLines;
 
     /// <summary>True when the body contains at least one inline word tag.</summary>
     public static bool ContainsWordTags(string? body) =>

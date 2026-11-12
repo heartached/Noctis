@@ -54,8 +54,11 @@ public static class TtmlParser
     /// (or transliterations), the one whose xml:lang shares its primary subtag wins;
     /// otherwise the first in the file.
     /// </param>
+    /// <param name="maxLines">Lines read before the rest of the document is ignored: the hard
+    /// guard, or <see cref="LrcParser.ListMaxLines"/> for a list that shows every line.</param>
     public static (List<LyricLine>? Lines, string? Plain) Parse(
-        string? content, bool joinSplitWords = true, string? preferredLanguage = null)
+        string? content, bool joinSplitWords = true, string? preferredLanguage = null,
+        int maxLines = EnhancedLrcParser.MaxLyricLines)
     {
         if (string.IsNullOrWhiteSpace(content)) return (null, null);
 
@@ -99,7 +102,7 @@ public static class TtmlParser
         // Lines come from the body only — header metadata never renders or reaches the plain text.
         foreach (var p in root.Descendants().Where(e => LocalNameIs(e, "p") && !IsInHead(e)))
         {
-            if (lines.Count >= EnhancedLrcParser.MaxLyricLines) break;
+            if (lines.Count >= maxLines) break;
             var line = ParseLine(p, ignoreFormattingWhitespace);
             if (line != null)
             {
