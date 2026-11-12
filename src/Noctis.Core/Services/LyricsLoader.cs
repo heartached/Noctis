@@ -18,6 +18,8 @@ public sealed record LoadedLyrics(IReadOnlyList<LyricLine> Lines, bool IsSynced,
 /// the desktop order minus the desktop-only .lyricsfile), then the lyrics store, then an LRC
 /// in the plain field, then the file's own tags (SYLT, SYNCEDLYRICS, UNSYNCEDLYRICS), then plain text. Blocking I/O: call it off the UI
 /// thread. The desktop keeps its own probe (it adds .lyricsfile and the online cache).
+/// The phone's list shows every line it is given, so at most <see cref="LrcParser.ListMaxLines"/>
+/// are parsed here — the cap every parser had before the desktop learned to window long transcripts.
 /// </summary>
 public static class LyricsLoader
 {
@@ -73,7 +75,7 @@ public static class LyricsLoader
         }
 
         if (!string.IsNullOrWhiteSpace(plain))
-            return Plain(LrcParser.SplitPlain(plain), LyricsSource.EmbeddedPlain);
+            return Plain(LrcParser.SplitPlain(plain, LrcParser.ListMaxLines), LyricsSource.EmbeddedPlain);
 
         // Spec §7: a TTML that would not parse, with nothing else found, still shows its words
         // (unsynced, under "No synced lyrics") rather than "No lyrics".
@@ -114,7 +116,7 @@ public static class LyricsLoader
 
     private static LoadedLyrics? FromTtml(string text, bool joinSplitWords, LyricsSource source)
     {
-        var (lines, _) = TtmlParser.Parse(text, joinSplitWords);
+        var (lines, _) = TtmlParser.Parse(text, joinSplitWords, maxLines: LrcParser.ListMaxLines);
         return lines is { Count: > 0 } ? Synced(lines, source) : null;
     }
 
@@ -122,7 +124,7 @@ public static class LyricsLoader
     /// .lrc of plain words is shown rather than skipped). Null only when it yields no line.</summary>
     private static LoadedLyrics? FromLrc(string text, LyricsSource source)
     {
-        var lines = LrcParser.Parse(text);
+        var lines = LrcParser.Parse(text, LrcParser.ListMaxLines);
         if (lines.Count == 0) return null;
         if (lines.Any(l => l.IsSynced)) return Synced(lines, source);
         foreach (var line in lines) line.IsActive = true;
