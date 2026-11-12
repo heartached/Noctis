@@ -104,6 +104,10 @@ public partial class LyricsPanelView : UserControl
         };
 
         PanelScrollViewer.PointerWheelChanged += OnUserScroll;
+        PanelScrollViewer.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ScrollViewer.OffsetProperty && e.NewValue is Vector v) MaybeScrollLyricsWindow(v);
+        };
         // Ctrl/⌘+wheel shifts the lyrics instead of scrolling (GitHub #102); tunnel on the
         // view so it runs before SmoothScrollBehavior's handler on the ScrollViewer.
         AddHandler(PointerWheelChangedEvent, OnLyricsOffsetWheel, RoutingStrategies.Tunnel);
@@ -117,6 +121,8 @@ public partial class LyricsPanelView : UserControl
             _vm.PropertyChanged -= OnVmPropertyChanged;
             _vm.LyricsSwapPending -= OnLyricsSwapPending;
             _vm.LyricsSwapped -= OnLyricsSwapped;
+            _vm.LyricsWindowMoving -= OnLyricsWindowMoving;
+            _vm.LyricsWindowMoved -= OnLyricsWindowMoved;
             _vm.Player.PropertyChanged -= OnPlayerPropertyChanged;
         }
         _vm = DataContext as LyricsViewModel;
@@ -125,6 +131,8 @@ public partial class LyricsPanelView : UserControl
             _vm.PropertyChanged += OnVmPropertyChanged;
             _vm.LyricsSwapPending += OnLyricsSwapPending;
             _vm.LyricsSwapped += OnLyricsSwapped;
+            _vm.LyricsWindowMoving += OnLyricsWindowMoving;
+            _vm.LyricsWindowMoved += OnLyricsWindowMoved;
             // The Settings toggle lives on the Player VM (same live channel as the page).
             _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
         }
@@ -227,6 +235,67 @@ public partial class LyricsPanelView : UserControl
         FadeLyricsHost(1.0, 240);
     }
 
+    // ── Long transcripts: the VM's window of lines moved (see the lyrics page) ──
+
+    private readonly LyricsWindowAnchor _windowAnchor = new();
+    private bool _windowScrollPosted;
+
+    private void OnLyricsWindowMoving(object? sender, EventArgs e)
+    {
+        if (_vm == null || VisualRoot == null || !IsEffectivelyVisible) return;
+        CancelScrollAnimation();
+        _isProgrammaticScroll = true;
+        var index = _vm.ScrollLineIndex;
+        var preferred = _vm.IsSyncTabSelected && !_followPaused && index >= 0 && index < _vm.LyricLines.Count
+            ? _vm.LyricLines[index]
+            : null;
+        _windowAnchor.Capture(PanelItemsControl, PanelScrollViewer, preferred);
+    }
+
+    private void OnLyricsWindowMoved(object? sender, EventArgs e)
+    {
+        if (!_windowAnchor.IsMoving || _vm == null) return;
+        try
+        {
+            var followed = _windowAnchor.Preferred is Noctis.Models.LyricLine line ? _vm.LyricLines.IndexOf(line) : -1;
+            var kept = _windowAnchor.Restore(PanelItemsControl, PanelScrollViewer, y => PanelScrollViewer.Offset = new Vector(0, y));
+            var index = _vm.IsSyncTabSelected ? _vm.ScrollLineIndex : -1;
+            if (!kept && index >= 0 && !_followPaused && ComputeTargetOffset(index) is { } target)
+            {
+                PanelScrollViewer.Offset = new Vector(0, target);
+                followed = index;
+            }
+            _lastScrolledIndex = followed;
+        }
+        finally
+        {
+            _isProgrammaticScroll = false;
+        }
+        // The move came with a line change: glide to the new line as usual.
+        if (!_followPaused && _vm.IsSyncTabSelected && _vm.ScrollLineIndex >= 0 && _vm.ScrollLineIndex != _lastScrolledIndex)
+            ScrollToLine(_vm.ScrollLineIndex);
+    }
+
+    /// <summary>The reader scrolled near the top or bottom of the window: ask for more lines that way.</summary>
+    private void MaybeScrollLyricsWindow(Vector offset)
+    {
+        if (_windowScrollPosted || _windowAnchor.IsMoving || _isProgrammaticScroll
+            || _vm is not { IsLyricsWindowed: true } vm) return;
+        if (vm.IsSyncTabSelected && !_followPaused) return;
+        var viewer = PanelScrollViewer;
+        var reach = viewer.Viewport.Height * 1.5;
+        var direction = offset.Y < reach && vm.HasLinesAboveWindow ? -1
+            : viewer.Extent.Height - (offset.Y + viewer.Viewport.Height) < reach && vm.HasLinesBelowWindow ? 1
+            : 0;
+        if (direction == 0) return;
+        _windowScrollPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _windowScrollPosted = false;
+            _vm?.ScrollLyricsWindow(direction);
+        });
+    }
+
     private void FadeLyricsHost(double to, int durationMs)
     {
         if (PanelLyricsHost is not { } host) return;
@@ -259,6 +328,8 @@ public partial class LyricsPanelView : UserControl
             // Mid-swap index churn must not start an animated glide — the
             // ActiveLyricLines re-anchor below jumps once the swap lands.
             if (_lyricsSwapInProgress) return;
+            // The window of a long transcript moved: OnLyricsWindowMoved puts the lines back.
+            if (_windowAnchor.IsMoving) return;
             if (_followPaused || !_vm.IsSyncTabSelected) return;
             if (_vm.ScrollLineIndex >= 0)
                 ScrollToLine(_vm.ScrollLineIndex);
