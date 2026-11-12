@@ -402,6 +402,8 @@ public partial class MiniPlayerWindow : Window
             _hookedVm.PropertyChanged -= OnVmPropertyChanged;
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
             _hookedVm.Lyrics.LyricsSwapped -= OnLyricsSwapped;
+            _hookedVm.Lyrics.LyricsWindowMoving -= OnLyricsWindowMoving;
+            _hookedVm.Lyrics.LyricsWindowMoved -= OnLyricsWindowMoved;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             _hookedVm.Settings.PropertyChanged -= OnSettingsPropertyChanged;
@@ -414,6 +416,8 @@ public partial class MiniPlayerWindow : Window
         _hookedVm.PropertyChanged += OnVmPropertyChanged;
         _hookedVm.Lyrics.PropertyChanged += OnLyricsPropertyChanged;
         _hookedVm.Lyrics.LyricsSwapped += OnLyricsSwapped;
+        _hookedVm.Lyrics.LyricsWindowMoving += OnLyricsWindowMoving;
+        _hookedVm.Lyrics.LyricsWindowMoved += OnLyricsWindowMoved;
         _hookedVm.Player.PropertyChanged += OnPlayerPropertyChanged;
         _hookedVm.FormResizeRequested += OnFormResizeRequested;
         _hookedVm.Settings.PropertyChanged += OnSettingsPropertyChanged;
@@ -486,13 +490,40 @@ public partial class MiniPlayerWindow : Window
     {
         switch (e.PropertyName)
         {
-            case nameof(LyricsViewModel.ScrollLineIndex) when Vm?.IsLyricsForm == true:
+            case nameof(LyricsViewModel.ScrollLineIndex) when Vm?.IsLyricsForm == true && !_windowAnchor.IsMoving:
                 CenterActiveLyric(animated: true);
                 break;
             case nameof(LyricsViewModel.IsColorModeArtwork):
                 UpdateFlowAnimationState();
                 break;
         }
+    }
+
+    // Long transcripts: the VM's window of lines moved (see the lyrics page) — keep the lines
+    // on screen where they were.
+    private readonly Helpers.LyricsWindowAnchor _windowAnchor = new();
+
+    private void OnLyricsWindowMoving(object? sender, EventArgs e)
+    {
+        if (Vm is not { IsLyricsForm: true } vm) return;
+        _lyricsChaseRunning = false;
+        var index = vm.Lyrics.ScrollLineIndex;
+        var preferred = index >= 0 && index < vm.Lyrics.LyricLines.Count && vm.Lyrics.IsSyncTabSelected
+            ? vm.Lyrics.LyricLines[index]
+            : null;
+        _windowAnchor.Capture(LyricsItems, LyricsScroll, preferred);
+    }
+
+    private void OnLyricsWindowMoved(object? sender, EventArgs e)
+    {
+        if (!_windowAnchor.IsMoving) return;
+        var followed = _windowAnchor.Preferred;
+        if (!_windowAnchor.Restore(LyricsItems, LyricsScroll, y => LyricsScroll.Offset = new Vector(0, y)))
+            CenterActiveLyric(animated: false);
+        // The move came with a line change: chase the new line as usual.
+        else if (Vm is { } vm && vm.Lyrics.ScrollLineIndex is var index and >= 0
+                 && index < vm.Lyrics.LyricLines.Count && !ReferenceEquals(vm.Lyrics.LyricLines[index], followed))
+            CenterActiveLyric(animated: true);
     }
 
     /// <summary>New lines (a track change, lyrics fetched online): the ScrollLineIndex change
@@ -1332,6 +1363,8 @@ public partial class MiniPlayerWindow : Window
             _hookedVm.PropertyChanged -= OnVmPropertyChanged;
             _hookedVm.Lyrics.PropertyChanged -= OnLyricsPropertyChanged;
             _hookedVm.Lyrics.LyricsSwapped -= OnLyricsSwapped;
+            _hookedVm.Lyrics.LyricsWindowMoving -= OnLyricsWindowMoving;
+            _hookedVm.Lyrics.LyricsWindowMoved -= OnLyricsWindowMoved;
             _hookedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
             _hookedVm.FormResizeRequested -= OnFormResizeRequested;
             // The settings VM outlives this window; a later toggle must not reach it.

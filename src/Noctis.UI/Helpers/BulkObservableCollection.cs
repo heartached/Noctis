@@ -76,4 +76,75 @@ public class BulkObservableCollection<T> : ObservableCollection<T>
         OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, added, start));
     }
+
+    /// <summary>
+    /// Removes <paramref name="count"/> items from <paramref name="index"/>, firing a single
+    /// Remove event that carries them all and their starting index: an ItemsControl drops
+    /// those containers and keeps every other one.
+    /// </summary>
+    public void RemoveRange(int index, int count)
+    {
+        if (count <= 0) return;
+        CheckReentrancy();
+        var removed = new List<T>(count);
+        for (var k = 0; k < count; k++)
+            removed.Add(Items[index + k]);
+        for (var k = 0; k < count; k++)
+            Items.RemoveAt(index);
+
+        OnPropertyChanged(new PropertyChangedEventArgs("Count"));
+        OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, removed, index));
+    }
+
+    /// <summary>
+    /// Makes the collection hold <paramref name="items"/>, a run of the same ordered sequence
+    /// it holds now moved up or down (a sliding window): the items both share stay in place
+    /// and only the ends change, by range Remove/Add events. Items are matched by reference.
+    /// Anything else (no overlap) is one <see cref="ReplaceAll"/>.
+    /// </summary>
+    public void ShiftTo(IReadOnlyList<T> items)
+    {
+        var current = Items;
+        if (current.Count == 0 || items.Count == 0)
+        {
+            ReplaceAll(items);
+            return;
+        }
+
+        int Find(IList<T> list, T item)
+        {
+            for (var i = 0; i < list.Count; i++)
+                if (ReferenceEquals(list[i], item)) return i;
+            return -1;
+        }
+
+        // Moving down: the new first item is inside the current run.
+        var head = Find(current, items[0]);
+        if (head >= 0)
+        {
+            var shared = Math.Min(current.Count - head, items.Count);
+            for (var k = 0; k < shared; k++)
+                if (!ReferenceEquals(current[head + k], items[k])) { ReplaceAll(items); return; }
+            RemoveRange(0, head);
+            RemoveRange(shared, current.Count - shared);
+            AppendRange(items.Skip(shared));
+            return;
+        }
+
+        // Moving up: the current first item is inside the new run.
+        var lead = Find(items as IList<T> ?? items.ToList(), current[0]);
+        if (lead >= 0)
+        {
+            var shared = Math.Min(current.Count, items.Count - lead);
+            for (var k = 0; k < shared; k++)
+                if (!ReferenceEquals(current[k], items[lead + k])) { ReplaceAll(items); return; }
+            RemoveRange(shared, current.Count - shared);
+            InsertRange(0, items.Take(lead));
+            AppendRange(items.Skip(lead + shared));
+            return;
+        }
+
+        ReplaceAll(items);
+    }
 }

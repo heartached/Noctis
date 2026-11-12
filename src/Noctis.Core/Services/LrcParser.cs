@@ -13,11 +13,23 @@ namespace Noctis.Services;
 public static partial class LrcParser
 {
     /// <summary>
-    /// Upper bound on lines produced from one file. An oversized or hostile sidecar (a 1 MB
-    /// .lrc, or one line carrying thousands of stacked [mm:ss.xx] tags, since each tag emits
-    /// its own LyricLine) would otherwise build tens of thousands of controls in one UI pass.
+    /// Hard upper bound on lines parsed from one file, against an oversized or hostile sidecar
+    /// (one line carrying thousands of stacked [mm:ss.xx] tags emits a LyricLine per tag). It
+    /// bounds memory, not the view: a 12-hour audiobook transcript is ~20,000 lines and must
+    /// load whole, or the page stops at its last line and an edit or a save built from the
+    /// parsed lines writes the file back short (Discord, Luwi 11-12: an 8.5 h book cut off at
+    /// line 3000, 4 hours in).
     /// </summary>
-    public const int MaxLines = 3000;
+    public const int MaxLines = 100_000;
+
+    /// <summary>
+    /// The most lines a lyrics list puts on screen at once. The lists are not virtualized —
+    /// every line is realized, and a word-timed line is ~7 controls per word plus a BlurEffect —
+    /// so the desktop shows a window of this many lines around the playback position when a
+    /// transcript is longer, and the phone, which shows every parsed line, parses at most this
+    /// many (<see cref="LyricsLoader"/>).
+    /// </summary>
+    public const int ListMaxLines = 3000;
 
     private const string BgLinePrefix = "[bg:";
 
@@ -134,14 +146,16 @@ public static partial class LrcParser
         return line1 + "\n" + line2;
     }
 
-    /// <summary>Splits plain lyrics into display lines, bounded by <see cref="MaxLines"/>.</summary>
-    public static string[] SplitPlain(string text)
+    /// <summary>Splits plain lyrics into display lines, bounded by <paramref name="maxLines"/>.</summary>
+    public static string[] SplitPlain(string text, int maxLines = MaxLines)
     {
         var split = text.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
-        return split.Length <= MaxLines ? split : split[..MaxLines];
+        return split.Length <= maxLines ? split : split[..maxLines];
     }
 
-    public static List<LyricLine> Parse(string content)
+    /// <param name="maxLines">Lines (and "[bg: …]" lines) read before the rest of the file is
+    /// ignored: <see cref="MaxLines"/>, or <see cref="ListMaxLines"/> for a list that shows every line.</param>
+    public static List<LyricLine> Parse(string content, int maxLines = MaxLines)
     {
         var lines = new List<LyricLine>();
         var rawLines = content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
@@ -157,7 +171,7 @@ public static partial class LrcParser
 
         foreach (var rawLine in rawLines)
         {
-            if (lines.Count + bgLines >= MaxLines) break;
+            if (lines.Count + bgLines >= maxLines) break;
 
             var trimmed = rawLine.Trim();
             if (string.IsNullOrEmpty(trimmed)) continue;
@@ -217,7 +231,7 @@ public static partial class LrcParser
                 // Create a LyricLine for each timestamp (handles multi-timestamp lines)
                 foreach (Match match in matches)
                 {
-                    if (lines.Count + bgLines >= MaxLines) break;
+                    if (lines.Count + bgLines >= maxLines) break;
 
                     var timestamp = ParseLrcTimestamp(match.Value);
                     if (timestamp.HasValue)
