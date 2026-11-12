@@ -214,24 +214,6 @@
                             <TextBlock x:Name="PluginPageDescription" Text="{Binding Description}" FontSize="13" Opacity="0.78"
                                        TextWrapping="Wrap" LineHeight="19" MaxWidth="560" HorizontalAlignment="Left" Margin="0,6,0,0"
                                        IsVisible="{Binding HasDescription}"/>
-                            <!-- An installed plugin's Update (or Cancel) from the list. Install, and the plugin's
-                                 own views ("Open Album Town"), sit top-right beside "..." instead. -->
-                            <WrapPanel x:Name="PluginPageActions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0"
-                                       IsVisible="{Binding HasHeaderActions}">
-                                <Button x:Name="PluginPageUpdateButton"
-                                        Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
-                                        Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
-                                        Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
-                                        MaxWidth="260"
-                                        IsVisible="{Binding ShowInlineButton}"
-                                        IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
-                                        AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
-                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
-                                        CommandParameter="{Binding Listing}">
-                                    <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
-                                               TextWrapping="Wrap" TextAlignment="Center"/>
-                                </Button>
-                            </WrapPanel>
                             <TextBlock Text="{Binding Listing.Error, FallbackValue={x:Null}}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
                                        Margin="0,6,0,0" IsVisible="{Binding Listing.HasError, FallbackValue=False}"/>
                             <ProgressBar Value="{Binding Listing.Progress, FallbackValue=0}" Minimum="0" Maximum="1" Height="3" CornerRadius="2"
@@ -241,7 +223,7 @@
                                        Margin="0,4,0,0" IsVisible="{Binding Listing.HasProgressDetail, FallbackValue=False}"/>
                         </StackPanel>
                         <!-- Top-right (owner 10-29): Install / Replace / Cancel while the plugin is not
-                             installed; once it is, the plugin's own views ("Open Album Town") and "..." with
+                             installed; once it is, the plugin's own views ("Open Album Town"), Update and "..." with
                              Visit homepage and Open folder (SettingsView.axaml.cs OnPluginMoreClick). -->
                         <StackPanel x:Name="PluginPageCorner" Grid.Column="2" Orientation="Horizontal" Spacing="8"
                                     VerticalAlignment="Top" Margin="0,4,0,0">
@@ -271,6 +253,21 @@
                                     Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
                                     MaxWidth="200" HorizontalAlignment="Right"
                                     IsVisible="{Binding ShowCornerButton}"
+                                    IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
+                                    AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
+                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
+                                    CommandParameter="{Binding Listing}">
+                                <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Listing.ButtonText, FallbackValue={x:Null}}"/>
+                            </Button>
+                            <!-- An installed plugin's Update (or Cancel): left of "..." (owner 11-12), not under
+                                 the description. -->
+                            <Button x:Name="PluginPageUpdateButton"
+                                    Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
+                                    Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
+                                    Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
+                                    MaxWidth="200" HorizontalAlignment="Right"
+                                    IsVisible="{Binding ShowInlineButton}"
                                     IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
                                     AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
                                     Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
