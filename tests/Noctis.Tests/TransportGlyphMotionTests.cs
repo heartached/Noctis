@@ -235,6 +235,28 @@ public sealed class TransportGlyphMotionTests : IDisposable
         rig.Window.Close();
     }
 
+    /// <summary>The island's Stop button: the same dip and circle, but no conveyor step.</summary>
+    [AvaloniaFact]
+    public void StopClick_DipsAndSprings_WithoutTheConveyor()
+    {
+        var rig = Open(TransportKind.Stop);
+        rig.Down();
+        rig.Up();
+        var min = 1.0;
+        for (var i = 0; i < 30; i++)
+        {
+            rig.Frame();
+            Assert.False(rig.Glyph.IsSliding);
+            min = Math.Min(min, rig.Glyph.GlyphScale);
+        }
+        Assert.InRange(min, TransportGlyph.PressScale - 0.01, 0.9);
+        AssertSmoothUntilSettled(rig);
+        Assert.Equal(1, rig.Glyph.GlyphScale);
+        Assert.Equal(0, rig.Glyph.HighlightLevel);
+        Assert.Equal(1, rig.Command.Count);
+        rig.Window.Close();
+    }
+
     [AvaloniaFact]
     public void PlayStateChange_MorphsAndEndsOnTheNewGlyph()
     {
