@@ -19,6 +19,8 @@ public enum TransportKind
     PlayPause,
     Previous,
     Next,
+    /// <summary>The optional island Stop button: a rounded square, press dip only.</summary>
+    Stop,
 }
 
 /// <summary>
@@ -114,8 +116,10 @@ public sealed class TransportGlyph : Control
     internal const string PauseData = "M5.746 3a1.75 1.75 0 0 0-1.75 1.75v14.5c0 .966.784 1.75 1.75 1.75h3.5a1.75 1.75 0 0 0 1.75-1.75V4.75A1.75 1.75 0 0 0 9.246 3zm9 0a1.75 1.75 0 0 0-1.75 1.75v14.5c0 .966.784 1.75 1.75 1.75h3.5a1.75 1.75 0 0 0 1.75-1.75V4.75A1.75 1.75 0 0 0 18.246 3z";
     internal const string ForwardData = "M2.5 6.7Q2.5 5.1 3.9 5.9L11.3 11.1Q12.4 12 11.3 12.9L3.9 18.1Q2.5 18.9 2.5 17.3ZM12 6.7Q12 5.1 13.4 5.9L20.8 11.1Q21.9 12 20.8 12.9L13.4 18.1Q12 18.9 12 17.3Z";
     internal const string TriangleData = "M2.5 6.7Q2.5 5.1 3.9 5.9L11.3 11.1Q12.4 12 11.3 12.9L3.9 18.1Q2.5 18.9 2.5 17.3Z";
+    // Stop: a 14-unit square centred on the grid, its corners rounded like PauseData's bars.
+    internal const string StopData = "M6.75 5h10.5A1.75 1.75 0 0 1 19 6.75v10.5A1.75 1.75 0 0 1 17.25 19H6.75A1.75 1.75 0 0 1 5 17.25V6.75A1.75 1.75 0 0 1 6.75 5z";
 
-    private static Geometry? s_play, s_pause, s_forward, s_triangle;
+    private static Geometry? s_play, s_pause, s_forward, s_triangle, s_stop;
 
     /// <summary>Tests drive frames through <see cref="OnFrame"/> on a fixed clock.</summary>
     internal static bool ManualFrames { get; set; }
@@ -237,7 +241,7 @@ public sealed class TransportGlyph : Control
             _upPending = true;
         }
         _pressSeen = false;
-        if (Kind != TransportKind.PlayPause) _slideRequests++;
+        if (Kind is TransportKind.Previous or TransportKind.Next) _slideRequests++;
         Kick();
     }
 
@@ -446,6 +450,7 @@ public sealed class TransportGlyph : Control
         s_pause = StreamGeometry.Parse(PauseData);
         s_forward = StreamGeometry.Parse(ForwardData);
         s_triangle = StreamGeometry.Parse(TriangleData);
+        s_stop = StreamGeometry.Parse(StopData);
     }
 
     private IBrush? HighlightFill()
@@ -489,6 +494,12 @@ public sealed class TransportGlyph : Control
         {
             DrawPiece(context, s_play!, brush, ScaleAbout(_playS, MidY, MidY) * toBox, _playO);
             DrawPiece(context, s_pause!, brush, ScaleAbout(_pauseS, MidY, MidY) * toBox, _pauseO);
+            return;
+        }
+
+        if (Kind == TransportKind.Stop)
+        {
+            DrawPiece(context, s_stop!, brush, toBox, 1);
             return;
         }
 
