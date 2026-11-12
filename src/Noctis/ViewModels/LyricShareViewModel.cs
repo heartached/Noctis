@@ -110,6 +110,75 @@ public partial class SelectableLyricLine : ObservableObject
 }
 
 /// <summary>
+/// How the share dialog opens: the remembered options (AppSettings.ShareLyricsFollowPlayback,
+/// ShareLyricsShowWordmark), read by the caller before the dialog is built so the first
+/// preview and the first picks are already right, and the lines to pick again
+/// (<see cref="LyricShareSpots"/>), as indices into the lines the dialog gets.
+/// </summary>
+public sealed record LyricShareOpenState
+{
+    public bool FollowPlayback { get; init; } = true;
+    public bool ShowWordmark { get; init; } = true;
+
+    /// <summary>Lines picked when the dialog last closed on this song with Follow playback
+    /// off; used only when it opens with following off.</summary>
+    public IReadOnlyList<int>? RestoreSelection { get; init; }
+}
+
+/// <summary>
+/// Where the share dialog was left, per song, for this app session (owner 11-12: unticking
+/// Follow playback and reopening "should save the spot"). Lines are kept by their index in
+/// the song's whole lyrics, not in the list the dialog got: windowed transcripts hand it
+/// only the lines around playback (LyricsViewModel.ShareSourceLines). A fingerprint of the
+/// whole lyrics drops a spot once they changed, rather than picking other lines.
+/// </summary>
+internal sealed class LyricShareSpots
+{
+    private readonly Dictionary<string, (long Fingerprint, int[] Lines)> _spots = new(StringComparer.OrdinalIgnoreCase);
+
+    internal static string? KeyOf(Track track) =>
+        track.Id != Guid.Empty ? "id:" + track.Id
+        : !string.IsNullOrEmpty(track.FilePath) ? "file:" + track.FilePath
+        : null;
+
+    /// <summary>Line count, texts and times of the whole lyrics. Session-only, so the
+    /// per-process string hash is fine.</summary>
+    internal static long Fingerprint(IReadOnlyList<LyricLine> lines)
+    {
+        var hash = new HashCode();
+        hash.Add(lines.Count);
+        foreach (var line in lines)
+        {
+            hash.Add(line.Text, StringComparer.Ordinal);
+            hash.Add(line.Timestamp);
+        }
+        return ((long)lines.Count << 32) ^ (uint)hash.ToHashCode();
+    }
+
+    /// <summary>The picked lines (indices into the whole lyrics), or null when none is kept
+    /// for this song or its lyrics changed since.</summary>
+    internal int[]? Get(string? key, long fingerprint)
+    {
+        if (key == null || !_spots.TryGetValue(key, out var spot)) return null;
+        if (spot.Fingerprint == fingerprint) return spot.Lines;
+        _spots.Remove(key);
+        return null;
+    }
+
+    internal void Set(string? key, long fingerprint, int[] lines)
+    {
+        if (key == null) return;
+        if (lines.Length == 0) _spots.Remove(key);
+        else _spots[key] = (fingerprint, lines);
+    }
+
+    internal void Forget(string? key)
+    {
+        if (key != null) _spots.Remove(key);
+    }
+}
+
+/// <summary>
 /// Drives the lyric share-card dialog: line selection/editing, format toggle,
 /// text-color choice, live preview, playback sync, and PNG export.
 /// </summary>
@@ -164,6 +233,16 @@ public partial class LyricShareViewModel : ViewModelBase
     [ObservableProperty] private bool _isRendering;
 
     [ObservableProperty] private ShareTextColor _textColor = ShareTextColor.Auto;
+
+    /// <summary>The Noctis wordmark on the card, its preview, the PNG and the video. Remembered
+    /// (AppSettings.ShareLyricsShowWordmark). The Lyrics Page draws no wordmark either way.</summary>
+    [ObservableProperty] private bool _showWordmark = true;
+
+    partial void OnShowWordmarkChanged(bool value)
+    {
+        RefreshPreview();
+        _ = SavePageSettingsAsync(s => s.ShareLyricsShowWordmark = value);
+    }
 
     // ── Lyrics Page background, readability and safe zones ──
     // What fills the video behind the lyrics, how dark the readability layer over it is, and
@@ -427,6 +506,9 @@ public partial class LyricShareViewModel : ViewModelBase
 
     /// <summary>The card's lyric text (tests).</summary>
     internal IReadOnlyList<string> CardLines => CardSelection().Select(l => l.Text).ToList();
+
+    /// <summary>The card spec the preview, Save/Copy and the clip are drawn from (tests).</summary>
+    internal LyricCardSpec CardSpec => BuildSpec(CardLines);
 
     /// <summary>The karaoke timing the preview and the clip use for the card's lines (tests).</summary>
     internal IReadOnlyList<KaraokeLine> CardKaraoke => BuildKaraokeLines(CardSelection());
@@ -714,10 +796,13 @@ public partial class LyricShareViewModel : ViewModelBase
         IReadOnlyList<IReadOnlyList<WordTiming>?>? wordTimings = null,
         IReadOnlyList<TimeSpan?>? endTimestamps = null,
         int preselectIndex = 0,
-        IReadOnlyList<LyricLine>? sources = null)
+        IReadOnlyList<LyricLine>? sources = null,
+        LyricShareOpenState? open = null)
     {
         _track = track;
         _player = player;
+        open ??= new LyricShareOpenState();
+        _showWordmark = open.ShowWordmark;
 
         // The same vibrant color the card renderer derives, so the "Auto" swatch matches the card.
         _autoColorHex = ShareCardRenderer.GetVibrantColorHex(_track.AlbumArtworkPath);
@@ -751,9 +836,19 @@ public partial class LyricShareViewModel : ViewModelBase
         _safeZonesEnabled = IsStory;
         _ = LoadPageSettingsAsync(Dispatcher.UIThread);
 
-        // Pre-select the active line and the next few, like Spotify does.
-        if (Lines.Count > 0)
+        bool follow = SyncAvailable && open.FollowPlayback;
+        var restore = follow ? null : open.RestoreSelection?
+            .Where(i => i >= 0 && i < Lines.Count).Distinct().Order().Take(MaxLines).ToList();
+        if (restore is { Count: > 0 })
         {
+            // Following is off and this song was left with these lines picked: the same spot.
+            foreach (var i in restore)
+                Lines[i].IsSelected = true;
+            UpdateSelectionRuns();
+        }
+        else if (Lines.Count > 0)
+        {
+            // Pre-select the active line and the next few, like Spotify does.
             int start = Math.Clamp(preselectIndex, 0, Lines.Count - 1);
             for (int i = start; i < Math.Min(start + 4, Lines.Count); i++)
                 Lines[i].IsSelected = true;
@@ -765,13 +860,32 @@ public partial class LyricShareViewModel : ViewModelBase
 
         if (SyncAvailable)
         {
-            _syncEnabled = true;
+            // Listening either way: ticking Follow playback later has to follow at once.
             _player!.PropertyChanged += OnPlayerPropertyChanged;
-            UpdateSyncHighlight(_player.Position);
+            if (follow)
+            {
+                _syncEnabled = true;
+                UpdateSyncHighlight(_player.Position);
+            }
         }
+
+        // The list opens on the picks. ScrollToLineRequested raised from here reached no one
+        // (the dialog subscribes after construction), so a song opened at line 40 showed the
+        // list's top until the next line change, and never with following off.
+        InitialScrollIndex = Lines.ToList().FindIndex(l => l.IsSelected);
 
         RefreshPreview();
     }
+
+    /// <summary>The first picked line when the dialog opened (-1: none); the dialog brings it into view.</summary>
+    public int InitialScrollIndex { get; }
+
+    /// <summary>The picked lines, as indices into <see cref="Lines"/> (the caller remembers them on close).</summary>
+    internal IReadOnlyList<int> SelectedIndices =>
+        Enumerable.Range(0, Lines.Count).Where(i => Lines[i].IsSelected).ToList();
+
+    /// <summary>Raised once the dialog closed (end of <see cref="Detach"/>), with the picks final.</summary>
+    public event Action? Closed;
 
     private void OnLineChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -908,8 +1022,16 @@ public partial class LyricShareViewModel : ViewModelBase
         seconds >= _pagePreviewTiming.StartSeconds - SyncLeadSeconds
         && seconds < _pagePreviewTiming.StartSeconds + _pagePreviewTiming.DurationSeconds;
 
+    /// <summary>True while the Lyrics Page turns following off by itself: that is not the user's choice.</summary>
+    private bool _syncOffByLayout;
+
     partial void OnSyncEnabledChanged(bool value)
     {
+        // The user's choice, remembered for the next open: the box, and a picked line or Clear
+        // (they take over from playback, so following stays off). Only where following exists,
+        // so a song without synced lyrics never changes it.
+        if (SyncAvailable && !_syncOffByLayout && !_detached)
+            _ = SavePageSettingsAsync(s => s.ShareLyricsFollowPlayback = value);
         OnPropertyChanged(nameof(CardOptionsSummary));
         if (value && _player != null)
         {
@@ -997,7 +1119,9 @@ public partial class LyricShareViewModel : ViewModelBase
             IsPosterLayout = false;
             // The page's picks set the clip's time window; following playback would re-pick
             // them, and rebuild the preview, at every line.
-            if (SyncEnabled) SyncEnabled = false;
+            _syncOffByLayout = true;
+            try { if (SyncEnabled) SyncEnabled = false; }
+            finally { _syncOffByLayout = false; }
             FillPageRange();
         }
         else
@@ -1573,6 +1697,7 @@ public partial class LyricShareViewModel : ViewModelBase
         Background = IsSolidBg ? ShareBackground.Solid : ShareBackground.Artwork,
         SolidColorHex = SolidColorHex,
         Layout = IsPosterLayout ? ShareCardLayout.Poster : ShareCardLayout.Panel,
+        ShowWordmark = ShowWordmark,
     };
 
     /// <summary>
@@ -1970,5 +2095,9 @@ public partial class LyricShareViewModel : ViewModelBase
             _savedPageStrength = strength;
             _ = SavePageSettingsAsync(s => s.ShareLyricsPageBackgroundStrength = strength);
         }
+
+        var closed = Closed;
+        Closed = null;   // once, whichever close path calls Detach
+        closed?.Invoke();
     }
 }

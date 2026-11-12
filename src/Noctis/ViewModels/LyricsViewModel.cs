@@ -3996,22 +3996,69 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ShareLyrics()
     {
+        AppSettings? settings = null;
+        try { settings = await _persistence.LoadSettingsAsync(); }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn,
+                "Share lyrics settings load failed", ex.Message);
+        }
+        if (BuildShareViewModel(settings ?? new AppSettings()) is { } vm)
+            await Views.LyricShareDialog.ShowAsync(vm);
+    }
+
+    /// <summary>Where the share dialog was left per song this session (Follow playback off).</summary>
+    private readonly LyricShareSpots _shareSpots = new();
+
+    /// <summary>
+    /// The share dialog's view model for the current song, opened as the user left it: Follow
+    /// playback and the watermark as remembered in <paramref name="settings"/>, and with
+    /// following off, the lines picked when it last closed on this song (<see cref="LyricShareSpots"/>).
+    /// Null when there is nothing to share. Internal for tests.
+    /// </summary>
+    internal LyricShareViewModel? BuildShareViewModel(AppSettings settings)
+    {
         var track = _player.CurrentTrack;
-        if (track == null) return;
+        if (track == null) return null;
+
+        // The song's whole lyrics, to remember lines by their place in it (windowed lyrics hand
+        // the dialog only a stretch around playback), and to see whether they changed since.
+        bool hasSynced = LyricLines.Count > 0 && LyricLines.Any(l => l.Timestamp.HasValue);
+        IReadOnlyList<LyricLine> whole = IsLyricsWindowed ? AllLyricLines
+            : hasSynced ? LyricLines : UnsyncedLines;
+        var key = LyricShareSpots.KeyOf(track);
+        long fingerprint = LyricShareSpots.Fingerprint(whole);
+        var spot = _shareSpots.Get(key, fingerprint);
 
         // Prefer the synced lines whenever they carry timestamps so the share dialog's
         // playback-sync (follow-along) works, even if the plain tab is currently showing.
-        // Windowed lyrics: the lines around playback, not the window alone nor all of them (ShareSourceLines).
-        var shown = ShareSourceLines();
-        bool hasSynced = shown.Count > 0 && shown.Any(l => l.Timestamp.HasValue);
-        var source = hasSynced || IsLyricsWindowed ? shown : UnsyncedLines;
-        var shareable = source
-            .Where(l => !l.IsIntroPlaceholder && !string.IsNullOrWhiteSpace(l.Text))
-            .ToList();
-        if (shareable.Count == 0) return;
+        // Windowed lyrics: the lines around playback, not the window alone nor all of them
+        // (ShareSourceLines); around the remembered lines when they are picked again.
+        bool restoring = spot != null && !(settings.ShareLyricsFollowPlayback && hasSynced);
+        var (start, shown) = IsLyricsWindowed
+            ? ShareSourceWindow(restoring ? (spot![0] + spot[^1]) / 2 : null)
+            : (0, (IReadOnlyList<LyricLine>)(hasSynced ? LyricLines : UnsyncedLines));
+        var shareable = new List<LyricLine>();
+        var wholeIndex = new List<int>();
+        for (int i = 0; i < shown.Count; i++)
+        {
+            var l = shown[i];
+            if (l.IsIntroPlaceholder || string.IsNullOrWhiteSpace(l.Text)) continue;
+            shareable.Add(l);
+            wholeIndex.Add(start + i);
+        }
+        if (shareable.Count == 0) return null;
 
         int preselect = _timeline.ActiveLine is { } active ? shareable.IndexOf(active) : 0;
         if (preselect < 0) preselect = 0;
+
+        // Every remembered line has to be in this list, or none is picked again.
+        List<int>? restore = null;
+        if (restoring)
+        {
+            restore = spot!.Select(w => wholeIndex.IndexOf(w)).ToList();
+            if (restore.Any(i => i < 0)) restore = null;
+        }
 
         var vm = new LyricShareViewModel(
             track,
@@ -4021,8 +4068,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             shareable.Select(l => l.Words).ToList(),
             shareable.Select(l => l.EndTimestamp).ToList(),
             preselect,
-            sources: shareable);
-        await Views.LyricShareDialog.ShowAsync(vm);
+            sources: shareable,
+            open: new LyricShareOpenState
+            {
+                FollowPlayback = settings.ShareLyricsFollowPlayback,
+                ShowWordmark = settings.ShareLyricsShowWordmark,
+                RestoreSelection = restore,
+            });
+
+        // On close: following off keeps the spot for the next open of this song; following on
+        // (or nothing picked) has none to keep.
+        vm.Closed += () =>
+        {
+            if (vm.SyncEnabled) { _shareSpots.Forget(key); return; }
+            _shareSpots.Set(key, fingerprint, vm.SelectedIndices.Select(i => wholeIndex[i]).ToArray());
+        };
+        return vm;
     }
 
     /// <summary>
@@ -4727,12 +4788,16 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     /// <summary>The lines a share card picks from: the lines shown, or for windowed lyrics up to
     /// a list's worth around the playback position (the share dialog's list is not virtualized either).</summary>
-    private IReadOnlyList<LyricLine> ShareSourceLines()
+    private IReadOnlyList<LyricLine> ShareSourceLines() => ShareSourceWindow(null).Lines;
+
+    /// <summary><see cref="ShareSourceLines"/> with where they start in <see cref="AllLyricLines"/>,
+    /// centred on <paramref name="center"/> (an index there) instead of playback when given.</summary>
+    private (int Start, IReadOnlyList<LyricLine> Lines) ShareSourceWindow(int? center)
     {
-        if (_windowAll is not { } all) return LyricLines;
-        var center = _windowStart + Math.Max(0, ActiveLineIndex);
-        var start = Math.Clamp(center - LrcParser.ListMaxLines / 2, 0, Math.Max(0, all.Count - LrcParser.ListMaxLines));
-        return all.GetRange(start, Math.Min(LrcParser.ListMaxLines, all.Count - start));
+        if (_windowAll is not { } all) return (0, LyricLines);
+        var middle = center ?? _windowStart + Math.Max(0, ActiveLineIndex);
+        var start = Math.Clamp(middle - LrcParser.ListMaxLines / 2, 0, Math.Max(0, all.Count - LrcParser.ListMaxLines));
+        return (start, all.GetRange(start, Math.Min(LrcParser.ListMaxLines, all.Count - start)));
     }
 
     // The focus gate flips mid-line (fullscreen entered/left, or the Settings toggle),

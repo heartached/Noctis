@@ -1135,7 +1135,12 @@ public partial class MetadataViewModel : ViewModelBase
             .ToList();
         if (lines.Count == 0) return;
 
-        var vm = new LyricShareViewModel(_track, lines, 0);
+        // The remembered watermark choice, known before the first preview is drawn.
+        bool showWordmark = true;
+        try { showWordmark = (await _persistence.LoadSettingsAsync()).ShareLyricsShowWordmark; }
+        catch (Exception ex) { DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn, "Share lyrics settings load failed", ex.Message); }
+        var vm = new LyricShareViewModel(_track, lines, null, null, null, null, 0, null,
+            new LyricShareOpenState { ShowWordmark = showWordmark });
         await Noctis.Views.LyricShareDialog.ShowAsync(vm);
     }
 
