@@ -65,8 +65,45 @@ public sealed class DuplicateFinderService : IDuplicateFinderService
                 LibraryRemovalHelper.TrashSidecarFiles(trashedPaths, trashFile);
         }, ct);
 
+        if (trashedPaths.Count > 0)
+        {
+            try { RemoveEmptiedFolders(trashedPaths, await LibraryRemovalHelper.GetProtectedRootsAsync()); }
+            catch (Exception ex) { DebugLog.Write("Duplicates", $"empty folder cleanup skipped: {ex.Message}"); }
+        }
+
         if (removeIds.Count > 0)
             await _library.RemoveTracksAsync(removeIds);
         return trashed;
+    }
+
+    /// <summary>
+    /// Removes the folder a deleted duplicate leaves behind when nothing at all is left in
+    /// it, then its emptied parents. Only a completely empty folder goes; music folders, the
+    /// well-known user folders and drive roots never do. Never throws.
+    /// </summary>
+    internal static void RemoveEmptiedFolders(IEnumerable<string> deletedPaths, HashSet<string> protectedRoots)
+    {
+        try
+        {
+            foreach (var start in deletedPaths.Select(Path.GetDirectoryName)
+                         .Where(d => !string.IsNullOrEmpty(d))
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var dir = Path.TrimEndingDirectorySeparator(Path.GetFullPath(start!));
+                while (!string.IsNullOrEmpty(dir)
+                       && !protectedRoots.Contains(dir)
+                       && Path.GetDirectoryName(dir) is { Length: > 0 } parent   // not a drive root
+                       && Directory.Exists(dir)
+                       && !Directory.EnumerateFileSystemEntries(dir).Any())
+                {
+                    Directory.Delete(dir, recursive: false);
+                    dir = Path.TrimEndingDirectorySeparator(parent);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Duplicates", $"empty folder cleanup stopped: {ex.Message}");
+        }
     }
 }
