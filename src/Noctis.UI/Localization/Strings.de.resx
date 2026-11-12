@@ -472,6 +472,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini-Player-Deckkraft</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>Wie deckend der Mini-Player-Hintergrund wirkt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Mattierter Hintergrund</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerFrostNeedsTransparency" xml:space="preserve"><value>Die Windows-Transparenzeffekte sind aus, daher wird der Desktop nicht weichgezeichnet. Aktiviere sie in den Windows-Einstellungen &gt; Personalisierung &gt; Farben oder erhöhe die Mini-Player-Deckkraft, damit der Text lesbar bleibt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Schreibtisch hinter dem Mini-Player weichzeichnen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>WIEDERGABE</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Songübergänge</value><comment>Text in SettingsView.axaml</comment></data>

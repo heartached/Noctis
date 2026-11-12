@@ -2460,10 +2460,17 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>OS blur-behind for the mini player (GitHub #76). Mirrors
     /// <see cref="AppSettings.MiniPlayerFrostedBackground"/>; the open mini player window
     /// listens to this property and swaps its transparency hint live.</summary>
-    [ObservableProperty] private bool _miniPlayerFrostedBackground;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MiniPlayerFrostUnavailable))]
+    private bool _miniPlayerFrostedBackground;
     /// <summary>The frost uses Windows' acrylic / blur-behind backdrop; the row is hidden
     /// elsewhere (same pattern as <see cref="IsTaskbarProgressSupported"/>).</summary>
     public bool IsMiniPlayerFrostSupported => OperatingSystem.IsWindows();
+    /// <summary>The frost is switched on but Windows' Transparency effects are off, so DWM
+    /// gives no blur (the mini player then shows the plain card; see MiniPlayerWindow.WantsFrost).
+    /// Drives the note under the switch.</summary>
+    public bool MiniPlayerFrostUnavailable =>
+        MiniPlayerFrostedBackground && OperatingSystem.IsWindows() && !Helpers.TrayMenuFrost.TransparencyEffectsOn();
     /// <summary>Album cover sizing for the Albums/Favorites grids. Auto = classic five per
     /// row; otherwise the grids derive their column count from the target size. The album
     /// and favorites view models react through this view model's PropertyChanged.</summary>

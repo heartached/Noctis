@@ -3948,6 +3948,12 @@
                         <TextBlock Text="{loc:T Settings.MiniPlayerFrostedBackground}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.BlurDesktopBehindMiniPlayer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <!-- Discord (BEAGLE): the switch is on but nothing blurs, and the card
+                             is see-through over a sharp desktop. Say why, and what helps. -->
+                        <TextBlock x:Name="MiniPlayerFrostUnavailableNote"
+                                   Text="{loc:T Settings.MiniPlayerFrostNeedsTransparency}"
+                                   FontSize="12" Foreground="#FFB454" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   IsVisible="{Binding MiniPlayerFrostUnavailable}"/>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.MiniPlayerFrostedBackground}"
