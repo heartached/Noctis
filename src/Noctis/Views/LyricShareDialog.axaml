@@ -238,8 +238,15 @@
         </Border>
 
         <!-- Body: the lines (left, full column width) and the card preview (right). -->
-        <Grid Grid.Row="1" Margin="28,16,28,0" ColumnDefinitions="*,24,340">
-            <Grid Grid.Column="0" RowDefinitions="Auto,8,*">
+        <!-- Both columns open with a header row (shared height, so the list and the well
+             start level): the lines' Follow playback and Clear, the card's watermark option. -->
+        <Grid Grid.Row="1" Margin="28,16,28,0" ColumnDefinitions="*,24,340" Grid.IsSharedSizeScope="True">
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" SharedSizeGroup="ShareBodyHeader" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
                 <Grid ColumnDefinitions="Auto,*,Auto,10,Auto">
                     <TextBlock Classes="sl-label" Text="{loc:T ShareLyrics.Lines}" />
                     <CheckBox x:Name="FollowBox"
@@ -322,31 +329,51 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- The card, fitted into the well whatever its format. -->
-            <Border x:Name="PreviewWell" Grid.Column="2" Classes="pill-well" CornerRadius="24">
-                <Panel Margin="16">
-                    <TextBlock Text="{loc:T LyricShare.SelectLinesPreview}"
-                               FontSize="13" Opacity="0.5"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               TextWrapping="Wrap"
-                               TextAlignment="Center"
-                               IsVisible="{Binding !HasSelection}" />
-                    <Image x:Name="PreviewImage"
-                           Source="{Binding Preview}"
-                           IsVisible="{Binding HasSelection}"
-                           Stretch="Uniform"
-                           RenderOptions.BitmapInterpolationMode="HighQuality" />
-                    <!-- Live karaoke sweep, drawn over the static card while word timings
-                         animate. Same aspect, so it covers the still exactly; hidden (null)
-                         when not animating. -->
-                    <Image x:Name="AnimatedPreviewImage"
-                           Source="{Binding AnimatedPreview}"
-                           IsVisible="{Binding AnimatedPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
-                           Stretch="Uniform"
-                           RenderOptions.BitmapInterpolationMode="HighQuality" />
-                </Panel>
-            </Border>
+            <!-- The card, fitted into the well whatever its format, under the option that is
+                 about what the card carries: the Noctis wordmark (owner 11-12). It sits here, not
+                 in the drop-down row: a fifth item there takes its width from the four pills
+                 (the Lyrics Page's controls left that row for the same reason). The Lyrics
+                 Page draws no wordmark, so the box hides there. -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" SharedSizeGroup="ShareBodyHeader" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <CheckBox x:Name="WatermarkBox"
+                          Classes="metadata-pill-checkbox"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Center"
+                          FontSize="12.5"
+                          IsVisible="{Binding !IsPageLayout}"
+                          IsChecked="{Binding ShowWordmark, Mode=TwoWay}"
+                          Content="{loc:T LyricShare.Watermark}"
+                          ToolTip.Tip="{loc:T LyricShare.WatermarkTip}" />
+                <Border x:Name="PreviewWell" Grid.Row="2" Classes="pill-well" CornerRadius="24">
+                    <Panel Margin="16">
+                        <TextBlock Text="{loc:T LyricShare.SelectLinesPreview}"
+                                   FontSize="13" Opacity="0.5"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   IsVisible="{Binding !HasSelection}" />
+                        <Image x:Name="PreviewImage"
+                               Source="{Binding Preview}"
+                               IsVisible="{Binding HasSelection}"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapInterpolationMode="HighQuality" />
+                        <!-- Live karaoke sweep, drawn over the static card while word timings
+                             animate. Same aspect, so it covers the still exactly; hidden (null)
+                             when not animating. -->
+                        <Image x:Name="AnimatedPreviewImage"
+                               Source="{Binding AnimatedPreview}"
+                               IsVisible="{Binding AnimatedPreview, Converter={x:Static ObjectConverters.IsNotNull}}"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapInterpolationMode="HighQuality" />
+                    </Panel>
+                </Border>
+            </Grid>
         </Grid>
 
         <!-- Card options: every choice the two outlined summary pills held, as labelled

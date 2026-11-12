@@ -70,6 +70,9 @@ public sealed record LyricCardSpec
     public LyricCardWeight LyricWeight { get; init; } = LyricCardWeight.SemiBold;
     /// <summary>How artwork, title/artist and lyrics are arranged on the card.</summary>
     public ShareCardLayout Layout { get; init; } = ShareCardLayout.Panel;
+    /// <summary>Draws the Noctis wordmark (logo + "Noctis"). Off: the card leaves it out and
+    /// gives its band to the lyrics (the share dialog's "Noctis watermark" option).</summary>
+    public bool ShowWordmark { get; init; } = true;
 }
 
 /// <summary>Everything needed to render a Noctis Wrap recap card.</summary>
@@ -266,7 +269,10 @@ public static class ShareCardRenderer
         }
 
         float boxContentW = w - 2 * marginX - 2 * pad;
-        float fixedH = headerPanelH + LyricGapTop + LyricGapBottom + FooterHeight;
+        // Without the wordmark its band (gap + logo) goes: the box hugs the lyrics, whose
+        // bottom padding (pad) then mirrors the header's gap above them (LyricGapTop).
+        float footerBand = spec.ShowWordmark ? LyricGapBottom + FooterHeight : 0f;
+        float fixedH = headerPanelH + LyricGapTop + footerBand;
         float maxBoxH = h - marginTop - marginBottom;
         var fit = FitLyrics(spec, boxContentW, maxBoxH - 2 * pad - fixedH, lyricFace);
         float contentH = fixedH + fit.wrapped.Count * fit.lineHeight;
@@ -322,11 +328,12 @@ public static class ShareCardRenderer
 
         // ── Footer wordmark, pinned to the card's bottom ────────────────
         float footerTop = boxRect.Bottom - pad - FooterHeight;
-        DrawWordmark(canvas, boldFace, fg, headRect.Left, footerTop);
+        if (spec.ShowWordmark)
+            DrawWordmark(canvas, boldFace, fg, headRect.Left, footerTop);
 
         // ── Lyric geometry: auto-fit, then vertically center between header & footer ──
         float lyTop = headRect.Bottom + LyricGapTop;
-        float lyBottom = footerTop - LyricGapBottom;
+        float lyBottom = spec.ShowWordmark ? footerTop - LyricGapBottom : boxRect.Bottom - pad;
         float avail = Math.Max(0f, lyBottom - lyTop);
 
         var (wrapped, lyricSize, lineHeight, _) = FitLyrics(spec, boxContentW, avail, lyricFace);
@@ -367,8 +374,10 @@ public static class ShareCardRenderer
         float contentW = w - 2 * contentInset;
         float safeH = h - marginTop - marginBottom;
 
+        // Without the wordmark the block ends at the lyrics, and is centred again without it.
+        float footerBand = spec.ShowWordmark ? gapLyricsFooter + FooterHeight : 0f;
         float FixedH(float a) => a + gapArtTitle + titleSize + gapTitleArtist + artistSize
-                                 + gapArtistLyrics + gapLyricsFooter + FooterHeight;
+                                 + gapArtistLyrics + footerBand;
         var fit = FitLyrics(spec, contentW, safeH - FixedH(artSize), lyricFace, ComfortLyricSize);
         float overflow = FixedH(artSize) + fit.naturalRows * fit.lineHeight - safeH;
         if (overflow > 0)
@@ -427,8 +436,9 @@ public static class ShareCardRenderer
 
         // ── Centered wordmark under the lyric block ─────────────────────
         float footerTop = lyTop + wrapped.Count * lineHeight + gapLyricsFooter;
-        using (var wordmarkPaint = TextPaint(boldFace, 38, fg))
+        if (spec.ShowWordmark)
         {
+            using var wordmarkPaint = TextPaint(boldFace, 38, fg);
             float textW = MeasureTextFallback(wordmarkPaint, "Noctis");
             float wordmarkW = FooterHeight + 14 + textW;
             DrawWordmark(canvas, boldFace, fg, (w - wordmarkW) / 2f, footerTop);
