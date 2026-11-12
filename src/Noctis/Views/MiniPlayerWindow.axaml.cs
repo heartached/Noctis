@@ -33,7 +33,10 @@ public partial class MiniPlayerWindow : Window
     private bool _forcedOpaque;
 
     /// <summary>The window colour of the opaque fallback (the dark glass card's base).</summary>
-    private static readonly IBrush OpaqueFallbackBrush = new SolidColorBrush(Color.Parse("#FF141418"));
+    // Immutable: a shared SolidColorBrush belongs to the thread that made it, and a window
+    // on another UI thread (each headless test session has its own) threw on first paint.
+    private static readonly IBrush OpaqueFallbackBrush =
+        new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Color.Parse("#FF141418"));
 
     // Matches the slowest drawer transition (0.18s) so it stays mapped long enough
     // for the fade-out + slide to finish before IsVisible flips to false.
