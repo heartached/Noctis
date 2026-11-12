@@ -3628,6 +3628,9 @@ public partial class PlayerViewModel : ViewModelBase
             if (SleepTimerFadeSeconds > 0)
                 _playbackFadeHoldUntilPlay = true;
             StopAfterCurrentTrack = false;
+            // Stop the engine too, as the end of the queue does: without it the output
+            // stayed open, and in Exclusive Mode the device stayed locked all night.
+            _audioPlayer.Stop();
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
                 $"track={CurrentTrack?.Title}");

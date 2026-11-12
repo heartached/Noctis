@@ -189,6 +189,8 @@ public class SleepTimerFadeTests : IDisposable
         player.RaiseTrackEnded();
         Dispatcher.UIThread.RunJobs();
         Assert.Equal(PlaybackState.Stopped, vm.State);
+        // The engine is stopped too (it lets go of the Exclusive Mode device), not just the UI.
+        Assert.Equal(PlaybackState.Stopped, player.State);
         Assert.False(vm.StopAfterCurrentTrack);
         Assert.Equal(0.0, player.FadeGain); // not lifted over the stopped output
 
