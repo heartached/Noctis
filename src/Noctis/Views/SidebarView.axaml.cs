@@ -49,10 +49,13 @@ public partial class SidebarView : UserControl
         {
             UnsubscribeFromViewModel();
             DetachOutsideClickWatcher();
+            Helpers.UiScale.Changed -= OnUiScaleChanged;
         };
         AttachedToVisualTree += (_, _) =>
         {
             AttachOutsideClickWatcher();
+            Helpers.UiScale.Changed -= OnUiScaleChanged;
+            Helpers.UiScale.Changed += OnUiScaleChanged;
             // After first layout, so the very first open of the run is already pinned
             // instead of spending a frame at the Popup's default 0,0 offsets.
             Dispatcher.UIThread.Post(EnsureSearchPopupPinned, DispatcherPriority.Loaded);
@@ -817,6 +820,18 @@ public partial class SidebarView : UserControl
             SearchPopup.IsOpen = true;           // OnSearchPopupOpened runs the morph
         else if (_searchCollapsing)
             ReopenSearchCapsule();
+    }
+
+    /// <summary>An open popup keeps the scale it opened with (Popup.InheritsTransform is read
+    /// when it opens), so a search pill left open while Interface Size changed stayed at the
+    /// old size, over a page laid out at the new one. Reopen it once the new layout is in.</summary>
+    private void OnUiScaleChanged(object? sender, EventArgs e)
+    {
+        if (!SearchPopup.IsOpen) return;
+        StopSearchCloseTimer();
+        _searchCollapsing = false;
+        SearchPopup.IsOpen = false;
+        Dispatcher.UIThread.Post(SyncSearchPopupToViewModel, DispatcherPriority.Loaded);
     }
 
     private void OnSearchPopupOpened(object? sender, EventArgs e)
