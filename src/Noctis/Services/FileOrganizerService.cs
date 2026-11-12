@@ -17,8 +17,11 @@ public sealed class FileOrganizerService : IFileOrganizerService
     private readonly ILibraryWatcherService? _watcher;
     private readonly string _undoDir;
 
-    /// <summary>Same-basename sidecars that must travel with the audio file.</summary>
-    private static readonly string[] SidecarExtensions = { ".lrc", ".ttml", ".txt" };
+    /// <summary>Same-basename sidecars that must travel with the audio file. Shared with
+    /// the removal helper: the organizer's own list lacked .elrc and .lyricsfile, so
+    /// word-synced lyrics were left behind (detached from the track, and keeping the old
+    /// folder alive).</summary>
+    private static readonly string[] SidecarExtensions = Helpers.LibraryRemovalHelper.SidecarExtensions;
 
     /// <summary>How long the watcher ignores a path we are about to move.</summary>
     private static readonly TimeSpan SuppressionWindow = TimeSpan.FromSeconds(30);
@@ -31,6 +34,14 @@ public sealed class FileOrganizerService : IFileOrganizerService
         _watcher = watcher;
         _undoDir = Path.Combine(_persistence.DataDirectory, "organize_undo");
     }
+
+    /// <summary>Folders the cleanup must never remove; a seam for tests.</summary>
+    internal Func<Task<HashSet<string>>> ProtectedRootsProvider { get; set; }
+        = Helpers.LibraryRemovalHelper.GetProtectedRootsAsync;
+
+    /// <summary>Moves a folder to the OS trash; a seam for tests.</summary>
+    internal Helpers.LibraryRemovalHelper.TrashAttempt TrashDirectory { get; set; }
+        = Helpers.RecycleBin.TryMoveDirectoryToTrash;
 
     public IReadOnlyList<OrganizeMove> Plan(IEnumerable<Track> tracks, string pattern, string targetRoot)
         => FileOrganizePlanner.Plan(tracks, pattern, targetRoot, File.Exists);
@@ -144,7 +155,7 @@ public sealed class FileOrganizerService : IFileOrganizerService
             if (writeUndoLog)
                 await WriteUndoLogAsync(done, ct);
 
-            await CleanupEmptyDirsAsync(done.Select(d => d.From));
+            await CleanupAfterMovesAsync(done);
         }
 
         return new OrganizeResult(done.Count, skipped, errors.Count, errors)
@@ -211,7 +222,31 @@ public sealed class FileOrganizerService : IFileOrganizerService
         }
     }
 
-    private async Task CleanupEmptyDirsAsync(IEnumerable<string> sourcePaths)
+    // Leftovers that may go with an emptied folder: loose images and OS detritus only.
+    // Lyrics are deliberately absent (same-name ones travel with their track; any other
+    // .lrc/.ttml is the user's), as are .cue/.m3u/.nfo/.log/.txt/.pdf: any of those keeps
+    // the folder. Folder art (cover.jpg, folder.jpg, …) is moved with the album first.
+    private static readonly HashSet<string> LeftoverImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
+
+    private static readonly HashSet<string> LeftoverJunkNames = new(StringComparer.OrdinalIgnoreCase)
+    { "Thumbs.db", "desktop.ini", ".DS_Store" };
+
+    /// <summary>A folder whose leftovers add up to this much or more is kept (#235: the
+    /// reporter's "less than 1MB").</summary>
+    internal const long MaxLeftoverBytes = 1024 * 1024;
+
+    /// <summary>
+    /// After a batch (organize or undo) moved tracks out of their folders: moves each
+    /// emptied album folder's cover art to where its tracks went, then removes the folders
+    /// the tracks left once nothing worth keeping is in them, walking up through the
+    /// emptied parents (album, then artist).
+    /// It only ever looks at folders this batch moved files out of and their parents, and
+    /// never climbs to the folder a track's old and new path share (the library root the
+    /// files moved within) or above it. Configured music folders, the well-known user
+    /// folders and drive roots are never removed. Never throws.
+    /// </summary>
+    private async Task CleanupAfterMovesAsync(IReadOnlyList<(string From, string To)> done)
     {
         // Never delete a directory the user configured as a music root (or one of the
         // OS media folders). Organizing loose files out of ~/Music into subfolders
@@ -220,32 +255,193 @@ public sealed class FileOrganizerService : IFileOrganizerService
         HashSet<string> protectedRoots;
         try
         {
-            protectedRoots = await Helpers.LibraryRemovalHelper.GetProtectedRootsAsync();
+            protectedRoots = await ProtectedRootsProvider();
         }
-        catch
+        catch (Exception ex)
         {
             // If the protected set can't be resolved, do nothing rather than risk
             // deleting a root.
+            DebugLog.Write("Organize", $"folder cleanup skipped: {ex.Message}");
             return;
         }
 
-        foreach (var dir in sourcePaths.Select(Path.GetDirectoryName)
-                     .Where(d => !string.IsNullOrEmpty(d)).Distinct())
+        try
         {
-            try
+            // Source folder → the folders its tracks went to, and the deepest folder any
+            // of its moves stayed within (the walk-up stops below it).
+            var groups = new Dictionary<string, (HashSet<string> Targets, string? Boundary)>(
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var (from, to) in done)
             {
-                if (!Directory.Exists(dir)) continue;
-                if (Directory.EnumerateFileSystemEntries(dir!).Any()) continue;
-
-                var normalized = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dir!));
-                if (protectedRoots.Contains(normalized)) continue;
-
-                // Recoverable rather than permanent.
-                if (!Helpers.RecycleBin.TryMoveDirectoryToTrash(dir!))
-                    Directory.Delete(dir!);
+                var fromDir = FullDir(from);
+                var toDir = FullDir(to);
+                if (fromDir is null || toDir is null) continue;
+                var boundary = CommonAncestor(fromDir, toDir) ?? Path.GetDirectoryName(fromDir);
+                if (!groups.TryGetValue(fromDir, out var g))
+                    g = (new HashSet<string>(StringComparer.OrdinalIgnoreCase), boundary);
+                else if (boundary is null || g.Boundary is null || boundary.Length > g.Boundary.Length)
+                    g = (g.Targets, boundary);
+                g.Targets.Add(toDir);
+                groups[fromDir] = g;
             }
-            catch { /* leave non-empty / locked / protected dirs alone */ }
+
+            foreach (var (sourceDir, (targets, boundary)) in groups)
+            {
+                if (boundary is null || !IsStrictlyUnder(sourceDir, boundary)) continue;
+                if (protectedRoots.Contains(sourceDir)) continue;
+
+                if (targets.Count == 1)
+                    MoveFolderArt(sourceDir, targets.First());
+
+                var current = sourceDir;
+                while (IsStrictlyUnder(current, boundary) && TryRemoveLeftoverFolder(current, protectedRoots))
+                {
+                    var parent = Path.GetDirectoryName(current);
+                    if (string.IsNullOrEmpty(parent)) break;
+                    current = parent;
+                }
+            }
         }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Organize", $"folder cleanup failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Moves the folder cover images (cover/folder/front.jpg …, the names the app reads
+    /// for tracks without embedded art) to the folder the album went to, once no audio
+    /// is left beside them. Never overwrites an image already there.
+    /// </summary>
+    private void MoveFolderArt(string sourceDir, string targetDir)
+    {
+        try
+        {
+            if (!Directory.Exists(sourceDir) || !Directory.Exists(targetDir)) return;
+            var files = Directory.EnumerateFiles(sourceDir).ToList();
+            if (files.Any(IsAudioFile)) return; // the tracks still here need their cover
+
+            foreach (var art in files.Where(MetadataService.IsFolderArtCandidate))
+            {
+                try
+                {
+                    var dest = Path.Combine(targetDir, Path.GetFileName(art));
+                    if (File.Exists(dest)) continue;
+                    _watcher?.SuppressPaths(new[] { art, dest }, SuppressionWindow);
+                    File.Move(art, dest);
+                }
+                catch (Exception ex)
+                {
+                    DebugLog.Write("Organize", $"cover move failed: {art}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Organize", $"cover move failed: {sourceDir}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Removes <paramref name="dir"/> when it holds no subfolder and nothing but loose
+    /// images / OS detritus under <see cref="MaxLeftoverBytes"/> in total. An empty folder
+    /// is deleted; one with leftovers goes to the OS trash, or, where the drive has no
+    /// trash, its allow-listed leftovers are deleted. A "No" to Windows' delete-permanently
+    /// prompt keeps it. Returns true when the folder is gone.
+    /// </summary>
+    private bool TryRemoveLeftoverFolder(string dir, HashSet<string> protectedRoots)
+    {
+        try
+        {
+            if (!Directory.Exists(dir)) return true;
+            var leftovers = RemovableLeftovers(dir, protectedRoots);
+            if (leftovers is null) return false;
+
+            if (leftovers.Count > 0)
+            {
+                if (TrashDirectory(dir, out var declined) || !Directory.Exists(dir)) return true;
+                if (declined) return false;
+
+                // Re-check: the folder may have changed while the trash attempt ran.
+                leftovers = RemovableLeftovers(dir, protectedRoots);
+                if (leftovers is null) return false;
+                foreach (var file in leftovers)
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                    File.Delete(file);
+                }
+            }
+
+            var info = new DirectoryInfo(dir);
+            if (info.Attributes.HasFlag(FileAttributes.ReadOnly))
+                info.Attributes &= ~FileAttributes.ReadOnly;
+            Directory.Delete(dir, recursive: false);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Organize", $"folder cleanup left {dir}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>The files to remove with <paramref name="dir"/>, or null when the folder
+    /// must stay (protected, a drive root, has a subfolder, audio, any file outside the
+    /// allow-list, or leftovers of <see cref="MaxLeftoverBytes"/> or more).</summary>
+    private static List<string>? RemovableLeftovers(string dir, HashSet<string> protectedRoots)
+    {
+        if (protectedRoots.Contains(dir)) return null;
+        if (string.Equals(Path.TrimEndingDirectorySeparator(Path.GetPathRoot(dir) ?? string.Empty),
+                dir, StringComparison.OrdinalIgnoreCase)) return null;
+
+        var files = new List<string>();
+        long total = 0;
+        foreach (var entry in new DirectoryInfo(dir).EnumerateFileSystemInfos())
+        {
+            if (entry is not FileInfo file) return null;     // a subfolder (it may hold audio)
+            if (IsAudioFile(file.Name)) return null;
+            if (!LeftoverJunkNames.Contains(file.Name) && !LeftoverImageExtensions.Contains(file.Extension))
+                return null;                                 // something worth keeping
+            total += file.Length;
+            if (total >= MaxLeftoverBytes) return null;
+            files.Add(file.FullName);
+        }
+        return files;
+    }
+
+    private static bool IsAudioFile(string path) => MetadataService.SupportedExtensions.Contains(Path.GetExtension(path));
+
+    private static string? FullDir(string path)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(Path.GetFullPath(path));
+            return string.IsNullOrEmpty(dir) ? null : Path.TrimEndingDirectorySeparator(dir);
+        }
+        catch { return null; }
+    }
+
+    /// <summary>The deepest folder containing both <paramref name="a"/> and
+    /// <paramref name="b"/>, or null when they share none (different drives).</summary>
+    private static string? CommonAncestor(string a, string b)
+    {
+        var current = a;
+        while (!string.IsNullOrEmpty(current))
+        {
+            if (PathEquals(current, b) || IsStrictlyUnder(b, current)) return current;
+            current = Path.GetDirectoryName(current);
+        }
+        return null;
+    }
+
+    private static bool IsStrictlyUnder(string dir, string ancestor)
+    {
+        var prefix = Path.TrimEndingDirectorySeparator(ancestor);
+        if (!dir.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || dir.Length <= prefix.Length) return false;
+        // A drive root keeps its separator ("C:\", "/"); any other prefix must end at one.
+        return Path.EndsInDirectorySeparator(prefix)
+            || dir[prefix.Length] == Path.DirectorySeparatorChar
+            || dir[prefix.Length] == Path.AltDirectorySeparatorChar;
     }
 
     private static bool PathEquals(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
