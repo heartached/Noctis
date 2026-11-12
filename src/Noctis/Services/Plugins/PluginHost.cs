@@ -439,7 +439,14 @@ public sealed class PluginLyricsRenderer
     public string Key => PluginHost.LyricsRendererKey(Plugin.Id, Name);
 
     /// <summary>The picker's row: the renderer's name, and its plugin's when they differ.</summary>
-    public string Label => string.Equals(Name, Plugin.Name, StringComparison.OrdinalIgnoreCase) ? Name : $"{Name} ({Plugin.Name})";
+    public string Label
+    {
+        get
+        {
+            var plugin = PluginHost.CleanLyricsRendererName(Plugin.Name);
+            return string.Equals(Name, plugin, StringComparison.OrdinalIgnoreCase) || plugin.Length == 0 ? Name : $"{Name} ({plugin})";
+        }
+    }
 
     /// <summary>It threw: it is no longer used, whatever Settings says.</summary>
     public bool Failed { get; internal set; }
@@ -1518,6 +1525,59 @@ public sealed class PluginHost
     /// <summary>The key a renderer is stored under in <see cref="AppSettings.LyricsRenderer"/>.</summary>
     public static string LyricsRendererKey(string pluginId, string name) => pluginId + "/" + name;
 
+    /// <summary>The longest renderer name Noctis keeps (as plugin.json's "name").</summary>
+    public const int MaxLyricsRendererNameLength = 60;
+
+    /// <summary>
+    /// A renderer's name as the picker shows it and the key stores it: line breaks, tabs and other
+    /// control characters become one space, invisible format characters (bidi overrides, zero-width
+    /// joiners) go, and it is cut to <see cref="MaxLyricsRendererNameLength"/>. "" when nothing is left.
+    /// </summary>
+    internal static string CleanLyricsRendererName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        var sb = new System.Text.StringBuilder(Math.Min(raw.Length, MaxLyricsRendererNameLength));
+        var space = false;
+        foreach (var c in raw)
+        {
+            var category = char.GetUnicodeCategory(c);
+            if (category == System.Globalization.UnicodeCategory.Format) continue;
+            if (char.IsWhiteSpace(c) || char.IsControl(c)
+                || category is System.Globalization.UnicodeCategory.LineSeparator or System.Globalization.UnicodeCategory.ParagraphSeparator)
+            {
+                space = sb.Length > 0;
+                continue;
+            }
+            if (space) sb.Append(' ');
+            space = false;
+            sb.Append(c);
+            if (sb.Length >= MaxLyricsRendererNameLength) break;
+        }
+        if (sb.Length > MaxLyricsRendererNameLength) sb.Length = MaxLyricsRendererNameLength;
+        // Never end on half a surrogate pair.
+        if (sb.Length > 0 && char.IsHighSurrogate(sb[^1])) sb.Length--;
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Whether <paramref name="key"/> can be a renderer's key: a plugin id (letters, digits, '.', '-',
+    /// '_'; at most 100), '/', and a name as <see cref="CleanLyricsRendererName"/> leaves it. Anything
+    /// else in the settings file is not a choice Noctis made, and is dropped.
+    /// </summary>
+    public static bool IsValidLyricsRendererKey(string? key)
+    {
+        if (string.IsNullOrEmpty(key) || key.Length > 101 + MaxLyricsRendererNameLength) return false;
+        var slash = key.IndexOf('/');
+        if (slash is <= 0 or > 100 || slash == key.Length - 1) return false;
+        for (var i = 0; i < slash; i++)
+            if (!(char.IsAsciiLetterOrDigit(key[i]) || key[i] is '.' or '-' or '_')) return false;
+        var name = key[(slash + 1)..];
+        return string.Equals(CleanLyricsRendererName(name), name, StringComparison.Ordinal);
+    }
+
+    /// <summary>The key as stored: itself when valid, else "" (Noctis's own lines).</summary>
+    public static string NormalizeLyricsRendererKey(string? key) => IsValidLyricsRendererKey(key) ? key! : "";
+
     /// <summary>The stored choice ("" = Noctis's own), whether or not its plugin runs now.</summary>
     public string SelectedLyricsRenderer => _settings().LyricsRenderer ?? "";
 
@@ -1525,7 +1585,7 @@ public sealed class PluginHost
     /// this: nothing switches the renderer on its own.</summary>
     public void SelectLyricsRenderer(string? key)
     {
-        _settings().LyricsRenderer = key ?? "";
+        _settings().LyricsRenderer = NormalizeLyricsRendererKey(key);
         RefreshLyricsRenderer();
     }
 
@@ -1957,8 +2017,11 @@ public sealed class PluginHost
             ArgumentNullException.ThrowIfNull(renderer);
             if (_disposed) return Registration.None;
             string name;
-            try { name = string.IsNullOrWhiteSpace(renderer.Name) ? _plugin.Name : renderer.Name.Trim(); }
-            catch { name = _plugin.Name; }
+            // Cleaned and bounded: it is shown in Settings and stored as part of the user's choice.
+            try { name = CleanLyricsRendererName(renderer.Name); }
+            catch { name = ""; }
+            if (name.Length == 0) name = CleanLyricsRendererName(_plugin.Name);
+            if (name.Length == 0) name = _plugin.Id;
             var entry = new PluginLyricsRenderer(_owner, _plugin, renderer, name);
             void Add()
             {

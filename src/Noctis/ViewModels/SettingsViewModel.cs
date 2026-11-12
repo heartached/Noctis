@@ -6424,7 +6424,14 @@ public partial class SettingsViewModel : ViewModelBase
         if (Plugins is not null)
             foreach (var r in Plugins.LyricsRenderers)
                 if (!r.Failed && options.All(o => !string.Equals(o.Key, r.Key, StringComparison.OrdinalIgnoreCase)))
-                    options.Add(new FlowingOption(r.Key, r.Label));
+                {
+                    // A renderer never reads as Noctis's own or as another one: a label already in
+                    // the list is told apart by its plugin's id.
+                    var label = r.Label;
+                    if (options.Any(o => string.Equals(o.Label, label, StringComparison.OrdinalIgnoreCase)))
+                        label = $"{label} ({r.Plugin.Id})";
+                    options.Add(new FlowingOption(r.Key, label));
+                }
         var stored = LyricsRenderer ?? "";
         if (options.All(o => !string.Equals(o.Key, stored, StringComparison.OrdinalIgnoreCase)))
             options.Add(new FlowingOption(stored, Loc.T("Settings.LyricsRendererOff", StoredRendererName(stored))));
@@ -6441,13 +6448,15 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>"dev.example.lines/Lines" → "Lines".</summary>
     private static string StoredRendererName(string key)
     {
-        var slash = key.LastIndexOf('/');
+        var slash = key.IndexOf('/');
         return slash >= 0 && slash < key.Length - 1 ? key[(slash + 1)..] : key;
     }
 
     partial void OnLyricsRendererChanged(string value)
     {
-        if (value is null) { LyricsRenderer = ""; return; }
+        // Only a well-formed key is kept (the settings file is just text): anything else is Noctis's own.
+        var key = PluginHost.NormalizeLyricsRendererKey(value);
+        if (!string.Equals(key, value, StringComparison.Ordinal)) { LyricsRenderer = key; return; }
         Plugins?.SelectLyricsRenderer(value);
         RefreshLyricsRendererOptions();
         if (_settingsLoaded) _ = SaveAsync();
