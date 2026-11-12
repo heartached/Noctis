@@ -3497,6 +3497,32 @@
                         <TextBlock Text="{loc:T Settings.AddExtraControlsPlayer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <!-- Discord (Major D ark): Stop after Play/Pause, which also lets go of the Exclusive
+                         Mode device; optionally shown only while Exclusive Mode is on. -->
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.StopButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.StopButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.StopButton}"
+                                              IsChecked="{Binding PlaybackBarShowStop}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding PlaybackBarShowStop}" Lift="10" Motion="Glide">
+                    <Grid ColumnDefinitions="*,Auto" Margin="20,12,0,0" IsVisible="{Binding IsExclusiveAudioSupported}">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.StopOnlyInExclusive}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.StopOnlyInExclusiveHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.StopOnlyInExclusive}"
+                                              IsChecked="{Binding PlaybackBarStopOnlyInExclusiveMode}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                     <!-- Header + picker share a spacing-free panel so the 12px gap folds with the body
                          (see the Crossfade block). -->
                     <Grid ColumnDefinitions="*,Auto">
