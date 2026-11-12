@@ -1,0 +1,14 @@
+{
+  "id": "dev.noctis.samples.lyricsrenderer",
+  "name": "Word Light",
+  "version": "1.0.0",
+  "author": "Noctis",
+  "description": "Reference for plugin API 1.8: a lyrics renderer that draws the lines itself and lights each word as it is sung. Pick it in Settings > Lyrics > Lyrics Renderer.",
+  "type": "dotnet",
+  "entry": "Noctis.SamplePlugin.LyricsRenderer.dll",
+  "apiVersion": "1.8",
+  "minAppVersion": "1.7.0",
+  "platforms": ["windows", "macos", "linux"],
+  "permissions": [],
+  "homepage": "https://github.com/heartached/Noctis/tree/main/samples/Noctis.SamplePlugin.LyricsRenderer"
+}

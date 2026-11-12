@@ -126,6 +126,8 @@ samples live in the repository:
 - `samples/Noctis.SamplePlugin` — *Pulse Ring*, a visual layer that breathes with the beat.
 - `samples/Noctis.SamplePlugin.TrackTools` — *Track Tools*: a track-menu command using
   library search and a notice, a lyrics provider stub, a scrobble hook, and declared settings.
+- `samples/Noctis.SamplePlugin.LyricsRenderer` — *Word Light* (API 1.8): a lyrics renderer that
+  draws each line itself and lights the words as they are sung; see [Lyrics renderers](#lyrics-renderers).
 - `plugins/Noctis.Plugins.Kawarp` — a Skia-shader visual layer (Noctis also ships Kawarp built in;
   this copy stays as a realistic visual-layer example).
 - `plugins/Noctis.Plugins.AlbumTown` — *Album Town* (API 1.4): a view of its own where your albums
