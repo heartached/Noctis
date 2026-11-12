@@ -36,9 +36,14 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.AlbumRoulette", "plugins\Noctis.Plugins.AlbumRoulette\Noctis.Plugins.AlbumRoulette.csproj", "{39A4FF9B-280B-4900-891C-701021D24FE8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.ABLoop", "plugins\Noctis.Plugins.ABLoop\Noctis.Plugins.ABLoop.csproj", "{C1A19512-50C4-4A5A-B88F-233A2D9A37DE}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.YouTubeImport", "plugins\Noctis.Plugins.YouTubeImport\Noctis.Plugins.YouTubeImport.csproj", "{46A369F5-24CB-48AA-BED0-85A9A87CBB73}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.Plugins.Chords", "plugins\Noctis.Plugins.Chords\Noctis.Plugins.Chords.csproj", "{F5F69C64-5154-4034-8941-CF3784365E0A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Noctis.SamplePlugin.LyricsRenderer", "samples\Noctis.SamplePlugin.LyricsRenderer\Noctis.SamplePlugin.LyricsRenderer.csproj", "{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -266,6 +271,18 @@ Global
 		{F5F69C64-5154-4034-8941-CF3784365E0A}.Release|x64.Build.0 = Release|Any CPU
 		{F5F69C64-5154-4034-8941-CF3784365E0A}.Release|x86.ActiveCfg = Release|Any CPU
 		{F5F69C64-5154-4034-8941-CF3784365E0A}.Release|x86.Build.0 = Release|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Debug|x64.Build.0 = Debug|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Debug|x86.Build.0 = Debug|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Release|x64.ActiveCfg = Release|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Release|x64.Build.0 = Release|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Release|x86.ActiveCfg = Release|Any CPU
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -277,5 +294,6 @@ Global
 		{80915E24-B860-4A35-B733-0269CA1A3B04} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{DC3804AF-A015-4D71-B1BA-40EBC664096B} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{E14852B4-7046-4A5A-95A8-3FD09AFDDCD0} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{CFEC5D2E-6483-4ED4-A3A8-272C476E6035} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal
