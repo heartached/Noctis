@@ -10,8 +10,10 @@ namespace Noctis.Plugins;
 /// line: the list, its layout and scrolling, which line is active, click-to-seek, the screen
 /// reader name, and the line's dimming, depth blur and growth while it is sung. The renderer
 /// only measures and draws the inside of each line (<see cref="ILyricsLineView"/>).
-/// Everything runs on the UI thread. An exception from any member switches the renderer
-/// off (Noctis's own lines come back) and stops the plugin.
+/// Everything runs on the UI thread. An exception from any member, or one call that holds the UI
+/// thread for more than a second, switches the renderer off (Noctis's own lines come back) and
+/// stops the plugin. Once withdrawn it is never called again. <see cref="Name"/> is shown cleaned
+/// (no line breaks or invisible formatting characters) and cut to 60 characters.
 /// </summary>
 public interface ILyricsRenderer
 {
@@ -36,14 +38,15 @@ public interface ILyricsRenderer
 /// quick, and do not allocate in <see cref="Render"/>: build text layouts in
 /// <see cref="Measure"/> (it runs only when the width, the font or a colour changes) and
 /// reuse them. Noctis cannot catch an exception thrown later from code that is not called
-/// from here (a timer, a control of your own): catch those yourself.
+/// from here (a timer, a control of your own): catch those yourself. What
+/// <see cref="Render"/> draws is clipped to the line's box plus half the font size around it.
 /// </summary>
 public interface ILyricsLineView
 {
     /// <summary>The size the line needs at <paramref name="availableWidth"/> (the lyrics column,
     /// in device-independent pixels). Noctis lays the list out with it: the height must hold
     /// every row you draw (background vocals, romanization, translation), and a width over
-    /// <paramref name="availableWidth"/> is cut to it.</summary>
+    /// <paramref name="availableWidth"/> is cut to it (a height over 40 times the font size too).</summary>
     Size Measure(double availableWidth, in LyricsLineStyle style);
 
     /// <summary>
