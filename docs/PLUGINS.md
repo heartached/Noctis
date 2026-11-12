@@ -411,11 +411,29 @@ Rules:
   (**Failed**, with the reason on its card) and a notice says so. The user's choice stays stored,
   so switching the plugin on again brings the renderer back. Noctis cannot catch what your own
   timers or callbacks throw later: catch that yourself.
+- A single call that holds the UI thread for more than a second counts as a failure too ("blocked
+  Noctis for … ms"), as for any other plugin callback.
+- Once the renderer is withdrawn (you dispose the registration, the plugin is switched off or
+  fails, the user picks another) Noctis never calls it or its lines again, even a line still on
+  screen for a frame. A lyrics view that closes lets go of every line; they are created again
+  (`CreateLine`) when it opens.
+- What `Render` draws is clipped to the line's box plus half the font size on every side (room for
+  a glow or a lifted word); nothing reaches the rest of the window. Close every `Push…` you open
+  (`using`). `Measure` is bounded: a width over the column is cut to it, a height to 40 times the
+  font size, and NaN, infinite or negative sizes are taken as 0 (or the full width).
+- The name is shown as you give it, cleaned: line breaks and tabs become spaces, invisible
+  formatting characters (bidi overrides, zero-width spaces) are dropped, and it is cut to 60
+  characters. The stored choice is `<plugin id>/<that name>`; Noctis drops a stored value that is
+  not of that form. A label already in the picker (Noctis's own "Noctis", or another renderer's) is
+  followed by the plugin id.
 - Lyrics effects (`RegisterLyricsEffect`) keep working on Noctis's own lines; a renderer does not
   switch them off, and Noctis still asks the effect which lines read right to left
   (`frame.IsRightToLeft`).
 - A renderer draws; it gets no Avalonia control of its own in the list, no access to Noctis's view
-  models, and no way to change scrolling, timing, the active line or the lyrics themselves.
+  models, and no way to change scrolling, timing, the active line or the lyrics themselves. (Like
+  every code plugin it runs in Noctis's process with the user's rights: the boundaries above keep a
+  buggy renderer from breaking the lyrics, they are not a sandbox against a malicious one. With the
+  Community plugins switch off, no community renderer runs at all.)
 - `SupportsSurface` says where it draws: the lyrics page, the side panel and the mini player by
   default. Where it says no, Noctis draws.
 - `DrawingContext`, `Size`, `FontFamily` and `Color` are Avalonia types: the app supplies Avalonia,
