@@ -572,6 +572,36 @@ public class DuplicateFinderDialogTests
         finally { win.Close(); PumpUntil(() => !win.IsVisible); }
     }
 
+    /// <summary>
+    /// GitHub #235: Delete's "move to Recycle Bin?" question was owned by the main window,
+    /// which this tool window covers, so it opened behind it. It must be owned by the
+    /// Duplicates window (on top of it), and nothing is deleted until it is answered.
+    /// </summary>
+    [AvaloniaFact]
+    public void DeleteConfirmation_IsOwnedByTheDuplicatesWindow()
+    {
+        EnsureAppStyles();
+        var (vm, win, _) = Open(Groups());
+        try
+        {
+            Assert.True(PumpUntil(() => vm.SelectedCount > 0), "the scan never ticked any copies");
+
+            vm.DeleteSelectedCommand.Execute(null);
+
+            ConfirmationDialog? confirm = null;
+            Assert.True(PumpUntil(() => (confirm = win.OwnedWindows.OfType<ConfirmationDialog>().SingleOrDefault()) is { IsVisible: true }),
+                "the delete question did not open over the Duplicates window");
+            Assert.Same(win, confirm!.Owner);
+
+            // Cancel: StubDuplicates.DeleteAsync throws, so reaching it would fault the command.
+            confirm.FindControl<Button>("CancelButton")!.RaiseEvent(
+                new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.True(PumpUntil(() => !vm.DeleteSelectedCommand.IsRunning), "the delete command never finished");
+            Assert.Null(vm.DeleteSelectedCommand.ExecutionTask?.Exception);
+        }
+        finally { win.Close(); }
+    }
+
     private sealed class StubDuplicates(IReadOnlyList<DuplicateGroup> groups) : IDuplicateFinderService
     {
         public Task<IReadOnlyList<DuplicateGroup>> FindAsync(int durationToleranceSeconds = DuplicateMatcher.DefaultDurationToleranceSeconds,
