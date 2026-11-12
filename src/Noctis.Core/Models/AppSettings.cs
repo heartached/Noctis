@@ -1304,6 +1304,13 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Share Lyrics › Lyrics Page: readability tint strength, 0–100.</summary>
     public int ShareLyricsPageBackgroundStrength { get; set; } = 70;
 
+    /// <summary>Share Lyrics: draw the Noctis wordmark on the card and its video (off = no watermark).</summary>
+    public bool ShareLyricsShowWordmark { get; set; } = true;
+
+    /// <summary>Share Lyrics: the dialog opens following playback (off = the user turned Follow
+    /// playback off, by its box or by picking a line; it stays off until they tick it again).</summary>
+    public bool ShareLyricsFollowPlayback { get; set; } = true;
+
     /// <summary>Show a music video found next to the song (same name, or a videos folder) in place of the cover on the lyrics page.</summary>
     public bool MusicVideosEnabled { get; set; } = true;
 

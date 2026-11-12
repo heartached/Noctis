@@ -4203,4 +4203,6 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>Dieser Datenordner wurde von Noctis {0} gespeichert. Seine neueren Einstellungen bleiben erhalten, diese Version kann sie aber erst nach einem Update nutzen.</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve"><value>Songtext auf der Songtext-Seite ausblenden</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Zeigt stattdessen den zentrierten Player, auch wenn ein Song Songtext hat.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="LyricShare.Watermark" xml:space="preserve"><value>Noctis-Wasserzeichen</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
+  <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>Zeigt das Noctis-Logo auf der Karte und im Video</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
 </root>
