@@ -416,6 +416,9 @@ public static class ArtworkCache
         catch { /* mismatched pressure is non-fatal */ }
     }
 
+    /// <summary>Test seam: raised by <see cref="ClearForTests"/> before it disposes the bitmaps.</summary>
+    internal static event Action? ClearingForTests;
+
     /// <summary>
     /// Test seam: drops every entry and disposes every live bitmap, held or not, so
     /// one test's leftovers (a closed window still holding a cover) cannot leak into
@@ -423,6 +426,9 @@ public static class ArtworkCache
     /// </summary>
     internal static void ClearForTests()
     {
+        // First: a control still on screen (a window a test left open) must let go of its
+        // cover, or its next layout reads a disposed bitmap and throws.
+        ClearingForTests?.Invoke();
         foreach (var key in Cache.Keys.ToList())
         {
             if (Cache.TryRemove(key, out var removed))

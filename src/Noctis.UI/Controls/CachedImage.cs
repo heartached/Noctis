@@ -235,6 +235,7 @@ public class CachedImage : Image
         base.OnAttachedToVisualTree(e);
         _attached = true;
         ArtworkCache.Invalidated += OnArtworkInvalidated;
+        ArtworkCache.ClearingForTests += OnCacheClearingForTests;
         UiScale.Changed += OnUiScaleChanged;
         if (PixelExact)
         {
@@ -250,6 +251,7 @@ public class CachedImage : Image
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ArtworkCache.Invalidated -= OnArtworkInvalidated;
+        ArtworkCache.ClearingForTests -= OnCacheClearingForTests;
         UiScale.Changed -= OnUiScaleChanged;
         _attached = false;
         _exactResizeTimer?.Stop();
@@ -383,6 +385,19 @@ public class CachedImage : Image
         _held = bitmap;
         Source = bitmap;
         if (previous is not null) ArtworkCache.Release(previous);
+    }
+
+    // Tests only (ArtworkCache.ClearForTests): the bitmap shown is about to be disposed.
+    private void OnCacheClearingForTests()
+    {
+        // The control's own dispatcher: a leftover control can belong to another test
+        // session's UI thread, which may be gone by now.
+        try
+        {
+            if (CheckAccess()) SetSource(null);
+            else Dispatcher.Post(() => SetSource(null));
+        }
+        catch { /* that session's dispatcher has shut down */ }
     }
 
     private void OnArtworkInvalidated(string path)

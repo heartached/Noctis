@@ -77,6 +77,28 @@ public class CachedImageRecycleTests : IDisposable
         Assert.Equal(image.SourcePath, madeFor);
     }
 
+    /// <summary>The full suite's stray failure (11-12): a window an earlier test left open still
+    /// showed a cover that ClearForTests had disposed, and a later test's Interface Size change
+    /// re-laid that window out: Image.ArrangeOverride threw ObjectDisposedException.</summary>
+    [AvaloniaFact]
+    public async Task ClearForTests_WhileAWindowStillShowsACover_ItsNextLayoutDoesNotThrow()
+    {
+        ArtworkCache.DecoderOverride = Make;
+        var window = new Window { Width = 400, Height = 400 };
+        var image = new CachedImage { Width = 200, Height = 200, DecodeWidth = 256 };
+        window.Content = image;
+        window.Show();
+        image.SourcePath = P("left-open");
+        await PumpUntil(() => image.Source != null);
+
+        ArtworkCache.ClearForTests();   // what the next test class does, with this window still open
+
+        image.Width = 300;              // any re-layout of the leftover window
+        window.UpdateLayout();
+        Assert.Null(image.Source);
+        window.Close();
+    }
+
     [AvaloniaFact]
     public async Task DetachedWhileItsDecodeRuns_ReattachedToTheSameCover_ShowsIt()
     {
