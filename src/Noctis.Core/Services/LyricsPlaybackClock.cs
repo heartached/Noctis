@@ -40,6 +40,13 @@ public sealed class LyricsPlaybackClock
     /// </summary>
     public double BackwardToleranceMs { get; init; }
 
+    /// <summary>
+    /// The playback speed (1 = normal): media time runs this fast against wall time, so the
+    /// clock runs at it between readings. At 1 it assumed normal speed and a slowed song
+    /// (Lyrics Studio, GitHub #238) ran ahead, held, and ran ahead again.
+    /// </summary>
+    public double Rate { get; set; } = 1;
+
     private double _raw = double.NaN;   // last raw reading
     private double _rawAtMs;            // wall time it was taken
     private double _estimate = double.NaN;
@@ -93,11 +100,11 @@ public sealed class LyricsPlaybackClock
             return _estimate;
 
         // The raw reading was accurate when taken; where it says the player is now,
-        // compared with where the clock would be now running at speed 1. (Comparing with
+        // compared with where the clock would be now running at the playback rate. (Comparing with
         // the estimate of the previous frame counted the frame itself as error: a long
         // frame then bent the rate up for all of it and overshot.)
-        var target = _raw + (nowMs - _rawAtMs);
-        var predicted = _estimate + dt;
+        var target = _raw + (nowMs - _rawAtMs) * Rate;
+        var predicted = _estimate + dt * Rate;
         var error = target - predicted;
         if (error > SnapThresholdMs)
         {
@@ -118,7 +125,7 @@ public sealed class LyricsPlaybackClock
         // Close the error at the correction's rate, never past it, and never faster or
         // slower than MaxRateError: monotonic, no overshoot, invisible on a word sweep.
         var correction = error * (1 - Math.Exp(-dt / CorrectionTauMs));
-        var bound = dt * MaxRateError;
+        var bound = dt * Rate * MaxRateError;
         _estimate = predicted + Math.Clamp(correction, -bound, bound);
         return _estimate;
     }
@@ -129,7 +136,7 @@ public sealed class LyricsPlaybackClock
         _rawAtMs = rawAtMs;
         _holding = false;
         // A reading taken a moment ago is already that much behind the player.
-        _estimate = rawMs + Math.Clamp(nowMs - rawAtMs, 0, StallHoldMs);
+        _estimate = rawMs + Math.Clamp(nowMs - rawAtMs, 0, StallHoldMs) * Rate;
         _estimateAtMs = nowMs;
         return _estimate;
     }

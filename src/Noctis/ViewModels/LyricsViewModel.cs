@@ -2831,9 +2831,60 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (lines.Count == 0) return;
         // A probe still in flight (an earlier reload) must not land over these lines.
         ++_searchGeneration;
+        // The lines that were lit keep word-sweep state of their own: they are always rebuilt.
+        _previewRelit = new HashSet<LyricLine>(_timeline.ActiveLines);
         _timeline.Reset();
         ActiveLineIndex = -1;
-        ApplyLocalLyricsResult(current, new LocalLyricsProbe(lines, null, PreviewSource, FromCache: false));
+        try { ApplyLocalLyricsResult(current, new LocalLyricsProbe(lines, null, PreviewSource, FromCache: false)); }
+        finally { _previewRelit = null; }
+    }
+
+    // Set while UpdatePreview applies new text: ShowLines swaps only the lines that changed.
+    private HashSet<LyricLine>? _previewRelit;
+
+    /// <summary>
+    /// GitHub #237: every tap or nudge in the Studio sends the whole review here, and replacing
+    /// every line rebuilt every line's word cells in each open lyrics view (~100 MB and most of a
+    /// second per view for 40 word-timed lines; the Studio froze 2-5 s per tap, and taps queued
+    /// during the freeze all read one stale position). A tap changes one line: only the lines
+    /// whose content differs are replaced. False (rebuild all) when the shape changed or most did.
+    /// </summary>
+    private bool PatchPreviewLines(List<LyricLine> shown)
+    {
+        if (_previewRelit is not { } relit || shown.Count != LyricLines.Count) return false;
+        var changed = new List<int>();
+        for (var i = 0; i < shown.Count; i++)
+        {
+            var old = LyricLines[i];
+            if (relit.Contains(old) || !SamePreviewLine(old, shown[i])) changed.Add(i);
+        }
+        if (changed.Count * 2 > shown.Count) return false;
+        foreach (var i in changed) LyricLines[i] = shown[i];
+        return true;
+    }
+
+    private static bool SamePreviewLine(LyricLine a, LyricLine b) =>
+        a.Timestamp == b.Timestamp && a.EndTimestamp == b.EndTimestamp && a.Text == b.Text && a.Voice == b.Voice
+        && a.IsIntroPlaceholder == b.IsIntroPlaceholder && a.IsInterlude == b.IsInterlude && a.IsBackgroundOnly == b.IsBackgroundOnly
+        && a.Translation == b.Translation && a.Transliteration == b.Transliteration
+        && a.BackgroundEndTimestamp == b.BackgroundEndTimestamp && a.TransliterationEndTimestamp == b.TransliterationEndTimestamp
+        && SameWords(a.Words, b.Words) && SameWords(a.BackgroundWords, b.BackgroundWords)
+        && SameWords(a.TransliterationWords, b.TransliterationWords);
+
+    private static bool SameWords(IReadOnlyList<WordTiming>? a, IReadOnlyList<WordTiming>? b)
+    {
+        if (a is null || b is null) return a is null && b is null;
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+        {
+            WordTiming x = a[i], y = b[i];
+            if (x.Text != y.Text || x.Start != y.Start || x.End != y.End || x.IsEmphasis != y.IsEmphasis
+                || x.HeldDurationMs != y.HeldDurationMs || x.IsLastInLine != y.IsLastInLine
+                || x.SweepLeadIn != y.SweepLeadIn || x.SweepTrailOut != y.SweepTrailOut
+                || !(x.Syllables ?? []).SequenceEqual(y.Syllables ?? []))
+                return false;
+        }
+        return true;
     }
 
     /// <summary>Drops the preview; if it was for the loaded track, its real lyrics reload.</summary>
@@ -4389,6 +4440,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
 
         var nowMs = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        _clock.Rate = _player.PlaybackRate;
         var estimate = _clock.Sample(raw.TotalMilliseconds, nowMs) - _player.OutputLatency.TotalMilliseconds;
         return TimeSpan.FromMilliseconds(Math.Max(0, estimate));
     }
@@ -4702,7 +4754,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         var all = _windowAll;
         _windowUpdating = true;
-        try { LyricLines.ReplaceAll(shown); }
+        try
+        {
+            if (all is not null || !PatchPreviewLines(shown)) LyricLines.ReplaceAll(shown);
+        }
         finally { _windowUpdating = false; }
         _windowAll = all;
     }
