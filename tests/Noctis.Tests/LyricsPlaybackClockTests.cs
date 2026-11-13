@@ -118,6 +118,37 @@ public class LyricsPlaybackClockTests
         Assert.True(maxErr < blockMs + PollMs + jitterMs + 40, $"clock drifted {maxErr:F0}ms from the source");
     }
 
+    // GitHub #238: Lyrics Studio slows the song down to tap words. The clock ran at speed 1
+    // between readings, so at 0.5x it ran ahead, held, ran ahead again: the sweep stuttered.
+    [Theory]
+    [InlineData(0.5)]
+    [InlineData(0.75)]
+    [InlineData(1.5)]
+    public void AtAnotherPlaybackRate_TheClockRunsAtThatRate_WithoutHoldingOrJumping(double rate)
+    {
+        var clock = new LyricsPlaybackClock { Rate = rate };
+        double prev = double.NaN, minStep = double.MaxValue, maxStep = double.MinValue, maxErr = 0;
+        foreach (var (now, raw, truth) in Frames(blockMs: 50, maxDispatchJitterMs: 30, seconds: 12, seed: 4))
+        {
+            // The source's media time advances at the rate: scale the wall-clock model.
+            var est = clock.Sample(raw * rate, now);
+            if (now >= 1500)
+            {
+                if (!double.IsNaN(prev))
+                {
+                    minStep = Math.Min(minStep, est - prev);
+                    maxStep = Math.Max(maxStep, est - prev);
+                }
+                maxErr = Math.Max(maxErr, Math.Abs(est - truth * rate));
+            }
+            prev = est;
+        }
+        _output.WriteLine($"rate={rate}: step {minStep:F2}..{maxStep:F2} ms/frame, max |err| {maxErr:F0} ms");
+        Assert.True(minStep >= FrameMs * rate * (1 - LyricsPlaybackClock.MaxRateError) - 0.01, $"clock stalled: {minStep:F2}ms");
+        Assert.True(maxStep <= FrameMs * rate * (1 + LyricsPlaybackClock.MaxRateError) + 0.01, $"clock jumped: {maxStep:F2}ms");
+        Assert.True(maxErr < (50 + PollMs + 30) * Math.Max(1, rate) + 40, $"clock drifted {maxErr:F0}ms from the source");
+    }
+
     [Theory]
     [InlineData(50, 30, 1)]
     [InlineData(200, 30, 2)]
