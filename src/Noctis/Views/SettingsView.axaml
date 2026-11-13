@@ -4035,6 +4035,21 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            <!-- Disc scratching (Discord, Mistery "Scratching"): grab the CD / record on the
+                 lyrics page or the Sleeve mini player and turn it to move through the song. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.DiscScratching}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.DiscScratchingDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.DiscScratching}"
+                                          IsChecked="{Binding DiscScratching}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 

@@ -2,8 +2,12 @@ using System;
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
+using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Controls;
@@ -21,6 +25,12 @@ namespace Noctis.Controls;
 ///
 /// One more cue comes from state rather than the clock: the vinyl record slides out of
 /// its sleeve while playing and tucks back when paused.
+///
+/// Disc scratching (Settings → Player, off by default): with <see cref="ScratchEnabled"/>
+/// on, pressing the CD or the record and dragging past <see cref="DiscScratch.DragThreshold"/>
+/// grabs it. The disc then turns with the pointer and <see cref="ScratchTarget"/> moves the
+/// song along (clockwise = forward); letting go hands the disc back to the clock. A press
+/// that never travels that far is left a plain click. Off, the handlers return at once.
 /// </summary>
 public partial class MediaArtwork : UserControl
 {
@@ -52,6 +62,17 @@ public partial class MediaArtwork : UserControl
     public static readonly StyledProperty<CornerRadius> CoverCornerRadiusProperty =
         AvaloniaProperty.Register<MediaArtwork, CornerRadius>(nameof(CoverCornerRadius), new CornerRadius(12));
 
+    /// <summary>Settings → Player → Disc Scratching.</summary>
+    public static readonly StyledProperty<bool> ScratchEnabledProperty =
+        AvaloniaProperty.Register<MediaArtwork, bool>(nameof(ScratchEnabled));
+
+    /// <summary>What a scratch drives (the player). Null = the disc cannot be scratched.</summary>
+    public static readonly StyledProperty<IDiscScratchTarget?> ScratchTargetProperty =
+        AvaloniaProperty.Register<MediaArtwork, IDiscScratchTarget?>(nameof(ScratchTarget));
+
+    public bool ScratchEnabled { get => GetValue(ScratchEnabledProperty); set => SetValue(ScratchEnabledProperty, value); }
+    public IDiscScratchTarget? ScratchTarget { get => GetValue(ScratchTargetProperty); set => SetValue(ScratchTargetProperty, value); }
+
     public string? SourcePath { get => GetValue(SourcePathProperty); set => SetValue(SourcePathProperty, value); }
     public IImage? FallbackSource { get => GetValue(FallbackSourceProperty); set => SetValue(FallbackSourceProperty, value); }
     public string? AnimatedSource { get => GetValue(AnimatedSourceProperty); set => SetValue(AnimatedSourceProperty, value); }
@@ -81,6 +102,17 @@ public partial class MediaArtwork : UserControl
     private bool _frameQueued;
     private long _lastFrameTimestamp;
 
+    // Disc scratching state. Armed = pressed on the disc, not yet past the threshold.
+    private IPointer? _scratchPointer;
+    private Point _scratchPressPoint;      // in this control, for the threshold
+    private Visual? _scratchFrame;         // the disc's non-rotating parent
+    private Point _scratchCentre;          // disc centre in _scratchFrame
+    private double _scratchRadius;
+    private double _scratchLastAngle;
+    private double _scratchDegrees;        // turn since the grab, as the target applied it
+    private double _scratchBaseTotal;      // clock total at the grab
+    private IDiscScratchTarget? _scratchActiveTarget; // non-null while the disc is held
+
     public MediaArtwork()
     {
         InitializeComponent();
@@ -94,6 +126,11 @@ public partial class MediaArtwork : UserControl
 
         ApplyMedium();
         ApplyRecordSlide();
+
+        AddHandler(PointerPressedEvent, OnScratchPressed, RoutingStrategies.Bubble);
+        AddHandler(PointerMovedEvent, OnScratchMoved, RoutingStrategies.Bubble);
+        AddHandler(PointerReleasedEvent, OnScratchReleased, RoutingStrategies.Bubble);
+        AddHandler(PointerCaptureLostEvent, OnScratchCaptureLost, RoutingStrategies.Bubble);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -102,7 +139,13 @@ public partial class MediaArtwork : UserControl
 
         if (change.Property == MediumProperty || change.Property == AnimatedActiveProperty)
         {
+            if (change.Property == MediumProperty) FinishScratch();
             ApplyMedium();
+        }
+        else if (change.Property == ScratchEnabledProperty || change.Property == ScratchTargetProperty)
+        {
+            FinishScratch();
+            ApplyScratchCursor();
         }
         else if (change.Property == IsSpinningProperty)
         {
@@ -123,6 +166,7 @@ public partial class MediaArtwork : UserControl
     {
         // A frame already requested still fires; OnFrame sees the missing VisualRoot and
         // does not re-queue, so the loop ends on its own.
+        FinishScratch();
         base.OnDetachedFromVisualTree(e);
     }
 
@@ -143,6 +187,7 @@ public partial class MediaArtwork : UserControl
         SleeveAnimated.IsActive = animated && medium == ArtworkMedium.Vinyl;
         CassetteAnimated.IsActive = animated && medium == ArtworkMedium.Cassette;
 
+        ApplyScratchCursor();
         QueueFrame();
     }
 
@@ -188,6 +233,136 @@ public partial class MediaArtwork : UserControl
     /// <summary>Reel rotation for an unwrapped disc rotation. Geared off the total, not
     /// the wrapped angle, so the reels never snap when the disc passes 360°.</summary>
     internal static double ReelAngle(double totalDegrees) => SpinClock.Wrap(totalDegrees * ReelSpeedRatio);
+
+    // ── Disc scratching ──
+
+    /// <summary>The turning part a scratch grabs: the CD or the record. The plain cover and
+    /// the cassette have no platter to grab.</summary>
+    internal Control? ScratchDisc => Medium switch
+    {
+        ArtworkMedium.CompactDisc => DiscSpin,
+        ArtworkMedium.Vinyl => VinylSpin,
+        _ => null,
+    };
+
+    /// <summary>True while the disc is held (past the threshold).</summary>
+    internal bool IsScratching => _scratchActiveTarget != null;
+
+    /// <summary>True between a press on the disc and its release, scratching or not.</summary>
+    internal bool IsScratchArmed => _scratchPointer != null;
+
+    /// <summary>Total disc rotation (unwrapped degrees), for tests.</summary>
+    internal double DiscTotalDegrees => _clock.TotalDegrees;
+
+    private void ApplyScratchCursor()
+    {
+        var on = ScratchEnabled && ScratchTarget != null;
+        DiscSpin.Cursor = on && Medium == ArtworkMedium.CompactDisc ? new Cursor(StandardCursorType.Hand) : null;
+        VinylSpin.Cursor = on && Medium == ArtworkMedium.Vinyl ? new Cursor(StandardCursorType.Hand) : null;
+    }
+
+    private void OnScratchPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!ScratchEnabled || ScratchTarget == null) return;
+        // A double-click keeps whatever it did before (the mini player closes on it).
+        if (e.ClickCount > 1 || _scratchPointer != null) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (ScratchDisc is not { } disc || disc.GetVisualParent() is not Visual frame) return;
+        if (e.Source is not Visual source || !(ReferenceEquals(source, disc) || disc.IsVisualAncestorOf(source))) return;
+
+        var size = frame.Bounds.Size;
+        var centre = new Point(size.Width / 2, size.Height / 2);
+        var radius = Math.Min(size.Width, size.Height) / 2;
+        var p = e.GetPosition(frame);
+        var offset = p - centre;
+        if (radius <= 0 || Math.Sqrt(offset.X * offset.X + offset.Y * offset.Y) > radius) return;
+
+        _scratchPointer = e.Pointer;
+        _scratchPressPoint = e.GetPosition(this);
+        _scratchFrame = frame;
+        _scratchCentre = centre;
+        _scratchRadius = radius;
+        _scratchLastAngle = DiscScratch.AngleOf(p, centre);
+        _scratchDegrees = 0;
+        // Claimed so a press on the disc does not also start a window drag (mini player).
+        e.Handled = true;
+    }
+
+    private void OnScratchMoved(object? sender, PointerEventArgs e)
+    {
+        if (_scratchPointer == null || !ReferenceEquals(e.Pointer, _scratchPointer) || _scratchFrame is not { } frame) return;
+
+        if (_scratchActiveTarget == null)
+        {
+            if (!DiscScratch.PastThreshold(_scratchPressPoint, e.GetPosition(this))) return;
+            if (ScratchTarget is not { } target || !target.BeginScratch())
+            {
+                ResetScratchPointer();
+                return;
+            }
+            _scratchActiveTarget = target;
+            _scratchBaseTotal = _clock.TotalDegrees;
+            _clock.Hold(_scratchBaseTotal);
+            e.Pointer.Capture(this);
+        }
+
+        var p = e.GetPosition(frame);
+        var offset = p - _scratchCentre;
+        // Right over the spindle the angle swings wildly for a pixel of travel: skip it.
+        if (Math.Sqrt(offset.X * offset.X + offset.Y * offset.Y) < _scratchRadius * DiscScratch.DeadZoneFraction)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        var angle = DiscScratch.AngleOf(p, _scratchCentre);
+        var wanted = _scratchDegrees + DiscScratch.TurnBetween(_scratchLastAngle, angle);
+        _scratchLastAngle = angle;
+        // The player clamps at the track's start and end; the disc stops where the song does.
+        _scratchDegrees = _scratchActiveTarget.ScratchTo(wanted);
+        _clock.Hold(_scratchBaseTotal + _scratchDegrees);
+        ApplyAngle(_clock.TotalDegrees);
+        e.Handled = true;
+    }
+
+    private void OnScratchReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_scratchPointer == null || !ReferenceEquals(e.Pointer, _scratchPointer)) return;
+        var wasScratching = IsScratching;
+        FinishScratch();
+        // A release without a scratch is a plain click: leave it to whoever handles clicks.
+        if (wasScratching) e.Handled = true;
+    }
+
+    private void OnScratchCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_scratchPointer == null || !ReferenceEquals(e.Pointer, _scratchPointer)) return;
+        FinishScratch();
+    }
+
+    /// <summary>Ends any press or scratch: the player gets its single seek, the disc goes back
+    /// to the clock. Safe to call any time.</summary>
+    private void FinishScratch()
+    {
+        var target = _scratchActiveTarget;
+        var pointer = _scratchPointer;
+        // Cleared first: releasing the capture raises CaptureLost, which then finds nothing to do.
+        _scratchActiveTarget = null;
+        ResetScratchPointer();
+        if (target == null) return;
+
+        _clock.Release();
+        target.EndScratch();
+        if (pointer?.Captured is Visual captured && (ReferenceEquals(captured, this) || this.IsVisualAncestorOf(captured)))
+            pointer.Capture(null);
+        QueueFrame();
+    }
+
+    private void ResetScratchPointer()
+    {
+        _scratchPointer = null;
+        _scratchFrame = null;
+    }
 
     private void ApplyAngle(double totalDegrees)
     {

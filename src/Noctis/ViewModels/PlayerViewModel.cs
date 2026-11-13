@@ -17,7 +17,7 @@ namespace Noctis.ViewModels;
 /// Controls audio playback and exposes state for the persistent bottom playback bar.
 /// Owns the relationship between the queue and the audio player service.
 /// </summary>
-public partial class PlayerViewModel : ViewModelBase
+public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
 {
     private readonly IAudioPlayer _audioPlayer;
 
@@ -2963,6 +2963,9 @@ public partial class PlayerViewModel : ViewModelBase
             oldValue.IsCurrentlyPlaying = false;
         }
         if (newValue != null) newValue.IsNowPlaying = true;
+        // A song change (hotkey, media key, API) while a disc is held ends the scratch
+        // without its seek: the new song keeps its own start.
+        if (_scratchActive && newValue?.Id != _scratchTrackId) AbortScratch("track changed");
         SyncNowPlayingFlags();
         OnCurrentTrackChangedForRows(oldValue, newValue);
         DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrack.Changed",
@@ -3144,17 +3147,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (!_isSeeking) return; // already ended — prevent duplicate seeks
         _isSeeking = false;
-
-        // A committed seek cancels the player's prepared/staged next track
-        // (Seek → CancelPreparedNext), but this path never re-armed the prepare
-        // latch — so a seek inside the prepare window left the transition with
-        // "no prepared standby" and an audible cold fallback. Re-arm: the next
-        // position tick re-prepares (a no-op duplicate if the standby survived).
-        if (!_autoMixAdvanceQueued)
-        {
-            _autoMixPreparedTrackId = Guid.Empty;
-            _autoMixPreparedSnapshot = null;
-        }
+        RearmPrepareAfterSeek();
 
         if (CurrentTrack == null || Duration <= TimeSpan.Zero)
             return;
@@ -3190,6 +3183,100 @@ public partial class PlayerViewModel : ViewModelBase
             _audioPlayer.Seek(target);
             Dispatcher.UIThread.Post(() => Seeked?.Invoke(this, target));
         }, null, SeekDebounceMs, Timeout.Infinite);
+    }
+
+    /// <summary>
+    /// A committed seek cancels the player's prepared/staged next track
+    /// (Seek → CancelPreparedNext), but the drag paths never re-armed the prepare
+    /// latch — so a seek inside the prepare window left the transition with
+    /// "no prepared standby" and an audible cold fallback. Re-arm: the next
+    /// position tick re-prepares (a no-op duplicate if the standby survived).
+    /// </summary>
+    private void RearmPrepareAfterSeek()
+    {
+        if (_autoMixAdvanceQueued) return;
+        _autoMixPreparedTrackId = Guid.Empty;
+        _autoMixPreparedSnapshot = null;
+    }
+
+    // ── Disc scratching (Settings → Player → Disc Scratching) ──
+    // The disc on the lyrics page / Sleeve mini player is grabbed and turned by hand. It rides
+    // the timeline-drag protocol (IsSeeking: Position, the time labels and the lyrics follow the
+    // hand, position ticks from the engine are ignored) with two differences. The engine is
+    // paused underneath while a PLAYING track is held — a held record is silent, and a paused
+    // engine can never reach the track end mid-scratch — while the UI stays "playing", so the
+    // play button, Discord and the media overlay do not flicker. And the release seeks at once
+    // (no debounce), then resumes, so nothing of the old position is heard.
+
+    private bool _scratchActive;
+    private bool _scratchHeldEngine;
+    private Guid _scratchTrackId;
+    private long _scratchSessionId;
+    private TimeSpan _scratchOrigin;
+
+    /// <summary>True while a disc is held (between <see cref="BeginScratch"/> and <see cref="EndScratch"/>).</summary>
+    public bool IsScratching => _scratchActive;
+
+    public bool BeginScratch()
+    {
+        if (_scratchActive) return true;
+        if (CurrentTrack == null || Duration <= TimeSpan.Zero) return false;
+
+        BeginSeek();
+        _scratchActive = true;
+        _scratchTrackId = CurrentTrack.Id;
+        _scratchSessionId = _audioPlayer.CurrentSessionId;
+        _scratchOrigin = Position;
+        if (State == PlaybackState.Playing)
+        {
+            CancelAutoMixTransition("disc scratch");
+            _audioPlayer.Pause();
+            _scratchHeldEngine = true;
+        }
+        DebugLogger.Info(DebugLogger.Category.Playback, "Scratch.Begin",
+            $"originMs={_scratchOrigin.TotalMilliseconds:F0}, state={State}, track={CurrentTrack.Id}");
+        return true;
+    }
+
+    public double ScratchTo(double degrees)
+    {
+        if (!_scratchActive || CurrentTrack == null || Duration <= TimeSpan.Zero || !double.IsFinite(degrees))
+            return 0;
+        var target = DiscScratch.TargetFor(_scratchOrigin, degrees, Duration);
+        // The timeline drag's setter: Position, the labels and the pending target follow.
+        PositionFraction = Math.Clamp(target.Ticks / (double)Duration.Ticks, 0.0, 1.0);
+        return DiscScratch.DegreesFor(target - _scratchOrigin);
+    }
+
+    public void EndScratch()
+    {
+        if (!_scratchActive) return;
+        var resume = _scratchHeldEngine;
+        var moved = _hasPendingSeekTarget;
+        var target = _pendingSeekTarget;
+        var sameSession = _audioPlayer.CurrentSessionId == _scratchSessionId && CurrentTrack?.Id == _scratchTrackId;
+        _scratchActive = false;
+        _scratchHeldEngine = false;
+        _isSeeking = false;
+        _hasPendingSeekTarget = false;
+        RearmPrepareAfterSeek();
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "Scratch.End",
+            $"targetMs={target.TotalMilliseconds:F0}, moved={moved}, resume={resume}, sameSession={sameSession}, state={State}");
+        if (!sameSession) return;
+        if (moved) SeekTo(target);
+        // Resume only what the scratch paused, and only if nobody paused it meanwhile.
+        if (resume && State == PlaybackState.Playing) _audioPlayer.Resume();
+    }
+
+    /// <summary>Drops a scratch without its seek or resume (the song changed under it).</summary>
+    private void AbortScratch(string reason)
+    {
+        _scratchActive = false;
+        _scratchHeldEngine = false;
+        _isSeeking = false;
+        _hasPendingSeekTarget = false;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Scratch.Abort", reason);
     }
 
     // ── Private helpers ──────────────────────────────────────

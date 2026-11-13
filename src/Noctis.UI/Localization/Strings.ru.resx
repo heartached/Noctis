@@ -276,6 +276,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.SleeveRecordPeekingOutTip" xml:space="preserve"><value>Конверт, из которого выглядывает пластинка</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Vinyl" xml:space="preserve"><value>Винил</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CassetteCoverItsLabelTip" xml:space="preserve"><value>Кассета с обложкой на этикетке</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratching" xml:space="preserve"><value>Скретч диска</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Хватайте CD или виниловую пластинку на странице текста или в мини-плеере Sleeve и крутите её, как диджей, чтобы перемещаться по песне. Пока вы держите диск, звук приостановлен.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Кассета</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Макет Cover Flow</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Как страница Cover Flow располагает обложки из очереди.</value><comment>Text in SettingsView.axaml</comment></data>
