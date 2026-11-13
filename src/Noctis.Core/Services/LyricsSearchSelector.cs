@@ -90,6 +90,8 @@ public static partial class LyricsSearchSelector
     /// instrumental song (or a wrong match pointing at one) with "纯音乐，请欣赏" ("instrumental,
     /// please enjoy"), sometimes under credit lines ("作曲 : …"); shown as lyrics it was the
     /// reporter's junk Chinese line. True when every lyric line is that notice or a credit.
+    /// GitHub #236: LRCGET saves an LRCLIB instrumental as a lyrics file holding only the header
+    /// tag "[au: instrumental]"; that tag is the same answer.
     /// </summary>
     public static bool IsInstrumentalPlaceholder(string? lyrics)
     {
@@ -97,6 +99,7 @@ public static partial class LyricsSearchSelector
         var notice = false;
         foreach (var raw in lyrics.Split('\n'))
         {
+            if (InstrumentalAuthorTag().IsMatch(raw.Trim().TrimStart('﻿'))) { notice = true; continue; }
             var line = TimeTags().Replace(raw, string.Empty).Trim();
             if (line.Length == 0) continue;
             var letters = new string(line.Where(char.IsLetterOrDigit).ToArray());
@@ -110,6 +113,10 @@ public static partial class LyricsSearchSelector
     // [mm:ss.xx] / <mm:ss.xx> timing tags and [ar:…]-style header tags.
     [GeneratedRegex(@"\[[^\]]*\]|<\d{1,3}:\d{2}(?:[.:]\d{1,3})?>")]
     private static partial Regex TimeTags();
+
+    // LRCGET's instrumental file: "[au: instrumental]" (any case, any spacing).
+    [GeneratedRegex(@"^\[au:\s*instrumental\s*\]$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex InstrumentalAuthorTag();
 
     // "作曲 : Name", "Composer: Name" — a short label, then a colon.
     [GeneratedRegex(@"^[^:：]{1,12}\s*[:：]")]
