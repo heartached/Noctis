@@ -173,14 +173,18 @@ public static partial class LrcParser
         {
             if (lines.Count + bgLines >= maxLines) break;
 
-            var trimmed = rawLine.Trim();
+            // A byte-order mark is not whitespace to Trim: left on the first line it hid a
+            // header tag from the anchored check below and the tag showed as a lyric.
+            var trimmed = rawLine.Trim().TrimStart('\uFEFF').TrimStart();
             if (string.IsNullOrEmpty(trimmed)) continue;
 
             // Offset is handled once globally before parsing timestamps.
             if (OffsetTagRegex().IsMatch(trimmed))
                 continue;
 
-            // Skip metadata tags like [ar:Artist], [ti:Title], [al:Album], [offset:], [length:]
+            // Skip metadata tags like [ar:Artist], [ti:Title], [al:Album], [au:Author], [offset:], [length:].
+            // GitHub #236: [au:] was missing, so LRCGET's "[au: instrumental]" file (an LRCLIB
+            // instrumental) showed that one line as the lyric for the whole song.
             if (MetadataTagRegex().IsMatch(trimmed))
                 continue;
 
@@ -485,7 +489,7 @@ public static partial class LrcParser
     [GeneratedRegex(@"\[\d{1,3}:\d{2,3}(?:[.:]\d{1,3})?\]")]
     private static partial Regex LrcTimestampRegex();
 
-    [GeneratedRegex(@"^\[(ar|ti|al|by|offset|re|ve|length|id):")]
+    [GeneratedRegex(@"^\[(ar|ti|al|au|lr|by|offset|re|ve|length|id|la|tool|#):", RegexOptions.IgnoreCase)]
     private static partial Regex MetadataTagRegex();
 
     [GeneratedRegex(@"^\[offset:(?<offset>[+-]?\d+)\]$", RegexOptions.IgnoreCase)]
