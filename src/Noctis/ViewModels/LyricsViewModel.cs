@@ -2671,6 +2671,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Probe source of a song marked as having no lyrics: nothing is read for it.</summary>
     private const string NoLyricsSource = "NoLyrics";
 
+    /// <summary>Probe source of a song whose lyrics only say it is instrumental (GitHub #236:
+    /// LRCGET's "[au: instrumental]" file for an LRCLIB instrumental): shown as one, no lookup.</summary>
+    internal const string InstrumentalSource = "Instrumental";
+
     /// <summary>
     /// Marks the song on the page as having no lyrics (an instrumental): no automatic lookup
     /// searches it again, and the lyrics it has from this app go as Remove Lyrics takes them —
@@ -3473,6 +3477,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarElrc = TryReadSidecar(track.FilePath, new[] { ".elrc", ".ELRC", ".Elrc" });
             if (sidecarElrc != null)
             {
+                if (LyricsSearchSelector.IsInstrumentalPlaceholder(sidecarElrc)) return InstrumentalProbe;
                 var lines = ParseLrcContent(sidecarElrc);
                 if (lines.Count > 0)
                     return new LocalLyricsProbe(lines, null, "Sidecar:Elrc", FromCache: false, sidecarElrc);
@@ -3486,6 +3491,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarLrc = TryReadSidecar(track.FilePath, new[] { ".lrc", ".LRC", ".Lrc" });
             if (sidecarLrc != null)
             {
+                if (LyricsSearchSelector.IsInstrumentalPlaceholder(sidecarLrc)) return InstrumentalProbe;
                 var lines = ParseLrcContent(sidecarLrc);
                 if (lines.Count > 0)
                     return new LocalLyricsProbe(lines, null, "Sidecar:Lrc", FromCache: false, sidecarLrc);
@@ -3497,6 +3503,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // or lyrics saved for the song since.
         var hasSyncedField = !string.IsNullOrWhiteSpace(track.SyncedLyrics);
         var hasPlainField = !string.IsNullOrWhiteSpace(track.Lyrics);
+        if (LyricsSearchSelector.IsInstrumentalPlaceholder(hasSyncedField ? track.SyncedLyrics : track.Lyrics))
+            return InstrumentalProbe;
         // A whole TTML document as the song's lyrics text (pasted into a tagger's lyrics field,
         // GitHub #132) is Apple's timed lyrics, not words to print: it showed as its markup.
         if (!hasSyncedField && ProbeTtmlText(track.Lyrics, joinSplitWords, uiLanguage) is { } ttmlField)
@@ -3525,6 +3533,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var cachedLrc = TryReadCacheFile(track.Id, ".lrc");
             if (cachedLrc != null)
             {
+                if (LyricsSearchSelector.IsInstrumentalPlaceholder(cachedLrc)) return InstrumentalProbe;
                 if (cachedLrc.Contains('[') && LrcParser.ContainsTimestamp(cachedLrc))
                 {
                     var lines = ParseLrcContent(cachedLrc);
@@ -3550,6 +3559,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (track.SourceType != SourceType.Local || string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
         var embedded = EmbeddedLyrics.ReadFile(path);
         if (embedded.IsEmpty) return null;
+        if (LyricsSearchSelector.IsInstrumentalPlaceholder(!string.IsNullOrWhiteSpace(embedded.TimedText) ? embedded.TimedText
+                : string.IsNullOrWhiteSpace(rowPlain) ? embedded.PlainText : null))
+            return InstrumentalProbe;
 
         if (string.IsNullOrWhiteSpace(rowPlain) && ProbeTtmlText(embedded.Text, joinSplitWords, uiLanguage) is { } ttml)
             return ttml;
@@ -3584,6 +3596,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         return new LocalLyricsProbe(lines, plain, "Embedded:Ttml", FromCache: false,
             TtmlParser.ToLrc(text, joinSplitWords, uiLanguage));
     }
+
+    private static readonly LocalLyricsProbe InstrumentalProbe = new(null, null, InstrumentalSource, FromCache: false);
 
     private void ApplyLocalLyricsResult(Track track, LocalLyricsProbe probe)
     {
@@ -3665,6 +3679,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             IsMarkedNoLyrics = true;
             AutoSelectTab();
             RefreshActiveLyricPosition();
+            return;
+        }
+        if (probe.Source == InstrumentalSource)
+        {
+            // GitHub #236: its lyrics only say it is instrumental. Shown as LRCLIB's own
+            // instrumental answer is (search pill + "This track is instrumental."), and the
+            // automatic download skips it this session.
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "Instrumental", $"title={track.Title}");
+            _autoDownloadTried.Add(track.Id);
+            SearchFailedMessage = Localization.Loc.T("Lyrics.Instrumental");
+            ShowSearchButton = true;
+            AutoSelectTab();
+            RefreshActiveLyricPosition();
+            UpdateNoLyricsCentered();
             return;
         }
         DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
