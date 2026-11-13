@@ -1597,6 +1597,48 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [RelayCommand]
     private void NudgeLater() => Nudge(TimeSpan.FromMilliseconds(100));
 
+    // ── Speed (GitHub #238): slow the song down to tap or check words ─────────
+    // The player's own speed (the island's menu) in 0.05 steps from 0.5x to 1.5x. Taps stamp
+    // the player's position, which is the song's time at any speed. The speed the Studio found
+    // comes back when it closes or its page is left, so a slow session does not stay on.
+
+    public const int MinSpeedPercent = 50;
+    public const int MaxSpeedPercent = 150;
+    public const int SpeedStepPercent = 5;
+
+    private int? _speedBeforeStudio;
+
+    /// <summary>The player, for the speed pill's text (the player's own, so it follows the island's menu too).</summary>
+    public PlayerViewModel? Player => _player;
+
+    public bool CanChangeSpeed => _player is not null;
+
+    [RelayCommand]
+    private void Slower() => StepSpeed(-SpeedStepPercent);
+
+    [RelayCommand]
+    private void Faster() => StepSpeed(SpeedStepPercent);
+
+    /// <summary>One step on the 5% grid (an off-grid speed snaps to it), kept within 50-150%.</summary>
+    internal void StepSpeed(int stepPercent)
+    {
+        if (_player is null) return;
+        var current = _player.PlaybackRatePercent;
+        var next = (int)Math.Round((current + stepPercent) / (double)SpeedStepPercent, MidpointRounding.AwayFromZero) * SpeedStepPercent;
+        next = Math.Clamp(next, MinSpeedPercent, MaxSpeedPercent);
+        if (next == current) return;
+        _speedBeforeStudio ??= current;
+        _player.SetPlaybackRateCommand.Execute(next.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The Studio closed or its page was left: the speed it found comes back.</summary>
+    internal void RestoreSpeed()
+    {
+        if (_speedBeforeStudio is not { } before) return;
+        _speedBeforeStudio = null;
+        _player?.SetPlaybackRateCommand.Execute(before.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     /// <summary>Shifts the whole song; an earlier shift stops when the first line reaches 0:00, so the gaps between lines never change.</summary>
     private void Nudge(TimeSpan delta)
     {
@@ -1893,6 +1935,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         // The dialog's pane leaves with it: the lyrics page and side panel show the song's own lyrics
         // again, and an edit still waiting for the pane is not pushed after the dialog closed.
         SuspendLivePreview();
+        RestoreSpeed();
         if (_savedCount > 0)
         {
             try { await _library.SaveAsync(); } catch { }

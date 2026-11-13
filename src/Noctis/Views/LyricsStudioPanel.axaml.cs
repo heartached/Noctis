@@ -133,6 +133,9 @@ public partial class LyricsStudioPanel : UserControl
 
         DataContextChanged += (_, _) =>
         {
+            // A Studio replaced on the page gives back the speed it set (GitHub #238).
+            _speedOwner?.RestoreSpeed();
+            _speedOwner = DataContext as LyricsStudioViewModel;
             // The dialog sets Confirm over itself before the panel attaches; the page has no
             // window of its own, so the prompt goes over the main window.
             if (DataContext is LyricsStudioViewModel { Confirm: null } vm)
@@ -143,8 +146,11 @@ public partial class LyricsStudioPanel : UserControl
             if (this.IsAttachedToVisualTree()) { WatchModel(); WatchLivePreview(); }
         };
         AttachedToVisualTree += (_, _) => { WireLyricsPagePreview(); HookKeys(); WatchModel(); WatchLivePreview(); };
-        DetachedFromVisualTree += (_, _) => { UnhookKeys(); UnwatchModel(); _liveWatch?.SuspendLivePreview(); UnwatchLivePreview(); };
+        DetachedFromVisualTree += (_, _) => { UnhookKeys(); UnwatchModel(); _liveWatch?.SuspendLivePreview(); UnwatchLivePreview(); _speedOwner?.RestoreSpeed(); };
     }
+
+    // The Studio whose speed steps are undone when it leaves the screen (the page has no Close).
+    private LyricsStudioViewModel? _speedOwner;
 
     // ── Live preview pane (10-14) ──
     // The pane shows the review through the app's lyrics view model, in a second copy of the

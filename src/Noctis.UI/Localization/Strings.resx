@@ -2872,6 +2872,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="LyricsStudio.NudgeCoarseLater" xml:space="preserve"><value>100 ms later · shortcut Shift+.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.Hear" xml:space="preserve"><value>Hear it</value><comment>Nudge bar button: play from just before the selection</comment></data>
   <data name="LyricsStudio.HearTip" xml:space="preserve"><value>Play from a second before the selected line or word · shortcut /</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.SpeedSlower" xml:space="preserve"><value>Slower</value><comment>Speed pill: play the song slower (0.05x step)</comment></data>
+  <data name="LyricsStudio.SpeedFaster" xml:space="preserve"><value>Faster</value><comment>Speed pill: play the song faster (0.05x step)</comment></data>
+  <data name="LyricsStudio.SpeedTip" xml:space="preserve"><value>Playback speed, 0.5x to 1.5x. Taps still land on the song's own time. The speed you had comes back when the Studio closes.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.LivePreview" xml:space="preserve"><value>Live preview</value><comment>Review button: show or hide the lyrics preview beside the editor</comment></data>
   <data name="LyricsStudio.LivePreviewTip" xml:space="preserve"><value>Show the lyrics as they will look, beside the editor, following the song. Updates as you edit; nothing is saved.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.LivePreviewIdle" xml:space="preserve"><value>Play this song to watch its lyrics here</value><comment>Preview pane, when another song (or none) is playing</comment></data>
