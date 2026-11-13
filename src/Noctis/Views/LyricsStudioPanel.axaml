@@ -92,7 +92,7 @@
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.nudge-step">
+        <Style Selector="Button.nudge-step, Button.speed-step">
             <Setter Property="Width" Value="28" />
             <Setter Property="Height" Value="26" />
             <Setter Property="MinHeight" Value="0" />
@@ -105,13 +105,13 @@
             <Setter Property="FontSize" Value="15" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.nudge-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.nudge-step:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.speed-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-        <Style Selector="Button.nudge-step:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.nudge-step:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.speed-step:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-        <Style Selector="Button.nudge-step:pointerover, Button.nudge-step:pressed">
+        <Style Selector="Button.nudge-step:pointerover, Button.nudge-step:pressed, Button.speed-step:pointerover, Button.speed-step:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <Style Selector="Border.model-banner">
@@ -936,6 +936,21 @@
                                         <TextBlock Text="{loc:T LyricsStudio.Hear}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
+                                <!-- Speed (GitHub #238): the player's own speed, 0.05 steps from 0.5x to 1.5x; restored when the Studio closes. -->
+                                <Border Classes="edit-nudge-pill studio-speed" IsVisible="{Binding CanChangeSpeed}" ToolTip.Tip="{loc:T LyricsStudio.SpeedTip}">
+                                    <StackPanel Orientation="Horizontal" Spacing="2">
+                                        <Button Classes="speed-step" Command="{Binding SlowerCommand}"
+                                                ToolTip.Tip="{loc:T LyricsStudio.SpeedSlower}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedSlower}">
+                                            <TextBlock Text="−" />
+                                        </Button>
+                                        <TextBlock Text="{Binding Player.PlaybackRateText}" FontSize="12" Opacity="0.75" FontFeatures="+tnum" VerticalAlignment="Center"
+                                                   MinWidth="34" TextAlignment="Center" />
+                                        <Button Classes="speed-step" Command="{Binding FasterCommand}"
+                                                ToolTip.Tip="{loc:T LyricsStudio.SpeedFaster}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedFaster}">
+                                            <TextBlock Text="+" />
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
                             </WrapPanel>
                             <Border CornerRadius="10" Padding="12,8" Background="{DynamicResource AccentButtonBackground}" IsVisible="{Binding IsTapping}">
                                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
