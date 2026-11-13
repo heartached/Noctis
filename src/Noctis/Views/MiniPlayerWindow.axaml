@@ -2200,6 +2200,8 @@
                                                DecodeWidth="768"
                                                AnimatedSource="{Binding Player.CurrentAnimatedCoverPath}"
                                                AnimatedActive="{Binding Settings.EnableAnimatedCovers}"
+                                               ScratchEnabled="{Binding Settings.DiscScratching}"
+                                               ScratchTarget="{Binding Player}"
                                                IsSpinning="{Binding Player.IsPlaying}"/>
                         <Button Grid.Row="0" Classes="mini-transport design-circle" Width="28" Height="28"
                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,12,14,0"

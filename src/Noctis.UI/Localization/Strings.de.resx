@@ -275,6 +275,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.SleeveRecordPeekingOutTip" xml:space="preserve"><value>Eine Hülle, aus der die Platte schaut</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CassetteCoverItsLabelTip" xml:space="preserve"><value>Eine Kassette mit dem Cover auf dem Label</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratching" xml:space="preserve"><value>Disc-Scratching</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Die CD oder Schallplatte auf der Songtext-Seite oder im Sleeve-Mini-Player greifen und wie ein DJ drehen, um durch den Song zu springen. Der Ton pausiert, solange du die Scheibe hältst.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Kassette</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover-Flow-Layout</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Wie die Cover-Flow-Seite die Cover der Warteschlange anordnet.</value><comment>Text in SettingsView.axaml</comment></data>

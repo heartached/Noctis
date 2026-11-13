@@ -1134,6 +1134,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// shape as the Song Transitions style cards.</summary>
     [ObservableProperty] private string _nowPlayingArtworkStyle = ArtworkMediums.DefaultSetting;
 
+    /// <summary>Disc scratching: the CD / vinyl record can be grabbed and turned to move
+    /// through the song. The lyrics page and the Sleeve mini player bind it directly.</summary>
+    [ObservableProperty] private bool _discScratching;
+
     /// <summary>Typed view of <see cref="NowPlayingArtworkStyle"/> for the lyrics page's MediaArtwork.</summary>
     public ArtworkMedium NowPlayingArtworkMedium => ArtworkMediums.Parse(NowPlayingArtworkStyle);
 
@@ -3619,6 +3623,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumPageTintWholeWindow = _settings.AlbumPageTintWholeWindow;
             // Round-trip through Parse so a stale/unknown file value normalizes to "Cover".
             NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
+            DiscScratching = _settings.DiscScratching;
             CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
             MiniPlayerStyle = MiniPlayerStyles.Parse(_settings.MiniPlayerStyle).ToString();
             PlaybackBarShowSkipButtons = _settings.PlaybackBarShowSkipButtons;
@@ -4196,6 +4201,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumPageTintWholePage = AlbumPageTintWholePage;
         _settings.AlbumPageTintWholeWindow = AlbumPageTintWholeWindow;
         _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
+        _settings.DiscScratching = DiscScratching;
         _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
         _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
         _settings.PlaybackBarShowSkipButtons = PlaybackBarShowSkipButtons;
@@ -6087,6 +6093,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(key)) return;
         var changed = excluded ? _scrobbleExclusions.Add(key) : _scrobbleExclusions.Remove(key);
         if (changed && _settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnDiscScratchingChanged(bool value)
+    {
+        // No Apply* step: the discs bind DiscScratching directly.
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnNowPlayingArtworkStyleChanged(string value)
@@ -8529,6 +8541,7 @@ public partial class SettingsViewModel : ViewModelBase
             HomeNewAlbumsCount = defaultSettings.HomeNewAlbumsCount;
             HomeNewAlbumsFirst = defaultSettings.HomeNewAlbumsFirst;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
+            DiscScratching = defaultSettings.DiscScratching;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;
             MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
             PlaybackBarShowSkipButtons = defaultSettings.PlaybackBarShowSkipButtons;

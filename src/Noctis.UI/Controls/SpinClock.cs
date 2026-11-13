@@ -50,9 +50,25 @@ public sealed class SpinClock
     /// <summary>True once the disc is neither driven nor coasting — nothing left to draw.</summary>
     public bool IsSettled => !IsRunning && Velocity == 0;
 
+    /// <summary>A hand on the platter (Disc scratching): while held the clock stands still
+    /// and the angle is wherever <see cref="Hold"/> put it.</summary>
+    public bool IsHeld { get; private set; }
+
+    /// <summary>Grabs the disc at <paramref name="totalDegrees"/> (unwrapped). The motor's
+    /// momentum is gone, so letting go spins up from rest, like a released record.</summary>
+    public void Hold(double totalDegrees)
+    {
+        IsHeld = true;
+        Velocity = 0;
+        TotalDegrees = totalDegrees;
+    }
+
+    /// <summary>Lets go of the disc; <see cref="Advance"/> drives it again from where it was held.</summary>
+    public void Release() => IsHeld = false;
+
     public void Advance(double deltaSeconds)
     {
-        if (deltaSeconds <= 0) return;
+        if (deltaSeconds <= 0 || IsHeld) return;
 
         var target = IsRunning ? TargetDegreesPerSecond : 0;
         var tau = IsRunning ? SpinUpSeconds : SpinDownSeconds;

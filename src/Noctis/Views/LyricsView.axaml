@@ -628,6 +628,8 @@
                             AnimatedSource="{Binding Player.CurrentAnimatedCoverPath}"
                             AnimatedActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}"
                             Medium="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.NowPlayingArtworkMedium, FallbackValue={x:Static m:ArtworkMedium.Cover}}"
+                            ScratchEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.DiscScratching, FallbackValue=False}"
+                            ScratchTarget="{Binding Player}"
                             IsSpinning="{Binding Player.IsPlaying}">
                             <!-- Also stays up for a clip with no video stream (an audio-only file). -->
                             <controls:MediaArtwork.IsVisible>

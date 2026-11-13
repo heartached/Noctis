@@ -853,6 +853,11 @@ public class AppSettings : IJsonOnDeserializing
     /// unknown value from a newer build falls back to the cover instead of failing to load.</summary>
     public string NowPlayingArtworkStyle { get; set; } = ArtworkMediums.DefaultSetting;
 
+    /// <summary>Disc scratching (Discord, Mistery): the CD / vinyl record on the Lyrics page and
+    /// the Sleeve mini player can be grabbed and turned to move through the song like a DJ.
+    /// Off by default.</summary>
+    public bool DiscScratching { get; set; }
+
     /// <summary>Mini player design: "Classic" (the size-morphing card), "Pill" or "Sleeve";
     /// see <see cref="MiniPlayerStyle"/>. Stored by name like the other style pickers.</summary>
     public string MiniPlayerStyle { get; set; } = MiniPlayerStyles.DefaultSetting;
