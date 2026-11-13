@@ -4412,6 +4412,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
 
         var nowMs = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        _clock.Rate = _player.PlaybackRate;
         var estimate = _clock.Sample(raw.TotalMilliseconds, nowMs) - _player.OutputLatency.TotalMilliseconds;
         return TimeSpan.FromMilliseconds(Math.Max(0, estimate));
     }
