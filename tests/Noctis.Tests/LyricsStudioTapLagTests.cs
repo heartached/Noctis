@@ -183,6 +183,36 @@ public class LyricsStudioTapLagTests : IDisposable
         finally { win.Close(); lyrics.Dispose(); }
     }
 
+    // The reporter's other half: the word step buttons "do not work at all". On a .ttml song
+    // with the preview open the buttons themselves move the word (each press used to cost a
+    // full preview rebuild). A word squeezed 10 ms from both neighbours (taps that queued up
+    // during a freeze all read one position) has no room, and the nudge rules clamp, never push.
+    [AvaloniaFact]
+    public async Task WordStepButtons_MoveTheSelectedWord_OnATtmlSong_WithThePreviewOpen()
+    {
+        var (vm, lyrics, _, win) = Mount();
+        try
+        {
+            await WaitForPreview(win, lyrics);
+            var line = vm.ReviewLines[5];
+            line.IsExpanded = true;
+            await vm.SelectWordCommand.ExecuteAsync(line.Words[3]);
+            vm.NudgeStart = true;
+            Settle(win);
+            var bar = win.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Classes.Contains("review-nudge"));
+            var steps = bar.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("nudge-step")).ToList();
+            Assert.All(steps, b => Assert.True(b.IsEffectivelyEnabled));
+            var start = line.Words[3].Start;
+            foreach (var (button, ms) in new[] { (steps[1], 10), (steps[3], 110), (steps[0], 100), (steps[2], 0) })
+            {
+                button.Command!.Execute(button.CommandParameter);
+                Settle(win);
+                Assert.Equal(start + TimeSpan.FromMilliseconds(ms), line.Words[3].Start);
+            }
+        }
+        finally { win.Close(); lyrics.Dispose(); }
+    }
+
     private sealed class StubLrcLib : ILrcLibService
     {
         public Task<LrcLibResult?> GetLyricsAsync(string artist, string trackName, double durationSeconds, CancellationToken ct = default)
