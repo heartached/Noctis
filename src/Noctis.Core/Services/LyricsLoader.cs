@@ -5,12 +5,16 @@ using Noctis.Models;
 
 namespace Noctis.Services;
 
-public enum LyricsSource { None, SidecarTtml, SidecarElrc, SidecarLrc, EmbeddedSynced, EmbeddedSylt, EmbeddedPlain, SidecarUnparsed, Online }
+public enum LyricsSource { None, SidecarTtml, SidecarElrc, SidecarLrc, EmbeddedSynced, EmbeddedSylt, EmbeddedPlain, SidecarUnparsed, Online, Instrumental }
 
 /// <summary>What <see cref="LyricsLoader.Load"/> found. Plain lines are pre-activated.</summary>
 public sealed record LoadedLyrics(IReadOnlyList<LyricLine> Lines, bool IsSynced, LyricsSource Source)
 {
     public static LoadedLyrics None { get; } = new(Array.Empty<LyricLine>(), false, LyricsSource.None);
+
+    /// <summary>The song's lyrics only say it is instrumental (GitHub #236: LRCGET's
+    /// "[au: instrumental]"): nothing to show, and nothing to look up online.</summary>
+    public static LoadedLyrics Instrumental { get; } = new(Array.Empty<LyricLine>(), false, LyricsSource.Instrumental);
 }
 
 /// <summary>
@@ -34,6 +38,7 @@ public static class LyricsLoader
             var hit = files.ReadSidecar(track.FilePath, remaining);
             if (hit == null) break;
             var text = LyricsTextDecoder.Decode(hit.Bytes);
+            if (hit.Extension != ".ttml" && LyricsSearchSelector.IsInstrumentalPlaceholder(text)) return LoadedLyrics.Instrumental;
             var parsed = hit.Extension == ".ttml"
                 ? FromTtml(text, joinSplitWords, LyricsSource.SidecarTtml)
                 : FromLrc(text, hit.Extension == ".elrc" ? LyricsSource.SidecarElrc : LyricsSource.SidecarLrc);
@@ -45,10 +50,11 @@ public static class LyricsLoader
         }
 
         var synced = track.SyncedLyrics;
+        var plain = track.Lyrics;
+        if (IsInstrumental(synced, plain)) return LoadedLyrics.Instrumental;
         if (!string.IsNullOrWhiteSpace(synced) && FromLrc(synced, LyricsSource.EmbeddedSynced) is { } stored)
             return stored;
 
-        var plain = track.Lyrics;
         if (!string.IsNullOrWhiteSpace(plain) && LrcParser.ContainsTimestamp(plain)
             && FromLrc(plain, LyricsSource.EmbeddedSynced) is { } legacy)
             return legacy;
@@ -61,6 +67,7 @@ public static class LyricsLoader
         // The file's own tags, read now: SYLT and SYNCEDLYRICS, and the UNSYNCEDLYRICS-style
         // aliases a row scanned before GitHub #135 never stored.
         var embedded = ReadEmbedded(track, files);
+        if (IsInstrumental(embedded.Synced, string.IsNullOrWhiteSpace(plain) ? embedded.Text : null)) return LoadedLyrics.Instrumental;
         if (!string.IsNullOrWhiteSpace(embedded.Synced)
             && FromLrc(embedded.Synced, embedded.SyncedFromSylt ? LyricsSource.EmbeddedSylt : LyricsSource.EmbeddedSynced) is { IsSynced: true } fileSynced)
             return fileSynced;
@@ -89,6 +96,12 @@ public static class LyricsLoader
     /// none of its own, parsed as an .lrc sidecar is; null when the text yields no line.</summary>
     public static LoadedLyrics? FromOnlineText(string text) =>
         string.IsNullOrWhiteSpace(text) ? null : FromLrc(text, LyricsSource.Online);
+
+    /// <summary>The timed lyrics, or with none the plain ones, only say the song is instrumental.</summary>
+    private static bool IsInstrumental(string? synced, string? plain) =>
+        string.IsNullOrWhiteSpace(synced)
+            ? LyricsSearchSelector.IsInstrumentalPlaceholder(plain)
+            : LyricsSearchSelector.IsInstrumentalPlaceholder(synced);
 
     /// <summary>A real lyric TTML is tens of KB; past this the raw fallback is not attempted.</summary>
     private const int MaxRawTextChars = 1_000_000;

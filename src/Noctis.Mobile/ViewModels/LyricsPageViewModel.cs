@@ -382,9 +382,12 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
 
         if (generation != _generation || _disposed) return;   // a newer track won
 
+        // Its own lyrics only say it is instrumental (GitHub #236): shown as such, not looked up.
+        if (result.Source == LyricsSource.Instrumental) IsInstrumental = true;
+
         // Nothing of its own: the desktop's automatic online lookup (LyricsViewModel goes
         // online in exactly this case).
-        if (result.Lines.Count == 0 && FindLyricsOnline && Online is { } online)
+        else if (result.Lines.Count == 0 && FindLyricsOnline && Online is { } online)
         {
             IsSearchingOnline = true;
             var found = await FindOnlineAsync(online, track);
