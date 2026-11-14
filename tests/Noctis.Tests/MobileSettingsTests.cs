@@ -167,7 +167,7 @@ public class MobileSettingsTests
         page.LyricsTextScale = 1.4;
         await page.PendingSave;
 
-        Assert.Equal(LyricsPageViewModel.BaseFontSize * 1.4, rig.Shell.Lyrics.LineFontSize, 6);
+        Assert.Equal(rig.Shell.Lyrics.AutoBaseFontSize * 1.4, rig.Shell.Lyrics.LineFontSize, 6);
         var saved = await rig.Persistence.LoadSettingsAsync();
         Assert.Equal(1.4, saved.MobileLyricsTextScale, 6);
 

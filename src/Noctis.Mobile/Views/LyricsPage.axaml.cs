@@ -88,6 +88,12 @@ public partial class LyricsPage : UserControl
             ApplyOrientation(e.NewSize);
             UpdateFades();
         };
+        // The lyric text follows the column's width (LyricsPageViewModel.AutoBaseFontSize).
+        LyricsScroll.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BoundsProperty && _shell is { } shell && LyricsScroll.Bounds.Width > 0)
+                shell.Lyrics.ViewWidth = LyricsScroll.Bounds.Width;
+        };
 
         SeekBar.ScrubStarted += (_, _) => _shell?.Player.BeginSeek();
         SeekBar.ScrubCompleted += OnSeekCompleted;
@@ -112,6 +118,7 @@ public partial class LyricsPage : UserControl
             _lyrics.Lines.CollectionChanged += OnLinesChanged;
         }
         if (_shell != null) _shell.Player.PropertyChanged += OnPlayerChanged;
+        if (_lyrics != null && LyricsScroll.Bounds.Width > 0) _lyrics.ViewWidth = LyricsScroll.Bounds.Width;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
