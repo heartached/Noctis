@@ -139,6 +139,19 @@
                                                              TextAlignment="Center"
                                                              MaxWidth="198"
                                                              HorizontalAlignment="Center" />
+                                    <!-- GitHub #233: "3 albums · 41 songs", built with the rows (Artist.CountsLine),
+                                         so a scrolled-in tile binds a ready string. Every tile has one, so the
+                                         rows stay one height. Pulled up under the name, not the panel's 10px gap. -->
+                                    <TextBlock Text="{Binding CountsLine}"
+                                               Margin="0,-8,0,0"
+                                               FontSize="12"
+                                               Opacity="0.55"
+                                               TextWrapping="NoWrap"
+                                               MaxLines="1"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextAlignment="Center"
+                                               MaxWidth="198"
+                                               HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
@@ -338,13 +351,26 @@
                         VerticalAlignment="Center"
                         Spacing="8">
                 <TextBlock Text="{loc:T LibraryArtists.NoArtistsFound}"
-                           IsVisible="{Binding !HasActiveFilter}"
+                           IsVisible="{Binding IsNoArtistsState}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
                 <TextBlock Text="{loc:T LibraryArtists.AddMusicFoldersSettings}"
-                           IsVisible="{Binding !HasActiveFilter}"
+                           IsVisible="{Binding IsNoArtistsState}"
+                           FontSize="13"
+                           Opacity="0.3"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <!-- GitHub #233: every artist is under the Hide Small Artists threshold. -->
+                <TextBlock Text="{loc:T LibraryArtists.AllArtistsHidden}"
+                           IsVisible="{Binding IsSmallArtistsHiddenState}"
+                           FontSize="18"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="{loc:T LibraryArtists.AllArtistsHiddenHint}"
+                           IsVisible="{Binding IsSmallArtistsHiddenState}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

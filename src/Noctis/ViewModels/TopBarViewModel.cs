@@ -61,6 +61,7 @@ public partial class TopBarViewModel : ViewModelBase
         OnPropertyChanged(nameof(ReleaseTypeFilterDisplay));
         OnPropertyChanged(nameof(QualityFilterDisplay));
         OnPropertyChanged(nameof(LyricsSearchTip));
+        OnPropertyChanged(nameof(ArtistSmallFilterDetail));
     }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
@@ -274,6 +275,19 @@ public partial class TopBarViewModel : ViewModelBase
         if (wantList != IsArtistListView)
             ToggleArtistViewCommand?.Execute(null);
     }
+
+    // Artists filter (GitHub #233): All Artists / Hide Small Artists, mirrored from Settings.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ArtistSmallFilterDetail))]
+    private int _artistSmallThreshold = 3;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsArtistSmallFilterOff))]
+    private bool _isArtistSmallFilterActive;
+    public bool IsArtistSmallFilterOff => !IsArtistSmallFilterActive;
+    /// <summary>"Fewer than 3 songs": the Hide Small Artists item's second line.</summary>
+    public string ArtistSmallFilterDetail => Loc.Plural("Main.ArtistsFewerThanSongs", ArtistSmallThreshold);
+    /// <summary>"all" or "small"; set by MainWindowViewModel to flip the setting.</summary>
+    [ObservableProperty] private ICommand? _artistSmallFilterCommand;
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;

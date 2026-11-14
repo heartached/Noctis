@@ -2495,6 +2495,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _albumTileTargetSize = 220;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _sidebarAlwaysExpanded = false;
+    /// <summary>GitHub #233: hide the sidebar until the pointer reaches the left window edge
+    /// (MainWindow.UpdateSidebarHidden, SidebarEdgePeek).</summary>
+    [ObservableProperty] private bool _sidebarAutoHide;
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
     /// (issue #26), so the Settings card is hidden there (same pattern as
@@ -2662,6 +2665,50 @@ public partial class SettingsViewModel : ViewModelBase
     /// pushes it into LibraryArtistsViewModel.</summary>
     public IReadOnlyList<string> ActiveArtistSortIgnoredWords =>
         IgnoreLeadingWordsInArtistSort ? ArtistSortIgnoredWords.ToArray() : Array.Empty<string>();
+
+    // ── Hide small artists (GitHub #233) ──
+
+    /// <summary>The song counts the "hide artists with fewer than" picker offers.</summary>
+    public static readonly int[] SmallArtistMinSongsValues = { 2, 3, 5, 10 };
+
+    /// <summary>When on, the Artists page leaves out artists with fewer than
+    /// <see cref="SmallArtistMinSongs"/> songs. Search and artist links still find them.</summary>
+    [ObservableProperty] private bool _hideSmallArtists;
+
+    /// <summary>The threshold, one of <see cref="SmallArtistMinSongsValues"/>.</summary>
+    [ObservableProperty] private int _smallArtistMinSongs = 3;
+
+    public IReadOnlyList<ArtistMinSongsOption> SmallArtistMinSongsOptions { get; } =
+        SmallArtistMinSongsValues.Select(n => new ArtistMinSongsOption(n)).ToArray();
+
+    /// <summary>The picker's selection (records compare by value, so a fresh one selects).</summary>
+    public ArtistMinSongsOption SmallArtistMinSongsChoice
+    {
+        get => new(SmallArtistMinSongs);
+        set { if (value != null) SmallArtistMinSongs = value.Songs; }
+    }
+
+    /// <summary>The threshold in force: 0 while the toggle is off. MainWindowViewModel pushes it
+    /// into LibraryArtistsViewModel.</summary>
+    public int ActiveArtistMinSongs => HideSmallArtists ? SmallArtistMinSongs : 0;
+
+    partial void OnHideSmallArtistsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ActiveArtistMinSongs));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSmallArtistMinSongsChanged(int value)
+    {
+        if (Array.IndexOf(SmallArtistMinSongsValues, value) < 0)
+        {
+            SmallArtistMinSongs = 3; // a hand-edited file: back to the default choice
+            return;
+        }
+        OnPropertyChanged(nameof(SmallArtistMinSongsChoice));
+        OnPropertyChanged(nameof(ActiveArtistMinSongs));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
 
     // ── Lyrics Providers ──
 
@@ -3750,6 +3797,8 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistSortMode = _settings.ArtistSortMode;
             ArtistSortAscending = _settings.ArtistSortAscending;
             ArtistViewMode = _settings.ArtistViewMode;
+            HideSmallArtists = _settings.HideSmallArtists;
+            SmallArtistMinSongs = _settings.SmallArtistMinSongs;
             FoldersSortMode = _settings.FoldersSortMode;
             ArtistReleaseSortMode = _settings.ArtistReleaseSortMode;
             ArtistSimilarExpanded = _settings.ArtistSimilarExpanded;
@@ -3783,6 +3832,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
+            SidebarAutoHide = _settings.SidebarAutoHide;
             LoadSidebarLayout(_settings);
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
@@ -4317,6 +4367,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistSortMode = ArtistSortMode;
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.ArtistViewMode = ArtistViewMode;
+        _settings.HideSmallArtists = HideSmallArtists;
+        _settings.SmallArtistMinSongs = SmallArtistMinSongs;
         _settings.FoldersSortMode = FoldersSortMode;
         _settings.ArtistReleaseSortMode = ArtistReleaseSortMode;
         _settings.ArtistSimilarExpanded = ArtistSimilarExpanded;
@@ -4349,6 +4401,7 @@ public partial class SettingsViewModel : ViewModelBase
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
+        _settings.SidebarAutoHide = SidebarAutoHide;
         SaveSidebarLayout();
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
@@ -5427,6 +5480,11 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSidebarHoverExpandChanged(bool value)
     {
         _ = SaveAsync();
+    }
+
+    partial void OnSidebarAutoHideChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnSidebarAlwaysExpandedChanged(bool value)
@@ -8679,6 +8737,8 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistSortMode = defaultSettings.ArtistSortMode;
             ArtistSortAscending = defaultSettings.ArtistSortAscending;
             ArtistViewMode = defaultSettings.ArtistViewMode;
+            HideSmallArtists = defaultSettings.HideSmallArtists;
+            SmallArtistMinSongs = defaultSettings.SmallArtistMinSongs;
             FoldersSortMode = defaultSettings.FoldersSortMode;
             ArtistReleaseSortMode = defaultSettings.ArtistReleaseSortMode;
             ArtistSimilarExpanded = defaultSettings.ArtistSimilarExpanded;
@@ -8735,6 +8795,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
+            SidebarAutoHide = defaultSettings.SidebarAutoHide;
             LoadSidebarLayout(defaultSettings);
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
@@ -9864,3 +9925,9 @@ public partial class SettingsViewModel : ViewModelBase
     }
 }
 
+/// <summary>One choice of Settings › Artists › Hide small artists: "3 songs".</summary>
+public sealed record ArtistMinSongsOption(int Songs)
+{
+    public string Label => Noctis.Localization.Loc.Plural("Count.Songs", Songs);
+    public override string ToString() => Label;
+}
