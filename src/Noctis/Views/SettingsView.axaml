@@ -2324,7 +2324,9 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
+                    <!-- Greyed while "Hide sidebar until hover" is on, and that one while this is
+                         (GitHub #233): a pinned-open sidebar and a hidden one cannot both hold. -->
+                    <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding !SidebarAutoHide}">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.KeepSidebarExpanded}" FontSize="13"/>
                             <TextBlock Text="{loc:T Settings.PinSidebarOpenAt}"
@@ -2345,6 +2347,17 @@
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.HoverExpandSidebar}"
                                               IsChecked="{Binding SidebarHoverExpand}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding !SidebarAlwaysExpanded}">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.HideSidebarUntilHover}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.HideSidebarUntilHoverHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.HideSidebarUntilHover}"
+                                              IsChecked="{Binding SidebarAutoHide}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
@@ -6315,6 +6328,37 @@
                                 Command="{Binding ResetArtistSortIgnoredWordsCommand}"/>
                     </Grid>
                 </StackPanel>
+                </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
+            <!-- GitHub #233: hide small artists from the Artists page. Same toggle + folding
+                 sub-setting shape as the ignored words above; the page's filter menu flips it. -->
+            <Border Classes="setting-row">
+                <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.HideSmallArtists}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HideSmallArtistsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.HideSmallArtists}"
+                                          IsChecked="{Binding HideSmallArtists}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+                <controls:CollapsibleContent IsOpen="{Binding HideSmallArtists}" Lift="10" Motion="Glide">
+                <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                    <TextBlock Grid.Column="0" Text="{loc:T Settings.HideArtistsFewerThan}" FontSize="13" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1"
+                              AutomationProperties.Name="{loc:T Settings.HideArtistsFewerThan}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding SmallArtistMinSongsOptions}"
+                              SelectedItem="{Binding SmallArtistMinSongsChoice, Mode=TwoWay}"
+                              MinWidth="140"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
                 </controls:CollapsibleContent>
                 </StackPanel>
             </Border>

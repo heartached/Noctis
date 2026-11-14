@@ -7587,6 +7587,17 @@
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>有 {0:N0} 首歌曲只有一般歌詞。Lyrics Studio 可以在這台電腦上用語音模型為其計時：每首歌可能需要一分鐘或更久（有顯示卡時更快），儲存前你會逐首檢查。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>一次開啟前 {0} 首。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 首歌曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} 張專輯</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>所有藝人</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>隱藏小眾藝人</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>少於 {0:N0} 首歌曲</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>篩選隱藏了所有藝人</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>在篩選選單中選擇「所有藝人」，或搜尋名稱</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>隱藏小眾藝人</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>在藝人頁面中隱藏歌曲很少的藝人。搜尋以及歌曲和專輯上的藝人連結仍能找到他們。依該藝人擔任主藝人的歌曲計數，與每個名字下顯示的數字相同。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>隱藏歌曲少於以下數量的藝人</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>懸停前隱藏側邊欄</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>完全隱藏側邊欄，讓頁面使用全部寬度。將指標移到視窗左邊緣即可滑出。</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} 首曲目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} 個項目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} 小時 {1} 分鐘</value><comment>Short duration (sidebar playlist row)</comment></data>

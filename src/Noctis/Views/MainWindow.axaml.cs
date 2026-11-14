@@ -179,6 +179,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private EventHandler<bool>? _liquidGlassChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _settingsBackdropRefreshHandler;
     private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _sidebarAutoHideHandler;
     private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
     private ResourceDictionary? _liquidGlassOverlay;
     private bool _liquidGlassActive;
@@ -991,9 +992,23 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             () => vm.IsSidebarHidden,
                             () => vm.Settings.SidebarHoverExpand,
                             () => vm.Settings.SidebarAlwaysExpanded,
-                            expanded => vm.Sidebar.IsExpanded = expanded);
+                            expanded => vm.Sidebar.IsExpanded = expanded)
+                        {
+                            // A short grace before tucking away, so overshooting the rail by a
+                            // few pixels does not snap it shut (GitHub #233 auto-hide).
+                            CloseDelay = TimeSpan.FromMilliseconds(300),
+                        };
                         _sidebarPeek.SyncHidden();
                     }
+                    // GitHub #233: "Hide sidebar until hover" hides the sidebar the way fullscreen
+                    // lyrics do (the edge strip above brings it back), on every page.
+                    _sidebarAutoHideHandler = (_, e) =>
+                    {
+                        if (e.PropertyName == nameof(SettingsViewModel.SidebarAutoHide))
+                            UpdateImmersiveLyricsState();
+                    };
+                    vm.Settings.PropertyChanged += _sidebarAutoHideHandler;
+                    UpdateImmersiveLyricsState();
                     // The settings load may have finished before this subscription existed,
                     // so apply the current value once now (idempotent).
                     _sidebarAlwaysExpandedHandler(vm.Settings, vm.Settings.SidebarAlwaysExpanded);
@@ -1611,6 +1626,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_sidebarAlwaysExpandedHandler != null)
                 vm.Settings.SidebarAlwaysExpandedChanged -= _sidebarAlwaysExpandedHandler;
+            if (_sidebarAutoHideHandler != null)
+                vm.Settings.PropertyChanged -= _sidebarAutoHideHandler;
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
@@ -2471,14 +2488,15 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// nothing else would un-hide it). The same condition feeds the lyrics VM's
     /// fullscreen flag, which gates the opt-in focus dimming. Runs off both the
     /// WindowState observer and the IsLyricsViewActive handler so every path lands on
-    /// the same answer.
+    /// the same answer. "Hide sidebar until hover" (GitHub #233) hides it on every page.
     /// </summary>
     private void UpdateImmersiveLyricsState()
     {
         if (DataContext is not MainWindowViewModel vm) return;
         var immersive = WindowState == WindowState.FullScreen && vm.IsLyricsViewActive;
-        if (vm.IsSidebarHidden != immersive)
-            vm.IsSidebarHidden = immersive;
+        var hidden = immersive || vm.Settings.SidebarAutoHide;
+        if (vm.IsSidebarHidden != hidden)
+            vm.IsSidebarHidden = hidden;
         if (vm.Lyrics.IsFullScreenPageActive != immersive)
             vm.Lyrics.IsFullScreenPageActive = immersive;
     }

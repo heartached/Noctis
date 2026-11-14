@@ -680,6 +680,14 @@ public class AppSettings : IJsonOnDeserializing
     /// with Albums / Songs / Time / Genre columns, like the Songs page).</summary>
     public string ArtistViewMode { get; set; } = "grid";
 
+    /// <summary>GitHub #233: leave artists with fewer than <see cref="SmallArtistMinSongs"/>
+    /// songs out of the Artists page (search and artist links still reach them). Off by default.</summary>
+    public bool HideSmallArtists { get; set; }
+
+    /// <summary>The song count an artist needs to stay on the Artists page while
+    /// <see cref="HideSmallArtists"/> is on: 2, 3, 5 or 10.</summary>
+    public int SmallArtistMinSongs { get; set; } = 3;
+
     /// <summary>Artists list view columns (GitHub #151): order, dragged widths and hidden
     /// columns, in the same comma-separated forms as <see cref="SongsColumnOrder"/>.</summary>
     public string ArtistListColumnOrder { get; set; } = string.Empty;
@@ -977,6 +985,12 @@ public class AppSettings : IJsonOnDeserializing
     /// stay readable without hovering. Overrides <see cref="SidebarHoverExpand"/> while on.
     /// Off by default to preserve the compact icon rail.</summary>
     public bool SidebarAlwaysExpanded { get; set; } = false;
+
+    /// <summary>GitHub #233: the sidebar is hidden entirely (the page takes the full width) and
+    /// slides in over the page while the pointer is at the left window edge or on it. Off by
+    /// default. Settings greys it out while <see cref="SidebarAlwaysExpanded"/> is on, and
+    /// the other way round.</summary>
+    public bool SidebarAutoHide { get; set; }
 
     /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
     /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing

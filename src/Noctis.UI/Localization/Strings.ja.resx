@@ -7587,6 +7587,17 @@
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} 曲は通常の歌詞のみです。Lyrics Studio はこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>最初の {0} 曲を一度に開きます。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} 枚のアルバム</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>すべてのアーティスト</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>小規模なアーティストを隠す</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>{0:N0} 曲未満</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>フィルターですべてのアーティストが非表示になっています</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>フィルターメニューで「すべてのアーティスト」を選ぶか、名前で検索してください</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>小規模なアーティストを隠す</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>曲数の少ないアーティストをアーティストページから外します。検索や、曲・アルバムのアーティストリンクからは引き続き開けます。各名前の下に表示される、そのアーティストがメインの曲数で数えます。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>次の曲数未満のアーティストを隠す</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>ホバーするまでサイドバーを隠す</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>サイドバーを完全に隠し、ページを全幅で表示します。ポインターをウィンドウの左端に移動すると表示されます。</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} トラック</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} 項目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value><comment>Short duration (sidebar playlist row)</comment></data>
