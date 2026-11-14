@@ -4255,6 +4255,20 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            <!-- GitHub #233: a soft cover-coloured glow behind the carousel's centred album. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.CarouselGlow}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.CarouselGlowDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.CarouselGlow}"
+                                          IsChecked="{Binding AlbumCarouselGlow}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 

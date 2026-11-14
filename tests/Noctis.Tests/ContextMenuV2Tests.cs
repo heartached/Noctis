@@ -409,7 +409,9 @@ public class ContextMenuV2Tests
 
         // Every row and tile acts on the right-clicked album.
         foreach (var item in menu.GetLogicalDescendants().OfType<MenuItem>().Where(i => i.Command != null && i.IsVisible))
-            if (item.Command != ScrobbleMenu.ToggleCommand)
+            if (item.Command == AlbumCarouselStyleOverrides.SetCommand) // GitHub #233: album + its pick
+                Assert.Same(album, Assert.IsType<AlbumCarouselStyleOverrides.Choice>(item.CommandParameter).Album);
+            else if (item.Command != ScrobbleMenu.ToggleCommand)
                 Assert.Same(album, item.CommandParameter);
         foreach (var button in menu.GetLogicalDescendants().OfType<Button>().Where(b => b.Classes.Contains("mv2-tile")))
             Assert.Same(album, button.CommandParameter);

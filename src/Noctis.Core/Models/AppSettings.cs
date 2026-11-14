@@ -664,6 +664,14 @@ public class AppSettings : IJsonOnDeserializing
     /// "Vinyl" or "Cassette" (<see cref="AlbumCarouselStyles.Parse"/>). Shared by both carousels.</summary>
     public string AlbumCarouselStyle { get; set; } = AlbumCarouselStyles.DefaultSetting;
 
+    /// <summary>GitHub #233: a soft glow in the cover's colour behind the carousel's centred album.</summary>
+    public bool AlbumCarouselGlow { get; set; } = true;
+
+    /// <summary>GitHub #233: albums wearing their own carousel style whatever
+    /// <see cref="AlbumCarouselStyle"/> is: album id (Guid "N", stable across rescans) →
+    /// style name. Set from the album menu's Carousel Style ▸; never pruned automatically.</summary>
+    public Dictionary<string, string>? AlbumCarouselStyleOverrides { get; set; }
+
     /// <summary>Built-in feature switch (Settings › Plugins › Built-in Features): the album
     /// carousel and its cases. Off shows the grid on the Albums page and the artist page and
     /// hides the way to the carousel; <see cref="AlbumViewMode"/> is kept for when it returns.</summary>
