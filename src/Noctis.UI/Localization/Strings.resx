@@ -4233,8 +4233,8 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="MoveToAlbum.NewExplain" xml:space="preserve"><value>Albums come from the songs' tags, so the album starts with the songs you move into it.</value><comment>Hint under the new album fields</comment></data>
   <data name="MoveToAlbum.PickHint" xml:space="preserve"><value>Pick an album, or start a new one.</value><comment>Footer line before an album is picked</comment></data>
   <data name="MoveToAlbum.NewHint" xml:space="preserve"><value>Name the new album.</value><comment>Footer line while the new album has no name</comment></data>
-  <data name="MoveToAlbum.ConfirmExisting" xml:space="preserve"><value>{0} song(s) move to “{1}”. Their files' album tags (album, album artist, track and disc number, year) are changed.</value><comment>{0} song count, {1} album name</comment></data>
-  <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{0} song(s) start the new album “{1}”. Their files' album tags (album, album artist, track and disc number) are changed.</value><comment>{0} song count, {1} new album name</comment></data>
+  <data name="MoveToAlbum.ConfirmExisting" xml:space="preserve"><value>{2} will move to “{1}”. The files' album tags (album, album artist, track and disc number, year) are changed.</value><comment>{0} song count, {1} album name</comment></data>
+  <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} will start the new album “{1}”. The files' album tags (album, album artist, track and disc number) are changed.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Move</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Moved in Noctis, but {0} file(s) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
 </root>

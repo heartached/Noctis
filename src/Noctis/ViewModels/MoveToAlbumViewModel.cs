@@ -54,6 +54,10 @@ public partial class MoveToAlbumViewModel : ViewModelBase
     /// <summary>The song's title for one song, else "3 songs".</summary>
     public string SubtitleText => Tracks.Count == 1 ? Tracks[0].Title : Loc.T("MoveToAlbum.SongCount", Tracks.Count);
 
+    /// <summary>"1 song" or "3 songs".</summary>
+    internal static string SongCountText(int count) =>
+        count == 1 ? Loc.T("StudioPicker.OneSong") : Loc.T("MoveToAlbum.SongCount", count);
+
     /// <summary>What Move will do, files included (the move changes the files' tags).</summary>
     public string ConfirmText
     {
@@ -61,10 +65,10 @@ public partial class MoveToAlbumViewModel : ViewModelBase
         {
             if (IsCreatingNew)
                 return Track.IsRealAlbumName(NewAlbumName)
-                    ? Loc.T("MoveToAlbum.ConfirmNew", Tracks.Count, NewAlbumName.Trim())
+                    ? Loc.T("MoveToAlbum.ConfirmNew", Tracks.Count, NewAlbumName.Trim(), SongCountText(Tracks.Count))
                     : Loc.T("MoveToAlbum.NewHint");
             return SelectedRow is { } row
-                ? Loc.T("MoveToAlbum.ConfirmExisting", Tracks.Count, row.Name)
+                ? Loc.T("MoveToAlbum.ConfirmExisting", Tracks.Count, row.Name, SongCountText(Tracks.Count))
                 : Loc.T("MoveToAlbum.PickHint");
         }
     }
@@ -178,7 +182,7 @@ public sealed partial class MoveToAlbumRow : ObservableObject
     {
         get
         {
-            var text = $"{Artist} · {Loc.T("MoveToAlbum.SongCount", Album.Tracks.Count)}";
+            var text = $"{Artist} · {MoveToAlbumViewModel.SongCountText(Album.Tracks.Count)}";
             return IsCurrent ? $"{text} · {Loc.T("MoveToAlbum.CurrentAlbum")}" : text;
         }
     }

@@ -97,7 +97,7 @@
                          AutomationProperties.Name="{loc:T MoveToAlbum.Search}"
                          Watermark="{loc:T MoveToAlbum.Search}"
                          Text="{Binding SearchText}" />
-                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasRows}">
+                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasRows}">
                     <ItemsControl x:Name="AlbumList" ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
