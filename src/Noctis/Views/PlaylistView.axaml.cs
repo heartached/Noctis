@@ -466,7 +466,8 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
             removeLyricsCommand: vm.RemoveLyricsCommand,
             sendToFolderCommand: vm.SendToFolderCommand,
             badgeCommand: vm.SetBadgeCommand,
-            badgeNames: vm.BadgeNames);
+            badgeNames: vm.BadgeNames,
+            moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
         // Same gate as the selection bar's Remove: smart playlists are rule-driven.
         _menuBuilder.Remove.IsVisible = vm.IsManualPlaylist;
         // Bind settled the separators with Remove still shown; the views open the menu with

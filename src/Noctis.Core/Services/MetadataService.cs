@@ -675,11 +675,50 @@ public class MetadataService : IMetadataService
     public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
         => WriteTrackMetadataCore(track, targetFilePath, titleOverride, genreEdited: false);
 
-    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
+    /// <inheritdoc />
+    public bool WriteTrackMetadata(Track track, AlbumIdentityTags albumIdentity)
+        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited: false, albumIdentity);
+
+    /// <inheritdoc />
+    public AlbumIdentityTags? ReadAlbumIdentity(string filePath)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(filePath);
+            var tag = file.Tag;
+            return new AlbumIdentityTags(
+                NullIfBlank(tag.AlbumSort),
+                tag.AlbumArtistsSort is { Length: > 0 } sorts ? sorts : null,
+                NullIfBlank(tag.MusicBrainzReleaseId),
+                NullIfBlank(tag.MusicBrainzReleaseGroupId),
+                NullIfBlank(tag.MusicBrainzReleaseArtistId));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Metadata", $"Album identity read failed for '{filePath}': {ex.Message}");
+            return null;
+        }
+
+        static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
+    }
+
+    private static void WriteAlbumIdentity(TagLib.File file, AlbumIdentityTags identity)
+    {
+        var tag = file.Tag;
+        tag.AlbumSort = identity.AlbumSort;
+        tag.AlbumArtistsSort = identity.AlbumArtistsSort ?? Array.Empty<string>();
+        tag.MusicBrainzReleaseId = identity.MusicBrainzReleaseId;
+        tag.MusicBrainzReleaseGroupId = identity.MusicBrainzReleaseGroupId;
+        tag.MusicBrainzReleaseArtistId = identity.MusicBrainzReleaseArtistId;
+    }
+
+    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited,
+        AlbumIdentityTags? albumIdentity = null)
     {
         var ok = SaveTagsAtomically(targetFilePath, file =>
         {
             var tag = file.Tag;
+            if (albumIdentity != null) WriteAlbumIdentity(file, albumIdentity);
 
             tag.Title = string.IsNullOrEmpty(titleOverride) ? track.Title : titleOverride;
             tag.Performers = SplitArtistList(track.Artist);

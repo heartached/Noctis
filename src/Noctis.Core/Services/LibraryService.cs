@@ -3098,13 +3098,8 @@ public class LibraryService : ILibraryService
         // Album order, so the first song's old cover is the one the new album keeps.
         targets.Sort(AlbumGrouping.AlbumOrder);
         var albumId = Track.ComputeAlbumId(albumArtist, album);
-        var moves = new List<AlbumGrouping.Move>();
-        var unwritten = new List<string>();
-        var grouped = 0;
-
-        await Task.Run(() =>
-        {
-            foreach (var t in targets)
+        return await ReAlbumAsync(targets, album, albumArtist,
+            apply: t =>
             {
                 // An album artist the grouping rule filled in (not from a tag) matches in the
                 // library but not in the file: write it too, or other apps and the next
@@ -3113,17 +3108,88 @@ public class LibraryService : ILibraryService
                               || !string.Equals(t.AlbumArtist, albumArtist, StringComparison.Ordinal)
                               || t.AlbumId != albumId
                               || t.AlbumArtistFromTag != true;
-                if (!changed) continue;
-                grouped++;
+                if (!changed) return false;
                 t.Album = album;
                 t.AlbumArtist = albumArtist;
+                return true;
+            },
+            write: t => _metadata.WriteTrackMetadata(t),
+            logLabel: "Group into album (#178)");
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> MoveToAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default)
+    {
+        album = album?.Trim() ?? string.Empty;
+        albumArtist = albumArtist?.Trim() ?? string.Empty;
+        var none = new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+        if (!Track.IsRealAlbumName(album) || string.IsNullOrWhiteSpace(albumArtist)) return none;
+        var albumId = Track.ComputeAlbumId(albumArtist, album);
+        // Songs already on the album stay as they are (no renumbering); the rest move in the
+        // order given (the selection's order: a new album is numbered so).
+        var moving = (tracks ?? Array.Empty<Track>()).Where(t => t != null).DistinctBy(t => t.Id)
+            .Where(t => t.AlbumId != albumId).ToList();
+        if (moving.Count == 0) return new AlbumGroupResult(albumId, 0, Array.Empty<string>());
+
+        var movingIds = moving.Select(t => t.Id).ToHashSet();
+        var target = _tracks.Where(t => t.AlbumId == albumId && !movingIds.Contains(t.Id)).ToList();
+        target.Sort(AlbumGrouping.AlbumOrder);
+        AlbumIdentityTags? identity = AlbumIdentityTags.None;
+        if (target.Count > 0)
+        {
+            // An existing album (whatever casing was typed): its own spelling, so no song of it
+            // differs, and its identity tags from its first file that can be read. None
+            // readable: the moved files keep theirs rather than lose them for nothing.
+            album = target[0].Album;
+            albumArtist = target[0].AlbumArtist;
+            identity = await Task.Run(() => target
+                .Where(t => t.HasFilesystemPath && !t.IsRemoteStream && File.Exists(t.FilePath))
+                .Take(3)
+                .Select(t => _metadata.ReadAlbumIdentity(t.FilePath))
+                .FirstOrDefault(i => i != null), CancellationToken.None);
+        }
+
+        var plans = AlbumMove.PlanMove(moving, target, album, albumArtist).ToDictionary(p => p.Track);
+        return await ReAlbumAsync(moving, album, albumArtist,
+            apply: t =>
+            {
+                AlbumMove.Apply(plans[t]);
+                return true;
+            },
+            write: t => identity != null ? _metadata.WriteTrackMetadata(t, identity) : _metadata.WriteTrackMetadata(t),
+            logLabel: "Move to album (#239)");
+    }
+
+    /// <summary>
+    /// The shared body of Group into One Album (#178) and Move to Album (#239): each of
+    /// <paramref name="targets"/> that <paramref name="apply"/> changes (it sets the new values
+    /// on the track and returns true) is written by <paramref name="write"/> and re-keyed to the
+    /// album. A file that cannot be written still moves in the library, is listed in the result
+    /// and is tried again later (Album and Album Artist only). Cached covers follow, then the
+    /// library is rebuilt, saved and LibraryUpdated raised.
+    /// </summary>
+    private async Task<AlbumGroupResult> ReAlbumAsync(List<Track> targets, string album, string albumArtist,
+        Func<Track, bool> apply, Func<Track, bool> write, string logLabel)
+    {
+        var albumId = Track.ComputeAlbumId(albumArtist, album);
+        var moves = new List<AlbumGrouping.Move>();
+        var unwritten = new List<string>();
+        var grouped = 0;
+
+        await Task.Run(() =>
+        {
+            foreach (var t in targets)
+            {
+                if (!apply(t)) continue;
+                grouped++;
                 // Through the metadata editor's writer, so every other tag is kept as the
                 // editor would. Streams and phone documents have no file to write here.
                 var written = false;
                 if (t.HasFilesystemPath && !t.IsRemoteStream)
                 {
-                    try { written = _metadata.WriteTrackMetadata(t); }
-                    catch (Exception ex) { DebugLog.Write("Library", $"Group into album: write failed for '{t.FilePath}': {ex.Message}"); }
+                    try { written = write(t); }
+                    catch (Exception ex) { DebugLog.Write("Library", $"{logLabel}: write failed for '{t.FilePath}': {ex.Message}"); }
                 }
                 if (!written)
                     unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
@@ -3147,10 +3213,10 @@ public class LibraryService : ILibraryService
         await RebuildIndexesAsync();
         await SaveAsync();
         try { await _sqliteIndex.UpsertTracksAsync(targets, CancellationToken.None); }
-        catch (Exception ex) { DebugLog.Write("Library", $"Group into album: index update failed: {ex.Message}"); }
+        catch (Exception ex) { DebugLog.Write("Library", $"{logLabel}: index update failed: {ex.Message}"); }
         if (moves.Count > 0)
             await RepointPinnedAlbumsAsync(moves, _tracks);
-        DebugLog.Write("Library", $"Group into album (#178): {grouped} song(s) → '{album}' by '{albumArtist}'" +
+        DebugLog.Write("Library", $"{logLabel}: {grouped} song(s) → '{album}' by '{albumArtist}'" +
             (unwritten.Count > 0 ? $", {unwritten.Count} file(s) not written" : ""));
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         return new AlbumGroupResult(albumId, grouped, unwritten);

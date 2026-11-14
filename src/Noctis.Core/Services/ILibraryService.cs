@@ -225,6 +225,17 @@ public interface ILibraryService
     Task<AlbumGroupResult> GroupIntoAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
         CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
 
+    /// <summary>
+    /// GitHub #239 "Move to Album": moves <paramref name="tracks"/> (in this order) into the
+    /// album named <paramref name="album"/> by <paramref name="albumArtist"/>: an existing one
+    /// (matched as albums are, case-insensitively; its own spelling is kept) or a new one, which
+    /// exists from then on because its songs name it. The files get the album's tags
+    /// (<see cref="AlbumMove"/>); songs already on it are left alone. Failures, cover carry,
+    /// rebuild, save and LibraryUpdated as <see cref="GroupIntoAlbumAsync"/>.
+    /// </summary>
+    Task<AlbumGroupResult> MoveToAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
     /// <summary>GitHub #193: whether the automatic album grouping (#178) is on.</summary>
     bool AlbumGroupingEnabled => true;
 
