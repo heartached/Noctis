@@ -3595,6 +3595,9 @@
                     </Grid>
                     <!-- GitHub #186: Quick Add to Playlist (up to three picked playlists) and Move to
                          Trash (into a folder picked here, or the Recycle Bin / Trash), both off by default. -->
+                    <!-- Wrapper without Spacing: the gap sits on the body, inside the animated height
+                         (same as Skip back and forward below). -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.QuickPlaylistButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3605,7 +3608,8 @@
                                               IsChecked="{Binding PlaybackBarShowQuickPlaylist}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <StackPanel Spacing="8" IsVisible="{Binding PlaybackBarShowQuickPlaylist}">
+                    <controls:CollapsibleContent IsOpen="{Binding PlaybackBarShowQuickPlaylist}" Lift="10" Motion="Glide">
+                    <StackPanel Spacing="8" Margin="0,12,0,0">
                         <ComboBox x:Name="QuickPlaylist1Combo"
                                   AutomationProperties.Name="{loc:T Settings.QuickPlaylist1}"
                                   Classes="pill-list"
@@ -3631,6 +3635,9 @@
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.TrashButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3641,7 +3648,8 @@
                                               IsChecked="{Binding PlaybackBarShowTrash}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <StackPanel Spacing="6" IsVisible="{Binding PlaybackBarShowTrash}">
+                    <controls:CollapsibleContent IsOpen="{Binding PlaybackBarShowTrash}" Lift="10" Motion="Glide">
+                    <StackPanel Spacing="6" Margin="0,12,0,0">
                         <StackPanel Spacing="2">
                             <TextBlock Text="{loc:T Settings.TrashFolder}" FontSize="13" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.TrashFolderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
@@ -3676,6 +3684,8 @@
                         <TextBlock Text="{loc:T Settings.TrashFolderMissing}"
                                    IsVisible="{Binding ShowTrashFolderMissingHint}"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
                     </StackPanel>
                     <!-- GitHub #183: the stock Lyrics button can go; the lyrics page's own bar keeps it. -->
                     <Grid ColumnDefinitions="*,Auto">
