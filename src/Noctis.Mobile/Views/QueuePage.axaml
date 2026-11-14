@@ -373,14 +373,16 @@
                                 </Panel>
                             </Border>
                             <!-- Unclipped (the theme clips an ItemsControl): a row dragged above the current
-                                 row was cut off at the list's top edge and vanished (emulator, 11-07). -->
-                            <ItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}" ClipToBounds="False">
-                                <ItemsControl.ItemsPanel>
+                                 row was cut off at the list's top edge and vanished (emulator, 11-07).
+                                 A RowItemsControl, as the Songs list: rows scrolled in are reused, not rebuilt
+                                 and re-styled (tester 11-09: the queue still stuttered when scrolling). -->
+                            <views:RowItemsControl Name="QueueList" ItemsSource="{Binding Player.UpNext}" ClipToBounds="False">
+                                <views:RowItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
                                         <VirtualizingStackPanel />
                                     </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
+                                </views:RowItemsControl.ItemsPanel>
+                                <views:RowItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:Track">
                                         <!-- Transparent background: the whole row must hit-test for the swipe. -->
                                         <Border Classes="queue-row" Height="68" Background="Transparent"
@@ -414,8 +416,8 @@
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                </views:RowItemsControl.ItemTemplate>
+                            </views:RowItemsControl>
                             <TextBlock Name="EmptyQueue" Classes="subtle" Text="{loc:T Mobile.Queue.Empty}" HorizontalAlignment="Center"
                                        Margin="0,32,0,0" IsVisible="{Binding !Player.HasUpNext}" />
                           </StackPanel>
