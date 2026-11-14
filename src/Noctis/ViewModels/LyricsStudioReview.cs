@@ -355,12 +355,17 @@ public sealed partial class ReviewLine : ObservableObject
     /// line word-timed, as the other word edits do; a line nudge leaves that as it was. False
     /// when nothing could move.
     /// </summary>
-    public bool Nudge(ReviewWord? word, NudgeEdge edge, TimeSpan delta, TimeSpan? previousStart, TimeSpan? nextStart, TimeSpan duration)
+    public bool Nudge(ReviewWord? word, NudgeEdge edge, TimeSpan delta, TimeSpan? previousStart, TimeSpan? nextStart, TimeSpan duration) =>
+        Nudge(word, edge, delta, previousStart, nextStart, duration, out _);
+
+    /// <summary>The same nudge, also telling which limit stopped it short of the step (GitHub #237).</summary>
+    public bool Nudge(ReviewWord? word, NudgeEdge edge, TimeSpan delta, TimeSpan? previousStart, TimeSpan? nextStart, TimeSpan duration, out NudgeClamp clamp)
     {
+        clamp = NudgeClamp.None;
         var index = word is null ? -1 : Words.IndexOf(word);
         if (word is not null && index < 0) return false;
         var before = new NudgeLine(Words.Select(w => w.Start).ToList(), End);
-        var after = TimingNudge.Apply(before, index, edge, delta, previousStart, nextStart, duration, spread: index < 0 && !HasWordTimings);
+        var after = TimingNudge.Apply(before, index, edge, delta, previousStart, nextStart, duration, out clamp, spread: index < 0 && !HasWordTimings);
         if (ReferenceEquals(after, before)) return false;
         for (var i = 0; i < Words.Count; i++) Words[i].Start = after.WordStarts[i];
         End = after.End;

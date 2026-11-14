@@ -1691,6 +1691,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     partial void OnNudgeEdgeChanged(NudgeEdge value)
     {
+        ClearNudgeHint();
         OnPropertyChanged(nameof(NudgeWhole));
         OnPropertyChanged(nameof(NudgeStart));
         OnPropertyChanged(nameof(NudgeEnd));
@@ -1712,6 +1713,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     private void RaiseNudgeTarget()
     {
+        // A new pick is a new question: the last "No room" no longer applies.
+        ClearNudgeHint();
         OnPropertyChanged(nameof(HasNudgeTarget));
         OnPropertyChanged(nameof(NudgeTargetText));
     }
@@ -1746,9 +1749,75 @@ public partial class LyricsStudioViewModel : ViewModelBase
         TimeSpan? previous = i > 0 ? ReviewLines[i - 1].Start : null;
         TimeSpan? next = i + 1 < ReviewLines.Count ? ReviewLines[i + 1].Start : null;
         var duration = Selected?.Track.Duration ?? TimeSpan.Zero;
-        var moved = line.Nudge(SelectedWord, NudgeEdge, delta, previous, next, duration);
+        var moved = line.Nudge(SelectedWord, NudgeEdge, delta, previous, next, duration, out var clamp);
         if (moved) OnPropertyChanged(nameof(NudgeTargetText));
+        if (clamp.IsClamped) ShowNudgeHint(NudgeHintFor(clamp, moved));
+        else ClearNudgeHint();
         return moved;
+    }
+
+    // ── Why a nudge stopped short (GitHub #237) ──────────────────────────────
+    // Clamp, never push (TimingNudge): a word squeezed against its neighbour cannot move, and the
+    // buttons used to do nothing with no word why. The line under the bar says what is in the way
+    // for a few seconds, or until the next full nudge or a new pick.
+
+    internal const int NudgeHintMs = 6000;
+
+    private CancellationTokenSource? _nudgeHintCts;
+
+    /// <summary>Why the last nudge moved less than its step; empty when it moved the full step.</summary>
+    [ObservableProperty] private string _nudgeHintText = "";
+
+    private void ShowNudgeHint(string text)
+    {
+        _nudgeHintCts?.Cancel();
+        var cts = _nudgeHintCts = new CancellationTokenSource();
+        NudgeHintText = text;
+        _ = ClearNudgeHintSoonAsync(cts.Token);
+    }
+
+    private async Task ClearNudgeHintSoonAsync(CancellationToken token)
+    {
+        try { await Task.Delay(NudgeHintMs, token); }
+        catch (OperationCanceledException) { return; }
+        NudgeHintText = "";
+    }
+
+    private void ClearNudgeHint()
+    {
+        _nudgeHintCts?.Cancel();
+        _nudgeHintCts = null;
+        NudgeHintText = "";
+    }
+
+    /// <summary>The hint for a nudge stopped by <paramref name="clamp"/>: "No room: ..." or, when it moved part of the step, "Moved as far as it could: ...".</summary>
+    internal static string NudgeHintFor(NudgeClamp clamp, bool moved)
+    {
+        var at = TimedLyricsBuilder.FormatTimestamp(clamp.At);
+        var reason = clamp.Limit switch
+        {
+            NudgeLimit.Zero => Loc("LyricsStudio.NudgeLimitZero"),
+            NudgeLimit.SongEnd => Loc("LyricsStudio.NudgeLimitSongEnd", at),
+            NudgeLimit.PreviousLine => Loc("LyricsStudio.NudgeLimitPreviousLine", at),
+            NudgeLimit.NextLine => Loc("LyricsStudio.NudgeLimitNextLine", at),
+            NudgeLimit.PreviousWord => Loc("LyricsStudio.NudgeLimitPreviousWord", at),
+            NudgeLimit.NextWord => Loc("LyricsStudio.NudgeLimitNextWord", at),
+            NudgeLimit.ThisWord => Loc("LyricsStudio.NudgeLimitThisWord", at),
+            NudgeLimit.LineStart => Loc("LyricsStudio.NudgeLimitLineStart", at),
+            NudgeLimit.LineEnd => Loc("LyricsStudio.NudgeLimitLineEnd", at),
+            _ => "",
+        };
+        if (reason.Length == 0) return "";
+        if (moved) return Loc("LyricsStudio.NudgeMovedAsFar", reason);
+        var advice = clamp.Limit switch
+        {
+            NudgeLimit.PreviousWord or NudgeLimit.NextWord => Loc("LyricsStudio.NudgeAdviceWord"),
+            NudgeLimit.PreviousLine or NudgeLimit.NextLine => Loc("LyricsStudio.NudgeAdviceLine"),
+            NudgeLimit.LineEnd => Loc("LyricsStudio.NudgeAdviceLineEnd"),
+            _ => "",
+        };
+        var text = Loc("LyricsStudio.NudgeNoRoom", reason);
+        return advice.Length == 0 ? text : text + " " + advice;
     }
 
     /// <summary>
