@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
+using Noctis.Mobile.Views;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -61,9 +62,10 @@ public class MobileIdleClockTests
         }
     }
 
-    /// <summary>The device case: the launch scan shows the bar (its template and animation start),
-    /// the scan ends and hides it. Hidden, the endless animation only paused and stayed on the
-    /// clock for good; now it stops.</summary>
+    /// <summary>The device case: the launch scan shows the bar, the scan ends and hides it. The
+    /// bar is the phone's IndeterminateBar, stepped on the frame clock: nothing endless goes on the
+    /// animation clock even while it runs (Fluent's indeterminate ProgressBar did, and its 2 s loop
+    /// stalled three frames at every turn on an S23), and it stops asking for frames when the scan ends.</summary>
     [AvaloniaFact]
     public void A_finished_scan_leaves_no_endless_animation_on_the_clock()
     {
@@ -73,20 +75,39 @@ public class MobileIdleClockTests
 
         rig.Shell.Library.IsScanning = true;
         window.UpdateLayout();
-        var bar = view.GetVisualDescendants().OfType<ProgressBar>().First(b => b.IsEffectivelyVisible);
-        Assert.True(bar.IsIndeterminate);
-        Assert.NotEmpty(EndlessAnimationsOnClock());
+        var bar = view.GetVisualDescendants().OfType<IndeterminateBar>().First(b => b.IsEffectivelyVisible);
+        Assert.True(bar.IsActive);
+        Assert.True(bar.IsRunning);
+        Assert.Empty(EndlessAnimationsOnClock());
+        Assert.Empty(view.GetVisualDescendants().OfType<ProgressBar>().Where(b => b.IsIndeterminate));
 
         rig.Shell.Library.IsScanning = false;
         window.UpdateLayout();
         Assert.Empty(EndlessAnimationsOnClock());
-        Assert.False(bar.IsIndeterminate);
+        Assert.False(bar.IsActive);
+        Assert.False(bar.IsRunning);
 
         rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
         MobileFixtures.Land(window);
         Assert.Empty(EndlessAnimationsOnClock());
-        Assert.All(view.GetVisualDescendants().OfType<ProgressBar>(), b => Assert.False(b.IsIndeterminate));
+        Assert.All(view.GetVisualDescendants().OfType<IndeterminateBar>(), b => Assert.False(b.IsRunning));
         window.Close();
+    }
+
+    /// <summary>The segment enters from the left edge, crosses, and leaves at the right, never
+    /// drawn outside the track.</summary>
+    [Fact]
+    public void IndeterminateBar_segment_sweeps_across_inside_the_track()
+    {
+        Assert.Equal(0, IndeterminateBar.Segment(300, 0).Width, 3);
+        var mid = IndeterminateBar.Segment(300, 0.5);
+        Assert.True(mid.Width > 80 && mid.X > 0 && mid.X + mid.Width < 300, $"mid {mid}");
+        Assert.Equal(0, IndeterminateBar.Segment(300, 1).Width, 3);
+        for (var p = 0.0; p <= 1.0; p += 0.05)
+        {
+            var (x, w) = IndeterminateBar.Segment(300, p);
+            Assert.True(x >= 0 && x + w <= 300.0001 && w >= 0, $"phase {p}: {x}+{w}");
+        }
     }
 
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_clockOffset")]

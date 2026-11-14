@@ -46,11 +46,12 @@
             </StackPanel>
         </Border>
 
-        <!-- Indeterminate only while scanning, not merely hidden: a hidden indeterminate bar's
-             endless animation is paused but stays on the global clock, which keeps Avalonia
-             rendering a frame every 16 ms on an idle screen (one bar each on Home and Library). -->
+        <!-- Active only while scanning, not merely hidden. IndeterminateBar, not Fluent's
+             indeterminate ProgressBar: that template's 2 s loop cost three 50-83 ms frames at every
+             turn on an S23 (11-14), so the whole startup scan stuttered (one bar each on Home and Library). -->
         <StackPanel Spacing="4" IsVisible="{Binding Library.IsScanning}">
-            <ProgressBar IsIndeterminate="{Binding Library.IsScanning}" />
+            <views:IndeterminateBar Name="ScanBar" IsActive="{Binding Library.IsScanning}"
+                                    Track="{DynamicResource PhoneFillBrush}" Fill="{DynamicResource AccentTextExactBrush}" />
             <TextBlock Classes="subtle" Text="{Binding Library.ScanProgress, Converter={x:Static views:LocFormat.Count}, ConverterParameter=Mobile.Notice.ScanningFiles}" />
         </StackPanel>
     </StackPanel>
