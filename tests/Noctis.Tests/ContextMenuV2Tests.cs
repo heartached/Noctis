@@ -199,7 +199,7 @@ public class ContextMenuV2Tests
         var card = b.Tools.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().First().Child as Border;
         Assert.NotNull(card);
         Assert.True(MenuOpenAnimation.GetEnable(card!));
-        Assert.Equal(-8, MenuOpenAnimation.GetOffsetX(card!));
+        Assert.True(MenuOpenAnimation.GetSubmenu(card!));
         Assert.Contains(card!.Transitions!, t => t is Avalonia.Animation.TransformOperationsTransition);
         Assert.Contains(card.Transitions!, t => t is Avalonia.Animation.DoubleTransition d && d.Property == Visual.OpacityProperty);
 
