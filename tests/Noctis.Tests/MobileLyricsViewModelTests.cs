@@ -233,4 +233,23 @@ public class MobileLyricsViewModelTests : IDisposable
         Assert.Equal(LyricsPageViewModel.BaseFontSize * 1.3, vm.LineFontSize, 6);
         Assert.Equal(vm.LineFontSize * 0.6, vm.LayerFontSize, 6);
     }
+
+    /// <summary>Owner 11-14 (S23, 360 dp): the fixed 34 made three-word lines. Text now follows
+    /// the column width: Apple Music's ~30 on a 393 pt iPhone, smaller on a narrower phone,
+    /// capped at the old size on a wide one; the Settings size and system scale still multiply.</summary>
+    [Theory]
+    [InlineData(360, 27.36)]
+    [InlineData(393, 29.868)]
+    [InlineData(412, 31.312)]
+    [InlineData(800, 34)]
+    [InlineData(200, 22)]
+    public void LyricText_FollowsTheColumnWidth(double width, double expected)
+    {
+        var (vm, _, _, _, _) = Make();
+        vm.ViewWidth = width;
+        Assert.Equal(expected, vm.AutoBaseFontSize, 3);
+        vm.TextScale = 1.2;
+        vm.FontScale = 1.1;
+        Assert.Equal(expected * 1.2 * 1.1, vm.LineFontSize, 3);
+    }
 }
