@@ -2071,7 +2071,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="ReplayGainScanner.Cancel" xml:space="preserve"><value>Cancel</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Compute album gain (group by AlbumId)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Queue</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
-  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Add files…</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Add files</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Subtitle" xml:space="preserve"><value>Measure loudness and write ReplayGain tags.</value><comment>Header line under the title in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.SubtitleTip" xml:space="preserve"><value>EBU R128 loudness, written as ReplayGain 2.0 tags (−18 LUFS reference)</value><comment>Tooltip on the header line in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.TitleOne" xml:space="preserve"><value>Scan ReplayGain · 1 track</value><comment>Title in ReplayGainScannerViewModel, one ticked track</comment></data>

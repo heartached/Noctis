@@ -2065,7 +2065,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="ReplayGainScanner.Cancel" xml:space="preserve"><value>Abbrechen</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Album-Gain berechnen (nach AlbumId gruppieren)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Warteschlange</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
-  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Dateien hinzufügen…</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Dateien hinzufügen</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Subtitle" xml:space="preserve"><value>Lautheit messen und ReplayGain-Tags schreiben.</value><comment>Header line under the title in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.SubtitleTip" xml:space="preserve"><value>EBU-R128-Lautheit, geschrieben als ReplayGain-2.0-Tags (−18 LUFS Referenz)</value><comment>Tooltip on the header line in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.TitleOne" xml:space="preserve"><value>ReplayGain scannen · 1 Titel</value><comment>Title in ReplayGainScannerViewModel, one ticked track</comment></data>
