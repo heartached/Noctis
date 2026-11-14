@@ -3893,6 +3893,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Select.All" xml:space="preserve"><value>Выбрать все</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Снять выбор</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>Готово</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Добавить песни</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Поиск в медиатеке</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Импорт плейлиста</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>Импортировано песен: {0} из {1}</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>Импортирован {0} плейлист|Импортировано {0} плейлиста|Импортировано {0} плейлистов</value></data>
