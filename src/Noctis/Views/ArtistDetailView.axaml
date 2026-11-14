@@ -8,6 +8,7 @@
              xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.ArtistDetailView"
              x:DataType="vm:ArtistDetailViewModel"
+             Classes.wide-album-gap="{Binding IsWideAlbumSpacing}"
              Background="{DynamicResource AppMainBackground}"
              ClipToBounds="True">
 
@@ -213,6 +214,16 @@
         <Style Selector="Button.album-tile:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+        <!-- Album spacing as on the Albums page: covers 8px apart (1.6.9) by default, 18px with
+             Settings › "Wider spacing between albums" (GitHub #210). -->
+        <Style Selector="Button.album-tile">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+        <Style Selector=".wide-album-gap Button.album-tile">
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
         <Style Selector="Button.browse-item:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -403,8 +414,6 @@
             <Button Classes="album-tile"
                     AutomationProperties.Name="{Binding Name}"
                     Focusable="False"
-                    Margin="3"
-                    Padding="6"
                     MinHeight="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileHeight}"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"

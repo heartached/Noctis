@@ -604,6 +604,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 TopBar.IsAlbumCarouselView = _albumsVm.IsCarouselView;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.IsMasonryView))
                 TopBar.IsAlbumMasonry = Settings.AlbumGridMasonry;
+            else if (e.PropertyName == nameof(LibraryAlbumsViewModel.IsWideAlbumSpacing))
+                TopBar.IsAlbumWideSpacing = Settings.AlbumGridWideSpacing;
             else if (e.PropertyName == nameof(LibraryAlbumsViewModel.CarouselStyle))
                 TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
         };
@@ -3153,6 +3155,8 @@ public partial class MainWindowViewModel : ViewModelBase
             TopBar.AlbumCarouselStyle = _albumsVm.CarouselStyle.ToString();
             TopBar.AlbumMasonryCommand = _albumsVm.ToggleMasonryCommand;
             TopBar.IsAlbumMasonry = Settings.AlbumGridMasonry;
+            TopBar.AlbumWideSpacingCommand = _albumsVm.ToggleWideAlbumSpacingCommand;
+            TopBar.IsAlbumWideSpacing = Settings.AlbumGridWideSpacing;
         }
         else
         {

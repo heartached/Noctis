@@ -77,8 +77,11 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         // and handles its own dirty/active gating when the column count changes.
         _settingsPropertyChangedHandler = (_, e) =>
         {
+            if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
+                OnPropertyChanged(nameof(IsWideAlbumSpacing));
             if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
-                or nameof(SettingsViewModel.AlbumTileTargetSize))
+                or nameof(SettingsViewModel.AlbumTileTargetSize)
+                or nameof(SettingsViewModel.AlbumGridWideSpacing))
                 Dispatcher.UIThread.Post(() => UpdateGridMetrics(_lastUsableWidth));
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
@@ -99,6 +102,9 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private EventHandler? _favoritesChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _settingsPropertyChangedHandler;
 
+    /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
+    public bool IsWideAlbumSpacing => _settings.AlbumGridWideSpacing;
+
     /// <summary>
     /// Recomputes column count and tile size from the view's usable width and the
     /// cover-size setting (mirrors <see cref="LibraryAlbumsViewModel.UpdateGridMetrics"/>).
@@ -112,7 +118,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 
         var columns = Helpers.AlbumGridMetrics.ComputeColumns(
             usableWidth, _settings.AlbumTileSizeAuto, _settings.AlbumTileTargetSize);
-        var newSize = Helpers.AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+        var newSize = Helpers.AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
 
         var columnsChanged = columns != GridColumns;
         if (!columnsChanged && Math.Abs(newSize - TileArtworkSize) < 0.5)
