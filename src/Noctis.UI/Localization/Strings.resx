@@ -4168,7 +4168,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albums, {1} songs. Saved in the files' Album and Album Artist tags.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Group</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>No other album has this name. Ctrl-click the albums that belong together in the Albums grid, then right-click one of them.</value><comment>Shown when only one album is chosen</comment></data>
-  <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Grouped in Noctis, but {0} file(s) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Grouped in Noctis, but some files ({0}) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
@@ -4236,5 +4236,5 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="MoveToAlbum.ConfirmExisting" xml:space="preserve"><value>{2} will move to “{1}”. The files' album tags (album, album artist, track and disc number, year) are changed.</value><comment>{0} song count, {1} album name</comment></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} will start the new album “{1}”. The files' album tags (album, album artist, track and disc number) are changed.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Move</value><comment>Confirm button</comment></data>
-  <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Moved in Noctis, but {0} file(s) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Moved in Noctis, but some files ({0}) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
 </root>

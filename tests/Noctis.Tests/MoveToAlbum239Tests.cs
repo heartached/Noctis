@@ -178,6 +178,38 @@ public class MoveToAlbum239Tests : IDisposable
 
     // ── The library and the files ──
 
+    // Live find 11-14: a FLAC moved into an album whose files carry no sort / MusicBrainz tags
+    // failed to save ("Object reference not set"), so the move never reached the file.
+    [Fact]
+    public async Task Move_AFlac_IntoAnAlbumWithoutIdentityTags_WritesTheFile()
+    {
+        WriteMp3(Path.Combine("Target", "01.mp3"), "Target", "Artist", "Artist", track: 1);
+        var dir = Path.Combine(Music, "Old");
+        Directory.CreateDirectory(dir);
+        var song = ReplayGainWriteTests.CreateFlac(dir);
+        using (var f = TagLib.File.Create(song))
+        {
+            f.Tag.Title = "Flac Song";
+            f.Tag.Performers = new[] { "Guest" };
+            f.Tag.AlbumArtists = new[] { "Guest" };
+            f.Tag.Album = "Old";
+            f.Tag.MusicBrainzReleaseId = "rel-old";
+            f.Tag.AlbumSort = "Old, The";
+            f.Save();
+        }
+        var (library, _) = await NewLibraryAsync(2);
+        var track = library.AllTracks.Single(t => t.FilePath == song);
+
+        var result = await library.MoveToAlbumAsync(new[] { track }, "Target", "Artist");
+
+        Assert.Empty(result.UnwrittenFiles);
+        using var read = Read(song);
+        Assert.Equal("Target", read.Tag.Album);
+        Assert.Equal(new[] { "Artist" }, read.Tag.AlbumArtists);
+        Assert.True(string.IsNullOrEmpty(read.Tag.MusicBrainzReleaseId)); // the old album's id is gone
+        Assert.True(string.IsNullOrEmpty(read.Tag.AlbumSort));
+    }
+
     [Fact]
     public async Task Move_IntoExistingAlbum_WritesItsTagsToTheFile_AndTheSongJoinsIt()
     {

@@ -709,7 +709,26 @@ public class MetadataService : IMetadataService
         tag.AlbumArtistsSort = identity.AlbumArtistsSort ?? Array.Empty<string>();
         tag.MusicBrainzReleaseId = identity.MusicBrainzReleaseId;
         tag.MusicBrainzReleaseGroupId = identity.MusicBrainzReleaseGroupId;
-        tag.MusicBrainzReleaseArtistId = identity.MusicBrainzReleaseArtistId;
+        if (identity.MusicBrainzReleaseArtistId != null) tag.MusicBrainzReleaseArtistId = identity.MusicBrainzReleaseArtistId;
+        else ClearReleaseArtistId(tag);
+    }
+
+    // TagLib# 2.3.0: XiphComment.MusicBrainzReleaseArtistId = null throws NullReferenceException
+    // (FLAC / Ogg), so the field is removed by name there; other tag types take the null.
+    private static void ClearReleaseArtistId(TagLib.Tag tag)
+    {
+        switch (tag)
+        {
+            case TagLib.Ogg.XiphComment xiph:
+                xiph.RemoveField("MUSICBRAINZ_ALBUMARTISTID");
+                break;
+            case TagLib.CombinedTag combined:
+                foreach (var inner in combined.Tags) ClearReleaseArtistId(inner);
+                break;
+            default:
+                tag.MusicBrainzReleaseArtistId = null;
+                break;
+        }
     }
 
     private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited,
