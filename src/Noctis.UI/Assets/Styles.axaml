@@ -763,6 +763,12 @@
     <Style Selector="ContextMenu /template/ ScrollViewer, MenuItem /template/ Popup ScrollViewer">
         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
+    <!-- A long submenu (Link Tracks From ▸) scrolls like a list (owner 11-14): no arrow strips,
+         the thin pill scrollbar, the wheel glide, and no scrolling to a row the pointer rests on
+         (helpers:SubmenuScroller). -->
+    <Style Selector="MenuItem /template/ Popup ScrollViewer">
+        <Setter Property="(helpers:SubmenuScroller.IsEnabled)" Value="True" />
+    </Style>
     <!-- Submenu cards (Tools ▸, Carousel Style ▸, Sleep Timer ▸, Pitch ▸ …) match the parent card
          and open and close with its pop (owner 11-14): they grow out of their row while they fade
          in, and shrink back and fade out when they close. Submenu is set before Enable: the open
