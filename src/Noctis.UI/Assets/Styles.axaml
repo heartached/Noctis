@@ -1886,8 +1886,11 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
-    <!-- Round circle checkbox with check mark -->
+    <!-- Round circle checkbox with check mark. Fluent's CheckBox theme clips to bounds: where
+         the box is only as tall as the 22 px circle (a row tick with no label), the hover's
+         scale(1.06) cut the ring's top and bottom off (owner 11-14). -->
     <Style Selector="CheckBox.metadata-pill-checkbox">
+        <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Template">

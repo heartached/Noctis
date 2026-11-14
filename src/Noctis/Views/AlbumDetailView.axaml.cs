@@ -477,8 +477,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         e.Handled = true;
     }
 
-    /// <summary>Fills Link / Unlink Tracks From with the albums they can act on; each submenu is
-    /// hidden when it has none.</summary>
+    /// <summary>Fills Link / Unlink Tracks From with the albums they can act on (AlbumLinkMenu:
+    /// cover, title, E, count); each submenu is hidden when it has none.</summary>
     private void OnAlbumFlyoutOpened(object? sender, EventArgs e)
     {
         if (sender is not MenuFlyout flyout || DataContext is not AlbumDetailViewModel vm) return;
@@ -491,18 +491,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
                 _ => (null, null),
             };
             if (albums == null || command == null) continue;
-            item.Items.Clear();
-            foreach (var album in albums)
-            {
-                // A TextBlock header: a plain string would read "_" in an album name as an access key.
-                item.Items.Add(new MenuItem
-                {
-                    Header = new TextBlock { Text = $"{album.Name} · {album.Tracks.Count}" },
-                    Command = command,
-                    CommandParameter = album,
-                });
-            }
-            item.IsVisible = albums.Count > 0;
+            AlbumLinkMenu.Fill(item, albums, command);
         }
     }
 
