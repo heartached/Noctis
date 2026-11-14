@@ -651,6 +651,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             }
         }
         RaiseStateChanged();
+        // The desktop answers again: lyrics lookups stop using saved copies only.
+        EndLyricsQuiet();
 
         // 7. Lyrics for downloaded songs that have none saved (after LastSyncUtc, so they count as current).
         await PrefetchDownloadedLyricsAsync(ct).ConfigureAwait(false);
