@@ -109,9 +109,16 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             Focus();
     }
 
-    /// <summary>The press landed in the tile's padding (the gap around its cover and caption).</summary>
+    /// <summary>The press landed in the tile's padding (the gap around its cover and caption).
+    /// With one row height (1.6.9 spacing) a one-line caption leaves room under it inside the
+    /// tile: that counts as gap too, so the press is tested against the cover + caption.</summary>
     private static bool IsInTilePadding(Button tile, PointerPressedEventArgs e)
     {
+        if (tile.Content is Control content && content.Bounds.Width > 0 && content.Bounds.Height > 0)
+        {
+            var q = e.GetPosition(content);
+            return q.X < 0 || q.Y < 0 || q.X > content.Bounds.Width || q.Y > content.Bounds.Height;
+        }
         var p = e.GetPosition(tile);
         var pad = tile.Padding;
         return p.X < pad.Left || p.Y < pad.Top

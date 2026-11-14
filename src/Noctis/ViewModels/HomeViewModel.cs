@@ -152,6 +152,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private double _albumTileSize = 220;
     private double _lastAlbumUsableWidth;
 
+    /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
+    public bool IsWideAlbumSpacing => _settings?.AlbumGridWideSpacing ?? false;
+
     public void UpdateAlbumTileSize(double usableWidth)
     {
         if (!double.IsFinite(usableWidth) || usableWidth <= 0) return;
@@ -159,7 +162,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var auto = _settings?.AlbumTileSizeAuto ?? true;
         var target = _settings?.AlbumTileTargetSize ?? 220;
         var columns = AlbumGridMetrics.ComputeColumns(usableWidth, auto, target);
-        var size = AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+        var size = AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
         if (Math.Abs(size - AlbumTileSize) >= 0.5) AlbumTileSize = size;
     }
 
@@ -368,6 +371,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 }
                 else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto) or nameof(SettingsViewModel.AlbumTileTargetSize))
                     UpdateAlbumTileSize(_lastAlbumUsableWidth);
+                else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
+                {
+                    OnPropertyChanged(nameof(IsWideAlbumSpacing));
+                    UpdateAlbumTileSize(_lastAlbumUsableWidth);
+                }
                 else if (e.PropertyName == nameof(SettingsViewModel.IsScanning))
                     UpdateEmptyLibraryState();
                 else if (e.PropertyName == nameof(SettingsViewModel.HomeRecentAlbumsCount))

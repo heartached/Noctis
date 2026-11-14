@@ -568,6 +568,9 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>GitHub #213: the View menu's Masonry check and its toggle.</summary>
     [ObservableProperty] private bool _isAlbumMasonry;
     [ObservableProperty] private ICommand? _albumMasonryCommand;
+    /// <summary>The View menu's "Wider Spacing" check and its toggle.</summary>
+    [ObservableProperty] private bool _isAlbumWideSpacing;
+    [ObservableProperty] private ICommand? _albumWideSpacingCommand;
 
     // GitHub #164: on the Albums page the top-right view-mode icon switches the page between
     // its grid and the album carousel (every album, like the artist page's toggle) instead of
