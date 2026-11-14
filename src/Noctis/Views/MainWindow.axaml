@@ -414,6 +414,11 @@
                                               IsEnabled="{Binding !IsAlbumCarouselView}">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumMasonry}"/></MenuItem.Icon>
                                     </MenuItem>
+                                    <!-- Wider spacing between albums (Settings › Appearance has it too). -->
+                                    <MenuItem Header="{loc:T Main.AlbumWideSpacing}" Command="{Binding AlbumWideSpacingCommand}"
+                                              IsEnabled="{Binding !IsAlbumCarouselView}">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumWideSpacing}"/></MenuItem.Icon>
+                                    </MenuItem>
                                     <Separator/>
                                     <!-- GitHub #176: the case style only shows in the carousel, so its four
                                          items are greyed (IsEnabled, not just opacity) while the grid is up;

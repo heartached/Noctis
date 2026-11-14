@@ -42,6 +42,21 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
+
+    /// <summary>Caption room under each cover in the row grid's fixed row height (1.6.9): the
+    /// tile's 4px padding top and bottom, the title's 5px top margin, two title lines and the
+    /// subtitle all fit, so a wrapped title never makes its row taller than the others.</summary>
+    internal const double TileTextHeight = 64;
+
+    /// <summary>Settings › Appearance "Wider spacing between albums": GitHub #210's 18px gaps
+    /// with rows sized to their own captions. Off is 1.6.9's close grid.</summary>
+    public bool IsWideAlbumSpacing => _settings.AlbumGridWideSpacing;
+
+    /// <summary>Height of every row-grid row: cover + <see cref="TileTextHeight"/> by default;
+    /// NaN (auto, rows fit their tallest caption) with wide spacing.</summary>
+    public double TileRowHeight => IsWideAlbumSpacing ? double.NaN : TileArtworkSize + TileTextHeight;
+
+    partial void OnTileArtworkSizeChanged(double value) => OnPropertyChanged(nameof(TileRowHeight));
     /// <summary>The genre a Genres-page click narrowed the grid to (GitHub #220); empty otherwise.</summary>
     [ObservableProperty] private string _genreFilterName = string.Empty;
 
@@ -69,7 +84,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         var columns = AlbumGridMetrics.ComputeColumns(
             usableWidth, _settings.AlbumTileSizeAuto, _settings.AlbumTileTargetSize);
-        var newSize = AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+        var newSize = AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
 
         var columnsChanged = columns != GridColumns;
         if (!columnsChanged && Math.Abs(newSize - TileArtworkSize) < 0.5)
@@ -326,6 +341,10 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void ToggleMasonry() => _settings.AlbumGridMasonry = !_settings.AlbumGridMasonry;
 
+    /// <summary>View menu: Wider spacing between albums on/off (the same setting Settings shows).</summary>
+    [RelayCommand]
+    private void ToggleWideAlbumSpacing() => _settings.AlbumGridWideSpacing = !_settings.AlbumGridWideSpacing;
+
     /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
 
@@ -524,6 +543,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             {
                 OnPropertyChanged(nameof(IsMasonryView));
                 OnPropertyChanged(nameof(IsRowGridView));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
+            {
+                OnPropertyChanged(nameof(IsWideAlbumSpacing));
+                OnPropertyChanged(nameof(TileRowHeight));
+                Dispatcher.UIThread.Post(() => UpdateGridMetrics(_lastUsableWidth));
             }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))
