@@ -58,14 +58,21 @@ public class PageSurroundMatchesPageRenderTests
             .Invoke(w, new object[] { on });
 
     [AvaloniaTheory]
-    [InlineData("Gray", false)]
-    [InlineData("Gray", true)]
-    [InlineData("Dark", true)]
-    [InlineData("Ink", true)]
-    [InlineData("Midnight", true)]
-    [InlineData("Smoke", false)]
-    [InlineData("Smoke", true)]
-    public void RailMargin_MatchesThePage(string theme, bool glass)
+    [InlineData("Gray", false, false)]
+    [InlineData("Gray", true, false)]
+    [InlineData("Dark", true, false)]
+    [InlineData("Ink", true, false)]
+    [InlineData("Midnight", true, false)]
+    [InlineData("Smoke", false, false)]
+    [InlineData("Smoke", true, false)]
+    // #240 part 2: with "Tint window with accent colour" on, the surround takes the shade too.
+    [InlineData("Gray", false, true)]
+    [InlineData("Gray", true, true)]
+    [InlineData("Dark", true, true)]
+    [InlineData("Midnight", true, true)]
+    [InlineData("Smoke", false, true)]
+    [InlineData("Smoke", true, true)]
+    public void RailMargin_MatchesThePage(string theme, bool glass, bool accentTint)
     {
         if (!HeadlessTestApp.RealRendering) Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
         if (OperatingSystem.IsLinux() && glass) Assert.Skip("Liquid Glass never applies on Linux");
@@ -78,6 +85,9 @@ public class PageSurroundMatchesPageRenderTests
         if (overlay != null) app.Resources.MergedDictionaries.Add(overlay);
         var oldVariant = app.RequestedThemeVariant;
         app.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+
+        // The accent overlay App.SetAccent merges, with the shaded backgrounds (Crimson).
+        var tint = accentTint ? AccentWindowTintTests.UseAccent(Color.Parse("#E74856"), tint: true) : null;
 
         var main = new MainWindow { Width = 1200, Height = 800 };
         main.Show();
@@ -100,7 +110,7 @@ public class PageSurroundMatchesPageRenderTests
                 };
             }
 
-            var tag = $"{theme.ToLowerInvariant()}-{(glass ? "glass" : "noglass")}";
+            var tag = $"{theme.ToLowerInvariant()}-{(glass ? "glass" : "noglass")}{(accentTint ? "-accenttint" : "")}";
             using var shot = Shot(main, $"after-{tag}");
             var scale = shot.PixelSize.Width / main.Bounds.Width;
             int Px(double v) => (int)(v * scale);
@@ -130,6 +140,7 @@ public class PageSurroundMatchesPageRenderTests
         {
             if (glass) ApplyLiquidGlass(main, false);
             main.Close();
+            tint?.Dispose();
             if (overlay != null) app.Resources.MergedDictionaries.Remove(overlay);
             app.RequestedThemeVariant = oldVariant;
         }
