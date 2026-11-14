@@ -148,9 +148,12 @@ public static class SmoothScrollBehavior
             // Wheel over a popup (a ComboBox drop-down, a flyout): its events bubble through
             // the owner into this page, but the pointer is over the popup, not the page.
             // Scrolling the page here moved the Settings content out from under an open
-            // Language list while the popup stayed put (09-19 report).
+            // Language list while the popup stayed put (09-19 report). A ScrollViewer inside
+            // that same overlay popup (a long submenu in the main window) is the popup's own
+            // and still glides (owner 11-14: it jumped 50 px a notch).
+            var popupHost = source.FindAncestorOfType<OverlayPopupHost>();
             if (!ReferenceEquals(TopLevel.GetTopLevel(source), TopLevel.GetTopLevel(element))
-                || source.FindAncestorOfType<OverlayPopupHost>() != null)
+                || (popupHost != null && !ReferenceEquals(popupHost, element.FindAncestorOfType<OverlayPopupHost>())))
                 return;
 
             // Wheel over a nested scrollable region: leave the event alone so the inner

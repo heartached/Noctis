@@ -9,6 +9,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -31,7 +32,7 @@ namespace Noctis.Tests;
 /// it, the song count quiet and right-aligned; albums and EPs first, then singles, each by
 /// title, split by a separator; a fixed-width card that scrolls past ~9 rows. With
 /// NOCTIS_TEST_SKIA=1 the probe saves the real submenu card as PNGs (NOCTIS_RENDER_OUT or
-/// D:\NoctisWT\art-1114\linkmenu).
+/// D:\NoctisWT\art-1114\linkmenu2).
 /// </summary>
 public class AlbumLinkMenuTests : IDisposable
 {
@@ -176,7 +177,9 @@ public class AlbumLinkMenuTests : IDisposable
         Assert.False(item.IsVisible);
     }
 
-    private static (MenuFlyout flyout, MenuItem sub, Window win) OpenFlyout(IReadOnlyList<Album> albums, ThemeVariant variant)
+    /// <param name="overlay">Host the menu in the window's overlay layer, as the main window does
+    /// (".glass-overlay"), so the window's mouse and keyboard input reach the submenu.</param>
+    private static (MenuFlyout flyout, MenuItem sub, Window win) OpenFlyout(IReadOnlyList<Album> albums, ThemeVariant variant, bool overlay = false)
     {
         AddToPlaylistDialogTests.EnsureAppStyles();
         var sub = new MenuItem { Header = Loc.T("AlbumDetail.LinkTracksFrom"), Tag = "LinkTracksFrom" };
@@ -184,6 +187,7 @@ public class AlbumLinkMenuTests : IDisposable
         var flyout = new MenuFlyout { Items = { new MenuItem { Header = "Play" }, new MenuItem { Header = "Show Folder" }, sub, new Separator(), new MenuItem { Header = "Remove from Library" } } };
         var anchor = new Button { Content = "…", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top, Margin = new Thickness(0, 40, 60, 0) };
         var win = new Window { Width = 1200, Height = 900, Content = anchor, RequestedThemeVariant = variant };
+        if (overlay) win.Classes.Add("glass-overlay");
         win.Show();
         flyout.ShowAt(anchor);
         Dispatcher.UIThread.RunJobs();
@@ -248,31 +252,167 @@ public class AlbumLinkMenuTests : IDisposable
         }
     }
 
+    private static ScrollViewer Scroller(MenuItem sub) => Card(sub).GetVisualDescendants().OfType<ScrollViewer>().First();
+
+    private static Rect InWindow(Visual v, Window win) => new(v.TranslatePoint(new Point(0, 0), win)!.Value, v.Bounds.Size);
+
+    // Owner 11-14: "remove the arrows on top and bottom, theres also a bug that it autoscrolls
+    // sometimes. when i use the scrollwheel to scroll, it should have the same animation like
+    // inside of the albums section."
+
+    [AvaloniaFact]
+    public void TheScroller_HasNoArrowStrips_ButTheAppsPillScrollbar()
+    {
+        var (flyout, sub, win) = OpenFlyout(Library(), ThemeVariant.Dark, overlay: true);
+        try
+        {
+            var sv = Scroller(sub);
+            Assert.True(SubmenuScroller.GetIsEnabled(sv));
+            // The Fluent menu scroller's arrow strips are RepeatButtons outside any ScrollBar.
+            Assert.DoesNotContain(sv.GetVisualDescendants().OfType<RepeatButton>(), b => b.FindAncestorOfType<ScrollBar>() == null);
+            var bar = sv.GetVisualDescendants().OfType<ScrollBar>().Single(b => b.Orientation == Avalonia.Layout.Orientation.Vertical);
+            Assert.True(bar.IsVisible && bar.Bounds.Height > 100, $"bar {bar.Bounds} visible={bar.IsVisible}");
+            // The viewport is the whole card inside its padding and border: no strip takes a row's room.
+            Assert.Equal(AlbumLinkMenu.CardMaxHeight - 14, sv.Viewport.Height, 1);
+        }
+        finally
+        {
+            flyout.Hide();
+            win.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void ThePointer_RestingOrMoving_OverTheRowsAndEdges_NeverScrollsTheList()
+    {
+        var (flyout, sub, win) = OpenFlyout(Library(), ThemeVariant.Dark, overlay: true);
+        try
+        {
+            var sv = Scroller(sub);
+            var box = InWindow(sv, win);
+            Assert.Equal(0, sv.Offset.Y);
+            // Down through every row to the half row at the bottom edge (this used to scroll by
+            // 14 px: the hovered row is focused and was brought into view), then rest there.
+            for (var y = box.Top + 2; y < box.Bottom - 0.5; y += 6)
+            {
+                win.MouseMove(new Point(box.Left + 120, y), RawInputModifiers.None);
+                Pump(20);
+                Assert.Equal(0, sv.Offset.Y);
+            }
+            win.MouseMove(new Point(box.Left + 120, box.Bottom - 2), RawInputModifiers.None);
+            Pump(1200);
+            Assert.Equal(0, sv.Offset.Y);
+
+            // Scrolled to the end, resting at the top edge does not scroll it back either.
+            var max = sv.Extent.Height - sv.Viewport.Height;
+            sv.Offset = new Vector(0, max);
+            Pump(50);
+            for (var y = box.Top + 30; y > box.Top + 0.5; y -= 4)
+            {
+                win.MouseMove(new Point(box.Left + 120, y), RawInputModifiers.None);
+                Pump(20);
+            }
+            Pump(1200);
+            Assert.Equal(max, sv.Offset.Y, 1);
+        }
+        finally
+        {
+            flyout.Hide();
+            win.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void AWheelNotch_GlidesLikeTheAlbumsPage_ThroughInBetweenOffsets()
+    {
+        var (flyout, sub, win) = OpenFlyout(Library(), ThemeVariant.Dark, overlay: true);
+        try
+        {
+            var sv = Scroller(sub);
+            Assert.True(SmoothScrollBehavior.GetIsEnabled(sv));
+            Assert.Equal(220, SmoothScrollBehavior.GetStep(sv));
+            Assert.Equal(380, SmoothScrollBehavior.GetSettleMs(sv));
+            var box = InWindow(sv, win);
+            var at = new Point(box.Left + 120, box.Top + 60);
+            win.MouseMove(at, RawInputModifiers.None);
+            Pump(30);
+            win.MouseWheel(at, new Vector(0, -1));
+            var seen = new List<double>();
+            var sw = Stopwatch.StartNew();
+            while (sw.ElapsedMilliseconds < 700) { Pump(10); seen.Add(sv.Offset.Y); }
+            _o.WriteLine(string.Join(", ", seen.Select(v => v.ToString("0"))));
+            Assert.Equal(220, seen[^1], 1);
+            // Eased over several frames, rather than jumping a line (50 px) or the whole step.
+            var between = seen.Where(v => v > 1 && v < 219).Distinct().Count();
+            Assert.True(between >= 5, $"only {between} in-between offsets: {string.Join(", ", seen)}");
+            Assert.True(seen.Zip(seen.Skip(1)).All(p => p.Second >= p.First - 0.01), "the glide went backwards");
+        }
+        finally
+        {
+            flyout.Hide();
+            win.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void KeyboardDown_PastTheLastVisibleRow_BringsItIntoView()
+    {
+        var (flyout, sub, win) = OpenFlyout(Library(), ThemeVariant.Dark, overlay: true);
+        try
+        {
+            var sv = Scroller(sub);
+            var rows = sub.Items.OfType<MenuItem>().ToList();
+            Assert.True(rows[0].Focus(NavigationMethod.Directional));
+            Pump(30);
+            for (var i = 0; i < 12; i++)
+            {
+                win.KeyPress(Key.Down, RawInputModifiers.None, PhysicalKey.ArrowDown, null);
+                Pump(20);
+            }
+            var focused = Assert.IsType<MenuItem>(TopLevel.GetTopLevel(sv)!.FocusManager!.GetFocusedElement());
+            Assert.True(rows.IndexOf(focused) >= 10, $"focus on row {rows.IndexOf(focused)}");
+            Assert.True(sv.Offset.Y > 0, "the list did not follow the keyboard");
+            var row = InWindow(focused, win);
+            var view = InWindow(sv, win);
+            Assert.True(row.Top >= view.Top - 0.5 && row.Bottom <= view.Bottom + 0.5, $"row {row} outside {view}");
+        }
+        finally
+        {
+            flyout.Hide();
+            win.Close();
+        }
+    }
+
     [AvaloniaFact]
     public void Probe_RenderTheSubmenuCard()
     {
         if (!HeadlessTestApp.RealRendering) return; // needs real Skia rendering
         var env = Environment.GetEnvironmentVariable("NOCTIS_RENDER_OUT");
-        var outDir = string.IsNullOrWhiteSpace(env) ? @"D:\NoctisWT\art-1114\linkmenu" : env;
+        var outDir = string.IsNullOrWhiteSpace(env) ? @"D:\NoctisWT\art-1114\linkmenu2" : env;
         Directory.CreateDirectory(outDir);
         var albums = Library(withArt: true);
         foreach (var variant in new[] { ThemeVariant.Dark, ThemeVariant.Light })
+        foreach (var after in new[] { false, true })
         {
             Application.Current!.RequestedThemeVariant = variant;
             var (flyout, sub, win) = OpenFlyout(albums, variant);
             try
             {
+                var tag = after ? "after" : "before";
+                var scroller = Scroller(sub);
+                // "before": the Fluent menu scroller (arrow strips) the template sets without SubmenuScroller.
+                if (!after) SubmenuScroller.SetIsEnabled(scroller, false);
                 Pump(600);
                 var card = Card(sub);
                 var root = TopLevel.GetTopLevel(card)!;
-                root.CaptureRenderedFrame()!.Save(Path.Combine(outDir, $"linkmenu-{variant}-top.png"));
-                var scroller = card.GetVisualDescendants().OfType<ScrollViewer>().First();
+                root.CaptureRenderedFrame()!.Save(Path.Combine(outDir, $"{tag}-{variant}-top.png"));
+                scroller.Offset = new Vector(0, 160);
+                Pump(300);
+                root.CaptureRenderedFrame()!.Save(Path.Combine(outDir, $"{tag}-{variant}-middle.png"));
                 scroller.Offset = new Vector(0, scroller.Extent.Height);
                 Pump(300);
-                root.CaptureRenderedFrame()!.Save(Path.Combine(outDir, $"linkmenu-{variant}-bottom.png"));
-                var flyoutRoot = TopLevel.GetTopLevel((Control)flyout.Popup.Child!)!;
-                flyoutRoot.CaptureRenderedFrame()!.Save(Path.Combine(outDir, $"linkmenu-{variant}-parent.png"));
-                _o.WriteLine($"{variant}: card {card.Bounds}");
+                root.CaptureRenderedFrame()!.Save(Path.Combine(outDir, $"{tag}-{variant}-bottom.png"));
+                _o.WriteLine($"{variant} {tag}: card {card.Bounds} viewport {scroller.Viewport}");
             }
             finally
             {
