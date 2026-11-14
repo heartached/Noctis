@@ -128,6 +128,10 @@ public sealed class CapsuleSlider : RangeBase
     {
         var width = Bounds.Width;
         if (width <= 0) return;
+        // Hit testing follows what is drawn: with only the capsule, a press had to land on its
+        // 7 dp in the middle of the 30 dp bar (beta, 11-09). A clear fill over the whole box
+        // takes the finger anywhere on it and paints nothing.
+        context.FillRectangle(Brushes.Transparent, new Rect(Bounds.Size));
         var grow = Math.Clamp(Expansion, 0, 1);
         var height = TrackHeight + (PressedTrackHeight - TrackHeight) * grow;
         var capsule = new RoundedRect(new Rect(0, (Bounds.Height - height) / 2, width, height), height / 2);

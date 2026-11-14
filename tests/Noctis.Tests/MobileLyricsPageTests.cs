@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Controls.Presenters;
 using Avalonia.LogicalTree;
@@ -376,6 +377,38 @@ public class MobileLyricsPageTests
         Assert.True(page.ControlsShown);
         page.HideControlsIfPlaying();
         Assert.True(page.ControlsShown);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>Beta (Alfamin 11-09): the timeline only took a tap dead centre - the capsule
+    /// drew its 7 dp and nothing else, so only those pixels were hit. The whole 30 dp box takes
+    /// the finger now: a press near its top or bottom edge puts the value under it.</summary>
+    [AvaloniaTheory]
+    [InlineData(15.0)]   // dead centre, on the capsule
+    [InlineData(2.0)]
+    [InlineData(27.0)]
+    public void SeekBar_TakesAPress_AnywhereInItsHeight(double y)
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.Player.TogglePlayPauseCommand.Execute(null);   // paused: the transport stays up
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        MobileFixtures.Land(window);
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var bar = page.FindControl<CapsuleSlider>("SeekBar")!;
+        Assert.Equal(30, bar.Bounds.Height);
+        var at = bar.TranslatePoint(new Point(bar.Bounds.Width * 0.5, y), window)!.Value;
+        window.MouseDown(at, Avalonia.Input.MouseButton.Left);
+        Assert.True(bar.IsScrubbing);
+        Assert.Equal(bar.Maximum * 0.5, bar.Value, 1);
+        window.MouseUp(at, Avalonia.Input.MouseButton.Left);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
