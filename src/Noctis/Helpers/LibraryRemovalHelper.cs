@@ -298,6 +298,9 @@ public static class LibraryRemovalHelper
             // A trash that reported failure can still have landed — "already gone"
             // counts as success so the cascade continues to the parent.
             if (!Directory.Exists(dir)) return true;
+            // A protected root, a drive root or a folder that still holds subfolders stays
+            // that way however long we wait: the ladder is only for a handle being released.
+            if (CanNeverBeTrashed(dir, protectedDirs)) return false;
             if (!QualifiesForTrash(dir, protectedDirs)) continue;
             qualified = true;
             if (tryTrashDirectory(dir)) return true;
@@ -310,6 +313,20 @@ public static class LibraryRemovalHelper
             DebugLog.Write("Library", $"folder trash failed: {dir}");
         }
         return false;
+    }
+
+    private static bool CanNeverBeTrashed(string dir, ISet<string> protectedDirs)
+    {
+        try
+        {
+            if (protectedDirs.Contains(dir)) return true;
+            if (string.Equals(Path.GetPathRoot(dir), dir, StringComparison.OrdinalIgnoreCase)) return true;
+            return Directory.EnumerateDirectories(dir).Any();
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static bool QualifiesForTrash(string dir, ISet<string> protectedDirs)
