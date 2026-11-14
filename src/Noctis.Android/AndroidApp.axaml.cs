@@ -133,7 +133,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         };
         var shell = new ShellViewModel(
             // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
-            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history) { DeviceMusic = AndroidDeviceMusic.Create(context) },
+            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history)
+            {
+                DeviceMusic = AndroidDeviceMusic.Create(context),
+                SortOffUiThread = true,
+            },
             nowPlaying,
             lyrics)
         {

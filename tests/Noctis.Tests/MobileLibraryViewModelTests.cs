@@ -353,4 +353,109 @@ public class MobileLibraryViewModelTests : IDisposable
 
         Assert.False(vm.IsScanning);
     }
+
+    /// <summary>Discord #mobile-beta (Mistery): the phone took long to load and sat unresponsive
+    /// while it did. Every library update (the load, the shell's start, a scan's publishes, the
+    /// sync) queued a full refresh on the UI thread; a burst that arrives while one is waiting
+    /// is now one refresh.</summary>
+    [Fact]
+    public void LibraryUpdatedBurst_QueuesOneRefresh()
+    {
+        var library = new FakeLibraryService();
+        library.TrackList.Add(new Track { Title = "B" });
+        var posted = new List<Action>();
+        var vm = new LibraryViewModel(library, new PersistenceService(_root), new ScriptedPicker(), marshal: posted.Add);
+        var refreshed = 0;
+        vm.Refreshed += (_, _) => refreshed++;
+
+        for (var i = 0; i < 5; i++) library.RaiseLibraryUpdated();
+        Assert.Single(posted);
+
+        posted[0]();
+        Assert.Equal(1, refreshed);
+        Assert.Single(vm.Songs);
+
+        library.RaiseLibraryUpdated();   // after it ran, the next update queues again
+        Assert.Equal(2, posted.Count);
+    }
+
+    /// <summary>The culture-aware title sort of every song is the expensive part of a refresh
+    /// (most of a second on ~4,400 songs): an update with the same songs and titles keeps the
+    /// sorted list, a title changed in place sorts again.</summary>
+    [Fact]
+    public void UnchangedLibraryUpdate_DoesNotResortTheSongs()
+    {
+        var library = new FakeLibraryService();
+        var b = new Track { Title = "B" };
+        var a = new Track { Title = "A" };
+        library.TrackList.AddRange(new[] { b, a });
+        var vm = new LibraryViewModel(library, new PersistenceService(_root), new ScriptedPicker(), marshal: run => run());
+        var refreshed = 0;
+        vm.Refreshed += (_, _) => refreshed++;
+        library.RaiseLibraryUpdated();
+        Assert.Equal(new[] { a, b }, vm.Songs);
+        var resets = 0;
+        vm.Songs.CollectionChanged += (_, _) => resets++;
+
+        library.RaiseLibraryUpdated();
+        Assert.Equal(0, resets);
+        Assert.Equal(2, refreshed);   // the rails and open pages still re-read (covers, plays)
+
+        b.Title = "0 First";
+        library.RaiseLibraryUpdated();
+        Assert.Equal(1, resets);
+        Assert.Equal(new[] { b, a }, vm.Songs);
+
+        var c = new Track { Title = "C" };
+        library.TrackList.Add(c);
+        library.RaiseLibraryUpdated();
+        Assert.Equal(new[] { b, a, c }, vm.Songs);
+    }
+
+    /// <summary>On the phone the sort runs on the pool: the refresh on the UI thread only reads
+    /// the counts, and the sorted songs come back as a separate step. Updates while it sorts are
+    /// one sort more, of the library as it is then.</summary>
+    [Fact]
+    public async Task SortOffUiThread_SwapsTheSortedSongsInAsALaterStep()
+    {
+        var library = new FakeLibraryService();
+        var b = new Track { Title = "B" };
+        var a = new Track { Title = "A" };
+        library.TrackList.AddRange(new[] { b, a });
+        var posted = new List<Action>();
+        var vm = new LibraryViewModel(library, new PersistenceService(_root), new ScriptedPicker(), marshal: posted.Add)
+        {
+            SortOffUiThread = true,
+        };
+        var refreshed = 0;
+        vm.Refreshed += (_, _) => refreshed++;
+        void Drain()
+        {
+            var now = posted.ToList();
+            posted.Clear();
+            foreach (var step in now) step();
+        }
+
+        library.RaiseLibraryUpdated();
+        Drain();
+        Assert.Equal(2, vm.SongCount);
+        Assert.Empty(vm.Songs);
+        Assert.Equal(0, refreshed);
+
+        var c = new Track { Title = "C" };
+        library.TrackList.Add(c);
+        library.RaiseLibraryUpdated();
+        Drain();                         // mid-sort: noted, not sorted again yet
+
+        await vm.PendingSort;
+        Drain();                         // the first sort lands, the second starts
+        Assert.Equal(new[] { a, b }, vm.Songs);
+        Assert.Equal(1, refreshed);
+
+        await vm.PendingSort;
+        Drain();
+        Assert.Equal(new[] { a, b, c }, vm.Songs);
+        Assert.Equal(2, refreshed);
+        Assert.Empty(posted);
+    }
 }
