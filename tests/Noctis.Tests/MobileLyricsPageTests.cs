@@ -298,6 +298,62 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>Beta (Duckyvictus 11-11): the lyrics took up to 6 s to come back after a scroll -
+    /// 3.5 s restarted by every movement of the fling for 2.5 s after the lift. Apple's: about
+    /// 2 s after the last touch; a fling right after the lift restarts the wait, its later tail
+    /// does not push it back. (Headless timers do not tick: a restart is seen as the timer's
+    /// Interval set back to BrowseResumeDelay over a marker value.)</summary>
+    [AvaloniaFact]
+    public void Browsing_ResumesSoonAfterTheLift_AFlingTailDoesNotExtendIt()
+    {
+        Assert.True(LyricsPage.BrowseResumeDelay <= TimeSpan.FromSeconds(2));
+        Assert.True(LyricsPage.BrowseResumeDelay + LyricsPage.FlingExtendWindow <= TimeSpan.FromSeconds(2.5));
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 60).Select(i => $"[00:{i:00}.50]line {i}"));
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        MobileFixtures.Land(window);
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var scroll = page.FindControl<ScrollViewer>("LyricsScroll")!;
+        var timer = (Avalonia.Threading.DispatcherTimer)typeof(LyricsPage)
+            .GetField("_browseTimer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
+        var marker = TimeSpan.FromSeconds(77);
+        void Move(double by)
+        {
+            scroll.Offset = new Vector(0, scroll.Offset.Y + by);
+            window.UpdateLayout();
+        }
+        bool Restarted() => timer.IsEnabled && timer.Interval == LyricsPage.BrowseResumeDelay;
+
+        // A finger in the side margin (beside the lines, so no line takes it as a tap) drags.
+        var at = scroll.TranslatePoint(new Point(8, scroll.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(at, Avalonia.Input.MouseButton.Left);
+        Move(60);
+        Assert.True(shell.Lyrics.IsBrowsing);
+        Assert.True(Restarted());
+
+        timer.Interval = marker;
+        window.MouseUp(at, Avalonia.Input.MouseButton.Left);
+        Assert.True(Restarted());   // the wait counts from the lift
+
+        timer.Interval = marker;
+        Move(40);                   // the fling just after the lift
+        Assert.True(Restarted());
+
+        timer.Interval = marker;
+        Thread.Sleep(LyricsPage.FlingExtendWindow + TimeSpan.FromMilliseconds(80));
+        Move(20);                   // its tail: still browsing, the wait left running
+        Assert.True(shell.Lyrics.IsBrowsing);
+        Assert.True(timer.IsEnabled);
+        Assert.Equal(marker, timer.Interval);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>An explicit song carries the E badge after its title in the header.</summary>
     [AvaloniaFact]
     public void Header_ShowsTheEBadge_ForAnExplicitSong()
