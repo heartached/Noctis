@@ -355,22 +355,29 @@ public class MobileNowPlayingPageTests : IDisposable
     /// <summary>Review Focus #4: rotating mid-playback keeps the activity, so the page must
     /// fit a 915×412 window as the device has it — volume row shown, status bar on top and
     /// the 3-button navigation bar on the right — with the cover still visible, not squeezed
-    /// out by the controls.</summary>
-    [AvaloniaFact]
-    public void Landscape_NowPlayingFitsTheWindow_WithTheCoverStillShown()
+    /// out by the controls. 780×360 is a Galaxy S23 (1080 px at 3x): there the bottom
+    /// Lyrics/Output/Queue row hung half below the screen.</summary>
+    [AvaloniaTheory]
+    [InlineData(915, 412, 0, 24)]
+    [InlineData(780, 360, 33, 30)]   // S23 landscape: camera cutout 33 dp left, status bar 30 dp
+    public void Landscape_NowPlayingFitsTheWindow_WithTheCoverStillShown(int width, int height, int cutoutLeft, int statusTop)
     {
-        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
+        // A FLAC: the Lossless pill under the seek bar is taller than the bare times.
+        var song = MobileFixtures.Song("Tone");
+        song.Codec = "FLAC";
+        using var rig = MobileFixtures.MakeRig(new[] { song });
         var nowPlaying = new NowPlayingViewModel(rig.Player, rig.Library, rig.Persistence, marshal: a => a(), volume: new FakeVolume());
         var shell = new ShellViewModel(rig.Shell.Library, nowPlaying,
             new LyricsPageViewModel(rig.Player, nowPlaying, new FakeTrackFiles(), rig.Persistence, work => Task.FromResult(work())));
-        var window = MobileFixtures.Mount(shell, out var view, width: 915, height: 412);
-        view.ApplySafeArea(new Thickness(0, 24, 48, 0));
+        var window = MobileFixtures.Mount(shell, out var view, width: width, height: height);
+        view.ApplySafeArea(new Thickness(cutoutLeft, statusTop, 48, 0));
         shell.Player.PlayTracks(rig.Library.TrackList, 0);
         shell.OpenNowPlayingCommand.Execute(null);
         window.UpdateLayout();
 
         var page = view.FindControl<NowPlayingPage>("NowPlaying")!;
         Assert.True(MobileFixtures.Named<Control>(page, "VolumeRow").IsVisible);
+        Assert.True(MobileFixtures.Named<Control>(page, "QualityBadge").IsVisible);
         foreach (var name in new[] { "SeekBar", "PreviousButton", "PlayPauseButton", "NextButton", "NowPlayingMore",
                      "VolumeSlider", "LyricsButton", "OutputButton", "QueueButton" })
         {
@@ -378,7 +385,7 @@ public class MobileNowPlayingPageTests : IDisposable
             var topLeft = control.TranslatePoint(new Point(0, 0), window)!.Value;
             var bottomRight = control.TranslatePoint(new Point(control.Bounds.Width, control.Bounds.Height), window)!.Value;
             Assert.True(control.Bounds.Width > 0 && control.Bounds.Height > 0, $"{name} has no size");
-            Assert.True(topLeft.X >= -0.5 && topLeft.Y >= -0.5 && bottomRight.X <= 915.5 && bottomRight.Y <= 412.5,
+            Assert.True(topLeft.X >= -0.5 && topLeft.Y >= -0.5 && bottomRight.X <= width + 0.5 && bottomRight.Y <= height + 0.5,
                 $"{name} spans {topLeft}-{bottomRight}");
         }
         var cover = MobileFixtures.Named<Viewbox>(page, "ArtworkBox").Bounds.Height;

@@ -240,7 +240,7 @@
                   </Panel>
                 </Viewbox>
 
-                <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
+                <Grid Grid.Row="2" Name="TitleRow" ColumnDefinitions="*,Auto,Auto" Margin="0,12,0,0">
                     <StackPanel VerticalAlignment="Center">
                         <!-- Left-aligned so the explicit badge follows the title, not the row's end. -->
                         <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
@@ -311,7 +311,7 @@
                 <!-- Filled glyphs, no circle, Play/Pause a little larger than the skips: the desktop
                      player bar's 18 and 20, here 36 and 40 (owner 11-08: a little smaller; the Queue pill: 30 and 33).
                      Shuffle and Repeat at the row's ends (np-mode), as on the Queue pill too. -->
-                <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
+                <Grid Grid.Row="4" Name="TransportRow" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,14">
                     <Button Grid.Column="0" Name="ShuffleButton" Classes="icon np-mode" HorizontalAlignment="Left"
                             Classes.on="{Binding Player.IsShuffleEnabled}"
                             Command="{Binding Player.ToggleShuffleCommand}" AutomationProperties.Name="{loc:T Mobile.Shuffle}">
@@ -353,7 +353,7 @@
                 <StackPanel Grid.Row="6">
                     <TextBlock Name="ErrorLine" Text="{Binding Player.ErrorText}" Foreground="#E74856" FontSize="12" TextWrapping="Wrap"
                                IsVisible="{Binding Player.ErrorText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                    <Grid ColumnDefinitions="*,*,*" Margin="0,12,0,0">
+                    <Grid Name="BottomIcons" ColumnDefinitions="*,*,*" Margin="0,12,0,0">
                         <Button Grid.Column="0" Name="LyricsButton" Classes="icon bottom" HorizontalAlignment="Center"
                                 Command="{Binding ToggleLyricsCommand}" AutomationProperties.Name="{loc:T Tab.Lyrics}">
                             <PathIcon Data="{DynamicResource PhLyrics}" />
