@@ -173,6 +173,37 @@ public class LibraryRemovalHelperTests
     public void LyricSidecars_AreDisposableLeftovers(string name)
         => Assert.True(LibraryRemovalHelper.IsDisposableLeftover(name));
 
+    // Owner 11-14: Remove from Library stayed greyed out for 5.5 s per folder after a
+    // removal. The cleanup walked up to a parent that can never be trashed (a protected
+    // music root, or a folder that still holds other albums) and waited out the whole
+    // retry ladder on it, although no retry can change that answer.
+    [Fact]
+    public async Task CleanupEmptiedFolders_DoesNotWaitOnAFolderThatCanNeverBeTrashed()
+    {
+        var root = MakeTempDir();
+        try
+        {
+            var artist = Path.Combine(root, "Artist");
+            var album = Path.Combine(artist, "Album");
+            Directory.CreateDirectory(album);
+            Directory.CreateDirectory(Path.Combine(artist, "Other Album")); // artist keeps another album
+            File.WriteAllText(Path.Combine(artist, "Other Album", "01.flac"), "audio");
+            File.WriteAllText(Path.Combine(album, "cover.png"), "img");
+
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            await LibraryRemovalHelper.CleanupEmptiedFoldersAsync(
+                new[] { album, root },
+                new HashSet<string>(new[] { root }, StringComparer.OrdinalIgnoreCase),
+                d => { Directory.Delete(d, true); return true; },
+                new[] { 0, 4000, 4000 });
+
+            Assert.False(Directory.Exists(album));
+            Assert.True(Directory.Exists(artist));
+            Assert.True(started.ElapsedMilliseconds < 3000, $"waited {started.ElapsedMilliseconds} ms");
+        }
+        finally { try { Directory.Delete(root, true); } catch { } }
+    }
+
     [Fact]
     public async Task CleanupEmptiedFolders_TrashesLeftoverOnlyFolderAndEmptiedParent()
     {
