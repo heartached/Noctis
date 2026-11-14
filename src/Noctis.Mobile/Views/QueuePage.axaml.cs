@@ -44,6 +44,18 @@ public partial class QueuePage : UserControl
     private Track? _track;      // UpNext[_index] at press
     private Point _start;
 
+    // A handle drag scrolls the list when its finger nears the list's top or bottom edge (tester
+    // 11-09), and the list may also be scrolled by another finger: the row follows its finger by
+    // the scroll since the press as well, and drops by it.
+    private IPointer? _dragPointer;     // the finger holding the handle; other fingers do not move the row
+    private double _dragStartOffset;    // QueueScroll's offset at press
+    private double _fingerY;            // the drag finger's last Y on the page
+    private double _fingerInList;       // ...and from the top of QueueScroll
+    private double _dragMid;            // the dragged row's centre in QueueContent at press
+    private IInputElement? _wasTabOnce; // QueueList's TabOnceActiveElement before the drag held the row
+    private bool _autoScrolling;        // a frame callback is queued
+    private TimeSpan? _lastScrollFrame;
+
     /// <summary>The sheet's slide up and down: every sheet's (Motion).</summary>
     private static readonly TimeSpan Slide = Motion.Sheet;
     private const double PillHeight = 56, PillGap = 12, ListEndGap = 16;
@@ -70,6 +82,11 @@ public partial class QueuePage : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        // Mid-drag the list can scroll under the row (the edge auto-scroll, another finger): the row stays with its finger.
+        QueueScroll.ScrollChanged += (_, _) =>
+        {
+            if (_gesture == Gesture.Drag) FollowFinger();
+        };
         // The first time the page shows, its content joins the visual tree only in the layout
         // pass after, and a control outside the tree runs no transitions (the sheet just
         // appeared, unanimated): that slide waits for it. It starts once that frame is out,
@@ -448,6 +465,10 @@ public partial class QueuePage : UserControl
 
     private void ResetGesture()
     {
+        if (_gesture == Gesture.Drag && !_dragFromHistory)
+            KeyboardNavigation.SetTabOnceActiveElement(QueueList, _wasTabOnce);
+        _wasTabOnce = null;
+        _dragPointer = null;
         if (_moving != null)
         {
             _moving.RenderTransform = null;
@@ -529,7 +550,8 @@ public partial class QueuePage : UserControl
     {
         // The row's item container, not the nearest ContentPresenter: a History row is a Button,
         // whose template has a presenter of its own between the handle and the container.
-        if (sender is not Control handle || RowOf(handle) is not ({ } list, { } container, var index)) return;
+        // A second finger on another handle mid-drag must not take the drag over.
+        if (_gesture == Gesture.Drag || sender is not Control handle || RowOf(handle) is not ({ } list, { } container, var index)) return;
         ResetGesture();
         _gesture = Gesture.Drag;
         _moving = container;
@@ -540,6 +562,20 @@ public partial class QueuePage : UserControl
         else
             _track = TrackAt(index);
         _start = e.GetPosition(this);
+        _fingerY = _start.Y;
+        _fingerInList = e.GetPosition(QueueScroll).Y;
+        _dragPointer = e.Pointer;
+        _dragStartOffset = QueueScroll.Offset.Y;
+        // Taken now: once let go, a row the panel held through a long auto-scroll is recycled.
+        _dragMid = MidY(container);
+        if (!_dragFromHistory)
+        {
+            // Up Next is virtualized: scrolled far enough, the panel would recycle the dragged row's
+            // container for another song while it is still under the finger. The panel keeps its
+            // TabOnceActiveElement realized instead, at the row's place in the list.
+            _wasTabOnce = KeyboardNavigation.GetTabOnceActiveElement(QueueList);
+            KeyboardNavigation.SetTabOnceActiveElement(QueueList, container);
+        }
         container.ZIndex = 1;               // drawn above the rows it passes
         // ...and its part of the list above the other parts (History over Up Next, or back).
         _raised = _dragFromHistory ? HistorySection : QueueList;
@@ -600,27 +636,82 @@ public partial class QueuePage : UserControl
 
     private void OnHandleMoved(object? sender, PointerEventArgs e)
     {
-        if (_gesture != Gesture.Drag || _moving == null) return;
-        _moving.RenderTransform = new TranslateTransform(0, e.GetPosition(this).Y - _start.Y);
+        if (_gesture != Gesture.Drag || _moving == null || !IsDragPointer(e.Pointer)) return;
+        _fingerY = e.GetPosition(this).Y;
+        _fingerInList = e.GetPosition(QueueScroll).Y;
+        FollowFinger();
+        StartAutoScroll();
         e.PreventGestureRecognition();
         e.Handled = true;
     }
 
+    private bool IsDragPointer(IPointer pointer) => _dragPointer == null || ReferenceEquals(pointer, _dragPointer);
+
+    /// <summary>How far the list has scrolled since the drag began.</summary>
+    private double ScrolledSinceDrag => QueueScroll.Offset.Y - _dragStartOffset;
+
+    /// <summary>The dragged row under its finger: the finger's travel, plus the scroll since the
+    /// press, which carried the row's place in the list the other way.</summary>
+    private void FollowFinger()
+    {
+        if (_moving != null) _moving.RenderTransform = new TranslateTransform(0, _fingerY - _start.Y + ScrolledSinceDrag);
+    }
+
+    private void StartAutoScroll()
+    {
+        if (_autoScrolling || QueueGesture.AutoScrollVelocity(_fingerInList, QueueScroll.Bounds.Height) == 0) return;
+        if (TopLevel.GetTopLevel(this) is not { } top) return;
+        _autoScrolling = true;
+        _lastScrollFrame = null;
+        top.RequestAnimationFrame(AutoScrollFrame);
+    }
+
+    private void AutoScrollFrame(TimeSpan now)
+    {
+        var last = _lastScrollFrame;
+        _lastScrollFrame = now;
+        // The first frame only starts the clock; a long one moves the list a twentieth of a second's worth at most.
+        if (last is { } l && !StepAutoScroll(Math.Clamp((now - l).TotalSeconds, 0, 0.05)) || _gesture != Gesture.Drag)
+        {
+            // Let go, out of the edge band, or at the list's end: the next finger move starts it again.
+            _autoScrolling = false;
+            return;
+        }
+        if (TopLevel.GetTopLevel(this) is { } top) top.RequestAnimationFrame(AutoScrollFrame);
+        else _autoScrolling = false;
+    }
+
+    /// <summary>One frame of the edge auto-scroll, <paramref name="seconds"/> long: false once there
+    /// is nothing to scroll (no drag, the finger out of the edge bands, or the list at that end).
+    /// Internal for tests: the headless clock runs no frames.</summary>
+    internal bool StepAutoScroll(double seconds)
+    {
+        if (_gesture != Gesture.Drag) return false;
+        var velocity = QueueGesture.AutoScrollVelocity(_fingerInList, QueueScroll.Bounds.Height);
+        if (velocity == 0) return false;
+        var max = QueueScroll.Extent.Height - QueueScroll.Viewport.Height;
+        var y = QueueGesture.AutoScrollOffset(QueueScroll.Offset.Y, velocity, seconds, max);
+        if (y == QueueScroll.Offset.Y) return false;
+        QueueScroll.Offset = new Vector(QueueScroll.Offset.X, y);
+        FollowFinger();
+        return true;
+    }
+
     private void OnHandleReleased(object? sender, PointerReleasedEventArgs e)
     {
-        if (_gesture != Gesture.Drag || _moving == null) return;
-        var dy = e.GetPosition(this).Y - _start.Y;
+        if (_gesture != Gesture.Drag || _moving == null || !IsDragPointer(e.Pointer)) return;
+        var dy = e.GetPosition(this).Y - _start.Y + ScrolledSinceDrag;
         var rowHeight = _moving.Bounds.Height;
-        var (from, track, row, fromHistory, item) = (_index, _track, _moving, _dragFromHistory, _dragItem);
+        var (from, track, row, fromHistory, item, mid) = (_index, _track, _moving, _dragFromHistory, _dragItem, _dragMid);
         ResetGesture();
-        if (HistoryMode) CommitListDrag(row, fromHistory, from, track, item, dy);
+        if (HistoryMode) CommitListDrag(row, fromHistory, from, track, item, mid + dy);
         else CommitDrag(from, track, dy, rowHeight);
         e.Handled = true;
     }
 
     private void OnHandleCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
-        if (_gesture == Gesture.Drag) ResetGesture();
+        if (_gesture == Gesture.Drag && IsDragPointer(e.Pointer)) ResetGesture();
     }
 
     /// <summary>The release half of a handle drag; a no-op if Up Next no longer holds
@@ -635,16 +726,17 @@ public partial class QueuePage : UserControl
     /// <summary>
     /// The release half of a handle drag in the one list (History on): the row lands where its
     /// centre passed the other rows' centres, the current row's included, so it can go in on
-    /// either side of the current track. A no-op if the row's song is no longer where it was
-    /// pressed. Internal for tests.
+    /// either side of the current track. <paramref name="centre"/> is where the row's centre was let
+    /// go, in QueueContent. A no-op if the row's song is no longer where it was pressed. Internal
+    /// for tests.
     /// </summary>
-    internal void CommitListDrag(Control row, bool fromHistory, int index, Track? pressed, QueueHistoryItem? item, double dy)
+    internal void CommitListDrag(Control row, bool fromHistory, int index, Track? pressed, QueueHistoryItem? item, double centre)
     {
         if (DataContext is not ShellViewModel vm) return;
         var played = vm.Player.PlayedSongs;
         if (fromHistory ? index < 0 || index >= played.Count || !ReferenceEquals(played[index], item) : !StillAt(index, pressed)) return;
         var from = fromHistory ? index : played.Count + 1 + index;
-        var to = QueueGesture.DropIndex(ListMidpoints(row, out var unrealizedAbove), MidY(row) + dy, unrealizedAbove);
+        var to = QueueGesture.DropIndex(ListMidpoints(row, fromHistory ? -1 : index, out var unrealizedAbove), centre, unrealizedAbove);
         if (to != from) vm.Player.MoveInQueueList(from, to);
     }
 
@@ -652,8 +744,10 @@ public partial class QueuePage : UserControl
 
     /// <summary>The centres of every row of the one list but <paramref name="dragged"/>, top to
     /// bottom: History (all of them above when folded), the current row, then the Up Next rows on
-    /// screen; <paramref name="unrealizedAbove"/> counts the Up Next rows scrolled away above those.</summary>
-    private List<double> ListMidpoints(Control dragged, out int unrealizedAbove)
+    /// screen; <paramref name="unrealizedAbove"/> counts the Up Next rows scrolled away above those,
+    /// the dragged one (Up Next index <paramref name="draggedIndex"/>, -1 for a History row) left
+    /// out: after an auto-scroll down its own place can be among them.</summary>
+    private List<double> ListMidpoints(Control dragged, int draggedIndex, out int unrealizedAbove)
     {
         var mids = new List<double>();
         var history = _vm?.Player.PlayedSongs.Count ?? 0;
@@ -663,11 +757,11 @@ public partial class QueuePage : UserControl
             if (HistoryList.ContainerFromIndex(i) is { } c && !ReferenceEquals(c, dragged)) mids.Add(MidY(c));
         }
         mids.Add(MidY(NowInline));
-        var realized = QueueList.GetRealizedContainers().OfType<Control>()
+        var realized = QueueList.GetRealizedContainers().OfType<Control>().Where(c => !ReferenceEquals(c, dragged))
             .Select(c => (Index: QueueList.IndexFromContainer(c), Row: c)).Where(r => r.Index >= 0).OrderBy(r => r.Index).ToList();
         unrealizedAbove = realized.Count > 0 ? realized[0].Index : 0;
-        foreach (var (_, c) in realized)
-            if (!ReferenceEquals(c, dragged)) mids.Add(MidY(c));
+        if (draggedIndex >= 0 && draggedIndex < unrealizedAbove) unrealizedAbove--;
+        foreach (var (_, c) in realized) mids.Add(MidY(c));
         return mids;
     }
 }
