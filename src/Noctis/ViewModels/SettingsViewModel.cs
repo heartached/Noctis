@@ -1705,6 +1705,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _artistAlbumsViewMode = "grid";
     /// <summary>Album carousel case style (<see cref="AlbumCarouselStyles"/>), both carousels.</summary>
     [ObservableProperty] private string _albumCarouselStyle = AlbumCarouselStyles.DefaultSetting;
+    /// <summary>GitHub #233: a soft cover-coloured glow behind the carousel's centred album.</summary>
+    [ObservableProperty] private bool _albumCarouselGlow = true;
+    /// <summary>GitHub #233: albums wearing their own carousel style, album id ("N") → style
+    /// name; see <see cref="AlbumCarouselStyleOverrides"/>.</summary>
+    private Dictionary<string, string> _albumCarouselStyleOverrides = new(StringComparer.OrdinalIgnoreCase);
     [ObservableProperty] private bool _albumSortAscending = true;
     [ObservableProperty] private bool _albumSortNewestFirst;
     [ObservableProperty] private string _albumReleaseTypeFilter = "";
@@ -1729,6 +1734,39 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
     partial void OnArtistAlbumsViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumCarouselGlowChanged(bool value)
+    {
+        AlbumCarouselStyleOverrides.RaiseChanged();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>The album's own carousel style (GitHub #233), or null when it follows the global one.</summary>
+    public AlbumCarouselStyle? GetAlbumCarouselStyleOverride(Guid albumId) =>
+        _albumCarouselStyleOverrides.TryGetValue(albumId.ToString("N"), out var name) ? AlbumCarouselStyles.Parse(name) : null;
+
+    /// <summary>Gives the album its own carousel style, or (null) back to the global one; saved.</summary>
+    public void SetAlbumCarouselStyleOverride(Guid albumId, AlbumCarouselStyle? style)
+    {
+        var key = albumId.ToString("N");
+        var changed = style is { } s
+            ? !_albumCarouselStyleOverrides.TryGetValue(key, out var old) || old != s.ToString()
+            : _albumCarouselStyleOverrides.ContainsKey(key);
+        if (!changed) return;
+        if (style is { } pick) _albumCarouselStyleOverrides[key] = pick.ToString();
+        else _albumCarouselStyleOverrides.Remove(key);
+        AlbumCarouselStyleOverrides.RaiseChanged();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>Every album's own carousel style, by album id (a copy).</summary>
+    public IReadOnlyDictionary<Guid, AlbumCarouselStyle> AlbumCarouselStyleOverrideMap()
+    {
+        var map = new Dictionary<Guid, AlbumCarouselStyle>();
+        foreach (var (key, name) in _albumCarouselStyleOverrides)
+            if (Guid.TryParseExact(key, "N", out var id)) map[id] = AlbumCarouselStyles.Parse(name);
+        return map;
+    }
+
     partial void OnAlbumCarouselStyleChanged(string value)
     {
         OnPropertyChanged(nameof(IsAlbumCaseCover));
@@ -3744,6 +3782,10 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumViewMode = _settings.AlbumViewMode;
             ArtistAlbumsViewMode = _settings.ArtistAlbumsViewMode;
             AlbumCarouselStyle = _settings.AlbumCarouselStyle;
+            AlbumCarouselGlow = _settings.AlbumCarouselGlow;
+            _albumCarouselStyleOverrides = new Dictionary<string, string>(
+                _settings.AlbumCarouselStyleOverrides ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+            AlbumCarouselStyleOverrides.RaiseChanged();
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             AlbumReleaseTypeFilter = _settings.AlbumReleaseTypeFilter;
@@ -4311,6 +4353,10 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumViewMode = AlbumViewMode;
         _settings.ArtistAlbumsViewMode = ArtistAlbumsViewMode;
         _settings.AlbumCarouselStyle = AlbumCarouselStyle;
+        _settings.AlbumCarouselGlow = AlbumCarouselGlow;
+        _settings.AlbumCarouselStyleOverrides = _albumCarouselStyleOverrides.Count > 0
+            ? new Dictionary<string, string>(_albumCarouselStyleOverrides)
+            : null;
         _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.AlbumSortNewestFirst = AlbumSortNewestFirst;
         _settings.AlbumReleaseTypeFilter = AlbumReleaseTypeFilter;
@@ -8673,6 +8719,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumViewMode = defaultSettings.AlbumViewMode;
             ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
             AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
+            AlbumCarouselGlow = defaultSettings.AlbumCarouselGlow;
             AlbumSortAscending = defaultSettings.AlbumSortAscending;
             AlbumSortNewestFirst = defaultSettings.AlbumSortNewestFirst;
             AlbumReleaseTypeFilter = defaultSettings.AlbumReleaseTypeFilter;

@@ -339,6 +339,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, vm.FindLyricsAlbumCommand); // GitHub #195
         _albumMenuBuilder.BindGroupAlbums(album, vm.GroupIntoOneAlbumCommand); // GitHub #178
+        _albumMenuBuilder.BindCarouselStyle(album, AlbumCarouselStyleOverrides.For(album), vm.IsCarouselAvailable); // GitHub #233
 
         OpenMenu(_albumMenuBuilder.Menu, tile);
         return true;

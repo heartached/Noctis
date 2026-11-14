@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -40,6 +41,12 @@ public sealed class AlbumContextMenuBuilder
     /// <summary>GitHub #121: the album's songs → Send to Folder (copy or move). Bound by <see cref="BindSendToFolder"/>.</summary>
     public MenuItem SendToFolder { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
+    /// <summary>GitHub #233: "Carousel Style ▸" Default / Cover / CD Jewel Case / Vinyl / Cassette
+    /// for this album. Bound by <see cref="BindCarouselStyle"/>.</summary>
+    public MenuItem CarouselStyle { get; private set; } = null!;
+    /// <summary>The Carousel Style ▸ rows: [0] Default, then one per <see cref="AlbumCarouselStyle"/>.</summary>
+    public MenuItem[] CarouselStyleRows { get; private set; } = Array.Empty<MenuItem>();
+    private Control? _host;
 
     public ContextMenu Menu { get; private set; } = null!;
 
@@ -64,6 +71,7 @@ public sealed class AlbumContextMenuBuilder
     /// <param name="removeIsDanger">Red Remove row; null = infer from an English "Remove from…" header.</param>
     public ContextMenu Build(string removeHeader, Control resourceHost, bool v2 = false, bool? removeIsDanger = null)
     {
+        _host = resourceHost;
         if (v2)
             return BuildV2(removeHeader, resourceHost,
                 removeIsDanger ?? removeHeader.StartsWith("Remove from", StringComparison.OrdinalIgnoreCase));
@@ -146,6 +154,7 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackgroundClear = new MenuItem { Header = "Use default video", Command = LyricsBackgroundOverrides.ClearForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
+        items.Add(BuildCarouselStyle(resourceHost));
 
         // Don't Scrobble This Album (static command; header and visibility set per Bind).
         DontScrobble = new MenuItem { IsVisible = false };
@@ -221,6 +230,7 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackgroundClear = new MenuItem { Header = Loc.T("AlbumDetail.UseDefaultVideo"), Command = LyricsBackgroundOverrides.ClearForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
+        items.Add(BuildCarouselStyle(host));
 
         items.Add(new Separator());
         ShowFolder = MenuV2.Row(host, Loc.T("LibraryAlbums.ShowFolder"), "MenuLineFolder");
@@ -352,6 +362,45 @@ public sealed class AlbumContextMenuBuilder
         BindOptional(FindLyrics, findLyricsCommand, album);
         // GitHub #214: while a hidden Find Lyrics run is pending, this entry brings it back.
         FindLyrics.Header = ViewModels.MetadataHelper.PendingFindLyricsMenuHeader() ?? Loc.T("LibraryAlbums.FindLyrics");
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    private MenuItem BuildCarouselStyle(Control host)
+    {
+        CarouselStyle = MenuV2.Row(host, Loc.T("Menu.CarouselStyle"), "MenuLineAlbum", visible: false);
+        var rows = new List<MenuItem> { new() { Header = Loc.T("Menu.CarouselStyleDefault"), Command = AlbumCarouselStyleOverrides.SetCommand } };
+        foreach (var style in Enum.GetValues<AlbumCarouselStyle>())
+            rows.Add(new MenuItem { Header = Loc.T(StyleKey(style)), Command = AlbumCarouselStyleOverrides.SetCommand });
+        CarouselStyleRows = rows.ToArray();
+        foreach (var row in CarouselStyleRows) CarouselStyle.Items.Add(row);
+        return CarouselStyle;
+    }
+
+    private static string StyleKey(AlbumCarouselStyle style) => style switch
+    {
+        AlbumCarouselStyle.JewelCase => "Main.CarouselJewelCase",
+        AlbumCarouselStyle.Vinyl => "Main.CarouselVinyl",
+        AlbumCarouselStyle.Cassette => "Main.CarouselCassette",
+        _ => "Main.CarouselCover",
+    };
+
+    /// <summary>
+    /// GitHub #233: Carousel Style ▸ for the album, a check on <paramref name="current"/> (null =
+    /// Default, the global style). Hidden when <paramref name="visible"/> is false (the Album
+    /// Carousel built-in feature is off). Call after Bind.
+    /// </summary>
+    public void BindCarouselStyle(Album album, AlbumCarouselStyle? current, bool visible)
+    {
+        CarouselStyle.IsVisible = visible;
+        for (var i = 0; i < CarouselStyleRows.Length; i++)
+        {
+            AlbumCarouselStyle? style = i == 0 ? null : (AlbumCarouselStyle)(i - 1);
+            var row = CarouselStyleRows[i];
+            row.CommandParameter = new AlbumCarouselStyleOverrides.Choice(album, style);
+            var on = style == current;
+            row.Icon = on && _host != null ? MenuV2.LineIcon(_host, "MenuLineCheck") : null;
+            row.Tag = on; // read by tests
+        }
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 
