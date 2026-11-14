@@ -2528,6 +2528,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _albumTileSizeAuto = true;
     /// <summary>GitHub #213: Masonry layout for the Albums grid.</summary>
     [ObservableProperty] private bool _albumGridMasonry;
+    /// <summary>Wider spacing between albums (GitHub #210's 18px gaps, rows fit their captions);
+    /// off is 1.6.9's close grid. The album grid view models watch this property.</summary>
+    [ObservableProperty] private bool _albumGridWideSpacing;
     /// <summary>GitHub #218: hover zoom in the Albums grid.</summary>
     [ObservableProperty] private bool _albumHoverZoom;
     [ObservableProperty] private double _albumTileTargetSize = 220;
@@ -3869,6 +3872,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
             AlbumGridMasonry = _settings.AlbumGridMasonry;
+            AlbumGridWideSpacing = _settings.AlbumGridWideSpacing;
             AlbumHoverZoom = _settings.AlbumHoverZoom;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -4442,6 +4446,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
         _settings.AlbumGridMasonry = AlbumGridMasonry;
+        _settings.AlbumGridWideSpacing = AlbumGridWideSpacing;
         _settings.AlbumHoverZoom = AlbumHoverZoom;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -5753,6 +5758,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumGridMasonryChanged(bool value)
     {
         // The Albums view model watches this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumGridWideSpacingChanged(bool value)
+    {
+        // The album grid view models watch this property.
         if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
     }
 
@@ -8731,6 +8742,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
             AlbumGridMasonry = defaultSettings.AlbumGridMasonry;
+            AlbumGridWideSpacing = defaultSettings.AlbumGridWideSpacing;
             AlbumHoverZoom = defaultSettings.AlbumHoverZoom;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings

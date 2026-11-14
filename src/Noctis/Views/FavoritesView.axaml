@@ -9,15 +9,35 @@
              x:Class="Noctis.Views.FavoritesView"
              x:DataType="vm:FavoritesViewModel"
              Focusable="True"
+             Classes.wide-album-gap="{Binding IsWideAlbumSpacing}"
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <!-- Album spacing as on the Albums page: 1.6.9's 8px between covers by default,
+             GitHub #210's 18px with Settings › "Wider spacing between albums". -->
+        <Style Selector="Button.album-tile">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+        <Style Selector=".wide-album-gap Button.album-tile">
+            <Setter Property="Margin" Value="3,2" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
+        <Style Selector="DockPanel.favorites-dock">
+            <Setter Property="Margin" Value="12,8,2,8" />
+        </Style>
+        <Style Selector=".wide-album-gap DockPanel.favorites-dock">
+            <Setter Property="Margin" Value="12,13,2,8" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="*">
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
-        <DockPanel Grid.Row="0" Margin="12,13,2,8">
+        <DockPanel Grid.Row="0" Classes="favorites-dock">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -51,8 +71,6 @@
                                     <Button Classes="album-tile"
                                             AutomationProperties.Name="{Binding Title}"
                                             Focusable="False"
-                                            Margin="3,2"
-                                            Padding="6"
                                             HorizontalAlignment="Stretch"
                                             VerticalAlignment="Stretch"
                                             VerticalContentAlignment="Top"

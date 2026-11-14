@@ -372,6 +372,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Пять обложек в ряду. Выключите, чтобы задать размер самостоятельно.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Сетка альбомов «кладкой»</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Обложки складываются по столбцам по реальной высоте, короткие подписи не оставляют пустот.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Больше места между альбомами</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
+  <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>Больше места между обложками. Высота ряда подстраивается под его подписи.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Увеличение альбома при наведении</value><comment>Settings toggle (GitHub #218)</comment></data>
   <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>В сетке альбомов альбом под указателем слегка увеличивается и мягко светится, а соседние отступают.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Меньше</value><comment>Text in SettingsView.axaml</comment></data>
@@ -3263,6 +3265,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Сетка</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Карусель</value><comment>Albums view menu: album carousel</comment></data>
   <data name="Main.AlbumMasonry" xml:space="preserve"><value>Кладка</value><comment>Albums view menu: Masonry layout for the grid (GitHub #213)</comment></data>
+  <data name="Main.AlbumWideSpacing" xml:space="preserve"><value>Больше места</value><comment>Albums view menu: wider spacing between albums (Settings toggle)</comment></data>
   <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Cover Flow: сейчас играет</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>Список</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Обложка</value><comment>Albums view menu: carousel case style, plain cover</comment></data>

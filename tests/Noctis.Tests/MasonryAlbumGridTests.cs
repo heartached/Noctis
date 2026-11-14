@@ -98,6 +98,9 @@ public class MasonryAlbumGridTests
         var vm = new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
         vm.AlbumSortMode = "title";
         settings.AlbumGridMasonry = true;
+        // The 18px column gaps below are the wide spacing's (GitHub #210); the default 1.6.9
+        // spacing is pinned in AlbumGridSpacingTests.
+        settings.AlbumGridWideSpacing = true;
         var view = new LibraryAlbumsView { DataContext = vm };
         var win = new Window { Width = 1400, Height = 900, Content = view };
         win.Show(); Pump();

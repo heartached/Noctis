@@ -50,6 +50,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Cover-size setting shared with Home/Albums (defaults when no settings are wired).</summary>
     public bool AlbumTileSizeAuto => _settings?.AlbumTileSizeAuto ?? true;
     public double AlbumTileTargetSize => _settings?.AlbumTileTargetSize ?? 220;
+    /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
+    public bool IsWideAlbumSpacing => _settings?.AlbumGridWideSpacing ?? false;
 
     partial void OnGridColumnsChanged(int value)
     {
