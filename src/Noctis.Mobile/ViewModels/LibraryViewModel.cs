@@ -42,7 +42,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _history = history;
         _marshal = marshal ?? (a => Avalonia.Threading.Dispatcher.UIThread.Post(a));
 
-        _library.LibraryUpdated += (_, _) => _marshal(RefreshFromLibrary);
+        _library.LibraryUpdated += (_, _) => QueueRefresh();
         _library.FavoritesChanged += (_, _) => _marshal(RefreshFavourites);
         _library.ScanProgress += (_, n) => _marshal(() => ScanProgress = n);
         _library.ScanAborted += (_, all) => _marshal(() =>
@@ -278,8 +278,13 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>The plain status line; the reconnect card carries the text while it is up.</summary>
     public bool ShowStatusLine => !NeedsReconnect && !string.IsNullOrEmpty(StatusText);
 
-    /// <summary>Every track, sorted by title. Rebuilt with one Reset on each library update.</summary>
+    /// <summary>Every track, sorted by title. Rebuilt with one Reset on each library update that
+    /// changed the songs or their titles.</summary>
     public BulkObservableCollection<Track> Songs { get; } = new();
+
+    /// <summary>The phone sorts the songs on the thread pool and only swaps them in on the UI
+    /// thread (see <see cref="RefreshFromLibrary"/>). Off in tests: the sort runs inline.</summary>
+    public bool SortOffUiThread { get; init; }
 
     /// <summary>The configured roots (SAF tree URIs on Android), mirrored from settings.</summary>
     public ObservableCollection<string> Folders { get; } = new();
@@ -830,7 +835,11 @@ public sealed partial class LibraryViewModel : ObservableObject
                 }
                 if (folders.Count == 0 && !_scanWithoutFolders) break;
                 _scanWithoutFolders = false;
-                await _library.ScanAsync(folders);
+                // On the pool: the Core scan awaits without ConfigureAwait(false), so started
+                // from here everything after the file walk (the library sort, the cover pass's
+                // existence probe per album, the library.json save) ran on the UI thread and
+                // froze the app at the end of every startup scan. Its events are marshalled.
+                await Task.Run(() => _library.ScanAsync(folders));
             }
             while (_scanAgain);
             if (StatusText == Loc.T("Mobile.Library.Scanning")) StatusText = string.Empty; // ScanAborted may have replaced it
@@ -877,9 +886,34 @@ public sealed partial class LibraryViewModel : ObservableObject
         HasFolders = Folders.Count > 0;
     }
 
+    /// <summary>Set while a refresh is posted to the UI thread and has not run yet.</summary>
+    private int _refreshQueued;
+
+    /// <summary>
+    /// A library update, on whatever thread raised it. A burst (the load, the shell's start, a
+    /// scan's publishes, the sync after it) that arrives while the UI thread is busy is one
+    /// refresh, not one per event queued behind each other: each re-read the whole library.
+    /// </summary>
+    private void QueueRefresh()
+    {
+        if (Interlocked.Exchange(ref _refreshQueued, 1) == 1) return;
+        _marshal(RefreshFromLibrary);
+    }
+
+    // The songs (and their titles) the last title sort was taken from, in the library's order:
+    // an update that changed neither (a cover attached, a play counted, the shell's start, a
+    // scan that found nothing new) keeps the sorted list instead of sorting every song again.
+    private Track[] _sortedFrom = Array.Empty<Track>();
+    private string?[] _sortedTitles = Array.Empty<string?>();
+    private bool _sorting;
+    private bool _sortAgain;
+
+    /// <summary>The off-thread sort in flight (<see cref="SortOffUiThread"/>), for tests.</summary>
+    internal Task PendingSort { get; private set; } = Task.CompletedTask;
+
     private void RefreshFromLibrary()
     {
-        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        Volatile.Write(ref _refreshQueued, 0);
         var tracks = _library.Tracks;
         SongCount = tracks.Count;
         AlbumCount = _library.Albums.Count;
@@ -887,18 +921,99 @@ public sealed partial class LibraryViewModel : ObservableObject
         FavoriteCount = tracks.Count(t => t.IsFavorite);
         var cutoff = DateTime.UtcNow.AddDays(-RecentlyAddedDays);
         RecentlyAddedCount = tracks.Count(t => t.DateAdded >= cutoff);
-        Songs.ReplaceAll(tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase));
-        var sorted = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+
+        // A sort still running: it goes again with the library as it is when it ends.
+        if (_sorting)
+        {
+            _sortAgain = true;
+            return;
+        }
+        if (SameSongsAsSorted(tracks))
+        {
+            AfterSongs();
+            return;
+        }
+
+        var source = tracks.ToArray();
+        _sortedFrom = source;
+        _sortedTitles = Array.ConvertAll(source, t => (string?)t.Title);
+        if (!SortOffUiThread)
+        {
+            ApplySorted(SortByTitle(source));
+            return;
+        }
+        // The culture-aware title sort of every song held the UI thread for a good part of a
+        // second on a big library (owner's ~4,400 songs), at every library update during the
+        // startup load and scan: the app sat unresponsive while it loaded (Discord #mobile-beta).
+        // It runs on the pool; only the swap comes back.
+        _sorting = true;
+        PendingSort = SortAndApplyAsync(source);
+    }
+
+    private async Task SortAndApplyAsync(Track[] source)
+    {
+        Track[]? sorted = null;
+        try
+        {
+            sorted = await Task.Run(() => SortByTitle(source)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Song sort failed: {ex.Message}");
+        }
+        _marshal(() =>
+        {
+            _sorting = false;
+            if (sorted != null) ApplySorted(sorted);
+            else _sortedFrom = Array.Empty<Track>(); // the next update sorts again
+            if (_sortAgain)
+            {
+                _sortAgain = false;
+                RefreshFromLibrary();
+            }
+        });
+    }
+
+    private static Track[] SortByTitle(Track[] tracks)
+    {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var sorted = tracks.OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase).ToArray();
+        // Measured 5-12 ms on the emulator with 1206 songs. Logged when slow, so a big library
+        // or a slow phone shows it.
+        var ms = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        if (ms >= SlowRefreshMs)
+            DebugLog.Write("Library", $"slow song sort: {tracks.Length} songs, {ms:F0} ms");
+        return sorted;
+    }
+
+    private bool SameSongsAsSorted(IReadOnlyList<Track> tracks)
+    {
+        if (tracks.Count != _sortedFrom.Length) return false;
+        for (var i = 0; i < tracks.Count; i++)
+        {
+            if (!ReferenceEquals(tracks[i], _sortedFrom[i])
+                || !string.Equals(tracks[i].Title, _sortedTitles[i], StringComparison.Ordinal))
+                return false;
+        }
+        return true;
+    }
+
+    private void ApplySorted(Track[] sorted)
+    {
+        Songs.ReplaceAll(sorted);
+        AfterSongs();
+    }
+
+    /// <summary>The rails, the play-log rows and the open pages, once Songs is current.</summary>
+    private void AfterSongs()
+    {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
         RefreshRails();
         RefreshRecents();
         Refreshed?.Invoke(this, EventArgs.Empty);
-        // Runs on each library update, a scan's progressive publishes too (every 1.5 s while it
-        // finds songs). Measured 10-20 on the emulator with 1206 songs: 5-12 ms each, 12-14 per
-        // re-reading scan, 3 per scan with no changes. Logged when slow, so a big library or a
-        // slow phone shows it.
         var total = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
         if (total >= SlowRefreshMs)
-            DebugLog.Write("Library", $"slow refresh: {tracks.Count} songs, sort {sorted:F0} ms, total {total:F0} ms (scanning={IsScanning})");
+            DebugLog.Write("Library", $"slow refresh: {Songs.Count} songs, rails and pages {total:F0} ms (scanning={IsScanning})");
     }
 
     private const double SlowRefreshMs = 100;
