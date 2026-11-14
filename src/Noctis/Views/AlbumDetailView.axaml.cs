@@ -329,7 +329,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             removeLyricsCommand: vm.RemoveLyricsCommand,
             sendToFolderCommand: vm.SendToFolderCommand,
             // Featured artists: View Artist (a submenu when the song credits several).
-            viewArtistCommand: vm.ViewArtistFromTrackCommand);
+            viewArtistCommand: vm.ViewArtistFromTrackCommand,
+            moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
     }
 
     /// <summary>Click on a row's stars rates that track (or the Ctrl-selection it is in). The

@@ -129,6 +129,16 @@ public static class MetadataHelper
         await ShowDialogOwned(new SendToFolderDialog(vm));
     }
 
+    /// <summary>GitHub #239: Move to Album for a selection (or the playing song).</summary>
+    public static Task OpenMoveToAlbumDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return Task.CompletedTask;
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        return MoveToAlbumFlow.RunAsync(tracks, library,
+            vm => ShowDialogOwned(new MoveToAlbumDialog(vm)),
+            ConfirmationDialog.ShowAsync);
+    }
+
     /// <summary>
     /// Bulk lyrics: fetch from the enabled sources and save, or remove app-written lyrics.
     /// GitHub #214: a Find Lyrics run the user hid (or whose results they haven't closed yet)

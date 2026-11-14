@@ -1460,6 +1460,13 @@
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- GitHub #239: the playing song into another album, or a new one. -->
+                                <MenuItem Header="{loc:T MoveToAlbum.Menu}"
+                                          Command="{Binding MoveCurrentTrackToAlbumCommand}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="{loc:T Tab.Lyrics}">
                                     <MenuItem.Icon>
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>

@@ -1,0 +1,198 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:ctrl="using:Noctis.Controls"
+        x:Class="Noctis.Views.MoveToAlbumDialog"
+        x:DataType="vm:MoveToAlbumViewModel"
+        Title="{loc:T MoveToAlbum.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="TextBlock.mta-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.5" />
+            <Setter Property="Margin" Value="16,0,0,0" />
+        </Style>
+        <!-- An album row: the Add to Playlist dialog's rounded filled tile. -->
+        <Style Selector="Button.mta-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderThickness" Value="2" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="8,8,16,8" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Button.mta-row:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.mta-row:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.mta-row:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <Style Selector="Button.mta-row:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundFocused}" />
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        <!-- The picked album: an accent outline. -->
+        <Style Selector="Button.mta-row.selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+        </Style>
+        <!-- The album the songs are on already: muted, not pickable. -->
+        <Style Selector="Button.mta-row.current">
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+    </Window.Styles>
+
+    <!-- GitHub #239. The pill pop-up of Add to Playlist (PillDialogHost draws the backdrop and
+         the card and animates it). The result reaches the caller through the view model's
+         Confirmed event, never through Close(result). -->
+    <ctrl:PillDialogHost>
+    <Grid Width="480" RowDefinitions="Auto,Auto,Auto">
+
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <ctrl:LineIcon Data="{StaticResource MenuLineAlbum}" Width="22" Height="22" Opacity="0.6"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding SubtitleText}" FontSize="13" Opacity="0.7" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Panel Grid.Row="1">
+            <!-- Existing albums: New Album, the search box, the list. -->
+            <StackPanel x:Name="ListPane" Margin="28,20,28,16" Spacing="14" IsVisible="{Binding !IsCreatingNew}">
+                <Button x:Name="NewAlbumButton"
+                        Classes="pill-primary"
+                        HorizontalAlignment="Stretch"
+                        AutomationProperties.Name="{loc:T MoveToAlbum.NewAlbum}"
+                        Command="{Binding ShowCreateCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <ctrl:LineIcon Data="{StaticResource MenuLinePlaylistAdd}" Width="16" Height="16"
+                                       Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:T MoveToAlbum.NewAlbum}" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <TextBox x:Name="SearchBox"
+                         Classes="pill-field"
+                         AutomationProperties.Name="{loc:T MoveToAlbum.Search}"
+                         Watermark="{loc:T MoveToAlbum.Search}"
+                         Text="{Binding SearchText}" />
+                <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasRows}">
+                    <ItemsControl x:Name="AlbumList" ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:MoveToAlbumRow">
+                                <Button Classes="mta-row"
+                                        Margin="0,0,0,6"
+                                        Classes.selected="{Binding IsSelected}"
+                                        Classes.current="{Binding IsCurrent}"
+                                        AutomationProperties.Name="{Binding Name}"
+                                        Command="{Binding $parent[Window].((vm:MoveToAlbumViewModel)DataContext).SelectAlbumCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10" ClipToBounds="True"
+                                                Margin="0,0,12,0" Background="{DynamicResource PillFieldBackgroundFocused}">
+                                            <Panel>
+                                                <ctrl:LineIcon Data="{StaticResource MenuLineAlbum}" Width="16" Height="16" Opacity="0.5"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               IsVisible="{Binding !HasCover}" />
+                                                <ctrl:CachedImage SourcePath="{Binding CoverPath}" DecodeWidth="128"
+                                                                  Stretch="UniformToFill" IsVisible="{Binding HasCover}" />
+                                            </Panel>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding SubtitleText}" FontSize="12" Opacity="0.55"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <Border Classes="pill-well" Padding="20,18" IsVisible="{Binding !HasRows}">
+                    <TextBlock Text="{loc:T MoveToAlbum.NoAlbums}" FontSize="13" Opacity="0.6"
+                               TextWrapping="Wrap" TextAlignment="Center" HorizontalAlignment="Center" />
+                </Border>
+            </StackPanel>
+
+            <!-- New album: albums come from the files' tags, so the songs being moved start it. -->
+            <StackPanel x:Name="CreatePane" Margin="28,20,28,16" Spacing="14" IsVisible="{Binding IsCreatingNew}">
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="mta-label" Text="{loc:T MoveToAlbum.AlbumName}" />
+                    <TextBox x:Name="NameBox"
+                             Classes="pill-field"
+                             AutomationProperties.Name="{loc:T MoveToAlbum.AlbumName}"
+                             Watermark="{loc:T MoveToAlbum.AlbumName}"
+                             Text="{Binding NewAlbumName}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding MoveCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                </StackPanel>
+                <StackPanel Spacing="6">
+                    <TextBlock Classes="mta-label" Text="{loc:T MoveToAlbum.AlbumArtist}" />
+                    <TextBox Classes="pill-field"
+                             AutomationProperties.Name="{loc:T MoveToAlbum.AlbumArtist}"
+                             Text="{Binding NewAlbumArtist}">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding MoveCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                </StackPanel>
+                <TextBlock Text="{loc:T MoveToAlbum.NewExplain}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                           Margin="16,0,0,0" />
+            </StackPanel>
+        </Panel>
+
+        <!-- Footer: what Move does to the files, then the buttons. -->
+        <Border Grid.Row="2"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Spacing="12">
+                <TextBlock x:Name="ConfirmLine" Text="{Binding ConfirmText}" FontSize="12" Opacity="0.7" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                    <Button Classes="pill-secondary" MinWidth="108"
+                            Content="{loc:T AddToPlaylist.Cancel}"
+                            Command="{Binding CancelCommand}"
+                            IsVisible="{Binding !IsCreatingNew}" />
+                    <Button Classes="pill-secondary" MinWidth="108"
+                            Content="{loc:T AddToPlaylist.Back}"
+                            Command="{Binding CancelCreateCommand}"
+                            IsVisible="{Binding IsCreatingNew}" />
+                    <Button x:Name="MoveButton" Classes="pill-primary" MinWidth="108"
+                            Content="{loc:T MoveToAlbum.Move}"
+                            Command="{Binding MoveCommand}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+    </ctrl:PillDialogHost>
+</Window>

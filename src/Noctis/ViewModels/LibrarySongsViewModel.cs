@@ -517,6 +517,15 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
+    /// <summary>GitHub #239: the song (or the Ctrl-selection it is in) → Move to Album.</summary>
+    [RelayCommand]
+    private async Task MoveToAlbum(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenMoveToAlbumDialog(tracks);
+    }
+
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 

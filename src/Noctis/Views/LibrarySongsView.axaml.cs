@@ -179,7 +179,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             fetchLyricsCommand: vm.FetchLyricsCommand,
             lyricsStudioCommand: vm.OpenLyricsStudioCommand,
             removeLyricsCommand: vm.RemoveLyricsCommand,
-            sendToFolderCommand: vm.SendToFolderCommand);
+            sendToFolderCommand: vm.SendToFolderCommand,
+            moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
     }
 
     /// <summary>Click on a row's stars: rate that track (or the whole Ctrl-selection it belongs to).</summary>
