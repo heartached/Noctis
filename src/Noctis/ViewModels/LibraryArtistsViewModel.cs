@@ -159,6 +159,36 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         else _isDirty = true;
     }
 
+    // GitHub #233 (5): artists with fewer songs than this are left out of the browse list (0 =
+    // every artist). Counted on Artist.TrackCount, the number the tile's counts line and the
+    // list's Songs column show, so what the user reads and what the filter cuts agree. A
+    // search on the page ignores it, and artist links elsewhere never read it. Pushed in by
+    // MainWindowViewModel from Settings (ActiveArtistMinSongs).
+    private int _minSongs;
+
+    /// <summary>The active "hide artists with fewer than N songs" threshold; 0 when off.</summary>
+    public int MinSongs => _minSongs;
+
+    /// <summary>The empty grid is the small-artist filter's doing, not an empty library.</summary>
+    public bool IsSmallArtistsHiddenState => !HasActiveFilter && _minSongs > 0 && _allArtists.Count > 0;
+
+    /// <summary>The empty grid means the library has no artists at all.</summary>
+    public bool IsNoArtistsState => !HasActiveFilter && !IsSmallArtistsHiddenState;
+
+    /// <summary>
+    /// Sets the small-artist threshold and re-filters. Gated like <see cref="SetSortIgnoredWords"/>:
+    /// while hidden (under the Settings modal the option lives in) it only marks dirty.
+    /// </summary>
+    public void SetMinSongs(int minSongs)
+    {
+        minSongs = Math.Max(0, minSongs);
+        if (minSongs == _minSongs) return;
+        _minSongs = minSongs;
+        OnPropertyChanged(nameof(MinSongs));
+        if (_isActive) ApplyFilter(_currentFilter);
+        else _isDirty = true;
+    }
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
@@ -211,9 +241,20 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
                 Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("ArtistsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // The tiles' "3 albums · 41 songs" lines are cached on the Artist objects; a language
+        // switch clears them so the next rebuild writes them in the new language.
+        _cultureChangedHandler = (_, _) =>
+        {
+            foreach (var artist in _allArtists) artist.CountsLine = null;
+            if (_isActive) ApplyFilter(_currentFilter);
+            else _isDirty = true;
+        };
+        Noctis.Localization.Loc.Instance.CultureChanged += _cultureChangedHandler;
     }
 
     private EventHandler? _libraryUpdatedHandler;
+    private EventHandler? _cultureChangedHandler;
 
     /// <summary>
     /// Set by MainWindowViewModel when Artists becomes (or stops being) the current view.
@@ -382,6 +423,8 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
+        OnPropertyChanged(nameof(IsSmallArtistsHiddenState));
+        OnPropertyChanged(nameof(IsNoArtistsState));
         _playsStale = false; // the rebuild below reads the current totals
 
         // Off-UI-thread rebuild via the same generation-guarded path as
@@ -397,10 +440,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         var ignoredWords = _sortIgnoredWords;
         var columns = GridColumns;
         var stats = _stats;
+        var minSongs = _minSongs;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             var statsByName = stats.Value;
-            var ordered = OrderArtists(artists, query, sortMode, ascending, ignoredWords, statsByName);
+            var ordered = OrderArtists(artists, query, sortMode, ascending, ignoredWords, statsByName, minSongs);
             var rows = ChunkRows(ordered, columns);
             var listRows = BuildListRows(ordered, statsByName);
             if (Volatile.Read(ref _rebuildGeneration) == generation)
@@ -423,13 +467,18 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// </summary>
     internal static List<ArtistRow> BuildRows(List<Artist> allArtists, string query, string sortMode, bool ascending,
         IReadOnlyList<string>? ignoredWords = null, int columns = ArtistsPerRow,
-        IReadOnlyDictionary<string, ArtistStats>? stats = null)
-        => ChunkRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats ?? NoStats), columns);
+        IReadOnlyDictionary<string, ArtistStats>? stats = null, int minSongs = 0)
+        => ChunkRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats ?? NoStats, minSongs), columns);
 
     /// <summary>The list view's rows over the same ordering (static for unit tests).</summary>
     internal static List<ArtistListRow> BuildListRows(List<Artist> allArtists, string query, string sortMode, bool ascending,
-        IReadOnlyDictionary<string, ArtistStats> stats, IReadOnlyList<string>? ignoredWords = null)
-        => BuildListRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats), stats);
+        IReadOnlyDictionary<string, ArtistStats> stats, IReadOnlyList<string>? ignoredWords = null, int minSongs = 0)
+        => BuildListRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats, minSongs), stats);
+
+    /// <summary>The grid tile's line under the name (GitHub #233): "3 albums · 41 songs", in the
+    /// language's plural forms. The same TrackCount the small-artist filter compares.</summary>
+    internal static string CountsLineFor(Artist artist)
+        => $"{Noctis.Localization.Loc.Plural("Count.Albums", artist.AlbumCount)} · {Noctis.Localization.Loc.Plural("Count.Songs", artist.TrackCount)}";
 
     private static List<ArtistListRow> BuildListRows(List<Artist> ordered, IReadOnlyDictionary<string, ArtistStats> stats)
     {
@@ -443,8 +492,13 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     }
 
     private static List<Artist> OrderArtists(List<Artist> allArtists, string query, string sortMode, bool ascending,
-        IReadOnlyList<string>? ignoredWords, IReadOnlyDictionary<string, ArtistStats> stats)
+        IReadOnlyList<string>? ignoredWords, IReadOnlyDictionary<string, ArtistStats> stats, int minSongs = 0)
     {
+        // The tiles' counts lines, written once per Artist object here on the rebuild's worker
+        // rather than per realized tile: a scrolled-in row only binds a ready string.
+        foreach (var artist in allArtists)
+            artist.CountsLine ??= CountsLineFor(artist);
+
         IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -460,7 +514,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         }
         else
         {
-            filtered = ApplySort(allArtists, sortMode, ascending, ignoredWords, stats);
+            // GitHub #233 (5): small artists drop out of the browse list only; a search above
+            // still reaches every artist.
+            IEnumerable<Artist> source = minSongs > 0 ? allArtists.Where(a => a.TrackCount >= minSongs) : allArtists;
+            filtered = ApplySort(source, sortMode, ascending, ignoredWords, stats);
         }
         return filtered.ToList();
     }
@@ -750,6 +807,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             _library.LibraryUpdated -= _libraryUpdatedHandler;
             _libraryUpdatedHandler = null;
+        }
+        if (_cultureChangedHandler != null)
+        {
+            Noctis.Localization.Loc.Instance.CultureChanged -= _cultureChangedHandler;
+            _cultureChangedHandler = null;
         }
     }
 
