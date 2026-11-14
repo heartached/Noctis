@@ -175,6 +175,8 @@
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve"><value>Vurgu rengini çalan kapaktan al. Hiçbir şey çalmazken seçtiğin vurgu rengi geri gelir.</value><comment>Appearance toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve"><value>Sanatçı ve albüm adlarında vurgu rengi</value><comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment></data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve"><value>Çalma listelerinde, Şarkılar'da ve oynatıcıda sanatçı, albüm ve tür adları vurgu rengini alır. Kapalıyken normal yazı rengiyle gösterilir.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment></data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve"><value>Pencereyi vurgu rengiyle renklendir</value><comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment></data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve"><value>Pencere ve sayfa arka planına vurgu renginden hafif bir ton verir.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment></data>
   <data name="Playlist.DragCount" xml:space="preserve"><value>{0} şarkı</value><comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>Vurgu Rengi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PickPresetOpenPicker" xml:space="preserve"><value>Bir hazır renk seç veya özel renk için seçiciyi aç.</value><comment>Text in SettingsView.axaml</comment></data>

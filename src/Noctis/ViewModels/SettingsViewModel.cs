@@ -688,6 +688,15 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    /// <summary>GitHub #240: the window and page background take a subtle shade of the accent
+    /// (MainWindow applies it through App.SetTintWindowWithAccent).</summary>
+    [ObservableProperty] private bool _tintWindowWithAccent;
+
+    partial void OnTintWindowWithAccentChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     /// <summary>Drives the custom colour-picker flyout.</summary>
     [ObservableProperty] private Avalonia.Media.Color _pickerColor = Avalonia.Media.Color.Parse("#E74856");
 
@@ -3566,6 +3575,7 @@ public partial class SettingsViewModel : ViewModelBase
             CustomAccentHex = ActiveAccentHex;
             AccentFollowsArtwork = _settings.AccentFollowsArtwork;
             AccentTrackLinks = _settings.AccentTrackLinks;
+            TintWindowWithAccent = _settings.TintWindowWithAccent;
             AppIcon = AppIconService.Normalize(_settings.AppIcon);
             AppIconService.Apply(AppIcon); // also when it equals the field default (no change event)
             try
@@ -4140,6 +4150,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AccentPresetName = ActiveAccentName;
         _settings.AccentFollowsArtwork = AccentFollowsArtwork;
         _settings.AccentTrackLinks = AccentTrackLinks;
+        _settings.TintWindowWithAccent = TintWindowWithAccent;
         _settings.AppIcon = AppIconService.Normalize(AppIcon);
 
         _settings.ScanOnStartup = ScanOnStartup;
@@ -8484,6 +8495,7 @@ public partial class SettingsViewModel : ViewModelBase
             CustomAccentHex = ActiveAccentHex;
             AccentFollowsArtwork = defaultSettings.AccentFollowsArtwork;
             AccentTrackLinks = defaultSettings.AccentTrackLinks;
+            TintWindowWithAccent = defaultSettings.TintWindowWithAccent;
             AppIcon = AppIconService.Normalize(defaultSettings.AppIcon);
             try
             {

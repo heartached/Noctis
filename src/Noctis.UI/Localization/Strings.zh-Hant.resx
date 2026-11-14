@@ -575,6 +575,14 @@
     <value>播放清單、「歌曲」和播放器中的演出者、專輯和類型名稱使用強調色。關閉後使用一般文字顏色。</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve">
+    <value>以強調色為視窗著色</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment>
+  </data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve">
+    <value>為視窗和頁面背景加上一抹淡淡的強調色。</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
+  </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} 首歌曲</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
