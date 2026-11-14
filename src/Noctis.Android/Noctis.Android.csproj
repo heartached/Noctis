@@ -85,11 +85,12 @@
     <PackageReference Include="Xamarin.AndroidX.Media3.ExoPlayer" Version="1.11.1" />
     <PackageReference Include="Xamarin.AndroidX.Media3.Session" Version="1.11.1" />
     <PackageReference Include="Xamarin.AndroidX.DocumentFile" Version="1.1.0.4" />
-    <!-- Media3.Session pulls AndroidX.Core 1.19.0.1; SplashScreen's chain leaves
+    <!-- Media3.Session pulls AndroidX.Core 1.19.x; SplashScreen's chain leaves
          AndroidX.Core.Core.Ktx pinned at 1.17.0.2. NuGet does not cross-bump sibling
          package ids, so the two AARs ship duplicate compiled Kotlin extension classes
          (AnimatorKt$addListener$1) and R8 fails with "defined multiple times". Pin
-         Core.Ktx to the same 1.19.0.1 release to keep the pair in lockstep. -->
+         Core.Ktx to the same release AndroidX.Core resolves to (1.19.1, which Core.Ktx
+         1.19.1 lifts Core to) to keep the pair in lockstep. -->
     <PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" Version="1.19.1" />
     <!-- Sign in by QR code (AndroidQrScanner): Google's code scanner. Google Play services
          runs the camera and the decoder in its own process and hands back only the decoded
