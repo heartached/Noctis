@@ -118,4 +118,67 @@ public class SidebarEdgePeekTests
         Assert.False(r.Peek.IsPeeking);
         r.Host.Close();
     }
+
+    /// <summary>GitHub #233 (Hide sidebar until hover): keyboard focus inside the slid-in rail
+    /// keeps it there with the pointer gone, and focus leaving tucks it away.</summary>
+    [AvaloniaFact]
+    public void KeyboardFocusInsideTheRail_KeepsItOpen()
+    {
+        var r = Build(hoverExpand: false);
+        r.Move(0);
+        r.Move(30);
+        // A focusable stand-in for the rail's rows (unbound here, so the real rows are empty).
+        var target = new Button { Content = "Row", Focusable = true };
+        r.Rail.Child = target;
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(target.Focus());
+        Dispatcher.UIThread.RunJobs();
+
+        r.Move(700); // pointer back on the page, focus still in the rail
+        Assert.True(r.Peek.IsPeeking, "focus inside the sidebar must keep it open");
+        Assert.True(r.Rail.IsVisible);
+
+        // Focus moves onto the page (a control far from the rail).
+        var onPage = new Button { Content = "Page", Focusable = true, Margin = new Thickness(800, 0, 0, 0) };
+        ((Panel)r.Host.Content!).Children.Add(onPage);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(onPage.Focus());
+        for (var i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+        Assert.False(r.Peek.IsPeeking);
+        Assert.False(r.Rail.IsVisible);
+        r.Host.Close();
+    }
+
+    /// <summary>With a CloseDelay the rail waits out the grace period before tucking away,
+    /// and coming back within it keeps the rail.</summary>
+    [AvaloniaFact]
+    public async Task CloseDelay_KeepsTheRail_ForTheGracePeriod()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var r = Build(hoverExpand: false);
+        // Rebuild the peek with a delay over the same strip and rail.
+        var hidden = true;
+        var peek = new SidebarEdgePeek(r.Edge, r.Rail, () => hidden, () => false, () => false, _ => { })
+        {
+            CloseDelay = TimeSpan.FromMilliseconds(150),
+        };
+        r.Hidden = false; // silence the first peek
+        peek.SyncHidden();
+
+        r.Move(0);
+        Assert.True(peek.IsPeeking);
+        r.Move(700);
+        Assert.True(peek.IsPeeking, "still inside the grace period");
+        r.Move(30); // back onto the rail in time
+        await Task.Delay(250);
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(peek.IsPeeking);
+
+        r.Move(700);
+        await Task.Delay(250);
+        for (var i = 0; i < 3; i++) Dispatcher.UIThread.RunJobs();
+        Assert.False(peek.IsPeeking);
+        Assert.False(r.Rail.IsVisible);
+        r.Host.Close();
+    }
 }
