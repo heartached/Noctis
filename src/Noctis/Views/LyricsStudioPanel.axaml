@@ -968,7 +968,7 @@
                                  [−0.1 −0.01 +0.01 +0.1]; with nothing picked only the hint shows, in a row that
                                  keeps its height. Narrow, the label goes above the controls. -->
                             <Border Container.Name="ReviewNudge" Container.Sizing="Width">
-                                <Grid Classes="review-nudge" Classes.idle="{Binding !HasNudgeTarget}" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                                <Grid Classes="review-nudge" Classes.idle="{Binding !HasNudgeTarget}" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
                                     <TextBlock Classes="nudge-label" Text="{Binding NudgeTargetText}" FontSize="12" Opacity="0.6" VerticalAlignment="Center"
                                                FontFeatures="+tnum" TextTrimming="CharacterEllipsis" />
                                     <!-- Narrow only: holds the label's row while the hint spans both. -->
@@ -1016,6 +1016,13 @@
                                             </Button>
                                         </WrapPanel>
                                     </Panel>
+                                    <!-- GitHub #237: why a nudge stopped short ("No room: the next word starts at …").
+                                         Its line is always kept, so the row never grows or jumps when it shows. -->
+                                    <TextBlock Classes="nudge-hint" Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding NudgeHintText}"
+                                               FontSize="12" Opacity="0.8" Height="16" Margin="0,4,0,0" FontFeatures="+tnum"
+                                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NudgeHintText}"
+                                               ToolTip.ServiceEnabled="{Binding NudgeHintText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               AutomationProperties.LiveSetting="Polite" />
                                 </Grid>
                             </Border>
                             <Border CornerRadius="10" Padding="12,8" Background="{DynamicResource AccentButtonBackground}" IsVisible="{Binding IsTapping}">
