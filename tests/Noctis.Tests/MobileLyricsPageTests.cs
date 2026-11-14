@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Controls.Presenters;
 using Avalonia.LogicalTree;
@@ -94,6 +95,63 @@ public class MobileLyricsPageTests
         {
             System.Globalization.CultureInfo.CurrentCulture = previous;
         }
+    }
+
+    /// <summary>Beta (Alfamin 11-09): landscape hid a bit of the lyrics. On a Galaxy S23 sideways
+    /// (780×360 dp: camera cutout 33 dp left, status bar 30 dp, navigation bar 48 dp right) the
+    /// lines get a 230 dp viewport, and the 22% anchor centred a wrapped two-row sung line so
+    /// high that its first row sat under the solid top of the fade (TopFade). The sung line now
+    /// stays below the fade; the header and transport stay clear of the bars.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Landscape_S23_TheSungLineAndTheControlsStayInView(bool paused)
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 40).Select(i => $"[00:{i * 2:00}.50]walking down the road {i}"));
+        var view = new ShellView { DataContext = shell };
+        var window = new Window { Width = 780, Height = 360, Content = view };
+        window.Show();
+        var safe = new Thickness(33, 30, 48, 0);
+        view.ApplySafeArea(safe);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(20.6));   // line 10
+        if (paused) shell.Player.TogglePlayPauseCommand.Execute(null);   // the transport stays up
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        // Layout before the page's posted snap, as on the device (headless runs no layout of its own).
+        for (var i = 0; i < 3; i++)
+        {
+            MobileFixtures.Land(window);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        Assert.Equal(paused, page.ControlsShown);
+        (Point TopLeft, Point BottomRight) Box(Control c) =>
+            (c.TranslatePoint(default, window)!.Value, c.TranslatePoint(new Point(c.Bounds.Width, c.Bounds.Height), window)!.Value);
+
+        var line = LineContainer(page, 10);
+        Assert.True(line.Bounds.Height > 100, $"the line is {line.Bounds.Height} high (meant to wrap)");
+        var (lineTop, lineBottom) = Box(line);
+        var (_, fadeBottom) = Box(page.FindControl<Control>("TopFade")!);
+        Assert.True(lineTop.Y >= fadeBottom.Y - 0.5, $"sung line top {lineTop.Y}, the fade ends at {fadeBottom.Y}");
+        Assert.True(lineBottom.Y <= 360 + 0.5 && lineBottom.X <= 780 - safe.Right + 0.5, $"sung line ends at {lineBottom}");
+
+        var names = new List<string> { "HeaderTitle", "LyricsMore", "LyricsGrabber" };
+        if (paused) names.AddRange(new[] { "SeekBar", "PreviousButton", "PlayPauseButton", "NextButton", "LyricsButton", "OutputButton", "QueueButton" });
+        foreach (var name in names)
+        {
+            var control = page.FindControl<Control>(name)!;
+            Assert.True(control.IsEffectivelyVisible && control.Bounds.Width > 0, $"{name} not shown");
+            var (topLeft, bottomRight) = Box(control);
+            Assert.True(topLeft.X >= safe.Left - 0.5 && topLeft.Y >= safe.Top - 0.5
+                        && bottomRight.X <= 780 - safe.Right + 0.5 && bottomRight.Y <= 360 + 0.5,
+                $"{name} spans {topLeft}-{bottomRight}");
+        }
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
     }
 
     [AvaloniaFact]
@@ -297,6 +355,62 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>Beta (Duckyvictus 11-11): the lyrics took up to 6 s to come back after a scroll -
+    /// 3.5 s restarted by every movement of the fling for 2.5 s after the lift. Apple's: about
+    /// 2 s after the last touch; a fling right after the lift restarts the wait, its later tail
+    /// does not push it back. (Headless timers do not tick: a restart is seen as the timer's
+    /// Interval set back to BrowseResumeDelay over a marker value.)</summary>
+    [AvaloniaFact]
+    public void Browsing_ResumesSoonAfterTheLift_AFlingTailDoesNotExtendIt()
+    {
+        Assert.True(LyricsPage.BrowseResumeDelay <= TimeSpan.FromSeconds(2));
+        Assert.True(LyricsPage.BrowseResumeDelay + LyricsPage.FlingExtendWindow <= TimeSpan.FromSeconds(2.5));
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 60).Select(i => $"[00:{i:00}.50]line {i}"));
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        MobileFixtures.Land(window);
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var scroll = page.FindControl<ScrollViewer>("LyricsScroll")!;
+        var timer = (Avalonia.Threading.DispatcherTimer)typeof(LyricsPage)
+            .GetField("_browseTimer", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(page)!;
+        var marker = TimeSpan.FromSeconds(77);
+        void Move(double by)
+        {
+            scroll.Offset = new Vector(0, scroll.Offset.Y + by);
+            window.UpdateLayout();
+        }
+        bool Restarted() => timer.IsEnabled && timer.Interval == LyricsPage.BrowseResumeDelay;
+
+        // A finger in the side margin (beside the lines, so no line takes it as a tap) drags.
+        var at = scroll.TranslatePoint(new Point(8, scroll.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(at, Avalonia.Input.MouseButton.Left);
+        Move(60);
+        Assert.True(shell.Lyrics.IsBrowsing);
+        Assert.True(Restarted());
+
+        timer.Interval = marker;
+        window.MouseUp(at, Avalonia.Input.MouseButton.Left);
+        Assert.True(Restarted());   // the wait counts from the lift
+
+        timer.Interval = marker;
+        Move(40);                   // the fling just after the lift
+        Assert.True(Restarted());
+
+        timer.Interval = marker;
+        Thread.Sleep(LyricsPage.FlingExtendWindow + TimeSpan.FromMilliseconds(80));
+        Move(20);                   // its tail: still browsing, the wait left running
+        Assert.True(shell.Lyrics.IsBrowsing);
+        Assert.True(timer.IsEnabled);
+        Assert.Equal(marker, timer.Interval);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>An explicit song carries the E badge after its title in the header.</summary>
     [AvaloniaFact]
     public void Header_ShowsTheEBadge_ForAnExplicitSong()
@@ -376,6 +490,38 @@ public class MobileLyricsPageTests
         Assert.True(page.ControlsShown);
         page.HideControlsIfPlaying();
         Assert.True(page.ControlsShown);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>Beta (Alfamin 11-09): the timeline only took a tap dead centre - the capsule
+    /// drew its 7 dp and nothing else, so only those pixels were hit. The whole 30 dp box takes
+    /// the finger now: a press near its top or bottom edge puts the value under it.</summary>
+    [AvaloniaTheory]
+    [InlineData(15.0)]   // dead centre, on the capsule
+    [InlineData(2.0)]
+    [InlineData(27.0)]
+    public void SeekBar_TakesAPress_AnywhereInItsHeight(double y)
+    {
+        var (shell, _, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = "[00:00.50]one\n[00:03.00]two";
+        var (view, window) = Mount(shell);
+
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        shell.Player.TogglePlayPauseCommand.Execute(null);   // paused: the transport stays up
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        MobileFixtures.Land(window);
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var bar = page.FindControl<CapsuleSlider>("SeekBar")!;
+        Assert.Equal(30, bar.Bounds.Height);
+        var at = bar.TranslatePoint(new Point(bar.Bounds.Width * 0.5, y), window)!.Value;
+        window.MouseDown(at, Avalonia.Input.MouseButton.Left);
+        Assert.True(bar.IsScrubbing);
+        Assert.Equal(bar.Maximum * 0.5, bar.Value, 1);
+        window.MouseUp(at, Avalonia.Input.MouseButton.Left);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
