@@ -93,7 +93,7 @@ public class LyricsStudioSpeedTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void LeavingTheStudioPage_GivesBackTheSpeed_AndThePillIsInTheNudgeBar()
+    public void LeavingTheStudioPage_GivesBackTheSpeed_AndThePillIsInTheHeader()
     {
         EnsureAppResources();
         var (vm, player, _, _) = Make();
@@ -103,7 +103,7 @@ public class LyricsStudioSpeedTests : IDisposable
         try
         {
             Settle(win);
-            var bar = panel.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Classes.Contains("review-nudge"));
+            var bar = panel.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Classes.Contains("review-actions"));
             var pill = bar.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("studio-speed"));
             Assert.True(pill.IsEffectivelyVisible);
             var slower = pill.GetVisualDescendants().OfType<Button>().First();

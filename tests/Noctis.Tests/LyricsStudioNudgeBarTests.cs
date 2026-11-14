@@ -63,8 +63,8 @@ public class LyricsStudioNudgeBarTests : IDisposable
         return (win, panel, vm);
     }
 
-    private static WrapPanel Bar(LyricsStudioPanel panel) =>
-        panel.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Classes.Contains("review-nudge"));
+    private static Grid Bar(LyricsStudioPanel panel) =>
+        panel.GetVisualDescendants().OfType<Grid>().Single(w => w.Classes.Contains("review-nudge"));
 
     private static void Press(Window win, Key key, KeyModifiers modifiers = KeyModifiers.None) =>
         win.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers, Source = win });
@@ -78,18 +78,20 @@ public class LyricsStudioNudgeBarTests : IDisposable
             var bar = Bar(panel);
             Assert.True(bar.IsEffectivelyVisible);
             var steps = bar.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("nudge-step")).ToList();
-            Assert.Equal(new[] { "-10", "10", "-100", "100" }, steps.Select(b => (string)b.CommandParameter!));
+            Assert.Equal(new[] { "-100", "-10", "10", "100" }, steps.Select(b => (string)b.CommandParameter!));
             Assert.All(steps, b => Assert.Same(vm.NudgeSelectionCommand, b.Command));
-            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.NudgeFineEarlier"), ToolTip.GetTip(steps[0]));
+            Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.NudgeCoarseEarlier"), ToolTip.GetTip(steps[0]));
             Assert.Contains(",", (string)ToolTip.GetTip(steps[0])!);
             // Screen readers read the glyph ("−"/"+") without a name; each step says what it does.
             Assert.All(steps, b => Assert.Equal(ToolTip.GetTip(b), Avalonia.Automation.AutomationProperties.GetName(b)));
             Assert.All(steps, b => Assert.False(b.IsEffectivelyEnabled));
+            Assert.All(steps, b => Assert.False(b.IsEffectivelyVisible)); // only the hint shows
             Assert.Equal(Noctis.Localization.Loc.T("LyricsStudio.NudgeNoTarget"), vm.NudgeTargetText);
 
             vm.PlayFromLineCommand.Execute(vm.ReviewLines[1]);
             Settle(win);
             Assert.All(steps, b => Assert.True(b.IsEffectivelyEnabled));
+            Assert.All(steps, b => Assert.True(b.IsEffectivelyVisible));
             var row = panel.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("review-line")).ElementAt(1);
             Assert.Contains("selected", row.Classes);
 
