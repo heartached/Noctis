@@ -166,6 +166,29 @@
         </DockPanel.RenderTransform>
 
         <Grid RowDefinitions="Auto,*">
+            <!-- GitHub #240: the window around the page (the rail's margin on the left, the top
+                 bar above) gets the same two AppMainBackground layers the page area stacks over
+                 the window background (the content Grid and the page's own root). Opaque themes
+                 look the same; with Liquid Glass those layers are translucent, and without these
+                 the area behind the sidebar showed a lighter band. Inside RootPanel so it follows
+                 the pinned margin and the hover slide; 240 covers the widest left margin (236).
+                 Hidden while Tint Whole Window or the lyrics page paints that area itself. -->
+            <Border x:Name="PageSurroundTop" Grid.Row="0" Margin="-240,0,0,0"
+                    Background="{DynamicResource AppMainBackground}" IsHitTestVisible="False">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsWindowTinted" FallbackValue="True" />
+                        <Binding Path="!IsLyricsViewActive" FallbackValue="True" />
+                    </MultiBinding>
+                </Border.IsVisible>
+                <Border Background="{DynamicResource AppMainBackground}" />
+            </Border>
+            <Border x:Name="PageSurroundLeft" Grid.Row="1" HorizontalAlignment="Left"
+                    Width="240" Margin="-240,0,0,0"
+                    Background="{DynamicResource AppMainBackground}" IsHitTestVisible="False"
+                    IsVisible="{Binding #PageSurroundTop.IsVisible}">
+                <Border Background="{DynamicResource AppMainBackground}" />
+            </Border>
             <!-- Zone A: Top bar left | centered playback island | right actions.
                  Auto-height: collapses on pages where the bar renders nothing
                  (e.g. Album Detail, whose Back/Search live in the sidebar rail). -->
