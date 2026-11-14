@@ -15,6 +15,12 @@ namespace Noctis.Controls;
 /// out, and a cassette shell with the cover as its label. Code-built and recycled by the
 /// carousel, so a card is just a few visuals: the case body is drawn by a layer behind the
 /// cover image, the jewel case's lid gloss by a thin overlay above it.
+///
+/// Every style stands on a floor reflection (GitHub #233): the whole composed card (case,
+/// cover, lid / window) drawn again upside down under it and fading out. It is one more
+/// recorded draw list replaying the same shapes and the already-decoded cover bitmap, so the
+/// carousel's glide (transforms only) never re-records it; it redraws only when the album,
+/// style, size or decoded cover changes.
 /// </summary>
 public sealed class AlbumCarouselCard : Panel
 {
@@ -27,9 +33,9 @@ public sealed class AlbumCarouselCard : Panel
         _ => new Size(1, 1),
     };
 
-    /// <summary>Extra height under the card that its floor reflection uses (× cover edge).</summary>
-    public static double ReflectionFactor(AlbumCarouselStyle style) =>
-        style == AlbumCarouselStyle.Cover ? ReflectionHeight : 0;
+    /// <summary>Extra height under the card that its floor reflection uses (× cover edge).
+    /// Every style has one (GitHub #233); the parameter stays for callers sizing per style.</summary>
+    public static double ReflectionFactor(AlbumCarouselStyle style) => ReflectionHeight + ReflectionGap;
 
     // Jewel case: 142 × 125 mm with a 120 mm insert → the cover fills the lid right of the spine.
     internal const double JewelWidth = 1.17, JewelHeight = 1.04, JewelSpine = 0.12;
@@ -39,12 +45,13 @@ public sealed class AlbumCarouselCard : Panel
     // Cassette: shell ≈ 100 × 64 mm.
     internal const double CassetteWidth = 1.3, CassetteHeight = 0.83;
     internal const double ReflectionHeight = 0.3;
+    /// <summary>Gap between the card's bottom edge and its reflection (× cover edge).</summary>
+    internal const double ReflectionGap = 0.012;
 
     private readonly Border _coverFrame;
     private readonly CachedImage _cover;
     private readonly TextBlock _placeholder;
-    private readonly Border _reflectionFrame;
-    private readonly CachedImage _reflection;
+    private readonly ReflectionLayer _reflection;
     private readonly OverlayLayer _gloss;
     private readonly BodyLayer _body;
     private double _dim;
@@ -85,26 +92,18 @@ public sealed class AlbumCarouselCard : Panel
             Child = new Panel { Children = { _placeholder, _cover } },
         };
 
-        // Floor reflection (plain cover only): the cover again, flipped, fading out downwards.
-        _reflection = new CachedImage
-        {
-            Stretch = Stretch.UniformToFill,
-            DecodeWidth = 256,
-            VerticalAlignment = VerticalAlignment.Top,
-            RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
-            RenderTransform = new ScaleTransform(1, -1),
-        };
-        _reflectionFrame = new Border
+        // Floor reflection (every style, GitHub #233): the composed card again, flipped,
+        // fading out downwards. Redrawn once the cover has decoded (it draws that bitmap).
+        _reflection = new ReflectionLayer(this)
         {
             ClipToBounds = true,
             IsHitTestVisible = false,
-            Child = _reflection,
-            OpacityMask = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(Color.FromArgb(0x55, 0, 0, 0), 0), new GradientStop(Colors.Transparent, 1) },
-            },
+            OpacityMask = ReflectionFade,
+        };
+        RenderOptions.SetBitmapInterpolationMode(_reflection, Avalonia.Media.Imaging.BitmapInterpolationMode.HighQuality);
+        _cover.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == Image.SourceProperty) _reflection.InvalidateVisual();
         };
 
         _gloss = new OverlayLayer(this) { IsHitTestVisible = false };
@@ -112,7 +111,7 @@ public sealed class AlbumCarouselCard : Panel
 
         Children.Add(_body);
         Children.Add(_coverFrame);
-        Children.Add(_reflectionFrame);
+        Children.Add(_reflection);
         Children.Add(_gloss);
         ApplyStyle();
     }
@@ -129,11 +128,11 @@ public sealed class AlbumCarouselCard : Panel
             _album = value;
             var path = value?.ArtworkPath;
             _cover.SourcePath = path;
-            _reflection.SourcePath = _style == AlbumCarouselStyle.Cover ? path : null;
             _placeholder.IsVisible = string.IsNullOrEmpty(path);
             Avalonia.Automation.AutomationProperties.SetName(this, value?.Name);
             _body.InvalidateVisual();
             _gloss.InvalidateVisual();
+            _reflection.InvalidateVisual();
         }
     }
 
@@ -186,21 +185,21 @@ public sealed class AlbumCarouselCard : Panel
     private void ApplyStyle()
     {
         var s = _coverSize;
-        var reflect = _style == AlbumCarouselStyle.Cover;
-        _reflectionFrame.IsVisible = reflect;
-        _reflection.SourcePath = reflect ? _album?.ArtworkPath : null;
-        _coverFrame.CornerRadius = new CornerRadius(_style switch
-        {
-            AlbumCarouselStyle.Cover => s * 0.012,
-            AlbumCarouselStyle.Cassette => s * 0.018,
-            _ => s * 0.004,
-        });
+        _coverFrame.CornerRadius = new CornerRadius(CoverCornerRadius);
         _placeholder.FontSize = Math.Max(12, s * 0.16);
         InvalidateMeasure();
         InvalidateArrange();
         _body.InvalidateVisual();
         _gloss.InvalidateVisual();
+        _reflection.InvalidateVisual();
     }
+
+    private double CoverCornerRadius => _coverSize * _style switch
+    {
+        AlbumCarouselStyle.Cover => 0.012,
+        AlbumCarouselStyle.Cassette => 0.018,
+        _ => 0.004,
+    };
 
     /// <summary>Where the cover image sits inside the card, per style.</summary>
     internal Rect CoverRect
@@ -235,12 +234,10 @@ public sealed class AlbumCarouselCard : Panel
         var s = _coverSize;
         var cover = CoverRect;
         _coverFrame.Arrange(cover);
-        // Reflection: a cover-sized image flipped about its own middle, shown through a strip
-        // under the card, so the strip sees the cover's bottom edge first.
-        _reflectionFrame.Arrange(new Rect(0, s + s * 0.012, s, s * ReflectionHeight));
-        _reflection.Width = s;
-        _reflection.Height = s;
         var full = new Rect(CardSize);
+        // Reflection: a strip under the card, the card mirrored about the gap's middle, so
+        // the strip sees the card's bottom edge first.
+        _reflection.Arrange(new Rect(0, full.Height + s * ReflectionGap, full.Width, s * ReflectionHeight));
         _body.Arrange(full);
         _gloss.Arrange(full);
         return CardSize;
@@ -269,12 +266,14 @@ public sealed class AlbumCarouselCard : Panel
     private static readonly IPen ScrewPen = new Pen(new SolidColorBrush(Color.FromArgb(0x70, 0, 0, 0)), 1);
     private static readonly IBrush ScrewBrush = new SolidColorBrush(Color.FromRgb(0x8A, 0x8A, 0x90));
 
-    private void RenderBody(DrawingContext context)
+    /// <param name="reflection">Drawing the floor reflection: leaves out the record's grooves,
+    /// which cannot be seen at a third of the brightness and are most of a record's shapes.</param>
+    private void RenderBody(DrawingContext context, bool reflection = false)
     {
         switch (_style)
         {
             case AlbumCarouselStyle.JewelCase: RenderJewelTray(context); break;
-            case AlbumCarouselStyle.Vinyl: RenderDisc(context); break;
+            case AlbumCarouselStyle.Vinyl: RenderDisc(context, grooves: !reflection); break;
             case AlbumCarouselStyle.Cassette: RenderShell(context); break;
         }
     }
@@ -298,54 +297,58 @@ public sealed class AlbumCarouselCard : Panel
         ctx.DrawRectangle(HingeBrush, null, new Rect(spineW * 0.18, size.Height - s * 0.02 - knuckleH, spineW * 0.64, knuckleH), s * 0.008, s * 0.008);
     }
 
-    private void RenderDisc(DrawingContext ctx)
+    // The record's brushes are relative to what they fill, so one set serves every card (and
+    // its reflection) instead of three new brushes per drawing.
+    private static readonly IBrush DiscBrush = new RadialGradientBrush
+    {
+        GradientStops =
+        {
+            new GradientStop(Color.FromRgb(0x22, 0x22, 0x24), 0),
+            new GradientStop(Color.FromRgb(0x0C, 0x0C, 0x0D), 0.75),
+            new GradientStop(Color.FromRgb(0x16, 0x16, 0x18), 1),
+        },
+    };
+    private static readonly IBrush DiscSheenBrush = new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+        GradientStops =
+        {
+            new GradientStop(Colors.Transparent, 0.2),
+            new GradientStop(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF), 0.33),
+            new GradientStop(Colors.Transparent, 0.45),
+            new GradientStop(Colors.Transparent, 0.55),
+            new GradientStop(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF), 0.67),
+            new GradientStop(Colors.Transparent, 0.8),
+        },
+    };
+    private static readonly IBrush SleeveShadowBrush = new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
+        GradientStops = { new GradientStop(Color.FromArgb(0x90, 0, 0, 0), 0), new GradientStop(Colors.Transparent, 1) },
+    };
+
+    private void RenderDisc(DrawingContext ctx, bool grooves = true)
     {
         var s = _coverSize;
         var c = new Point(s * (0.5 + VinylDiscOffset), s * 0.5);
         var radius = VinylDiscRadius * s;
-        var disc = new RadialGradientBrush
-        {
-            GradientStops =
-            {
-                new GradientStop(Color.FromRgb(0x22, 0x22, 0x24), 0),
-                new GradientStop(Color.FromRgb(0x0C, 0x0C, 0x0D), 0.75),
-                new GradientStop(Color.FromRgb(0x16, 0x16, 0x18), 1),
-            },
-        };
-        ctx.DrawEllipse(disc, DiscRimPen, c, radius, radius);
+        ctx.DrawEllipse(DiscBrush, DiscRimPen, c, radius, radius);
         // Grooves: fine rings across the playing surface.
         var labelR = radius * 0.34;
         var step = Math.Max(2.5, s * 0.016);
-        for (var g = labelR + step * 1.5; g < radius - step; g += step)
-            ctx.DrawEllipse(null, GroovePen, c, g, g);
+        if (grooves)
+            for (var g = labelR + step * 1.5; g < radius - step; g += step)
+                ctx.DrawEllipse(null, GroovePen, c, g, g);
         // Light catching the vinyl: two soft opposite bands across the disc.
-        var sheen = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-            GradientStops =
-            {
-                new GradientStop(Colors.Transparent, 0.2),
-                new GradientStop(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF), 0.33),
-                new GradientStop(Colors.Transparent, 0.45),
-                new GradientStop(Colors.Transparent, 0.55),
-                new GradientStop(Color.FromArgb(0x1E, 0xFF, 0xFF, 0xFF), 0.67),
-                new GradientStop(Colors.Transparent, 0.8),
-            },
-        };
-        ctx.DrawEllipse(sheen, null, c, radius, radius);
+        ctx.DrawEllipse(DiscSheenBrush, null, c, radius, radius);
         // Paper label and spindle hole (mostly behind the sleeve; its edge shows).
         ctx.DrawEllipse(LabelBrush, LabelRingPen, c, labelR, labelR);
         ctx.DrawEllipse(HoleBrush, null, c, s * 0.012, s * 0.012);
         // The sleeve's shadow falling on the disc right of its edge.
-        var shadow = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(Color.FromArgb(0x90, 0, 0, 0), 0), new GradientStop(Colors.Transparent, 1) },
-        };
         using (ctx.PushGeometryClip(new EllipseGeometry(new Rect(c.X - radius, c.Y - radius, radius * 2, radius * 2))))
-            ctx.DrawRectangle(shadow, null, new Rect(s, 0, s * 0.07, s));
+            ctx.DrawRectangle(SleeveShadowBrush, null, new Rect(s, 0, s * 0.07, s));
     }
 
     private void RenderShell(DrawingContext ctx)
@@ -443,21 +446,28 @@ public sealed class AlbumCarouselCard : Panel
 
         public OverlayLayer(AlbumCarouselCard card) => _card = card;
 
-        public override void Render(DrawingContext context)
+        /// <summary>What sits above the cover: the jewel case's lid, the cassette's window.</summary>
+        internal static void RenderLid(AlbumCarouselCard card, DrawingContext context, Rect rect)
         {
-            var s = _card._coverSize;
-            var rect = new Rect(Bounds.Size);
-            if (_card._style == AlbumCarouselStyle.JewelCase)
+            var s = card._coverSize;
+            if (card._style == AlbumCarouselStyle.JewelCase)
             {
                 var r = s * 0.018;
                 context.DrawRectangle(Gloss, CaseEdgePen, rect, r, r);
                 var seam = Math.Round(JewelSpine * s) + 0.5;
                 context.DrawLine(SeamPen, new Point(seam, 1), new Point(seam, rect.Height - 1));
             }
-            else if (_card._style == AlbumCarouselStyle.Cassette)
+            else if (card._style == AlbumCarouselStyle.Cassette)
             {
-                _card.RenderCassetteWindow(context);
+                card.RenderCassetteWindow(context);
             }
+        }
+
+        public override void Render(DrawingContext context)
+        {
+            var s = _card._coverSize;
+            var rect = new Rect(Bounds.Size);
+            RenderLid(_card, context, rect);
 
             if (_card._dim <= 0) return;
             var wash = new SolidColorBrush(Colors.Black, _card._dim);
@@ -479,5 +489,60 @@ public sealed class AlbumCarouselCard : Panel
                     break;
             }
         }
+    }
+
+    /// <summary>The reflection's fade: a third of the card's brightness at the floor line,
+    /// nothing at the strip's bottom (what the plain cover's reflection always used).</summary>
+    private static readonly IBrush ReflectionFade = new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+        GradientStops = { new GradientStop(Color.FromArgb(0x55, 0, 0, 0), 0), new GradientStop(Colors.Transparent, 1) },
+    };
+
+    /// <summary>Times this card's reflection was (re)drawn (tests: a glide must not redraw it).</summary>
+    internal int ReflectionRenders { get; private set; }
+
+    /// <summary>Where the reflection strip sits, in card space.</summary>
+    internal Rect ReflectionBounds => _reflection.Bounds;
+
+    /// <summary>Draws the whole card (body, cover, lid) flipped, for the floor reflection.</summary>
+    private void RenderReflection(DrawingContext ctx)
+    {
+        ReflectionRenders++;
+        var card = CardSize;
+        // Card space to strip space: y' = cardHeight - y puts the card's bottom edge at the
+        // strip's top, mirrored about the middle of the gap between them.
+        using (ctx.PushTransform(new Matrix(1, 0, 0, -1, 0, card.Height)))
+        {
+            RenderBody(ctx, reflection: true);
+            var cover = CoverRect;
+            using (ctx.PushClip(new RoundedRect(cover, CoverCornerRadius)))
+            {
+                ctx.DrawRectangle(_coverFrame.Background, null, cover);
+                if (_cover.Source is { } image && image.Size.Width > 0 && image.Size.Height > 0)
+                    ctx.DrawImage(image, UniformToFillSource(image.Size, cover.Size), cover);
+            }
+            OverlayLayer.RenderLid(this, ctx, new Rect(card));
+        }
+    }
+
+    /// <summary>The part of an image of <paramref name="image"/> size that Stretch.UniformToFill
+    /// shows in a box of <paramref name="box"/> size (centred crop), as the cover image does.</summary>
+    internal static Rect UniformToFillSource(Size image, Size box)
+    {
+        if (box.Width <= 0 || box.Height <= 0) return new Rect(image);
+        var scale = Math.Max(box.Width / image.Width, box.Height / image.Height);
+        var w = box.Width / scale;
+        var h = box.Height / scale;
+        return new Rect((image.Width - w) / 2, (image.Height - h) / 2, w, h);
+    }
+
+    /// <summary>Drawn under the card: its floor reflection (Panel.Render is sealed).</summary>
+    private sealed class ReflectionLayer : Control
+    {
+        private readonly AlbumCarouselCard _card;
+        public ReflectionLayer(AlbumCarouselCard card) => _card = card;
+        public override void Render(DrawingContext context) => _card.RenderReflection(context);
     }
 }

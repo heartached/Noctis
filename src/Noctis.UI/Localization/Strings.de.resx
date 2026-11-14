@@ -285,6 +285,10 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.AlbumsView" xml:space="preserve"><value>Alben-Ansicht</value><comment>Settings › Player card title</comment></data>
   <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>Wie die Alben-Seite deine Alben zeigt und wie das Karussell jedes kleidet.</value><comment>Settings › Player Albums View card subtitle</comment></data>
   <data name="Settings.CarouselCase" xml:space="preserve"><value>Karussell-Hülle</value><comment>Settings › Player Albums View card: case style row label</comment></data>
+  <data name="Settings.CarouselGlow" xml:space="preserve"><value>Leuchten hinter dem ausgewählten Album</value><comment>Settings › Player Albums View card: glow behind the carousel's centred album (GitHub #233)</comment></data>
+  <data name="Settings.CarouselGlowDesc" xml:space="preserve"><value>Ein sanftes Licht in der Farbe des Covers hinter dem Album in der Mitte des Karussells.</value><comment>Settings › Player Albums View card: glow toggle description</comment></data>
+  <data name="Menu.CarouselStyle" xml:space="preserve"><value>Karussell-Stil</value><comment>Album menu: submenu choosing this album's carousel style (GitHub #233)</comment></data>
+  <data name="Menu.CarouselStyleDefault" xml:space="preserve"><value>Standard</value><comment>Album menu › Carousel Style: follow the global carousel style</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>Die klassische Zeile: laufendes Cover mittig, Verlauf und Als Nächstes daneben</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Karussell</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Geneigte Cover auf diagonalem Pfad mit den Titeldetails daneben</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>

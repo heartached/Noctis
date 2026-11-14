@@ -16,6 +16,7 @@ using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
+using Noctis.Services;
 
 namespace Noctis.Controls;
 
@@ -32,6 +33,12 @@ namespace Noctis.Controls;
 /// sized from the width), and the row glides with an exponential follow
 /// (<see cref="AlbumCarouselGeometry.Approach"/>) on animation frames that stop when it rests.
 /// Separate from the now-playing Cover Flow page (CoverFlowView), which is queue-driven.
+///
+/// GitHub #233: an album can wear its own case (<see cref="AlbumCarouselStyleOverrides"/>), so
+/// one row may mix covers, jewel cases, records and cassettes: every card stands on the same
+/// floor line with its own size, and the row spaces itself by the centred card. A soft glow
+/// in the centred cover's colour sits behind it (<see cref="GlowEnabled"/>): one radial
+/// gradient ellipse, no blur effect, cross-fading between neighbours as the row glides.
 /// </summary>
 public sealed class AlbumCarousel : Panel
 {
@@ -81,6 +88,12 @@ public sealed class AlbumCarousel : Panel
     private long _lastFrameTicks;
 
     private readonly Dictionary<int, AlbumCarouselCard> _realized = new();
+    private readonly GlowLayer _glow = new() { IsHitTestVisible = false };
+    private IReadOnlyDictionary<Guid, AlbumCarouselStyle> _styleOverrides = new Dictionary<Guid, AlbumCarouselStyle>();
+    private bool _glowEnabled = true;
+    /// <summary>Glow colour per artwork path: null = the cover is grey or unreadable (accent).</summary>
+    private readonly Dictionary<string, Color?> _glowColors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _glowPending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Stack<AlbumCarouselCard> _pool = new();
     private readonly Canvas _cardLayer = new() { ClipToBounds = false };
     private readonly StackPanel _caption;
@@ -200,6 +213,7 @@ public sealed class AlbumCarousel : Panel
             IsHitTestVisible = false,
             Children = { titleRow, _subtitle, detailsRow, _counter },
         };
+        Children.Add(_glow);
         Children.Add(_cardLayer);
         Children.Add(_caption);
     }
@@ -218,6 +232,41 @@ public sealed class AlbumCarousel : Panel
     internal IReadOnlyDictionary<int, AlbumCarouselCard> RealizedCards => _realized;
 
     internal string CaptionTitle => _title.Text ?? "";
+
+    /// <summary>Albums wearing their own style (GitHub #233). Filled from settings while the
+    /// carousel is on screen; tests set it directly.</summary>
+    internal IReadOnlyDictionary<Guid, AlbumCarouselStyle> StyleOverrides
+    {
+        get => _styleOverrides;
+        set
+        {
+            _styleOverrides = value;
+            InvalidateArrange();
+            Refresh();
+        }
+    }
+
+    /// <summary>"Glow on the selected album" (GitHub #233). From settings while on screen.</summary>
+    internal bool GlowEnabled
+    {
+        get => _glowEnabled;
+        set
+        {
+            if (_glowEnabled == value) return;
+            _glowEnabled = value;
+            UpdateGlow();
+        }
+    }
+
+    /// <summary>The glow behind the centred album (tests read where and how bright it is).</summary>
+    internal Rect GlowRect => _glow.Ellipse;
+    internal double GlowOpacity => _glow.IsVisible ? _glow.Opacity : 0;
+    internal Color GlowColor => _glow.Color;
+    internal int GlowRenders => _glow.Renders;
+
+    /// <summary>The style album <paramref name="album"/> wears: its own pick, else the global one.</summary>
+    internal AlbumCarouselStyle StyleOf(Album album) =>
+        _styleOverrides.TryGetValue(album.Id, out var own) ? own : CaseStyle;
 
     /// <summary>Glide to album <paramref name="index"/> (clamped).</summary>
     public void MoveTo(int index)
@@ -262,7 +311,7 @@ public sealed class AlbumCarousel : Panel
         }
         else if (change.Property == CaseStyleProperty)
         {
-            foreach (var card in _realized.Values) card.CaseStyle = CaseStyle;
+            foreach (var card in _realized.Values) card.CaseStyle = card.Album is { } a ? StyleOf(a) : CaseStyle;
             foreach (var card in _pool) card.CaseStyle = CaseStyle;
             InvalidateArrange();
         }
@@ -367,6 +416,7 @@ public sealed class AlbumCarousel : Panel
         _sides = AlbumCarouselGeometry.VisibleSides(finalSize.Width, factor.Width * _coverSize);
 
         _cardLayer.Arrange(new Rect(0, 0, finalSize.Width, cardArea));
+        _glow.Arrange(new Rect(0, 0, finalSize.Width, cardArea));
         var captionWidth = Math.Min(finalSize.Width - 32, Math.Max(240, factor.Width * _coverSize * 1.6));
         _caption.Arrange(new Rect((finalSize.Width - captionWidth) / 2, cardArea, Math.Max(0, captionWidth), CaptionHeight));
         Refresh();
@@ -400,16 +450,10 @@ public sealed class AlbumCarousel : Panel
                 _realized.Remove(index);
             }
 
-        var factor = AlbumCarouselCard.SizeFactor(CaseStyle);
-        var cardW = factor.Width * _coverSize;
-        var cardH = factor.Height * _coverSize;
-        // A record's SLEEVE is centred, not the card: the disc peeking out hangs off to the
-        // right instead of pushing the sleeve off-centre.
-        var coverCentre = CoverCentreX(CaseStyle, _coverSize);
-        var left = size.Width / 2 - coverCentre;
-        // Cards sit a little above the strip's middle so the cover style's reflection fits.
-        var top = (size.Height - cardH - AlbumCarouselCard.ReflectionFactor(CaseStyle) * _coverSize) / 2;
-        var depth = AlbumCarouselGeometry.Depth(cardW);
+        var floor = FloorY(size.Height);
+        // The row spaces itself by the centred card's width (cross-faded mid-glide), so a
+        // record or a jewel case in the middle of a row of covers gets room to the sides.
+        var cardW = CentredWidth();
 
         for (var i = lo; i <= hi; i++)
         {
@@ -420,15 +464,19 @@ public sealed class AlbumCarousel : Panel
                 card.Album = _items[i];
                 _realized[i] = card;
             }
-            card.CaseStyle = CaseStyle;
+            var style = StyleOf(_items[i]);
+            var factor = AlbumCarouselCard.SizeFactor(style);
+            card.CaseStyle = style;
             card.CoverSize = _coverSize;
-            Canvas.SetLeft(card, left);
-            Canvas.SetTop(card, top);
+            // A record's SLEEVE is centred, not the card: the disc peeking out hangs off to the
+            // right instead of pushing the sleeve off-centre. Every card stands on the floor.
+            Canvas.SetLeft(card, size.Width / 2 - CoverCentreX(style, _coverSize));
+            Canvas.SetTop(card, floor - factor.Height * _coverSize);
 
             var offset = i - _position;
             var pose = AlbumCarouselGeometry.At(offset, cardW, _sides);
             var (rotate, scale, move) = Transforms(card);
-            rotate.Depth = depth;
+            rotate.Depth = AlbumCarouselGeometry.Depth(factor.Width * _coverSize);
             rotate.AngleY = pose.AngleY;
             scale.ScaleX = pose.Scale;
             scale.ScaleY = pose.Scale;
@@ -439,7 +487,159 @@ public sealed class AlbumCarousel : Panel
             card.Dim = Math.Min(1, Math.Abs(offset)) * 0.28;
         }
 
+        UpdateGlow();
         UpdateCaption();
+    }
+
+    /// <summary>The floor line every card stands on: the global style's card centred (with
+    /// its reflection) in the strip, as before mixed styles existed.</summary>
+    private double FloorY(double stripHeight)
+    {
+        var global = AlbumCarouselCard.SizeFactor(CaseStyle);
+        var cardH = global.Height * _coverSize;
+        return (stripHeight - cardH - AlbumCarouselCard.ReflectionFactor(CaseStyle) * _coverSize) / 2 + cardH;
+    }
+
+    /// <summary>Card width at the centre: the centred album's, blended with the next one's mid-glide.</summary>
+    private double CentredWidth()
+    {
+        var (a, b, t) = Neighbours();
+        double W(int i) => i < 0 ? AlbumCarouselCard.SizeFactor(CaseStyle).Width * _coverSize
+            : AlbumCarouselCard.SizeFactor(StyleOf(_items[i])).Width * _coverSize;
+        return W(a) + (W(b) - W(a)) * t;
+    }
+
+    /// <summary>The two albums either side of the (fractional) position and how far between them.</summary>
+    private (int A, int B, double T) Neighbours()
+    {
+        if (_items.Count == 0) return (-1, -1, 0);
+        var p = Math.Clamp(_position, 0, _items.Count - 1);
+        var a = (int)Math.Floor(p);
+        var b = Math.Min(a + 1, _items.Count - 1);
+        return (a, b, p - a);
+    }
+
+    // ── Glow (GitHub #233) ────────────────────────────────────────────────────
+
+    /// <summary>Glow ellipse size as multiples of the centred card's size.</summary>
+    internal const double GlowSpread = 1.7;
+
+    /// <summary>Places, sizes and colours the glow for the current position: the centred
+    /// card's, blended with its neighbour's mid-glide, dimmed while between two albums.</summary>
+    private void UpdateGlow()
+    {
+        var size = _cardLayer.Bounds.Size;
+        var (a, b, t) = Neighbours();
+        if (!_glowEnabled || a < 0 || size.Width <= 0)
+        {
+            _glow.IsVisible = false;
+            return;
+        }
+        var floor = FloorY(size.Height);
+        Rect Around(int i)
+        {
+            var style = StyleOf(_items[i]);
+            var f = AlbumCarouselCard.SizeFactor(style);
+            var w = f.Width * _coverSize;
+            var h = f.Height * _coverSize;
+            var cx = size.Width / 2 - CoverCentreX(style, _coverSize) + w / 2;
+            var cy = floor - h / 2;
+            return new Rect(cx - w * GlowSpread / 2, cy - h * GlowSpread / 2, w * GlowSpread, h * GlowSpread);
+        }
+        var ra = Around(a);
+        var rb = b == a ? ra : Around(b);
+        var rect = new Rect(
+            ra.X + (rb.X - ra.X) * t, ra.Y + (rb.Y - ra.Y) * t,
+            ra.Width + (rb.Width - ra.Width) * t, ra.Height + (rb.Height - ra.Height) * t);
+        var ca = GlowColorOf(_items[a]);
+        var cb = b == a ? ca : GlowColorOf(_items[b]);
+        var color = Color.FromRgb(
+            (byte)Math.Round(ca.R + (cb.R - ca.R) * t),
+            (byte)Math.Round(ca.G + (cb.G - ca.G) * t),
+            (byte)Math.Round(ca.B + (cb.B - ca.B) * t));
+        _glow.IsVisible = true;
+        // Fully lit on an album, half way down between two (no glow on side albums).
+        _glow.Opacity = 1 - 0.5 * Math.Sin(Math.PI * t);
+        _glow.Set(rect, color);
+    }
+
+    /// <summary>The centred cover's colour for the glow: the vibrant colour "Accent follows
+    /// album art" uses (decoded off the UI thread, cached by path), else the accent.</summary>
+    private Color GlowColorOf(Album album)
+    {
+        var path = album.ArtworkPath;
+        if (!string.IsNullOrEmpty(path))
+        {
+            if (_glowColors.TryGetValue(path, out var known)) return known ?? AccentColor();
+            if (_glowPending.Add(path))
+            {
+                System.Threading.Tasks.Task.Run(() => ArtworkVibrantColor.GetAccentHex(path)).ContinueWith(task =>
+                {
+                    Color? color = task.IsCompletedSuccessfully && task.Result is { } hex && Color.TryParse(hex, out var c) ? c : null;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _glowPending.Remove(path);
+                        if (_glowColors.Count > 512) _glowColors.Clear();
+                        _glowColors[path] = color;
+                        UpdateGlow();
+                    });
+                });
+            }
+        }
+        return AccentColor();
+    }
+
+    private Color AccentColor() =>
+        this.TryFindResource("SystemAccentColor", ActualThemeVariant, out var value) && value is Color c
+            ? c
+            : Color.FromRgb(0xE7, 0x48, 0x56);
+
+    /// <summary>The glow: one ellipse filled with a radial gradient (soft by construction, no
+    /// blur effect). Moving it during a glide re-records just that ellipse; fading it is its
+    /// Opacity, which does not re-record anything.</summary>
+    private sealed class GlowLayer : Control
+    {
+        public Rect Ellipse { get; private set; }
+        public Color Color { get; private set; }
+        public int Renders { get; private set; }
+
+        public void Set(Rect ellipse, Color color)
+        {
+            if (Color == color && Math.Abs(Ellipse.X - ellipse.X) < 0.25 && Math.Abs(Ellipse.Y - ellipse.Y) < 0.25
+                && Math.Abs(Ellipse.Width - ellipse.Width) < 0.25 && Math.Abs(Ellipse.Height - ellipse.Height) < 0.25)
+                return;
+            Ellipse = ellipse;
+            Color = color;
+            InvalidateVisual();
+        }
+
+        private IBrush? _brush;
+        private Color _brushColor;
+
+        public override void Render(DrawingContext context)
+        {
+            Renders++;
+            if (Ellipse.Width <= 0 || Ellipse.Height <= 0) return;
+            // Relative stops: the same brush fills the ellipse wherever it moves; a new one
+            // only for a new colour (a cross-fade between two covers).
+            if (_brush == null || _brushColor != Color)
+            {
+                _brushColor = Color;
+                _brush = MakeBrush(Color);
+            }
+            context.DrawEllipse(_brush, null, Ellipse.Center, Ellipse.Width / 2, Ellipse.Height / 2);
+        }
+
+        private static IBrush MakeBrush(Color c) => new RadialGradientBrush
+        {
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(0x8C, c.R, c.G, c.B), 0),
+                new GradientStop(Color.FromArgb(0x66, c.R, c.G, c.B), 0.5),
+                new GradientStop(Color.FromArgb(0x26, c.R, c.G, c.B), 0.76),
+                new GradientStop(Color.FromArgb(0, c.R, c.G, c.B), 1),
+            },
+        };
     }
 
     private static double CoverCentreX(AlbumCarouselStyle style, double cover) => style switch
@@ -610,7 +810,7 @@ public sealed class AlbumCarousel : Panel
         var dx = e.GetPosition(this).X - _pressPoint.X;
         if (!_dragging && Math.Abs(dx) < DragThreshold) return;
         _dragging = true;
-        var cardW = AlbumCarouselCard.SizeFactor(CaseStyle).Width * _coverSize;
+        var cardW = CentredWidth();
         var pos = _pressPosition - dx / AlbumCarouselGeometry.DragPixelsPerAlbum(cardW);
         _position = Math.Clamp(pos, -0.45, _items.Count - 0.55);
 
@@ -681,7 +881,29 @@ public sealed class AlbumCarousel : Panel
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        AlbumCarouselStyleOverrides.Changed += OnStylePrefsChanged;
+        OnStylePrefsChanged(null, EventArgs.Empty);
         if (IsVisible) FocusSoon();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        AlbumCarouselStyleOverrides.Changed -= OnStylePrefsChanged;
+    }
+
+    /// <summary>An album's own style or the glow switch changed (or the carousel came on
+    /// screen): re-read them. Without the app's settings (tests) the set values stay.</summary>
+    private void OnStylePrefsChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnStylePrefsChanged(sender, e));
+            return;
+        }
+        if (AlbumCarouselStyleOverrides.Current is not { } prefs) return;
+        _glowEnabled = prefs.Glow;
+        StyleOverrides = prefs.Overrides;
     }
 
     /// <summary>Take the keyboard once shown so ← → work without a click first — unless the
