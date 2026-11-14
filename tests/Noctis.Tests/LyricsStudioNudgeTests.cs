@@ -198,6 +198,86 @@ public class LyricsStudioNudgeTests
         Assert.Same(tight, Apply(tight, -1, NudgeEdge.End, -10));
     }
 
+    // ── Why a nudge stopped short (GitHub #237) ─────────────────────────────
+
+    private static NudgeClamp ClampOf(NudgeLine line, int word, NudgeEdge edge, int deltaMs,
+        double? previous = 5, double? next = 15, TimeSpan? duration = null, bool spread = false)
+    {
+        TimingNudge.Apply(line, word, edge, Ms(deltaMs), previous is { } p ? S(p) : null, next is { } n ? S(n) : null, duration ?? Song, out var clamp, spread);
+        return clamp;
+    }
+
+    [Fact]
+    public void FullStep_ReportsNoClamp()
+    {
+        Assert.Equal(NudgeClamp.None, ClampOf(Line(), 1, NudgeEdge.Start, 10));
+        Assert.Equal(NudgeClamp.None, ClampOf(Line(), -1, NudgeEdge.Whole, -100));
+    }
+
+    [Fact]
+    public void SqueezedWord_IsBlockedByTheNextWord_AndNamesItsStart()
+    {
+        // The #237 case: words 10 ms apart (35.38 / 35.39), so the first has no room to go later.
+        var line = new NudgeLine(new[] { Ms(35380), Ms(35390) }, S(36));
+        var after = TimingNudge.Apply(line, 0, NudgeEdge.Start, Ms(10), S(30), S(40), Song, out var clamp);
+        Assert.Same(line, after);
+        Assert.Equal(new NudgeClamp(NudgeLimit.NextWord, Ms(35390)), clamp);
+        // And the second word has no room to go earlier.
+        Assert.Equal(new NudgeClamp(NudgeLimit.PreviousWord, Ms(35380)), ClampOf(line, 1, NudgeEdge.Start, -10, previous: 30, next: 40));
+    }
+
+    [Fact]
+    public void WordStart_IsBlockedByThePreviousWord()
+    {
+        Assert.Equal(new NudgeClamp(NudgeLimit.PreviousWord, S(10.5)), ClampOf(Line(), 2, NudgeEdge.Start, -1000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.PreviousWord, S(10)), ClampOf(Line(), 1, NudgeEdge.Whole, -1000));
+    }
+
+    [Fact]
+    public void WordEnd_IsBlockedByItsOwnStart_AndByTheWordAfterTheNext()
+    {
+        Assert.Equal(new NudgeClamp(NudgeLimit.ThisWord, S(10)), ClampOf(Line(), 0, NudgeEdge.End, -1000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.NextWord, S(11)), ClampOf(Line(), 0, NudgeEdge.End, 1000));
+    }
+
+    [Fact]
+    public void LastWord_IsBlockedByTheLineEnd_AndTheSongsEnd()
+    {
+        Assert.Equal(new NudgeClamp(NudgeLimit.LineEnd, S(11.5)), ClampOf(Line(), 2, NudgeEdge.Start, 1000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.LineEnd, S(11.5)), ClampOf(Line(), 1, NudgeEdge.Whole, 1000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.SongEnd, S(11.53)), ClampOf(Line(), 2, NudgeEdge.End, 1000, duration: S(11.53)));
+    }
+
+    [Fact]
+    public void FirstWordAndLine_AreBlockedByTheNeighbouringLines_OrZero()
+    {
+        Assert.Equal(new NudgeClamp(NudgeLimit.PreviousLine, S(5)), ClampOf(Line(), 0, NudgeEdge.Start, -10000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.PreviousLine, S(9.95)), ClampOf(Line(), -1, NudgeEdge.Whole, -100, previous: 9.95));
+        Assert.Equal(new NudgeClamp(NudgeLimit.NextLine, S(10.05)), ClampOf(Line(), -1, NudgeEdge.Whole, 100, next: 10.05));
+        Assert.Equal(new NudgeClamp(NudgeLimit.Zero, TimeSpan.Zero), ClampOf(Line(), 0, NudgeEdge.Start, -20000, previous: null));
+        var atZero = new NudgeLine(new[] { TimeSpan.Zero, Ms(300) }, Ms(600));
+        Assert.Equal(new NudgeClamp(NudgeLimit.Zero, TimeSpan.Zero), ClampOf(atZero, -1, NudgeEdge.Whole, -10, previous: null));
+    }
+
+    [Fact]
+    public void LineEdges_AreBlockedByTheirOwnWords_AndTheSongsEnd()
+    {
+        Assert.Equal(new NudgeClamp(NudgeLimit.PreviousWord, S(11)), ClampOf(Line(), -1, NudgeEdge.End, -1000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.NextWord, S(10.5)), ClampOf(Line(), -1, NudgeEdge.Start, 1000));
+        Assert.Equal(new NudgeClamp(NudgeLimit.SongEnd, S(11.55)), ClampOf(Line(), -1, NudgeEdge.Whole, 100, next: null, duration: S(11.55)));
+        Assert.Equal(new NudgeClamp(NudgeLimit.LineStart, S(10)), ClampOf(Line(), -1, NudgeEdge.End, -5000, spread: true));
+        Assert.Equal(new NudgeClamp(NudgeLimit.LineEnd, S(11.5)), ClampOf(Line(), -1, NudgeEdge.Start, 5000, spread: true));
+    }
+
+    [Fact]
+    public void PartialMove_StillReportsTheLimit_AndMovesAsBefore()
+    {
+        var line = Line();
+        var after = TimingNudge.Apply(line, 1, NudgeEdge.Start, Ms(1000), S(5), S(15), Song, out var clamp);
+        Assert.Equal(S(10.99), after.WordStarts[1]);
+        Assert.Equal(new NudgeClamp(NudgeLimit.NextWord, S(11)), clamp);
+    }
+
     // ── A review line ───────────────────────────────────────────────────────
 
     private static AlignedLine WordLine() => new("Hello big world", S(10), S(11.5),
