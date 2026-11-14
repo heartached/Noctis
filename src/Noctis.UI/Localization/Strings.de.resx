@@ -278,7 +278,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CassetteCoverItsLabelTip" xml:space="preserve"><value>Eine Kassette mit dem Cover auf dem Label</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.DiscScratching" xml:space="preserve"><value>Disc-Scratching</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Die CD oder Schallplatte auf der Songtext-Seite oder im Sleeve-Mini-Player greifen und wie ein DJ drehen, um durch den Song zu springen. Der Ton pausiert, solange du die Scheibe hältst.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Zieh die CD oder Schallplatte, um wie ein DJ durch den Song zu springen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Kassette</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover-Flow-Layout</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Wie die Cover-Flow-Seite die Cover der Warteschlange anordnet.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -339,11 +339,11 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.QuickPlaylist3" xml:space="preserve"><value>Schnell-Playlist 3</value><comment>Accessible name of the third quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Keine</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>In den Papierkorb</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Eine Schaltfläche rechts, die den laufenden Song mit einem Klick und ohne Rückfrage aus der Bibliothek nimmt. Er kommt in den Papierkorb-Ordner unten oder, wenn keiner gesetzt ist, in den Papierkorb.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Fügt eine Schaltfläche hinzu, die den laufenden Song in den Papierkorb-Ordner unten oder den Papierkorb verschiebt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Kapitel</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Öffnet die Kapitelliste. Nur sichtbar, während ein Hörbuch mit Kapiteln läuft.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopButton" xml:space="preserve"><value>Stopp-Schaltfläche</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
-  <data name="Settings.StopButtonHint" xml:space="preserve"><value>Eine Stopp-Schaltfläche nach Wiedergabe/Pause. Sie hält die Wiedergabe an, springt an den Anfang des Songs und gibt das Audiogerät frei (Exklusivmodus).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopButtonHint" xml:space="preserve"><value>Fügt eine Stopp-Schaltfläche neben Wiedergabe/Pause hinzu.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopOnlyInExclusive" xml:space="preserve"><value>Nur im Exklusivmodus</value><comment>Text in SettingsView.axaml: sub-toggle under the island Stop button</comment></data>
   <data name="Settings.StopOnlyInExclusiveHint" xml:space="preserve"><value>Die Stopp-Schaltfläche nur zeigen, solange der Exklusivmodus an ist. Das spart Platz auf der Player-Insel.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Papierkorb-Ordner</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
@@ -667,7 +667,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.ShowHiddenFolder" xml:space="preserve"><value>Einblenden</value><comment>Button in SettingsView.axaml (Hidden Folders list)</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Ordner hinzufügen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Hineingezogene Dateien importieren</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Hineingezogene Dateien wandern in den Noctis-Importordner und in die Bibliothek. Aus bleiben Dateien, wo sie sind; ziehst du sie, spielst du sie ab, legst sie in Bibliothek oder Playlist oder erstellst eine neue Playlist.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Verschiebt Dateien, die du auf Noctis ziehst, in den Importordner. Aus bleiben sie, wo sie sind.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve"><value>Playlistseite</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeaders" xml:space="preserve"><value>Album-Überschriften</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeadersHint" xml:space="preserve"><value>Albumname über jeder Folge von Titeln desselben Albums zeigen.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2630,7 +2630,7 @@ Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Nur Text</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
   <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>nicht gespeichert</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
   <data name="BulkLyrics.Saving" xml:space="preserve"><value>Wird gespeichert…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
-  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Songtexte finden…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Songtexte finden</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="LibraryAlbums.FindLyricsRunning" xml:space="preserve"><value>Songtextsuche anzeigen (läuft)</value><comment>Album / song menu: brings back a hidden Find Lyrics run that is still looking (GitHub #214)</comment></data>
   <data name="LibraryAlbums.FindLyricsResults" xml:space="preserve"><value>Ergebnisse der Songtextsuche anzeigen</value><comment>Album / song menu: brings back a hidden Find Lyrics run that has finished (GitHub #214)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Songtext-Studio öffnen</value><comment>Button after a bulk lyrics run</comment></data>
@@ -2996,7 +2996,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Songtexte für neue Songs finden</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Sucht im Hintergrund Songtexte für Songs, die zur Mediathek hinzukommen. Songs mit synchronisierten Texten bleiben unverändert.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>Songtexte für die ganze Mediathek finden</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Sucht im Hintergrund nach und nach Songtexte für alle Songs ohne synchronisierten Text, neue Songs eingeschlossen. Songs ohne Treffer werden nach einem Monat erneut gesucht. Wartet, solange du offline bist.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Sucht im Hintergrund Songtexte für Songs, die noch keinen synchronisierten Text haben.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>Wortsynchron (beste Wahl)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>Zeilensynchron</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Reintext</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -4030,7 +4030,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>Alle Künstler sind durch den Filter ausgeblendet</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Wähle im Filtermenü „Alle Künstler“ oder suche nach einem Namen</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Kleine Künstler ausblenden</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Blendet Künstler mit nur wenigen Songs auf der Künstlerseite aus. Die Suche und Künstlerlinks bei Songs und Alben finden sie weiterhin. Gezählt werden die Songs, die der Künstler anführt, dieselbe Zahl wie unter jedem Namen.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Blendet Künstler mit nur wenigen Songs auf der Künstlerseite aus. Die Suche findet sie weiterhin.</value><comment>Description under Hide small artists</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Künstler ausblenden mit weniger als</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Seitenleiste bis zum Überfahren ausblenden</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Blendet die Seitenleiste ganz aus, damit Seiten die volle Breite nutzen. Bewege den Zeiger an den linken Fensterrand, um sie einzublenden.</value><comment>Description under Hide sidebar until hover</comment></data>
