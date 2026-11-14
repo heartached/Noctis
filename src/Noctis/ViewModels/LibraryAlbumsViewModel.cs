@@ -303,6 +303,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>The carousel shows: picked, and the Album Carousel built-in feature is on (off
     /// shows the grid and keeps the pick for when it returns).</summary>
     public bool IsCarouselView => AlbumViewMode == "carousel" && _settings.AlbumCarouselEnabled;
+
+    /// <summary>The Album Carousel built-in feature is on (the album menu's Carousel Style ▸ shows).</summary>
+    public bool IsCarouselAvailable => _settings.AlbumCarouselEnabled;
     public bool IsGridView => !IsCarouselView;
 
     /// <summary>GitHub #213: the grid as Masonry (Settings › Albums "Masonry Album Grid" or the
