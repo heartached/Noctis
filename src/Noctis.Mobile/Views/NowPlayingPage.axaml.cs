@@ -135,6 +135,12 @@ public partial class NowPlayingPage : UserControl
             Grid.SetRowSpan(box, landscape ? Layout.RowDefinitions.Count : 1);
             box.Margin = landscape ? new Thickness(0, 0, 24, 0) : new Thickness(0, 8);
         }
+        // A 360 dp tall window (Galaxy S23 at 1080 px) leaves the right column no slack: with the
+        // portrait gaps the Lyrics/Output/Queue row hung half below the screen. Landscape closes
+        // the gaps between the rows; portrait keeps its breathing room.
+        TitleRow.Margin = landscape ? new Thickness(0, 4, 0, 0) : new Thickness(0, 12, 0, 0);
+        TransportRow.Margin = landscape ? new Thickness(0, 6) : new Thickness(0, 14);
+        BottomIcons.Margin = landscape ? new Thickness(0, 4, 0, 0) : new Thickness(0, 12, 0, 0);
     }
 
     // Seek on release only: seeking per pixel during a drag stutters the decoder. Held
