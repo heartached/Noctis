@@ -863,6 +863,11 @@ public class AppSettings : IJsonOnDeserializing
     /// (Masonry) instead of in rows. Off keeps the row grid.</summary>
     public bool AlbumGridMasonry { get; set; }
 
+    /// <summary>The album grids (Albums, Favorites, Home, artist page) keep GitHub #210's
+    /// spacing: 18px between covers and Albums rows sized to their own captions. Off (default)
+    /// is 1.6.9's look: 8px between covers and one row height for every Albums row.</summary>
+    public bool AlbumGridWideSpacing { get; set; }
+
     /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
     /// glow and its neighbours step back. Off by default.</summary>
     public bool AlbumHoverZoom { get; set; }
