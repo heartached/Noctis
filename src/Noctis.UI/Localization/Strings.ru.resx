@@ -279,7 +279,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Vinyl" xml:space="preserve"><value>Винил</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CassetteCoverItsLabelTip" xml:space="preserve"><value>Кассета с обложкой на этикетке</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.DiscScratching" xml:space="preserve"><value>Скретч диска</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Хватайте CD или виниловую пластинку на странице текста или в мини-плеере Sleeve и крутите её, как диджей, чтобы перемещаться по песне. Пока вы держите диск, звук приостановлен.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Тяните CD или пластинку, чтобы перемещаться по песне, как диджей.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Кассета</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Макет Cover Flow</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Как страница Cover Flow располагает обложки из очереди.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -340,11 +340,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.QuickPlaylist3" xml:space="preserve"><value>Быстрый плейлист 3</value><comment>Accessible name of the third quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Нет</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>Переместить в корзину</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Кнопка справа: одним нажатием, без вопросов, убирает текущую песню из медиатеки. Песня переносится в папку корзины ниже, а если она не задана, в корзину системы.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Добавляет кнопку, которая отправляет текущую песню в папку корзины ниже или в корзину.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Главы</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Открывает список глав. Видна, только пока играет аудиокнига с главами.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopButton" xml:space="preserve"><value>Кнопка «Стоп»</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
-  <data name="Settings.StopButtonHint" xml:space="preserve"><value>Кнопка «Стоп» после «Воспроизведение/Пауза». Останавливает воспроизведение, возвращает к началу песни и освобождает аудиоустройство (монопольный режим).</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopButtonHint" xml:space="preserve"><value>Добавляет кнопку «Стоп» рядом с кнопкой воспроизведения.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopOnlyInExclusive" xml:space="preserve"><value>Только в монопольном режиме</value><comment>Text in SettingsView.axaml: sub-toggle under the island Stop button</comment></data>
   <data name="Settings.StopOnlyInExclusiveHint" xml:space="preserve"><value>Показывать кнопку «Стоп» только при включённом монопольном режиме, чтобы сэкономить место на островке плеера.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Папка корзины</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
@@ -668,7 +668,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ShowHiddenFolder" xml:space="preserve"><value>Показать</value><comment>Button in SettingsView.axaml (Hidden Folders list)</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Добавить папку</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Импортировать перетащенные файлы</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Файлы, перетащенные в Noctis, перемещаются в папку Noctis Imports и добавляются в медиатеку. Если выключено, файлы остаются на месте; перетащите их, чтобы воспроизвести, добавить в медиатеку или плейлист либо создать новый плейлист.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Перемещает файлы, перетащенные в Noctis, в папку импорта. Если выключено, они остаются на месте.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve"><value>Страница плейлиста</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeaders" xml:space="preserve"><value>Заголовки альбомов</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeadersHint" xml:space="preserve"><value>Показывать название альбома над каждой группой треков из одного альбома.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2638,7 +2638,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Обычный</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
   <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>не сохранено</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
   <data name="BulkLyrics.Saving" xml:space="preserve"><value>Сохранение…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
-  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Найти тексты…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Найти тексты</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
   <data name="LibraryAlbums.FindLyricsRunning" xml:space="preserve"><value>Показать поиск текстов (идёт)</value><comment>Album / song menu: brings back a hidden Find Lyrics run that is still looking (GitHub #214)</comment></data>
   <data name="LibraryAlbums.FindLyricsResults" xml:space="preserve"><value>Показать результаты поиска текстов</value><comment>Album / song menu: brings back a hidden Find Lyrics run that has finished (GitHub #214)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Открыть Lyrics Studio</value><comment>Button after a bulk lyrics run</comment></data>
@@ -3004,7 +3004,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Искать тексты для новых песен</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Ищет тексты в фоне для песен, добавленных в медиатеку. Песни с синхронизированным текстом не трогаются.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>Искать тексты для всей медиатеки</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Постепенно ищет тексты в фоне для всех песен без синхронизированного текста, включая новые. Песни, для которых ничего не нашлось, проверяются снова через месяц. Ждёт, пока нет сети.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Ищет в фоне тексты для песен, у которых ещё нет синхронизированного текста.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>По словам (лучшее из доступного)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>По строкам</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Обычный текст</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -4039,7 +4039,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>Фильтр скрыл всех исполнителей</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Выберите «Все исполнители» в меню фильтра или найдите имя через поиск</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Скрывать малых исполнителей</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Убирает со страницы «Исполнители» тех, у кого всего несколько песен. Поиск и ссылки на исполнителя у песен и альбомов по-прежнему их находят. Считаются песни, где исполнитель указан первым, — то же число, что под каждым именем.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Скрывает со страницы «Исполнители» тех, у кого всего несколько песен. Поиск по-прежнему их находит.</value><comment>Description under Hide small artists</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Скрывать исполнителей, у которых меньше</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Скрывать боковую панель до наведения</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Полностью скрывает боковую панель, и страницы занимают всю ширину. Подведите указатель к левому краю окна, чтобы она выехала.</value><comment>Description under Hide sidebar until hover</comment></data>
