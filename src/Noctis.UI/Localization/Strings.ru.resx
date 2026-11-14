@@ -2071,7 +2071,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="ReplayGainScanner.Cancel" xml:space="preserve"><value>Отмена</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Рассчитать усиление альбома (группировка по AlbumId)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Очередь</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
-  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Добавить файлы…</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Добавить файлы</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Subtitle" xml:space="preserve"><value>Измерить громкость и записать теги ReplayGain.</value><comment>Header line under the title in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.SubtitleTip" xml:space="preserve"><value>Громкость по EBU R128, записывается как теги ReplayGain 2.0 (опорный уровень −18 LUFS)</value><comment>Tooltip on the header line in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.TitleOne" xml:space="preserve"><value>Сканирование ReplayGain · 1 трек</value><comment>Title in ReplayGainScannerViewModel, one ticked track</comment></data>

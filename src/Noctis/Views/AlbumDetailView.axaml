@@ -765,12 +765,6 @@
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="{loc:T AlbumDetail.EditDescription}"
-                                  Command="{Binding EditAlbumDescriptionCommand}">
-                            <MenuItem.Icon>
-                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineText}"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
                         <!-- GitHub #167: one click for a wrong loop; it is not fetched again. -->
                         <MenuItem Header="{loc:T AlbumDetail.RemoveAnimatedArtwork}"
                                   Command="{Binding RemoveAnimatedArtworkCommand}"
