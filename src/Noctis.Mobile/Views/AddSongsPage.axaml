@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:controls="using:Noctis.Controls"
+             x:Class="Noctis.Mobile.Views.AddSongsPage"
+             x:DataType="vm:AddSongsPageViewModel"
+             Background="{DynamicResource PhoneBackgroundBrush}">
+    <!-- Add Songs on a playlist's page (Apple Music's add sheet, the desktop's Add Songs): Cancel
+         and Done in glass pills (Select mode's bar), "Add Songs" or "3 Selected" between them; the
+         list's search field; the library's songs, each with a plus that turns into a check when
+         tapped. Songs the playlist has already show the check, dimmed, and cannot be unticked. -->
+    <UserControl.Styles>
+        <Style Selector="PathIcon.add-mark">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Button.row.in-playlist">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Height="44" Margin="16,10,16,10">
+            <controls:GlassPanel Classes="header-glass" Width="NaN">
+                <Button Name="AddSongsCancelButton" Classes="glass-text" Command="{Binding CancelCommand}"
+                        AutomationProperties.Name="{loc:T Mobile.Cancel}">
+                    <TextBlock Text="{loc:T Mobile.Cancel}" />
+                </Button>
+            </controls:GlassPanel>
+            <TextBlock Grid.Column="1" Name="AddSongsTitle" Text="{Binding HeaderText}" FontSize="17" FontWeight="SemiBold"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0" MaxLines="1" TextTrimming="CharacterEllipsis" />
+            <controls:GlassPanel Grid.Column="2" Classes="header-glass" Width="NaN">
+                <Button Name="AddSongsDoneButton" Classes="glass-text accent" Command="{Binding DoneCommand}"
+                        AutomationProperties.Name="{loc:T Common.Done}">
+                    <TextBlock Text="{loc:T Common.Done}" />
+                </Button>
+            </controls:GlassPanel>
+        </Grid>
+
+        <views:FindField Grid.Row="1" Name="AddSongsFindField" Text="{Binding FilterText}" Placeholder="{loc:T Mobile.AddSongs.Find}" />
+
+        <ScrollViewer Classes="page-scroll" Grid.Row="2" Name="AddSongsScroll" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <TextBlock Name="AddSongsEmpty" Classes="subtle" Text="{Binding EmptyText}" HorizontalAlignment="Center"
+                           Margin="0,40,0,0" IsVisible="{Binding ShowEmpty}" />
+                <views:RowItemsControl Name="AddSongsList" ItemsSource="{Binding Rows}" Margin="12,0,12,16">
+                    <views:RowItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <VirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </views:RowItemsControl.ItemsPanel>
+                    <views:RowItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:AddSongRow">
+                            <!-- A tap ticks the song (plus → check) or unticks it. -->
+                            <Button Classes="row" Classes.in-playlist="{Binding IsInPlaylist}"
+                                    Command="{Binding $parent[views:AddSongsPage].((vm:AddSongsPageViewModel)DataContext).ToggleCommand}"
+                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Track.Title}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <views:SongRow DataContext="{Binding Track}" IsMenuVisible="False" />
+                                    <Panel Grid.Column="1" Width="36" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <PathIcon Name="AddMark" Classes="add-mark" Data="{DynamicResource PhPlus}" IsVisible="{Binding !IsAdded}" />
+                                        <PathIcon Name="AddedMark" Classes="add-mark" Data="{DynamicResource PhCheck}" IsVisible="{Binding IsAdded}" />
+                                    </Panel>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </views:RowItemsControl.ItemTemplate>
+                </views:RowItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

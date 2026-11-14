@@ -7466,6 +7466,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>すべて選択</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>すべて選択解除</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>完了</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>曲を追加</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>ライブラリを検索</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>プレイリストを読み込む</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}曲中{0}曲を読み込みました</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0}件のプレイリストを読み込みました</value></data>

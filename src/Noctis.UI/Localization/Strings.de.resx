@@ -3884,6 +3884,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Select.All" xml:space="preserve"><value>Alle auswählen</value><comment>Select mode: tick every song in the list</comment></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Auswahl aufheben</value><comment>Select mode: untick every song</comment></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>Fertig</value><comment>Select mode: leave it; also closes the import result</comment></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Songs hinzufügen</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Deine Bibliothek durchsuchen</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Playlist importieren</value><comment>Playlists page menu: import .m3u/.m3u8 files</comment></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{0} von {1} Songs importiert</value><comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} Playlist importiert|{0} Playlists importiert</value><comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment></data>
