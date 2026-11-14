@@ -2527,6 +2527,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>Tümünü Seç</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Seçimi Kaldır</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>Bitti</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Şarkı Ekle</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Kitaplığında ara</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Çalma Listesi İçe Aktar</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1} şarkıdan {0} tanesi içe aktarıldı</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} çalma listesi içe aktarıldı|{0} çalma listesi içe aktarıldı</value></data>

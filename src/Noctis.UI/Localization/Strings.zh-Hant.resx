@@ -7458,6 +7458,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>全選</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>取消全選</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>完成</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>加入歌曲</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>搜尋你的資料庫</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>匯入播放列表</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>已匯入 {0}/{1} 首歌曲</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>已匯入 {0} 個播放列表</value></data>

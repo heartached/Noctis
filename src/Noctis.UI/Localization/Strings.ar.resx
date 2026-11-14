@@ -7458,6 +7458,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>تحديد الكل</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>إلغاء تحديد الكل</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>تم</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>إضافة أغانٍ</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>ابحث في مكتبتك</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>استيراد قائمة تشغيل</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>تم استيراد {0} من {1} أغنية</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمتي تشغيل|تم استيراد {0} قوائم تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل</value></data>

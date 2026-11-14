@@ -87,6 +87,17 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     /// <summary>A playlist's menu: Rename and Delete Playlist.</summary>
     public bool CanEditPlaylist => Playlist != null;
 
+    /// <summary>A playlist's menu: Add Songs, for a playlist the phone edits (not a smart one).</summary>
+    public bool CanAddSongs => Playlist != null && AddSongsPageViewModel.CanAddTo(_shell.CurrentPlaylist(Playlist));
+
+    [RelayCommand]
+    private void AddSongs()
+    {
+        var playlist = Playlist;
+        _shell.CloseSheet();
+        if (playlist != null) _shell.OpenAddSongs(playlist);
+    }
+
     [RelayCommand]
     private async Task RemoveFromPlaylistAsync()
     {

@@ -7460,6 +7460,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>Seleccionar todo</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Deseleccionar todo</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>OK</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Añadir canciones</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Busca en tu biblioteca</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Importar playlist</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>Importadas {0} de {1} canciones</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} playlist importada|{0} playlists importadas</value></data>

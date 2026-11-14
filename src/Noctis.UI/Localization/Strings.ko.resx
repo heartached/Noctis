@@ -7458,6 +7458,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>모두 선택</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>모두 선택 해제</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>완료</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>노래 추가</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>라이브러리 검색</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>플레이리스트 가져오기</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}곡 중 {0}곡을 가져왔습니다</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>플레이리스트 {0}개를 가져왔습니다</value></data>
