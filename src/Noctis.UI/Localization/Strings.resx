@@ -372,6 +372,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Five covers per row. Turn off to pick your own cover size.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Masonry Album Grid</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Covers stack per column by their real height, so short captions leave no gaps.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Wider Spacing Between Albums</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
+  <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>More space between covers. Rows fit their own captions.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Album Hover Zoom</value><comment>Settings toggle (GitHub #218)</comment></data>
   <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>In the Albums grid, the album under the pointer grows a little with a soft glow and its neighbours step back.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Smaller</value><comment>Text in SettingsView.axaml</comment></data>
@@ -3263,6 +3265,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Grid</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Carousel</value><comment>Albums view menu: album carousel</comment></data>
   <data name="Main.AlbumMasonry" xml:space="preserve"><value>Masonry</value><comment>Albums view menu: Masonry layout for the grid (GitHub #213)</comment></data>
+  <data name="Main.AlbumWideSpacing" xml:space="preserve"><value>Wider Spacing</value><comment>Albums view menu: wider spacing between albums (Settings toggle)</comment></data>
   <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Now Playing Cover Flow</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>List</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Cover</value><comment>Albums view menu: carousel case style, plain cover</comment></data>

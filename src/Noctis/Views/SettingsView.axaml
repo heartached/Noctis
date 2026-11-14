@@ -3459,6 +3459,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Album grid spacing: off = 1.6.9 (8px gaps, one row height), on = GitHub #210. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumGridWideSpacing}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumGridWideSpacingDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumGridWideSpacing}"
+                                          IsChecked="{Binding AlbumGridWideSpacing}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #218: hover zoom in the Albums grid. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
