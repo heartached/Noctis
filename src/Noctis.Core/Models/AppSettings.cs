@@ -128,6 +128,10 @@ public class AppSettings : IJsonOnDeserializing
     /// Off shows them in the plain text colour.</summary>
     public bool AccentTrackLinks { get; set; } = true;
 
+    /// <summary>GitHub #240: the window and page background take a subtle shade of the accent
+    /// colour (App.SetAccent via AccentWindowTint). Off keeps the theme's own colours.</summary>
+    public bool TintWindowWithAccent { get; set; }
+
     /// <summary>Settings › Appearance › App Icon: id of the window/taskbar/tray icon
     /// ("classic", "blush", "sky", ...). Unknown ids fall back to classic.</summary>
     public string AppIcon { get; set; } = "classic";
