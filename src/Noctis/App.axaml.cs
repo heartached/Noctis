@@ -541,18 +541,49 @@ public partial class App : Application
 
         _activeAccentHex = hex;
 
+        // With the window tint on an accent change recolours the backgrounds too: land it in
+        // one frame, like a theme switch, instead of hover transitions lerping through it.
+        if (TintWindowWithAccent)
+            RunWithTransitionsSuppressed(MainWindowOrNull(), () => ApplyAccentOverlay(color));
+        else
+            ApplyAccentOverlay(color);
+
+        AccentApplied?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ApplyAccentOverlay(Color color)
+    {
         if (_activeAccentOverlay != null)
         {
             Resources.MergedDictionaries.Remove(_activeAccentOverlay);
             _activeAccentOverlay = null;
         }
 
-        var rd = Helpers.AccentPalette.Build(color, RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light);
+        var isLight = RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+        var rd = Helpers.AccentPalette.Build(color, isLight);
+        // Read with the previous accent overlay already removed: the theme's own surfaces.
+        if (TintWindowWithAccent)
+            Noctis.Services.AccentWindowTint.AddTo(rd, this, ActualThemeVariant, color, isLight);
 
         Resources.MergedDictionaries.Add(rd);
         _activeAccentOverlay = rd;
+    }
 
-        AccentApplied?.Invoke(this, EventArgs.Empty);
+    private Avalonia.Controls.Window? MainWindowOrNull() =>
+        (ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+
+    /// <summary>GitHub #240: Settings › Appearance › "Tint window with accent colour" (off by
+    /// default). Set through <see cref="SetTintWindowWithAccent"/>.</summary>
+    public bool TintWindowWithAccent { get; private set; }
+
+    /// <summary>Turns the accent window tint on or off and re-applies the current accent so the
+    /// backgrounds follow at once. A no-op when nothing changes.</summary>
+    public void SetTintWindowWithAccent(bool on)
+    {
+        if (TintWindowWithAccent == on) return;
+        TintWindowWithAccent = on;
+        if (_activeAccentHex != null)
+            RunWithTransitionsSuppressed(MainWindowOrNull(), () => SetAccent(_activeAccentHex));
     }
 
     private static bool TryParseHex(string? hex, out Color color)

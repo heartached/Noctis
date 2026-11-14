@@ -124,6 +124,27 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// the accent-link names in song lists (Styles.axaml) to the plain text colour.</summary>
     private void ApplyTrackLinkAccent(bool accent) => Classes.Set("plain-track-links", !accent);
 
+    private EventHandler? _accentWindowTintGlassHandler;
+
+    /// <summary>GitHub #240: "Tint window with accent colour" on or off. App re-applies the
+    /// accent with (or without) the shaded backgrounds; Liquid Glass then re-reads them.</summary>
+    private void ApplyAccentWindowTint(bool on)
+    {
+        if (Avalonia.Application.Current is not App app || app.TintWindowWithAccent == on) return;
+        app.SetTintWindowWithAccent(on);
+        // On: the accent re-apply already refreshed the glass (RefreshLiquidGlassForAccentTint).
+        if (!on && _liquidGlassActive) ApplyLiquidGlass(true);
+    }
+
+    /// <summary>With the accent window tint on, every accent change (picker, "Accent follows
+    /// album art", a theme switch) reshades the backgrounds; Liquid Glass tints its backdrop and
+    /// translucent surfaces from them, so it re-reads them. Nothing to do with the tint off.</summary>
+    private void RefreshLiquidGlassForAccentTint()
+    {
+        if (_liquidGlassActive && Avalonia.Application.Current is App { TintWindowWithAccent: true })
+            ApplyLiquidGlass(true);
+    }
+
     /// <summary>
     /// "Accent follows album art": recolours the accent from the playing cover's vibrant
     /// colour (path-cached; first decode runs off the UI thread), and restores the user's
@@ -670,9 +691,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         ApplyArtworkAccent();
                     else if (e.PropertyName == nameof(SettingsViewModel.AccentTrackLinks))
                         ApplyTrackLinkAccent(vm.Settings.AccentTrackLinks);
+                    else if (e.PropertyName == nameof(SettingsViewModel.TintWindowWithAccent))
+                        ApplyAccentWindowTint(vm.Settings.TintWindowWithAccent);
                 };
                 vm.Settings.PropertyChanged += _artworkAccentSettingsHandler;
                 ApplyTrackLinkAccent(vm.Settings.AccentTrackLinks);
+                ApplyAccentWindowTint(vm.Settings.TintWindowWithAccent);
+                _accentWindowTintGlassHandler = (_, _) => RefreshLiquidGlassForAccentTint();
+                App.AccentApplied += _accentWindowTintGlassHandler;
 
                 _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
@@ -1574,6 +1600,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 vm.Player.PropertyChanged -= _artworkAccentPlayerHandler;
             if (_artworkAccentSettingsHandler != null)
                 vm.Settings.PropertyChanged -= _artworkAccentSettingsHandler;
+
+            if (_accentWindowTintGlassHandler != null)
+                App.AccentApplied -= _accentWindowTintGlassHandler;
 
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;

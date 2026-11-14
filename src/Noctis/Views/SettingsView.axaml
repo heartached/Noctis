@@ -2944,6 +2944,19 @@
                                               IsChecked="{Binding AccentTrackLinks}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+
+                    <!-- GitHub #240: a subtle accent shade on the window and page background -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.TintWindowWithAccent}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.TintWindowWithAccentHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.TintWindowWithAccent}"
+                                              IsChecked="{Binding TintWindowWithAccent}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 
