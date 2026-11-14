@@ -417,9 +417,13 @@ public partial class LyricsPage : UserControl
 
         if (container.TranslatePoint(new Point(0, 0), LyricsList) is not { } origin) return;
         // Coordinates relative to the list exclude its margin; the scroll extent includes it.
+        var top = origin.Y + LyricsList.Margin.Top;
         var target = LyricsScrollAnchor.ComputeAnchorOffset(
-            origin.Y + LyricsList.Margin.Top, container.Bounds.Height,
-            LyricsScroll.Viewport.Height, LyricsScroll.Extent.Height, AnchorRatio);
+            top, container.Bounds.Height, LyricsScroll.Viewport.Height, LyricsScroll.Extent.Height, AnchorRatio);
+        // Beta (11-09): sideways on a 360 dp phone the viewport is ~230 dp, and centring a
+        // wrapped sung line on the anchor put its first row under the top fade's solid wash.
+        // The line's top stays below the fade (portrait's taller viewport seldom needs it).
+        target = Math.Max(0, Math.Min(target, top - TopFade.Bounds.Height));
 
         StopGlide();
         if (!animate || Math.Abs(target - LyricsScroll.Offset.Y) < 2)
