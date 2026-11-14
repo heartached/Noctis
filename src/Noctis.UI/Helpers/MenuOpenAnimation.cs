@@ -83,16 +83,6 @@ public static class MenuOpenAnimation
     public static double GetFade(Control control) => control.GetValue(FadeProperty);
 
     /// <summary>
-    /// Non-zero: the open motion slides in sideways from this X offset instead of rising up.
-    /// Set on submenu cards, which open beside their row (-8 = out of the parent menu).
-    /// </summary>
-    public static readonly AttachedProperty<double> OffsetXProperty =
-        AvaloniaProperty.RegisterAttached<Control, double>("OffsetX", typeof(MenuOpenAnimation));
-
-    public static void SetOffsetX(Control control, double value) => control.SetValue(OffsetXProperty, value);
-    public static double GetOffsetX(Control control) => control.GetValue(OffsetXProperty);
-
-    /// <summary>
     /// The "pop" open (Albums-page album menu, trial 10-09): the card grows out of the click point
     /// (<see cref="PopAnchorProperty"/>) while it fades in, then its rows settle in one after
     /// another, and it closes with that motion reversed. Set on every ContextMenu and
@@ -125,6 +115,19 @@ public static class MenuOpenAnimation
 
     public static void SetAutoFlyoutClose(MenuFlyoutPresenter presenter, bool value) => presenter.SetValue(AutoFlyoutCloseProperty, value);
     public static bool GetAutoFlyoutClose(MenuFlyoutPresenter presenter) => presenter.GetValue(AutoFlyoutCloseProperty);
+
+    /// <summary>
+    /// Set (by the global menu style) on a submenu card, the Border in the Fluent MenuItem
+    /// template's Popup (Tools ▸, Carousel Style ▸, Sleep Timer ▸ …). The card then opens and
+    /// closes with the menus' pop (owner 11-14: "the same animation as the menu options"): it
+    /// grows out of the row it belongs to while it fades in, its rows settle in, and it shrinks
+    /// back and fades out when it closes (see <see cref="OnSubmenuPopupClosing"/>).
+    /// </summary>
+    public static readonly AttachedProperty<bool> SubmenuProperty =
+        AvaloniaProperty.RegisterAttached<Border, bool>("Submenu", typeof(MenuOpenAnimation));
+
+    public static void SetSubmenu(Border card, bool value) => card.SetValue(SubmenuProperty, value);
+    public static bool GetSubmenu(Border card) => card.GetValue(SubmenuProperty);
 
     private const double PopScale = 0.9;
     private const double PopDurationMs = 280;
@@ -245,6 +248,13 @@ public static class MenuOpenAnimation
             return; // collapse the popup's double-attach into a single animation
         control.SetValue(LastRunProperty, now);
 
+        if (control is Border { Parent: Popup popup } card && GetSubmenu(card))
+        {
+            HookSubmenuPopup(popup);
+            RunPop(card);
+            return;
+        }
+
         if (GetPop(control))
         {
             RunPop(control);
@@ -256,16 +266,13 @@ public static class MenuOpenAnimation
         // Start hidden + nudged down, then settle into place on the next frame so the
         // transitions animate the change instead of snapping straight to the end state.
         var fade = FadePropertyOf(control);
-        var offsetX = GetOffsetX(control);
         ShowOpacityUnderFade(control, fade);
         control.SetValue(fade, 0.0);
-        control.RenderTransform = TransformOperations.Parse(offsetX != 0
-            ? $"translateX({offsetX.ToString(System.Globalization.CultureInfo.InvariantCulture)}px)"
-            : $"translateY({OpenOffsetY}px)");
+        control.RenderTransform = TransformOperations.Parse($"translateY({OpenOffsetY}px)");
         Dispatcher.UIThread.Post(() =>
         {
             control.SetValue(fade, 1.0);
-            control.RenderTransform = TransformOperations.Parse(offsetX != 0 ? "translateX(0px)" : "translateY(0px)");
+            control.RenderTransform = TransformOperations.Parse("translateY(0px)");
         }, DispatcherPriority.Render);
     }
 
@@ -400,6 +407,10 @@ public static class MenuOpenAnimation
         card.SetValue(fade, 0.0);
         card.RenderTransform = TransformOperations.Parse(
             $"scale({PopCloseScale.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+        // A menu closing (a row was picked) takes its open submenus with it in the same motion;
+        // they close for real with the menu (CloseFadedSubmenus makes sure of it).
+        if (card is ItemsControl menu)
+            StartSubmenusClose(menu);
     }
 
     /// <summary>
@@ -438,6 +449,7 @@ public static class MenuOpenAnimation
     /// inside the double-attach guard window.</summary>
     private static void RestorePopCard(ContextMenu menu)
     {
+        CloseFadedSubmenus(menu);
         ResetCloseState(menu);
         menu.Transitions = null;
         menu.IsHitTestVisible = true;
@@ -503,7 +515,7 @@ public static class MenuOpenAnimation
     private static RelativePoint PopOrigin(Control card)
     {
         var size = card.Bounds.Size;
-        var anchor = GetPopAnchor(card) ??
+        var anchor = GetPopAnchor(card) ?? SubmenuRowAnchor(card) ??
             (Environment.TickCount64 - _lastPressAt <= PressAnchorMaxAgeMs ? _lastPress : (PixelPoint?)null);
         if (anchor is null || size.Width <= 0 || size.Height <= 0 ||
             TopLevel.GetTopLevel(card) is not { } top)
@@ -516,6 +528,157 @@ public static class MenuOpenAnimation
             p = new Point(inParent.X - card.Bounds.X, inParent.Y - card.Bounds.Y);
         return new RelativePoint(
             Math.Clamp(p.X, 0, size.Width), Math.Clamp(p.Y, 0, size.Height), RelativeUnit.Absolute);
+    }
+
+    // ── Submenu cards (SubmenuProperty): the pop, open and close ──
+
+    /// <summary>A submenu card grows out of its row (the row's centre, clamped to the card's edge
+    /// beside it), not out of the right-click that opened the whole menu.</summary>
+    private static PixelPoint? SubmenuRowAnchor(Control card) =>
+        card is Border border && GetSubmenu(border) && card.TemplatedParent is MenuItem row &&
+        TopLevel.GetTopLevel(row) is not null && row.Bounds.Width > 0
+            ? row.PointToScreen(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2))
+            : null;
+
+    // Popup raises Closing (cancellable) before it closes; ContextMenu.Closing is that event
+    // passed on, and is what the pop close above cancels. A MenuItem's submenu Popup has no
+    // public route to it in Avalonia 12, so it is subscribed by reflection. Missing (a later
+    // Avalonia renamed it): submenus simply close at once, as they did before.
+    private static readonly System.Reflection.MethodInfo? PopupClosingAdd =
+        typeof(Popup).GetEvent("Closing", System.Reflection.BindingFlags.Instance |
+                                          System.Reflection.BindingFlags.Public |
+                                          System.Reflection.BindingFlags.NonPublic) is { } ev &&
+        ev.EventHandlerType == typeof(EventHandler<CancelEventArgs>)
+            ? ev.GetAddMethod(nonPublic: true)
+            : null;
+
+    private static readonly AttachedProperty<bool> SubmenuHookedProperty =
+        AvaloniaProperty.RegisterAttached<Popup, bool>("SubmenuHooked", typeof(MenuOpenAnimation));
+
+    // Bumped by every submenu close and reopen: a close timer only acts on its own close.
+    private static readonly AttachedProperty<long> CloseTokenProperty =
+        AvaloniaProperty.RegisterAttached<Control, long>("CloseToken", typeof(MenuOpenAnimation));
+
+    private static void HookSubmenuPopup(Popup popup)
+    {
+        if (popup.GetValue(SubmenuHookedProperty))
+            return;
+        popup.SetValue(SubmenuHookedProperty, true);
+        PopupClosingAdd?.Invoke(popup, new object[] { new EventHandler<CancelEventArgs>(OnSubmenuPopupClosing) });
+        popup.Closed += OnSubmenuPopupClosed;
+        popup.PropertyChanged += OnSubmenuPopupPropertyChanged;
+    }
+
+    /// <summary>
+    /// Submenu close: the pop close (inert at once, shrink back toward its row + fade), holding
+    /// the real close for <see cref="PopCloseMs"/>. The same safeguards as the menus' pop close
+    /// (<see cref="OnPopMenuClosing"/>): a close we didn't start while fading, or one from a
+    /// teardown, goes straight through; the deferred close is forced with <see cref="Popup.Close"/>
+    /// (a cancelled close leaves IsOpen false while the popup still shows, so setting IsOpen again
+    /// would change nothing); and a reopen cancels the pending close. MenuItem.IsSubMenuOpen is
+    /// false from the start, so hover, keyboard and the menu's own logic see a closed submenu.
+    /// </summary>
+    private static void OnSubmenuPopupClosing(object? sender, CancelEventArgs e)
+    {
+        if (sender is not Popup popup || popup.Child is not Border card || !GetSubmenu(card))
+            return;
+        if (card.GetValue(CloseAfterAnimationProperty) || card.GetValue(CloseAnimationRunningProperty))
+            return;
+        if (TopLevel.GetTopLevel(card) is null ||
+            !((Avalonia.LogicalTree.ILogical)popup).IsAttachedToLogicalTree ||
+            popup.PlacementTarget is { } target && TopLevel.GetTopLevel(target) is null)
+            return;
+
+        e.Cancel = true;
+        card.SetValue(CloseAnimationRunningProperty, true);
+        var token = card.GetValue(CloseTokenProperty) + 1;
+        card.SetValue(CloseTokenProperty, token);
+        card.SetValue(LastRunProperty, 0L); // an open still settling stops where it is
+        StartPopClose(card);
+
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (card.GetValue(CloseAnimationRunningProperty) && card.GetValue(CloseTokenProperty) == token)
+                CloseSubmenuNow(popup);
+        }, TimeSpan.FromMilliseconds(PopCloseMs));
+    }
+
+    /// <summary>Every submenu card open under <paramref name="menu"/> (nested ones too), with its popup.</summary>
+    private static IEnumerable<(Popup Popup, Border Card)> OpenSubmenuCards(ItemsControl menu)
+    {
+        foreach (var item in menu.GetRealizedContainers().OfType<MenuItem>())
+        {
+            if (item.GetVisualDescendants().OfType<Popup>().FirstOrDefault(p => p.Name == "PART_Popup") is not
+                { Child: Border card } popup || !GetSubmenu(card) || TopLevel.GetTopLevel(card) is null)
+                continue;
+            yield return (popup, card);
+            foreach (var nested in OpenSubmenuCards(item))
+                yield return nested;
+        }
+    }
+
+    /// <summary>The menu's pop close, on its open submenu cards: inert, shrinking and fading with
+    /// it. Marked as closing, so their real close (when the menu closes) goes straight through.</summary>
+    private static void StartSubmenusClose(ItemsControl menu)
+    {
+        foreach (var (_, card) in OpenSubmenuCards(menu).ToList())
+        {
+            if (card.GetValue(CloseAnimationRunningProperty))
+                continue;
+            card.SetValue(CloseAnimationRunningProperty, true);
+            card.SetValue(CloseTokenProperty, card.GetValue(CloseTokenProperty) + 1);
+            card.SetValue(LastRunProperty, 0L);
+            StartPopClose(card);
+        }
+    }
+
+    /// <summary>Once a menu is closed (or cut short), no faded submenu card of it may stay on
+    /// screen: one that Avalonia did not close along with the menu is closed here.</summary>
+    private static void CloseFadedSubmenus(ItemsControl menu)
+    {
+        foreach (var (popup, card) in OpenSubmenuCards(menu).ToList())
+            if (card.GetValue(CloseAnimationRunningProperty))
+                CloseSubmenuNow(popup);
+    }
+
+    private static void CloseSubmenuNow(Popup popup)
+    {
+        if (popup.Child is not Border card)
+            return;
+        card.SetValue(CloseAfterAnimationProperty, true);
+        popup.Close();
+        RestoreSubmenuCard(card);
+    }
+
+    private static void OnSubmenuPopupClosed(object? sender, EventArgs e)
+    {
+        if (sender is Popup { Child: Border card })
+            RestoreSubmenuCard(card);
+    }
+
+    /// <summary>Reopened while it was fading out (the pointer came back to its row): the popup
+    /// never really closed, so it gets no new attach; cancel the close and run the open here.</summary>
+    private static void OnSubmenuPopupPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != Popup.IsOpenProperty || e.NewValue is not true ||
+            sender is not Popup { Child: Border card } || !card.GetValue(CloseAnimationRunningProperty))
+            return;
+        card.SetValue(CloseTokenProperty, card.GetValue(CloseTokenProperty) + 1);
+        RestoreSubmenuCard(card);
+        TryRun(card);
+    }
+
+    /// <summary>Back to a visible, clickable, idle card, so no close state leaks into the next
+    /// open; LastRun is cleared so the next open always animates.</summary>
+    private static void RestoreSubmenuCard(Border card)
+    {
+        ResetCloseState(card);
+        card.Transitions = null;
+        card.IsHitTestVisible = true;
+        card.Opacity = 1;
+        if (GetUseFade(card)) SetFade(card, 1);
+        card.RenderTransform = TransformOperations.Parse("scale(1)");
+        card.SetValue(LastRunProperty, 0L);
     }
 
     private static void OnContextMenuClosing(object? sender, CancelEventArgs e)
@@ -652,6 +815,8 @@ public static class MenuOpenAnimation
 
     private static void ResetMenuTransform(Control control)
     {
+        if (control is ItemsControl menu)
+            CloseFadedSubmenus(menu);
         control.Opacity = 1;
         if (GetUseFade(control)) SetFade(control, 1);
         control.IsHitTestVisible = true;

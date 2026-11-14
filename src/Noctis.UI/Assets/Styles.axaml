@@ -763,16 +763,17 @@
     <Style Selector="ContextMenu /template/ ScrollViewer, MenuItem /template/ Popup ScrollViewer">
         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
-    <!-- Submenu cards (Tools ▸, Sleep Timer ▸, Pitch ▸ …) match the parent card and fade +
-         slide out of it instead of popping in. OffsetX is set before Enable: the open run
-         reads OffsetX when Enable is applied. -->
+    <!-- Submenu cards (Tools ▸, Carousel Style ▸, Sleep Timer ▸, Pitch ▸ …) match the parent card
+         and open and close with its pop (owner 11-14): they grow out of their row while they fade
+         in, and shrink back and fade out when they close. Submenu is set before Enable: the open
+         run reads it when Enable is applied. -->
     <Style Selector="MenuItem /template/ Popup > Border">
         <Setter Property="MinWidth" Value="200" />
         <!-- Background / border / radius / 300 cap (MenuChrome.SubmenuCard) and padding: the
              template writes those from the Fluent MenuFlyoutPresenter* resources. -->
         <Setter Property="(helpers:MenuChrome.SubmenuCard)" Value="True" />
         <Setter Property="(helpers:MenuChrome.Padding)" Value="6" />
-        <Setter Property="(helpers:MenuOpenAnimation.OffsetX)" Value="-8" />
+        <Setter Property="(helpers:MenuOpenAnimation.Submenu)" Value="True" />
         <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
     </Style>
 
