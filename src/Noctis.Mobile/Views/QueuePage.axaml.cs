@@ -36,7 +36,7 @@ public partial class QueuePage : UserControl
     private bool _dragFromHistory;      // the handle pressed is a History row's
     private QueueHistoryItem? _dragItem; // PlayedSongs[_index] at press, for a History row
     private Control? _raised;           // the list part drawn over the rest while its row is dragged
-    private ContentPresenter? _lifted;  // the dragged row, given the sheet's colour so the rows it passes do not show through
+    private Control? _lifted;           // the dragged row, given the sheet's colour so the rows it passes do not show through
 
     private Gesture _gesture;
     private Control? _moving;   // the row (swipe) or its container (drag) being translated
@@ -436,8 +436,9 @@ public partial class QueuePage : UserControl
     private void UpdateBars() =>
         EqBars.Classes.Set("playing", _vm?.Player.IsPlaying == true && _shown && !_closing);
 
-    private int IndexOf(Control element) =>
-        element.FindAncestorOfType<ContentPresenter>() is { } container ? QueueList.IndexFromContainer(container) : -1;
+    // By the row's item container: an Up Next row's is a RowHost, and the nearest ContentPresenter
+    // above it is the ScrollViewer's.
+    private int IndexOf(Control element) => RowOf(element) is ({ } list, _, var index) && ReferenceEquals(list, QueueList) ? index : -1;
 
     private Track? TrackAt(int index) =>
         DataContext is ShellViewModel vm && index >= 0 && index < vm.Player.UpNext.Count ? vm.Player.UpNext[index] : null;
@@ -454,8 +455,7 @@ public partial class QueuePage : UserControl
         }
         if (_raised != null) _raised.ZIndex = 0;
         _raised = null;
-        if (_lifted != null) _lifted.Background = null;
-        _lifted = null;
+        Unlift();
         _moving = null;
         _index = -1;
         _track = null;
@@ -544,19 +544,46 @@ public partial class QueuePage : UserControl
         // ...and its part of the list above the other parts (History over Up Next, or back).
         _raised = _dragFromHistory ? HistorySection : QueueList;
         _raised.ZIndex = 1;
-        // Rows are see-through (the sheet's blurred cover shows behind them): a dragged one laid
-        // its text over the row under it (emulator, 11-07). It is lifted on the sheet's colour.
-        if (container is ContentPresenter lifted && this.TryFindResource("QueueSheetBase", ActualThemeVariant, out var sheet) && sheet is IBrush brush)
-        {
-            _lifted = lifted;
-            lifted.Background = brush;
-            lifted.CornerRadius = new CornerRadius(10);
-        }
+        Lift(container);
         e.Pointer.Capture(handle);
         // The ScrollViewer's touch ScrollGestureRecognizer sees handled events too: once Up Next
         // outgrows the viewport it would take this vertical drag (capture and all) and scroll.
         e.PreventGestureRecognition();
         e.Handled = true;                   // not the start of a swipe on the row
+    }
+
+    /// <summary>
+    /// Rows are see-through (the sheet's blurred cover shows behind them): a dragged one laid its
+    /// text over the row under it (emulator, 11-07). It is lifted on the sheet's colour: a History
+    /// row's ContentPresenter container, or an Up Next row's own Border (its RowHost draws nothing).
+    /// </summary>
+    private void Lift(Control container)
+    {
+        if (!this.TryFindResource("QueueSheetBase", ActualThemeVariant, out var sheet) || sheet is not IBrush brush) return;
+        if (container is ContentPresenter presenter)
+        {
+            presenter.Background = brush;
+            presenter.CornerRadius = new CornerRadius(10);
+            _lifted = presenter;
+        }
+        else if (container is RowHost { Row: Border row })
+        {
+            row.Background = brush;
+            row.CornerRadius = new CornerRadius(10);
+            _lifted = row;
+        }
+    }
+
+    private void Unlift()
+    {
+        if (_lifted is ContentPresenter presenter) presenter.Background = null;
+        else if (_lifted is Border row)
+        {
+            // Back to Transparent, not cleared: the whole row must still hit-test for the swipe.
+            row.Background = Brushes.Transparent;
+            row.CornerRadius = default;
+        }
+        _lifted = null;
     }
 
     /// <summary>The list row (Up Next or History) <paramref name="element"/> is in: its list, its
