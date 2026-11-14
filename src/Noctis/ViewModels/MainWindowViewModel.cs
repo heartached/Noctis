@@ -647,10 +647,22 @@ public partial class MainWindowViewModel : ViewModelBase
         // Ignored leading words for the Artists name sort (GitHub #99): pushed now and on every
         // toggle/list change, including the settings load — same shape as the Cover Flow layout.
         _artistsVm.SetSortIgnoredWords(Settings.ActiveArtistSortIgnoredWords);
+        // Hide small artists (GitHub #233): Settings owns the value; the Artists page's filter
+        // menu flips the same setting, and its dot shows while it is on.
+        _artistsVm.SetMinSongs(Settings.ActiveArtistMinSongs);
+        TopBar.ArtistSmallThreshold = Settings.SmallArtistMinSongs;
+        TopBar.IsArtistSmallFilterActive = Settings.HideSmallArtists;
+        TopBar.ArtistSmallFilterCommand = new RelayCommand<string?>(p => Settings.HideSmallArtists = p == "small");
         Settings.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(SettingsViewModel.ActiveArtistSortIgnoredWords))
                 _artistsVm.SetSortIgnoredWords(Settings.ActiveArtistSortIgnoredWords);
+            else if (e.PropertyName == nameof(SettingsViewModel.ActiveArtistMinSongs))
+            {
+                _artistsVm.SetMinSongs(Settings.ActiveArtistMinSongs);
+                TopBar.ArtistSmallThreshold = Settings.SmallArtistMinSongs;
+                TopBar.IsArtistSmallFilterActive = Settings.HideSmallArtists;
+            }
         };
         _playlistsVm = new LibraryPlaylistsViewModel(Sidebar, Player, library, persistence);
         // Same mirroring as the Albums sort chip: the label lives on the grid view-model,
