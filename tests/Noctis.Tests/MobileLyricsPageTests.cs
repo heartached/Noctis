@@ -97,6 +97,63 @@ public class MobileLyricsPageTests
         }
     }
 
+    /// <summary>Beta (Alfamin 11-09): landscape hid a bit of the lyrics. On a Galaxy S23 sideways
+    /// (780×360 dp: camera cutout 33 dp left, status bar 30 dp, navigation bar 48 dp right) the
+    /// lines get a 230 dp viewport, and the 22% anchor centred a wrapped two-row sung line so
+    /// high that its first row sat under the solid top of the fade (TopFade). The sung line now
+    /// stays below the fade; the header and transport stay clear of the bars.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Landscape_S23_TheSungLineAndTheControlsStayInView(bool paused)
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 40).Select(i => $"[00:{i * 2:00}.50]walking down the road {i}"));
+        var view = new ShellView { DataContext = shell };
+        var window = new Window { Width = 780, Height = 360, Content = view };
+        window.Show();
+        var safe = new Thickness(33, 30, 48, 0);
+        view.ApplySafeArea(safe);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(20.6));   // line 10
+        if (paused) shell.Player.TogglePlayPauseCommand.Execute(null);   // the transport stays up
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        // Layout before the page's posted snap, as on the device (headless runs no layout of its own).
+        for (var i = 0; i < 3; i++)
+        {
+            MobileFixtures.Land(window);
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        Assert.Equal(paused, page.ControlsShown);
+        (Point TopLeft, Point BottomRight) Box(Control c) =>
+            (c.TranslatePoint(default, window)!.Value, c.TranslatePoint(new Point(c.Bounds.Width, c.Bounds.Height), window)!.Value);
+
+        var line = LineContainer(page, 10);
+        Assert.True(line.Bounds.Height > 100, $"the line is {line.Bounds.Height} high (meant to wrap)");
+        var (lineTop, lineBottom) = Box(line);
+        var (_, fadeBottom) = Box(page.FindControl<Control>("TopFade")!);
+        Assert.True(lineTop.Y >= fadeBottom.Y - 0.5, $"sung line top {lineTop.Y}, the fade ends at {fadeBottom.Y}");
+        Assert.True(lineBottom.Y <= 360 + 0.5 && lineBottom.X <= 780 - safe.Right + 0.5, $"sung line ends at {lineBottom}");
+
+        var names = new List<string> { "HeaderTitle", "LyricsMore", "LyricsGrabber" };
+        if (paused) names.AddRange(new[] { "SeekBar", "PreviousButton", "PlayPauseButton", "NextButton", "LyricsButton", "OutputButton", "QueueButton" });
+        foreach (var name in names)
+        {
+            var control = page.FindControl<Control>(name)!;
+            Assert.True(control.IsEffectivelyVisible && control.Bounds.Width > 0, $"{name} not shown");
+            var (topLeft, bottomRight) = Box(control);
+            Assert.True(topLeft.X >= safe.Left - 0.5 && topLeft.Y >= safe.Top - 0.5
+                        && bottomRight.X <= 780 - safe.Right + 0.5 && bottomRight.Y <= 360 + 0.5,
+                $"{name} spans {topLeft}-{bottomRight}");
+        }
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     [AvaloniaFact]
     public void IssueExample_ShowsWordsAndTranslation_AndTheToggleHidesIt()
     {
