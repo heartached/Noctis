@@ -199,11 +199,11 @@ public class LyricsStudioTapLagTests : IDisposable
             await vm.SelectWordCommand.ExecuteAsync(line.Words[3]);
             vm.NudgeStart = true;
             Settle(win);
-            var bar = win.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Classes.Contains("review-nudge"));
+            var bar = win.GetVisualDescendants().OfType<Grid>().Single(w => w.Classes.Contains("review-nudge"));
             var steps = bar.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("nudge-step")).ToList();
             Assert.All(steps, b => Assert.True(b.IsEffectivelyEnabled));
             var start = line.Words[3].Start;
-            foreach (var (button, ms) in new[] { (steps[1], 10), (steps[3], 110), (steps[0], 100), (steps[2], 0) })
+            foreach (var (button, ms) in new[] { (steps[2], 10), (steps[3], 110), (steps[1], 100), (steps[0], 0) })
             {
                 button.Command!.Execute(button.CommandParameter);
                 Settle(win);

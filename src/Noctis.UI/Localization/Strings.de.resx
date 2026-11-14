@@ -2869,6 +2869,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="LyricsStudio.SpeedSlower" xml:space="preserve"><value>Langsamer</value><comment>Speed pill: play the song slower (0.05x step)</comment></data>
   <data name="LyricsStudio.SpeedFaster" xml:space="preserve"><value>Schneller</value><comment>Speed pill: play the song faster (0.05x step)</comment></data>
   <data name="LyricsStudio.SpeedTip" xml:space="preserve"><value>Wiedergabetempo, 0,5x bis 1,5x. Taps landen weiter auf der Zeit des Songs. Das vorherige Tempo kommt zurück, wenn das Studio schließt.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.SpeedReset" xml:space="preserve"><value>Zurück auf 1× Tempo</value><comment>Speed pill value: click to go back to normal speed</comment></data>
   <data name="LyricsStudio.LivePreview" xml:space="preserve"><value>Live-Vorschau</value><comment>Review button: show or hide the lyrics preview beside the editor</comment></data>
   <data name="LyricsStudio.LivePreviewTip" xml:space="preserve"><value>Den Songtext zeigen, wie er aussehen wird, neben dem Editor, dem Song folgend. Aktualisiert sich beim Bearbeiten; nichts wird gespeichert.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.LivePreviewIdle" xml:space="preserve"><value>Spiele diesen Song ab, um hier seinen Songtext zu sehen</value><comment>Preview pane, when another song (or none) is playing</comment></data>
