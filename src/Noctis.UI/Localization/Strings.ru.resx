@@ -2877,6 +2877,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsStudio.SpeedSlower" xml:space="preserve"><value>Медленнее</value><comment>Speed pill: play the song slower (0.05x step)</comment></data>
   <data name="LyricsStudio.SpeedFaster" xml:space="preserve"><value>Быстрее</value><comment>Speed pill: play the song faster (0.05x step)</comment></data>
   <data name="LyricsStudio.SpeedTip" xml:space="preserve"><value>Скорость воспроизведения, от 0,5x до 1,5x. Нажатия по-прежнему попадают во время самой песни. Прежняя скорость вернётся, когда Студия закроется.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.SpeedReset" xml:space="preserve"><value>Вернуть скорость 1×</value><comment>Speed pill value: click to go back to normal speed</comment></data>
   <data name="LyricsStudio.LivePreview" xml:space="preserve"><value>Живой просмотр</value><comment>Review button: show or hide the lyrics preview beside the editor</comment></data>
   <data name="LyricsStudio.LivePreviewTip" xml:space="preserve"><value>Показывает текст так, как он будет выглядеть, рядом с редактором и следом за песней. Обновляется при правке; ничего не сохраняется.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.LivePreviewIdle" xml:space="preserve"><value>Включите эту песню, чтобы видеть здесь её текст</value><comment>Preview pane, when another song (or none) is playing</comment></data>

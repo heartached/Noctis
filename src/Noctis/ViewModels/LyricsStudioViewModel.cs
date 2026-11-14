@@ -1619,6 +1619,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [RelayCommand]
     private void Faster() => StepSpeed(SpeedStepPercent);
 
+    /// <summary>The speed pill's value: back to 1x (still given back on close like a step).</summary>
+    [RelayCommand]
+    private void ResetSpeed()
+    {
+        if (_player is not null) StepSpeed(100 - _player.PlaybackRatePercent);
+    }
+
     /// <summary>One step on the 5% grid (an off-grid speed snaps to it), kept within 50-150%.</summary>
     internal void StepSpeed(int stepPercent)
     {
