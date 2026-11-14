@@ -4219,4 +4219,21 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Вместо него показывает плеер по центру, даже если у песни есть текст.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="LyricShare.Watermark" xml:space="preserve"><value>Водяной знак Noctis</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
   <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>Показывает логотип Noctis на карточке и в видео</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
+  <data name="MoveToAlbum.Menu" xml:space="preserve"><value>Переместить в альбом</value><comment>Song menu row (GitHub #239)</comment></data>
+  <data name="MoveToAlbum.Title" xml:space="preserve"><value>Переместить в альбом</value><comment>Dialog title (MoveToAlbumDialog)</comment></data>
+  <data name="MoveToAlbum.NewTitle" xml:space="preserve"><value>Переместить в новый альбом</value><comment>Dialog title while naming a new album</comment></data>
+  <data name="MoveToAlbum.SongCount" xml:space="preserve"><value>Песен: {0}</value><comment>{0} number of songs</comment></data>
+  <data name="MoveToAlbum.NewAlbum" xml:space="preserve"><value>Новый альбом</value><comment>Button above the album list</comment></data>
+  <data name="MoveToAlbum.Search" xml:space="preserve"><value>Поиск альбомов</value><comment>Search box watermark</comment></data>
+  <data name="MoveToAlbum.NoAlbums" xml:space="preserve"><value>Подходящих альбомов нет.</value><comment>Empty list</comment></data>
+  <data name="MoveToAlbum.CurrentAlbum" xml:space="preserve"><value>Текущий альбом</value><comment>Row note: the songs are on this album already</comment></data>
+  <data name="MoveToAlbum.AlbumName" xml:space="preserve"><value>Название альбома</value><comment>Field label</comment></data>
+  <data name="MoveToAlbum.AlbumArtist" xml:space="preserve"><value>Исполнитель альбома</value><comment>Field label</comment></data>
+  <data name="MoveToAlbum.NewExplain" xml:space="preserve"><value>Альбомы берутся из тегов песен, поэтому альбом появится вместе с песнями, которые вы в него переместите.</value><comment>Hint under the new album fields</comment></data>
+  <data name="MoveToAlbum.PickHint" xml:space="preserve"><value>Выберите альбом или создайте новый.</value><comment>Footer line before an album is picked</comment></data>
+  <data name="MoveToAlbum.NewHint" xml:space="preserve"><value>Введите название нового альбома.</value><comment>Footer line while the new album has no name</comment></data>
+  <data name="MoveToAlbum.ConfirmExisting" xml:space="preserve"><value>Песен: {0} — в «{1}». Теги альбома в их файлах (альбом, исполнитель альбома, номер трека и диска, год) будут изменены.</value><comment>{0} song count, {1} album name</comment></data>
+  <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>Песен: {0} — в новый альбом «{1}». Теги альбома в их файлах (альбом, исполнитель альбома, номер трека и диска) будут изменены.</value><comment>{0} song count, {1} new album name</comment></data>
+  <data name="MoveToAlbum.Move" xml:space="preserve"><value>Переместить</value><comment>Confirm button</comment></data>
+  <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Перемещено в Noctis, но {0} файл(ов) сохранить не удалось (только для чтения или открыт в другой программе). Если такой файл изменится, при следующем сканировании он вернётся в прежний альбом.</value><comment>{0} file count; list of file names follows</comment></data>
 </root>

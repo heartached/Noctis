@@ -985,6 +985,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(TakeSelectionOr(track));
 
+    /// <summary>GitHub #239: the song (or the Ctrl-selection it is in) → Move to Album.</summary>
+    [RelayCommand]
+    private Task MoveToAlbum(Track track) => MetadataHelper.OpenMoveToAlbumDialog(TakeSelectionOr(track));
+
     /// <summary>Whole album → folder / Lyrics Studio (header menu).</summary>
     [RelayCommand]
     private Task SendAlbumToFolder() => Album.Tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenSendToFolderDialog(Album.Tracks.ToList());

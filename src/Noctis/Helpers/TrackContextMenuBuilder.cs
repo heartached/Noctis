@@ -60,6 +60,8 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
+    /// <summary>"Move to Album" (GitHub #239): hidden unless the view passes a moveToAlbumCommand.</summary>
+    public MenuItem MoveToAlbum { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem Spectrogram { get; private set; } = null!;
@@ -237,6 +239,10 @@ public sealed class TrackContextMenuBuilder
         Metadata.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
+        MoveToAlbum = new MenuItem { Header = Loc.T("MoveToAlbum.Menu"), IsVisible = false };
+        MoveToAlbum.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Albums%20ICON.png");
+        items.Add(MoveToAlbum);
+
         Convert = new MenuItem { Header = "Convert File", IsVisible = false };
         Convert.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(Convert);
@@ -384,6 +390,8 @@ public sealed class TrackContextMenuBuilder
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
         items.Add(Metadata);
+        MoveToAlbum = MenuV2.Row(host, Loc.T("MoveToAlbum.Menu"), "MenuLineAlbum", visible: false);
+        items.Add(MoveToAlbum);
         Lyrics = MenuV2.Row(host, Loc.T("Tab.Lyrics"), "MenuLineLyrics");
         SearchLyrics = new MenuItem { Header = Loc.T("Lyrics.SearchLyrics") };
         Lyrics.Items.Add(SearchLyrics);
@@ -483,7 +491,8 @@ public sealed class TrackContextMenuBuilder
         IReadOnlyList<string>? badgeNames = null,
         ICommand? viewAlbumCommand = null,
         ICommand? viewArtistCommand = null,
-        Func<string, string?>? artistPhotoSource = null)
+        Func<string, string?>? artistPhotoSource = null,
+        ICommand? moveToAlbumCommand = null)
     {
         Menu.DataContext = track;
 
@@ -553,6 +562,7 @@ public sealed class TrackContextMenuBuilder
         BindOptional(LyricsStudio, lyricsStudioCommand, track);
         BindOptional(RemoveLyrics, removeLyricsCommand, track);
         BindOptional(SendToFolder, sendToFolderCommand, track);
+        BindOptional(MoveToAlbum, moveToAlbumCommand, track);
 
         LyricsBackgroundChoose.CommandParameter = track;
         LyricsBackgroundClear.CommandParameter = track;

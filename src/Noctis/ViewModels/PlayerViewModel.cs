@@ -1831,6 +1831,15 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         await MetadataHelper.OpenMetadataWindow(CurrentTrack);
     }
 
+    /// <summary>GitHub #239: the playing song → Move to Album (it keeps playing; the tag save
+    /// is the one Edit Info does on the playing file).</summary>
+    [RelayCommand]
+    private async Task MoveCurrentTrackToAlbum()
+    {
+        if (CurrentTrack is not { } track) return;
+        await MetadataHelper.OpenMoveToAlbumDialog(new[] { track });
+    }
+
     [RelayCommand]
     private async Task AddCurrentTrackToNewPlaylist()
     {

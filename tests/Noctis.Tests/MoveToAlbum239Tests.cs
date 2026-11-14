@@ -3,8 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using CommunityToolkit.Mvvm.Input;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
+using Noctis.ViewModels;
+using Noctis.Views;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -291,5 +297,187 @@ public class MoveToAlbum239Tests : IDisposable
         Assert.Equal(1, result.Grouped);
         Assert.Equal(before, File.GetLastWriteTimeUtc(own));
         Assert.Equal(new[] { 1, 2 }, Assert.Single(library.Albums).Tracks.Select(t => t.TrackNumber));
+    }
+
+    // ── Dialog, flow and menu ──
+
+    private static Album AlbumOf(params Track[] tracks)
+    {
+        foreach (var t in tracks)
+        {
+            if (t.Id == Guid.Empty) t.Id = Guid.NewGuid();
+            t.AlbumId = Track.ComputeAlbumId(t.AlbumArtist, t.Album);
+        }
+        return new Album { Id = tracks[0].AlbumId, Name = tracks[0].Album, Artist = tracks[0].AlbumArtist, Tracks = tracks.ToList() };
+    }
+
+    private static (Album Current, Album Other, Album Unknown, Track Song) Albums()
+    {
+        var song = T("Old", 1);
+        var current = AlbumOf(song, T("Old", 2));
+        var other = AlbumOf(T("Target", 1), T("Target", 2));
+        var unknown = AlbumOf(new Track { Title = "x", Album = "Unknown Album", AlbumArtist = "Unknown Artist" });
+        return (current, other, unknown, song);
+    }
+
+    [Fact]
+    public void Dialog_ListsRealAlbums_MutesTheCurrentOne_AndMovesIntoThePickedOne()
+    {
+        var (current, other, unknown, song) = Albums();
+        var vm = new MoveToAlbumViewModel(new[] { song }, new[] { other, unknown, current });
+        MoveToAlbumTarget? moved = null;
+        var closed = 0;
+        vm.Confirmed += (_, t) => moved = t;
+        vm.CloseRequested += (_, _) => closed++;
+
+        Assert.Equal(new[] { "Old", "Target" }, vm.Rows.Select(r => r.Name));
+        Assert.True(vm.Rows[0].IsCurrent);
+        vm.SelectAlbumCommand.Execute(vm.Rows[0]);
+        Assert.Null(vm.SelectedRow); // the album it is on already is not a target
+        Assert.False(vm.MoveCommand.CanExecute(null));
+
+        vm.SearchText = "targ";
+        var row = Assert.Single(vm.Rows);
+        vm.SelectAlbumCommand.Execute(row);
+        Assert.True(row.IsSelected);
+        Assert.Contains("Target", vm.ConfirmText);
+        Assert.True(vm.MoveCommand.CanExecute(null));
+        vm.MoveCommand.Execute(null);
+
+        Assert.Equal(new MoveToAlbumTarget("Target", "Artist", IsNew: false), moved);
+        Assert.Equal(1, closed);
+    }
+
+    [Fact]
+    public void Dialog_NewAlbum_NeedsAName_AndPrefillsTheAlbumArtist()
+    {
+        var (current, other, _, song) = Albums();
+        var second = current.Tracks[1];
+        var vm = new MoveToAlbumViewModel(new[] { song, second }, new[] { current, other });
+        MoveToAlbumTarget? moved = null;
+        vm.Confirmed += (_, t) => moved = t;
+
+        vm.ShowCreateCommand.Execute(null);
+        Assert.Equal("Artist", vm.NewAlbumArtist);
+        Assert.False(vm.MoveCommand.CanExecute(null));
+        vm.MoveCommand.Execute(null); // Enter in the empty field
+        Assert.Null(moved);
+
+        vm.NewAlbumName = "  My Mix ";
+        Assert.Contains("My Mix", vm.ConfirmText);
+        Assert.Contains("2", vm.ConfirmText);
+        vm.MoveCommand.Execute(null);
+
+        Assert.Equal(new MoveToAlbumTarget("My Mix", "Artist", IsNew: true), moved);
+    }
+
+    [AvaloniaFact]
+    public async Task Flow_ConfirmCallsTheLibrary_AndReportsFilesNotWritten()
+    {
+        var (current, other, _, song) = Albums();
+        var lib = new FakeLibraryService { MoveResult = new AlbumGroupResult(other.Id, 1, new[] { "1-1.mp3" }) };
+        ((List<Album>)lib.Albums).AddRange(new[] { current, other });
+        ConfirmationRequest? notice = null;
+
+        var result = await MoveToAlbumFlow.RunAsync(new[] { song }, lib,
+            vm =>
+            {
+                vm.SelectAlbumCommand.Execute(vm.Rows.Single(r => r.Name == "Target"));
+                vm.MoveCommand.Execute(null);
+                return Task.CompletedTask;
+            },
+            r => { notice = r; return Task.FromResult(new ConfirmationResult(true, false)); });
+
+        var call = Assert.Single(lib.MoveCalls);
+        Assert.Equal(new[] { song }, call.Tracks);
+        Assert.Equal(("Target", "Artist"), (call.Album, call.AlbumArtist));
+        Assert.Equal(1, result!.Grouped);
+        Assert.NotNull(notice);
+        Assert.True(notice!.InfoOnly);
+        Assert.Equal(new[] { "1-1.mp3" }, notice.Details);
+    }
+
+    [AvaloniaFact]
+    public async Task Flow_Cancelled_MovesNothing()
+    {
+        var (current, other, _, song) = Albums();
+        var lib = new FakeLibraryService();
+        ((List<Album>)lib.Albums).AddRange(new[] { current, other });
+
+        var result = await MoveToAlbumFlow.RunAsync(new[] { song }, lib,
+            vm => { vm.CancelCommand.Execute(null); return Task.CompletedTask; },
+            _ => throw new InvalidOperationException("no notice expected"));
+
+        Assert.Null(result);
+        Assert.Empty(lib.MoveCalls);
+    }
+
+    [AvaloniaFact]
+    public void Dialog_View_PickARow_ThenMove_RaisesConfirmed()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var (current, other, _, song) = Albums();
+        var vm = new MoveToAlbumViewModel(new[] { song }, new[] { current, other });
+        MoveToAlbumTarget? moved = null;
+        vm.Confirmed += (_, t) => moved = t;
+        var win = new MoveToAlbumDialog(vm) { Width = 1100, Height = 820 };
+        win.Show();
+        try
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            var move = win.FindControl<Button>("MoveButton")!;
+            Assert.False(move.IsEffectivelyEnabled);
+            Assert.True(win.FindControl<TextBox>("SearchBox")!.IsEffectivelyVisible);
+
+            vm.SelectAlbumCommand.Execute(vm.Rows.Single(r => r.Name == "Target"));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.True(move.IsEffectivelyEnabled);
+            move.Command!.Execute(null);
+
+            Assert.Equal("Target", moved!.Album);
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void SongMenu_MoveToAlbum_IsHiddenUnlessWired_AndRunsWithTheClickedSong()
+    {
+        var none = new RelayCommand(() => { });
+        var builder = new TrackContextMenuBuilder();
+        var host = new Border();
+        foreach (var key in new[] { "HeartFillIcon", "StarIcon", "TrashIcon" })
+            host.Resources[key] = Avalonia.Media.Geometry.Parse("M0 0L1 1");
+        builder.Build("Remove from Library", null, host);
+        var song = T("Old", 1);
+
+        builder.Bind(song, none, none, none, none, none, none, none, none, none, none);
+        Assert.False(builder.MoveToAlbum.IsVisible);
+
+        Track? ran = null;
+        builder.Bind(song, none, none, none, none, none, none, none, none, none, none,
+            moveToAlbumCommand: new RelayCommand<Track>(t => ran = t));
+        Assert.True(builder.MoveToAlbum.IsVisible);
+        builder.MoveToAlbum.Command!.Execute(builder.MoveToAlbum.CommandParameter);
+        Assert.Same(song, ran);
+    }
+
+    /// <summary>The song lists, the album page and playlists wire the row; the playback bar's
+    /// "…" menu offers it for the playing song.</summary>
+    [Fact]
+    public void Views_WireMoveToAlbum()
+    {
+        var root = RepoRoot();
+        foreach (var view in new[] { "LibrarySongsView.axaml.cs", "AlbumDetailView.axaml.cs", "PlaylistView.axaml.cs" })
+            Assert.Contains("moveToAlbumCommand: vm.MoveToAlbumCommand",
+                File.ReadAllText(Path.Combine(root, "src", "Noctis", "Views", view)));
+        Assert.Contains("MoveCurrentTrackToAlbumCommand",
+            File.ReadAllText(Path.Combine(root, "src", "Noctis", "Views", "PlaybackBarView.axaml")));
+    }
+
+    private static string RepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "Noctis.sln"))) dir = dir.Parent;
+        return dir?.FullName ?? throw new InvalidOperationException("Noctis.sln not found");
     }
 }
