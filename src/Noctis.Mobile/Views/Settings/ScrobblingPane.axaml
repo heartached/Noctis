@@ -140,11 +140,16 @@
                         <Grid ColumnDefinitions="*,*">
                             <Button Name="ThroughComputerButton" Classes="seg" Classes.on="{Binding IsThroughComputer}"
                                     Command="{Binding SelectThroughComputerCommand}" AutomationProperties.Name="{loc:T Mobile.Scrobbling.ThroughComputer}">
-                                <TextBlock Text="{loc:T Mobile.Scrobbling.ThroughComputer}" />
+                                <!-- Shrinks to fit: "Through Computer" lost its last letter on a 360 dp S23. -->
+                                <Viewbox StretchDirection="DownOnly">
+                                    <TextBlock Text="{loc:T Mobile.Scrobbling.ThroughComputer}" />
+                                </Viewbox>
                             </Button>
                             <Button Name="FromPhoneButton" Grid.Column="1" Classes="seg" Classes.on="{Binding IsFromPhone}"
                                     Command="{Binding SelectFromPhoneCommand}" AutomationProperties.Name="{loc:T Mobile.Scrobbling.FromPhone}">
-                                <TextBlock Text="{loc:T Mobile.Scrobbling.FromPhone}" />
+                                <Viewbox StretchDirection="DownOnly">
+                                    <TextBlock Text="{loc:T Mobile.Scrobbling.FromPhone}" />
+                                </Viewbox>
                             </Button>
                         </Grid>
                     </Border>
