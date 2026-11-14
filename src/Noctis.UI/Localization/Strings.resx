@@ -3877,6 +3877,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Select.All" xml:space="preserve"><value>Select All</value><comment>Select mode: tick every song in the list</comment></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Deselect All</value><comment>Select mode: untick every song</comment></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>Done</value><comment>Select mode: leave it; also closes the import result</comment></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Add Songs</value><comment>Playlist page: the + button, its menu row and the add sheet's title</comment></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Search your library</value><comment>Add Songs sheet: search field placeholder</comment></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Import Playlist</value><comment>Playlists page menu: import .m3u/.m3u8 files</comment></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>Imported {0} of {1} songs</value><comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>Imported {0} playlist|Imported {0} playlists</value><comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment></data>

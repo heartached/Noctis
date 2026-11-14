@@ -275,6 +275,14 @@
                                             <!-- A playlist's own edits, the desktop's glyphs (MenuLineEdit, MenuLineTrash,
                                                  MenuLinePlaylistRemove); the destructive rows last, in red, as the
                                                  desktop's v2 menus and Apple's. -->
+                                            <!-- Add Songs: the library on a sheet (the page's + too). -->
+                                            <Button Name="MenuAddSongs" Classes="row np-row" Command="{Binding AddSongsCommand}" IsVisible="{Binding CanAddSongs}">
+                                                <Grid ColumnDefinitions="56,*">
+                                                    <PathIcon Data="{DynamicResource PhPlus}" />
+                                                    <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.AddSongs}" VerticalAlignment="Center" />
+                                                    <Border Grid.Column="1" Classes="np-line" />
+                                                </Grid>
+                                            </Button>
                                             <Button Name="MenuRename" Classes="row np-row" Command="{Binding RenamePlaylistCommand}" IsVisible="{Binding CanEditPlaylist}">
                                                 <Grid ColumnDefinitions="56,*">
                                                     <PathIcon Data="{DynamicResource PhEdit}" />

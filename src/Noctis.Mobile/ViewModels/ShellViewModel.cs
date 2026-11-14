@@ -1172,6 +1172,15 @@ public sealed partial class ShellViewModel : ObservableObject
         await Library.RemovePlaylistCoverAsync(CurrentPlaylist(playlist));
     }
 
+    /// <summary>Add Songs (a playlist's page and its menu): the library's songs on a sheet, ticked
+    /// ones added at Done. Only for a playlist the phone edits (not a smart one).</summary>
+    public void OpenAddSongs(Playlist playlist)
+    {
+        var current = CurrentPlaylist(playlist);
+        if (!AddSongsPageViewModel.CanAddTo(current) || Pages.Any(p => p is AddSongsPageViewModel)) return;
+        Present(new AddSongsPageViewModel(this, current));
+    }
+
     /// <summary>A song's Remove from Playlist (no question asked, as on the desktop and Apple's).</summary>
     public async Task RemoveFromPlaylistAsync(Playlist playlist, IReadOnlyList<Track> tracks)
     {

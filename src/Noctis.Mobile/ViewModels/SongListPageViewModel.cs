@@ -98,6 +98,16 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         if (Playlist is { } playlist) Shell.OpenPlaylistSheetCommand.Execute(playlist);
     }
 
+    /// <summary>A playlist's page: Add Songs in the title row, for a playlist the phone edits.</summary>
+    public bool CanAddSongs => AddSongsPageViewModel.CanAddTo(Playlist);
+
+    /// <summary>The title row's +: the Add Songs sheet.</summary>
+    [RelayCommand]
+    private void AddSongs()
+    {
+        if (Playlist is { } playlist) Shell.OpenAddSongs(playlist);
+    }
+
     /// <summary>A row's ⋯ (or a long press): the song's menu, which on a playlist's page also
     /// offers Remove from Playlist.</summary>
     [RelayCommand]
