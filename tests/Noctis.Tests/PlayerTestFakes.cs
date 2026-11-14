@@ -264,6 +264,16 @@ internal sealed class FakeLibraryService : ILibraryService
         return Task.FromResult(GroupResult);
     }
 
+    /// <summary>What MoveToAlbumAsync was asked for (GitHub #239).</summary>
+    public List<(IReadOnlyList<Track> Tracks, string Album, string AlbumArtist)> MoveCalls { get; } = new();
+    public AlbumGroupResult MoveResult { get; set; } = new(Guid.Empty, 0, Array.Empty<string>());
+    public Task<AlbumGroupResult> MoveToAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default)
+    {
+        MoveCalls.Add((tracks, album, albumArtist));
+        return Task.FromResult(MoveResult);
+    }
+
     /// <summary>What Settings asked of the album grouping (GitHub #193 / #190).</summary>
     public List<bool> AlbumGroupingCalls { get; } = new();
     public List<bool> AlbumGroupingWriteTagsCalls { get; } = new();

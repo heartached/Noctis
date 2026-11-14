@@ -91,6 +91,17 @@ public interface IMetadataService
     bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null);
 
     /// <summary>
+    /// GitHub #239 Move to Album: <see cref="WriteTrackMetadata(Track)"/> plus the album's
+    /// identity tags (sort names, MusicBrainz release ids) in the same save. The default writes
+    /// the track's tags only, so test stubs keep compiling.
+    /// </summary>
+    bool WriteTrackMetadata(Track track, AlbumIdentityTags albumIdentity) => WriteTrackMetadata(track);
+
+    /// <summary>GitHub #239: the album identity tags of a file (see <see cref="AlbumIdentityTags"/>);
+    /// null when it cannot be read. The default reads nothing.</summary>
+    AlbumIdentityTags? ReadAlbumIdentity(string filePath) => null;
+
+    /// <summary>
     /// Sets the embedded album artwork on an audio file.
     /// Pass null to remove artwork.
     /// </summary>
