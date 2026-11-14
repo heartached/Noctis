@@ -553,17 +553,32 @@
                                                        IsVisible="{Binding SyncText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             <TextBlock Name="LastSyncLabel" Classes="row-sub" Text="{Binding LastSyncText}"
                                                        IsVisible="{Binding SyncText, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                            <!-- Indeterminate only while shown: hidden, its endless animation
-                                                 still keeps Avalonia drawing every 16 ms (LibraryNotices). -->
-                                            <ProgressBar Name="SyncProgress" Classes="thin" Margin="0,7,0,1" Value="{Binding SyncFraction}"
-                                                         IsVisible="{Binding IsSyncing}">
-                                                <ProgressBar.IsIndeterminate>
+                                            <!-- Counted: the thin bar fills. Before the count: IndeterminateBar, not
+                                                 Fluent's indeterminate ProgressBar, whose 2 s loop stalled three
+                                                 frames at every turn on an S23 (LibraryNotices). -->
+                                            <ProgressBar Name="SyncProgress" Classes="thin" Margin="0,7,0,1" Value="{Binding SyncFraction}">
+                                                <ProgressBar.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                        <Binding Path="IsSyncing" />
+                                                        <Binding Path="IsSyncCounted" />
+                                                    </MultiBinding>
+                                                </ProgressBar.IsVisible>
+                                            </ProgressBar>
+                                            <views:IndeterminateBar Name="SyncWorking" Height="3" Margin="0,7,0,1"
+                                                                    Track="{DynamicResource PhoneFillBrush}" Fill="{DynamicResource AccentTextExactBrush}">
+                                                <views:IndeterminateBar.IsActive>
                                                     <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                         <Binding Path="IsSyncing" />
                                                         <Binding Path="!IsSyncCounted" />
                                                     </MultiBinding>
-                                                </ProgressBar.IsIndeterminate>
-                                            </ProgressBar>
+                                                </views:IndeterminateBar.IsActive>
+                                                <views:IndeterminateBar.IsVisible>
+                                                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                        <Binding Path="IsSyncing" />
+                                                        <Binding Path="!IsSyncCounted" />
+                                                    </MultiBinding>
+                                                </views:IndeterminateBar.IsVisible>
+                                            </views:IndeterminateBar>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Classes="row-action" Text="{loc:T Mobile.Account.SyncNow}" IsVisible="{Binding ShowSyncAction}" />
                                     </Grid>
@@ -579,15 +594,29 @@
                                             IsEnabled="{Binding CanDownload}" AutomationProperties.Name="{loc:T Mobile.Account.DownloadEverything}">
                                         <TextBlock Text="{loc:T Mobile.Account.DownloadEverything}" />
                                     </Button>
-                                    <ProgressBar Name="DownloadProgress" Classes="thin" Margin="16,0,16,14" Value="{Binding DownloadFraction}"
-                                                 IsVisible="{Binding IsDownloading}">
-                                        <ProgressBar.IsIndeterminate>
+                                    <ProgressBar Name="DownloadProgress" Classes="thin" Margin="16,0,16,14" Value="{Binding DownloadFraction}">
+                                        <ProgressBar.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="IsDownloading" />
+                                                <Binding Path="IsDownloadCounted" />
+                                            </MultiBinding>
+                                        </ProgressBar.IsVisible>
+                                    </ProgressBar>
+                                    <views:IndeterminateBar Name="DownloadWorking" Height="3" Margin="16,0,16,14"
+                                                            Track="{DynamicResource PhoneFillBrush}" Fill="{DynamicResource AccentTextExactBrush}">
+                                        <views:IndeterminateBar.IsActive>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                 <Binding Path="IsDownloading" />
                                                 <Binding Path="!IsDownloadCounted" />
                                             </MultiBinding>
-                                        </ProgressBar.IsIndeterminate>
-                                    </ProgressBar>
+                                        </views:IndeterminateBar.IsActive>
+                                        <views:IndeterminateBar.IsVisible>
+                                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                                <Binding Path="IsDownloading" />
+                                                <Binding Path="!IsDownloadCounted" />
+                                            </MultiBinding>
+                                        </views:IndeterminateBar.IsVisible>
+                                    </views:IndeterminateBar>
                                 </StackPanel>
                             </Border>
                             <TextBlock Name="DownloadLabel" Classes="group-footnote" Text="{Binding DownloadText}"
