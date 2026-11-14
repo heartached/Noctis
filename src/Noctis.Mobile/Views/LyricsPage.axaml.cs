@@ -27,8 +27,14 @@ public partial class LyricsPage : UserControl
     private const double MaxCascadeLagStepPx = 16;
 
     /// <summary>After the user's last touch on the lyrics, how long they stay free to read
-    /// before the page glides back to the sung line (Apple Music waits a few seconds).</summary>
-    internal static TimeSpan BrowseResumeDelay { get; set; } = TimeSpan.FromSeconds(3.5);
+    /// before the page glides back to the sung line. Beta (11-11): 3.5 s, restarted by every
+    /// pixel a fling moved for up to 2.5 s after the finger lifted, made the wait up to 6 s;
+    /// Apple Music comes back about 2 s after the scroll settles.</summary>
+    internal static TimeSpan BrowseResumeDelay { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>A fling's movement restarts that wait only this long after the finger lifts:
+    /// its long slow tail keeps the list browsing but no longer pushes the return back.</summary>
+    internal static TimeSpan FlingExtendWindow { get; set; } = TimeSpan.FromMilliseconds(500);
 
     /// <summary>How long the transport stays up after a touch while the song plays.</summary>
     internal static TimeSpan ControlsHideDelay { get; set; } = TimeSpan.FromSeconds(4);
@@ -316,24 +322,38 @@ public partial class LyricsPage : UserControl
     private bool _fingerDown;
     private double _fingerUpMs = double.NegativeInfinity;
 
-    private void OnScrollPointerPressed(object? sender, PointerPressedEventArgs e) => _fingerDown = true;
+    private void OnScrollPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _fingerDown = true;
+        if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();   // a touch while reading holds the lines
+    }
 
     private void OnScrollPointerReleased(object? sender, PointerEventArgs e)
     {
         if (!_fingerDown) return;
         _fingerDown = false;
         _fingerUpMs = LyricsPageViewModel.NowMs();
+        // The wait counts from the lift (the last touch), not from the drag's last movement.
+        if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();
     }
 
     /// <summary>The user took the lyrics: the glide stops, every line sharpens (the view model's
-    /// browse ramp) and the page waits <see cref="BrowseResumeDelay"/> after the last movement
-    /// before following the song again. Internal for tests.</summary>
+    /// browse ramp) and the page waits <see cref="BrowseResumeDelay"/> after the last touch
+    /// before following the song again. Movement under the finger, or a fling within
+    /// <see cref="FlingExtendWindow"/> of the lift, restarts the wait; a fling's later tail
+    /// does not. Internal for tests.</summary>
     internal void BeginBrowse()
     {
         if (_lyrics == null) return;
         StopGlide();
         _lastAppliedY = LyricsScroll.Offset.Y;
         _lyrics.IsBrowsing = true;
+        var touching = _fingerDown || LyricsPageViewModel.NowMs() - _fingerUpMs < FlingExtendWindow.TotalMilliseconds;
+        if (touching || !_browseTimer.IsEnabled) RestartBrowseTimer();
+    }
+
+    private void RestartBrowseTimer()
+    {
         _browseTimer.Stop();
         _browseTimer.Interval = BrowseResumeDelay;
         _browseTimer.Start();
@@ -397,9 +417,13 @@ public partial class LyricsPage : UserControl
 
         if (container.TranslatePoint(new Point(0, 0), LyricsList) is not { } origin) return;
         // Coordinates relative to the list exclude its margin; the scroll extent includes it.
+        var top = origin.Y + LyricsList.Margin.Top;
         var target = LyricsScrollAnchor.ComputeAnchorOffset(
-            origin.Y + LyricsList.Margin.Top, container.Bounds.Height,
-            LyricsScroll.Viewport.Height, LyricsScroll.Extent.Height, AnchorRatio);
+            top, container.Bounds.Height, LyricsScroll.Viewport.Height, LyricsScroll.Extent.Height, AnchorRatio);
+        // Beta (11-09): sideways on a 360 dp phone the viewport is ~230 dp, and centring a
+        // wrapped sung line on the anchor put its first row under the top fade's solid wash.
+        // The line's top stays below the fade (portrait's taller viewport seldom needs it).
+        target = Math.Max(0, Math.Min(target, top - TopFade.Bounds.Height));
 
         StopGlide();
         if (!animate || Math.Abs(target - LyricsScroll.Offset.Y) < 2)
