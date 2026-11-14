@@ -182,6 +182,8 @@ public class MobileLibraryPagesTests
             if (e.Action == NotifyCollectionChangedAction.Reset) resets++; else other++;
         };
 
+        // A song more: an update with the same songs keeps the sorted list (no Reset at all).
+        rig.Library.TrackList.Add(MobileFixtures.Song("Song 10000"));
         rig.Library.RaiseLibraryUpdated();
         Assert.Equal(1, resets);
         Assert.Equal(0, other);
