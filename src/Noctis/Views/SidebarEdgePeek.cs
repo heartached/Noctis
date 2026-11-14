@@ -41,6 +41,10 @@ internal sealed class SidebarEdgePeek
         _rail.PropertyChanged += OnPointerOverChanged;
     }
 
+    /// <summary>How long the pointer may be off both strip and rail before the rail tucks
+    /// away. Zero closes on the next dispatcher pass.</summary>
+    public TimeSpan CloseDelay { get; init; }
+
     /// <summary>Whether the hidden rail is currently slid in.</summary>
     public bool IsPeeking { get; private set; }
 
@@ -54,24 +58,42 @@ internal sealed class SidebarEdgePeek
 
     private void OnPointerOverChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (e.Property != InputElement.IsPointerOverProperty || !_isHidden()) return;
+        if (!_isHidden()) return;
+        // Keyboard focus leaving the rail (GitHub #233) closes it like the pointer leaving.
+        if (e.Property == InputElement.IsKeyboardFocusWithinProperty)
+        {
+            if (IsPeeking && !_rail.IsKeyboardFocusWithin) QueueClose();
+            return;
+        }
+        if (e.Property != InputElement.IsPointerOverProperty) return;
         if (_edge.IsPointerOver || _rail.IsPointerOver)
         {
             IsPeeking = true;
             Layout();
         }
-        else if (IsPeeking && !_closeQueued)
+        else if (IsPeeking)
         {
-            // Crossing from the strip onto the rail clears one before setting the other.
-            _closeQueued = true;
-            Dispatcher.UIThread.Post(CloseIfLeft, DispatcherPriority.Background);
+            QueueClose();
         }
+    }
+
+    private void QueueClose()
+    {
+        if (_closeQueued) return;
+        // Crossing from the strip onto the rail clears one before setting the other.
+        _closeQueued = true;
+        if (CloseDelay > TimeSpan.Zero)
+            DispatcherTimer.RunOnce(CloseIfLeft, CloseDelay, DispatcherPriority.Background);
+        else
+            Dispatcher.UIThread.Post(CloseIfLeft, DispatcherPriority.Background);
     }
 
     private void CloseIfLeft()
     {
         _closeQueued = false;
         if (!IsPeeking || !_isHidden() || _edge.IsPointerOver || _rail.IsPointerOver) return;
+        // Keyboard focus inside the rail (Tab into it, a rename box) keeps it open (GitHub #233).
+        if (_rail.IsKeyboardFocusWithin) return;
         // A playlist's context menu takes the pointer off the rail: stay until it closes.
         var menu = _rail.GetVisualDescendants().OfType<Control>()
             .Select(c => c.ContextMenu).FirstOrDefault(m => m is { IsOpen: true });
