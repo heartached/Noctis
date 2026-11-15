@@ -381,6 +381,28 @@ public static class ArtworkCache
         }
     }
 
+    /// <summary>
+    /// Drops every cached bitmap no control holds (<see cref="Acquire"/>), for when the window
+    /// has gone to the background: the cache otherwise stays at its byte budget of covers from
+    /// pages that are not shown, in native memory, for as long as the app sits in the tray.
+    /// Covers on screen stay. A dropped cover is decoded again when a page shows it (from the
+    /// thumbnail disk cache for grid sizes). Returns how many entries and approximate bytes went.
+    /// </summary>
+    public static (int Count, long Bytes) TrimUnheld()
+    {
+        int count = 0;
+        long bytes = 0;
+        foreach (var entry in Cache.Values)
+        {
+            if (Volatile.Read(ref entry.Refs) > 0) continue;
+            if (!Cache.TryRemove(new KeyValuePair<string, CacheEntry>(entry.Key, entry))) continue;
+            count++;
+            bytes += entry.Bytes;
+            OnEntryRemoved(entry);
+        }
+        return (count, bytes);
+    }
+
     private static void OnEntryRemoved(CacheEntry removed)
     {
         Interlocked.Add(ref _totalBytes, -removed.Bytes);

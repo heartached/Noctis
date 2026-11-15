@@ -100,7 +100,49 @@ public sealed class Loc : INotifyPropertyChanged
     public CultureInfo Culture => _culture;
 
     /// <summary>Indexer for XAML bindings: <c>Instance["Nav.Home"]</c>.</summary>
-    public string this[string key] => Get(key);
+    public string this[string key]
+    {
+        get
+        {
+            if (Interlocked.Increment(ref _indexerReads) % SweepEveryReads == 0 && !_sweeping)
+                QueueSweep();
+            return Get(key);
+        }
+    }
+
+    /// <summary>
+    /// Every <c>{loc:T}</c> binding reads the indexer once when it starts; after this many reads
+    /// a sweep runs (<see cref="QueueSweep"/>). Internal for tests.
+    /// </summary>
+    internal const int SweepEveryReads = 2048;
+
+    /// <summary>Property name of the sweep notification: no binding reads a property of that name.</summary>
+    internal const string SweepPropertyName = "Sweep";
+
+    private int _indexerReads;
+    private int _sweepQueued;
+    private bool _sweeping;
+
+    /// <summary>
+    /// Each <c>{loc:T}</c> binding is a weak PropertyChanged subscription here, and Avalonia drops
+    /// the subscription of a control that is gone only while this object raises PropertyChanged,
+    /// which it otherwise does only on a language change. So every discarded localized control
+    /// (a page, dialog, menu or row built and thrown away) kept a WeakReference, its GC handle
+    /// and a dictionary slot for the whole session: 38 per song change on the Home page, 12,160
+    /// after 320 songs (memory harness, 11-14), in a list that only grows. A notification for a
+    /// property nobody binds lets Avalonia sweep them; the bindings themselves ignore it.
+    /// </summary>
+    private void QueueSweep()
+    {
+        if (Interlocked.Exchange(ref _sweepQueued, 1) == 1) return;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            Volatile.Write(ref _sweepQueued, 0);
+            _sweeping = true;
+            try { PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(SweepPropertyName)); }
+            finally { _sweeping = false; }
+        }, Avalonia.Threading.DispatcherPriority.Background);
+    }
 
     /// <summary>The string for <paramref name="key"/> in the current culture (English fallback, key on miss).</summary>
     public static string T(string key) => Instance.Get(key);
