@@ -631,6 +631,25 @@ internal sealed class GlassBackdropCache
         return false;
     }
 
+    /// <summary>
+    /// Device pixels the compositor's dirty rect runs past what actually changed: Avalonia 12
+    /// inflates every dirty rect by 1 px for antialiasing and rounds it out to whole pixels
+    /// (SingleDirtyRectTracker / MultiDirtyRectTracker / RegionDirtyRectTracker: Inflate(1),
+    /// then FromRectUnscaled). A change inside a panel therefore reports up to this far beyond
+    /// it, and those pixels are repainted exactly as they were.
+    /// </summary>
+    internal const int DirtySlack = 2;
+
+    /// <summary>A dirty rect <paramref name="repainted"/> reaches past <paramref name="panel"/> by
+    /// more than <see cref="DirtySlack"/>: something beside the panel changed.</summary>
+    internal static bool SpillsPast(SKRectI repainted, SKRectI panel)
+    {
+        if (repainted.IsEmpty) return false;
+        var allowed = panel;
+        allowed.Inflate(DirtySlack, DirtySlack);
+        return !allowed.Contains(repainted);
+    }
+
     /// <summary>True while pixels under the panel may still hold frost the copy does not cover.</summary>
     internal bool IsSuspect { get { lock (_gate) return _suspect; } }
 
@@ -673,8 +692,11 @@ internal sealed class GlassBackdropCache
                 // 3σ past that rect, where this frame repaints nothing: repaint the whole panel
                 // next frame. Children draw above the frost and never feed it, so a frame that only
                 // repainted them (the island's title, a hovered button) needs no second pass; nor
-                // does another glass panel repainting itself over or beside this one.
-                var followUp = !whole && !neighbourRepaint && (repainted != fresh || BeneathChanged(source, at, panel, fresh));
+                // does another glass panel repainting itself over or beside this one. Nor does the
+                // pixel or two the compositor adds round every dirty rect (DirtySlack): a list
+                // scrolling edge to edge inside the panel reaches just past it on every step.
+                var followUp = !whole && !neighbourRepaint
+                    && (SpillsPast(repainted, panel) || BeneathChanged(source, at, panel, fresh));
                 Capture(source, at, panel, fresh, surface.Context, whole);
                 if ((followUp || _suspect) && !_repaintQueued && _requestFullRepaint != null)
                     askRepaint = _repaintQueued = true;
@@ -1067,9 +1089,10 @@ internal sealed class GlassReachOp : ICustomDrawOperation
     /// </summary>
     internal static bool ShouldRepaint(SKRectI clip, SKRectI panel, IntPtr surface, GlassBackdropCache? self)
     {
-        // Inside the panel the backdrop op handles the repaint itself; a repaint covering the
-        // whole panel frosted it from what is there now.
-        if (clip.IsEmpty || panel.Contains(clip) || clip.Contains(panel)) return false;
+        // Inside the panel the backdrop op handles the repaint itself (within the compositor's
+        // own slack round a dirty rect); a repaint covering the whole panel frosted it from what
+        // is there now.
+        if (clip.IsEmpty || !GlassBackdropCache.SpillsPast(clip, panel) || clip.Contains(panel)) return false;
         return !GlassBackdropCache.IsAnotherPanelsOwnRepaint(clip, surface, self);
     }
 }
