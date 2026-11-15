@@ -69,7 +69,7 @@ public class RetainedRowsTests
             {
                 Id = Guid.NewGuid(), Title = $"Song {i:0000}", Artist = $"Artist {i % 37}", Album = $"Album {i / 12}",
                 FilePath = TestPaths.Primary("t", $"{i:0000}.mp3"), Duration = TimeSpan.FromMinutes(3),
-                Rating = i % 3 == 0 ? 4 : 0, IsFavorite = i % 5 == 0, TrackNumber = i % 12 + 1,
+                Rating = i % 3 == 0 ? 4 : 0, IsFavorite = i % 5 == 0, TrackNumber = i % 12 + 1, Year = 1970 + i % 50,
             });
         var persistence = new TestPersistenceService();
         var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
@@ -536,6 +536,55 @@ public class RetainedRowsTests
         Assert.NotEmpty(rowPeers);
         Assert.All(rowPeers, p => Assert.True(p.Owner.IsVisible, "a parked row is in the automation tree"));
         Assert.Equal(list.GetRealizedContainers()!.Count(), rowPeers.Count);
+        window.Close();
+    }
+
+    private static readonly string[] HiddenByDefault =
+        { "Bpm", "Bitrate", "SampleRate", "Year", "AlbumArtist", "Composer", "Format", "DateAdded", "ReplayGain" };
+
+    /// <summary>Songs rows build a column's cell only once the column is shown: the nine
+    /// hidden-by-default columns cost one empty control each instead of their content, a column
+    /// the user shows fills in on every row (re-used rows included), and hiding it again hides it.</summary>
+    [AvaloniaFact]
+    public async Task Songs_HiddenColumns_BuildTheirCellsOnlyWhenShown()
+    {
+        var (vm, view, window) = MountSongs(600);
+        await PumpUntil(() => vm.FilteredTracks.Count == 600);
+        var list = view.TrackList;
+        List<ColumnsPanel> Rows() => list.GetRealizedContainers()!.OfType<ListBoxItem>()
+            .Select(i => i.GetVisualDescendants().OfType<ColumnsPanel>().First()).ToList();
+        LazyCell Cell(ColumnsPanel row, string key) => (LazyCell)row.Children.First(c => ColumnsPanel.GetColumn(c) == key);
+
+        foreach (var row in Rows())
+            foreach (var key in HiddenByDefault)
+            {
+                Assert.False(view.Columns.IsVisible(key));
+                Assert.False(Cell(row, key).IsBuilt, $"{key} cell built while its column is hidden");
+            }
+        var perRow = Rows()[0].GetVisualDescendants().Count();
+
+        view.Columns.SetVisible("Year", true);
+        Pump();
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        foreach (var y in new[] { 0.0, 2500, 9000, 400 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in Rows())
+            {
+                var track = (Track)row.DataContext!;
+                var year = Cell(row, "Year");
+                Assert.True(year.IsBuilt && year.IsVisible);
+                Assert.True(year.Bounds.Width > 0);
+                Assert.Equal(track.Year.ToString(), Assert.IsType<TextBlock>(year.Child).Text);
+                Assert.False(Cell(row, "Bpm").IsBuilt);
+            }
+        }
+        Assert.Equal(perRow + 1, Rows()[0].GetVisualDescendants().Count()); // the Year TextBlock
+
+        view.Columns.SetVisible("Year", false);
+        Pump();
+        Assert.All(Rows(), row => Assert.False(Cell(row, "Year").IsVisible));
         window.Close();
     }
 }
