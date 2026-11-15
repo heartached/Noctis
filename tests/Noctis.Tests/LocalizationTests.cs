@@ -188,6 +188,28 @@ public class LocalizationTests
     }
 
     /// <summary>
+    /// Settings status lines that were English literals in SettingsViewModel (artist credits on one
+    /// track, an unreachable music folder) come from the strings, one track and many apart.
+    /// </summary>
+    [AvaloniaFact]
+    public void SettingsStatusLines_ComeFromTheStrings()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Artist credits updated on 1 track.", Noctis.ViewModels.SettingsViewModel.ArtistCreditsUpdatedText(1));
+            Assert.Equal("Artist credits updated on 1,234 tracks.", Noctis.ViewModels.SettingsViewModel.ArtistCreditsUpdatedText(1234));
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Исполнители обновлены у 1 трека.", Noctis.ViewModels.SettingsViewModel.ArtistCreditsUpdatedText(1));
+            Assert.Equal(@"Нет доступа к A:\Music — медиатека не изменена. Проверьте диск и обновите.",
+                Noctis.ViewModels.SettingsViewModel.ScanAbortedStatus(new[] { @"A:\Music" }));
+            Assert.Equal("Неверный токен или ошибка сети.", Loc.T("Settings.ListenBrainzTokenOrNetwork"));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>
     /// Translations that ship complete (Russian, GitHub #128) must carry every English key and
     /// nothing else, with the same {0} / {1:N0} placeholders per key: a dropped placeholder loses
     /// a value on screen and an extra one makes string.Format throw.

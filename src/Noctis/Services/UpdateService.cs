@@ -102,9 +102,9 @@ public sealed class UpdateService
     /// </summary>
     public static string? ExternalUpdateHint => Source switch
     {
-        InstallSource.Scoop => "Update with: scoop update noctis",
-        InstallSource.Portable => "Download the new version from GitHub.",
-        InstallSource.DebPackage => "Download the new .deb from GitHub and open it to install.",
+        InstallSource.Scoop => Noctis.Localization.Loc.T("Settings.UpdateHintScoop"),
+        InstallSource.Portable => Noctis.Localization.Loc.T("Settings.UpdateHintPortable"),
+        InstallSource.DebPackage => Noctis.Localization.Loc.T("Settings.UpdateHintDeb"),
         _ => null
     };
 
