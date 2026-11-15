@@ -21,10 +21,13 @@ namespace Noctis.Tests;
 /// Owner 11-14: scrolling inside a pop-up "sometimes 60 fps, sometimes 30, sometimes 10". With
 /// Liquid Glass on, every scroll step inside a frosted card cost a second frame that repainted and
 /// re-blurred the whole card, its blur ring and its shadow (PopupScrollCostTests' harness: 1.34 Mpx
-/// and two frames per wheel notch instead of 0.47 Mpx and one): the compositor's dirty rect runs a
-/// pixel or two past what changed (Avalonia 12 inflates it by 1 px and rounds out), so a list
-/// scrolling edge to edge inside the card read as "something beside the panel changed". Pinned here
-/// on a raster surface replaying the compositor.
+/// and two frames per wheel notch instead of 0.47 Mpx and one). Two causes, both pinned here on a
+/// raster surface replaying the compositor:
+///  - the compositor's dirty rect runs a pixel or two past what changed (Avalonia 12 inflates it
+///    by 1 px and rounds out), so a list scrolling edge to edge inside the card read as "something
+///    beside the panel changed";
+///  - the GPU surface copy cannot be read back, so a partial frame could never rule out a change
+///    beneath the frost. A host whose layers beneath only change as a whole now says so.
 /// </summary>
 public class PopupGlassScrollTests
 {
@@ -90,23 +93,28 @@ public class PopupGlassScrollTests
 
     /// <summary>Repaints asked for by one partial frame of a list scrolling inside the panel, its
     /// dirty rect being <paramref name="dirty"/>; the frost must still match a full frame.</summary>
-    private static int RepaintsAfterOneScrollStep(SKRectI dirty)
+    private static int RepaintsAfterOneScrollStep(SKRectI dirty, bool gpu, bool beneathRepaintsWhole)
     {
         var repaints = 0;
         var cache = new GlassBackdropCache(() => repaints++);
+        GlassBackdropCache.UnreadableForTests = gpu;
         try
         {
             using var s = NewSurface();
             using var path = PanelPath();
-            Frame(s, Whole, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true));
-            Frame(s, dirty, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false));
+            Frame(s, Whole, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: true, beneathRepaintsWhole: beneathRepaintsWhole));
+            Frame(s, dirty, c => cache.Draw(c, s, path, Sigma, 1, wholePanelRepainted: false, beneathRepaintsWhole: beneathRepaintsWhole));
 
             using var reference = NewSurface();
             Frame(reference, Whole, c => GlassBlur.Draw(c, reference, Panel, path, Sigma));
             Assert.True(MaxDiff(s, reference) <= 1, $"the partial frame drifted by {MaxDiff(s, reference)} at {Where} dirty {dirty}");
             return repaints;
         }
-        finally { cache.Release(); }
+        finally
+        {
+            GlassBackdropCache.UnreadableForTests = false;
+            cache.Release();
+        }
     }
 
     [Fact]
@@ -116,15 +124,15 @@ public class PopupGlassScrollTests
         // round-out at a fractional position) puts the dirty rect just past both sides. (Rows
         // clear of the rounded corners: a partial frame across a corner's antialiased rim is off
         // by a few levels there with or without a follow-up, a separate matter.)
-        Assert.Equal(0, RepaintsAfterOneScrollStep(Inflated(new SKRectI(40, 50, 200, 90), 1, 0, 1, 0)));
-        Assert.Equal(0, RepaintsAfterOneScrollStep(Inflated(new SKRectI(40, 50, 200, 90), 2, 1, 2, 1)));
+        Assert.Equal(0, RepaintsAfterOneScrollStep(Inflated(new SKRectI(40, 50, 200, 90), 1, 0, 1, 0), gpu: false, beneathRepaintsWhole: false));
+        Assert.Equal(0, RepaintsAfterOneScrollStep(Inflated(new SKRectI(40, 50, 200, 90), 2, 1, 2, 1), gpu: false, beneathRepaintsWhole: false));
     }
 
     [Fact]
     public void AChangeReachingFurtherPastTheCard_StillAsksForOne()
     {
         // 3 px past the panel is more than the compositor's slack: something beside it changed.
-        Assert.Equal(1, RepaintsAfterOneScrollStep(Inflated(new SKRectI(40, 50, 200, 90), 0, 0, 3, 0)));
+        Assert.Equal(1, RepaintsAfterOneScrollStep(Inflated(new SKRectI(40, 50, 200, 90), 0, 0, 3, 0), gpu: false, beneathRepaintsWhole: false));
     }
 
     [Fact]
@@ -134,5 +142,53 @@ public class PopupGlassScrollTests
         Assert.False(GlassReachOp.ShouldRepaint(Inflated(new SKRectI(40, 50, 200, 90), 2, 2, 2, 2), PanelI, IntPtr.Zero, null));
         Assert.True(GlassReachOp.ShouldRepaint(Inflated(new SKRectI(40, 50, 200, 90), 0, 0, 3, 0), PanelI, IntPtr.Zero, null));
         Assert.True(GlassReachOp.ShouldRepaint(new SKRectI(205, 80, 230, 95), PanelI, IntPtr.Zero, null));
+    }
+
+    [Fact]
+    public void OnTheGpu_EveryPartialFrameAskedForAFullRepaint_UnlessBeneathRepaintsWhole()
+    {
+        var inside = new SKRectI(60, 50, 180, 90);
+        // Raster: the copy is compared, nothing beneath changed, nothing more to do.
+        Assert.Equal(0, RepaintsAfterOneScrollStep(inside, gpu: false, beneathRepaintsWhole: false));
+        // GPU: the copy cannot be read, so a change beneath could never be ruled out...
+        Assert.Equal(1, RepaintsAfterOneScrollStep(inside, gpu: true, beneathRepaintsWhole: false));
+        // ...unless the host knows nothing beneath changes without repainting the whole panel.
+        Assert.Equal(0, RepaintsAfterOneScrollStep(inside, gpu: true, beneathRepaintsWhole: true));
+        // A change beside the panel is still news either way.
+        Assert.Equal(1, RepaintsAfterOneScrollStep(new SKRectI(60, 50, 220, 90), gpu: true, beneathRepaintsWhole: true));
+    }
+
+    private static bool PumpUntil(Func<bool> condition, int budgetMs = 3000)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < budgetMs)
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            if (condition()) return true;
+            Thread.Sleep(5);
+        }
+        Dispatcher.UIThread.RunJobs();
+        return condition();
+    }
+
+    [AvaloniaFact]
+    public void ThePopUpCard_TellsItsFrostThatOnlyWholeLayersLieBeneathIt()
+    {
+        var host = new PillDialogHost { Content = new Border { Width = 400, Height = 240 } };
+        var window = new Window { Width = 800, Height = 600, Background = Brushes.Transparent, Content = host };
+        window.Show();
+        try
+        {
+            Assert.True(PumpUntil(() => host.CardGlass != null));
+            Assert.True(host.CardGlass!.BeneathRepaintsWhole);
+            // Beneath the frost: the backdrop layer only, and it fills the host, so any change
+            // in it repaints the whole card.
+            var frame = Assert.IsAssignableFrom<Panel>(host.CardGlass.GetVisualParent());
+            var root = Assert.IsAssignableFrom<Panel>(frame.GetVisualParent());
+            Assert.Equal(new Control[] { host.BackdropLayer!, frame }, root.Children.ToArray());
+            Assert.Same(host.CardGlass, frame.Children[0]);
+        }
+        finally { window.Close(); }
     }
 }
