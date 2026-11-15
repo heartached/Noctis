@@ -206,6 +206,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             activity.MainViewFactory = () =>
             {
                 var view = new ShellView { DataContext = shell };
+                // The first ⋯ after launch built its card in the tap's frame: build it while idle.
+                view.AttachedToVisualTree += (_, _) => view.PrebuildMenuSoon();
                 // Scroll-freeze diagnostic, off unless `adb shell setprop debug.noctis.stalls 1`.
                 if (ReadSystemProperty("debug.noctis.stalls") == "1")
                     view.AttachedToVisualTree += (_, _) =>
