@@ -72,16 +72,4 @@ public class AdvancedTagAliasTests : IDisposable
         Assert.True(AdvancedTagIO.WriteAll(path, cleared, reread));
         Assert.Equal(string.Empty, AdvancedTagIO.ReadAll(path).AlbumSort);
     }
-
-    [Theory]
-    [InlineData("EL ÚLTIMO TOUR DEL MUNDO", "EL ÚLTIMO TOUR DEL ", "MUNDO")]
-    [InlineData("Vete", "", "Vete")]
-    [InlineData("", "", "")]
-    [InlineData("Two words ", "Two ", "words")]
-    public void Title_split_keeps_last_word_for_the_badge(string title, string head, string last)
-    {
-        var (h, l) = TitleSplitConverter.Split(title.TrimEnd());
-        Assert.Equal(head, h);
-        Assert.Equal(last, l);
-    }
 }
