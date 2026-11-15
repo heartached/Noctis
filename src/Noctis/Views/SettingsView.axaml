@@ -7660,6 +7660,7 @@
                         <controls:CollapsibleContent IsOpen="{Binding IsPhoneAdvancedOpen}" Lift="10" Motion="Glide">
                         <StackPanel x:Name="PhoneAdvancedBody" Spacing="16" Margin="0,14,0,0">
                             <StackPanel>
+                            <StackPanel>
                             <Grid Classes="sub-setting" ColumnDefinitions="140,*">
                                 <TextBlock Grid.Column="0" Text="{loc:T Sync.DeviceName}" VerticalAlignment="Center" FontSize="13"/>
                                 <TextBox Grid.Column="1" Text="{Binding SyncDeviceName}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="220"
@@ -7688,7 +7689,7 @@
                             <!-- Freshly issued key: shown once, never stored in clear. Hidden behind dots until
                                  the eye is pressed; Copy works either way. -->
                             <controls:CollapsibleContent IsOpen="{Binding IsIssuedApiKeyOpen}" Lift="10" Motion="Glide">
-                            <Border x:Name="ApiKeyPanel" Background="#18000000" CornerRadius="14" Padding="14,12">
+                            <Border Margin="0,16,0,0" x:Name="ApiKeyPanel" Background="#18000000" CornerRadius="14" Padding="14,12">
                                 <StackPanel Spacing="10">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <PathIcon Data="{StaticResource AccountKeyIcon}" Width="14" Height="14" Opacity="0.75" VerticalAlignment="Center"/>
@@ -7726,6 +7727,7 @@
                                 </StackPanel>
                             </Border>
                             </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         </controls:CollapsibleContent>
                     </StackPanel>
@@ -7858,6 +7860,7 @@
                             </StackPanel>
                             <StackPanel Spacing="2">
                                 <TextBlock Text="{loc:T Settings.LocalApiToken}" FontSize="10" Opacity="0.5"/>
+                                <StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <TextBlock Text="{Binding LocalApiTokenDisplay}" FontSize="12"
                                                FontFamily="Consolas,Menlo,monospace"
@@ -7895,14 +7898,15 @@
                                 <!-- Full token glides open under the row on Show and folds away on
                                      Hide; the row above never re-flows. -->
                                 <controls:CollapsibleContent IsOpen="{Binding LocalApiTokenRevealed}"
-                                                             Lift="8" Motion="Glide">
+                                                             Lift="10" Motion="Glide">
                                     <Border Background="#14FFFFFF" CornerRadius="6"
-                                            Padding="10,8" Margin="0,6,0,0">
+                                            Padding="10,8" Margin="0,8,0,0">
                                         <SelectableTextBlock Text="{Binding LocalApiToken}" FontSize="12"
                                                              FontFamily="Consolas,Menlo,monospace"
                                                              TextWrapping="Wrap"/>
                                     </Border>
                                 </controls:CollapsibleContent>
+                                </StackPanel>
                             </StackPanel>
                             <TextBlock Text="{loc:T Settings.LocalApiWarning}"
                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
@@ -7995,6 +7999,7 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="8">
+                    <StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                         <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
                                 Width="40" Height="40" CornerRadius="10"
@@ -8079,8 +8084,8 @@
                     </Grid>
 
                     <!-- Enable Scrobbling (when connected) -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsLastFmConnected}" Lift="6">
-                    <StackPanel Spacing="8">
+                    <controls:CollapsibleContent IsOpen="{Binding IsLastFmConnected}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,8,0,0" Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
@@ -8168,10 +8173,12 @@
                     </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="8">
+                    <StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                         <!-- Official multi-colour ListenBrainz logo (transparent PNG). It's the
                              hexagonal brand mark, so it stands on its own at the same 40×40 footprint
@@ -8186,6 +8193,7 @@
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.ListenBrainzScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <StackPanel>
                             <StackPanel>
                             <StackPanel>
                             <StackPanel>
@@ -8225,9 +8233,9 @@
                             <!-- Token row lives inside the same StackPanel as the title so it sits
                                  right under the description instead of leaving a gap. The Connect
                                  button is hoisted to column 2 (top-right) to match the Last.fm card. -->
-                            <controls:CollapsibleContent IsOpen="{Binding !IsListenBrainzConnected}" Lift="6" Margin="-2,0,0,0">
+                            <controls:CollapsibleContent IsOpen="{Binding !IsListenBrainzConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
                             <StackPanel
-                                        Margin="0,6,0,0"
+                                        Margin="0,8,0,0"
                                         Spacing="4">
                                 <TextBox x:Name="ListenBrainzTokenBox"
                                          AutomationProperties.Name="{loc:T Settings.ListenBrainzUserToken}"
@@ -8260,6 +8268,7 @@
                                 </StackPanel>
                             </StackPanel>
                             </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Not connected state (top-right, mirrors the Last.fm Connect button) -->
@@ -8301,8 +8310,8 @@
                     </Grid>
 
                     <!-- Enable Scrobbling (when connected) -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsListenBrainzConnected}" Lift="6">
-                    <StackPanel Spacing="8">
+                    <controls:CollapsibleContent IsOpen="{Binding IsListenBrainzConnected}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,8,0,0" Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
@@ -8377,6 +8386,7 @@
                     </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
@@ -8455,7 +8465,8 @@
                                        HorizontalAlignment="Left" Margin="-2,0,0,0"/>
 
                             <!-- Connected summary -->
-                            <controls:CollapsibleContent IsOpen="{Binding IsMediaServerConnected}" Lift="6" Margin="-2,0,0,0">
+                            <StackPanel>
+                            <controls:CollapsibleContent IsOpen="{Binding IsMediaServerConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
                             <StackPanel Spacing="3" Margin="0,8,0,0">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Classes="server-field-label" Text="{loc:T Settings.TYPE}" Width="68" VerticalAlignment="Center"/>
@@ -8478,7 +8489,7 @@
                                  and long input scrolls inside the boxes. Left-aligned, the grid
                                  sized its star columns to content and the boxes resized on every
                                  keystroke. -->
-                            <controls:CollapsibleContent IsOpen="{Binding !IsMediaServerConnected}" Lift="6" Margin="-2,0,0,0">
+                            <controls:CollapsibleContent IsOpen="{Binding !IsMediaServerConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
                             <Grid
                                   ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto"
                                   HorizontalAlignment="Stretch" Margin="0,10,0,0">
@@ -8532,6 +8543,7 @@
                                 </StackPanel>
                             </Grid>
                             </controls:CollapsibleContent>
+                            </StackPanel>
 
                             <!-- Status line: dot follows the state (green connected, red error),
                                  spinner while a connection attempt is running. -->
