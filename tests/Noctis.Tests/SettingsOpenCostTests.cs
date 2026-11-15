@@ -251,7 +251,7 @@ public class SettingsOpenCostTests : IDisposable
         vm.SelectedSettingsTab = SettingsViewModel.TabAudio;
         Dispatcher.UIThread.RunJobs(DispatcherPriority.Render); // before the Loaded-priority release
         Assert.Same(host, view.AudioTabPanel.Parent);
-        Assert.Equal(0, view.AudioTabPanel.Opacity); // enters from the hidden tab-page state
+        Assert.Equal(0, view.AudioTabPanel.Opacity); // held at the glide's start until laid out
         Pump(400);
 
         // Original XAML order, whatever order the tabs were visited in.
