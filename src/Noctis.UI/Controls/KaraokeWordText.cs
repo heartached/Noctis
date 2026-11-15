@@ -20,7 +20,7 @@ namespace Noctis.Controls;
 /// a new gradient brush every frame: a TextBlock rebuilds its text layout and invalidates
 /// its measure when Foreground changes, so every frame of a sweep ran a layout pass up the
 /// lyrics list (measured: 30 of 30 frames). Here the brushes are created once per layout
-/// and only their stops move; a Progress change is a render-only invalidation.
+/// and only their stops move; a Progress change is not even a redraw (see OnPropertyChanged).
 ///
 /// Measure, arrange, fonts and styles are the TextBlock's own (it IS one, styled as one),
 /// so the cell keeps exactly the geometry the template always had.
@@ -83,8 +83,8 @@ public class KaraokeWordText : TextBlock
 
     static KaraokeWordText()
     {
-        AffectsRender<KaraokeWordText>(ProgressProperty, BaseOpacityProperty, LeadInProperty, TrailOutProperty,
-            EmphasisMsProperty, HeldDurationMsProperty, IsLastInLineProperty, LiftProperty);
+        // No AffectsRender for the per-frame properties: OnPropertyChanged redraws only when
+        // the drawing itself changes (see there).
         // A TextBlock clips to its layout box by default (Avalonia 12), which sliced every
         // ink pixel drawn past it: the float, the held-note swell, glyph overhang.
         ClipToBoundsProperty.OverrideDefaultValue<KaraokeWordText>(false);
@@ -121,11 +121,41 @@ public class KaraokeWordText : TextBlock
                  || p == ForegroundProperty)
         {
             // Brush stops move here, not in Render: changing a brush while the frame is
-            // being recorded would re-dirty the visual it is drawn into.
+            // being recorded would re-dirty the visual it is drawn into. A hidden word (the
+            // glow layer of every word that is not a held note) catches up when it shows.
+            if (!IsVisible) _stopsStale = true;
+            else if (!_dirty) UpdateStops();
+            // The brushes are composition resources: a moved stop reaches the screen without
+            // this word being drawn again. Re-recording it every frame (a new draw list, its
+            // resource table and glyph runs, ~2-4 KB a word) was most of the ~4 MB a second
+            // the phone's lyrics allocated while a line swept, a GC every second (S23, 11-14).
+            // Only what moves the glyphs redraws: a held note's letters (their pose follows
+            // the held-note clock) and an effect's pose (it reads every input).
+            if (IsVisible && (_dirty || Posed
+                || (_perLetter && (p == EmphasisMsProperty || p == HeldDurationMsProperty || p == IsLastInLineProperty))))
+                InvalidateVisual();
+        }
+        else if (p == IsVisibleProperty && IsVisible && _stopsStale)
+        {
+            _stopsStale = false;
             if (!_dirty) UpdateStops();
-            InvalidateVisual();
+        }
+        else if (p == LiftProperty)
+        {
+            // The float is drawn in quarter device pixels (LiftPixels, Skia's own glyph
+            // precision): a frame that leaves it on the same quarter does not redraw. Hidden
+            // (a glow layer at rest), it draws when it shows.
+            if (IsVisible && (_dirty || Posed || LiftPixels() != _drawnLift || IsMoving != _drawnMoving))
+                InvalidateVisual();
         }
     }
+
+    // Stops left unmoved while hidden.
+    private bool _stopsStale;
+
+    // The float the last draw used, and whether it was drawn off the pixel grid.
+    private double _drawnLift;
+    private bool _drawnMoving;
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -402,8 +432,10 @@ public class KaraokeWordText : TextBlock
             return;
         }
 
-        var transform = Matrix.CreateTranslation(origin.X, origin.Y - LiftPixels());
-        if (IsMoving) transform = Unsnapped * transform;
+        _drawnLift = LiftPixels();
+        _drawnMoving = IsMoving;
+        var transform = Matrix.CreateTranslation(origin.X, origin.Y - _drawnLift);
+        if (_drawnMoving) transform = Unsnapped * transform;
         using var offset = context.PushTransform(transform);
         if (!_perLetter)
         {
@@ -432,14 +464,15 @@ public class KaraokeWordText : TextBlock
         Lift is > 0 and < 1 || (_perLetter && !double.IsNaN(EmphasisMs));
 
     /// <summary>The float in DIPs. The full lift is rounded to whole device pixels, so a word
-    /// that has finished rising rests on the pixel grid.</summary>
+    /// that has finished rising rests on the pixel grid, and the way up to quarter device
+    /// pixels, the finest step Skia places an unsnapped glyph at (see <see cref="Unsnapped"/>).</summary>
     private double LiftPixels()
     {
         var lift = Lift;
         if (double.IsNaN(lift) || lift <= 0) return 0;
         var scaling = VisualRoot is TopLevel { RenderScaling: > 0 and var s } ? s : 1.0;
-        var full = Math.Round(WordFloat.LiftEm * FontSize * scaling) / scaling;
-        return Math.Min(1, lift) * full;
+        var full = Math.Round(WordFloat.LiftEm * FontSize * scaling);
+        return Math.Round(Math.Min(1, lift) * full * 4) / (4 * scaling);
     }
 
     /// <summary>Points the piece's two stops at the band (piece-local pixels, unclamped):
