@@ -7340,12 +7340,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>移除下载</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} 首歌曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} 个播放列表</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>强调色有 17 种，“匹配封面”会跟随正在播放的封面。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>正在播放页面有睡眠定时器；歌曲菜单中有“暂停推荐一个月”和“隐藏歌曲”。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>用 + 新建播放列表并设置自己的封面；封面会与电脑同步。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>歌曲菜单中有“添加到当前歌曲之前”，已播放的歌曲可以留在队列中。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>手机上的歌曲和电脑上的同一首歌只显示一次。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>滚动更流畅，页面更快，横屏时歌词显示在封面旁边。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>在播放列表中“添加歌曲”：轻点 + 并从资料库中挑选歌曲。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>歌词会适配你的屏幕，滚动流畅。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>来自电脑的歌曲会显示在“最近添加”中。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>将歌曲拖到待播清单的顶部或底部边缘，列表会随之滚动。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>启动更快，加载资料库时不再卡顿，菜单也更流畅。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>进度条在整个高度内都能响应，横屏也能完整显示。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>内置的 ALAC 解码器，基于未经修改的 FFmpeg 6.0 源代码构建，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>播放、媒体会话以及解码器的 JNI 封装。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>用户界面框架。</value></data>
