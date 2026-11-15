@@ -5854,7 +5854,8 @@
             </Border>
             <!-- Folders hidden from the library in the Folders view (right-click a folder →
                  Hide from Library). Only shown while there is at least one. -->
-            <Border Classes="setting-row" IsVisible="{Binding HasHiddenLibraryFolders}">
+            <controls:CollapsibleContent IsOpen="{Binding HasHiddenLibraryFolders}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Settings.HiddenFolders}" FontSize="15" FontWeight="SemiBold"/>
@@ -5891,6 +5892,7 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+            </controls:CollapsibleContent>
             <!-- GitHub #71: off = dropped files play / queue from where they are, nothing is
                  moved into Noctis Imports or added to the library. -->
             <Border Classes="setting-row">
