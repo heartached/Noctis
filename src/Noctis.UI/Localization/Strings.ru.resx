@@ -6536,10 +6536,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Очередь</value>
     <comment>Text in ReplayGainScannerDialog.axaml</comment>
   </data>
-  <data name="ReplayGainScanner.AddFiles" xml:space="preserve">
-    <value>Добавить файлы…</value>
-    <comment>Button in ReplayGainScannerDialog.axaml</comment>
-  </data>
   <data name="ReplayGainScanner.Subtitle" xml:space="preserve">
     <value>Измерить громкость и записать теги ReplayGain.</value>
     <comment>Header line under the title in ReplayGainScannerDialog.axaml</comment>
@@ -6733,13 +6729,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Sidebar.Search" xml:space="preserve">
     <value>Поиск</value>
     <comment>Text in SidebarView.axaml</comment>
-  </data>
-  <data name="Sidebar.SearchSyntaxTip" xml:space="preserve">
-    <value>Слова ищутся в любом поле: «radiohead ok computer», «rock 1994».
-Уточните слово тегом: artist:madonna remix
-Теги: title: artist: albumartist: album: genre: composer: year:
-Фразы в кавычках: album:"ok computer" · Годы: year:1990-1999, year:&gt;2000</value>
-    <comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment>
   </data>
   <data name="Sidebar.Text" xml:space="preserve">
     <value>✕</value>
