@@ -1082,16 +1082,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         await PersistArtworkBackgroundPreferenceAsync(false, gradient: true);
     }
 
+    // Through UpdateSettingsAsync: a plain load-then-save let a Settings save or Reset's
+    // defaults land in between, and the stale copy saved after it undid them.
     private async Task PersistArtworkBackgroundPreferenceAsync(bool showArtwork, bool? gradient = null)
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
-            if (settings.LyricsShowArtworkBackground == showArtwork
-                && (gradient is null || settings.LyricsBackgroundGradient == gradient)) return;
-            settings.LyricsShowArtworkBackground = showArtwork;
-            if (gradient is { } g) settings.LyricsBackgroundGradient = g;
-            await _persistence.SaveSettingsAsync(settings);
+            await _persistence.UpdateSettingsAsync(settings =>
+            {
+                settings.LyricsShowArtworkBackground = showArtwork;
+                if (gradient is { } g) settings.LyricsBackgroundGradient = g;
+            });
         }
         catch { }
     }
@@ -1147,12 +1148,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // Persist preference
+        // Persist preference (gated, as PersistArtworkBackgroundPreferenceAsync).
+        var savedHex = _selectedColorHex ?? "";
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.LyricsBackgroundColorHex = _selectedColorHex ?? "";
-            await _persistence.SaveSettingsAsync(settings);
+            await _persistence.UpdateSettingsAsync(settings => settings.LyricsBackgroundColorHex = savedHex);
         }
         catch { }
     }
