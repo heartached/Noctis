@@ -842,12 +842,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// the lines about the computer only where there is an account.</summary>
     public IReadOnlyList<string> WhatsNewItems => new[]
     {
-        Loc.T("Mobile.WhatsNew.Accent"),
-        Loc.T("Mobile.WhatsNew.Listening"),
-        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Playlists") : null,
+        Loc.T("Mobile.WhatsNew.AddSongs"),
+        Loc.T("Mobile.WhatsNew.Lyrics"),
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Recent") : null,
         Loc.T("Mobile.WhatsNew.Queue"),
-        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.OneSong") : null,
-        Loc.T("Mobile.WhatsNew.Smoother"),
+        Loc.T("Mobile.WhatsNew.Startup"),
+        Loc.T("Mobile.WhatsNew.Fixes"),
     }.OfType<string>().ToArray();
 
     /// <summary>Open-Source Licenses: the bundled decoder and the main libraries the phone app is built on.</summary>
