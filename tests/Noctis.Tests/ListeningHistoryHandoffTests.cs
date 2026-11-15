@@ -304,6 +304,7 @@ public class ListeningHistoryHandoffTests : IDisposable
         var shell = ShellWith(rig, account);
         await shell.LoadHistoryPrefsAsync();
         Assert.True(shell.ShareHistoryWithComputer);   // on by default: nothing changes for anyone who never opens this page
+        shell.SetPlayCountThresholdPercent(0);          // count at the start (a new install waits for half the song)
 
         shell.SetShareHistoryWithComputer(false);
         shell.Player.PlayTracks(new[] { remote }, 0);
