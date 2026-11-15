@@ -4421,6 +4421,7 @@
                         <TextBlock Text="{loc:T Settings.LyricsPresets.Title}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.LyricsPresets.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <StackPanel>
                     <ItemsControl ItemsSource="{Binding LyricsPresets}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -4445,8 +4446,10 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="{Binding LyricsPresetStatus}" FontSize="12" Opacity="0.8"
-                               IsVisible="{Binding LyricsPresetStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <controls:CollapsibleContent IsOpen="{Binding LyricsPresetStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding LyricsPresetStatus}" FontSize="12" Opacity="0.8"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-card group-card">
@@ -4468,7 +4471,7 @@
                     </Grid>
                     <!-- Drift knobs (GitHub #111): only while a Drift style is chosen. 100% everywhere
                          is the stock look; double-tap a slider to snap back to it. -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsDriftStyle}" Lift="6">
+                    <controls:CollapsibleContent IsOpen="{Binding IsDriftStyle}" Lift="10" Motion="Glide">
                     <StackPanel Spacing="8" Margin="0,12,0,0">
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftMovement}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
@@ -4500,7 +4503,7 @@
                     </StackPanel>
                     </controls:CollapsibleContent>
                     <!-- Kawarp knobs (GitHub #58): only while a Kawarp style is chosen. -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsKawarpStyle}" Lift="6">
+                    <controls:CollapsibleContent IsOpen="{Binding IsKawarpStyle}" Lift="10" Motion="Glide">
                     <StackPanel Spacing="8" Margin="0,12,0,0">
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.KawarpWarp}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
@@ -4523,7 +4526,7 @@
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
-                <StackPanel Spacing="12">
+                <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.AudioVisualizer}" FontSize="15" FontWeight="SemiBold"/>
@@ -4536,9 +4539,10 @@
                                               IsEnabled="{Binding VisualizerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <!-- Artwork colour row + style picker share a spacing-free panel so the 12px gap folds
-                         with the body (see the Crossfade block). -->
-                    <StackPanel>
+                    <!-- Artwork colour, Full spectrum and the style picker are ONE glide under the switch
+                         (owner 11-14). The row's panel is spacing-free so the 12px gap folds with the body. -->
+                    <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,12,0,0">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.ArtworkColour}" FontSize="13" FontWeight="SemiBold"/>
@@ -4562,7 +4566,6 @@
                                               IsChecked="{Binding LyricsVisualizerFullSpectrum}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,12,0,0">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      AutomationProperties.Name="{loc:T Settings.Bars}"
@@ -4608,8 +4611,8 @@
                             </StackPanel>
                         </RadioButton>
                     </Grid>
-                    </controls:CollapsibleContent>
                     </StackPanel>
+                    </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
