@@ -446,4 +446,96 @@ public class RetainedRowsTests
         ScrollAndCheckSongRows(view.FindControl<ListBox>("TrackList")!, vm.SelectedFolderTracks, 11);
         window.Close();
     }
+
+    /// <summary>A row scrolled off while one of its buttons has the keyboard focus is hidden and
+    /// parked: the focus must not stay on the invisible button.</summary>
+    [AvaloniaFact]
+    public async Task Songs_FocusedButtonInARowThatScrollsOff_DoesNotKeepTheFocus()
+    {
+        var (vm, view, window) = MountSongs(600);
+        await PumpUntil(() => vm.FilteredTracks.Count == 600);
+        var list = view.TrackList;
+        var row = list.GetRealizedContainers()!.OfType<ListBoxItem>().First(r => list.IndexFromContainer(r) == 2);
+        var heart = row.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("row-heart"));
+        Assert.True(heart.Focus());
+        Pump();
+        Assert.Same(heart, window.FocusManager!.GetFocusedElement());
+
+        list.FindDescendantOfType<ScrollViewer>()!.Offset = new Vector(0, 9000);
+        Pump();
+        var focused = window.FocusManager!.GetFocusedElement() as Visual;
+        Assert.True(focused == null || focused.IsEffectivelyVisible,
+            $"focus stayed on {focused?.GetType().Name} (visible {focused?.IsEffectivelyVisible})");
+        window.Close();
+    }
+
+    /// <summary>Artists list view: arrow keys move on from the selected artist even after its row
+    /// scrolled off and was parked, and only the new row shows as selected.</summary>
+    [AvaloniaFact]
+    public async Task ArtistsList_ArrowKeys_ContinueFromTheSelectedArtist_AfterItsRowWasParked()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 300; i++)
+        {
+            var name = $"Artist {i:000}";
+            lib.TrackList.Add(new Track { Id = Guid.NewGuid(), Title = $"Song {i}", Artist = name, AlbumArtist = name, Album = $"Album {i}",
+                FilePath = TestPaths.Primary("a", $"{i}.flac"), Duration = TimeSpan.FromMinutes(3) });
+            lib.ArtistList.Add(new Artist { Id = Guid.NewGuid(), Name = name, TrackCount = 1, AlbumCount = 1 });
+        }
+        var vm = new LibraryArtistsViewModel(lib);
+        var view = new LibraryArtistsView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        vm.Refresh();
+        if (!vm.IsListView) vm.ToggleViewModeCommand.Execute(null);
+        await PumpUntil(() => vm.ListRows.Count == 300);
+        var table = view.FindControl<ListBox>("ArtistTable")!;
+        Assert.IsType<RetainingVirtualizingStackPanel>(table.ItemsPanelRoot);
+        table.Focus();
+        table.SelectedIndex = 2;
+        Pump();
+
+        table.FindDescendantOfType<ScrollViewer>()!.Offset = new Vector(0, 9000);
+        Pump();
+        table.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.Down, Source = table });
+        await PumpUntil(() => table.ContainerFromIndex(3) is { IsVisible: true });
+
+        Assert.Equal(3, table.SelectedIndex);
+        var selectedRows = table.GetVisualDescendants().OfType<ListBoxItem>().Where(r => r.IsSelected).ToList();
+        var only = Assert.Single(selectedRows);
+        Assert.True(only.IsVisible);
+        Assert.Equal(3, table.IndexFromContainer(only));
+        Assert.Same(vm.ListRows[3], only.Content);
+        Assert.True(table.IsKeyboardFocusWithin);
+        window.Close();
+    }
+
+    /// <summary>Screen readers walk the automation tree: parked (hidden) rows must not be in it.</summary>
+    [AvaloniaFact]
+    public async Task Songs_AutomationTree_ShowsOnlyTheRealizedRows()
+    {
+        var (vm, view, window) = MountSongs(600);
+        await PumpUntil(() => vm.FilteredTracks.Count == 600);
+        var list = view.TrackList;
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        foreach (var y in new[] { 3000.0, 9000, 600 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+        }
+        Assert.Contains(list.GetVisualDescendants().OfType<ListBoxItem>(), r => !r.IsVisible); // some rows are parked
+
+        var peers = new List<Avalonia.Automation.Peers.AutomationPeer>();
+        void Walk(Avalonia.Automation.Peers.AutomationPeer p)
+        {
+            foreach (var c in p.GetChildren()) { peers.Add(c); Walk(c); }
+        }
+        Walk(Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(list));
+        var rowPeers = peers.OfType<Avalonia.Automation.Peers.ControlAutomationPeer>().Where(p => p.Owner is ListBoxItem).ToList();
+        Assert.NotEmpty(rowPeers);
+        Assert.All(rowPeers, p => Assert.True(p.Owner.IsVisible, "a parked row is in the automation tree"));
+        Assert.Equal(list.GetRealizedContainers()!.Count(), rowPeers.Count);
+        window.Close();
+    }
 }
