@@ -7408,7 +7408,7 @@
                     <!-- The message glides in and out: a plain show/hide reflowed the card in one
                          jump (it read as the page shaking), and a fixed empty slot left a band
                          under the buttons. -->
-                    <controls:CollapsibleContent IsOpen="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6" Motion="Glide">
+                    <controls:CollapsibleContent IsOpen="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                         <TextBlock Text="{Binding ServerUserError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </controls:CollapsibleContent>
                 </StackPanel>
@@ -7626,7 +7626,7 @@
                             </StackPanel>
                             <controls:LottieToggle AutomationProperties.Name="{loc:T Sync.Title}" x:Name="PhoneSyncToggle" Grid.Column="1" IsChecked="{Binding SyncEnabled}" VerticalAlignment="Center"/>
                         </Grid>
-                        <controls:CollapsibleContent x:Name="LastSyncedReveal" Lift="6" Motion="Glide"
+                        <controls:CollapsibleContent x:Name="LastSyncedReveal" Lift="10" Motion="Glide"
                                                      IsOpen="{Binding SyncStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,10,0,0">
                                 <!-- Drawn at its own 14px size (a stroked path, not a scaled 24-grid fill), so it stays crisp. -->
