@@ -610,6 +610,32 @@ public sealed class PhoneScrobblingTests : IDisposable
         window.Close();
     }
 
+    /// <summary>S23 (360 dp; the phone font is wider than the test font, so a 250 window stands in): "Through Computer"
+    /// lost its last letter in the switch. The labels shrink to fit their half instead.</summary>
+    [AvaloniaFact]
+    public async Task Page_RouteSwitchLabels_FitTheirHalves_OnANarrowPhone()
+    {
+        var (shell, _) = NewShell(await Connected());
+        var vm = new ScrobblingSettingsViewModel(shell);
+        var pane = new Noctis.Mobile.Views.ScrobblingPane { DataContext = vm };
+        MobileFixtures.EnsurePhonePalette();
+        var window = new Avalonia.Controls.Window { Width = 250, Height = 1400, Content = pane };
+        window.Show();
+        window.UpdateLayout();
+        foreach (var name in new[] { "ThroughComputerButton", "FromPhoneButton" })
+        {
+            var button = MobileFixtures.Named<Avalonia.Controls.Button>(pane, name);
+            var text = Avalonia.VisualTree.VisualExtensions.GetVisualDescendants(button).OfType<Avalonia.Controls.TextBlock>().First();
+            var left = Avalonia.VisualExtensions.TranslatePoint(text, new Avalonia.Point(0, 0), button)!.Value;
+            var right = Avalonia.VisualExtensions.TranslatePoint(text, new Avalonia.Point(text.Bounds.Width, 0), button)!.Value;
+            Assert.True(left.X >= -0.5 && right.X <= button.Bounds.Width + 0.5, $"{name}: text {left.X:0.0}-{right.X:0.0} in a {button.Bounds.Width:0.0} button");
+            // A clipped label still reports bounds inside the button; its text is just wider.
+            Assert.True(text.TextLayout.WidthIncludingTrailingWhitespace <= text.Bounds.Width + 0.5,
+                $"{name}: text {text.TextLayout.WidthIncludingTrailingWhitespace:0.0} wide in a {text.Bounds.Width:0.0} box");
+        }
+        window.Close();
+    }
+
     [AvaloniaFact]
     public async Task Page_ConnectsListenBrainzWithAPastedToken_AndShowsWaitingPlays()
     {
