@@ -34,8 +34,12 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
-    /// behaviour) or played/queued from where they are without touching the library.</summary>
-    public bool ImportDroppedMedia { get; set; } = true;
+    /// behaviour) or played/queued from where they are without touching the library.
+    /// Off on a new install (2026-11-14): a song dragged in from Downloads vanished from there
+    /// (File.Move); off, the drop zones say what happens (Play now / Add to library, files stay
+    /// where they are / New playlist). A settings.json saved before the setting existed keeps
+    /// it on (<see cref="OnDeserializing"/>).</summary>
+    public bool ImportDroppedMedia { get; set; }
 
     /// <summary>GitHub #74: playlist page furniture, each opt-out. Album run headers
     /// above each same-album run, the NEW badge on tracks added in the last 7 days,
@@ -331,8 +335,11 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
     /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
-    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>.</summary>
-    public int PlayCountThresholdPercent { get; set; }
+    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>. Half the song on a
+    /// new install (2026-11-14): counted at the start, skipping through a shuffle filled Home,
+    /// Stats and Wrapped with songs never heard (what #101 was about). A settings.json saved
+    /// before the setting existed keeps 0 (<see cref="OnDeserializing"/>).</summary>
+    public int PlayCountThresholdPercent { get; set; } = 50;
 
     /// <summary>The Settings picker's choices for <see cref="PlayCountThresholdPercent"/>.</summary>
     public static IReadOnlyList<int> PlayCountThresholdChoices { get; } = new[] { 0, 25, 50, 75, 90 };
@@ -1613,6 +1620,9 @@ public class AppSettings : IJsonOnDeserializing
         IgnoreLeadingWordsInArtistSort = false;
         // Sleep timer Fade Out (2026-10-29): the timer used to pause outright.
         SleepTimerFadeSeconds = 0;
+        // New-install defaults of 2026-11-14: plays counted at the start, drops moved in.
+        PlayCountThresholdPercent = 0;
+        ImportDroppedMedia = true;
     }
 
     // ── One data folder, several Noctis versions (GitHub #230) ──

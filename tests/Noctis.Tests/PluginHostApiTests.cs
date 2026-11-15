@@ -732,6 +732,36 @@ public class PluginHostApiTests : IDisposable
         Assert.Equal("hard", script2.Host.Settings.GetString("mode"));
     }
 
+    /// <summary>
+    /// Settings › Reset keeps the plugins installed and loaded. Their own settings went back to
+    /// the defaults only in settings.json: the running plugin kept the old values (and Settings
+    /// showed them) until the next launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void ResetSettingValues_PutsEveryPluginSettingBack_Live()
+    {
+        _box.Approve((Id, Array.Empty<string>()));
+        const string settings = """
+            [
+              { "key": "loud", "label": "Loud", "type": "bool", "default": false },
+              { "key": "mode", "label": "Mode", "type": "choice", "choices": ["soft", "hard"], "default": "soft" }
+            ]
+            """;
+        var host = _box.NewHost();
+        var changed = new List<string>();
+        var script = new ScriptedPlugin { OnInit = h => h.Settings.Changed += (_, key) => changed.Add(key) };
+        var plugin = _box.AddInProcess(host, script, PluginSandbox.Manifest(id: Id, settingsJson: settings));
+        plugin.SettingItems.Single(i => i.Key == "loud").BoolValue = true;
+        changed.Clear();
+
+        host.ResetSettingValues();
+
+        Assert.False(script.Host!.Settings.GetBool("loud"));
+        Assert.Equal("soft", script.Host.Settings.GetString("mode"));
+        Assert.Equal(new[] { "loud" }, changed); // told about the one that changed
+        Assert.Empty(_box.Settings.PluginSettingValues); // nothing stored, as on a fresh install
+    }
+
     [AvaloniaFact]
     public void Notify_RaisesANotice_ThrottledPerPlugin()
     {

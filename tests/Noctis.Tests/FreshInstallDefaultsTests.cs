@@ -164,6 +164,17 @@ public class FreshInstallDefaultsTests
     }
 
     [Fact]
+    public void DroppedFilesStayPut_AndAPlayCountsAtHalfTheSong()
+    {
+        // 2026-11-14, for new installs (older settings files keep theirs: ChangedDefaultsUpgradeTests).
+        // Import dropped files moved a song dragged in from Downloads into Noctis Imports; off,
+        // the drop zones say what happens and nothing moves.
+        Assert.False(Fresh.ImportDroppedMedia);
+        // GitHub #101 ("just clicking a song counted it as played"): half the song, not the start.
+        Assert.Equal(50, Fresh.PlayCountThresholdPercent);
+    }
+
+    [Fact]
     public void LyricsAutoDownload_IsOptIn()
     {
         // Its online pick goes through the Search Lyrics path, which writes .lrc/.elrc files

@@ -154,6 +154,28 @@ public class LyricsBackgroundColorDialogTests : IDisposable
     }
 
     /// <summary>
+    /// Settings › Reset wrote the default background to settings.json, but the lyrics page read
+    /// its background once at start, so a chosen colour stayed until the next launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void SettingsReset_PutsTheBackgroundBackToTheArtwork_Live()
+    {
+        var (vm, _, _) = MakeViewModel();
+        vm.SelectColorModeSolidCommand.Execute(null);
+        vm.SetBackgroundColorCommand.Execute("#1A1A2E");
+        Assert.True(vm.IsColorModeSolid);
+        Assert.Equal("#1A1A2E", vm.ActiveSwatchKey);
+
+        vm.ResetBackgroundToDefault();
+
+        var (fresh, _, _) = MakeViewModel();
+        Pump(50);
+        Assert.Equal((fresh.IsColorModeArtwork, fresh.IsColorModeSolid, fresh.IsColorModeGradient, fresh.ActiveSwatchKey),
+            (vm.IsColorModeArtwork, vm.IsColorModeSolid, vm.IsColorModeGradient, vm.ActiveSwatchKey));
+        Assert.True(vm.IsColorModeArtwork);
+    }
+
+    /// <summary>
     /// Every option the old strip had (three modes; Auto plus 32 named colours; 30 named
     /// gradients) is in the pop-up, in a grid with names on hover, Auto first in both grids.
     /// The mode is a segmented pill, and only the chosen mode's grid shows.

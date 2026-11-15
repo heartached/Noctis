@@ -61,8 +61,7 @@ public class MobileListeningTimeTests
         var song = MobileFixtures.Song("Slow");   // 90 s
         using var rig = MobileFixtures.MakeRig(new[] { song });
         await rig.Shell.LoadHistoryPrefsAsync();
-        Assert.Equal(0, rig.Shell.PlayCountThresholdPercent);   // the computer's default: Immediately
-        rig.Shell.SetPlayCountThresholdPercent(50);
+        Assert.Equal(50, rig.Shell.PlayCountThresholdPercent);  // a new install's default: half the song
 
         rig.Shell.Player.PlayTracks(new[] { song }, 0);
         Listen(rig, 44);
