@@ -136,6 +136,37 @@ public class ResetEverythingTests : IDisposable
             Assert.True(Directory.Exists(Path.Combine(_root, dir)), dir);
     }
 
+    /// <summary>
+    /// The library reads the hidden folders and linked albums once at load. The reset wrote
+    /// none to settings.json, but the library kept hiding / linking the old ones after the next
+    /// scan, and its next hide wrote the old list back into the file.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task LibraryClear_ForgetsTheHiddenFoldersAndAlbumLinks_ItReadAtLoad()
+    {
+        Directory.CreateDirectory(_root);
+        var persistence = new PersistenceService(_root);
+        var old = Path.Combine(_root, "Music", "Old");
+        await persistence.SaveSettingsAsync(new AppSettings
+        {
+            HiddenLibraryFolders = new() { old },
+            AlbumLinks = new() { new AlbumLink { AlbumId = Guid.NewGuid(), SourceAlbumId = Guid.NewGuid() } },
+        });
+        var library = new LibraryService(new MetadataService(), persistence,
+            new SqliteLibraryIndexService(persistence), new AuditTrailService(persistence));
+        await library.LoadAsync();
+        Assert.Single(library.HiddenFolders);
+        Assert.Single(library.AlbumLinks);
+
+        await library.ClearAsync();
+        await persistence.SaveSettingsAsync(new AppSettings()); // the reset's default settings
+        await library.SetFolderHiddenAsync(Path.Combine(_root, "Music", "New"), hidden: true);
+
+        Assert.Empty(library.AlbumLinks);
+        Assert.Equal(new[] { Path.Combine(_root, "Music", "New") }, library.HiddenFolders);
+        Assert.Equal(new[] { Path.Combine(_root, "Music", "New") }, (await persistence.LoadSettingsAsync()).HiddenLibraryFolders);
+    }
+
     [Fact]
     public async Task ClearUserState_EmptiesTheJournal_ThatScansKeep()
     {

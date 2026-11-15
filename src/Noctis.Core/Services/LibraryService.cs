@@ -2483,6 +2483,11 @@ public class LibraryService : ILibraryService
         _trackIndex = new Dictionary<Guid, Track>();
         _albumIndex = new Dictionary<Guid, Album>();
         lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
+        // The hidden folders and linked albums are settings the reset puts back to none. Read
+        // once at load and kept here, they hid the same folders and re-linked the same albums
+        // after a rescan, and the next hide/link wrote them back into settings.json.
+        _hiddenFolders = Array.Empty<string>();
+        _albumLinks = new List<AlbumLink>();
         await _persistence.SaveLibraryAsync(_tracks);
         await _sqliteIndex.ClearAsync();
         // The ratings / favorites / play counts journal too: it outlives scans on purpose (a
