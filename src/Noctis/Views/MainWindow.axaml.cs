@@ -898,7 +898,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
                     {
                         if (mainVm2.IsSettingsModalOpen)
+                        {
                             EnsureSettingsViewLoaded();
+                            // Builds the pages not visited yet in small idle slices while it is open.
+                            (this.FindControl<ContentControl>("SettingsViewHost")?.Content as SettingsView)?.OnSheetOpened();
+                        }
 
                         if (_settingsOverlay != null && _settingsCard != null)
                         {
