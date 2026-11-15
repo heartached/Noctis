@@ -8530,10 +8530,9 @@ public partial class SettingsViewModel : ViewModelBase
         // Library, playlists, queue, listening history, caches and ledgers: see SettingsViewModel.Reset.cs.
         await ClearSavedDataAsync();
 
-        // Reset settings to defaults and save. The plugins folder survives the reset, so the
-        // community-plugins switch is decided (restricted) rather than left null, which the
-        // plugin host treats as a pre-switch install and approves every plugin it finds.
-        var defaultSettings = new AppSettings { CommunityPluginsEnabled = false };
+        // Reset settings to defaults and save (CreateResetSettings: what a fresh install has,
+        // plus the few fields a reset keeps).
+        var defaultSettings = CreateResetSettings();
         await WriteDefaultSettingsAsync(defaultSettings);
 
         // Launch-at-login is an OS-level registration, not a settings field — a reset
@@ -8554,6 +8553,54 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshStorageInfo();
 
         SettingsReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The settings.json fields a reset keeps; every other field goes back to a fresh install's
+    /// value (<see cref="CreateResetSettings"/>). SettingsResetTests fails when a setting is
+    /// neither reset nor listed here.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> ResetKeptSettings = new[]
+    {
+        // This computer's id in the sync ledger: server/ and sync/ stay (Reset.cs), and a new id
+        // made the paired phones see a new computer.
+        nameof(AppSettings.SyncDeviceId),
+        // The plugins stay installed and loaded (Reset.cs). The verified-official record is a
+        // check of the installed zip, not a choice: without it the official plugins counted as
+        // community plugins (restricted) from the next launch until reinstalled. The approvals,
+        // on/off choices and sidebar entries are kept with them: dropped, every plugin still
+        // running switched itself off only at the next launch. The community switch and the
+        // plugins' own settings do reset (ResetSettingsToDefaults applies both live).
+        nameof(AppSettings.VerifiedOfficialPlugins),
+        nameof(AppSettings.PluginPermissionGrants),
+        nameof(AppSettings.DisabledPlugins),
+        nameof(AppSettings.SidebarHiddenPlugins),
+        // Where the windows are and the player's volume: live state that a reset does not move
+        // (the windows write their placement back on close anyway).
+        nameof(AppSettings.WindowWidth), nameof(AppSettings.WindowHeight),
+        nameof(AppSettings.WindowX), nameof(AppSettings.WindowY), nameof(AppSettings.MainWindowState),
+        nameof(AppSettings.MiniPlayerWidth), nameof(AppSettings.MiniPlayerHeight),
+        nameof(AppSettings.MiniPlayerX), nameof(AppSettings.MiniPlayerY), nameof(AppSettings.MiniPlayerPinned),
+        nameof(AppSettings.Volume),
+    };
+
+    /// <summary>
+    /// A fresh install's settings with <see cref="ResetKeptSettings"/> copied over from the
+    /// current ones. The plugins folder survives the reset, so the community-plugins switch is
+    /// decided (restricted) rather than left null, which the plugin host treats as a pre-switch
+    /// install and approves every plugin it finds. Internal for tests.
+    /// </summary>
+    internal AppSettings CreateResetSettings()
+    {
+        var defaults = new AppSettings { CommunityPluginsEnabled = false };
+        foreach (var name in ResetKeptSettings)
+        {
+            var prop = typeof(AppSettings).GetProperty(name)!;
+            // A copy, so the kept lists are not shared with the settings being replaced.
+            var json = System.Text.Json.JsonSerializer.Serialize(prop.GetValue(_settings), prop.PropertyType);
+            prop.SetValue(defaults, System.Text.Json.JsonSerializer.Deserialize(json, prop.PropertyType));
+        }
+        return defaults;
     }
 
     /// <summary>
@@ -8592,7 +8639,13 @@ public partial class SettingsViewModel : ViewModelBase
         _suspendSettingPersistence = true;
         try
         {
+            // Restricted mode, live: the defaults already say off, so once they are in place the
+            // host's own switch is a no-op and the community plugins kept running until a restart.
+            Plugins?.SetCommunityPluginsEnabled(false);
             _settings = defaultSettings;
+            // Each plugin's own settings back to its plugin.json defaults, telling the plugin.
+            Plugins?.ResetSettingValues();
+            SyncCommunityPluginsSwitch();
 
             // Theme — reset to default (Gray).
             // SetActiveThemeFlags alone left ActiveCustomThemeId and the CustomThemes
@@ -8708,6 +8761,8 @@ public partial class SettingsViewModel : ViewModelBase
             LanguageChoice = LanguageOptions[0];
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
             _lyricsBackgroundOverrides.Clear(); // ApplyPlayerSettings below pushes the empty map
+            // "Don't scrobble" choices: SyncToSettings writes the set back, so it survived the reset.
+            _scrobbleExclusions.Clear();
             LyricsBackgroundPausesWithPlayback = defaultSettings.LyricsBackgroundPausesWithPlayback;
             MusicVideosEnabled = defaultSettings.MusicVideosEnabled;
             MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
@@ -8790,6 +8845,9 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
             AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
             AlbumCarouselGlow = defaultSettings.AlbumCarouselGlow;
+            // GitHub #233 per-album carousel styles: written back by SyncToSettings like the rest.
+            _albumCarouselStyleOverrides.Clear();
+            AlbumCarouselStyleOverrides.RaiseChanged();
             AlbumSortAscending = defaultSettings.AlbumSortAscending;
             AlbumSortNewestFirst = defaultSettings.AlbumSortNewestFirst;
             AlbumReleaseTypeFilter = defaultSettings.AlbumReleaseTypeFilter;

@@ -39,9 +39,12 @@ namespace Noctis.ViewModels;
 ///   server/covers/, server/transcode/ (caches; cleared once the server is off)
 ///
 /// KEPT
-///   settings.json: rewritten with defaults (the reset's other half).
-///   plugins/, plugin-data/: installed plugins stay installed (see CommunityPluginsEnabled in
-///     ConfirmResetLibrary); their data is deleted only with the plugin, because the plugins
+///   settings.json: rewritten with defaults (the reset's other half), all but the fields in
+///     SettingsViewModel.ResetKeptSettings: the sync id, the plugins' approvals / on-off /
+///     sidebar entries / verified-official records, window placement and the volume.
+///   plugins/, plugin-data/: installed plugins stay installed (see CreateResetSettings; the
+///     community switch goes back to restricted and each plugin's settings to its defaults,
+///     both live); their data is deleted only with the plugin, because the plugins
 ///     stay loaded and would write into, or fail on, a folder removed under them.
 ///   models/: Lyrics Studio speech models, hundreds of MB to download again; not settings.
 ///   tools/: the yt-dlp binary and its update state.
@@ -107,6 +110,11 @@ public partial class SettingsViewModel
         await Step("bulk runs", MetadataHelper.StopLibraryRunsAsync);
         // The Artists tab's portrait sweep walks the old artist list for minutes.
         await Step("artist pictures", () => App.Services?.GetService<ArtistImageService>()?.StopFetchesAsync() ?? Task.CompletedTask);
+        // The BPM / key pass works through a list taken before the reset and stores each result
+        // in library.db, so it refilled the analysis table emptied below (and kept writing tags).
+        await Step("audio analysis run", () => App.Services?.GetService<AudioAnalysisCoordinator>()?.StopAsync(TimeSpan.FromSeconds(5)) ?? Task.CompletedTask);
+        // New songs waiting for the automatic ReplayGain scan, which writes into their files.
+        await StepSync("ReplayGain auto scan", () => App.Services?.GetService<ReplayGainAutoScanService>()?.Clear());
 
         // Stop playback now, and write the play counts / positions the player still holds, so
         // they land in the journal before it is emptied rather than in the new one after it.

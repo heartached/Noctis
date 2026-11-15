@@ -1651,6 +1651,18 @@ public sealed class PluginHost
         return fresh;
     }
 
+    /// <summary>
+    /// Settings › Reset: every plugin's settings back to its plugin.json defaults, live (each
+    /// plugin hears of the keys that changed), and no stored values left, as on a fresh install.
+    /// </summary>
+    public void ResetSettingValues()
+    {
+        foreach (var plugin in Plugins.ToList())
+            foreach (var item in plugin.SettingItems.ToList())
+                item.ResetToDefault();
+        _settings().PluginSettingValues?.Clear();
+    }
+
     private void OnSettingChanged(LoadedPlugin plugin, PluginSettingItem item)
     {
         StoredValues(plugin.Id, create: true)![item.Key] = item.Value;
