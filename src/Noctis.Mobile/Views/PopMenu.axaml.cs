@@ -95,16 +95,17 @@ public partial class PopMenu : UserControl
         _top = TopLevel.GetTopLevel(this);
         _top?.AddHandler(Button.ClickEvent, OnTapped, RoutingStrategies.Bubble, handledEventsToo: true);
         _top?.AddHandler(LongPress.FiredEvent, OnTapped, RoutingStrategies.Bubble, handledEventsToo: true);
-        DispatcherTimer.RunOnce(Prebuild, TimeSpan.FromMilliseconds(PrebuildDelayMs));
     }
 
-    /// <summary>How long after the shell appears the song menu's card is built while hidden.</summary>
+    /// <summary>How long after the shell appears the song menu's card is built while hidden
+    /// (<see cref="ShellView.PrebuildMenuSoon"/>).</summary>
     internal const double PrebuildDelayMs = 2500;
 
     /// <summary>
     /// Builds the song menu's card (the ⋯ every list and Now Playing opens) while nothing is on
-    /// screen, a moment after launch: the first open otherwise built its rows inside the tap's
-    /// frame, a 61-75 ms stall on an S23 (11-14) that every later open skips, the built view
+    /// screen, a moment after launch (the Android head asks, through ShellView): the first open
+    /// otherwise built its rows inside the tap's frame, a 61-75 ms stall on an S23 (11-14) that
+    /// every later open skips, the built view
     /// being recycled and only rebound (see Close). A hidden card is never measured, so it is
     /// shown for this one layout pass, inert, and hidden again before any frame draws it; the
     /// next open of a song's menu rebinds it to that song. Skipped once any menu has opened.
