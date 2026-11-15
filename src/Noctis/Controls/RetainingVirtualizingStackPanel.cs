@@ -1,9 +1,19 @@
-// Avalonia's VirtualizingStackPanel (src/Avalonia.Controls/VirtualizingStackPanel.cs at tag
-// 12.1.6, MIT licence, Copyright (c) AvaloniaUI OÜ), copied because the behaviour to change is
-// private. Changes from upstream: recycled containers are parked in the tree instead of cleared
-// and removed (Park, Rebind, QuietTransitions); the snap-point API is left out (no Noctis list
-// snaps); Avalonia-internal helpers are replaced (MathUtilities, InsertMany, GetLayoutRoot).
-// Everything else is upstream's, so a later Avalonia fix to the layout code can be diffed in.
+// Copied from Avalonia: src/Avalonia.Controls/VirtualizingStackPanel.cs, tag 12.1.6
+// (commit cf8e564674700348947e93ab19105f27afe859a9), MIT licence, Copyright (c) AvaloniaUI OÜ.
+// Why a copy: the recycle path is private (VirtualizingStackPanel.RecycleElement,
+// RecycleElementOnItemRemoved, GetRecycledElement are private and non-virtual) and it calls
+// VirtualizingPanel.RemoveInternalChild / AddInternalChild (protected, non-virtual), which take a
+// recycled row out of the tree. ItemsControl only offers Prepare/ClearContainerForItemOverride and
+// ItemContainerGenerator has no virtual members, so no override keeps the row in the tree.
+// Deltas from upstream, each marked "// NOCTIS:" below:
+//   1. Recycled containers are parked in the tree (Park), re-bound (Rebind) with style
+//      transitions off for the re-bind (QuietTransitions / RestoreTransitions).
+//   2. IScrollSnapPointsInfo (snap-point properties, events, GetIrregular/RegularSnapPoints and
+//      the per-arrange SnapPointsChanged raise) is left out: no Noctis list snaps.
+//   3. Avalonia-internal helpers replaced: MathUtilities (nested copy), GetLayoutRoot ->
+//      TopLevel.GetTopLevel + UpdateLayout(); "protected internal override" -> "protected override".
+// Re-sync on an Avalonia upgrade: diff the upstream file at the new tag against this one, keep the
+// NOCTIS regions. RetainingPanelVersionTests fails until AvaloniaVersionCopiedFrom is updated.
 
 using System;
 using System.Collections.Generic;
@@ -35,6 +45,7 @@ namespace Noctis.Controls
     /// next ContainerPrepared arrives for a container already prepared once: handlers must be
     /// idempotent. Parked rows are hidden children; tree walks that look for rows skip !IsVisible.
     /// </summary>
+    // NOCTIS: delta 2 (upstream also implements IScrollSnapPointsInfo)
     public class RetainingVirtualizingStackPanel : VirtualizingPanel
     {
         /// <summary>
@@ -67,7 +78,10 @@ namespace Noctis.Controls
         private IScrollAnchorProvider? _scrollAnchorProvider;
         private Rect _viewport;
         private Dictionary<object, Stack<Control>>? _recyclePool;
-        private readonly List<Animatable> _quieted = new();
+        private readonly List<Animatable> _quieted = new(); // NOCTIS: delta 1
+
+        /// <summary>NOCTIS: the Avalonia package version this file was copied from (see header).</summary>
+        internal const string AvaloniaVersionCopiedFrom = "12.1.6";
         private Control? _focusedElement;
         private int _focusedIndex = -1;
         private Control? _realizingElement;
@@ -281,6 +295,7 @@ namespace Noctis.Controls
             finally
             {
                 _isInLayout = false;
+                // NOCTIS: delta 2 (upstream raises Horizontal/VerticalSnapPointsChangedEvent here)
             }
         }
 
@@ -599,7 +614,7 @@ namespace Noctis.Controls
                 element.BringIntoView();
                 return element;
             }
-            else if (TopLevel.GetTopLevel(this) is not null)
+            else if (TopLevel.GetTopLevel(this) is not null) // NOCTIS: delta 3 (was this.GetLayoutRoot())
             {
                 // Create and measure the element to be brought into view. Store it in a field so that
                 // it can be re-used in the layout pass.
@@ -625,7 +640,7 @@ namespace Noctis.Controls
                 if (!Bounds.Contains(rect) && !_viewport.Contains(rect))
                 {
                     _isWaitingForViewportUpdate = true;
-                    UpdateLayout();
+                    UpdateLayout(); // NOCTIS: delta 3
                     _isWaitingForViewportUpdate = false;
                 }
 
@@ -638,7 +653,7 @@ namespace Noctis.Controls
                 // - The viewport is then updated by the layout system which invalidates our measure
                 // - Measure is then done with the new viewport.
                 _isWaitingForViewportUpdate = !_viewport.Contains(rect);
-                UpdateLayout();
+                UpdateLayout(); // NOCTIS: delta 3
 
                 // If for some reason the layout system didn't give us a new viewport during the layout, we
                 // need to do another layout pass as the one that took place was a no-op.
@@ -646,7 +661,7 @@ namespace Noctis.Controls
                 {
                     _isWaitingForViewportUpdate = false;
                     InvalidateMeasure();
-                    UpdateLayout();
+                    UpdateLayout(); // NOCTIS: delta 3
                 }
 
                 // During the previous BringIntoView, the scroll width extent might have been out of date if
@@ -1060,6 +1075,7 @@ namespace Noctis.Controls
             if (_recyclePool?.TryGetValue(recycleKey, out var recyclePool) == true && recyclePool.Count > 0)
             {
                 var recycled = recyclePool.Pop();
+                // NOCTIS: delta 1 (upstream: prepare, AddInternalChild, prepared)
                 QuietTransitions(recycled);
                 try
                 {
@@ -1118,7 +1134,7 @@ namespace Noctis.Controls
             }
             else
             {
-                Park(recycleKey, element);
+                Park(recycleKey, element); // NOCTIS: delta 1 (upstream: ClearItemContainer, pool, hide, RemoveInternalChild)
             }
         }
 
@@ -1141,10 +1157,11 @@ namespace Noctis.Controls
             }
             else
             {
-                Park(recycleKey, element);
+                Park(recycleKey, element); // NOCTIS: delta 1 (upstream: ClearItemContainer, pool, hide, RemoveInternalChild)
             }
         }
 
+        // NOCTIS: delta 1
         /// <summary>
         /// The one change from Avalonia's panel: a recycled container is hidden and pooled but
         /// stays a child, still bound to its last item. Avalonia clears it (the cleared Content
@@ -1157,6 +1174,7 @@ namespace Noctis.Controls
             element.SetCurrentValue(Visual.IsVisibleProperty, false);
         }
 
+        // NOCTIS: delta 1
         /// <summary>
         /// Hands a parked container its next item. Its old item's selection mark goes first: the
         /// container is not realized, so the ListBox ignores the change (IndexFromContainer is -1),
@@ -1183,6 +1201,7 @@ namespace Noctis.Controls
             }
         }
 
+        // NOCTIS: delta 1
         /// <summary>
         /// A container Avalonia rebuilt took its item's look at once (it was prepared out of the
         /// tree, where transitions are off). A parked one is rebound in the tree, so for the
@@ -1203,6 +1222,7 @@ namespace Noctis.Controls
                 QuietTransitions(child);
         }
 
+        // NOCTIS: delta 1
         private void RestoreTransitions()
         {
             foreach (var animatable in _quieted)
@@ -1435,7 +1455,7 @@ namespace Noctis.Controls
             InvalidateMeasure();
         }
 
-        /// <summary>Avalonia.Utilities.MathUtilities is internal to Avalonia; the three comparisons used here.</summary>
+        /// <summary>NOCTIS: delta 3. Avalonia.Utilities.MathUtilities is internal to Avalonia; the three comparisons used here.</summary>
         private static class MathUtilities
         {
             private const double DoubleEpsilon = 2.2204460492503131e-016;
