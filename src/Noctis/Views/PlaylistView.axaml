@@ -722,6 +722,12 @@
                              Padding="0,0,0,115"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <!-- Rows scrolled off stay in the tree and take the next song (11-14). -->
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <controls:RetainingVirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
                         <ListBox.Styles>
                             <Style Selector="ListBoxItem">
                                 <Setter Property="Focusable" Value="False" />
