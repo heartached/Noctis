@@ -359,24 +359,24 @@
                                                       IsVisible="{Binding Installed.HasPermissions, FallbackValue=False}"/>
                                         </Grid>
                                     </Button>
-                                    <controls:CollapsibleContent IsOpen="{Binding IsPermissionsExpanded}" Lift="6">
-                                        <ItemsControl x:Name="PluginPagePermissionList" ItemsSource="{Binding Installed.PermissionDetails, FallbackValue={x:Null}}"
-                                                      Margin="0,10,0,0">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Spacing="6"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="sys:String">
-                                                    <Grid ColumnDefinitions="Auto,*">
-                                                        <Ellipse Width="4" Height="4" Margin="2,7,10,0" VerticalAlignment="Top"
-                                                                 Fill="{DynamicResource AccentColorBrush}"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                    <controls:CollapsibleContent IsOpen="{Binding IsPermissionsExpanded}" Lift="10" Motion="Glide">
+                                    <ItemsControl x:Name="PluginPagePermissionList" ItemsSource="{Binding Installed.PermissionDetails, FallbackValue={x:Null}}"
+                                                  Margin="0,10,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="6"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <Ellipse Width="4" Height="4" Margin="2,7,10,0" VerticalAlignment="Top"
+                                                             Fill="{DynamicResource AccentColorBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                     </controls:CollapsibleContent>
                                 </StackPanel>
                             </Border>
