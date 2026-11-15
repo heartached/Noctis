@@ -1,6 +1,194 @@
 {
   "releases": [
     {
+      "tag": "plugin-lyricmotion-v1.1.0",
+      "version": "plugin-lyricmotion-v1.1.0",
+      "name": "Lyric Motion plugin 1.1.0",
+      "label": "Lyric Motion",
+      "publishedAt": "2026-11-15T18:25:23Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-lyricmotion-v1.1.0",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved letters rising one after another as the highlight reaches them, then holding until the line ends.",
+            "Improved timing so the last letters of a word finish on their note.",
+            "Improved long notes growing and glowing like the native version."
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed sung words settling or shaking mid-line."
+          ]
+        },
+        {
+          "title": "Thanks",
+          "items": [
+            "@Alfamin for this version. (#168)"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "plugin-albumroulette-v1.0.2",
+      "version": "plugin-albumroulette-v1.0.2",
+      "name": "Album Roulette plugin 1.0.2",
+      "label": "Album Roulette",
+      "publishedAt": "2026-11-15T18:25:21Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-albumroulette-v1.0.2",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Language chip for Song Roulette, which works offline. (#202)"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
+      "tag": "v1.7.0",
+      "version": "1.7.0",
+      "name": "v1.7.0",
+      "label": "1.7.0",
+      "publishedAt": "2026-11-15T18:25:04Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.7.0",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added Stop button for the player island.",
+            "Added Only in Exclusive Mode option for the Stop button.",
+            "Added 60, 70, 75 and 80 percent Interface Size options.",
+            "Added support for lyrics of unlimited length with a moving window.",
+            "Added Noctis watermark option for Share Lyrics.",
+            "Added remembered Follow playback setting for Share Lyrics.",
+            "Added Word Light sample lyrics renderer plugin.",
+            "Added Move to Album for songs. (#239)",
+            "Added Tint window with accent colour option. (#240)",
+            "Added disc scratching on the lyrics page and Sleeve mini player.",
+            "Added Lyrics Studio speed control from 0.5× to 1.5×. (#238)",
+            "Added blocked nudge hint in Lyrics Studio. (#237)",
+            "Added song and album counts under artist names. (#233)",
+            "Added Hide Small Artists option. (#233)",
+            "Added Hide sidebar until hover option.",
+            "Added reflections on every carousel style. (#233)",
+            "Added glow on the selected album. (#233)",
+            "Added per-album carousel style. (#233)",
+            "Added Settings pages fade and glide when switching.",
+            "Added background preparation of Settings pages.",
+            "Added release of unused covers after 60 seconds out of view.",
+            "Added Full spectrum option. (#205)",
+            "Added Wider Spacing Between Albums option. (#210)",
+            "Added option to hide the player island in full screen lyrics. (#211)",
+            "Added Add Lyrics and Edit Lyrics on the lyrics page. (#212)",
+            "Added Masonry layout for Albums. (#213)",
+            "Added remembered options in Find Lyrics. (#217)",
+            "Added hover zoom with glow for albums. (#218)",
+            "Added background lyrics search over the whole library and lrcmux as an optional source. (#219)",
+            "Added Genres page and genre links on album and artist pages. (#220)",
+            "Added Last.fm as a source for Statistics. (#222)",
+            "Added Shift+click ranges and rubber band selection. (#226)",
+            "Added exact search with quotes. (#227)",
+            "Added sorting Artists by plays with a Plays column. (#231)",
+            "Added searching as another artist name in Find Lyrics. (#232)",
+            "Added frosted glass on pop-up dialogs with Liquid Glass. (#234)",
+            "Added Chapters button for audiobooks on the player island."
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved Albums grid spacing and row heights back to the default.",
+            "Improved Genres page visibility setting persistence.",
+            "Improved submenu open and close motion.",
+            "Improved submenu scrolling.",
+            "Improved Lyrics Studio button row layout.",
+            "Improved Link Tracks From layout and sorting.",
+            "Improved Settings animations across about 45 more reveals.",
+            "Improved shorter descriptions for six settings.",
+            "Improved scrolling on Songs, Albums, Artists, Favorites, Playlists, Folders, Inbox and Queue.",
+            "Improved page switching between visited sections.",
+            "Improved Settings scrolling and blurred background performance.",
+            "Improved Liquid Glass rendering behind Settings.",
+            "Improved Songs column loading.",
+            "Improved Windows media flyout cover loading.",
+            "Improved Reset Settings confirmation text.",
+            "Improved defaults for new installs on dropped files and play counting.",
+            "Improved code cleanup with unused code and icons removed.",
+            "Improved Find Lyrics text about the format and saving place. (#203)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed Organize Files leaving old folders behind after Organize and Undo. (#235)",
+            "Fixed Organize Files sending cover.jpg to the Recycle Bin on Undo. (#235)",
+            "Fixed Organize Files relisting renamed copies on every run.",
+            "Fixed Organize Files leaving .elrc and .lyricsfile files behind.",
+            "Fixed Find Duplicates confirmation opening behind its window. (#235)",
+            "Fixed Find Duplicates leaving empty folders after deleting a copy.",
+            "Fixed sleep timer not releasing the audio device in Exclusive Mode.",
+            "Fixed Search box not following Interface Size changes while open.",
+            "Fixed Share Lyrics not scrolling to picked lines when it opens.",
+            "Fixed long TTML and MP3 synced lyrics being cut to 3,000 lines.",
+            "Fixed lyrics renderer plugins drawing outside their line.",
+            "Fixed lyrics renderer plugins crashing the lyrics page.",
+            "Fixed lyrics renderer plugins blocking the app.",
+            "Fixed removed or disabled lyrics renderer plugins still being called.",
+            "Fixed lyrics renderer names being able to pass as the built-in option.",
+            "Fixed Lyrics Studio lag on every tap. (#237)",
+            "Fixed lyrics files containing only instrumental tags showing lyrics. (#236)",
+            "Fixed gray band beside the sidebar with Liquid Glass on.",
+            "Fixed Move to Album crashing on FLAC and Ogg files. (#239)",
+            "Fixed Remove from Library staying greyed out after a removal.",
+            "Fixed Settings toggles closing instantly instead of animating.",
+            "Fixed round check buttons clipped on hover.",
+            "Fixed Link Tracks From list creeping while scrolling.",
+            "Fixed lyrics word sweep stuttering at 0.5× and 1.5× speed. (#238)",
+            "Fixed Move to Album dialog sideways scrollbar and song count wording. (#239)",
+            "Fixed Reset Settings leaving per-album carousel styles behind.",
+            "Fixed Reset Settings leaving the don't scrobble list behind.",
+            "Fixed Reset Settings leaving hidden folders and album links behind.",
+            "Fixed Reset Settings leaving the lyrics background colour until restart.",
+            "Fixed Reset Settings leaving community plugins running until restart.",
+            "Fixed Reset Settings resetting plugin settings only on disk.",
+            "Fixed official plugins losing verified status after a reset.",
+            "Fixed paired phones seeing a new computer after a reset.",
+            "Fixed background analysis continuing on the old library after a reset.",
+            "Fixed Back not following the player, library or favorites.",
+            "Fixed memory growing through discarded pages, menus and rows.",
+            "Fixed closed mini player windows staying alive for several seconds.",
+            "Fixed player showing a freed cover after a long stall.",
+            "Fixed simultaneous saves undoing one of the changes.",
+            "Fixed now-playing bars animating on pages not on screen.",
+            "Fixed Reset confirmation and some Settings status lines being English only.",
+            "Fixed Group into One Album not writing earlier groupings into the files. (#201)",
+            "Fixed centred player sitting under the queue when a song has no lyrics. (#204)",
+            "Fixed spectrum missing bass detail on the Lyrics and Visualizer pages. (#205)",
+            "Fixed queue shortcuts and ReplayGain ignoring the selected queue rows. (#206, #207)",
+            "Fixed album menus showing both Find Lyrics and Search Lyrics. (#208)",
+            "Fixed a click between album covers opening an album instead of clearing the selection. (#209)",
+            "Fixed a hidden Find Lyrics run not coming back. (#214)",
+            "Fixed Find Lyrics judging synced and plain lyrics wrongly. (#215, #216)",
+            "Fixed Search Lyrics in the lyrics page menu not opening after an empty search. (#221)",
+            "Fixed artist and album pages jumping to the top after closing Fetch Lyrics or Metadata. (#223)",
+            "Fixed album covers showing wrong or broken artwork at times. (#224)",
+            "Fixed library flickering on startup. (#225)",
+            "Fixed Find Lyrics giving up on songs when the sources were busy. (#228)",
+            "Fixed animated artwork not found when only another storefront has it. (#229)",
+            "Fixed shared data folder mixing sign-ins and settings between computers. (#230)"
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "v1.6.9",
       "version": "1.6.9",
       "name": "v1.6.9",
@@ -4288,6 +4476,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-09T05:27:49.477Z",
+  "updatedAt": "2026-11-15T18:25:40.835Z",
   "degraded": false
 }
