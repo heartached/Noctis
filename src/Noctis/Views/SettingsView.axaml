@@ -8868,6 +8868,7 @@
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <StackPanel Spacing="10">
                     <!-- Row 1: logo + version on left, update button on right -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
                             <!-- White note, transparent corners, plus a small transparent margin
@@ -9045,8 +9046,8 @@
                     </Grid>
 
                     <!-- Update status area (failures in red behind a "!" badge) -->
-                    <StackPanel Classes="update-fade" Orientation="Horizontal" Spacing="12"
-                                IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <controls:CollapsibleContent IsOpen="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Classes="update-fade" Orientation="Horizontal" Spacing="12">
                         <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
                             <Border Width="14" Height="14" CornerRadius="7" Background="#E74856"
                                     VerticalAlignment="Center"
@@ -9069,6 +9070,8 @@
                                 IsVisible="{Binding ShowWhatsNew}">
                             <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
                         </Button>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
                     </StackPanel>
 
                     <!-- Auto-update (opt-in): background download + install at next launch. Hidden for Scoop /
