@@ -12,7 +12,8 @@ namespace Noctis.Tests;
 /// GitHub #101: just clicking a song counted it as played. Settings → Playback → "Count a
 /// play after" (Immediately / 25 / 50 / 75 / 90 %) now holds the play count, Last Played and
 /// the play log back until that share of the song has actually been heard — seeks don't
-/// count as listening. Immediately (the default) keeps counting at the start.
+/// count as listening. Immediately keeps counting at the start; half the song is the default
+/// on a new install (2026-11-14), Immediately in settings files from before the setting.
 /// </summary>
 public class PlayCountThresholdTests : IDisposable
 {
@@ -117,9 +118,9 @@ public class PlayCountThresholdTests : IDisposable
     }
 
     [AvaloniaFact]
-    public void Immediately_TheDefault_CountsAtTheStart()
+    public void Immediately_CountsAtTheStart()
     {
-        Assert.Equal(0, new AppSettings().PlayCountThresholdPercent);
+        Assert.Equal(50, new AppSettings().PlayCountThresholdPercent); // a new install: half the song
         var rig = Create(0);
         var counted = new List<Track>();
         rig.Player.PlayCounted += (_, t) => counted.Add(t);
@@ -293,7 +294,7 @@ public class PlayCountThresholdTests : IDisposable
     {
         var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
         await vm.LoadAsync();
-        Assert.Equal(0, vm.PlayCountThresholdPercent);
+        Assert.Equal(50, vm.PlayCountThresholdPercent); // a new install: half the song
         Assert.Equal(new[] { 0, 25, 50, 75, 90 }, vm.PlayCountThresholdOptions.Select(o => o.Percent));
 
         vm.SelectedPlayCountThresholdOption = vm.PlayCountThresholdOptions.Single(o => o.Percent == 75);
@@ -306,7 +307,7 @@ public class PlayCountThresholdTests : IDisposable
         Assert.Equal(75, reloaded.SelectedPlayCountThresholdOption?.Percent);
 
         reloaded.ResetSettingsToDefaults(new AppSettings());
-        Assert.Equal(0, reloaded.PlayCountThresholdPercent);
+        Assert.Equal(50, reloaded.PlayCountThresholdPercent);
     }
 
     [Theory]
