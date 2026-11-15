@@ -42,6 +42,9 @@ internal sealed class NoctisSyncState
     /// <summary>Links that ended (the local file left, or the desktop dropped the song), phone id →
     /// desktop id, until the synced playlists are pointed back at the desktop song.</summary>
     public Dictionary<string, string> Retired { get; set; } = new();
+    /// <summary>The desktop songs here are dated by when they reached the phone. False in a file
+    /// from before that rule: those songs still carry the computer's date and are re-dated once.</summary>
+    public bool ArrivalDates { get; set; }
 }
 
 /// <summary>Phone changes waiting for the next sync. Written on every change.</summary>
