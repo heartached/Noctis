@@ -128,6 +128,42 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         window.Close();
     }
 
+    /// <summary>The glass is lite while the card moves (S23 11-14: the full glass cost frames over
+    /// 25 ms through most of the pop): lite from the open's first frame through the spring, the full
+    /// glass at rest (cross-faded in), lite again as soon as the close starts.</summary>
+    [AvaloniaFact]
+    public void TheGlass_IsLiteWhileTheCardMoves_AndFullAtRest()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var _ = rig;
+        var menu = MenuOf(view);
+        var glass = menu.FindControl<GlassPanel>("Glass")!;
+        Assert.Equal(0, glass.Lite);                                     // the default: full glass
+
+        var more = MobileFixtures.Named<Button>(view, "NowPlayingMore");
+        more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        more.Command!.Execute(null);
+        Assert.Equal(1, glass.Lite);                                     // the start pose
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var liteDuringSpring = new List<double>();
+        while (clock.Elapsed.TotalMilliseconds < PopMenu.PopOpenMs * 0.8)
+        {
+            Pump(1);
+            liteDuringSpring.Add(glass.Lite);
+        }
+        Assert.All(liteDuringSpring, l => Assert.Equal(1, l));
+        Pump((int)((PopMenu.PopOpenMs + PopMenu.LiteOutMs) / 16) + 20);
+        Assert.Equal(0, glass.Lite, 3);                                  // at rest: the full glass
+        Assert.Equal(1, glass.Fade, 3);
+
+        rig.Shell.CloseSheet();
+        Pump((int)(PopMenu.LiteInMs / 16) + 4);
+        Assert.True(glass.Lite > 0.99 || !menu.IsVisible, $"lite {glass.Lite} while closing");
+        Pump(30);
+        Assert.False(menu.IsVisible);
+        window.Close();
+    }
+
     /// <summary>The phone's pop (tester 11-04): the card starts at <see cref="PopMenu.PopScale"/>
     /// with its frost and the dim faded out, holds that pose until it has been drawn, then springs
     /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost and the dim
