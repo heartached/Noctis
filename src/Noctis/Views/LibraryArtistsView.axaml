@@ -35,6 +35,12 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      SelectionMode="Single"
                      AutoScrollToSelectedItem="False">
+                <!-- Rows scrolled off stay in the tree and take the next artists (11-14). -->
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ctrl:RetainingVirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Focusable" Value="False" />
@@ -56,13 +62,10 @@
                 </ListBox.Styles>
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:ArtistRow">
-                        <ItemsControl ItemsSource="{Binding Artists}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <!-- A row re-used for other artists keeps its tiles (TileRow, 11-14). -->
+                        <ctrl:TileRow Items="{Binding Artists}"
+                                      Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1">
+                            <ctrl:TileRow.ItemTemplate>
                                 <DataTemplate DataType="{x:Type m:Artist}">
                                     <!-- Only the portrait circle is interactive: the Button IS the circle
                                          (fixed square + elliptical Clip, which Avalonia hit-testing honours),
@@ -154,8 +157,8 @@
                                                HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ctrl:TileRow.ItemTemplate>
+                        </ctrl:TileRow>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

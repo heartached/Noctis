@@ -7,6 +7,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Controls;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -192,6 +193,170 @@ public class RetainedRowsTests
         // ~1.3 MB a frame in the app; now every row keeps its template.
         Assert.Equal(containers.Count, roots.Count);
         Assert.True(kbPerFrame < 400, $"{kbPerFrame:0} KB per 40 px wheel step");
+        window.Close();
+    }
+
+    private sealed class NoOpPlayHistory : IPlayHistoryService
+    {
+        public IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Track track) { }
+        public void RecordSkip(Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
+    /// <summary>A grid row scrolled off is re-used for other albums: its tiles re-bind (TileRow)
+    /// rather than being built again, each shows its own album, and the Ctrl-selection plate
+    /// follows the album, not the tile.</summary>
+    [AvaloniaFact]
+    public void AlbumsGrid_ReusedRows_KeepTheirTiles_AndShowTheirOwnAlbums()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib),
+            new SettingsViewModel(persistence, lib, new NoOpPlayHistory()));
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        Pump();
+        var cols = Math.Max(1, vm.GridColumns);
+        for (var r = 0; r < 60; r++)
+            vm.FilteredAlbumRows.Add(new AlbumRow
+            {
+                Albums = Enumerable.Range(0, cols).Select(c => new Album
+                {
+                    Id = Guid.NewGuid(), Name = $"Album {r}-{c}", Artist = "Artist", Year = 2020, Tracks = new List<Track>(),
+                }).ToList(),
+            });
+        Pump();
+        var list = view.GetVisualDescendants().OfType<ListBox>().First(l => l.Name == "AlbumListBox");
+        Assert.IsType<RetainingVirtualizingStackPanel>(list.ItemsPanelRoot);
+
+        // One album Ctrl-selected (the view's own set, as a Ctrl+click leaves it).
+        var picked = ((AlbumRow)vm.FilteredAlbumRows[0]).Albums[1];
+        var selected = (HashSet<Album>)typeof(LibraryAlbumsView)
+            .GetField("_selectedAlbums", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(view)!;
+        selected.Add(picked);
+        foreach (var t in view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")))
+            MultiSelectHelper.SyncAlbumTileVisual(t, selected);
+
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        var tiles = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        foreach (var y in new[] { 0.0, 600, 1300, 4000, 9000, 2500, 0 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in list.GetRealizedContainers()!)
+            {
+                var albumRow = Assert.IsType<AlbumRow>(((ListBoxItem)row).Content);
+                var rowTiles = row.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
+                Assert.Equal(albumRow.Albums.Count, rowTiles.Count);
+                for (var c = 0; c < rowTiles.Count; c++)
+                {
+                    var album = albumRow.Albums[c];
+                    Assert.Same(album, rowTiles[c].DataContext);
+                    var title = rowTiles[c].GetVisualDescendants().OfType<HighlightTextBlock>().First();
+                    Assert.Equal(album.Name, title.DisplayText);
+                    Assert.Equal(ReferenceEquals(album, picked), rowTiles[c].Classes.Contains("ctrl-selected"));
+                    var albumPlay = rowTiles[c].GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("tile-play"));
+                    Assert.True(albumPlay.Command != null && albumPlay.IsEffectivelyEnabled, $"album tile {c} at {y}: Play has no command");
+                    tiles.Add(rowTiles[c]);
+                }
+            }
+        }
+        // A few rows' worth of tiles for 60 rows scrolled through: they were re-bound, not rebuilt.
+        Assert.True(tiles.Count <= cols * 8, $"{tiles.Count} tiles for {cols} columns");
+        window.Close();
+    }
+
+    /// <summary>Favorites rows re-used for other favorites: each tile shows its own item and its
+    /// hover Play button stays usable.</summary>
+    [AvaloniaFact]
+    public async Task FavoritesGrid_ReusedRows_ShowTheirOwnItems_WithAWorkingPlayButton()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 400; i++)
+            lib.TrackList.Add(new Track
+            {
+                Id = Guid.NewGuid(), Title = $"Song {i}", Artist = "Artist", Album = $"Single {i}", AlbumArtist = "Artist",
+                FilePath = TestPaths.Primary("f", $"{i}.mp3"), Duration = TimeSpan.FromMinutes(3), IsFavorite = true, AlbumId = Guid.NewGuid(),
+            });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new FavoritesViewModel(player, lib, persistence, new SidebarViewModel(persistence, lib),
+            new SettingsViewModel(persistence, lib, new NoOpPlayHistory()));
+        vm.Refresh();
+        var view = new FavoritesView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        var list = view.FindControl<ListBox>("FavoritesList")!;
+        await PumpUntil(() => list.GetRealizedContainers()?.Any() == true);
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        foreach (var y in new[] { 0.0, 700, 2000, 9000, 300, 0 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in list.GetRealizedContainers()!)
+            {
+                var itemsRow = Assert.IsType<FavoriteItemRow>(((ListBoxItem)row).Content);
+                var tiles = row.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
+                Assert.Equal(itemsRow.Items.Count, tiles.Count);
+                for (var c = 0; c < tiles.Count; c++)
+                {
+                    Assert.Same(itemsRow.Items[c], tiles[c].DataContext);
+                    var play = tiles[c].GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("tile-play"));
+                    Assert.True(play.IsEffectivelyEnabled, $"tile {c} of a row at {y}: Play disabled (command {play.Command})");
+                }
+            }
+        }
+        window.Close();
+    }
+
+    /// <summary>Artists rows re-used for other artists: each portrait shows its own artist and
+    /// still opens it.</summary>
+    [AvaloniaFact]
+    public void ArtistsGrid_ReusedRows_ShowTheirOwnArtists()
+    {
+        EnsureAppStyles();
+        var vm = new LibraryArtistsViewModel(new FakeLibraryService());
+        var rows = new List<ArtistRow>();
+        for (var r = 0; r < 60; r++)
+        {
+            var row = new ArtistRow();
+            for (var i = 0; i < 7; i++)
+                row.Artists.Add(new Artist { Id = Guid.NewGuid(), Name = $"Artist {r * 7 + i}", IsFavorite = i == 3, CountsLine = $"{r} albums" });
+            rows.Add(row);
+        }
+        vm.ArtistRows.ReplaceAll(rows);
+        var view = new LibraryArtistsView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        Pump();
+        var list = view.FindControl<ListBox>("ArtistListBox")!;
+        Assert.IsType<RetainingVirtualizingStackPanel>(list.ItemsPanelRoot);
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        var tiles = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        foreach (var y in new[] { 0.0, 500, 2000, 6000, 1000, 0 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in list.GetRealizedContainers()!)
+            {
+                var artistRow = Assert.IsType<ArtistRow>(((ListBoxItem)row).Content);
+                var rowTiles = row.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("artist-tile")).ToList();
+                Assert.Equal(artistRow.Artists.Count, rowTiles.Count);
+                for (var c = 0; c < rowTiles.Count; c++)
+                {
+                    Assert.Same(artistRow.Artists[c], rowTiles[c].DataContext);
+                    Assert.NotNull(rowTiles[c].Command);
+                    tiles.Add(rowTiles[c]);
+                }
+            }
+        }
+        Assert.True(tiles.Count <= 7 * 8, $"{tiles.Count} portraits built for 60 rows");
         window.Close();
     }
 }

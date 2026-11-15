@@ -170,6 +170,12 @@
                      ScrollViewer.AllowAutoHide="False"
                      SelectionMode="Single"
                      AutoScrollToSelectedItem="False">
+                <!-- Rows scrolled off stay in the tree and take the next albums (11-14). -->
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ctrl:RetainingVirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Focusable" Value="False" />
@@ -316,15 +322,11 @@
                         <!-- One height for every row (1.6.9): cover + 64, room for a two-line
                              title. With wide spacing TileRowHeight is NaN and rows size to their
                              tallest caption (GitHub #210). -->
-                        <ItemsControl ItemsSource="{Binding Albums}" ItemTemplate="{StaticResource AlbumTileTemplate}"
-                                      Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileRowHeight}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <!-- Column count mirrors the VM's row chunk size (cover-size setting) -->
-                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).GridColumns}" Rows="1" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                        <!-- Column count mirrors the VM's row chunk size (cover-size setting). A row
+                             re-used for other albums keeps its tiles (TileRow, 11-14). -->
+                        <ctrl:TileRow Items="{Binding Albums}" ItemTemplate="{StaticResource AlbumTileTemplate}"
+                                      Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileRowHeight}"
+                                      Columns="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).GridColumns}" Rows="1" />
                     </DataTemplate>
                 </ListBox.DataTemplates>
             </ListBox>
