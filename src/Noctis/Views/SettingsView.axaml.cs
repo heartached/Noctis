@@ -34,6 +34,7 @@ public partial class SettingsView : UserControl
     {
         InitializeComponent();
         DeferTabPages();
+        InitWarmUp();
 
         if (EqSavePresetButton.Flyout is Flyout eqPresetFlyout)
         {
@@ -428,11 +429,17 @@ public partial class SettingsView : UserControl
     /// <summary>Puts <paramref name="tab"/>'s page back in its original slot.</summary>
     private void RealizeTabPage(string tab)
     {
+        if (FinishPartialPage(tab)) return; // the warm-up had started on it
         if (_tabHost is null || !_deferredTabPages.Remove(tab, out var page)) return;
+        InsertTabPage(page);
+    }
 
+    private void InsertTabPage(Control page)
+    {
+        var host = _tabHost!;
         var order = _tabHostOrder.IndexOf(page);
-        var index = _tabHost.Children.Count(c => _tabHostOrder.IndexOf(c) < order);
-        _tabHost.Children.Insert(index, page);
+        var index = host.Children.Count(c => _tabHostOrder.IndexOf(c) < order);
+        host.Children.Insert(index, page);
     }
 
     // ── Page switch motion (owner 11-14: "clean and smooth" through the categories) ──
@@ -844,6 +851,7 @@ public partial class SettingsView : UserControl
                     ShowTabPage(selected.SelectedSettingsTab, animate: true);
                     SlideRailPill();
                 }
+                NoteWarmUpActivity(WarmUpIdle); // the glide and the pill first
                 ScrollToTop();
                 Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
                 break;
@@ -935,6 +943,7 @@ public partial class SettingsView : UserControl
         base.OnAttachedToVisualTree(e);
         OnSettingsDataContextChanged(this, EventArgs.Empty);
         Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
+        if (IsEffectivelyVisible) StartWarmUp();
     }
 
     internal static readonly HashSet<string> StyleProbeTabs = new(); // internal for tests
@@ -985,6 +994,7 @@ public partial class SettingsView : UserControl
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        StopWarmUp();
         if (_trackedViewModel != null)
         {
             _trackedViewModel.PropertyChanged -= OnSettingsViewModelPropertyChanged;

@@ -79,41 +79,74 @@ public class SettingsTabSwitchAnimationTests : IDisposable
     }
 
     /// <summary>
-    /// Wall time of one switch: the selection change plus the layout pass that brings the page
-    /// on screen (the frame the user waits for). Prints; asserts nothing about the numbers.
+    /// Wall time and allocation of one switch: the selection change plus the layout pass that
+    /// brings the page on screen (the frame the user waits for). First visits are the best of
+    /// three fresh views after a JIT warm-up view (the machine's load moves single runs a lot);
+    /// allocation is the UI thread's own. Prints; asserts nothing about the numbers.
     /// </summary>
     [AvaloniaFact]
     public async Task TabSwitch_Cost()
     {
+        var keep = SettingsView.WarmUpEnabled;
+        SettingsView.WarmUpEnabled = false; // cold first visits (the warm-up has its own test)
+        try { await TabSwitchCostCore(); }
+        finally { SettingsView.WarmUpEnabled = keep; }
+    }
+
+    private async Task TabSwitchCostCore()
+    {
         var tabs = SettingsView.TabPanels.Select(t => t.Tab).Where(t => t != SettingsViewModel.TabGeneral).ToList();
-        // The first view pays the JIT for every control type; the second one is what a
-        // running app pays on a page's first visit.
         var (_, coldVm, coldWindow) = await OpenAsync();
         foreach (var tab in tabs) { coldVm.SelectedSettingsTab = tab; Pump(10); }
         coldWindow.Close();
 
-        var (view, vm, window) = await OpenAsync();
-        foreach (var pass in new[] { "first visit", "revisit", "revisit 2" })
+        var best = new Dictionary<string, (double Ms, long Bytes)>();
+        SettingsView? view = null;
+        SettingsViewModel? vm = null;
+        Window? window = null;
+        for (var round = 0; round < 3; round++)
         {
-            var total = 0.0;
-            foreach (var tab in tabs.Append(SettingsViewModel.TabGeneral))
+            window?.Close();
+            (view, vm, window) = await OpenAsync();
+            foreach (var tab in tabs)
             {
-                var sw = Stopwatch.StartNew();
-                vm.SelectedSettingsTab = tab;
-                var select = sw.Elapsed.TotalMilliseconds;
-                window.UpdateLayout();
-                var laidOut = sw.Elapsed.TotalMilliseconds;
-                Dispatcher.UIThread.RunJobs();
-                window.UpdateLayout();
-                sw.Stop();
-                total += sw.Elapsed.TotalMilliseconds;
-                var visuals = view.FindControl<Control>(SettingsView.TabPanels.Single(t => t.Tab == tab).PanelName)!.GetVisualDescendants().Count();
-                _o.WriteLine($"{pass,-12} {tab,-18} select {select,6:F1} | layout {laidOut - select,6:F1} | jobs {sw.Elapsed.TotalMilliseconds - laidOut,6:F1} | {visuals,5} visuals | {sw.Elapsed.TotalMilliseconds,7:F1} ms");
+                var (ms, bytes) = TimeSwitch(vm, window, tab);
+                if (!best.TryGetValue(tab, out var b) || ms < b.Ms) best[tab] = (ms, bytes);
                 Pump(30);
             }
-            _o.WriteLine($"{pass}: total {total:F0} ms over {tabs.Count + 1} switches");
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            Pump(30);
         }
-        window.Close();
+        var total = 0.0;
+        foreach (var tab in tabs)
+        {
+            var visuals = view!.FindControl<Control>(SettingsView.TabPanels.Single(t => t.Tab == tab).PanelName)!.GetVisualDescendants().Count();
+            _o.WriteLine($"first visit  {tab,-18} {best[tab].Ms,7:F1} ms {best[tab].Bytes / 1048576.0,6:F2} MB {visuals,5} visuals");
+            total += best[tab].Ms;
+        }
+        _o.WriteLine($"first visit: total {total:F0} ms");
+
+        var worst = 0.0;
+        foreach (var tab in tabs.Append(SettingsViewModel.TabGeneral))
+        {
+            var (ms, _) = TimeSwitch(vm!, window!, tab);
+            worst = Math.Max(worst, ms);
+            Pump(30);
+        }
+        _o.WriteLine($"revisit: worst {worst:F1} ms");
+        window!.Close();
+    }
+
+    private static (double Ms, long Bytes) TimeSwitch(SettingsViewModel vm, Window window, string tab)
+    {
+        var bytes = GC.GetAllocatedBytesForCurrentThread();
+        var sw = Stopwatch.StartNew();
+        vm.SelectedSettingsTab = tab;
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        window.UpdateLayout();
+        sw.Stop();
+        return (sw.Elapsed.TotalMilliseconds, GC.GetAllocatedBytesForCurrentThread() - bytes);
     }
 
     private static List<Control> RealizedPages(SettingsView view) =>

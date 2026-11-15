@@ -241,6 +241,16 @@ public class SettingsOpenCostTests : IDisposable
     [AvaloniaFact]
     public async Task TabFirstVisit_PutsItsPageBackInItsSlot_AndGlidesIn()
     {
+        // Only the visited pages join here; the idle warm-up (SettingsPageWarmUpTests) would
+        // bring the others in too once Settings has sat still long enough.
+        var keep = SettingsView.WarmUpEnabled;
+        SettingsView.WarmUpEnabled = false;
+        try { await TabFirstVisitCore(); }
+        finally { SettingsView.WarmUpEnabled = keep; }
+    }
+
+    private async Task TabFirstVisitCore()
+    {
         EnsureAppStyles();
         var (vm, _) = await CreateVmAsync();
         var view = new SettingsView { DataContext = vm };
