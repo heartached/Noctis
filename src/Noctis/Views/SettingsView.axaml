@@ -7216,6 +7216,7 @@
                     <!-- Name: an editable box, the way a profile field reads. -->
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="5">
                         <TextBlock Text="{loc:T Settings.Name}" FontSize="11.5" FontWeight="SemiBold" Opacity="0.55"/>
+                        <StackPanel>
                         <TextBox Classes="profile-name"
                                  AutomationProperties.Name="{loc:T Settings.Name}"
                                  Text="{Binding ProfileName, Mode=TwoWay}"
@@ -7225,12 +7226,14 @@
                                  KeyDown="OnProfileNameKeyDown"/>
                         <!-- The account this profile signs devices in with: under the name, beside
                              the one profile picture (no second avatar). -->
-                        <TextBlock x:Name="AccountIdentityLine" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis"
-                                   IsVisible="{Binding HasPrimaryAccount}">
+                        <controls:CollapsibleContent IsOpen="{Binding HasPrimaryAccount}" Lift="10" Motion="Glide">
+                        <TextBlock Margin="0,5,0,0" x:Name="AccountIdentityLine" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis">
                             <Run Text="{Binding PrimaryAccountName}" FontWeight="SemiBold"/>
                             <Run Text=" · "/>
                             <Run Text="{Binding PrimaryAccountSince}"/>
                         </TextBlock>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -7374,10 +7377,12 @@
                         </StackPanel>
                         <controls:LottieToggle AutomationProperties.Name="{loc:T Phone.Title}" x:Name="PhoneServerToggle" Grid.Column="1" IsChecked="{Binding NoctisServerEnabled}" VerticalAlignment="Center"/>
                     </Grid>
-                    <TextBlock Text="{loc:T Phone.NeedsAccount}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0"
-                               IsVisible="{Binding !HasPrimaryAccount}"/>
-                    <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,8,0,0"
-                               IsVisible="{Binding NoctisServerStartFailed}"/>
+                    <controls:CollapsibleContent IsOpen="{Binding !HasPrimaryAccount}" Lift="10" Motion="Glide">
+                    <TextBlock Text="{loc:T Phone.NeedsAccount}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </controls:CollapsibleContent>
+                    <controls:CollapsibleContent IsOpen="{Binding NoctisServerStartFailed}" Lift="10" Motion="Glide">
+                    <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
 
@@ -7593,6 +7598,7 @@
                         </Button>
                         <controls:CollapsibleContent IsOpen="{Binding IsPhoneAdvancedOpen}" Lift="10" Motion="Glide">
                         <StackPanel x:Name="PhoneAdvancedBody" Spacing="16" Margin="0,14,0,0">
+                            <StackPanel>
                             <Grid Classes="sub-setting" ColumnDefinitions="140,*">
                                 <TextBlock Grid.Column="0" Text="{loc:T Sync.DeviceName}" VerticalAlignment="Center" FontSize="13"/>
                                 <TextBox Grid.Column="1" Text="{Binding SyncDeviceName}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="220"
@@ -7600,7 +7606,8 @@
                                          CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
                             </Grid>
 
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding HasPrimaryAccount}">
+                            <controls:CollapsibleContent IsOpen="{Binding HasPrimaryAccount}" Lift="10" Motion="Glide">
+                            <Grid Margin="0,16,0,0" ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                                     <TextBlock Text="{loc:T Phone.OtherAppsTitle}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{loc:T Phone.OtherAppsDesc}" FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
@@ -7615,6 +7622,8 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- Freshly issued key: shown once, never stored in clear. Hidden behind dots until
                                  the eye is pressed; Copy works either way. -->
                             <controls:CollapsibleContent IsOpen="{Binding IsIssuedApiKeyOpen}" Lift="10" Motion="Glide">
@@ -7690,6 +7699,7 @@
                             <!-- Running: QR thumbnail + connection details. The card shows the
                                  token-free URL; the full auth link lives in the QR, the copy
                                  button and the enlarge flyout (screenshots leaked a live key). -->
+                            <StackPanel>
                             <Grid ColumnDefinitions="Auto,*"
                                   IsVisible="{Binding WebRemoteQr, Converter={x:Static ObjectConverters.IsNotNull}}">
                                 <Button Grid.Column="0" Classes="qr-thumb" Padding="0" Background="Transparent" BorderThickness="0"
@@ -7744,8 +7754,10 @@
                                 </StackPanel>
                             </Grid>
                             <!-- Enabled but the server threw on start -->
-                            <TextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                                       IsVisible="{Binding WebRemoteStartFailed}"/>
+                            <controls:CollapsibleContent IsOpen="{Binding WebRemoteStartFailed}" Lift="10" Motion="Glide">
+                            <TextBlock Margin="0,8,0,0" Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     </controls:CollapsibleContent>
@@ -7762,6 +7774,7 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="10">
+                    <StackPanel>
                     <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -7837,8 +7850,10 @@
                     </Border>
                     </controls:CollapsibleContent>
                     </StackPanel>
-                    <TextBlock Text="{Binding LocalApiError}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                               IsVisible="{Binding LocalApiError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <controls:CollapsibleContent IsOpen="{Binding LocalApiError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding LocalApiError}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
