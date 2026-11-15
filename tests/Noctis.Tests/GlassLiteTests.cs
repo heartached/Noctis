@@ -35,7 +35,7 @@ public class GlassLiteTests
         path.AddRoundRect(new SKRoundRect(Panel, 28));
         var cache = new GlassBackdropCache();
         var (lens0, spill0, lite0) = (GlassLens.LensPasses, GlassLens.SpillPasses, GlassLens.LitePasses);
-        Assert.True(cache.Draw(surface.Canvas, surface, path, 9, 1, wholePanelRepainted: true, Frame(), lite));
+        Assert.True(cache.Draw(surface.Canvas, surface, path, 9, 1, wholePanelRepainted: true, Frame(), lite: lite));
         passes = (GlassLens.LensPasses - lens0, GlassLens.SpillPasses - spill0, GlassLens.LitePasses - lite0);
         cache.Release();
         using var image = surface.Snapshot();

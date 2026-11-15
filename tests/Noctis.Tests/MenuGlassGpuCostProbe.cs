@@ -169,7 +169,7 @@ public class MenuGlassGpuCostProbe
             GlassLens.TryMapToDevice(m, Card, new GlassCornerRadii(Corner, Corner, Corner, Corner), out var device, out var radii, out _);
             var spill = (parts & Parts.Spill) != 0 ? 0.58f : 0f;
             var lens = new GlassLensFrame(device, radii, 14 * s, 10 * s, 0, 1, 1.2f, 0.22f, 0.41f, 2.5f, 1, spill, Math.Max(9 * 4, 16) * s, 0.16f);
-            cache.Draw(canvas, surface, path, (parts & Parts.NoBlur) != 0 ? 0 : 9 * s, fade, whole, lens, (parts & Parts.Lite) != 0 ? 1 : 0);
+            cache.Draw(canvas, surface, path, (parts & Parts.NoBlur) != 0 ? 0 : 9 * s, fade, whole, lens, lite: (parts & Parts.Lite) != 0 ? 1 : 0);
         }
         if ((parts & Parts.Rim) != 0)
         {
