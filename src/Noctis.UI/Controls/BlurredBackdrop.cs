@@ -59,6 +59,28 @@ public class BlurredBackdrop : Panel
     public static readonly StyledProperty<double> BlurDimOpacityProperty =
         AvaloniaProperty.Register<BlurredBackdrop, double>(nameof(BlurDimOpacity), 0x50 / (double)0xA6);
 
+    public static readonly DirectProperty<BlurredBackdrop, bool> IsOpaqueCoverProperty =
+        AvaloniaProperty.RegisterDirect<BlurredBackdrop, bool>(nameof(IsOpaqueCover), o => o.IsOpaqueCover);
+
+    private bool _isOpaqueCover;
+
+    /// <summary>
+    /// True while the layer hides <see cref="Target"/> completely: the blurred snapshot (opaque
+    /// everywhere, see BackdropSnapshot.FlattenOpaque) is shown at full strength, with the layer
+    /// itself at full opacity. Nothing under the layer can then change a pixel, and what does
+    /// change the layer (a retake's cross-fade, the dim, the open/close fade) repaints all of it.
+    /// The Settings sheet's frost reads this (GlassPanel.BeneathRepaintsWhole).
+    /// </summary>
+    public bool IsOpaqueCover
+    {
+        get => _isOpaqueCover;
+        private set => SetAndRaise(IsOpaqueCoverProperty, ref _isOpaqueCover, value);
+    }
+
+    private void UpdateOpaqueCover() =>
+        IsOpaqueCover = _snapshot != null && !_live && !_blurHidden && ReferenceEquals(_image.Source, _snapshot)
+                        && _image.Opacity >= 1 && Opacity >= 1 && IsVisible;
+
     /// <summary>The dim over the app. Alone (no snapshot) it is the whole backdrop.</summary>
     public IBrush? Dim
     {
@@ -147,6 +169,10 @@ public class BlurredBackdrop : Panel
         Children.Add(_fadingOut);
         Children.Add(_image);
         Children.Add(_dim);
+        _image.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == OpacityProperty || e.Property == Image.SourceProperty) UpdateOpaqueCover();
+        };
         // A light/dark switch repaints the whole app under the sheet.
         ActualThemeVariantChanged += (_, _) => RefreshSoon();
 
@@ -483,6 +509,7 @@ public class BlurredBackdrop : Panel
         base.OnPropertyChanged(change);
         // The open/close fade of this layer carries the live blur with it.
         if (_live && change.Property == OpacityProperty) UpdateLiveEffect();
+        if (change.Property == OpacityProperty || change.Property == IsVisibleProperty) UpdateOpaqueCover();
     }
 
     /// <summary>Puts live mode on (idempotent): the dim settles at the blur's lighter one
@@ -559,5 +586,6 @@ public class BlurredBackdrop : Panel
         _dim.Transitions = animate ? _dimFade : null;
         _image.Opacity = imageOpacity;
         _dim.Opacity = dimOpacity;
+        UpdateOpaqueCover();
     }
 }
