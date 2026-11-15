@@ -218,4 +218,63 @@ public class MobileLyricsAllocationTests
             win.Close();
         }
     }
+
+    /// <summary>
+    /// A line change scrolls a line in. Its row used to be built from scratch (button, texts,
+    /// word layers, styles, bindings: ~330 KB for a plain line and ~1 MB for a word-timed one
+    /// in an optimized build); rows are now kept and handed the next line (RowItemsControl).
+    /// A row handed a new line shows that line's dimming and blur at once, not faded from the
+    /// line it showed before.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task RowsScrollingIn_AreReused_AndShowTheirLinesLookAtOnce()
+    {
+        var (shell, player, view, win) = Mount(".lrc", Lrc(gap: 1.5));
+        try
+        {
+            var track = new Track { Id = Guid.NewGuid(), Title = "Song", Artist = "T", FilePath = "content://x/1", Duration = TimeSpan.FromSeconds(90) };
+            shell.Player.PlayTracks(new[] { track }, 0);
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+            player.RaisePositionChanged(TimeSpan.FromSeconds(8));
+            shell.OpenNowPlayingCommand.Execute(null);
+            shell.ToggleLyricsCommand.Execute(null);
+            win.UpdateLayout();
+            var page = view.GetVisualDescendants().OfType<LyricsPage>().Single();
+            var list = page.FindControl<ItemsControl>("LyricsList")!;
+            var scroll = page.FindControl<ScrollViewer>("LyricsScroll")!;
+            var settle = Stopwatch.StartNew();
+            while (settle.ElapsedMilliseconds < 1500) { Pump(); Thread.Sleep(16); }
+
+            var prepared = new List<Control>();
+            list.ContainerPrepared += (_, e) => prepared.Add(e.Container);
+            var built = 0L;
+            var rows = 0;
+            for (var step = 0; step < 6; step++)
+            {
+                prepared.Clear();
+                var b0 = GC.GetAllocatedBytesForCurrentThread();
+                scroll.Offset = new Avalonia.Vector(0, scroll.Offset.Y + 120);
+                win.UpdateLayout();
+                built += GC.GetAllocatedBytesForCurrentThread() - b0;
+                rows += prepared.Count;
+                foreach (var row in prepared)
+                {
+                    var button = row.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line"));
+                    var line = Assert.IsType<LyricLine>(button.DataContext);
+                    Assert.Equal(line.LineOpacity, button.Opacity, 3);
+                    Assert.Equal(line.BlurRadius, (button.Effect as Avalonia.Media.IBlurEffect)?.Radius ?? 0, 1);
+                }
+                Pump();
+            }
+            _o.WriteLine($"rows scrolled in: {rows}, {built / Math.Max(1, rows) / 1024} KB a row");
+            Assert.True(rows >= 3);
+            Assert.True(shell.Lyrics.Lines.Select(l => l.LineOpacity).Distinct().Count() > 2, "the lines are dimmed by distance");
+            Assert.InRange(built / rows, 0, 200 * 1024);   // was ~400 KB a plain row (Debug), built from scratch
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
 }
