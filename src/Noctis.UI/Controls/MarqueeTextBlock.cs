@@ -232,6 +232,10 @@ public class MarqueeTextBlock : UserControl
     private bool _waitingForView;
     private long _lastFrameTimestamp;
     private int _lapGeneration;
+    // The pending rest-pause timer. A running DispatcherTimer is rooted by the dispatcher and its
+    // callback holds this control, so a closed mini player window (its whole tree, ~2.5 MB managed)
+    // stayed alive until the 7 s rest ran out: stopped on detach instead (memory harness, 11-14).
+    private IDisposable? _lapTimer;
     private double _overflow;
     private double _textWidth;
     private double _viewportWidth;
@@ -513,7 +517,8 @@ public class MarqueeTextBlock : UserControl
     private void ScheduleNextLap()
     {
         var generation = ++_lapGeneration;
-        DispatcherTimer.RunOnce(() =>
+        _lapTimer?.Dispose();
+        _lapTimer = DispatcherTimer.RunOnce(() =>
         {
             if (generation == _lapGeneration && VisualRoot != null)
                 StartScrolling();
@@ -548,6 +553,8 @@ public class MarqueeTextBlock : UserControl
     {
         _isRunning = false;
         _lapGeneration++; // cancels any pending between-laps resume
+        _lapTimer?.Dispose();
+        _lapTimer = null;
     }
 
     private void QueueNextFrame()
