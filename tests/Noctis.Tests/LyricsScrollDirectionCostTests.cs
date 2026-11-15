@@ -102,37 +102,6 @@ public class LyricsScrollDirectionCostTests
         }
     }
 
-    /// <summary>Drives one jump and reports the peak number of simultaneously
-    /// transformed lines during the glide.</summary>
-    private async Task<int> PeakTransformedLines(int from, int to)
-    {
-        var vm = MakeViewModel();
-        vm.LyricLines.ReplaceAll(MakeLines(LineCount));
-
-        var view = new LyricsView { DataContext = vm };
-        var win = new Window { Width = 1600, Height = 900, Content = view };
-        try
-        {
-            win.Show();
-            await Pump(150);
-
-            var panel = LinesPanel(view);
-            Assert.NotNull(panel);
-
-            vm.ActiveLineIndex = from;
-            await Pump(1600);
-
-            var peak = 0;
-            vm.ActiveLineIndex = to;
-            await Pump(1600, () => peak = Math.Max(peak, TransformedLines(panel!)));
-            return peak;
-        }
-        finally
-        {
-            win.Close();
-        }
-    }
-
     /// <summary>Scrubs the active line one step at a time, the way dragging the timeline
     /// slider feeds it, and reports how far the scroll actually got by the time the drag
     /// ended — as a fraction of the distance it needed to cover.</summary>

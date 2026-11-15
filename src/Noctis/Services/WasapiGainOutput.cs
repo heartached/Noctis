@@ -46,8 +46,6 @@ namespace Noctis.Services;
 [SupportedOSPlatform("windows")]
 internal sealed class WasapiGainOutput : IDisposable
 {
-    private const int BytesPerSample = 2; // S16N from LibVLC's amem output
-
     // AUDCLNT_E_DEVICE_IN_USE: another client holds the endpoint exclusively.
     private const int HrDeviceInUse = unchecked((int)0x8889000A);
 

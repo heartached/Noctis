@@ -396,14 +396,6 @@ public partial class LyricsPanelView : UserControl
         return presenter?.GetVisualChildren().FirstOrDefault() as Panel;
     }
 
-    private Control? FindLineControl(int index)
-    {
-        if (index < 0) return null;
-        var panel = GetLinesPanel();
-        if (panel == null || index >= panel.Children.Count) return null;
-        return panel.Children[index];
-    }
-
     private double? ComputeTargetOffset(int index)
     {
         var panel = GetLinesPanel();

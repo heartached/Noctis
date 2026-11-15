@@ -402,7 +402,7 @@
         </Style>
 
         <!-- Albums row tiles: bare cover + two text lines, no plate; the Play button on
-             the cover fades in on hover (Button.recent-play below). -->
+             the cover fades in on hover. -->
         <!-- Album spacing as on the Albums page: covers 8px apart (1.6.9) by default, 18px with
              Settings › "Wider spacing between albums" (GitHub #210). The rows' margins keep the
              covers 4px inside the section and 18px under the heading either way. -->
@@ -431,24 +431,6 @@
         </Style>
         <Style Selector="Button.home-album-tile:pressed">
             <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
-
-        <!-- Album art: a play button fades in on hover -->
-        <Style Selector="Button.recent-play">
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.album-tile:pointerover Button.recent-play">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <Style Selector="Button.recent-play:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-        </Style>
-        <Style Selector="Button.recent-play:pressed /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
 
         <!-- Collapsible section header. The whole title is the hit target; the chevron
@@ -614,62 +596,6 @@
         </Style>
         <Style Selector="Button.chart-dots:pointerover PathIcon">
             <Setter Property="Opacity" Value="1"/>
-        </Style>
-
-        <!-- Albums rail: featured card and its track rows -->
-        <Style Selector="Border.rail-panel">
-            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}"/>
-            <Setter Property="CornerRadius" Value="12"/>
-            <Setter Property="Padding" Value="6"/>
-        </Style>
-        <Style Selector="Button.home-rail-card">
-            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="10"/>
-            <Setter Property="Padding" Value="14"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Button.home-rail-card:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
-        </Style>
-        <Style Selector="Button.home-rail-track">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Button.home-rail-track:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
-        </Style>
-        <!-- Hairline under each track row, as in the reference; the hover pill keeps it. -->
-        <Style Selector="Border.rail-track-body">
-            <Setter Property="Padding" Value="10,0"/>
-            <Setter Property="BorderThickness" Value="0,0,0,1"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
-        </Style>
-        <Style Selector="ContentPresenter:nth-last-child(1) > Button.home-rail-track Border.rail-track-body">
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-        <Style Selector="Border.rail-track-body.playing TextBlock.rail-title, Border.rail-track-body.playing TextBlock.rail-duration">
-            <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <Style Selector="Button.home-rail-album">
-            <Setter Property="Background" Value="{DynamicResource HomeCardBackground}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="6"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Button.home-rail-album:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource HomeCardHoverBackground}"/>
         </Style>
 
         <!-- NOTE: the section panels below carry NO Spacing — each folding body carries the

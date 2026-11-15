@@ -169,11 +169,6 @@ public class MobileLyricsClockJitterTests
             "the legacy clock passed the bound: it is too loose to prove anything");
     }
 
-    private sealed class NoPicker : Noctis.Mobile.Services.IFolderPicker
-    {
-        public Task<string?> PickFolderAsync() => Task.FromResult<string?>(null);
-    }
-
     private static (Noctis.Mobile.ViewModels.LyricsPageViewModel Lyrics, Noctis.Mobile.ViewModels.NowPlayingViewModel Player, FakeAudioPlayer Engine) Playing()
     {
         var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
