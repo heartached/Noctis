@@ -64,7 +64,6 @@ public partial class LyricsPage : UserControl
     {
         InitializeComponent();
         LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
-        WashDither.Background = NowPlayingPage.Dither;
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
         LyricsScroll.PropertyChanged += OnScrollPropertyChanged;
 

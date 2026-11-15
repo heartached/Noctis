@@ -221,7 +221,7 @@
                 </LinearGradientBrush>
             </Border.Background>
         </Border>
-        <Border Name="WashDither" IsHitTestVisible="False" />
+        <views:DitherLayer Name="WashDither" IsHitTestVisible="False" />
 
         <!-- Portrait: one column. Landscape (the code-behind, on resize): Now Playing's big cover
              on the left half (SideArtBox, where Now Playing's landscape cover stands), the lyrics,
