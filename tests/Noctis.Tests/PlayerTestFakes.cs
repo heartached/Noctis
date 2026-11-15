@@ -120,6 +120,9 @@ internal sealed class FakeLibraryService : ILibraryService
         ? TrackList
         : TrackList.Where(t => !Noctis.Helpers.FolderPathMatch.IsInOrSameAsAny(t.FilePath, HiddenList)).ToList();
     public IReadOnlyList<Track> AllTracks => TrackList;
+    /// <summary>The Inbox songs (empty unless a test fills it).</summary>
+    public List<Track> InboxList { get; } = new();
+    public IReadOnlyList<Track> InboxTracks => InboxList;
     public List<string> HiddenList { get; } = new();
     public IReadOnlyList<string> HiddenFolders => HiddenList;
     public Task SetFolderHiddenAsync(string folderPath, bool hidden)

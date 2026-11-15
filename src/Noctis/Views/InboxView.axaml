@@ -116,6 +116,12 @@
                  SelectionMode="Multiple"
                  IsVisible="{Binding !IsEmpty}"
                  Padding="0,0,0,115">
+            <!-- Rows scrolled off stay in the tree and take the next song (11-15). -->
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <controls:RetainingVirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="m:Track">
                     <Border Classes="row-body" Classes.now-playing="{Binding IsNowPlaying}">

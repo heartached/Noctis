@@ -129,8 +129,10 @@ public partial class LibraryFoldersView : UserControl
 
     private void OnTrackContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
-        if (e.Container is ListBoxItem item)
-            item.ContextRequested += OnTrackItemContextRequested;
+        if (e.Container is not ListBoxItem item) return;
+        // A row parked by RetainingVirtualizingStackPanel is prepared again without being cleared.
+        item.ContextRequested -= OnTrackItemContextRequested;
+        item.ContextRequested += OnTrackItemContextRequested;
     }
 
     private void OnTrackContainerClearing(object? sender, ContainerClearingEventArgs e)
