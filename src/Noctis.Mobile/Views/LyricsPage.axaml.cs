@@ -42,6 +42,8 @@ public partial class LyricsPage : UserControl
     private ShellViewModel? _shell;
     private LyricsPageViewModel? _lyrics;
     private bool _frameLoopRunning;
+    /// <summary>A ⋯ menu or sheet covers the page: the lines hold still and draw from a cached bitmap.</summary>
+    private bool _heldForMenu;
 
     private bool _gliding;
     private double _glideFrom;
@@ -109,7 +111,11 @@ public partial class LyricsPage : UserControl
             _lyrics.PropertyChanged -= OnLyricsChanged;
             _lyrics.Lines.CollectionChanged -= OnLinesChanged;
         }
-        if (_shell != null) _shell.Player.PropertyChanged -= OnPlayerChanged;
+        if (_shell != null)
+        {
+            _shell.Player.PropertyChanged -= OnPlayerChanged;
+            _shell.PropertyChanged -= OnShellChanged;
+        }
         _shell = DataContext as ShellViewModel;
         _lyrics = _shell?.Lyrics;
         if (_lyrics != null)
@@ -117,7 +123,12 @@ public partial class LyricsPage : UserControl
             _lyrics.PropertyChanged += OnLyricsChanged;
             _lyrics.Lines.CollectionChanged += OnLinesChanged;
         }
-        if (_shell != null) _shell.Player.PropertyChanged += OnPlayerChanged;
+        if (_shell != null)
+        {
+            _shell.Player.PropertyChanged += OnPlayerChanged;
+            _shell.PropertyChanged += OnShellChanged;
+        }
+        UpdateMenuHold();
         if (_lyrics != null && LyricsScroll.Bounds.Width > 0) _lyrics.ViewWidth = LyricsScroll.Bounds.Width;
     }
 
@@ -125,6 +136,7 @@ public partial class LyricsPage : UserControl
     {
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty) return;
+        UpdateMenuHold();
         if (!IsVisible)
         {
             EndBrowse(scrollBack: false);
@@ -150,7 +162,7 @@ public partial class LyricsPage : UserControl
     {
         if (e.PropertyName == nameof(LyricsPageViewModel.WantsFrames))
             EnsureFrameLoop();
-        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible)
+        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible && !_heldForMenu)
         {
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             ScrollToLine(_lyrics!.ScrollLineIndex, animate: true);
@@ -159,6 +171,41 @@ public partial class LyricsPage : UserControl
         else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && IsVisible)
             ShowControls();   // (re)starts the hide timer once there is something to read
     }
+
+    private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ShellViewModel.IsMenuOpen) or nameof(ShellViewModel.IsSheetOpen)) UpdateMenuHold();
+    }
+
+    /// <summary>
+    /// S23 at 120 Hz (11-14): the ⋯ menu popped smoothly over the Songs list but stuttered over the
+    /// lyrics (24-40 frames over 25 ms per open and close): its dim and glass repaint everything
+    /// under them on every frame of the pop, and here that is a column of lines each drawn through
+    /// its own depth blur. While a menu or sheet covers the page the lines hold still (no frames,
+    /// no glide) and the lyric column is drawn once into a bitmap at the screen's scale, which the
+    /// pop then reuses. On close the cache goes and the page catches up to the sung line.
+    /// </summary>
+    private void UpdateMenuHold()
+    {
+        var hold = IsVisible && _shell is { } shell && (shell.IsMenuOpen || shell.IsSheetOpen);
+        if (hold == _heldForMenu) return;
+        _heldForMenu = hold;
+        if (hold)
+        {
+            StopGlide();
+            var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+            LyricsScroll.CacheMode = new BitmapCache { RenderAtScale = scale };
+            return;
+        }
+        LyricsScroll.CacheMode = null;
+        if (!IsVisible) return;
+        _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
+        EnsureFrameLoop();
+        ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: true);
+    }
+
+    /// <summary>Held under a menu (tests read it).</summary>
+    internal bool IsHeldForMenu => _heldForMenu;
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -376,7 +423,7 @@ public partial class LyricsPage : UserControl
 
     // ── Frames ──
 
-    private bool KeepsFrames => IsVisible && (_gliding || _lyrics?.WantsFrames == true);
+    private bool KeepsFrames => IsVisible && !_heldForMenu && (_gliding || _lyrics?.WantsFrames == true);
 
     private void EnsureFrameLoop()
     {
