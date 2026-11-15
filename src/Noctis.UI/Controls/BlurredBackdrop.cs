@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Animation;
@@ -10,9 +11,13 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
 using Avalonia.Rendering.Composition;
+using Avalonia.Rendering.SceneGraph;
+using Avalonia.Skia;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Services;
+using SkiaSharp;
 
 namespace Noctis.Controls;
 
@@ -78,9 +83,12 @@ public class BlurredBackdrop : Panel
         private set => SetAndRaise(IsOpaqueCoverProperty, ref _isOpaqueCover, value);
     }
 
-    private void UpdateOpaqueCover() =>
+    private void UpdateOpaqueCover()
+    {
         IsOpaqueCover = _snapshot != null && !_live && !_blurHidden && ReferenceEquals(_image.Source, _snapshot)
                         && _image.Opacity >= 1 && Opacity >= 1 && IsVisible;
+        ApplyHostHidden();
+    }
 
     /// <summary>The dim over the app. Alone (no snapshot) it is the whole backdrop.</summary>
     public IBrush? Dim
@@ -119,9 +127,6 @@ public class BlurredBackdrop : Panel
     private readonly Image _image;
     /// <summary>The snapshot a retake replaced, held under the new one while it fades in.</summary>
     private readonly Image _fadingOut;
-    /// <summary>The live blur held still (<see cref="Hold"/>): a 1:1 render of Target with its
-    /// BlurEffect, under the dim, while Target itself is off the screen.</summary>
-    private readonly HeldFrame _held;
     private Bitmap? _fadingBitmap;
     private readonly Border _dim;
     private readonly Transitions _imageFade;
@@ -170,15 +175,36 @@ public class BlurredBackdrop : Panel
         RenderOptions.SetBitmapInterpolationMode(_fadingOut, BitmapInterpolationMode.MediumQuality);
         _dim = new Border();
         _dim.Bind(Border.BackgroundProperty, this.GetObservable(DimProperty));
-        _held = new HeldFrame
+        _probe = new ChangeProbe(RequestRetake);
+        _bands = new BandFrame[4];
+        _standIn = new Panel { IsVisible = false, IsHitTestVisible = false };
+        for (var i = 0; i < _bands.Length; i++)
         {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
-            IsVisible = false,
+            _bands[i] = new BandFrame
+            {
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                IsVisible = false,
+                Probe = _probe,
+                UseLayoutRounding = false,
+            };
+            // Stretched ~3-8x from a heavily blurred render: bicubic keeps the gradients smooth.
+            RenderOptions.SetBitmapInterpolationMode(_bands[i], BitmapInterpolationMode.HighQuality);
+            _standIn.Children.Add(_bands[i]);
+        }
+        _blurSource = new BandFrame { HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Stretch };
+        _blurrer = new Border { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Child = _blurSource };
+        _blurHost = new Panel
+        {
+            Width = 0, Height = 0, ClipToBounds = true, IsHitTestVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+            Children = { _blurrer },
         };
+        Children.Add(_blurHost);
         Children.Add(_fadingOut);
         Children.Add(_image);
-        Children.Add(_held);
+        Children.Add(_standIn);
+        Children.Add(_probe);
         Children.Add(_dim);
         _image.PropertyChanged += (_, e) =>
         {
@@ -497,6 +523,22 @@ public class BlurredBackdrop : Panel
         base.OnAttachedToVisualTree(e);
         BackdropSnapshot.BlurRadiusChanged += OnBlurRadiusChanged;
         AppGlass.Changed += OnAppGlassChanged;
+        LayoutUpdated += OnLayoutUpdatedForStandIn;
+    }
+
+    private Size _standInTargetSize;
+
+    /// <summary>After any layout pass: the bands follow the sheet (a plugin view growing the card)
+    /// and the window; a new size of the app also needs a new frame.</summary>
+    private void OnLayoutUpdatedForStandIn(object? sender, EventArgs e)
+    {
+        if (!_standingIn || Target is not { } target) return;
+        LayoutBands();
+        if (target.Bounds.Size != _standInTargetSize)
+        {
+            _standInTargetSize = target.Bounds.Size;
+            RequestRetake();
+        }
     }
 
     protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -512,20 +554,17 @@ public class BlurredBackdrop : Panel
         base.OnDetachedFromVisualTree(e);
         BackdropSnapshot.BlurRadiusChanged -= OnBlurRadiusChanged;
         AppGlass.Changed -= OnAppGlassChanged;
+        LayoutUpdated -= OnLayoutUpdatedForStandIn;
         Release();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        // The open/close fade of this layer carries the live blur with it (a held blur lets go
-        // first: the fade needs the app itself under it).
-        if (_live && change.Property == OpacityProperty)
-        {
-            ReleaseHold(animate: true);
-            UpdateLiveEffect();
-        }
-        if (change.Property == IsVisibleProperty && !IsVisible) ReleaseHold(animate: false);
+        // The open/close fade of this layer carries the live blur with it (the stand-in gives
+        // way to it at the fade's first step, and takes over once the layer is fully up).
+        if (_live && change.Property == OpacityProperty) UpdateLiveEffect();
+        if (change.Property == IsVisibleProperty) UpdateStandIn();
         if (change.Property == OpacityProperty || change.Property == IsVisibleProperty) UpdateOpaqueCover();
     }
 
@@ -535,9 +574,9 @@ public class BlurredBackdrop : Panel
     {
         _live = true;
         // Target fills the window, so clipping it to its bounds changes nothing on screen; but a
-        // render of it on its own (the held frame, see Hold) culls what lies outside it the way
-        // the window does. Without the clip, content past the window's edge (a drawer parked
-        // off-screen, a row below the fold) was blurred into the held frame's edges.
+        // render of it on its own (the stand-in's) culls what lies outside it the way the window
+        // does. Without the clip, content past the window's edge (a drawer parked off-screen, a
+        // row below the fold) was blurred into the stand-in's edges.
         if (Target is { } target && !_clippedTarget)
         {
             _targetClipWasSet = target.IsSet(ClipToBoundsProperty);
@@ -553,6 +592,7 @@ public class BlurredBackdrop : Panel
     {
         _blurHidden = !BackdropSnapshot.IsBlurEnabled;
         SetLayers(imageOpacity: 0, dimOpacity: _blurHidden ? 1 : Math.Clamp(BlurDimOpacity, 0, 1), animate: animate);
+        UpdateStandIn();
     }
 
     /// <summary>Target's BlurEffect at the Background Blur strength, scaled by this layer's
@@ -560,20 +600,28 @@ public class BlurredBackdrop : Panel
     private void UpdateLiveEffect()
     {
         if (!_live || Target is not { } target) return;
-        // Held: Target carries no effect until the hold lets go (which comes back here).
-        if (_isHeld) return;
         var radius = LiveRadiusFor(BackdropSnapshot.BlurRadius) * Math.Clamp(Opacity, 0, 1);
         if (radius < 0.5) radius = 0;
-        if (radius == LiveEffectRadius && ReferenceEquals(target.Effect, _liveEffect)) return;
-        LiveEffectRadius = radius;
-        _liveEffect = radius > 0 ? new ImmutableBlurEffect(radius) : null;
-        target.Effect = _liveEffect;
+        var changed = radius != LiveEffectRadius || (radius > 0) != (_liveEffect is not null);
+        if (changed)
+        {
+            LiveEffectRadius = radius;
+            _liveEffect = radius > 0 ? new ImmutableBlurEffect(radius) : null;
+        }
+        UpdateStandIn();
+        // Standing in: the stand-in draws the blur (a new strength is a retake); else Target does.
+        if (_standingIn)
+        {
+            if (changed) RequestRetake();
+        }
+        else if (!ReferenceEquals(target.Effect, _liveEffect))
+            target.Effect = _liveEffect;
     }
 
     /// <summary>Takes the live blur off Target (only the effect this layer put there).</summary>
     private void StopLive()
     {
-        ReleaseHold(animate: false);
+        LeaveStandIn();
         if (!_live) return;
         _live = false;
         if (Target is { } target && _liveEffect != null && ReferenceEquals(target.Effect, _liveEffect))
@@ -588,112 +636,368 @@ public class BlurredBackdrop : Panel
         LiveEffectRadius = 0;
     }
 
-    // ── Holding the live blur still while the sheet moves ──
+    // ── The stand-in: the live blur, cheaply, while the sheet sits over it ──
 
-    /// <summary>How long after the last <see cref="Hold"/> the blur goes live again.</summary>
-    public static readonly TimeSpan HoldReleaseDelay = TimeSpan.FromMilliseconds(300);
+    /// <summary>
+    /// An ancestor of <see cref="Target"/> that holds nothing else (MainWindow's AppContentHost).
+    /// While a stand-in or an opaque snapshot hides Target, this goes to Opacity 0, which the
+    /// compositor skips: the app under the sheet is not drawn at all. Target itself keeps
+    /// Opacity 1, so it can still be rendered on its own for the stand-in's retakes and the
+    /// snapshot's. Null: neither happens and the live blur stays as it always was.
+    /// </summary>
+    public Visual? TargetHost { get; set; }
+
+    /// <summary>
+    /// The sheet's own surface over this layer (the Settings card's fill). While it is opaque the
+    /// stand-in leaves the area under it alone, so a retake never repaints the sheet's content,
+    /// and changes hidden under it ask for none. Null, or not opaque: the stand-in covers it all.
+    /// </summary>
+    public Control? Hole { get; set; }
+
+    /// <summary>Shortest time between two retakes of the stand-in (about 30 a second).</summary>
+    internal static readonly TimeSpan RetakeInterval = TimeSpan.FromMilliseconds(33);
+
+    /// <summary>One more retake this long after a burst of them: a change landing in the very
+    /// frame a retake showed is not seen as a change (see ChangeProbe), this catches it.</summary>
+    internal static readonly TimeSpan TrailingRetakeDelay = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>The stand-in renders Target at this many device pixels per blur sigma at least,
+    /// and at no less than <see cref="MinStandInScale"/> of the screen's density.</summary>
+    internal const double StandInPixelsPerSigma = 4, MinStandInScale = 0.125;
+
+    /// <summary>The bands the stand-in is drawn in: the area of this layer outside <see cref="Hole"/>.</summary>
+    private readonly BandFrame[] _bands;
+    private readonly Panel _standIn;
+    /// <summary>Blurs a low-resolution render of Target: drawn into <see cref="_blurrer"/> with a
+    /// BlurEffect and rendered on its own. Kept in a clipped 0×0 host, so it never reaches the screen
+    /// and its changes repaint nothing.</summary>
+    private readonly Panel _blurHost;
+    private readonly Border _blurrer;
+    private readonly BandFrame _blurSource;
+    private readonly ChangeProbe _probe;
 
     private bool _clippedTarget, _targetClipWasSet, _targetClipWas;
-    private bool _isHeld;
-    private Task? _holding;
-    private Bitmap? _heldBitmap;
-    private bool _heldTargetOpacitySet;
-    private double _heldTargetOpacity = 1;
-    /// <summary>Stopwatch timestamp the hold lasts until; 0 = none.</summary>
-    private long _holdUntil;
-    private bool _holdTimerRunning;
-    /// <summary>Bumped whenever a hold ends or the live mode stops: a snapshot or timer that
-    /// started before it is stale.</summary>
-    private int _holdEpoch;
+    private bool _hostHidden, _hostOpacityWasSet;
+    private double _hostOpacityWas = 1;
+    private bool _standingIn;
+    private Task? _entering;
+    private Task? _retaking;
+    private bool _retakeWanted, _trailingQueued;
+    private long _lastRetake;
+    private Bitmap? _standInFrame;
+    /// <summary>Device pixels per layout unit of the current stand-in frame.</summary>
+    private double _standInScale;
+    /// <summary>Bumped whenever the stand-in ends: work that started before it is stale.</summary>
+    private int _standInEpoch;
+    private Rect _hole;
 
-    /// <summary>The live blur is held still, how many holds took, and the held frame (tests).</summary>
-    internal bool IsHeld => _isHeld;
-    internal int HoldCount { get; private set; }
-    internal HeldFrame HeldImage => _held;
+    /// <summary>The stand-in is up; how many times it came up and was retaken; its bands (tests).</summary>
+    internal bool IsStandingIn => _standingIn;
+    internal int StandInEntries { get; private set; }
+    internal int RetakeCount { get; private set; }
+    internal BandFrame[] Bands => _bands;
+    internal bool IsTargetHostHidden => _hostHidden;
 
     /// <summary>
-    /// Owner 11-14: scrolling the Settings sheet over the live blur was choppy. Avalonia repaints
-    /// a visual with an Effect whole whenever anything inside it changes
+    /// Owner 11-14/15: Settings over the live blur was choppy, scrolling or not. Avalonia repaints a
+    /// visual with an Effect whole whenever anything inside it changes
     /// (ServerCompositionVisual.Update: "add the entire node's old subtree bounds as a dirty
     /// region"), so with lyrics, a playing title or the progress bar moving behind the sheet the
-    /// whole window was re-rendered and re-blurred every frame, on top of the scroll.
+    /// whole window, sheet included, was re-rendered and re-blurred every frame.
     ///
-    /// While the sheet moves, call this (each scroll step; a page switch for its glide's length
-    /// in <paramref name="busyFor"/>): the live blur is swapped for a render of Target taken now,
-    /// effect and all, at the screen's own pixel density, so it is the frame that was on screen.
-    /// Target drops its effect and goes to Opacity 0, which the compositor skips: nothing behind
-    /// the sheet is drawn until <see cref="HoldReleaseDelay"/> after the last call, when the blur
-    /// goes live again and the held frame fades out over it. Live mode at rest only (full
-    /// opacity, blur on); otherwise a no-op.
+    /// Once the layer is fully up, a stand-in takes over: Target loses its effect and its host
+    /// goes to Opacity 0; this layer draws the blur instead, from a render of Target at a fraction
+    /// of the screen's resolution (blur sigma × <see cref="StandInPixelsPerSigma"/> pixels, a heavy
+    /// Gaussian of it is the same picture) blurred by the same Skia blur at that resolution and
+    /// stretched back. It is drawn only outside the sheet's opaque surface and retaken when
+    /// something behind changes (<see cref="ChangeProbe"/>), at most every <see cref="RetakeInterval"/>,
+    /// so with nothing moving it costs nothing, and scrolling the sheet never touches it. The
+    /// open and close fades run on the live blur as before.
     /// </summary>
-    public void Hold(TimeSpan busyFor = default)
+    private bool CanStandIn =>
+        _live && !_blurHidden && LiveEffectRadius > 0 && Opacity >= 1 && IsEffectivelyVisible
+        && Target is not null && TargetHost is not null;
+
+    private void UpdateStandIn()
     {
-        if (!CanHold) return;
-        var until = Stopwatch.GetTimestamp() + (long)((busyFor + HoldReleaseDelay).TotalSeconds * Stopwatch.Frequency);
-        if (until > _holdUntil) _holdUntil = until;
-        if (!_isHeld && _holding is null) _holding = TakeHoldAsync(_holdEpoch);
-        if (!_holdTimerRunning) _ = HoldTimerAsync(_holdEpoch);
+        if (CanStandIn)
+        {
+            if (!_standingIn && _entering is null) _entering = EnterStandInAsync(_standInEpoch);
+        }
+        else LeaveStandIn();
     }
 
-    /// <summary>
-    /// Holds the blur while any ScrollViewer inside <paramref name="sheet"/> scrolls (wheel,
-    /// scrollbar, touch, inertia, keys: anything that moves an offset).
-    /// </summary>
-    public void HoldWhileScrolling(Avalonia.Interactivity.Interactive sheet) =>
-        sheet.AddHandler(ScrollViewer.ScrollChangedEvent, (_, e) =>
-        {
-            if (e.OffsetDelta != default) Hold();
-        }, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
-
-    private bool CanHold =>
-        _live && !_blurHidden && LiveEffectRadius > 0 && Opacity >= 1 && IsEffectivelyVisible
-        && Target is { } target && (_isHeld || ReferenceEquals(target.Effect, _liveEffect));
-
-    private bool HoldExpired => _holdUntil == 0 || Stopwatch.GetTimestamp() >= _holdUntil;
-
-    private async Task TakeHoldAsync(int epoch)
+    /// <summary>The blur sigma of the live effect in device pixels, and the device scale at Target.</summary>
+    private (double Sigma, double DeviceScale)? LiveSigma()
     {
-        Bitmap? bitmap = null;
+        if (Target is not { } target || TopLevel.GetTopLevel(this) is not { } top || !(LiveEffectRadius > 0)) return null;
+        var scale = DeviceScale(target, top);
+        return ((0.288675 * LiveEffectRadius + 0.5) * scale, scale);
+    }
+
+    /// <summary>Device pixels per layout unit for the stand-in's render of Target.</summary>
+    private double StandInScale()
+    {
+        if (LiveSigma() is not { } s) return 0;
+        var fraction = Math.Clamp(StandInPixelsPerSigma / s.Sigma, MinStandInScale, 1);
+        return s.DeviceScale * fraction;
+    }
+
+    private async Task EnterStandInAsync(int epoch)
+    {
+        Bitmap? frame = null;
         try
         {
-            if (Target is not { } target || TopLevel.GetTopLevel(this) is not { } top
-                || ElementComposition.GetElementVisual(target) is not { } visual
+            if (Target is not { } target || ElementComposition.GetElementVisual(target) is not { } visual
                 || target.Bounds.Width < 1 || target.Bounds.Height < 1)
                 return;
-            bitmap = await visual.Compositor.CreateCompositionVisualSnapshot(visual, DeviceScale(target, top));
-            if (epoch != _holdEpoch || HoldExpired || !CanHold || target.TranslatePoint(default, this) is not { } at)
-                return;
-            _held.Transitions = null;
-            _held.Opacity = 1;
-            _held.Margin = new Thickness(at.X, at.Y, 0, 0);
-            _held.Width = target.Bounds.Width;
-            _held.Height = target.Bounds.Height;
-            _held.Source = bitmap;
-            _held.IsVisible = true;
-            FreeHeldBitmap();
-            _heldBitmap = bitmap;
-            bitmap = null;
-            _heldTargetOpacitySet = target.IsSet(OpacityProperty);
-            _heldTargetOpacity = target.Opacity;
+            var scale = StandInScale();
+            if (!(scale > 0)) return;
+            // The first frame is Target rendered with its live effect, at the stand-in's scale: the
+            // effect works in layout units, so it blurs exactly as much there.
+            frame = await visual.Compositor.CreateCompositionVisualSnapshot(visual, scale);
+            if (epoch != _standInEpoch || !CanStandIn) return;
+            _standInScale = scale;
+            _standInTargetSize = target.Bounds.Size;
+            ShowStandInFrame(frame);
+            frame = null;
+            _standingIn = true;
+            _probe.Arm();
+            StandInEntries++;
             target.Effect = null;
-            target.Opacity = 0;
-            _isHeld = true;
-            HoldCount++;
+            ApplyHostHidden();
         }
         catch (Exception ex)
         {
-            // A backend that can't snapshot stays live, as before.
-            DebugLogger.Warn(DebugLogger.Category.UI, "BlurredBackdrop.Hold", ex.Message);
+            // A backend that can't render it stays on the live blur, as before.
+            DebugLogger.Warn(DebugLogger.Category.UI, "BlurredBackdrop.StandIn", ex.Message);
         }
         finally
         {
-            bitmap?.Dispose();
-            if (epoch == _holdEpoch) _holding = null;
+            frame?.Dispose();
+            if (epoch == _standInEpoch) _entering = null;
         }
     }
 
+    /// <summary>Ends the stand-in at once (a fade starting, the layer closing, a mode change):
+    /// Target gets its host and live effect back, the bands go.</summary>
+    private void LeaveStandIn()
+    {
+        _standInEpoch++;
+        _entering = null;
+        _retaking = null;
+        _retakeWanted = _trailingQueued = false;
+        _probe.Disarm();
+        if (!_standingIn) return;
+        _standingIn = false;
+        ApplyHostHidden();
+        UpdateLiveEffect();
+        _standIn.IsVisible = false;
+        foreach (var band in _bands) band.Source = null;
+        _blurSource.Source = null;
+        FreeLater(ref _standInFrame);
+    }
+
+    /// <summary>Asks for a retake: something behind the sheet changed, or the blur strength did.</summary>
+    internal void RequestRetake()
+    {
+        if (!_standingIn) return;
+        _retakeWanted = true;
+        _retaking ??= RetakeLoopAsync(_standInEpoch);
+    }
+
+    private async Task RetakeLoopAsync(int epoch)
+    {
+        try
+        {
+            while (_retakeWanted)
+            {
+                _retakeWanted = false;
+                var wait = _lastRetake + (long)(RetakeInterval.TotalSeconds * Stopwatch.Frequency) - Stopwatch.GetTimestamp();
+                if (wait > 0) await Task.Delay(TimeSpan.FromSeconds(wait / (double)Stopwatch.Frequency));
+                if (epoch != _standInEpoch) return;
+                // Start to start: a retake takes a couple of frames itself (two renders, each
+                // landing after a frame), so counting from its end would halve the rate.
+                _lastRetake = Stopwatch.GetTimestamp();
+                await RetakeOnceAsync(epoch);
+                if (epoch != _standInEpoch) return;
+            }
+            if (!_trailingQueued)
+            {
+                _trailingQueued = true;
+                _ = TrailingRetakeAsync(epoch);
+            }
+        }
+        finally
+        {
+            if (epoch == _standInEpoch) _retaking = null;
+        }
+    }
+
+    private async Task TrailingRetakeAsync(int epoch)
+    {
+        await Task.Delay(TrailingRetakeDelay);
+        if (epoch != _standInEpoch) return;
+        if (_retaking is null) await RetakeOnceAsync(epoch);
+        if (epoch == _standInEpoch) _trailingQueued = false;
+    }
+
+    /// <summary>Renders Target (no effect now) at the stand-in's scale, blurs that render through
+    /// <see cref="_blurrer"/> at the same resolution, and shows the result.</summary>
+    private async Task RetakeOnceAsync(int epoch)
+    {
+        Bitmap? raw = null, blurred = null;
+        try
+        {
+            if (Target is not { } target || ElementComposition.GetElementVisual(target) is not { } visual) return;
+            var scale = StandInScale();
+            if (!(scale > 0) || LiveSigma() is not { } sigma) return;
+            raw = await visual.Compositor.CreateCompositionVisualSnapshot(visual, scale);
+            if (epoch != _standInEpoch) return;
+            var px = raw.PixelSize;
+            _blurrer.Width = px.Width;
+            _blurrer.Height = px.Height;
+            // The live effect's sigma, in pixels of this render (Skia: sigma = 0.288675 R + 0.5).
+            var lowSigma = sigma.Sigma * scale / sigma.DeviceScale;
+            _blurrer.Effect = new ImmutableBlurEffect(Math.Max(0, (lowSigma - 0.5) / 0.288675));
+            _blurSource.Source = raw;
+            _blurSource.SourceRect = new Rect(0, 0, px.Width, px.Height);
+            _blurHost.UpdateLayout();
+            if (ElementComposition.GetElementVisual(_blurrer) is not { } blurVisual) return;
+            blurred = await blurVisual.Compositor.CreateCompositionVisualSnapshot(blurVisual, 1);
+            if (epoch != _standInEpoch) return;
+            _standInScale = scale;
+            ShowStandInFrame(blurred);
+            blurred = null;
+            RetakeCount++;
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Warn(DebugLogger.Category.UI, "BlurredBackdrop.Retake", ex.Message);
+        }
+        finally
+        {
+            blurred?.Dispose();
+            if (raw is not null)
+            {
+                if (ReferenceEquals(_blurSource.Source, raw)) _blurSource.Source = null;
+                var r = raw;
+                Dispatcher.UIThread.Post(r.Dispose, DispatcherPriority.Background);
+            }
+        }
+    }
+
+    /// <summary>Puts <paramref name="frame"/> (Target rendered at <see cref="_standInScale"/>) up in
+    /// the bands; this layer owns it from here.</summary>
+    private void ShowStandInFrame(Bitmap frame)
+    {
+        var old = _standInFrame;
+        _standInFrame = frame;
+        LayoutBands();
+        _standIn.IsVisible = true;
+        if (old is not null) Dispatcher.UIThread.Post(old.Dispose, DispatcherPriority.Background);
+    }
+
+    /// <summary>Places the bands over this layer outside the hole, each drawing its part of the frame.</summary>
+    private void LayoutBands()
+    {
+        var frame = _standInFrame;
+        if (frame is null || Target is not { } target || target.TranslatePoint(default, this) is not { } at) return;
+        // Band edges on whole device pixels, placed exactly (no layout rounding): bands rounded
+        // apart left a 1 px seam where they meet (measured at 150%).
+        var ds = TopLevel.GetTopLevel(this) is { } top ? DeviceScale(this, top) : 1;
+        double Snap(double v) => Math.Round(v * ds) / ds;
+        Rect SnapRect(Rect r) => new(new Point(Snap(r.X), Snap(r.Y)), new Point(Snap(r.Right), Snap(r.Bottom)));
+        var area = new Rect(at, target.Bounds.Size);
+        _hole = ComputeHole(inner: true).Intersect(area);
+        if (_hole.Width > 0 && _hole.Height > 0) _hole = SnapRect(_hole);
+        // Repaints within the sheet's whole bounds are its own (its list scrolling edge to edge,
+        // a hover); a change of the app hidden under it does not show either.
+        _probe.Hole = ComputeHole(inner: false);
+        Span<Rect> rects = stackalloc Rect[4];
+        var count = 0;
+        if (_hole.Width <= 0 || _hole.Height <= 0)
+            rects[count++] = area;
+        else
+        {
+            void Add(Span<Rect> list, ref int n, Rect r) { if (r.Width > 0 && r.Height > 0) list[n++] = r; }
+            Add(rects, ref count, new Rect(area.X, area.Y, area.Width, _hole.Y - area.Y));
+            Add(rects, ref count, new Rect(area.X, _hole.Bottom, area.Width, area.Bottom - _hole.Bottom));
+            Add(rects, ref count, new Rect(area.X, _hole.Y, _hole.X - area.X, _hole.Height));
+            Add(rects, ref count, new Rect(_hole.Right, _hole.Y, area.Right - _hole.Right, _hole.Height));
+        }
+        // The render covers area × scale pixels; its pixel size is that rounded up, so mapping by
+        // the pixel size would stretch it by up to a pixel and shift the far edges.
+        var sx = _standInScale > 0 ? _standInScale : frame.PixelSize.Width / area.Width;
+        var sy = _standInScale > 0 ? _standInScale : frame.PixelSize.Height / area.Height;
+        for (var i = 0; i < _bands.Length; i++)
+        {
+            var band = _bands[i];
+            if (i >= count)
+            {
+                band.IsVisible = false;
+                band.Source = null;
+                continue;
+            }
+            var r = rects[i];
+            band.Margin = new Thickness(r.X, r.Y, 0, 0);
+            band.Width = r.Width;
+            band.Height = r.Height;
+            band.SourceRect = new Rect((r.X - area.X) * sx, (r.Y - area.Y) * sy, r.Width * sx, r.Height * sy);
+            band.Source = frame;
+            band.IsVisible = true;
+        }
+    }
+
+    /// <summary>The area under <see cref="Hole"/> the stand-in can leave out, in this layer's
+    /// coordinates: the hole's bounds less its corner radius, while it paints an opaque solid fill
+    /// at full strength; else empty.</summary>
+    private Rect ComputeHole(bool inner)
+    {
+        if (Hole is not { IsEffectivelyVisible: true } hole || hole.TransformToVisual(this) is not { } m) return default;
+        IBrush? fill;
+        CornerRadius corners;
+        switch (hole)
+        {
+            case GlassPanel glass when !glass.EffectiveGlassActive && glass.Fade >= 1:
+                fill = glass.Background;
+                corners = glass.CornerRadius;
+                break;
+            case Border border:
+                fill = border.Background;
+                corners = border.CornerRadius;
+                break;
+            default:
+                return default;
+        }
+        if (fill is not ISolidColorBrush { Color.A: 255 } solid || solid.Opacity < 1) return default;
+        for (Visual? v = hole; v is not null && !ReferenceEquals(v, this); v = v.GetVisualParent())
+            if (v.Opacity < 1) return default;
+        var radius = Math.Max(Math.Max(corners.TopLeft, corners.TopRight), Math.Max(corners.BottomLeft, corners.BottomRight));
+        var bounds = new Rect(hole.Bounds.Size).TransformToAABB(m);
+        var rect = inner ? bounds.Deflate(radius + 1) : bounds;
+        return rect.Width > 0 && rect.Height > 0 ? rect : default;
+    }
+
+    /// <summary>Target's host is hidden while the stand-in shows, or while the opaque snapshot
+    /// (Liquid Glass on) covers it: nothing of it can show, so the compositor need not draw it.</summary>
+    private void ApplyHostHidden()
+    {
+        var hide = TargetHost is not null && (_standingIn || IsOpaqueCover);
+        if (hide == _hostHidden || TargetHost is not { } host) return;
+        _hostHidden = hide;
+        if (hide)
+        {
+            _hostOpacityWasSet = host.IsSet(OpacityProperty);
+            _hostOpacityWas = host.Opacity;
+            host.Opacity = 0;
+        }
+        else if (_hostOpacityWasSet) host.Opacity = _hostOpacityWas;
+        else host.ClearValue(OpacityProperty);
+    }
+
     /// <summary>Device pixels per layout unit at Target: the window's scaling times any scale
-    /// above it (Interface Size), so the held frame is drawn 1:1.</summary>
+    /// above it (Interface Size).</summary>
     private static double DeviceScale(Visual target, TopLevel top)
     {
         var scale = top.RenderScaling;
@@ -705,79 +1009,11 @@ public class BlurredBackdrop : Panel
         return scale;
     }
 
-    /// <summary>Task.Delay (resumed on the UI thread), as the rest of this layer: waits until
-    /// <see cref="HoldReleaseDelay"/> has passed since the last <see cref="Hold"/>.</summary>
-    private async Task HoldTimerAsync(int epoch)
-    {
-        _holdTimerRunning = true;
-        while (true)
-        {
-            var left = _holdUntil - Stopwatch.GetTimestamp();
-            if (left <= 0) break;
-            await Task.Delay(TimeSpan.FromSeconds(left / (double)Stopwatch.Frequency) + TimeSpan.FromMilliseconds(1));
-            if (epoch != _holdEpoch) return; // ended meanwhile; ReleaseHold reset the flag
-        }
-        _holdTimerRunning = false;
-        ReleaseHold(animate: true);
-    }
-
-    /// <summary>
-    /// Lets the blur go live again: Target gets its opacity and effect back, and the held frame
-    /// fades out over it (<paramref name="animate"/>: the content behind moved meanwhile) or goes
-    /// at once (the layer is closing or changing mode). Ends any pending hold too.
-    /// </summary>
-    private void ReleaseHold(bool animate)
-    {
-        _holdEpoch++;
-        _holdUntil = 0;
-        _holding = null;
-        _holdTimerRunning = false;
-        if (!_isHeld)
-        {
-            // A held frame still fading out from an earlier release goes at once when asked to.
-            if (!animate && _held.IsVisible) HideHeld();
-            return;
-        }
-        _isHeld = false;
-        if (Target is { } target)
-        {
-            if (_heldTargetOpacitySet) target.Opacity = _heldTargetOpacity;
-            else target.ClearValue(OpacityProperty);
-            if (_live) target.Effect = _liveEffect;
-        }
-        UpdateLiveEffect();
-        if (animate && IsEffectivelyVisible)
-        {
-            var bitmap = _heldBitmap;
-            _held.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = CrossfadeDuration, Easing = new CubicEaseOut() } };
-            _held.Opacity = 0;
-            _ = HideHeldAfterFadeAsync(bitmap);
-        }
-        else
-            HideHeld();
-    }
-
-    private async Task HideHeldAfterFadeAsync(Bitmap? bitmap)
-    {
-        await Task.Delay(CrossfadeDuration + TimeSpan.FromMilliseconds(60));
-        if (_isHeld || !ReferenceEquals(bitmap, _heldBitmap)) return; // held again meanwhile
-        HideHeld();
-    }
-
-    private void HideHeld()
-    {
-        _held.Transitions = null;
-        _held.IsVisible = false;
-        _held.Source = null;
-        FreeHeldBitmap();
-    }
-
     /// <summary>Freed after the next render: the last frame drawn may still use it.</summary>
-    private void FreeHeldBitmap()
+    private static void FreeLater(ref Bitmap? bitmap)
     {
-        if (_heldBitmap is { } old)
-            Dispatcher.UIThread.Post(old.Dispose, DispatcherPriority.Background);
-        _heldBitmap = null;
+        if (bitmap is { } old) Dispatcher.UIThread.Post(old.Dispose, DispatcherPriority.Background);
+        bitmap = null;
     }
 
     /// <summary>
@@ -820,26 +1056,133 @@ public class BlurredBackdrop : Panel
 }
 
 /// <summary>
-/// Draws <see cref="Source"/> whole into its bounds. Not an Image: a snapshot taken above 1x
-/// (125% scaling, Interface Size) is a high-DPI bitmap, and Image hands the renderer its source
-/// rect in layout units, which the renderer reads as pixels, so only the top-left part of the
-/// frame was drawn, stretched (measured: the held frame came out 1.25x too large at 125%).
+/// Draws <see cref="SourceRect"/> (pixels) of <see cref="Source"/> into its bounds. Not an Image:
+/// a render taken above 1x (125% scaling, Interface Size) is a high-DPI bitmap, and Image hands
+/// the renderer its source rect in layout units, which the renderer reads as pixels (measured: a
+/// held frame came out 1.25x too large at 125%). Each new drawing tells <see cref="Probe"/> that
+/// the frame it first shows in is this layer's own doing, not a change behind it.
 /// </summary>
-internal sealed class HeldFrame : Control
+internal sealed class BandFrame : Control
 {
     public static readonly StyledProperty<Bitmap?> SourceProperty =
-        AvaloniaProperty.Register<HeldFrame, Bitmap?>(nameof(Source));
+        AvaloniaProperty.Register<BandFrame, Bitmap?>(nameof(Source));
 
-    static HeldFrame() => AffectsRender<HeldFrame>(SourceProperty);
+    public static readonly StyledProperty<Rect> SourceRectProperty =
+        AvaloniaProperty.Register<BandFrame, Rect>(nameof(SourceRect));
 
-    public HeldFrame() => IsHitTestVisible = false;
+    static BandFrame() => AffectsRender<BandFrame>(SourceProperty, SourceRectProperty);
+
+    public BandFrame() => IsHitTestVisible = false;
 
     public Bitmap? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
+    public Rect SourceRect { get => GetValue(SourceRectProperty); set => SetValue(SourceRectProperty, value); }
+    internal ChangeProbe? Probe { get; init; }
 
     public override void Render(DrawingContext context)
     {
         if (Source is not { } bitmap || Bounds.Width <= 0 || Bounds.Height <= 0) return;
-        var pixels = bitmap.PixelSize;
-        context.DrawImage(bitmap, new Rect(0, 0, pixels.Width, pixels.Height), new Rect(Bounds.Size));
+        var src = SourceRect;
+        if (src.Width <= 0 || src.Height <= 0) src = new Rect(0, 0, bitmap.PixelSize.Width, bitmap.PixelSize.Height);
+        context.DrawImage(bitmap, src, new Rect(Bounds.Size));
+        if (Probe is { } probe) context.Custom(new MarkOp(new Rect(Bounds.Size), probe));
+    }
+
+    /// <summary>Render thread: the first replay of this drawing marks its frame as self-made.</summary>
+    private sealed class MarkOp : ICustomDrawOperation
+    {
+        private readonly ChangeProbe _probe;
+        private int _replayed;
+        public MarkOp(Rect bounds, ChangeProbe probe) { Bounds = bounds; _probe = probe; }
+        public Rect Bounds { get; }
+        public bool HitTest(Point p) => false;
+        public bool Equals(ICustomDrawOperation? other) => ReferenceEquals(this, other);
+        public void Dispose() { }
+        public void Render(ImmediateDrawingContext context)
+        {
+            if (Interlocked.Exchange(ref _replayed, 1) == 0) _probe.MarkSelfFrame();
+        }
+    }
+}
+
+/// <summary>
+/// Hears that something behind the sheet changed. Drawn over the whole layer, above the bands and
+/// below the dim, it draws nothing; the compositor replays it in every frame that repaints any part
+/// of the layer. A frame that repaints only the sheet's opaque surface (its own scrolling, a hover)
+/// is not news, nor one in which the layer showed a new frame of its own (a band marked it); any
+/// other is a change in the hidden app the stand-in must catch up with.
+/// </summary>
+internal sealed class ChangeProbe : Control
+{
+    private readonly Action _changed;
+    private readonly object _gate = new();
+    private Rect _hole;
+    private int _selfFrame, _posted;
+    /// <summary>0 off, 1 waiting for the stand-in's first frame, 2 listening.</summary>
+    private int _armed;
+
+    public ChangeProbe(Action changed)
+    {
+        _changed = changed;
+        IsHitTestVisible = false;
+    }
+
+    /// <summary>The area (this control's coordinates) whose repaints are the sheet's own.</summary>
+    internal Rect Hole
+    {
+        get { lock (_gate) return _hole; }
+        set { lock (_gate) _hole = value; }
+    }
+
+    /// <summary>Render thread: the frame being drawn shows a new frame of the layer's own.</summary>
+    internal void MarkSelfFrame() => Interlocked.Exchange(ref _selfFrame, 1);
+
+    /// <summary>UI thread: listen from the frame that first shows the stand-in on (frames before
+    /// it, the open fade's, are not changes behind the stand-in).</summary>
+    internal void Arm() => Volatile.Write(ref _armed, 1);
+
+    internal void Disarm() => Volatile.Write(ref _armed, 0);
+
+    /// <summary>Render thread: a frame repainted <paramref name="clip"/> (device pixels).</summary>
+    internal void OnFrame(SKRectI clip, SKMatrix toDevice)
+    {
+        if (Interlocked.Exchange(ref _selfFrame, 0) == 1)
+        {
+            Interlocked.CompareExchange(ref _armed, 2, 1);
+            return;
+        }
+        if (Volatile.Read(ref _armed) != 2 || clip.IsEmpty) return;
+        var hole = Hole;
+        if (hole.Width > 0 && hole.Height > 0)
+        {
+            var device = toDevice.MapRect(new SKRect((float)hole.X, (float)hole.Y, (float)hole.Right, (float)hole.Bottom));
+            // The compositor's 1 px inflation and round-out of every dirty rect (GlassBackdropCache.DirtySlack).
+            device.Inflate(GlassBackdropCache.DirtySlack, GlassBackdropCache.DirtySlack);
+            if (device.Contains(new SKRect(clip.Left, clip.Top, clip.Right, clip.Bottom))) return;
+        }
+        if (Interlocked.Exchange(ref _posted, 1) == 1) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            Volatile.Write(ref _posted, 0);
+            if (Volatile.Read(ref _armed) == 2) _changed();
+        });
+    }
+
+    public override void Render(DrawingContext context) => context.Custom(new ProbeOp(new Rect(Bounds.Size), this));
+
+    private sealed class ProbeOp : ICustomDrawOperation
+    {
+        private readonly ChangeProbe _owner;
+        public ProbeOp(Rect bounds, ChangeProbe owner) { Bounds = bounds; _owner = owner; }
+        public Rect Bounds { get; }
+        public bool HitTest(Point p) => false;
+        public bool Equals(ICustomDrawOperation? other) => other is ProbeOp o && o.Bounds == Bounds && ReferenceEquals(o._owner, _owner);
+        public void Dispose() { }
+        public void Render(ImmediateDrawingContext context)
+        {
+            var lease = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+            if (lease is null) { _owner.OnFrame(new SKRectI(0, 0, 1, 1), SKMatrix.Identity); return; }
+            using var api = lease.Lease();
+            _owner.OnFrame(api.SkCanvas.DeviceClipBounds, api.SkCanvas.TotalMatrix);
+        }
     }
 }

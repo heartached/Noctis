@@ -103,7 +103,11 @@
     <Panel Background="Transparent">
     <!-- Everything the Settings sheet sits over. Its own layer so SettingsScrim can snapshot
          it (BlurredBackdrop.Target) without catching the scrim or the sheet, also while the
-         sheet is up. Every child keeps its ZIndex order inside it, all under the scrim (99). -->
+         sheet is up. Every child keeps its ZIndex order inside it, all under the scrim (99).
+         AppContentHost holds it alone: while the scrim's stand-in or opaque snapshot hides the
+         app, the host goes to Opacity 0 (not drawn at all) and AppContentLayer can still be
+         rendered on its own for them (BlurredBackdrop.TargetHost). -->
+    <Panel x:Name="AppContentHost">
     <Panel x:Name="AppContentLayer">
     <!-- Liquid Glass backdrop (Appearance toggle). Hidden by default so rendering is
          untouched while the setting is off. When active, code-behind (ApplyLiquidGlass)
@@ -1989,6 +1993,7 @@
         </controls:GlassPanel>
     </Border>
 
+    </Panel>
     </Panel>
 
     <!-- Settings modal overlay (dark backdrop + centered popup card).
