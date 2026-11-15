@@ -91,10 +91,12 @@ public class MobileLyricsAllocationTests
         return (shell, player, view, win);
     }
 
-    internal readonly record struct FrameCost(long BytesPerFrame, long MedianBytes, int Frames, int RowsPrepared, long RowFramesBytes)
+    internal readonly record struct FrameCost(long BytesPerFrame, long MedianBytes, int Frames, int RowsPrepared, long RowFramesBytes,
+        double MedianMs, double P95Ms)
     {
         public override string ToString() =>
-            $"frames={Frames} bytes/frame mean={BytesPerFrame} median={MedianBytes} rows prepared={RowsPrepared} ({RowFramesBytes / 1024} KB in those frames)";
+            $"frames={Frames} bytes/frame mean={BytesPerFrame} median={MedianBytes} rows prepared={RowsPrepared} ({RowFramesBytes / 1024} KB in those frames)"
+            + $" frame ms median={MedianMs:F2} p95={P95Ms:F2}";
     }
 
     /// <summary>
@@ -127,6 +129,7 @@ public class MobileLyricsAllocationTests
             long bytes = 0, rowBytes = 0;
             var rows = 0;
             var perFrame = new List<long>();
+            var times = new List<double>();
             var clock = Stopwatch.StartNew();
             double nextPoll = 0, nextFrame = 0;
             while (clock.Elapsed.TotalMilliseconds < seconds * 1000)
@@ -141,9 +144,12 @@ public class MobileLyricsAllocationTests
                 }
                 prepared = 0;
                 var b0 = GC.GetAllocatedBytesForCurrentThread();
+                var t0 = Stopwatch.GetTimestamp();
                 Pump();
+                var ms = Stopwatch.GetElapsedTime(t0).TotalMilliseconds;
                 var frame = GC.GetAllocatedBytesForCurrentThread() - b0;
                 if (t < 1000) continue;
+                times.Add(ms);
                 bytes += frame;
                 perFrame.Add(frame);
                 if (prepared > 0)
@@ -153,8 +159,10 @@ public class MobileLyricsAllocationTests
                 }
             }
             perFrame.Sort();
+            times.Sort();
             return new FrameCost(bytes / Math.Max(1, perFrame.Count), perFrame.Count > 0 ? perFrame[perFrame.Count / 2] : 0,
-                perFrame.Count, rows, rowBytes);
+                perFrame.Count, rows, rowBytes,
+                times.Count > 0 ? times[times.Count / 2] : 0, times.Count > 0 ? times[times.Count * 95 / 100] : 0);
         }
         finally
         {
