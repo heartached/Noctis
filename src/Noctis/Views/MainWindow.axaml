@@ -37,30 +37,6 @@
          (Settings › Shortcuts makes them rebindable); nothing is hardcoded here. -->
 
     <Window.Styles>
-        <!-- Ghost buttons inside the translucent page-actions pill (Songs top bar):
-             muted icons that brighten with a chip-hover highlight on pointerover. -->
-        <Style Selector="Button.ghost-btn">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Opacity" Value="0.65"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.ghost-btn:pointerover">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <Style Selector="Button.ghost-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Style>
-        <Style Selector="Button.ghost-btn:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Style>
 
         <!-- Top-right corner (09-13): round 34px icon buttons for filter / sort / view
              options / view mode, an accent dot on one that is away from its default, and

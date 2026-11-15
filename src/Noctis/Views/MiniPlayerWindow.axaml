@@ -204,13 +204,6 @@
         <Style Selector="Button.mini-transport:disabled /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="Transparent"/>
         </Style>
-        <!-- Favorite heart opts out of the hover/press circle: glyph-only feedback -->
-        <Style Selector="Button.mini-transport.no-hover-circle:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.mini-transport.no-hover-circle:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
 
         <!-- Compact seek/volume slider (accent fill/thumb to match the playback bar).
              ClipToBounds stops the track parts (negative margins under the thumb) from
@@ -624,11 +617,6 @@
              from inside the window, which is exactly when it has faded in. The fade comes
              from mini-transport's opacity transition. -->
 
-        <!-- Favourite pop, mirroring the global PathIcon.heart-pop. A local copy because
-             that selector is an exact-type match on PathIcon and the mini player draws its
-             glyphs as Viewbox/Canvas/Path (a 24×24 canvas centres the glyph predictably;
-             PathIcon scales the geometry's own bounds, which left the heart's off-centre
-             bounding box visibly low and right inside the button). -->
         <!-- Form cross-fade. The five form layouts are siblings; morphing between them means
              both being alive for the length of the fade, so their IsVisible is driven by
              code-behind (SyncFormVisual) instead of a binding — a binding would collapse the
@@ -667,34 +655,10 @@
              Layout rounding is the other half — it snaps the 14px glyph box half a
              device pixel left/up at 125% and 150% scaling, which is the "it's a bit
              left" tell. The disc keeps rounding (it stays crisp); only the glyph opts
-             out. Lives on the wrapping Panel so it composes with mini-heart-pop's
-             scale instead of fighting it for the RenderTransform slot. -->
+             out. -->
         <Style Selector="Panel.mini-heart-glyph">
             <Setter Property="RenderTransform" Value="translateY(0.8px)"/>
             <Setter Property="UseLayoutRounding" Value="False"/>
-        </Style>
-        <Style Selector="Viewbox.mini-heart-pop">
-            <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-            <Setter Property="Opacity" Value="1"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.2">
-                        <DoubleTransition.Easing>
-                            <CubicEaseOut/>
-                        </DoubleTransition.Easing>
-                    </DoubleTransition>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Viewbox.mini-heart-pop[IsVisible=False]">
-            <Setter Property="RenderTransform" Value="scale(0.7)"/>
-            <Setter Property="Opacity" Value="0"/>
         </Style>
     </Window.Styles>
 
