@@ -306,7 +306,7 @@ public sealed class SmtcService : IDisposable
             try
             {
                 RandomAccessStreamReference? thumbnail = null;
-                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                if (!string.IsNullOrEmpty(path) && ThumbnailBytes(path) is { } bytes)
                 {
                     // Copy into a WinRT in-memory stream: the overlay clones the
                     // stream when it renders, and the .NET FileStream adapter does
@@ -314,8 +314,7 @@ public sealed class SmtcService : IDisposable
                     // reference keeps the memory stream alive after we return.
                     var memory = new InMemoryRandomAccessStream();
                     var writer = memory.AsStreamForWrite(); // do not dispose: closes `memory`
-                    using (var file = File.OpenRead(path))
-                        file.CopyTo(writer);
+                    writer.Write(bytes);
                     writer.Flush();
                     memory.Seek(0);
                     thumbnail = RandomAccessStreamReference.CreateFromStream(memory);
@@ -360,4 +359,41 @@ public sealed class SmtcService : IDisposable
     public SmtcService(PlayerViewModel player, IntPtr windowHandle) { }
     public void Dispose() { }
 #endif
+
+    /// <summary>Cover files up to this size go to Windows as they are.</summary>
+    internal const long ThumbnailPassThroughBytes = 1024 * 1024;
+
+    /// <summary>Width of the copy sent for a bigger file: more than the media flyout or lock screen draws.</summary>
+    internal const int ThumbnailWidth = 768;
+
+    /// <summary>
+    /// The cover bytes handed to the Windows media overlay. The whole file used to be copied into
+    /// native memory on every song change, and the profiles' cover files average 7.7 MB (1,124 of
+    /// 1,340 over 2 MB, up to 55 MB: mostly 3000 px PNGs, 11-14), for a picture Windows draws a few
+    /// hundred pixels wide. A file over <see cref="ThumbnailPassThroughBytes"/> is sent as a
+    /// lossless PNG of the <see cref="ThumbnailWidth"/> px decode instead (from the thumbnail disk
+    /// cache when it has one); a smaller file, or one that does not decode, goes as it is.
+    /// </summary>
+    internal static byte[]? ThumbnailBytes(string path)
+    {
+        try
+        {
+            var info = new FileInfo(path);
+            if (!info.Exists) return null;
+            if (info.Length > ThumbnailPassThroughBytes)
+            {
+                using var bitmap = ArtworkThumbnailCache.DecodeToWidth(path, ThumbnailWidth);
+                if (bitmap is { Width: > 0 })
+                {
+                    using var data = bitmap.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                    if (data is { Size: > 0 }) return data.ToArray();
+                }
+            }
+            return File.ReadAllBytes(path);
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
