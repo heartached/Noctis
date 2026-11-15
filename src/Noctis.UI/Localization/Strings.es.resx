@@ -7342,12 +7342,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Eliminar descargas</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} canción|{0:N0} canciones</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Acento tiene 17 colores, y Igualar portada sigue a la portada que suena.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Temporizador de apagado en Reproduciendo; Posponer un mes y Ocultar canción en el menú de una canción.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Crea una playlist con + y ponle tu propia portada; las portadas se sincronizan con tu ordenador.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Añadir antes de la actual en el menú de una canción, y las canciones escuchadas pueden quedarse en la cola.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Una canción de tu teléfono y la misma canción de tu ordenador aparecen una sola vez.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Desplazamiento más fluido, páginas más rápidas y letras junto a la portada en horizontal.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>Añadir canciones dentro de una playlist: toca + y elige canciones de tu biblioteca.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>La letra se ajusta a tu pantalla y se desplaza con fluidez.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Las canciones de tu ordenador aparecen en Añadido recientemente.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Arrastra una canción al borde superior o inferior de la cola y la lista se desplaza con ella.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Inicio más rápido, sin bloqueos mientras se carga tu biblioteca, y menús más fluidos.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Las barras de progreso responden en toda su altura y la vista horizontal cabe en la pantalla.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>El decodificador ALAC incluido, compilado a partir del código fuente sin modificar de FFmpeg 6.0, sin partes GPL ni no libres: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Reproducción, sesión multimedia y el contenedor JNI del decodificador.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>El framework de la interfaz de usuario.</value></data>
