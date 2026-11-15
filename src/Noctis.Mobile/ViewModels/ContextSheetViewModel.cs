@@ -252,8 +252,14 @@ public sealed partial class ContextSheetViewModel : ObservableObject
 
     public bool IsRated => Rating > 0;
 
-    /// <summary>The Rate row's five stars, filled up to the song's rating.</summary>
-    public IReadOnlyList<RateStar> Stars => Enumerable.Range(1, 5).Select(n => new RateStar(n, n <= Rating)).ToList();
+    /// <summary>The Rate row's five stars, filled up to the song's rating. One list per rating,
+    /// shared by every menu: a new list each time made the row build its five star buttons again
+    /// on every open (the ⋯ menu kept its other rows, but not these).</summary>
+    public IReadOnlyList<RateStar> Stars => StarRows[Math.Clamp(Rating, 0, 5)];
+
+    private static readonly IReadOnlyList<RateStar>[] StarRows = Enumerable.Range(0, 6)
+        .Select(rating => (IReadOnlyList<RateStar>)Enumerable.Range(1, 5).Select(n => new RateStar(n, n <= rating)).ToArray())
+        .ToArray();
 
     /// <summary>A star (1-5) sets the rating, 0 clears it; the menu closes and the song's rows
     /// follow (Track.Rating notifies). A desktop song's rating goes to the computer on the next sync.</summary>
