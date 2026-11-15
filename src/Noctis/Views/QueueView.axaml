@@ -221,6 +221,12 @@
                      Classes="track-list"
                      ItemsSource="{Binding UpNext}"
                      Margin="0,0,0,24">
+                <!-- Rows scrolled off stay in the tree and take the next song (11-14). -->
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <controls:RetainingVirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:Track">
                         <Grid ColumnDefinitions="*,Auto" Margin="0,2"

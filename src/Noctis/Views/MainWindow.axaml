@@ -1376,6 +1376,13 @@
                                      ScrollViewer.VerticalScrollBarVisibility="Hidden"
                                      DragDrop.AllowDrop="True"
                                      DoubleTapped="OnQueueItemDoubleTapped">
+                                <!-- Rows scrolled off stay in the tree and take the next song (11-14);
+                                     the prepare handler (QueuePanelRows.Stamp) is idempotent. -->
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <controls:RetainingVirtualizingStackPanel />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>

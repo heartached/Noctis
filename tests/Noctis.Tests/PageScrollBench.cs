@@ -416,6 +416,48 @@ public class PageScrollBench
                     (name == "artist" ? $" ({bigArtist.Name}, {bigArtist.AlbumCount} albums)" : ""));
                 ScrollPage(name, PageRoot(window, vm.CurrentView));
             }
+
+            // Artists as a list (the top bar's view toggle).
+            if (Want("artists-list"))
+            {
+                Go("artists");
+                Settle(window, () => vm.CurrentView, () => { });
+                var artistsVm = (LibraryArtistsViewModel)vm.CurrentView!;
+                var open = Settle(window, () => vm.CurrentView, () => artistsVm.ToggleViewModeCommand.Execute(null));
+                Log($"artists-list: switch {open.Ms:0} ms ({open.Loaded} loaded), list view {artistsVm.IsListView}");
+                var table = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault(l => l.Name == "ArtistTable");
+                ScrollPage("artists-list", table);
+                artistsVm.ToggleViewModeCommand.Execute(null);
+                Pump();
+            }
+
+            // Queue: every song queued (the fake player plays nothing), the Queue page and the
+            // queue panel scrolled.
+            if (Want("queue") || Want("queue-panel"))
+            {
+                vm.Player.ReplaceQueueAndPlay(library.Tracks.ToList(), 0);
+                for (var i = 0; i < 20; i++) { Pump(); Thread.Sleep(5); }
+                Log($"queue: {vm.Player.QueueRows.Count} rows");
+            }
+            if (Want("queue"))
+            {
+                Go("home");
+                Settle(window, () => vm.CurrentView, () => { });
+                var open = Settle(window, () => vm.CurrentView, () => Go("queue"));
+                Log($"queue: open {open.Ms:0} ms ({open.Loaded} loaded), {open.Visuals} visuals");
+                ScrollPage("queue", PageRoot(window, vm.CurrentView));
+            }
+            if (Want("queue-panel"))
+            {
+                Go("home");
+                Settle(window, () => vm.CurrentView, () => { });
+                var open = Settle(window, () => vm.CurrentView, () => vm.Player.IsQueuePopupOpen = true);
+                Log($"queue-panel: open {open.Ms:0} ms ({open.Loaded} loaded)");
+                var list = window.GetVisualDescendants().OfType<ListBox>().FirstOrDefault(l => l.Name == "QueuePopupListBox");
+                ScrollPage("queue-panel", list);
+                vm.Player.IsQueuePopupOpen = false;
+                Pump();
+            }
         }
         finally
         {
