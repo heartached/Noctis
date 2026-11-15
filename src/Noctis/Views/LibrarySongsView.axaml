@@ -86,6 +86,13 @@
                      Margin="-8,0,0,0"
                      Padding="0,0,0,115"
                      x:Name="TrackList">
+            <!-- Rows scrolled off stay in the tree and take the next song (11-14: each row
+                 scrolled in was rebuilt and restyled, ~1.4 MB and the frame's whole budget). -->
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <controls:RetainingVirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
             <ListBox.Styles>
                 <Style Selector="ListBoxItem">
                     <Setter Property="Focusable" Value="False" />
