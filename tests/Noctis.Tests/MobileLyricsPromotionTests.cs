@@ -165,7 +165,7 @@ public class MobileLyricsPromotionTests
     /// <summary>The phone's 32 MB nursery fills every 7-9 s; the desktop runtime's gen0 budget is a
     /// few MB, so it would collect on its own several times an interval. No GC runs until
     /// <see cref="CollectNursery"/> (or the region's budget is spent, which the run asserts).</summary>
-    internal static void HoldNursery() => Assert.True(GC.TryStartNoGCRegion(200L * 1024 * 1024, disallowFullBlockingGC: true));
+    internal static void HoldNursery() => Assert.True(GC.TryStartNoGCRegion(64L * 1024 * 1024, disallowFullBlockingGC: true));
 
     internal static void ReleaseNursery()
     {
@@ -199,6 +199,47 @@ public class MobileLyricsPromotionTests
             l.Player.RaisePositionChanged(TimeSpan.FromMilliseconds(1000 + t));
         };
     }
+
+    /// <summary>
+    /// A playing song, lines changing every 3 s (the glide, the cascade, each row's restyle), the
+    /// nursery collected every 3 s: what each collection promotes, and what a frame allocates on
+    /// the UI thread. Headless drawing by default; with NOCTIS_TEST_SKIA=1 the real Skia renderer
+    /// draws too, which is where the layers under the lyrics and the tiled dither cost (Debug
+    /// build, 11-15, before → after they went):
+    ///   LRC   Skia: 25.8 → 15.6 KB a frame, 372 → 306 KB promoted a collection
+    ///   TTML  Skia: 77.9 → 72.2 KB a frame, 1191 → 1123 KB promoted
+    ///   headless drawing: LRC ~9 KB a frame, ~180 KB promoted; TTML ~31 KB, ~580 KB.
+    /// Nearly all of it is promoted through old objects' references (GCMarkWithType "older"),
+    /// little of it from live ones (YoungGraph): see Report_WhatSurvivesTheNursery_Case.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(".lrc")]
+    [InlineData(".ttml")]
+    public async Task PlayingLyrics_PromoteLittle_AndAllocateLittle(string ext)
+    {
+        var l = await OpenLyrics(ext, ext == ".lrc" ? MobileLyricsAllocationTests.Lrc(3) : MobileLyricsAllocationTests.Ttml(3, 8));
+        try
+        {
+            var cost = RunCollecting(Playing(l), 9, intervalMs: 3000);
+            _o.WriteLine($"{ext} (skia {HeadlessTestApp.RealRendering}): {cost}");
+            var (promoted, perFrame) = Budget(ext);
+            Assert.InRange(cost.PromotedPerGc, 0, promoted * 1024);
+            Assert.InRange(cost.UiBytesPerFrame, 0, perFrame * 1024);
+        }
+        finally
+        {
+            l.Window.Close();
+        }
+    }
+
+    /// <summary>KB promoted per collection, KB allocated per frame.</summary>
+    private static (long PromotedKb, long FrameKb) Budget(string ext) => (ext, HeadlessTestApp.RealRendering) switch
+    {
+        (".lrc", false) => (400, 14),
+        (".lrc", true) => (500, 20),
+        (_, false) => (1200, 40),
+        _ => (1500, 82),
+    };
 
     /// <summary>
     /// Under the opaque lyrics the app, its sheets and the tab bar (four glass panels, each a
@@ -270,6 +311,35 @@ public class MobileLyricsPromotionTests
 
     // ── Diagnostics ──
 
+    [AvaloniaFact]
+    public async Task Report_FrameLoopPieces()
+    {
+        if (Environment.GetEnvironmentVariable("NOCTIS_PROMOTION_CASE") != "pieces") return;
+        var l = await OpenLyrics(".lrc", MobileLyricsAllocationTests.Lrc(30));
+        try
+        {
+            for (var i = 0; i < 60; i++) { Pump(); Thread.Sleep(16); }
+            var vm = l.Shell.Lyrics;
+            var b0 = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 1000; i++) vm.OnFrame(LyricsPageViewModel.NowMs());
+            _o.WriteLine($"vm.OnFrame: {(GC.GetAllocatedBytesForCurrentThread() - b0) / 1000} B");
+            b0 = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 100; i++) l.Player.RaisePositionChanged(TimeSpan.FromMilliseconds(5000 + i * 250));
+            _o.WriteLine($"position poll: {(GC.GetAllocatedBytesForCurrentThread() - b0) / 100} B");
+            b0 = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 300; i++) Dispatcher.UIThread.RunJobs();
+            _o.WriteLine($"idle RunJobs: {(GC.GetAllocatedBytesForCurrentThread() - b0) / 300} B");
+            b0 = GC.GetAllocatedBytesForCurrentThread();
+            for (var i = 0; i < 300; i++) { Dispatcher.UIThread.RunJobs(); AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs(); }
+            _o.WriteLine($"frame (pump): {(GC.GetAllocatedBytesForCurrentThread() - b0) / 300} B");
+        }
+        finally
+        {
+            l.Window.Close();
+        }
+    }
+
+
     /// <summary>Diagnostics, one case per process (a window left from an earlier case skews the
     /// next): NOCTIS_PROMOTION_CASE="lrc,3,0" (format, line gap in s, layers under hidden).</summary>
     [AvaloniaFact]
@@ -304,8 +374,26 @@ public class MobileLyricsPromotionTests
                     }
                 };
             }
-            foreach (var name in new[] { "WashDither", "Backdrop", "LyricsShade", "TopFade", "BottomFade" })
+            foreach (var name in new[] { "WashDither", "Backdrop", "LyricsShade", "TopFade", "BottomFade", "LyricsList" })
                 if (exp.Contains("no" + name)) l.Page.GetVisualDescendants().OfType<Control>().First(c => c.Name == name).IsVisible = false;
+            if (exp.Contains("noglide") || exp.Contains("nocascade"))
+            {
+                var flags = BindingFlags.NonPublic | BindingFlags.Instance;
+                var gliding = typeof(LyricsPage).GetField("_gliding", flags)!;
+                var duration = typeof(LyricsPage).GetField("_glideDurationMs", flags)!;
+                var cascade = typeof(LyricsPage).GetField("_cascade", flags)!;
+                var maxDelay = typeof(LyricsPage).GetField("_cascadeMaxDelayMs", flags)!;
+                var inner = play;
+                play = t =>
+                {
+                    inner(t);
+                    if (!(bool)gliding.GetValue(l.Page)!) return;
+                    if (exp.Contains("noglide")) duration.SetValue(l.Page, 1.0);
+                    cascade.SetValue(l.Page, null);
+                    maxDelay.SetValue(l.Page, 0.0);
+                };
+            }
+            if (exp.Contains("nobar")) l.Page.FindControl<ScrollViewer>("LyricsScroll")!.VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden;
             if (exp.Contains("ditherCache")) l.Page.GetVisualDescendants().OfType<Control>().First(c => c.Name == "WashDither").CacheMode = new Avalonia.Media.BitmapCache();
             var lens0 = Noctis.Controls.GlassLens.LensPasses;
             var glass = l.Window.GetVisualDescendants().OfType<Noctis.Controls.GlassPanel>().Where(g => g.IsEffectivelyVisible).ToList();
