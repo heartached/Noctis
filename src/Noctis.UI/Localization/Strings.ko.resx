@@ -7340,12 +7340,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>다운로드 제거</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}곡</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>재생목록 {0}개</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>강조 색상이 17가지로 늘었고, '아트워크에 맞추기'는 재생 중인 커버 색을 따라갑니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>지금 재생 중 화면에 수면 타이머, 노래 메뉴에 '한 달 동안 다시 알림'과 '노래 숨기기'.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>+로 플레이리스트를 만들고 원하는 커버를 지정하세요. 커버는 컴퓨터와 동기화됩니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>노래 메뉴에 '현재 곡 앞에 추가', 재생한 노래를 대기열에 남길 수 있습니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>휴대폰의 노래와 컴퓨터의 같은 노래가 한 번만 표시됩니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>더 부드러운 스크롤, 더 빠른 페이지, 가로 모드에서는 커버 옆에 가사.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>재생목록 안에서 노래 추가: +를 눌러 보관함에서 노래를 고르세요.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>가사가 화면에 맞게 표시되고 부드럽게 스크롤됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>컴퓨터의 노래가 최근 추가된 항목에 표시됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>노래를 대기열 위나 아래 끝으로 끌면 목록이 함께 스크롤됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>더 빨라진 시작, 보관함을 불러오는 동안 멈춤 없음, 더 부드러운 메뉴.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>진행 막대가 높이 전체에서 반응하고, 가로 모드가 화면에 맞습니다.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>내장 ALAC 디코더로, GPL 또는 non-free 구성 요소 없이 수정되지 않은 FFmpeg 6.0 소스에서 빌드되었습니다: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>재생, 미디어 세션 및 디코더의 JNI 래퍼.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>사용자 인터페이스 프레임워크.</value></data>

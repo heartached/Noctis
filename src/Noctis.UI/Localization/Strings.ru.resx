@@ -3774,12 +3774,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Удалить загрузки</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} плейлист|{0} плейлиста|{0} плейлистов</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>У акцента 17 цветов, а «Цвет обложки» следует за играющей обложкой.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Таймер сна на экране воспроизведения; «Отложить на месяц» и «Скрыть песню» в меню песни.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Создайте плейлист кнопкой + и задайте ему свою обложку; обложки синхронизируются с компьютером.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>«Добавить перед текущей» в меню песни, а прослушанные песни могут оставаться в очереди.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Песня на телефоне и та же песня с компьютера показываются один раз.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Плавнее прокрутка, быстрее страницы, а в альбомной ориентации текст рядом с обложкой.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>«Добавить песни» внутри плейлиста: нажмите + и выберите песни из медиатеки.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>Текст подстраивается под экран и плавно прокручивается.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Песни с компьютера появляются в разделе «Недавно добавленные».</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Перетащите песню к верхнему или нижнему краю очереди, и список прокрутится вместе с ней.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Быстрый запуск без зависаний при загрузке медиатеки и более плавные меню.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Полосы прогресса реагируют по всей высоте, а альбомная ориентация помещается на экран.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Встроенный декодер ALAC, собранный из неизменённых исходников FFmpeg 6.0 без GPL и несвободных частей: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Воспроизведение, медиасеанс и JNI-обёртка декодера.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Фреймворк пользовательского интерфейса.</value></data>
