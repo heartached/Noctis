@@ -32,6 +32,37 @@
         <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin" />
         <SolidColorBrush x:Key="LyricsFg" Color="White" />
 
+        <!-- The held-note glow: a blurred copy of the sung letters under a held note's word.
+             Built for held notes only (HeldNoteTemplate); on any other word it was hidden yet
+             took every frame's progress and float. -->
+        <DataTemplate x:Key="WordGlow" x:DataType="m:WordTiming">
+            <controls:KaraokeWordText Text="{Binding Text}"
+                                      Classes="word-glow"
+                                      Padding="40"
+                                      FontWeight="Bold"
+                                      Foreground="{StaticResource LyricsFg}"
+                                      BaseOpacity="0"
+                                      Effect="{Binding $self.FontSize, Converter={StaticResource EmphasisGlowBlur}}"
+                                      Progress="{Binding Progress}"
+                                      LeadIn="{Binding SweepLeadIn}"
+                                      TrailOut="{Binding SweepTrailOut}"
+                                      IsEmphasis="{Binding IsEmphasis}"
+                                      EmphasisMs="{Binding EmphasisMs}"
+                                      HeldDurationMs="{Binding HeldDurationMs}"
+                                      IsLastInLine="{Binding IsLastInLine}"
+                                      Lift="{Binding Lift}">
+                <controls:KaraokeWordText.Opacity>
+                    <MultiBinding Converter="{StaticResource EmphasisGlow}">
+                        <Binding Path="EmphasisMs" />
+                        <Binding Path="HeldDurationMs" />
+                        <Binding Path="IsLastInLine" />
+                        <Binding Path="EmphasisCharCount" />
+                    </MultiBinding>
+                </controls:KaraokeWordText.Opacity>
+            </controls:KaraokeWordText>
+        </DataTemplate>
+        <views:HeldNoteTemplate x:Key="WordGlowIfHeld" Template="{StaticResource WordGlow}" />
+
         <!-- The desktop's word cell (LyricsView.axaml WordCellTemplate): under held-note words a
              blurred glow of the sung letters, and the word itself, unsung and sung text in one
              draw split by the soft edge at Progress, sung words floating up (Lift) and held
@@ -44,31 +75,8 @@
                         <!-- Hosted in a Canvas so the blur's tail has room without growing the
                              cell (see the desktop template). -->
                         <Canvas ClipToBounds="False">
-                            <controls:KaraokeWordText Text="{Binding Text}"
-                                                      Classes="word-glow"
-                                                      IsVisible="{Binding IsEmphasis}"
-                                                      Canvas.Left="-40" Canvas.Top="-40" Padding="40"
-                                                      FontWeight="Bold"
-                                                      Foreground="{StaticResource LyricsFg}"
-                                                      BaseOpacity="0"
-                                                      Effect="{Binding $self.FontSize, Converter={StaticResource EmphasisGlowBlur}}"
-                                                      Progress="{Binding Progress}"
-                                                      LeadIn="{Binding SweepLeadIn}"
-                                                      TrailOut="{Binding SweepTrailOut}"
-                                                      IsEmphasis="{Binding IsEmphasis}"
-                                                      EmphasisMs="{Binding EmphasisMs}"
-                                                      HeldDurationMs="{Binding HeldDurationMs}"
-                                                      IsLastInLine="{Binding IsLastInLine}"
-                                                      Lift="{Binding Lift}">
-                                <controls:KaraokeWordText.Opacity>
-                                    <MultiBinding Converter="{StaticResource EmphasisGlow}">
-                                        <Binding Path="EmphasisMs" />
-                                        <Binding Path="HeldDurationMs" />
-                                        <Binding Path="IsLastInLine" />
-                                        <Binding Path="EmphasisCharCount" />
-                                    </MultiBinding>
-                                </controls:KaraokeWordText.Opacity>
-                            </controls:KaraokeWordText>
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource WordGlowIfHeld}"
+                                              Canvas.Left="-40" Canvas.Top="-40" />
                         </Canvas>
                         <controls:KaraokeWordText Text="{Binding Text}"
                                                   Classes="word-sweep"
@@ -302,14 +310,17 @@
                  with distance instead, so the edges are already soft. -->
             <ScrollViewer Grid.Row="3" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                           IsVisible="{Binding Lyrics.HasLyrics}">
-                <ItemsControl Name="LyricsList" ItemsSource="{Binding Lyrics.Lines}" FontSize="{Binding Lyrics.LineFontSize}"
+                <!-- Rows are built once and handed the next line (RowItemsControl): each line
+                     change scrolled a line in, and Avalonia's own path built its row from
+                     scratch, ~330 KB for a plain line and ~1 MB for a word-timed one. -->
+                <views:RowItemsControl Name="LyricsList" ItemsSource="{Binding Lyrics.Lines}" FontSize="{Binding Lyrics.LineFontSize}"
                               ClipToBounds="False">
-                    <ItemsControl.ItemsPanel>
+                    <views:RowItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel />
                         </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
+                    </views:RowItemsControl.ItemsPanel>
+                    <views:RowItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
                             <Button Classes="lyric-line" Classes.active="{Binding IsActive}"
                                     Background="Transparent" BorderThickness="0" Padding="0" Margin="0,14"
@@ -344,30 +355,31 @@
                                     <TextBlock Text="{Binding Text, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" FontWeight="Bold"
                                                TextWrapping="Wrap" Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}"
                                                TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}" />
-                                    <ItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsSweepFocused}"
-                                                  IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}" ClipToBounds="False">
-                                        <ItemsControl.ItemsPanel>
+                                    <!-- Word cells kept for the row's next line (WordItemsControl). -->
+                                    <views:WordItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsSweepFocused}"
+                                                            IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}" ClipToBounds="False">
+                                        <views:WordItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" />
                                             </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-                                    <ItemsControl ItemsSource="{Binding BackgroundWords}" Classes="word-layer bg-vocals" Classes.active="{Binding IsSweepFocused}"
-                                                  ItemTemplate="{StaticResource WordCell}" ClipToBounds="False"
-                                                  HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
-                                                  FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
-                                        <ItemsControl.IsVisible>
+                                        </views:WordItemsControl.ItemsPanel>
+                                    </views:WordItemsControl>
+                                    <views:WordItemsControl ItemsSource="{Binding BackgroundWords}" Classes="word-layer bg-vocals" Classes.active="{Binding IsSweepFocused}"
+                                                            ItemTemplate="{StaticResource WordCell}" ClipToBounds="False"
+                                                            HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                            FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
+                                        <views:WordItemsControl.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                 <Binding Path="ShowBackgroundWords" />
                                                 <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowBackgroundVocals" />
                                             </MultiBinding>
-                                        </ItemsControl.IsVisible>
-                                        <ItemsControl.ItemsPanel>
+                                        </views:WordItemsControl.IsVisible>
+                                        <views:WordItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" />
                                             </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
+                                        </views:WordItemsControl.ItemsPanel>
+                                    </views:WordItemsControl>
                                     <TextBlock Text="{Binding Transliteration}" TextWrapping="Wrap" Opacity="0.6" FontWeight="SemiBold"
                                                Foreground="{StaticResource LyricsFg}"
                                                TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
@@ -393,8 +405,8 @@
                                 </StackPanel>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </views:RowItemsControl.ItemTemplate>
+                </views:RowItemsControl>
             </ScrollViewer>
 
             <!-- The soft top edge: the wash itself, repainted over the lines and clearing

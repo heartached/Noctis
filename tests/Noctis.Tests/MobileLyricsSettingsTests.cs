@@ -182,7 +182,7 @@ public class MobileLyricsSettingsTests : IDisposable
                 Assert.Equal(start.X + dx, ThumbCentre().X, 1);          // no lag, no notch jumps
                 Assert.Equal(vm.LyricsTextScale.ToString("P0"), label.Text);
                 Assert.Equal(Math.Round(vm.LyricsTextScale, 1), vm.LyricsTextScale, 6);   // the setting moves in steps
-                Assert.Equal(vm.LyricsTextScale * LyricsPageViewModel.BaseFontSize, rig.Shell.Lyrics.LineFontSize, 6);
+                Assert.Equal(vm.LyricsTextScale * rig.Shell.Lyrics.AutoBaseFontSize, rig.Shell.Lyrics.LineFontSize, 6);
                 labels.Add(label.Text);
             }
             window.MouseUp(start + new Point(240, 0), MouseButton.Left);

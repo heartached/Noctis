@@ -219,7 +219,7 @@ public class MobileLyricsPageTests
         window.UpdateLayout();
 
         var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
-        Assert.Equal(LyricsPageViewModel.BaseFontSize * 1.5, page.FindControl<ItemsControl>("LyricsList")!.FontSize, 6);
+        Assert.Equal(shell.Lyrics.AutoBaseFontSize * 1.5, page.FindControl<ItemsControl>("LyricsList")!.FontSize, 6);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }

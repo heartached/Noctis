@@ -92,3 +92,25 @@ public sealed class RowHost : Control
         return finalSize;
     }
 }
+
+/// <summary>
+/// A <see cref="RowItemsControl"/> over a plain (non-virtualizing) panel that keeps the rows of
+/// a list it was handed before: a lyric line's words. A kept lyric row is handed the next line,
+/// and its word layer then gets that line's words; an ItemsControl over a plain panel answers a
+/// new list by dropping every container, so each word cell (texts, glow, bindings, styles) was
+/// built again, most of the cost of a word-timed row scrolling in. Dropped containers wait here
+/// with their cells built and styled, and the next words take them.
+/// </summary>
+public sealed class WordItemsControl : RowItemsControl
+{
+    private readonly Stack<RowHost> _spare = new();
+
+    protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey) =>
+        _spare.TryPop(out var host) ? host : new RowHost();
+
+    protected override void ClearContainerForItemOverride(Control container)
+    {
+        base.ClearContainerForItemOverride(container);
+        if (container is RowHost host) _spare.Push(host);
+    }
+}
