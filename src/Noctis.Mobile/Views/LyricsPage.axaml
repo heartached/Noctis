@@ -355,30 +355,31 @@
                                     <TextBlock Text="{Binding Text, Converter={x:Static conv:KeepHangulWordsConverter.Instance}}" FontWeight="Bold"
                                                TextWrapping="Wrap" Foreground="{StaticResource LyricsFg}" IsVisible="{Binding ShowLineText}"
                                                TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}" />
-                                    <ItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsSweepFocused}"
-                                                  IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}" ClipToBounds="False">
-                                        <ItemsControl.ItemsPanel>
+                                    <!-- Word cells kept for the row's next line (WordItemsControl). -->
+                                    <views:WordItemsControl ItemsSource="{Binding Words}" Classes="word-layer" Classes.active="{Binding IsSweepFocused}"
+                                                            IsVisible="{Binding ShowWords}" ItemTemplate="{StaticResource WordCell}" ClipToBounds="False">
+                                        <views:WordItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" />
                                             </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
-                                    <ItemsControl ItemsSource="{Binding BackgroundWords}" Classes="word-layer bg-vocals" Classes.active="{Binding IsSweepFocused}"
-                                                  ItemTemplate="{StaticResource WordCell}" ClipToBounds="False"
-                                                  HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
-                                                  FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
-                                        <ItemsControl.IsVisible>
+                                        </views:WordItemsControl.ItemsPanel>
+                                    </views:WordItemsControl>
+                                    <views:WordItemsControl ItemsSource="{Binding BackgroundWords}" Classes="word-layer bg-vocals" Classes.active="{Binding IsSweepFocused}"
+                                                            ItemTemplate="{StaticResource WordCell}" ClipToBounds="False"
+                                                            HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
+                                                            FontSize="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.LayerFontSize}">
+                                        <views:WordItemsControl.IsVisible>
                                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                                 <Binding Path="ShowBackgroundWords" />
                                                 <Binding Path="$parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.ShowBackgroundVocals" />
                                             </MultiBinding>
-                                        </ItemsControl.IsVisible>
-                                        <ItemsControl.ItemsPanel>
+                                        </views:WordItemsControl.IsVisible>
+                                        <views:WordItemsControl.ItemsPanel>
                                             <ItemsPanelTemplate>
                                                 <WrapPanel Orientation="Horizontal" ItemsAlignment="{Binding Voice, Converter={StaticResource VoiceItemsAlign}}" />
                                             </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                    </ItemsControl>
+                                        </views:WordItemsControl.ItemsPanel>
+                                    </views:WordItemsControl>
                                     <TextBlock Text="{Binding Transliteration}" TextWrapping="Wrap" Opacity="0.6" FontWeight="SemiBold"
                                                Foreground="{StaticResource LyricsFg}"
                                                TextAlignment="{Binding Voice, Converter={StaticResource VoiceTextAlign}}"
