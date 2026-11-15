@@ -649,18 +649,6 @@
             <Setter Property="Padding" Value="22,16"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
-        <Style Selector="Border.setting-card.advanced-first">
-            <Setter Property="CornerRadius" Value="24,24,0,0"/>
-            <Setter Property="Margin" Value="0"/>
-        </Style>
-        <Style Selector="Border.setting-card.advanced-middle">
-            <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-        </Style>
-        <Style Selector="Border.setting-card.advanced-last">
-            <Setter Property="CornerRadius" Value="0,0,24,24"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
 
         <!-- Selectable card used by the Song Transitions style picker -->
         <Style Selector="RadioButton.transition-card">
@@ -829,24 +817,6 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
-        <!-- Profile name TextBox: no chrome on any state -->
-        <Style Selector="TextBox.profile-input /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-        <Style Selector="TextBox.profile-input:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.profile-input:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.profile-input:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
         <Style Selector="Button.theme-btn.active /template/ ContentPresenter">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
@@ -869,24 +839,6 @@
             <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
         </Style>
 
-        <Style Selector="TextBox.accent-hex-input /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-        </Style>
-        <Style Selector="TextBox.accent-hex-input:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.accent-hex-input:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.accent-hex-input:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
 
         <!-- Pill-shaped action buttons -->
         <!-- Create-account fields: full-width rounded boxes of one height. -->
@@ -951,24 +903,6 @@
             <Setter Property="Padding" Value="16,10"/>
         </Style>
 
-        <!-- Social links (GitHub / Discord) in the About card: brand-coloured icon,
-             brighter label, and a soft brand-tinted pill on hover. -->
-        <Style Selector="Button.social-link">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.social-link /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="Button.social-discord:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#265865F2"/>
-        </Style>
-        <Style Selector="Button.social-github:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#26F1C40F"/>
-        </Style>
 
         <!-- About: three equal-width brand tiles (GitHub / Discord / Website). The tile
              is a Button whose chrome is fully transparent; the wash Border underneath
@@ -1176,22 +1110,6 @@
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
         </Style>
-        <Style Selector="ComboBox.transition-pill">
-            <Setter Property="Width" Value="132"/>
-            <Setter Property="MinHeight" Value="40"/>
-            <Setter Property="Padding" Value="14,8"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-        <Style Selector="ComboBox.transition-pill /template/ Border#Background">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="ComboBox.transition-pill:pointerover /template/ Border#Background">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Style>
 
         <!-- Accent sliders (horizontal) -->
         <Style Selector="Slider.accent-slider">
@@ -1247,7 +1165,7 @@
             <Setter Property="Height" Value="18"/>
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="RenderTransform" Value="scale(1)"/>
-            <!-- An explicit circle, as accent-vertical's (no theme thumb chrome). -->
+            <!-- An explicit circle (no theme thumb chrome). -->
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Width="{TemplateBinding Width}"
@@ -1331,76 +1249,6 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
 
-        <!-- Accent sliders (vertical EQ) -->
-        <Style Selector="Slider.accent-vertical">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="28"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="ClipToBounds" Value="False"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ Track">
-            <Setter Property="Width" Value="8"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton">
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border/>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <!-- Fill (bottom) and track (top) tuck 1px under the thumb, as accent-slider above. -->
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_DecreaseButton">
-            <Setter Property="Margin" Value="0,-1,0,0"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_IncreaseButton">
-            <Setter Property="Margin" Value="0,0,0,-1"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-            <Setter Property="Opacity" Value="0.95"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Width" Value="8"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_DecreaseButton /template/ Border">
-            <Setter Property="CornerRadius" Value="0,0,4,4"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-            <Setter Property="Opacity" Value="0.45"/>
-            <Setter Property="CornerRadius" Value="4,4,0,0"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Height" Value="18"/>
-            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Width="{TemplateBinding Width}"
-                            Height="{TemplateBinding Height}"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="999"/>
-                </ControlTemplate>
-            </Setter>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                    <DoubleTransition Property="Width" Duration="0:0:0.12"/>
-                    <DoubleTransition Property="Height" Duration="0:0:0.12"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Slider.accent-vertical:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
 
         <!-- Pre-amp pill slider: the real Slider is transparent and only handles hit
              testing; the visible pill track/fill/thumb are drawn on a Canvas and driven
@@ -1455,22 +1303,6 @@
              zoom makes it wobble under the pointer. -->
         <Style Selector="Button.version-copy:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
-        <Style Selector="Button.rail-profile">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Button.rail-profile /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="14"/>
-        </Style>
-        <Style Selector="Button.rail-profile:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
         <Style Selector="TextBox.settings-search">
             <Setter Property="CornerRadius" Value="999"/>
@@ -1719,11 +1551,6 @@
         <Style Selector="Border.setting-row.divided">
             <Setter Property="BorderThickness" Value="0,1,0,0"/>
         </Style>
-        <!-- Plugins page: a plugin that cannot run while Community plugins is off greys out like
-             Song Transitions under Exclusive audio (same 0.5), instead of wearing a Restricted pill. -->
-        <Style Selector="StackPanel.plugin-body.restricted">
-            <Setter Property="Opacity" Value="0.5"/>
-        </Style>
         <!-- Rows an ItemsControl makes inside a group card (Plugins page): a hairline between them,
              none above the first. Each row is the only child of its container, so the
              :nth-child(1) rule above can't tell them apart; the container's index can. -->
@@ -1903,11 +1730,6 @@
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
             <Setter Property="CornerRadius" Value="24"/>
             <Setter Property="Padding" Value="22,16"/>
-        </Style>
-        <Style Selector="TextBlock.plugin-panel-title">
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
         <!-- A plugin's page (owner 10-29): grouped rows in the Settings card look, a hairline
