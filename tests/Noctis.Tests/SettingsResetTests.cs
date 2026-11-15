@@ -151,7 +151,7 @@ public class SettingsResetTests : IDisposable
         [nameof(AppSettings.Theme)] = _ => "Dark",
         [nameof(AppSettings.Language)] = _ => "de",
         [nameof(AppSettings.AppIcon)] = _ => "ruby",
-        [nameof(AppSettings.PlayCountThresholdPercent)] = _ => 50,
+        [nameof(AppSettings.PlayCountThresholdPercent)] = _ => 75,
         [nameof(AppSettings.QueuePanelWidth)] = _ => 400.0,
         [nameof(AppSettings.QueueRowLine1)] = _ => nameof(QueueRowField.Album),
         [nameof(AppSettings.QueueRowLine1Extra)] = _ => nameof(QueueRowField.Composer),
@@ -169,6 +169,7 @@ public class SettingsResetTests : IDisposable
         [nameof(AppSettings.HomeRecentAlbumsCount)] = _ => 10,
         [nameof(AppSettings.HomeNewAlbumsCount)] = _ => 20,
         [nameof(AppSettings.UiScalePercent)] = _ => 125,
+        [nameof(AppSettings.BackgroundBlurAmount)] = _ => 0.5, // 0.1 * 0.9 + 0.01 is the default again
         [nameof(AppSettings.NowPlayingArtworkStyle)] = _ => nameof(ArtworkMedium.Vinyl),
         [nameof(AppSettings.MiniPlayerStyle)] = _ => nameof(MiniPlayerStyle.Pill),
         [nameof(AppSettings.CoverFlowLayout)] = _ => nameof(CoverFlowLayout.Cascade),
@@ -286,6 +287,10 @@ public class SettingsResetTests : IDisposable
             else p.SetValue(seeded, value);
         }
         Assert.Empty(unseedable); // a new settings type: teach Seed or CuratedSeeds about it
+        // A seed equal to the default tests nothing (a default changed under a curated seed).
+        Assert.Empty(SavedProperties()
+            .Where(p => !NormalizedOnLoad.Contains(p.Name) && J(p.GetValue(seeded)) == J(p.GetValue(baseline)))
+            .Select(p => p.Name));
 
         // Every seed must survive a load and a save, or it never tested the reset.
         var roundTrip = new PersistenceService(Path.Combine(_root, "roundtrip"));

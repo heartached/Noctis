@@ -780,7 +780,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
     /// (0 = as soon as it starts). The player reads it on every position tick, so a change
     /// also applies to the rest of the song playing now.</summary>
-    [ObservableProperty] private int _playCountThresholdPercent;
+    [ObservableProperty] private int _playCountThresholdPercent = 50;
 
     /// <summary>Settings ▸ Lyrics ▸ Save lyrics to (GitHub #135): "Sidecar", "Embedded" or "Both".</summary>
     [ObservableProperty] private string _lyricsSaveTarget = nameof(Models.LyricsSaveTarget.Sidecar);
@@ -1105,8 +1105,8 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    /// <summary>GitHub #71: drops import into the library (default) or play/queue in place.</summary>
-    [ObservableProperty] private bool _importDroppedMedia = true;
+    /// <summary>GitHub #71: drops import into the library or play/queue in place (the default).</summary>
+    [ObservableProperty] private bool _importDroppedMedia;
 
     /// <summary>GitHub #74: playlist page furniture toggles (all on by default).</summary>
     [ObservableProperty] private bool _playlistShowAlbumHeaders = true;

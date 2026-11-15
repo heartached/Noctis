@@ -35,6 +35,8 @@ public class ChangedDefaultsUpgradeTests : IDisposable
         Assert.True(s.AlbumPageTintEnabled);
         Assert.True(s.PlayPauseFadeEnabled);
         Assert.True(s.IgnoreLeadingWordsInArtistSort);
+        Assert.False(s.ImportDroppedMedia);
+        Assert.Equal(50, s.PlayCountThresholdPercent);
     }
 
     [Fact]
@@ -45,6 +47,9 @@ public class ChangedDefaultsUpgradeTests : IDisposable
         Assert.False(s.AlbumPageTintEnabled);
         Assert.False(s.PlayPauseFadeEnabled);
         Assert.False(s.IgnoreLeadingWordsInArtistSort);
+        // 2026-11-14: drops still move in, and a play still counts at the start.
+        Assert.True(s.ImportDroppedMedia);
+        Assert.Equal(0, s.PlayCountThresholdPercent);
         // Everything else in a key-less file still takes its normal default.
         Assert.True(s.GaplessPlaybackEnabled);
         Assert.Equal(300, s.PlayPauseFadeMs);

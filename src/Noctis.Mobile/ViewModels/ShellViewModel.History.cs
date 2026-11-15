@@ -27,8 +27,8 @@ public sealed partial class ShellViewModel
 
     /// <summary>How much of a song (percent) must be heard before it counts as a play (play count,
     /// Last Played, Listening History): the computer's "Count a play after", the same
-    /// <see cref="AppSettings.PlayCountThresholdPercent"/> in the phone's own settings file. 0, the
-    /// computer's default, counts a song as soon as it plays. Scrobbling keeps its own Last.fm rule
+    /// <see cref="AppSettings.PlayCountThresholdPercent"/> in the phone's own settings file: half the
+    /// song on a new install, 0 (as soon as it plays) in a settings file from before the setting. Scrobbling keeps its own Last.fm rule
     /// (half the song or four minutes: PhoneScrobbler) and is not affected.</summary>
     public int PlayCountThresholdPercent { get; private set; }
 
