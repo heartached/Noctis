@@ -1437,8 +1437,10 @@
         <Style Selector="Button.rail-item:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
+        <!-- The accent fill is the sliding rail pill (Border.rail-pill) under the row; the row
+             itself stays clear (no hover wash over the pill either). -->
         <Style Selector="Button.rail-item.active /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
         <!-- The app-wide Button:pointerover scale(1.045) reads as a jump on a list of
@@ -1489,25 +1491,36 @@
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="ClipToBounds" Value="True"/>
         </Style>
-        <!-- Tab switch: the incoming page fades in with a short upward glide.
-             Keyframe animations can't drive RenderTransform (no registered
-             animator — crashed at startup), so the hidden state pins
-             opacity 0 / translateY(10px) and releasing it on IsVisible=True
-             transitions both back to their natural values. -->
-        <Style Selector="StackPanel.tab-page">
-            <!-- Explicit resting transform: transitions interpolate between two
-                 TransformOperations values, never to an unset (null) transform. -->
-            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+        <!-- Tab switch: the incoming page fades in with a short glide (up when the page is
+             further down the rail, down when it is above). Driven from code-behind
+             (SettingsView.axaml.cs ShowTabPage): the glide starts only after the page's
+             first layout pass, so a heavy page's first visit no longer eats the animation. -->
+        <!-- Rail selection: one pill slides between the rows (SettingsView.axaml.cs
+             PlaceRailPill) and the rows' text colour cross-fades in step with it. -->
+        <Style Selector="Border.rail-pill">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.rail-item /template/ ContentPresenter">
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.18" Easing="{StaticResource PluginPageEase}"/>
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="StackPanel.tab-page[IsVisible=False]">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="RenderTransform" Value="translateY(6px)"/>
+        <Style Selector="controls|MaskIcon.rail-bitmap">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.18" Easing="{StaticResource PluginPageEase}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- Reduce motion: every change in the rail is instant. -->
+        <Style Selector=":is(UserControl).motion-off Button.rail-item /template/ ContentPresenter">
+            <Setter Property="Transitions" Value="{x:Null}"/>
+        </Style>
+        <Style Selector=":is(UserControl).motion-off controls|MaskIcon.rail-bitmap">
+            <Setter Property="Transitions" Value="{x:Null}"/>
         </Style>
         <!-- ── Pill BOXES in Settings (text fields, number fields and combo boxes, never buttons):
              the metadata editor's filled pill (owner 10-08, PillDialog.axaml pill-field). A soft
@@ -1770,7 +1783,7 @@
              ContentPresenter hover wash), which match the cards too. ── -->
 
         <!-- The grid and a plugin's page slide past each other: the incoming one fades in from
-             28 px to its side. Same trick as tab-page: the hidden state pins opacity and offset,
+             28 px to its side. The hidden state pins opacity and offset,
              and releasing it on IsVisible=True transitions both home (keyframe animations can't
              drive RenderTransform here). A plugin's own view (PluginViewPage) comes in over its
              page the same way, and the page comes back from the left. -->
@@ -2144,6 +2157,12 @@
                      Margin="0,0,0,4"/>
 
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Panel x:Name="RailHost">
+            <!-- The selected row's accent pill, under the rows; slides to the new row on a
+                 switch (SettingsView.axaml.cs PlaceRailPill). Hidden until first placed. -->
+            <Border x:Name="RailSelectionPill" Classes="rail-pill"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    IsHitTestVisible="False" Opacity="0"/>
             <ItemsControl ItemsSource="{Binding SectionGroups}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SettingsSectionGroup">
@@ -2200,6 +2219,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </Panel>
             </ScrollViewer>
         </DockPanel>
     </Border>
