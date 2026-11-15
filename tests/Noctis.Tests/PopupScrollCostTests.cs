@@ -38,8 +38,12 @@ namespace Noctis.Tests;
 ///   spinner standing in for lyrics, a playing title or the progress bar):
 ///     Liquid Glass off (live blur): 10.1 Mpx and 172 ms per notch, and 2.52 Mpx EVERY idle frame —
 ///       Avalonia dirties the whole effect node for any change under a BlurEffect, so the whole
-///       window is re-rendered and re-blurred for as long as anything moves. Held while scrolling
-///       (BlurredBackdrop.Hold): 0.49 Mpx and 27 ms per notch, app layer not drawn at all.
+///       window is re-rendered and re-blurred for as long as anything moves (54 ms a frame).
+///       11-15 stand-in (BlurredBackdrop.TargetHost / Hole): 0.50 Mpx and 39 ms per notch, app layer
+///       not drawn; at rest 0.00 Mpx; a title moving beside the card: 0.44-0.50 Mpx and 14-18 ms a
+///       frame, ~23 retakes a second. NOCTIS_SHEET_MODES picks modes (e.g. "LiveBlur,LiveBlurStandIn").
+///     Liquid Glass on: the app under the opaque snapshot was drawn 5.6x per notch; with the host
+///       hidden 0x.
 ///     Liquid Glass on, GPU: before 4.38 Mpx per notch and 0.97 Mpx every idle frame (the whole
 ///       frosted card for as long as anything moves under the opaque scrim); after 0.50 / 0.00.
 ///   Synthetic card over a 48-tile page (Harness_ScrollOverEachBackdrop): the page behind the
@@ -351,7 +355,7 @@ public class PopupScrollCostTests
     /// <summary>Settings scrim modes: the live blur (Liquid Glass off), without and with the hold
     /// while scrolling, and the opaque blurred snapshot (Liquid Glass on), the latter with and
     /// without the frost told so.</summary>
-    internal enum SheetMode { LiveBlur, LiveBlurHeld, SnapshotFrost, SnapshotFrostBeneathWhole }
+    internal enum SheetMode { LiveBlur, LiveBlurStandIn, SnapshotFrost, SnapshotFrostBeneathWhole, SnapshotFrostHostHidden }
 
     /// <summary>The real Settings sheet in the real MainWindow (Appearance tab) over the app with
     /// something animating in it (the empty library's spinner, as lyrics or a playing title would),
@@ -363,14 +367,15 @@ public class PopupScrollCostTests
         AddToPlaylistDialogTests.EnsureAppStyles();
         try
         {
-            foreach (var mode in Enum.GetValues<SheetMode>())
+            var only = Environment.GetEnvironmentVariable("NOCTIS_SHEET_MODES"); // e.g. "LiveBlur,LiveBlurStandIn"
+            foreach (var mode in Enum.GetValues<SheetMode>().Where(m => only is null || only.Split(',').Contains(m.ToString())))
             foreach (var gpu in new[] { false, true })
             {
-                if (gpu && mode is SheetMode.LiveBlur or SheetMode.LiveBlurHeld) continue; // no frost: GPU changes nothing
+                if (gpu && mode is SheetMode.LiveBlur or SheetMode.LiveBlurStandIn) continue; // no frost: GPU changes nothing
                 var r = MeasureSettingsSheet(mode, gpu, notches: 30);
                 _o.WriteLine($"settings {mode,-26} gpu={gpu,-5}: {r.MpxPerNotch:0.00} Mpx per notch, {r.FramesPerNotch:0.0} frames per notch, " +
                              $"{r.MsPerNotch:0.0} ms per notch (4 frames), app layer drawn {PageDrawsPerNotch:0.0}x per notch | idle {r.IdleMpxPerFrame:0.00} Mpx per frame right after, " +
-                             $"{r.IdleLaterMpxPerFrame:0.00} a second later | first step frames ms: {FirstStepFrames}");
+                             $"{r.IdleLaterMpxPerFrame:0.00} ({IdleMsPerFrame:0.0} ms) a second later | moving behind: {MovingMpxPerFrame:0.00} Mpx and {MovingMsPerFrame:0.0} ms per frame, {Retakes} retakes in 1 s | first step frames ms: {FirstStepFrames}" + (mode == SheetMode.LiveBlurStandIn ? $" | one retake: {RetakeDetail}" : ""));
             }
         }
         finally
@@ -384,12 +389,24 @@ public class PopupScrollCostTests
     internal static string FirstStepFrames = "";
     /// <summary>Times the app layer under the sheet was drawn per notch, last run.</summary>
     internal static double PageDrawsPerNotch;
+    /// <summary>Software ms per idle frame a second after scrolling, and the stand-in's retakes, last run.</summary>
+    internal static double IdleMsPerFrame;
+    internal static int Retakes;
+    /// <summary>With something moving behind where the blur shows: Mpx and software ms per frame, last run.</summary>
+    internal static double MovingMpxPerFrame, MovingMsPerFrame;
+    internal static string RetakeDetail = "";
+
+    private static void PumpFor(int ms)
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < ms) { Frame(); Thread.Sleep(5); }
+    }
 
     internal readonly record struct SheetResult(double MpxPerNotch, double FramesPerNotch, double MsPerNotch, double IdleMpxPerFrame, double IdleLaterMpxPerFrame);
 
     internal static SheetResult MeasureSettingsSheet(SheetMode mode, bool gpu, int notches)
     {
-        var live = mode is SheetMode.LiveBlur or SheetMode.LiveBlurHeld;
+        var live = mode is SheetMode.LiveBlur or SheetMode.LiveBlurStandIn;
         var glass = !live;
         if (glass) AppGlass.Set(true, Colors.Black, Colors.Black); else AppGlass.Clear();
         GlassBackdropCache.UnreadableForTests = gpu;
@@ -403,6 +420,15 @@ public class PopupScrollCostTests
             root.Children.Add(probe);
             // Under the sheet: how often the app layer itself is drawn.
             var pageProbe = new ReplayProbe();
+            // Something moving behind the sheet where the blur shows (the spinner sits under the
+            // card): a "title" sliding along the top-left, outside the card.
+            var moverShift = new TranslateTransform();
+            w.FindControl<Panel>("AppContentLayer")!.Children.Add(new Border
+            {
+                Width = 140, Height = 36, Background = Brushes.White, ZIndex = 50, RenderTransform = moverShift,
+                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(20, 20, 0, 0), IsHitTestVisible = false,
+            });
             w.FindControl<Panel>("AppContentLayer")!.Children.Add(pageProbe);
             w.FindControl<Border>("SettingsOverlay")!.IsVisible = true;
             w.EnsureSettingsViewLoaded();
@@ -428,15 +454,24 @@ public class PopupScrollCostTests
             scrim.Opacity = 1;
             Assert.Equal(live, scrim.IsLive);
             Assert.Equal(!live, scrim.HasSnapshot);
-            // MainWindow wires this once it has its view model, which this window has not.
-            if (mode == SheetMode.LiveBlurHeld) scrim.HoldWhileScrolling(w.FindControl<Border>("SettingsOverlay")!);
+            // MainWindow wires these once it has its view model, which this window has not; the
+            // modes without them are the app as it was.
+            if (mode is SheetMode.LiveBlurStandIn or SheetMode.SnapshotFrostHostHidden)
+            {
+                scrim.TargetHost = w.FindControl<Panel>("AppContentHost");
+                scrim.Hole = frost;
+                scrim.Opacity = 0.99;
+                scrim.Opacity = 1; // re-evaluate with the host known
+            }
             // Without the fix the frost never knew the app was hidden.
             if (mode == SheetMode.SnapshotFrost)
                 frost.SetValue(GlassPanel.BeneathRepaintsWholeProperty, false, Avalonia.Data.BindingPriority.Animation);
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 1500) { Frame(); Thread.Sleep(5); }
             Assert.Equal(glass, frost.EffectiveGlassActive);
-            Assert.Equal(mode == SheetMode.SnapshotFrostBeneathWhole, frost.BeneathRepaintsWhole);
+            Assert.Equal(mode is SheetMode.SnapshotFrostBeneathWhole or SheetMode.SnapshotFrostHostHidden, frost.BeneathRepaintsWhole);
+            if (mode == SheetMode.LiveBlurStandIn) Assert.True(scrim.IsStandingIn, "no stand-in");
+            if (mode == SheetMode.SnapshotFrostHostHidden) Assert.True(scrim.IsTargetHostHidden, "app not hidden");
             var scroll = ((Control)host.Content!).FindControl<ScrollViewer>("SettingsScrollViewer")!;
             var y = 0.0;
             void Notches(int count)
@@ -470,16 +505,76 @@ public class PopupScrollCostTests
             var ms = timer.Elapsed.TotalMilliseconds / notches;
             var perNotch = probe.Pixels / 1e6 / notches;
             var frames = probe.Replays / (double)notches;
-            if (mode == SheetMode.LiveBlurHeld) Assert.True(scrim.IsHeld, "not held after scrolling");
             probe.Pixels = 0;
             for (var i = 0; i < 20; i++) Frame();
             var idle = probe.Pixels / 1e6 / 20;
             sw.Restart();
             while (sw.ElapsedMilliseconds < 1000) { Frame(); Thread.Sleep(5); }
-            Assert.False(scrim.IsHeld);
             probe.Pixels = 0;
+            var idleTimer = Stopwatch.StartNew();
             for (var i = 0; i < 20; i++) Frame();
-            return new SheetResult(perNotch, frames, ms, idle, probe.Pixels / 1e6 / 20);
+            IdleMsPerFrame = idleTimer.Elapsed.TotalMilliseconds / 20;
+            var idleLater = probe.Pixels / 1e6 / 20;
+            // One second of the title moving every frame, frames paced at 60 Hz.
+            probe.Pixels = 0;
+            var retakesBefore = scrim.RetakeCount;
+            double work = 0;
+            for (var i = 0; i < 60; i++)
+            {
+                var f = Stopwatch.StartNew();
+                moverShift.X = (moverShift.X + 2) % 120;
+                Frame();
+                work += f.Elapsed.TotalMilliseconds;
+                var rest = 16.7 - f.Elapsed.TotalMilliseconds;
+                if (rest > 0) Thread.Sleep(TimeSpan.FromMilliseconds(rest));
+            }
+            MovingMpxPerFrame = probe.Pixels / 1e6 / 60;
+            if (mode == SheetMode.LiveBlurStandIn)
+            {
+                // What one retake costs: frames until it shows, and their work.
+                var detail = new List<string>();
+                for (var k = 0; k < 3; k++)
+                {
+                    PumpFor(300);
+                    var before = scrim.RetakeCount;
+                    var total = Stopwatch.StartNew();
+                    double busy = 0;
+                    var frames2 = 0;
+                    scrim.RequestRetake();
+                    while (scrim.RetakeCount == before && total.ElapsedMilliseconds < 2000)
+                    {
+                        var f = Stopwatch.StartNew();
+                        Frame();
+                        busy += f.Elapsed.TotalMilliseconds;
+                        frames2++;
+                        Thread.Sleep(2);
+                    }
+                    var f2 = Stopwatch.StartNew();
+                    Frame(); // the frame that shows it
+                    busy += f2.Elapsed.TotalMilliseconds;
+                    detail.Add($"{busy:0} ms busy over {frames2 + 1} frames, {total.ElapsedMilliseconds} ms wall");
+                }
+                // A snapshot of the app layer alone, at the stand-in's scale and at full scale.
+                var layer = w.FindControl<Panel>("AppContentLayer")!;
+                var cv = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(layer)!;
+                foreach (var sc in new[] { 0.17, 1.0 })
+                {
+                    PumpFor(200);
+                    var task = cv.Compositor.CreateCompositionVisualSnapshot(cv, sc);
+                    double busy = 0;
+                    while (!task.IsCompleted) { var f = Stopwatch.StartNew(); Frame(); busy += f.Elapsed.TotalMilliseconds; }
+                    detail.Add($"app snapshot at {sc}: {busy:0} ms");
+                    task.Result.Dispose();
+                }
+                PumpFor(200);
+                double idleBusy = 0;
+                for (var k = 0; k < 3; k++) { var f = Stopwatch.StartNew(); Frame(); idleBusy += f.Elapsed.TotalMilliseconds; }
+                detail.Add($"an idle frame: {idleBusy / 3:0.0} ms");
+                RetakeDetail = string.Join("; ", detail);
+            }
+            MovingMsPerFrame = work / 60;
+            Retakes = scrim.RetakeCount - retakesBefore;
+            return new SheetResult(perNotch, frames, ms, idle, idleLater);
         }
         finally { w.Close(); }
     }
