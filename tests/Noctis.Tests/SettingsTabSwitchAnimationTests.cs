@@ -53,6 +53,16 @@ public class SettingsTabSwitchAnimationTests : IDisposable
         Dispatcher.UIThread.RunJobs();
     }
 
+    /// <summary>
+    /// Runs the switch's frame (a first visit's layout pass can take a few hundred ms here, and
+    /// the motion only starts after it), then lets the motion finish.
+    /// </summary>
+    private static void Land()
+    {
+        Dispatcher.UIThread.RunJobs();
+        Pump(400);
+    }
+
     private async Task<(SettingsView View, SettingsViewModel Vm, Window Window)> OpenAsync()
     {
         EnsureAppStyles();
@@ -138,7 +148,7 @@ public class SettingsTabSwitchAnimationTests : IDisposable
         Assert.Equal(2, view.AudioTabPanel.Transitions?.Count);
         Assert.True(view.AudioTabPanel.Opacity < 0.05);
 
-        Pump(400);
+        Land();
         AssertClean(view, view.AudioTabPanel);
         window.Close();
     }
@@ -148,12 +158,12 @@ public class SettingsTabSwitchAnimationTests : IDisposable
     {
         var (view, vm, window) = await OpenAsync();
         vm.SelectedSettingsTab = SettingsViewModel.TabAbout;
-        Pump(400);
+        Land();
 
         vm.SelectedSettingsTab = SettingsViewModel.TabLyrics;
         Dispatcher.UIThread.RunJobs(DispatcherPriority.Render);
         Assert.Equal(-SettingsView.PageEnterOffset, OffsetY(view.LyricsTabPanel), 3);
-        Pump(400);
+        Land();
         AssertClean(view, view.LyricsTabPanel);
         window.Close();
     }
@@ -170,14 +180,14 @@ public class SettingsTabSwitchAnimationTests : IDisposable
         Dispatcher.UIThread.RunJobs(DispatcherPriority.Render);
         Assert.Equal(1, view.PlayerTabPanel.Opacity, 3); // B settled the moment it left
         Assert.Null(view.PlayerTabPanel.Transitions);
-        Pump(400);
+        Land();
         AssertClean(view, view.LibraryTabPanel);
 
         // Three clicks inside one frame: only the last page ever glides.
         vm.SelectedSettingsTab = SettingsViewModel.TabAudio;
         vm.SelectedSettingsTab = SettingsViewModel.TabAppearance;
         vm.SelectedSettingsTab = SettingsViewModel.TabAdvanced;
-        Pump(400);
+        Land();
         AssertClean(view, view.AdvancedTabPanel);
         Assert.Null(view.AudioTabPanel.Transitions);
         Assert.Null(view.AppearanceTabPanel.Transitions);
@@ -218,7 +228,7 @@ public class SettingsTabSwitchAnimationTests : IDisposable
     {
         var (view, vm, window) = await OpenAsync();
         view.SettingsSearchBox.Text = "Developer";
-        Pump(400);
+        Land();
         Assert.Equal(SettingsViewModel.TabAdvanced, vm.SelectedSettingsTab);
         AssertClean(view, view.AdvancedTabPanel);
         window.Close();
@@ -253,7 +263,7 @@ public class SettingsTabSwitchAnimationTests : IDisposable
         Dispatcher.UIThread.RunJobs(); // then the slide starts from the old row
         var toY = RailRow(view, SettingsViewModel.TabAbout).TranslatePoint(default, view.RailHost)!.Value.Y;
         Assert.True(view.RailSelectionPill.RenderTransform!.Value.M32 < toY - 100);
-        Pump(400);
+        Land();
         AssertPillOn(view, SettingsViewModel.TabAbout);
 
         // The selected row draws no fill of its own: the pill is the highlight.
@@ -265,7 +275,7 @@ public class SettingsTabSwitchAnimationTests : IDisposable
         vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
         Pump(40);
         vm.SelectedSettingsTab = SettingsViewModel.TabLibrary;
-        Pump(400);
+        Land();
         AssertPillOn(view, SettingsViewModel.TabLibrary);
         window.Close();
     }
