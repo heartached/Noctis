@@ -3269,7 +3269,8 @@
             </Border>
             <!-- GitHub #167: fetch on opening an album into a size-capped cache (oldest loops go
                  first). Only while animated artwork is on; its cache options fold under it. -->
-            <Border Classes="setting-row" IsVisible="{Binding EnableAnimatedCovers}">
+            <controls:CollapsibleContent IsOpen="{Binding EnableAnimatedCovers}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <StackPanel>
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
@@ -3344,6 +3345,7 @@
                 </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
+            </controls:CollapsibleContent>
             <Border Classes="setting-row">
                 <!-- Toggle + its Tint strength slider share a spacing-free panel so the gap folds
                      with the body (see the Crossfade block). -->
