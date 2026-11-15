@@ -1608,10 +1608,10 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         LaunchAtStartupError = !value
-            ? "Couldn't remove the launch-at-login entry."
+            ? Loc.T("Settings.LaunchAtLoginRemoveFailed")
             : OperatingSystem.IsMacOS() && !Helpers.StartupHelper.IsRunningFromMacAppBundle
-                ? "Launch at login needs Noctis to run from its app bundle (Noctis.app), e.g. from the Applications folder."
-                : "Couldn't register Noctis to launch at login. Check the app has permission to write its startup entry.";
+                ? Loc.T("Settings.LaunchAtLoginNeedsAppBundle")
+                : Loc.T("Settings.LaunchAtLoginRegisterFailed");
 
         if (actual != value)
         {
@@ -2323,7 +2323,7 @@ public partial class SettingsViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                WebRemoteUrl = $"Failed to start: {ex.Message}";
+                WebRemoteUrl = Loc.T("Settings.WebRemoteStartFailed", ex.Message);
                 WebRemoteDisplayUrl = string.Empty;
                 WebRemoteStartFailed = true;
                 SetWebRemoteQr(null);
@@ -3322,6 +3322,11 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>False for Scoop / portable / read-only copies and Debug builds: the toggle is hidden.</summary>
     public bool CanAutoUpdate => UpdateService.AutoMode != AutoUpdateMode.Off;
     public bool AutoUpdateInstallsAtLaunch => UpdateService.AutoMode == AutoUpdateMode.InstallAtLaunch;
+
+    /// <summary>The status line for a downloaded, queued update.</summary>
+    private string QueuedUpdateText(string tag) => AutoUpdateInstallsAtLaunch
+        ? Loc.T("Settings.UpdateInstallsAtLaunch", tag)
+        : Loc.T("Settings.UpdateDownloadedClickInstall", tag);
     public bool AutoUpdateDownloadOnly => UpdateService.AutoMode == AutoUpdateMode.DownloadOnly;
     public bool ShowPostponeButton => IsReadyToInstall && IsAutoInstallPending && !IsAutoInstallPostponed && AutoUpdateInstallsAtLaunch;
     private bool AutoUpdateActive => AutoInstallUpdates && CanAutoUpdate;
@@ -4120,9 +4125,25 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var saveStart = Stopwatch.GetTimestamp();
-            await MergeExternalSettingChangesAsync();
+            var onDisk = await MergeExternalSettingChangesAsync();
             SyncToSettings();
-            await _persistence.SaveSettingsAsync(_settings);
+            if (onDisk is null)
+            {
+                await _persistence.SaveSettingsAsync(_settings);
+            }
+            else
+            {
+                // The merge read the file outside the settings.json gate, so a gated update from
+                // elsewhere (the lyrics page, the library) could land before this save and be
+                // overwritten by the copy read before it. Save only what this view-model changed
+                // against that read (taken here, on the UI thread), onto the file as it is under
+                // the gate.
+                var changes = ChangesSinceMerge(onDisk);
+                await _persistence.UpdateSettingsAsync(current =>
+                {
+                    foreach (var (prop, value) in changes) prop.SetValue(current, value);
+                });
+            }
             UiStallWatchdog.ReportIfSlow("SettingsSave", saveStart);
         }
         catch (Exception ex)
@@ -4190,27 +4211,50 @@ public partial class SettingsViewModel : ViewModelBase
         nameof(AppSettings.SyncDeviceId),
     };
 
-    private async Task MergeExternalSettingChangesAsync()
+    private static readonly System.Reflection.PropertyInfo[] MergedSettingsProperties = typeof(AppSettings)
+        .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+        .Where(p => p.CanRead && p.CanWrite)
+        .ToArray();
+
+    /// <summary>Returns the settings read from disk, or null when the merge failed.</summary>
+    private async Task<AppSettings?> MergeExternalSettingChangesAsync()
     {
         try
         {
             var onDisk = await _persistence.LoadSettingsAsync();
-            if (onDisk == null) return;
+            if (onDisk == null) return null;
 
-            foreach (var prop in typeof(AppSettings).GetProperties(
-                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            foreach (var prop in MergedSettingsProperties)
             {
-                if (!prop.CanRead || !prop.CanWrite) continue;
                 if (ProcessOwnedPlacementKeys.Contains(prop.Name)) continue;
                 prop.SetValue(_settings, prop.GetValue(onDisk));
             }
+            return onDisk;
         }
         catch (Exception ex)
         {
             // A failed merge must not block the save — worst case we write the
             // in-memory view, which is the old behaviour.
             Debug.WriteLine($"[SettingsViewModel] Settings merge failed: {ex.Message}");
+            return null;
         }
+    }
+
+    /// <summary>
+    /// The fields of <see cref="_settings"/> that differ from <paramref name="onDisk"/>, the file as
+    /// the merge read it: what <see cref="SyncToSettings"/> wrote, plus the process-owned keys the
+    /// merge leaves alone. A field the merge copied and nothing changed since is the same value
+    /// (the same instance for lists), so the file's current value stands for it.
+    /// </summary>
+    private List<(System.Reflection.PropertyInfo Prop, object? Value)> ChangesSinceMerge(AppSettings onDisk)
+    {
+        var changes = new List<(System.Reflection.PropertyInfo, object?)>();
+        foreach (var prop in MergedSettingsProperties)
+        {
+            var value = prop.GetValue(_settings);
+            if (!Equals(value, prop.GetValue(onDisk))) changes.Add((prop, value));
+        }
+        return changes;
     }
 
     private void SyncToSettings()
@@ -6006,9 +6050,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             var changed = await _library.ApplyArtistCreditJoinAsync();
             if (changed > 0)
-                SetScanStatus(changed == 1
-                    ? "Artist credits updated on 1 track."
-                    : Loc.T("Settings.ArtistCreditsUpdated", changed), autoClear: true);
+                SetScanStatus(ArtistCreditsUpdatedText(changed), autoClear: true);
         }
         catch (Exception)
         {
@@ -6044,13 +6086,13 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         if (generation != _mergeFeatApplyGeneration) return;
-        SetScanStatus(changed switch
-        {
-            0 => Loc.T("Settings.ArtistCreditsUpToDate"),
-            1 => "Artist credits updated on 1 track.",
-            _ => Loc.T("Settings.ArtistCreditsUpdated", changed)
-        }, autoClear: true);
+        SetScanStatus(changed == 0 ? Loc.T("Settings.ArtistCreditsUpToDate") : ArtistCreditsUpdatedText(changed), autoClear: true);
     }
+
+    /// <summary>"Artist credits updated on 1 track." / "… on 12 tracks." Internal for tests.</summary>
+    internal static string ArtistCreditsUpdatedText(int changed) => changed == 1
+        ? Loc.T("Settings.ArtistCreditsUpdatedOne")
+        : Loc.T("Settings.ArtistCreditsUpdated", changed);
 
     partial void OnTrackTitleMarqueeEnabledChanged(bool value)
     {
@@ -6962,8 +7004,8 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 if (generation != _ffmpegProbeGeneration) return; // superseded by a newer edit
                 FfmpegStatus = version != null
-                    ? $"ffmpeg found ✓ — {version}"
-                    : $"Not a valid ffmpeg executable — {path}";
+                    ? Loc.T("Settings.FfmpegFound", version)
+                    : Loc.T("Settings.FfmpegInvalid", path);
             });
         });
     }
@@ -7345,7 +7387,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ListenBrainzValidationError.InvalidToken => Loc.T("Settings.ListenBrainzTokenRejected"),
                 ListenBrainzValidationError.Unreachable => Loc.T("Settings.ListenBrainzUnreachable"),
                 ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
-                _ => "Token invalid or network error.",
+                _ => Loc.T("Settings.ListenBrainzTokenOrNetwork"),
             };
             ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         }
@@ -8411,7 +8453,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Status line for a scan the library abandoned because these folders were unreachable.</summary>
     internal static string ScanAbortedStatus(IReadOnlyList<string> roots) =>
-        $"Can't reach {string.Join(", ", roots)} — library kept unchanged. Check the drive, then refresh.";
+        Loc.T("Settings.ScanAbortedUnreachable", string.Join(", ", roots));
 
     private async Task RunScanCoreAsync(Task prior, CancellationTokenSource cts)
     {
@@ -9170,8 +9212,7 @@ public partial class SettingsViewModel : ViewModelBase
                     if (IsReadyToInstall) return; // keep the queued older build; it installs first
                     // Says when, so a known update with "Update automatically" on doesn't look stuck.
                     var waitText = retry is { } when
-                        ? $"{update.TagName} is available. It downloads automatically after {when.LocalDateTime:g} " +
-                          "and installs the next time you open Noctis."
+                        ? Loc.T("Settings.UpdateDownloadsAfter", update.TagName, when.LocalDateTime)
                         : null;
                     if (waitText is not null) UpdateStatusText = waitText;
                     else if (UpdateStatusText == _autoWaitStatusText) UpdateStatusText = "";
@@ -9241,7 +9282,7 @@ public partial class SettingsViewModel : ViewModelBase
                 IsUpToDate = false;
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
-                UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
+                UpdateStatusText = Loc.T("Settings.UpdateInstallerMissing", update.TagName);
             }
             else
             {
@@ -9249,8 +9290,8 @@ public partial class SettingsViewModel : ViewModelBase
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
                 UpdateStatusText = CanInstallInApp
-                    ? $"{update.TagName} is available."
-                    : $"{update.TagName} is available. {ExternalUpdateHint}";
+                    ? Loc.T("Settings.UpdateVersionAvailable", update.TagName)
+                    : Loc.T("Settings.UpdateVersionAvailableHint", update.TagName, ExternalUpdateHint ?? "");
                 IsUpdateAvailable = true;
                 DebugLog.Write("Updater", $"Update found: {update.TagName}");
             }
@@ -9354,9 +9395,7 @@ public partial class SettingsViewModel : ViewModelBase
                     IsAutoInstallPending = true;
                     IsAutoInstallPostponed = false;
                     LatestVersionTag = update.TagName;
-                    UpdateStatusText = AutoUpdateInstallsAtLaunch
-                        ? $"{update.TagName} is ready. It installs the next time you open Noctis."
-                        : $"{update.TagName} downloaded. Click Install & Restart to finish.";
+                    UpdateStatusText = QueuedUpdateText(update.TagName);
                 }
                 catch (Exception ex)
                 {
@@ -9447,7 +9486,7 @@ public partial class SettingsViewModel : ViewModelBase
         IsLatestPrerelease = update.IsPrerelease;
         IsUpdateAvailable = true;
         var isError = UpdateStatusIsError;
-        UpdateStatusText += " Use the Update button.";
+        UpdateStatusText += " " + Loc.T("Settings.UpdateUseButton");
         UpdateStatusIsError = isError;
     }
 
@@ -9508,7 +9547,7 @@ public partial class SettingsViewModel : ViewModelBase
             p.PostponedUntilUtc = until;
             AutoStore.Save(state);
             IsAutoInstallPostponed = true;
-            UpdateStatusText = $"Postponed. {p.Tag} won't install before {until.LocalDateTime:g}. Install & Restart still works.";
+            UpdateStatusText = Loc.T("Settings.UpdatePostponed", p.Tag, until.LocalDateTime);
             DebugLog.Write("Updater", $"Auto-update: install postponed until {until.LocalDateTime:g}.");
         }
         catch (Exception ex)
@@ -9607,10 +9646,8 @@ public partial class SettingsViewModel : ViewModelBase
                 IsUpdateAvailable = false;
                 IsReadyToInstall = true;
                 UpdateStatusText = IsAutoInstallPostponed
-                    ? $"Postponed. {pending.Tag} won't install before {pending.PostponedUntilUtc!.Value.LocalDateTime:g}. Install & Restart still works."
-                    : AutoUpdateInstallsAtLaunch
-                        ? $"{pending.Tag} is ready. It installs the next time you open Noctis."
-                        : $"{pending.Tag} downloaded. Click Install & Restart to finish.";
+                    ? Loc.T("Settings.UpdatePostponed", pending.Tag, pending.PostponedUntilUtc!.Value.LocalDateTime)
+                    : QueuedUpdateText(pending.Tag);
             });
         });
     }
