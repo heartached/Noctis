@@ -74,7 +74,9 @@
   <!-- Mono's young-object area (the SGen nursery) defaults to 4 MB: every 4 MB of short-lived
        objects (drawing the lyrics page made ~3 MB/s) cost a 60-80 ms collection on a Galaxy S23,
        once a second (11-14). 32 MB makes them ~8x rarer. major=marksweep-conc keeps the concurrent
-       collector the SDK turns on by default (AndroidEnableSGenConcurrent), which this line replaces. -->
+       collector the SDK turns on by default (AndroidEnableSGenConcurrent), which this line replaces.
+       minor=simple-par / -conc-par spread each collection over the cores: scrolling a list on the S23
+       went from an 85 ms freeze every ~5 s to none over 32 ms (11-15). -->
   <ItemGroup>
     <AndroidEnvironment Include="environment.txt" />
   </ItemGroup>
