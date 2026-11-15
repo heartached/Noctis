@@ -174,14 +174,15 @@ public class LocalizationTests
             var none = Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(0);
             Assert.Equal(Loc.T("Settings.ResetConfirmClears") + " " + Loc.T("Settings.ResetConfirmKeeps"), none);
             Assert.DoesNotContain("playlist", none, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("music folders", none);
+            Assert.Contains("music folder list", none);
+            Assert.Contains("connected phones", none);
             Assert.Contains("sign-ins", none);
             Assert.StartsWith(Loc.T("Settings.ResetConfirmOnePlaylist") + " ", Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(1));
             Assert.StartsWith("All 7 playlists are deleted for good. ", Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(7));
 
             Loc.Instance.SetCulture("ru");
             var ru = Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(7);
-            Assert.StartsWith("Все плейлисты (7) будут удалены навсегда. ", ru);
+            Assert.StartsWith("Все плейлисты будут удалены навсегда: 7. ", ru);
             Assert.DoesNotMatch("[A-Za-z]{4,}", ru);
         }
         finally { Loc.Instance.SetCulture("en"); }
