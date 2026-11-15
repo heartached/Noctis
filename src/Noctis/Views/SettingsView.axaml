@@ -3654,6 +3654,7 @@
                             <TextBlock Text="{loc:T Settings.TrashFolder}" FontSize="13" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.TrashFolderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
+                        <StackPanel>
                         <Grid ColumnDefinitions="*,Auto,Auto">
                             <TextBox Grid.Column="0"
                                      x:Name="TrashFolderBox"
@@ -3681,9 +3682,11 @@
                                     Margin="8,0,0,0"
                                     Cursor="Hand"/>
                         </Grid>
-                        <TextBlock Text="{loc:T Settings.TrashFolderMissing}"
-                                   IsVisible="{Binding ShowTrashFolderMissingHint}"
+                        <controls:CollapsibleContent IsOpen="{Binding ShowTrashFolderMissingHint}" Lift="10" Motion="Glide">
+                        <TextBlock Margin="0,6,0,0" Text="{loc:T Settings.TrashFolderMissing}"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     </controls:CollapsibleContent>
                     </StackPanel>
@@ -3842,6 +3845,7 @@
             <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->
             <Border Classes="setting-row">
                 <StackPanel Spacing="8">
+                <StackPanel>
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
                         <TextBlock Text="{loc:T Settings.ArtworkClick}" FontSize="15" FontWeight="SemiBold"/>
@@ -3859,9 +3863,11 @@
                               CornerRadius="999"
                               Padding="14,8"/>
                 </Grid>
-                <TextBlock Text="{loc:T Settings.ArtworkClickLyricsHiddenHint}"
-                           IsVisible="{Binding ShowArtworkLyricsHint}"
+                <controls:CollapsibleContent IsOpen="{Binding ShowArtworkLyricsHint}" Lift="10" Motion="Glide">
+                <TextBlock Margin="0,8,0,0" Text="{loc:T Settings.ArtworkClickLyricsHiddenHint}"
                            FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                </controls:CollapsibleContent>
+                </StackPanel>
                 </StackPanel>
             </Border>
             <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->
@@ -3996,14 +4002,17 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.MiniPlayerFrostedBackground}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.BlurDesktopBehindMiniPlayer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         <!-- Discord (BEAGLE): the switch is on but nothing blurs, and the card
                              is see-through over a sharp desktop. Say why, and what helps. -->
+                        <controls:CollapsibleContent IsOpen="{Binding MiniPlayerFrostUnavailable}" Lift="10" Motion="Glide">
                         <TextBlock x:Name="MiniPlayerFrostUnavailableNote"
                                    Text="{loc:T Settings.MiniPlayerFrostNeedsTransparency}"
-                                   FontSize="12" Foreground="#FFB454" TextWrapping="Wrap" Margin="0,4,0,0"
-                                   IsVisible="{Binding MiniPlayerFrostUnavailable}"/>
+                                   FontSize="12" Foreground="#FFB454" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.MiniPlayerFrostedBackground}"
