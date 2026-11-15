@@ -2267,6 +2267,7 @@
                         <TextBlock Text="{loc:T Settings.ControlHowNoctisStarts}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.OpenNoctisWhenComputer}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
@@ -2278,9 +2279,11 @@
                          ~/.config/autostart, an unbundled macOS run). The toggle snaps
                          back to what the OS reports and says so, rather than sitting ON
                          with nothing registered. -->
-                    <TextBlock Text="{Binding LaunchAtStartupError}"
-                               IsVisible="{Binding LaunchAtStartupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    <controls:CollapsibleContent IsOpen="{Binding LaunchAtStartupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,12,0,0" Text="{Binding LaunchAtStartupError}"
                                FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                     <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
                     <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray}" FontSize="13" VerticalAlignment="Center"/>
@@ -2456,6 +2459,7 @@
             <StackPanel>
             <Border Classes="setting-row" IsVisible="{Binding IsFileAssociationSupported}">
                 <StackPanel Spacing="10">
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.OpenAudioFilesNoctis}" FontSize="15" FontWeight="SemiBold"/>
@@ -2481,9 +2485,11 @@
                             </Panel>
                         </Button>
                     </Grid>
-                    <TextBlock Text="{Binding FileTypesStatus}"
-                               IsVisible="{Binding FileTypesStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    <controls:CollapsibleContent IsOpen="{Binding FileTypesStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding FileTypesStatus}"
                                FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row" Classes.first="{Binding !IsFileAssociationSupported}">
