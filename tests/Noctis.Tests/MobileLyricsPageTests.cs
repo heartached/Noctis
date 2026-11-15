@@ -154,6 +154,40 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>S23 11-14: the ⋯ menu stuttered only over the lyrics (every frame of its pop
+    /// re-blurred each line under the dim). A menu over the page holds the lines still and draws the
+    /// lyric column from a bitmap at the screen's scale; closing it drops the cache and catches up.</summary>
+    [AvaloniaFact]
+    public void AMenuOverTheLyrics_HoldsTheLines_InABitmap_UntilItCloses()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(2.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var scroll = page.FindControl<ScrollViewer>("LyricsScroll")!;
+        Assert.False(page.IsHeldForMenu);
+        Assert.Null(scroll.CacheMode);
+
+        shell.OpenCurrentLinksCommand.Execute(null);                 // a ⋯-style pop-up over the page
+        Assert.True(shell.IsMenuOpen);
+        Assert.True(page.IsHeldForMenu);
+        var cache = Assert.IsType<Avalonia.Media.BitmapCache>(scroll.CacheMode);
+        Assert.Equal(Avalonia.Controls.TopLevel.GetTopLevel(page)!.RenderScaling, cache.RenderAtScale, 3);
+
+        shell.CloseSheet();
+        Assert.False(shell.IsMenuOpen);
+        Assert.False(page.IsHeldForMenu);
+        Assert.Null(scroll.CacheMode);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     [AvaloniaFact]
     public void IssueExample_ShowsWordsAndTranslation_AndTheToggleHidesIt()
     {
