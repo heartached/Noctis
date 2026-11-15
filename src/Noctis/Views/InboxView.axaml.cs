@@ -28,8 +28,10 @@ public partial class InboxView : UserControl
         // Right-click anywhere on a row (same wiring as the Folders page).
         TrackList.ContainerPrepared += (_, e) =>
         {
-            if (e.Container is ListBoxItem item)
-                item.ContextRequested += OnTrackItemContextRequested;
+            if (e.Container is not ListBoxItem item) return;
+            // A row parked by RetainingVirtualizingStackPanel is prepared again without being cleared.
+            item.ContextRequested -= OnTrackItemContextRequested;
+            item.ContextRequested += OnTrackItemContextRequested;
         };
         TrackList.ContainerClearing += (_, e) =>
         {

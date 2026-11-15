@@ -69,7 +69,7 @@ public class RetainedRowsTests
             {
                 Id = Guid.NewGuid(), Title = $"Song {i:0000}", Artist = $"Artist {i % 37}", Album = $"Album {i / 12}",
                 FilePath = TestPaths.Primary("t", $"{i:0000}.mp3"), Duration = TimeSpan.FromMinutes(3),
-                Rating = i % 3 == 0 ? 4 : 0, IsFavorite = i % 5 == 0, TrackNumber = i % 12 + 1,
+                Rating = i % 3 == 0 ? 4 : 0, IsFavorite = i % 5 == 0, TrackNumber = i % 12 + 1, Year = 1970 + i % 50,
             });
         var persistence = new TestPersistenceService();
         var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
@@ -357,6 +357,234 @@ public class RetainedRowsTests
             }
         }
         Assert.True(tiles.Count <= 7 * 8, $"{tiles.Count} portraits built for 60 rows");
+        window.Close();
+    }
+
+    /// <summary>Checks every realized row of a song list shows its own song and selection mark,
+    /// and that rows were re-bound rather than rebuilt while scrolling through it.</summary>
+    private static void ScrollAndCheckSongRows(ListBox list, IReadOnlyList<Track> items, int selectedIndex)
+    {
+        Assert.IsType<RetainingVirtualizingStackPanel>(list.ItemsPanelRoot);
+        list.Selection.Select(selectedIndex);
+        Pump();
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        var roots = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        var containers = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        foreach (var y in new[] { 0.0, 900, 935, 4000, 12000, 600, 0 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in list.GetRealizedContainers()!)
+            {
+                var item = Assert.IsType<ListBoxItem>(row);
+                var index = list.IndexFromContainer(row);
+                Assert.Same(items[index], item.Content);
+                Assert.Same(items[index], item.Presenter?.Child?.DataContext);
+                Assert.Equal(index == selectedIndex, item.IsSelected);
+            }
+            foreach (var row in list.GetVisualDescendants().OfType<ListBoxItem>())
+            {
+                containers.Add(row);
+                if (row.Presenter?.Child is { } child) roots.Add(child);
+            }
+        }
+        Assert.Equal(new[] { selectedIndex }, list.Selection.SelectedIndexes.ToArray());
+        Assert.Equal(containers.Count, roots.Count);
+    }
+
+    private static Track Song(int i, string folder) => new()
+    {
+        Id = Guid.NewGuid(), Title = $"Song {i:0000}", Artist = $"Artist {i % 23}", AlbumArtist = $"Artist {i % 23}",
+        Album = $"Album {i / 10}", TrackNumber = i % 10 + 1, Duration = TimeSpan.FromMinutes(3),
+        FilePath = TestPaths.Primary(folder, $"{i:0000}.flac"), DateAdded = DateTime.UtcNow.AddDays(-(i % 7)),
+    };
+
+    [AvaloniaFact]
+    public async Task Inbox_ScrolledRows_AreReused_AndShowTheirOwnSong()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 800; i++)
+        {
+            var t = Song(i, "inbox");
+            t.IsInInbox = true;
+            lib.InboxList.Add(t);
+        }
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new InboxViewModel(lib, player, new SidebarViewModel(persistence, lib)) { IsActive = true };
+        var view = new InboxView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        await PumpUntil(() => vm.Tracks.Count == 800);
+        ScrollAndCheckSongRows(view.FindControl<ListBox>("TrackList")!, vm.Tracks, 7);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Folders_ScrolledRows_AreReused_AndShowTheirOwnSong()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 800; i++)
+        {
+            var t = Song(i, "folder");
+            t.AddedIndividually = true; // a folder of songs added on their own is a root (GitHub #108)
+            lib.TrackList.Add(t);
+        }
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new LibraryFoldersViewModel(lib, player, persistence, new SidebarViewModel(persistence, lib));
+        var view = new LibraryFoldersView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        vm.IsActive = true;
+        vm.Refresh();
+        await PumpUntil(() => vm.RootNodes.Count > 0);
+        vm.SelectedNode = vm.RootNodes[0];
+        await PumpUntil(() => vm.SelectedFolderTracks.Count == 800);
+        ScrollAndCheckSongRows(view.FindControl<ListBox>("TrackList")!, vm.SelectedFolderTracks, 11);
+        window.Close();
+    }
+
+    /// <summary>A row scrolled off while one of its buttons has the keyboard focus is hidden and
+    /// parked: the focus must not stay on the invisible button.</summary>
+    [AvaloniaFact]
+    public async Task Songs_FocusedButtonInARowThatScrollsOff_DoesNotKeepTheFocus()
+    {
+        var (vm, view, window) = MountSongs(600);
+        await PumpUntil(() => vm.FilteredTracks.Count == 600);
+        var list = view.TrackList;
+        var row = list.GetRealizedContainers()!.OfType<ListBoxItem>().First(r => list.IndexFromContainer(r) == 2);
+        var heart = row.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("row-heart"));
+        Assert.True(heart.Focus());
+        Pump();
+        Assert.Same(heart, window.FocusManager!.GetFocusedElement());
+
+        list.FindDescendantOfType<ScrollViewer>()!.Offset = new Vector(0, 9000);
+        Pump();
+        var focused = window.FocusManager!.GetFocusedElement() as Visual;
+        Assert.True(focused == null || focused.IsEffectivelyVisible,
+            $"focus stayed on {focused?.GetType().Name} (visible {focused?.IsEffectivelyVisible})");
+        window.Close();
+    }
+
+    /// <summary>Artists list view: arrow keys move on from the selected artist even after its row
+    /// scrolled off and was parked, and only the new row shows as selected.</summary>
+    [AvaloniaFact]
+    public async Task ArtistsList_ArrowKeys_ContinueFromTheSelectedArtist_AfterItsRowWasParked()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 300; i++)
+        {
+            var name = $"Artist {i:000}";
+            lib.TrackList.Add(new Track { Id = Guid.NewGuid(), Title = $"Song {i}", Artist = name, AlbumArtist = name, Album = $"Album {i}",
+                FilePath = TestPaths.Primary("a", $"{i}.flac"), Duration = TimeSpan.FromMinutes(3) });
+            lib.ArtistList.Add(new Artist { Id = Guid.NewGuid(), Name = name, TrackCount = 1, AlbumCount = 1 });
+        }
+        var vm = new LibraryArtistsViewModel(lib);
+        var view = new LibraryArtistsView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        vm.Refresh();
+        if (!vm.IsListView) vm.ToggleViewModeCommand.Execute(null);
+        await PumpUntil(() => vm.ListRows.Count == 300);
+        var table = view.FindControl<ListBox>("ArtistTable")!;
+        Assert.IsType<RetainingVirtualizingStackPanel>(table.ItemsPanelRoot);
+        table.Focus();
+        table.SelectedIndex = 2;
+        Pump();
+
+        table.FindDescendantOfType<ScrollViewer>()!.Offset = new Vector(0, 9000);
+        Pump();
+        table.RaiseEvent(new Avalonia.Input.KeyEventArgs { RoutedEvent = Avalonia.Input.InputElement.KeyDownEvent, Key = Avalonia.Input.Key.Down, Source = table });
+        await PumpUntil(() => table.ContainerFromIndex(3) is { IsVisible: true });
+
+        Assert.Equal(3, table.SelectedIndex);
+        var selectedRows = table.GetVisualDescendants().OfType<ListBoxItem>().Where(r => r.IsSelected).ToList();
+        var only = Assert.Single(selectedRows);
+        Assert.True(only.IsVisible);
+        Assert.Equal(3, table.IndexFromContainer(only));
+        Assert.Same(vm.ListRows[3], only.Content);
+        Assert.True(table.IsKeyboardFocusWithin);
+        window.Close();
+    }
+
+    /// <summary>Screen readers walk the automation tree: parked (hidden) rows must not be in it.</summary>
+    [AvaloniaFact]
+    public async Task Songs_AutomationTree_ShowsOnlyTheRealizedRows()
+    {
+        var (vm, view, window) = MountSongs(600);
+        await PumpUntil(() => vm.FilteredTracks.Count == 600);
+        var list = view.TrackList;
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        foreach (var y in new[] { 3000.0, 9000, 600 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+        }
+        Assert.Contains(list.GetVisualDescendants().OfType<ListBoxItem>(), r => !r.IsVisible); // some rows are parked
+
+        var peers = new List<Avalonia.Automation.Peers.AutomationPeer>();
+        void Walk(Avalonia.Automation.Peers.AutomationPeer p)
+        {
+            foreach (var c in p.GetChildren()) { peers.Add(c); Walk(c); }
+        }
+        Walk(Avalonia.Automation.Peers.ControlAutomationPeer.CreatePeerForElement(list));
+        var rowPeers = peers.OfType<Avalonia.Automation.Peers.ControlAutomationPeer>().Where(p => p.Owner is ListBoxItem).ToList();
+        Assert.NotEmpty(rowPeers);
+        Assert.All(rowPeers, p => Assert.True(p.Owner.IsVisible, "a parked row is in the automation tree"));
+        Assert.Equal(list.GetRealizedContainers()!.Count(), rowPeers.Count);
+        window.Close();
+    }
+
+    private static readonly string[] HiddenByDefault =
+        { "Bpm", "Bitrate", "SampleRate", "Year", "AlbumArtist", "Composer", "Format", "DateAdded", "ReplayGain" };
+
+    /// <summary>Songs rows build a column's cell only once the column is shown: the nine
+    /// hidden-by-default columns cost one empty control each instead of their content, a column
+    /// the user shows fills in on every row (re-used rows included), and hiding it again hides it.</summary>
+    [AvaloniaFact]
+    public async Task Songs_HiddenColumns_BuildTheirCellsOnlyWhenShown()
+    {
+        var (vm, view, window) = MountSongs(600);
+        await PumpUntil(() => vm.FilteredTracks.Count == 600);
+        var list = view.TrackList;
+        List<ColumnsPanel> Rows() => list.GetRealizedContainers()!.OfType<ListBoxItem>()
+            .Select(i => i.GetVisualDescendants().OfType<ColumnsPanel>().First()).ToList();
+        LazyCell Cell(ColumnsPanel row, string key) => (LazyCell)row.Children.First(c => ColumnsPanel.GetColumn(c) == key);
+
+        foreach (var row in Rows())
+            foreach (var key in HiddenByDefault)
+            {
+                Assert.False(view.Columns.IsVisible(key));
+                Assert.False(Cell(row, key).IsBuilt, $"{key} cell built while its column is hidden");
+            }
+        var perRow = Rows()[0].GetVisualDescendants().Count();
+
+        view.Columns.SetVisible("Year", true);
+        Pump();
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        foreach (var y in new[] { 0.0, 2500, 9000, 400 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in Rows())
+            {
+                var track = (Track)row.DataContext!;
+                var year = Cell(row, "Year");
+                Assert.True(year.IsBuilt && year.IsVisible);
+                Assert.True(year.Bounds.Width > 0);
+                Assert.Equal(track.Year.ToString(), Assert.IsType<TextBlock>(year.Child).Text);
+                Assert.False(Cell(row, "Bpm").IsBuilt);
+            }
+        }
+        Assert.Equal(perRow + 1, Rows()[0].GetVisualDescendants().Count()); // the Year TextBlock
+
+        view.Columns.SetVisible("Year", false);
+        Pump();
+        Assert.All(Rows(), row => Assert.False(Cell(row, "Year").IsVisible));
         window.Close();
     }
 }

@@ -1,6 +1,7 @@
-// Avalonia's RealizedStackElements (src/Avalonia.Controls/Utils/RealizedStackElements.cs at tag
-// 12.1.6, MIT licence, Copyright (c) AvaloniaUI OÜ), internal to Avalonia, copied for
-// RetainingVirtualizingStackPanel. Only change: List.InsertMany (internal) is InsertRange.
+// Copied from Avalonia: src/Avalonia.Controls/Utils/RealizedStackElements.cs, tag 12.1.6
+// (commit cf8e564674700348947e93ab19105f27afe859a9), MIT licence, Copyright (c) AvaloniaUI OÜ.
+// Internal to Avalonia; used by RetainingVirtualizingStackPanel. One delta, marked "// NOCTIS:":
+// List.InsertMany (internal) is InsertRange. Re-sync together with the panel.
 
 using System;
 using System.Collections.Generic;
@@ -183,6 +184,7 @@ namespace Noctis.Controls
                 {
                     // The insertion point was within the realized elements, insert an empty space
                     // in _elements and _sizes.
+                    // NOCTIS: List.InsertMany is internal to Avalonia
                     _elements!.InsertRange(realizedIndex, Enumerable.Repeat<Control?>(null, count));
                     _sizes!.InsertRange(realizedIndex, Enumerable.Repeat(double.NaN, count));
                 }

@@ -60,6 +60,8 @@ public partial class App : Application
             [typeof(ServerViewModel)] = () => new ServerView(),
             [typeof(AudioCdViewModel)] = () => new AudioCdView(),
             [typeof(InboxViewModel)] = () => new InboxView(),
+            // A root section like the others (one view model): kept by PageDeck between visits.
+            [typeof(LibraryFoldersViewModel)] = () => new LibraryFoldersView(),
             [typeof(VisualizerViewModel)] = () => new VisualizerView(),
             [typeof(LyricsStudioPageViewModel)] = () => new LyricsStudioView(),
         });
