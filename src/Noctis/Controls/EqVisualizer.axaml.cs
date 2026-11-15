@@ -125,6 +125,20 @@ public class EqVisualizer : TemplatedControl
             StartAnimating();
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (_initialized && IsPlaying && IsVisible)
+            StartAnimating();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _flattening = false;
+        StopAnimating();
+    }
+
     protected override void OnDetachedFromLogicalTree(global::Avalonia.LogicalTree.LogicalTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromLogicalTree(e);
@@ -180,7 +194,9 @@ public class EqVisualizer : TemplatedControl
     // Bindings outlive a detach: a closed mini player window keeps its DataContext, so a
     // pause→play still reaches IsPlaying on its (detached) Sleeve bars. Starting the timer
     // there let the dispatcher root the closed window for as long as music played.
-    private bool IsAttached => ((global::Avalonia.LogicalTree.ILogical)this).IsAttachedToLogicalTree;
+    // A page kept by PageDeck stays in the logical tree while hidden but leaves the visual tree:
+    // the bars animate only when on screen.
+    private bool IsAttached => ((global::Avalonia.LogicalTree.ILogical)this).IsAttachedToLogicalTree && VisualRoot != null;
 
     // Minimized: stop outright, no poll; restoring restarts the bars. A flatten in progress
     // just lands flat — nobody is watching it ease.
