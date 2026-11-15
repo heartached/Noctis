@@ -63,8 +63,15 @@ public class MobileLibraryRowsTests
         Assert.Equal(new[] { "Playlists", "Artists", "Albums", "Songs" }, ListedTitles(view));
 
         // Each row has its accent glyph (the row-icon styles pick it by the row's key).
+        // Apple's size: the 24-grid glyph at 1:1, in the slot the label and hairline line up with.
         foreach (var kind in new[] { LibraryRowKind.Playlists, LibraryRowKind.Artists, LibraryRowKind.Albums, LibraryRowKind.Songs })
-            Assert.NotNull(RowButton(view, kind).GetVisualDescendants().OfType<PathIcon>().First(i => i.Name == "RowIcon").Data);
+        {
+            var icon = RowButton(view, kind).GetVisualDescendants().OfType<PathIcon>().First(i => i.Name == "RowIcon");
+            Assert.NotNull(icon.Data);
+            Assert.Equal(new Size(24, 24), icon.Bounds.Size);
+            var label = RowButton(view, kind).GetVisualDescendants().OfType<TextBlock>().First(t => t.Name == "RowLabel");
+            Assert.Equal(24 + 15, label.TranslatePoint(new Point(0, 0), icon)!.Value.X, 1);
+        }
 
         // The rows come first, then Recently Added (Apple's Library).
         var rowList = MobileFixtures.Named<ItemsControl>(view, "LibraryRowList");
