@@ -83,6 +83,16 @@ public sealed class WaveformService : IDisposable
     private readonly AutoResetEvent _wake = new(false);
     private readonly HashSet<string> _failedKeys = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Most failed files remembered (not retried) at once. The set only grew, one key per file that
+    /// would not decode, for the whole session; past this it starts over, so the worst a long
+    /// session costs is one more attempt at a file that failed long ago. Internal for tests.
+    /// </summary>
+    internal static int MaxFailedKeys { get; set; } = 512;
+
+    /// <summary>Failed files currently remembered (tests).</summary>
+    internal int FailedKeyCount { get { lock (_gate) return _failedKeys.Count; } }
+
     private string[] _plan = Array.Empty<string>();
     private int _planVersion;
     private CancellationTokenSource? _inflightCts;
@@ -246,7 +256,11 @@ public sealed class WaveformService : IDisposable
             if (cancelled || _disposed) return _disposed;
             if (data == null)
             {
-                lock (_gate) _failedKeys.Add(key);
+                lock (_gate)
+                {
+                    if (_failedKeys.Count >= MaxFailedKeys) _failedKeys.Clear();
+                    _failedKeys.Add(key);
+                }
                 continue;
             }
 

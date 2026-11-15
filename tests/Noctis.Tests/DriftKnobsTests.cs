@@ -446,6 +446,61 @@ public class DriftKnobsTests : IDisposable
         Assert.Null(Multi(conv, null, drift: true, 40, 150));
     }
 
+    private sealed class KnobSource : System.ComponentModel.INotifyPropertyChanged
+    {
+        public Bitmap? Art { get; init; }
+        public bool Drift => true;
+        private int _blur = 40;
+        public int Blur { get => _blur; set { _blur = value; PropertyChanged?.Invoke(this, new(nameof(Blur))); } }
+        public int Saturation => 150;
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    /// <summary>The copy for the old knob values used to be left to the finalizer (one native bitmap
+    /// per step of a slider drag). It is disposed now, after every surface sharing it (lyrics page,
+    /// lyrics panel, mini player) has taken the new one; nothing on screen draws the disposed one.</summary>
+    [AvaloniaFact]
+    public void KnobMove_FreesTheOldTunedCopy_AfterEverySurfaceTookTheNewOne()
+    {
+        var conv = new PreBlurredArtworkConverter();
+        var source = new KnobSource { Art = Art(64) };
+        Image Bound()
+        {
+            var image = new Image { Width = 64, Height = 64 };
+            var multi = new Avalonia.Data.MultiBinding { Converter = conv };
+            foreach (var path in new[] { nameof(KnobSource.Art), nameof(KnobSource.Drift), nameof(KnobSource.Blur), nameof(KnobSource.Saturation) })
+                multi.Bindings.Add(new Avalonia.Data.Binding(path) { Source = source });
+            image.Bind(Image.SourceProperty, multi);
+            return image;
+        }
+        var a = Bound();
+        var b = Bound();
+        var win = new Window { Width = 200, Height = 100, Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { a, b } } };
+        win.Show();
+        try
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            var old = Assert.IsAssignableFrom<Bitmap>(a.Source);
+            Assert.Same(old, b.Source);
+
+            source.Blur = 45;
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+
+            var now = Assert.IsAssignableFrom<Bitmap>(a.Source);
+            Assert.Same(now, b.Source);
+            Assert.NotSame(old, now);
+            var disposed = false;
+            try { _ = old.PixelSize; }
+            catch (ObjectDisposedException) { disposed = true; }
+            catch (NullReferenceException) { disposed = true; }
+            Assert.True(disposed);
+            Assert.Equal(64, now.PixelSize.Width);
+        }
+        finally { win.Close(); }
+    }
+
     [AvaloniaFact]
     public async Task LyricsPage_BlurAndSaturationKnobs_ReachTheBackdropAndBothDriftCopies()
     {

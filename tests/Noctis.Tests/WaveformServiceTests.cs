@@ -245,6 +245,34 @@ public sealed class WaveformServiceTests : IDisposable
         Assert.Equal(1, decoder.Started.Count(n => n == "bad.flac"));
     }
 
+    /// <summary>The not-retried set used to grow by one key per failing file for the whole session.</summary>
+    [Fact]
+    public void FailedFiles_AreRememberedUpToACap()
+    {
+        var saved = WaveformService.MaxFailedKeys;
+        WaveformService.MaxFailedKeys = 3;
+        try
+        {
+            var (service, decoder, ready) = Make();
+            var good = File("good.flac");
+            for (var i = 0; i < 7; i++)
+            {
+                var bad = File($"bad{i}.flac");
+                decoder.Fail.Add($"bad{i}.flac");
+                service.SetPlan(new[] { bad, good });
+                if (i == 0) Assert.Equal(new[] { "good.flac" }, Take(ready, 1));
+                var deadline = DateTime.UtcNow.AddSeconds(10);
+                while (decoder.Started.Count(n => n == $"bad{i}.flac") == 0 && DateTime.UtcNow < deadline) Thread.Sleep(5);
+                Thread.Sleep(60);
+                Assert.InRange(service.FailedKeyCount, 1, 3);
+            }
+        }
+        finally
+        {
+            WaveformService.MaxFailedKeys = saved;
+        }
+    }
+
     [Fact]
     public void AnEmptyPlan_StartsNoWorker_AndMissingFilesAreSkipped()
     {

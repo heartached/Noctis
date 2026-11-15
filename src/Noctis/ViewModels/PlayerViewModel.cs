@@ -4073,14 +4073,25 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             // Cache miss: decode on a background thread so click-to-play doesn't stall.
             // Keep the previous AlbumArt visible until the new bitmap is ready —
             // clearing here causes a placeholder flash on every track switch.
+            // The decode comes back held (acquire): until the UI thread takes it, other decodes
+            // filling the cache's byte budget could evict it, and with no holder it was disposed,
+            // so a busy UI thread then gave the player a disposed cover (PlayerArtworkLeaseTests).
+            // AlbumArt takes its own hold; the decode's is let go either way.
             _ = Task.Run(() =>
             {
-                var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth);
+                var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth, exact: false, acquire: true);
                 if (bitmap == null) return;
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (generation == Volatile.Read(ref _albumArtGeneration))
-                        AlbumArt = bitmap;
+                    try
+                    {
+                        if (generation == Volatile.Read(ref _albumArtGeneration))
+                            AlbumArt = bitmap;
+                    }
+                    finally
+                    {
+                        ArtworkCache.Release(bitmap);
+                    }
                 });
             });
         }
