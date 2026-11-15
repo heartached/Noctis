@@ -7936,23 +7936,29 @@
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.LastFmScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <StackPanel>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.SendPlaysLastFm}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
                                        Margin="-2,0,0,0"/>
                             <!-- ACCOUNT line sits inline with title/description so it pulls up tight
                                  against the description instead of dropping into its own grid row. -->
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Margin="-2,2,0,0">
+                                        Margin="-2,4,0,0">
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding LastFmQueueNote}"
-                                       IsVisible="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
+                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Not connected state -->
@@ -8025,13 +8031,16 @@
                     <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
                                        FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding LastFmImportStatus}"
-                                       IsVisible="{Binding LastFmImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                            <TextBlock Margin="0,2,0,0" Text="{Binding LastFmImportStatus}"
                                        FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="1"
                                   AutomationProperties.Name="{loc:T Settings.PlayCountImport.ModeName}"
@@ -8100,6 +8109,9 @@
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.ListenBrainzScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <StackPanel>
+                            <StackPanel>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.SendPlaysListenBrainz}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
@@ -8107,25 +8119,31 @@
 
                             <!-- ACCOUNT line sits inline with the title/description block so it pulls
                                  up tight against the description instead of dropping into its own grid row. -->
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Margin="-2,2,0,0">
+                                        Margin="-2,4,0,0">
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- Self-hosted server in use (Koito, Maloja, …); hidden for the official one. -->
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzServerDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding ListenBrainzServerDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Margin="-2,0,0,0">
+                                        Margin="-2,2,0,0">
                                 <TextBlock Text="{loc:T Settings.ListenBrainzServer}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzServerDisplay}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" MaxWidth="420"/>
                             </StackPanel>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding ListenBrainzQueueNote}"
-                                       IsVisible="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
+                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
 
                             <!-- Token row lives inside the same StackPanel as the title so it sits
                                  right under the description instead of leaving a gap. The Connect
@@ -8150,16 +8168,19 @@
                                          Watermark="{loc:T Settings.ListenBrainzApiUrl}"
                                          Width="280"
                                          HorizontalAlignment="Left"/>
+                                <StackPanel>
                                 <TextBlock Text="{loc:T Settings.ListenBrainzApiUrlHint}"
                                            FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="420"
                                            HorizontalAlignment="Left"
                                            Margin="8,0,0,0"/>
                                 <!-- Inline validation error (e.g. "Token required"), semantically red. -->
+                                <controls:CollapsibleContent IsOpen="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                                 <TextBlock Text="{Binding ListenBrainzError}"
-                                           IsVisible="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                            Foreground="#E74856"
                                            FontSize="11"
-                                           Margin="8,0,0,0"/>
+                                           Margin="8,4,0,0"/>
+                                </controls:CollapsibleContent>
+                                </StackPanel>
                             </StackPanel>
                             </controls:CollapsibleContent>
                         </StackPanel>
@@ -8219,13 +8240,16 @@
                     <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
                                        FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding ListenBrainzImportStatus}"
-                                       IsVisible="{Binding ListenBrainzImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                            <TextBlock Margin="0,2,0,0" Text="{Binding ListenBrainzImportStatus}"
                                        FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="1"
                                   AutomationProperties.Name="{loc:T Settings.PlayCountImport.ModeName}"
@@ -8303,11 +8327,14 @@
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                         <TextBlock Text="{loc:T Settings.TidalTitle}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.TidalDescription}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                    HorizontalAlignment="Left" Margin="-2,0,0,0"/>
-                        <TextBlock Text="{loc:T Settings.TidalConnected}" FontSize="12" Opacity="0.85"
-                                   IsVisible="{Binding IsTidalConnected}" Margin="-2,2,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding IsTidalConnected}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{loc:T Settings.TidalConnected}" FontSize="12" Opacity="0.85" Margin="-2,4,0,0"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
 
                     <Button Grid.Column="2"
