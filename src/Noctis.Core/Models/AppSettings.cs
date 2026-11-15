@@ -1014,6 +1014,11 @@ public class AppSettings : IJsonOnDeserializing
     /// A hidden page stays reachable from shortcuts, menus and links.</summary>
     public List<string> SidebarHiddenPages { get; set; } = new();
 
+    /// <summary>The Genres page is hidden by default (owner 11-14). False on a new profile, on
+    /// Reset and on a profile from before 1.7.0: the page is hidden once, then the user's
+    /// choice in Settings › General › Pages stands.</summary>
+    public bool SidebarGenresDefaultApplied { get; set; }
+
     /// <summary>Page Noctis opens on (a sidebar page key). Falls back to "home" when the page is
     /// hidden or not available (GitHub #199).</summary>
     public string StartPage { get; set; } = "home";
