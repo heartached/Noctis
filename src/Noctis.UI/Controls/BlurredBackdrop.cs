@@ -9,6 +9,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
+using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using Noctis.Helpers;
 using Noctis.Services;
@@ -118,6 +119,9 @@ public class BlurredBackdrop : Panel
     private readonly Image _image;
     /// <summary>The snapshot a retake replaced, held under the new one while it fades in.</summary>
     private readonly Image _fadingOut;
+    /// <summary>The live blur held still (<see cref="Hold"/>): a 1:1 render of Target with its
+    /// BlurEffect, under the dim, while Target itself is off the screen.</summary>
+    private readonly HeldFrame _held;
     private Bitmap? _fadingBitmap;
     private readonly Border _dim;
     private readonly Transitions _imageFade;
@@ -166,8 +170,15 @@ public class BlurredBackdrop : Panel
         RenderOptions.SetBitmapInterpolationMode(_fadingOut, BitmapInterpolationMode.MediumQuality);
         _dim = new Border();
         _dim.Bind(Border.BackgroundProperty, this.GetObservable(DimProperty));
+        _held = new HeldFrame
+        {
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            IsVisible = false,
+        };
         Children.Add(_fadingOut);
         Children.Add(_image);
+        Children.Add(_held);
         Children.Add(_dim);
         _image.PropertyChanged += (_, e) =>
         {
@@ -507,8 +518,14 @@ public class BlurredBackdrop : Panel
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        // The open/close fade of this layer carries the live blur with it.
-        if (_live && change.Property == OpacityProperty) UpdateLiveEffect();
+        // The open/close fade of this layer carries the live blur with it (a held blur lets go
+        // first: the fade needs the app itself under it).
+        if (_live && change.Property == OpacityProperty)
+        {
+            ReleaseHold(animate: true);
+            UpdateLiveEffect();
+        }
+        if (change.Property == IsVisibleProperty && !IsVisible) ReleaseHold(animate: false);
         if (change.Property == OpacityProperty || change.Property == IsVisibleProperty) UpdateOpaqueCover();
     }
 
@@ -517,6 +534,17 @@ public class BlurredBackdrop : Panel
     private void StartLive()
     {
         _live = true;
+        // Target fills the window, so clipping it to its bounds changes nothing on screen; but a
+        // render of it on its own (the held frame, see Hold) culls what lies outside it the way
+        // the window does. Without the clip, content past the window's edge (a drawer parked
+        // off-screen, a row below the fold) was blurred into the held frame's edges.
+        if (Target is { } target && !_clippedTarget)
+        {
+            _targetClipWasSet = target.IsSet(ClipToBoundsProperty);
+            _targetClipWas = target.ClipToBounds;
+            target.ClipToBounds = true;
+            _clippedTarget = true;
+        }
         SetLiveLayers(animate: IsEffectivelyVisible && Opacity > 0);
         UpdateLiveEffect();
     }
@@ -532,6 +560,8 @@ public class BlurredBackdrop : Panel
     private void UpdateLiveEffect()
     {
         if (!_live || Target is not { } target) return;
+        // Held: Target carries no effect until the hold lets go (which comes back here).
+        if (_isHeld) return;
         var radius = LiveRadiusFor(BackdropSnapshot.BlurRadius) * Math.Clamp(Opacity, 0, 1);
         if (radius < 0.5) radius = 0;
         if (radius == LiveEffectRadius && ReferenceEquals(target.Effect, _liveEffect)) return;
@@ -543,12 +573,211 @@ public class BlurredBackdrop : Panel
     /// <summary>Takes the live blur off Target (only the effect this layer put there).</summary>
     private void StopLive()
     {
+        ReleaseHold(animate: false);
         if (!_live) return;
         _live = false;
         if (Target is { } target && _liveEffect != null && ReferenceEquals(target.Effect, _liveEffect))
             target.Effect = null;
+        if (Target is { } clipped && _clippedTarget)
+        {
+            if (_targetClipWasSet) clipped.ClipToBounds = _targetClipWas;
+            else clipped.ClearValue(ClipToBoundsProperty);
+        }
+        _clippedTarget = false;
         _liveEffect = null;
         LiveEffectRadius = 0;
+    }
+
+    // ── Holding the live blur still while the sheet moves ──
+
+    /// <summary>How long after the last <see cref="Hold"/> the blur goes live again.</summary>
+    public static readonly TimeSpan HoldReleaseDelay = TimeSpan.FromMilliseconds(300);
+
+    private bool _clippedTarget, _targetClipWasSet, _targetClipWas;
+    private bool _isHeld;
+    private Task? _holding;
+    private Bitmap? _heldBitmap;
+    private bool _heldTargetOpacitySet;
+    private double _heldTargetOpacity = 1;
+    /// <summary>Stopwatch timestamp the hold lasts until; 0 = none.</summary>
+    private long _holdUntil;
+    private bool _holdTimerRunning;
+    /// <summary>Bumped whenever a hold ends or the live mode stops: a snapshot or timer that
+    /// started before it is stale.</summary>
+    private int _holdEpoch;
+
+    /// <summary>The live blur is held still, how many holds took, and the held frame (tests).</summary>
+    internal bool IsHeld => _isHeld;
+    internal int HoldCount { get; private set; }
+    internal HeldFrame HeldImage => _held;
+
+    /// <summary>
+    /// Owner 11-14: scrolling the Settings sheet over the live blur was choppy. Avalonia repaints
+    /// a visual with an Effect whole whenever anything inside it changes
+    /// (ServerCompositionVisual.Update: "add the entire node's old subtree bounds as a dirty
+    /// region"), so with lyrics, a playing title or the progress bar moving behind the sheet the
+    /// whole window was re-rendered and re-blurred every frame, on top of the scroll.
+    ///
+    /// While the sheet moves, call this (each scroll step; a page switch for its glide's length
+    /// in <paramref name="busyFor"/>): the live blur is swapped for a render of Target taken now,
+    /// effect and all, at the screen's own pixel density, so it is the frame that was on screen.
+    /// Target drops its effect and goes to Opacity 0, which the compositor skips: nothing behind
+    /// the sheet is drawn until <see cref="HoldReleaseDelay"/> after the last call, when the blur
+    /// goes live again and the held frame fades out over it. Live mode at rest only (full
+    /// opacity, blur on); otherwise a no-op.
+    /// </summary>
+    public void Hold(TimeSpan busyFor = default)
+    {
+        if (!CanHold) return;
+        var until = Stopwatch.GetTimestamp() + (long)((busyFor + HoldReleaseDelay).TotalSeconds * Stopwatch.Frequency);
+        if (until > _holdUntil) _holdUntil = until;
+        if (!_isHeld && _holding is null) _holding = TakeHoldAsync(_holdEpoch);
+        if (!_holdTimerRunning) _ = HoldTimerAsync(_holdEpoch);
+    }
+
+    /// <summary>
+    /// Holds the blur while any ScrollViewer inside <paramref name="sheet"/> scrolls (wheel,
+    /// scrollbar, touch, inertia, keys: anything that moves an offset).
+    /// </summary>
+    public void HoldWhileScrolling(Avalonia.Interactivity.Interactive sheet) =>
+        sheet.AddHandler(ScrollViewer.ScrollChangedEvent, (_, e) =>
+        {
+            if (e.OffsetDelta != default) Hold();
+        }, Avalonia.Interactivity.RoutingStrategies.Bubble, handledEventsToo: true);
+
+    private bool CanHold =>
+        _live && !_blurHidden && LiveEffectRadius > 0 && Opacity >= 1 && IsEffectivelyVisible
+        && Target is { } target && (_isHeld || ReferenceEquals(target.Effect, _liveEffect));
+
+    private bool HoldExpired => _holdUntil == 0 || Stopwatch.GetTimestamp() >= _holdUntil;
+
+    private async Task TakeHoldAsync(int epoch)
+    {
+        Bitmap? bitmap = null;
+        try
+        {
+            if (Target is not { } target || TopLevel.GetTopLevel(this) is not { } top
+                || ElementComposition.GetElementVisual(target) is not { } visual
+                || target.Bounds.Width < 1 || target.Bounds.Height < 1)
+                return;
+            bitmap = await visual.Compositor.CreateCompositionVisualSnapshot(visual, DeviceScale(target, top));
+            if (epoch != _holdEpoch || HoldExpired || !CanHold || target.TranslatePoint(default, this) is not { } at)
+                return;
+            _held.Transitions = null;
+            _held.Opacity = 1;
+            _held.Margin = new Thickness(at.X, at.Y, 0, 0);
+            _held.Width = target.Bounds.Width;
+            _held.Height = target.Bounds.Height;
+            _held.Source = bitmap;
+            _held.IsVisible = true;
+            FreeHeldBitmap();
+            _heldBitmap = bitmap;
+            bitmap = null;
+            _heldTargetOpacitySet = target.IsSet(OpacityProperty);
+            _heldTargetOpacity = target.Opacity;
+            target.Effect = null;
+            target.Opacity = 0;
+            _isHeld = true;
+            HoldCount++;
+        }
+        catch (Exception ex)
+        {
+            // A backend that can't snapshot stays live, as before.
+            DebugLogger.Warn(DebugLogger.Category.UI, "BlurredBackdrop.Hold", ex.Message);
+        }
+        finally
+        {
+            bitmap?.Dispose();
+            if (epoch == _holdEpoch) _holding = null;
+        }
+    }
+
+    /// <summary>Device pixels per layout unit at Target: the window's scaling times any scale
+    /// above it (Interface Size), so the held frame is drawn 1:1.</summary>
+    private static double DeviceScale(Visual target, TopLevel top)
+    {
+        var scale = top.RenderScaling;
+        if (target.TransformToVisual(top) is { } m)
+        {
+            var s = Math.Sqrt(m.M11 * m.M11 + m.M12 * m.M12);
+            if (s > 0 && double.IsFinite(s)) scale *= s;
+        }
+        return scale;
+    }
+
+    /// <summary>Task.Delay (resumed on the UI thread), as the rest of this layer: waits until
+    /// <see cref="HoldReleaseDelay"/> has passed since the last <see cref="Hold"/>.</summary>
+    private async Task HoldTimerAsync(int epoch)
+    {
+        _holdTimerRunning = true;
+        while (true)
+        {
+            var left = _holdUntil - Stopwatch.GetTimestamp();
+            if (left <= 0) break;
+            await Task.Delay(TimeSpan.FromSeconds(left / (double)Stopwatch.Frequency) + TimeSpan.FromMilliseconds(1));
+            if (epoch != _holdEpoch) return; // ended meanwhile; ReleaseHold reset the flag
+        }
+        _holdTimerRunning = false;
+        ReleaseHold(animate: true);
+    }
+
+    /// <summary>
+    /// Lets the blur go live again: Target gets its opacity and effect back, and the held frame
+    /// fades out over it (<paramref name="animate"/>: the content behind moved meanwhile) or goes
+    /// at once (the layer is closing or changing mode). Ends any pending hold too.
+    /// </summary>
+    private void ReleaseHold(bool animate)
+    {
+        _holdEpoch++;
+        _holdUntil = 0;
+        _holding = null;
+        _holdTimerRunning = false;
+        if (!_isHeld)
+        {
+            // A held frame still fading out from an earlier release goes at once when asked to.
+            if (!animate && _held.IsVisible) HideHeld();
+            return;
+        }
+        _isHeld = false;
+        if (Target is { } target)
+        {
+            if (_heldTargetOpacitySet) target.Opacity = _heldTargetOpacity;
+            else target.ClearValue(OpacityProperty);
+            if (_live) target.Effect = _liveEffect;
+        }
+        UpdateLiveEffect();
+        if (animate && IsEffectivelyVisible)
+        {
+            var bitmap = _heldBitmap;
+            _held.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = CrossfadeDuration, Easing = new CubicEaseOut() } };
+            _held.Opacity = 0;
+            _ = HideHeldAfterFadeAsync(bitmap);
+        }
+        else
+            HideHeld();
+    }
+
+    private async Task HideHeldAfterFadeAsync(Bitmap? bitmap)
+    {
+        await Task.Delay(CrossfadeDuration + TimeSpan.FromMilliseconds(60));
+        if (_isHeld || !ReferenceEquals(bitmap, _heldBitmap)) return; // held again meanwhile
+        HideHeld();
+    }
+
+    private void HideHeld()
+    {
+        _held.Transitions = null;
+        _held.IsVisible = false;
+        _held.Source = null;
+        FreeHeldBitmap();
+    }
+
+    /// <summary>Freed after the next render: the last frame drawn may still use it.</summary>
+    private void FreeHeldBitmap()
+    {
+        if (_heldBitmap is { } old)
+            Dispatcher.UIThread.Post(old.Dispose, DispatcherPriority.Background);
+        _heldBitmap = null;
     }
 
     /// <summary>
@@ -587,5 +816,30 @@ public class BlurredBackdrop : Panel
         _image.Opacity = imageOpacity;
         _dim.Opacity = dimOpacity;
         UpdateOpaqueCover();
+    }
+}
+
+/// <summary>
+/// Draws <see cref="Source"/> whole into its bounds. Not an Image: a snapshot taken above 1x
+/// (125% scaling, Interface Size) is a high-DPI bitmap, and Image hands the renderer its source
+/// rect in layout units, which the renderer reads as pixels, so only the top-left part of the
+/// frame was drawn, stretched (measured: the held frame came out 1.25x too large at 125%).
+/// </summary>
+internal sealed class HeldFrame : Control
+{
+    public static readonly StyledProperty<Bitmap?> SourceProperty =
+        AvaloniaProperty.Register<HeldFrame, Bitmap?>(nameof(Source));
+
+    static HeldFrame() => AffectsRender<HeldFrame>(SourceProperty);
+
+    public HeldFrame() => IsHitTestVisible = false;
+
+    public Bitmap? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
+
+    public override void Render(DrawingContext context)
+    {
+        if (Source is not { } bitmap || Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        var pixels = bitmap.PixelSize;
+        context.DrawImage(bitmap, new Rect(0, 0, pixels.Width, pixels.Height), new Rect(Bounds.Size));
     }
 }
