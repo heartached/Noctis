@@ -32,6 +32,37 @@
         <conv:LyricVoiceToTransformOriginConverter x:Key="VoiceOrigin" />
         <SolidColorBrush x:Key="LyricsFg" Color="White" />
 
+        <!-- The held-note glow: a blurred copy of the sung letters under a held note's word.
+             Built for held notes only (HeldNoteTemplate); on any other word it was hidden yet
+             took every frame's progress and float. -->
+        <DataTemplate x:Key="WordGlow" x:DataType="m:WordTiming">
+            <controls:KaraokeWordText Text="{Binding Text}"
+                                      Classes="word-glow"
+                                      Padding="40"
+                                      FontWeight="Bold"
+                                      Foreground="{StaticResource LyricsFg}"
+                                      BaseOpacity="0"
+                                      Effect="{Binding $self.FontSize, Converter={StaticResource EmphasisGlowBlur}}"
+                                      Progress="{Binding Progress}"
+                                      LeadIn="{Binding SweepLeadIn}"
+                                      TrailOut="{Binding SweepTrailOut}"
+                                      IsEmphasis="{Binding IsEmphasis}"
+                                      EmphasisMs="{Binding EmphasisMs}"
+                                      HeldDurationMs="{Binding HeldDurationMs}"
+                                      IsLastInLine="{Binding IsLastInLine}"
+                                      Lift="{Binding Lift}">
+                <controls:KaraokeWordText.Opacity>
+                    <MultiBinding Converter="{StaticResource EmphasisGlow}">
+                        <Binding Path="EmphasisMs" />
+                        <Binding Path="HeldDurationMs" />
+                        <Binding Path="IsLastInLine" />
+                        <Binding Path="EmphasisCharCount" />
+                    </MultiBinding>
+                </controls:KaraokeWordText.Opacity>
+            </controls:KaraokeWordText>
+        </DataTemplate>
+        <views:HeldNoteTemplate x:Key="WordGlowIfHeld" Template="{StaticResource WordGlow}" />
+
         <!-- The desktop's word cell (LyricsView.axaml WordCellTemplate): under held-note words a
              blurred glow of the sung letters, and the word itself, unsung and sung text in one
              draw split by the soft edge at Progress, sung words floating up (Lift) and held
@@ -44,31 +75,8 @@
                         <!-- Hosted in a Canvas so the blur's tail has room without growing the
                              cell (see the desktop template). -->
                         <Canvas ClipToBounds="False">
-                            <controls:KaraokeWordText Text="{Binding Text}"
-                                                      Classes="word-glow"
-                                                      IsVisible="{Binding IsEmphasis}"
-                                                      Canvas.Left="-40" Canvas.Top="-40" Padding="40"
-                                                      FontWeight="Bold"
-                                                      Foreground="{StaticResource LyricsFg}"
-                                                      BaseOpacity="0"
-                                                      Effect="{Binding $self.FontSize, Converter={StaticResource EmphasisGlowBlur}}"
-                                                      Progress="{Binding Progress}"
-                                                      LeadIn="{Binding SweepLeadIn}"
-                                                      TrailOut="{Binding SweepTrailOut}"
-                                                      IsEmphasis="{Binding IsEmphasis}"
-                                                      EmphasisMs="{Binding EmphasisMs}"
-                                                      HeldDurationMs="{Binding HeldDurationMs}"
-                                                      IsLastInLine="{Binding IsLastInLine}"
-                                                      Lift="{Binding Lift}">
-                                <controls:KaraokeWordText.Opacity>
-                                    <MultiBinding Converter="{StaticResource EmphasisGlow}">
-                                        <Binding Path="EmphasisMs" />
-                                        <Binding Path="HeldDurationMs" />
-                                        <Binding Path="IsLastInLine" />
-                                        <Binding Path="EmphasisCharCount" />
-                                    </MultiBinding>
-                                </controls:KaraokeWordText.Opacity>
-                            </controls:KaraokeWordText>
+                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource WordGlowIfHeld}"
+                                              Canvas.Left="-40" Canvas.Top="-40" />
                         </Canvas>
                         <controls:KaraokeWordText Text="{Binding Text}"
                                                   Classes="word-sweep"
