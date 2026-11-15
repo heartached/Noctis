@@ -235,6 +235,28 @@ public class ArtworkCacheLifetimeTests : IDisposable
         catch (ObjectDisposedException) { return true; }
         catch (NullReferenceException) { return true; }
     }
+
+    /// <summary>The window in the background (MainWindow.ScheduleBackgroundTrim): covers no control
+    /// holds go, with their native pixels; a cover on screen stays cached and alive.</summary>
+    [AvaloniaFact]
+    public void TrimUnheld_DropsCoversNobodyShows_KeepsTheOneOnScreen()
+    {
+        var shown = ArtworkCache.LoadAndCache(Path("a"), 512)!;
+        var idle1 = ArtworkCache.LoadAndCache(Path("b"), 512)!;
+        var idle2 = ArtworkCache.LoadAndCache(Path("c"), 256)!;
+        ArtworkCache.Acquire(shown);
+
+        var (count, bytes) = ArtworkCache.TrimUnheld();
+
+        Assert.Equal(2, count);
+        Assert.Equal(512L * 512 * 4 + 256L * 256 * 4, bytes);
+        Assert.True(IsDisposed(idle1));
+        Assert.True(IsDisposed(idle2));
+        Assert.False(IsDisposed(shown));
+        Assert.Same(shown, ArtworkCache.TryGet(Path("a"), 512));
+        Assert.Equal(512L * 512 * 4, ArtworkCache.ResidentBytes);
+        ArtworkCache.Release(shown);
+    }
 }
 
 /// <summary>
