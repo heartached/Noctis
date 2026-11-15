@@ -347,9 +347,10 @@ public class PopupScrollCostTests
         public System.Threading.Tasks.Task FlushAsync() => System.Threading.Tasks.Task.CompletedTask;
     }
 
-    /// <summary>Settings scrim modes: the live blur (Liquid Glass off) and the opaque blurred
-    /// snapshot (Liquid Glass on), the latter with and without the frost told so.</summary>
-    internal enum SheetMode { LiveBlur, SnapshotFrost, SnapshotFrostBeneathWhole }
+    /// <summary>Settings scrim modes: the live blur (Liquid Glass off), without and with the hold
+    /// while scrolling, and the opaque blurred snapshot (Liquid Glass on), the latter with and
+    /// without the frost told so.</summary>
+    internal enum SheetMode { LiveBlur, LiveBlurHeld, SnapshotFrost, SnapshotFrostBeneathWhole }
 
     /// <summary>The real Settings sheet in the real MainWindow (Appearance tab) over the app with
     /// something animating in it (the empty library's spinner, as lyrics or a playing title would),
@@ -364,9 +365,11 @@ public class PopupScrollCostTests
             foreach (var mode in Enum.GetValues<SheetMode>())
             foreach (var gpu in new[] { false, true })
             {
+                if (gpu && mode is SheetMode.LiveBlur or SheetMode.LiveBlurHeld) continue; // no frost: GPU changes nothing
                 var r = MeasureSettingsSheet(mode, gpu, notches: 30);
-                _o.WriteLine($"settings {mode,-26} gpu={gpu,-5}: {r.MpxPerNotch:0.00} Mpx per notch, {r.FramesPerNotch:0.0} frames per notch | " +
-                             $"idle {r.IdleMpxPerFrame:0.00} Mpx per frame");
+                _o.WriteLine($"settings {mode,-26} gpu={gpu,-5}: {r.MpxPerNotch:0.00} Mpx per notch, {r.FramesPerNotch:0.0} frames per notch, " +
+                             $"{r.MsPerNotch:0.0} ms per notch (4 frames), app layer drawn {PageDrawsPerNotch:0.0}x per notch | idle {r.IdleMpxPerFrame:0.00} Mpx per frame right after, " +
+                             $"{r.IdleLaterMpxPerFrame:0.00} a second later | first step frames ms: {FirstStepFrames}");
             }
         }
         finally
@@ -376,11 +379,17 @@ public class PopupScrollCostTests
         }
     }
 
-    internal readonly record struct SheetResult(double MpxPerNotch, double FramesPerNotch, double IdleMpxPerFrame);
+    /// <summary>Frame times (ms) of the first scroll step and the 7 frames after it, last run.</summary>
+    internal static string FirstStepFrames = "";
+    /// <summary>Times the app layer under the sheet was drawn per notch, last run.</summary>
+    internal static double PageDrawsPerNotch;
+
+    internal readonly record struct SheetResult(double MpxPerNotch, double FramesPerNotch, double MsPerNotch, double IdleMpxPerFrame, double IdleLaterMpxPerFrame);
 
     internal static SheetResult MeasureSettingsSheet(SheetMode mode, bool gpu, int notches)
     {
-        var glass = mode != SheetMode.LiveBlur;
+        var live = mode is SheetMode.LiveBlur or SheetMode.LiveBlurHeld;
+        var glass = !live;
         if (glass) AppGlass.Set(true, Colors.Black, Colors.Black); else AppGlass.Clear();
         GlassBackdropCache.UnreadableForTests = gpu;
         var vm = new Noctis.ViewModels.SettingsViewModel(new TestPersistenceService(), new FakeLibraryService(), new NoOpPlayHistory());
@@ -391,6 +400,9 @@ public class PopupScrollCostTests
             var root = (Panel)w.Content!;
             var probe = new ReplayProbe { ZIndex = 1000 };
             root.Children.Add(probe);
+            // Under the sheet: how often the app layer itself is drawn.
+            var pageProbe = new ReplayProbe();
+            w.FindControl<Panel>("AppContentLayer")!.Children.Add(pageProbe);
             w.FindControl<Border>("SettingsOverlay")!.IsVisible = true;
             w.EnsureSettingsViewLoaded();
             var host = w.FindControl<ContentControl>("SettingsViewHost")!;
@@ -411,10 +423,12 @@ public class PopupScrollCostTests
             scrim.IsVisible = true;
             var prepare = scrim.PrepareAsync();
             t.Restart();
-            while (t.ElapsedMilliseconds < 3000 && !(prepare.IsCompleted && (mode == SheetMode.LiveBlur || scrim.HasSnapshot))) { Frame(); Thread.Sleep(5); }
+            while (t.ElapsedMilliseconds < 3000 && !(prepare.IsCompleted && (live || scrim.HasSnapshot))) { Frame(); Thread.Sleep(5); }
             scrim.Opacity = 1;
-            Assert.Equal(mode == SheetMode.LiveBlur, scrim.IsLive);
-            Assert.Equal(mode != SheetMode.LiveBlur, scrim.HasSnapshot);
+            Assert.Equal(live, scrim.IsLive);
+            Assert.Equal(!live, scrim.HasSnapshot);
+            // MainWindow wires this once it has its view model, which this window has not.
+            if (mode == SheetMode.LiveBlurHeld) scrim.HoldWhileScrolling(w.FindControl<Border>("SettingsOverlay")!);
             // Without the fix the frost never knew the app was hidden.
             if (mode == SheetMode.SnapshotFrost)
                 frost.SetValue(GlassPanel.BeneathRepaintsWholeProperty, false, Avalonia.Data.BindingPriority.Animation);
@@ -435,15 +449,36 @@ public class PopupScrollCostTests
                     for (var i = 0; i < 3; i++) Frame();
                 }
             }
+            // The first step: what the swap to the held frame costs, frame by frame.
+            var first = new List<string>();
+            for (var i = 0; i < 8; i++)
+            {
+                if (i == 0) { y += 50; scroll.Offset = new Vector(0, y); }
+                var f = Stopwatch.StartNew();
+                Frame();
+                first.Add($"{f.Elapsed.TotalMilliseconds:0}");
+            }
+            FirstStepFrames = string.Join(" ", first);
             Notches(5);
             probe.Pixels = 0;
             probe.Replays = 0;
+            pageProbe.Replays = 0;
+            var timer = Stopwatch.StartNew();
             Notches(notches);
+            PageDrawsPerNotch = pageProbe.Replays / (double)notches;
+            var ms = timer.Elapsed.TotalMilliseconds / notches;
             var perNotch = probe.Pixels / 1e6 / notches;
             var frames = probe.Replays / (double)notches;
+            if (mode == SheetMode.LiveBlurHeld) Assert.True(scrim.IsHeld, "not held after scrolling");
             probe.Pixels = 0;
             for (var i = 0; i < 20; i++) Frame();
-            return new SheetResult(perNotch, frames, probe.Pixels / 1e6 / 20);
+            var idle = probe.Pixels / 1e6 / 20;
+            sw.Restart();
+            while (sw.ElapsedMilliseconds < 1000) { Frame(); Thread.Sleep(5); }
+            Assert.False(scrim.IsHeld);
+            probe.Pixels = 0;
+            for (var i = 0; i < 20; i++) Frame();
+            return new SheetResult(perNotch, frames, ms, idle, probe.Pixels / 1e6 / 20);
         }
         finally { w.Close(); }
     }
