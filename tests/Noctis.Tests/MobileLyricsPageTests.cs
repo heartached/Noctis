@@ -154,6 +154,35 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>S23 trace 11-15: Avalonia's render loop slept 75-85 ms under the playing lyrics
+    /// (no frame callbacks, nothing running). A looping compositor animation on a 1×1 transparent
+    /// visual keeps it awake while the lines play, and stops with the frame loop.</summary>
+    [AvaloniaFact]
+    public void PlayingLyrics_KeepTheRenderLoopAwake_OnlyWhileTheyPlay()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(2.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var keepAlive = page.FindControl<RenderKeepAlive>("KeepAlive")!;
+        Assert.True(shell.Player.IsPlaying);
+        for (var i = 0; i < 5 && !keepAlive.IsRunning; i++) { Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); }
+        Assert.True(keepAlive.IsRunning);
+
+        shell.Player.TogglePlayPauseCommand.Execute(null);   // paused: the frame loop ends at its next frame
+        for (var i = 0; i < 5 && keepAlive.IsRunning; i++) { Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); }
+        Assert.False(shell.Player.IsPlaying);
+        Assert.False(keepAlive.IsRunning);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>S23 11-14: the ⋯ menu stuttered only over the lyrics (every frame of its pop
     /// re-blurred each line under the dim). A menu over the page holds the lines still and draws the
     /// lyric column from a bitmap at the screen's scale; closing it drops the cache and catches up.</summary>

@@ -64,7 +64,6 @@ public partial class LyricsPage : UserControl
     {
         InitializeComponent();
         LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
-        WashDither.Background = NowPlayingPage.Dither;
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
         LyricsScroll.PropertyChanged += OnScrollPropertyChanged;
 
@@ -430,6 +429,7 @@ public partial class LyricsPage : UserControl
         if (_frameLoopRunning || !KeepsFrames) return;
         if (TopLevel.GetTopLevel(this) is not { } top) return;
         _frameLoopRunning = true;
+        KeepAlive.Run(true);
         top.RequestAnimationFrame(OnFrame);
     }
 
@@ -440,9 +440,15 @@ public partial class LyricsPage : UserControl
         if (_lyrics?.WantsFrames == true && IsVisible) _lyrics.OnFrame(now);
 
         if (KeepsFrames && TopLevel.GetTopLevel(this) is { } top)
+        {
+            KeepAlive.Run(true);   // a page shown this frame has its compositor visual only now
             top.RequestAnimationFrame(OnFrame);
+        }
         else
+        {
             _frameLoopRunning = false;
+            KeepAlive.Run(false);
+        }
     }
 
     // ── Scroll ──

@@ -65,6 +65,7 @@ public partial class ShellView : UserControl
     {
         if (e.Property != IsVisibleProperty) return;
         ChromeScope.ZIndex = QueueSheet.IsVisible ? 1 : 0;
+        ApplyUnderLyrics();
         ApplyChromeTint();
         Motion.Stop(ChromeLayer);
         ChromeLayer.RenderTransform = ChromeScale(_covered);
@@ -497,6 +498,7 @@ public partial class ShellView : UserControl
         {
             _lyricsCovers = false;
             if (_playerShown) NowPlaying.IsVisible = true;   // back before the fade starts
+            ApplyUnderLyrics();
         }
         if (!animate)
         {
@@ -505,6 +507,7 @@ public partial class ShellView : UserControl
             LyricsSheet.IsVisible = open;
             _lyricsCovers = open;
             NowPlaying.IsVisible = _playerShown && !_lyricsCovers;
+            ApplyUnderLyrics();
             return;
         }
         Motion.To(LyricsSheet, Motion.Fade, opacity: open ? 1 : 0,
@@ -515,10 +518,26 @@ public partial class ShellView : UserControl
                 LyricsSheet.Opacity = 1;
                 _lyricsCovers = stillOpen;
                 NowPlaying.IsVisible = _playerShown && !_lyricsCovers;
+                ApplyUnderLyrics();
             });
     }
 
     private bool _lyricsCovers;
+
+    /// <summary>
+    /// The app, its sheets and the tab bar leave the tree too while the lyrics cover them, as
+    /// Now Playing does: every frame the lyrics moved (the glide, a line's restyle, the sweep)
+    /// repainted all that lay under them, unseen - the tab page and the tab bar's four glass
+    /// panels, each a backdrop snapshot, blur and lens pass per frame (headless S23 rig, 11-15:
+    /// ~400 lens passes in 7 s of lyrics, 29 KB → 20 KB allocated a frame without them). The bar
+    /// stays while the Queue is open over the lyrics: it is raised over the overlays then.
+    /// </summary>
+    private void ApplyUnderLyrics()
+    {
+        AppLayer.IsVisible = !_lyricsCovers;
+        SheetHost.IsVisible = !_lyricsCovers;
+        ChromeLayer.IsVisible = !_lyricsCovers || QueueSheet.IsVisible;
+    }
 
     /// <summary>A tab switch: the new tab fades in, quickly, with no slide.</summary>
     private void FadeInTab() =>
