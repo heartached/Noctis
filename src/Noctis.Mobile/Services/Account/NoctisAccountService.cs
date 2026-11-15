@@ -709,8 +709,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         var links = UpdateLinks(songs, keepUnlisted, out var fresh);
         var now = UtcNow;
         var tracks = new List<Track>(songs.Count);
+        // Recently Added: a desktop song joins the phone's library when it gets here, not when the
+        // computer first saw the file. Carrying the computer's date (often years back for a library
+        // synced the first time) put every synced album below the phone's own music, off the rail.
+        var arriving = new List<Track>();
+        bool redate;
         lock (_gate)
         {
+            redate = !_sync.ArrivalDates;
             foreach (var song in songs)
             {
                 // The phone has this one as a file of its own: no second row.
@@ -737,9 +743,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     }
                     track.PlayCount = song.PlayCount;
                 }
+                if (redate || !known.Contains(song.Id)) arriving.Add(track);
                 tracks.Add(track);
             }
         }
+        StampArrivals(arriving, now);
         if (keepUnlisted)
         {
             var listed = new HashSet<Guid>(songs.Select(s => s.Id));
@@ -750,6 +758,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         SaveSyncState();
         await _library.ReplaceRemoteTracksAsync(tracks, ct).ConfigureAwait(false);
         if (links.Count > 0) DiscardDownloadsOf(links.Keys);
+        if (redate) await RedateKnownSongsAsync(arriving, known).ConfigureAwait(false);
 
         // Known songs: the catalog's favorite/rating (unless an edit is pending); counts only grow.
         // A song just linked to a file of the phone's own: that file takes the desktop's state and
@@ -894,6 +903,46 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
     }
 
+    /// <summary>
+    /// Dates the songs one sync brings in by that sync, so Recently Added lists them with the
+    /// phone's own arrivals. They come a tick apart in the computer's order (its date added, newest
+    /// first): a first sync of a whole library still shows the computer's latest albums first.
+    /// Known songs keep their date, so a later sync never moves them back to the top.
+    /// </summary>
+    internal static void StampArrivals(List<Track> arriving, DateTime now)
+    {
+        var ordered = arriving.OrderByDescending(t => t.DateAdded).ThenBy(t => t.AlbumId)
+            .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+        for (var i = 0; i < ordered.Count; i++) ordered[i].DateAdded = now - TimeSpan.FromTicks(i);
+    }
+
+    /// <summary>Once, after the update that dates desktop songs by arrival: the songs synced before
+    /// it still carry the computer's date (the library keeps a known song's instance and date), so
+    /// they take the dates <see cref="StampArrivals"/> just gave them.</summary>
+    private async Task RedateKnownSongsAsync(List<Track> stamped, HashSet<Guid> known)
+    {
+        var dates = stamped.Where(t => known.Contains(t.Id)).ToDictionary(t => t.Id, t => t.DateAdded);
+        var changed = 0;
+        if (dates.Count > 0)
+            await OnUiAsync(() =>
+            {
+                foreach (var (id, date) in dates)
+                    if (_library.GetTrackById(id) is { SourceType: SourceType.NoctisServer } lib && lib.DateAdded != date)
+                    {
+                        lib.DateAdded = date;
+                        changed++;
+                    }
+            }).ConfigureAwait(false);
+        if (changed > 0)
+        {
+            await _library.SaveAsync().ConfigureAwait(false);
+            _library.NotifyMetadataChanged();
+            DebugLog.Write("Account", $"catalog: {changed} desktop songs dated by their arrival on the phone");
+        }
+        lock (_gate) _sync.ArrivalDates = true;
+        SaveSyncState();
+    }
+
     private static Track MapSong(RemoteSong s, Dictionary<Guid, string> albumArtists, DateTime now)
     {
         var artist = string.IsNullOrWhiteSpace(s.Artist) ? "Unknown Artist" : s.Artist;
@@ -921,6 +970,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             SampleRate = s.SamplingRate,
             FileSize = s.Size,
             Codec = CodecFor(s.Suffix, s.BitRate),
+            // The computer's date: the order a sync's new songs are dated in (StampArrivals).
             DateAdded = created,
             LastModified = created,
         };
@@ -1641,6 +1691,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     Playlists = new Dictionary<string, PlaylistSyncState>(_sync.Playlists),
                     Links = new Dictionary<string, string>(_sync.Links),
                     Retired = new Dictionary<string, string>(_sync.Retired),
+                    ArrivalDates = _sync.ArrivalDates,
                 };
             }
             try { _store.SaveSyncState(copy); }
