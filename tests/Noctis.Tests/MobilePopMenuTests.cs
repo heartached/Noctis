@@ -950,4 +950,33 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.True(PageTint.ContrastRatio(Brush(light, "MenuGlassText"), Gray(darkest)) >= 4.5);
         Assert.True(PageTint.ContrastRatio(Composite(Brush(light, "MenuGlassSecondaryText"), Gray(darkest)), Gray(darkest)) >= 4.5);
     }
+
+    /// <summary>
+    /// S23 (11-14): the ⋯ over the lyrics cost 72-110 ms of the tap's frame on every open. The
+    /// card keeps its rows between opens, but the Rate row got a new list of stars each time and
+    /// built its five star buttons again. Now a reopen only rebinds: same star buttons, and a
+    /// small fraction of the first open's allocation.
+    /// </summary>
+    [AvaloniaFact]
+    public void Reopening_KeepsTheRows_IncludingTheStars()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var __ = rig;
+        Button FirstStar() => MenuOf(view).GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("np-star"));
+
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        Pump(2);
+        var star = FirstStar();
+        rig.Shell.CloseSheet();
+        Pump(15);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        var reopen = GC.GetAllocatedBytesForCurrentThread() - before;
+        Pump(2);
+        output.WriteLine($"reopen: {reopen / 1024} KB");
+        Assert.Same(star, FirstStar());
+        Assert.InRange(reopen, 0, 200 * 1024);   // was ~875 KB: the star buttons built again
+        window.Close();
+    }
 }
