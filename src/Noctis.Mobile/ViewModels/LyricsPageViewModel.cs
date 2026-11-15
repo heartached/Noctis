@@ -153,7 +153,20 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     [ObservableProperty, NotifyPropertyChangedFor(nameof(LineFontSize), nameof(LayerFontSize))]
     private double _textScale = 1.0;
 
-    public double LineFontSize => BaseFontSize * FontScale * TextScale;
+    /// <summary>Width of the lyrics column in dp (the page reports it on resize); 0 until laid out.</summary>
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(AutoBaseFontSize), nameof(LineFontSize), nameof(LayerFontSize))]
+    private double _viewWidth;
+
+    /// <summary>Lyric text sized to the screen, as Apple Music's: about 30 at an iPhone's 393 pt
+    /// width, smaller on a narrower phone (a Galaxy S23 is 360 dp: the fixed 34 filled it with
+    /// three-word lines, owner 11-14), never above <see cref="BaseFontSize"/> on a wide one.</summary>
+    public double AutoBaseFontSize => ViewWidth > 0
+        ? Math.Clamp(ViewWidth * WidthFontRatio, MinAutoFontSize, BaseFontSize)
+        : BaseFontSize;
+
+    public const double WidthFontRatio = 0.076, MinAutoFontSize = 22;
+
+    public double LineFontSize => AutoBaseFontSize * FontScale * TextScale;
 
     /// <summary>Translation / romanization / background-vocal rows: 0.6 of the line, the
     /// desktop's background-vocal ratio.</summary>
