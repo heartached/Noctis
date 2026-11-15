@@ -4120,9 +4120,25 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var saveStart = Stopwatch.GetTimestamp();
-            await MergeExternalSettingChangesAsync();
+            var onDisk = await MergeExternalSettingChangesAsync();
             SyncToSettings();
-            await _persistence.SaveSettingsAsync(_settings);
+            if (onDisk is null)
+            {
+                await _persistence.SaveSettingsAsync(_settings);
+            }
+            else
+            {
+                // The merge read the file outside the settings.json gate, so a gated update from
+                // elsewhere (the lyrics page, the library) could land before this save and be
+                // overwritten by the copy read before it. Save only what this view-model changed
+                // against that read (taken here, on the UI thread), onto the file as it is under
+                // the gate.
+                var changes = ChangesSinceMerge(onDisk);
+                await _persistence.UpdateSettingsAsync(current =>
+                {
+                    foreach (var (prop, value) in changes) prop.SetValue(current, value);
+                });
+            }
             UiStallWatchdog.ReportIfSlow("SettingsSave", saveStart);
         }
         catch (Exception ex)
@@ -4190,27 +4206,50 @@ public partial class SettingsViewModel : ViewModelBase
         nameof(AppSettings.SyncDeviceId),
     };
 
-    private async Task MergeExternalSettingChangesAsync()
+    private static readonly System.Reflection.PropertyInfo[] MergedSettingsProperties = typeof(AppSettings)
+        .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+        .Where(p => p.CanRead && p.CanWrite)
+        .ToArray();
+
+    /// <summary>Returns the settings read from disk, or null when the merge failed.</summary>
+    private async Task<AppSettings?> MergeExternalSettingChangesAsync()
     {
         try
         {
             var onDisk = await _persistence.LoadSettingsAsync();
-            if (onDisk == null) return;
+            if (onDisk == null) return null;
 
-            foreach (var prop in typeof(AppSettings).GetProperties(
-                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            foreach (var prop in MergedSettingsProperties)
             {
-                if (!prop.CanRead || !prop.CanWrite) continue;
                 if (ProcessOwnedPlacementKeys.Contains(prop.Name)) continue;
                 prop.SetValue(_settings, prop.GetValue(onDisk));
             }
+            return onDisk;
         }
         catch (Exception ex)
         {
             // A failed merge must not block the save — worst case we write the
             // in-memory view, which is the old behaviour.
             Debug.WriteLine($"[SettingsViewModel] Settings merge failed: {ex.Message}");
+            return null;
         }
+    }
+
+    /// <summary>
+    /// The fields of <see cref="_settings"/> that differ from <paramref name="onDisk"/>, the file as
+    /// the merge read it: what <see cref="SyncToSettings"/> wrote, plus the process-owned keys the
+    /// merge leaves alone. A field the merge copied and nothing changed since is the same value
+    /// (the same instance for lists), so the file's current value stands for it.
+    /// </summary>
+    private List<(System.Reflection.PropertyInfo Prop, object? Value)> ChangesSinceMerge(AppSettings onDisk)
+    {
+        var changes = new List<(System.Reflection.PropertyInfo, object?)>();
+        foreach (var prop in MergedSettingsProperties)
+        {
+            var value = prop.GetValue(_settings);
+            if (!Equals(value, prop.GetValue(onDisk))) changes.Add((prop, value));
+        }
+        return changes;
     }
 
     private void SyncToSettings()
