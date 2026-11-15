@@ -247,68 +247,6 @@
             <Setter Property="Foreground" Value="{DynamicResource IslandForegroundSecondary}" />
         </Style>
 
-        <!-- Compact vertical volume slider -->
-        <Style Selector="Slider.volume-vertical">
-            <Setter Property="Orientation" Value="Vertical"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="22"/>
-            <Setter Property="Height" Value="48"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ Track">
-            <Setter Property="Width" Value="4"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ RepeatButton">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="Width" Value="4"/>
-            <Setter Property="CornerRadius" Value="2"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderUnfilled}"/>
-            <Setter Property="Width" Value="4"/>
-            <Setter Property="CornerRadius" Value="2"/>
-            <Setter Property="Opacity" Value="0.6"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="10"/>
-            <Setter Property="Height" Value="10"/>
-            <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Setter>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="BoxShadow" Value="0 1 3 0 #40000000"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.15)"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical:pressed /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.05)"/>
-        </Style>
-
         <!-- Horizontal volume slider (pill-shaped) -->
         <Style Selector="Slider.volume-horizontal">
             <Setter Property="Orientation" Value="Horizontal"/>
