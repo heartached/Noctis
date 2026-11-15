@@ -19,15 +19,18 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// Owner 11-14: scrolling inside a pop-up "sometimes 60 fps, sometimes 30, sometimes 10". With
-/// Liquid Glass on, every scroll step inside a frosted card cost a second frame that repainted and
-/// re-blurred the whole card, its blur ring and its shadow (PopupScrollCostTests' harness: 1.34 Mpx
-/// and two frames per wheel notch instead of 0.47 Mpx and one). Two causes, both pinned here on a
-/// raster surface replaying the compositor:
+/// Liquid Glass on, every scroll step inside a frosted card (the pop-up cards, the Settings sheet)
+/// cost a second frame that repainted and re-blurred the whole card, its blur ring and its shadow
+/// (PopupScrollCostTests' harness: 1.34 Mpx and two frames per wheel notch instead of 0.47 Mpx and
+/// one), and on the GPU backend so did every frame in which anything moved in the page hidden
+/// under the Settings scrim (a full Settings card, ~1 Mpx, every frame, for as long as it moved).
+/// Two causes, both pinned here on a raster surface replaying the compositor:
 ///  - the compositor's dirty rect runs a pixel or two past what changed (Avalonia 12 inflates it
 ///    by 1 px and rounds out), so a list scrolling edge to edge inside the card read as "something
 ///    beside the panel changed";
 ///  - the GPU surface copy cannot be read back, so a partial frame could never rule out a change
-///    beneath the frost. A host whose layers beneath only change as a whole now says so.
+///    beneath the frost. A host whose layers beneath only change as a whole now says so: the
+///    pop-up card always, the Settings sheet while its scrim's opaque snapshot hides the app.
 /// </summary>
 public class PopupGlassScrollTests
 {
@@ -190,5 +193,104 @@ public class PopupGlassScrollTests
             Assert.Same(host.CardGlass, frame.Children[0]);
         }
         finally { window.Close(); }
+    }
+
+    /// <summary>MainWindow's shape: the app layer and the scrim over it.</summary>
+    private static (Window win, BlurredBackdrop scrim) BuildScrim(bool live)
+    {
+        var layer = new Panel { Background = Brushes.DarkSlateBlue, Children = { new Border { Width = 200, Height = 100, Background = Brushes.Orange } } };
+        var scrim = new BlurredBackdrop { IsVisible = false, Opacity = 0, Target = layer, LiveBlur = live };
+        var win = new Window { Width = 800, Height = 600, RequestedThemeVariant = ThemeVariant.Dark, Content = new Panel { Children = { layer, scrim } } };
+        win.Show();
+        PumpUntil(() => false, 60);
+        return (win, scrim);
+    }
+
+    [AvaloniaFact]
+    public void TheScrim_IsAnOpaqueCover_OnlyWhileItsSnapshotShowsAtFullStrength()
+    {
+        var (win, scrim) = BuildScrim(live: false);
+        try
+        {
+            Assert.False(scrim.IsOpaqueCover);
+            scrim.IsVisible = true;
+            var prepare = scrim.PrepareAsync();
+            Assert.True(PumpUntil(() => prepare.IsCompleted && scrim.HasSnapshot, 3000));
+            Assert.False(scrim.IsOpaqueCover); // the layer is still at 0
+            scrim.Opacity = 0.5;
+            Assert.False(scrim.IsOpaqueCover);
+            scrim.Opacity = 1;
+            Assert.True(PumpUntil(() => scrim.IsOpaqueCover, 1000));
+
+            // Background Blur to Off: the snapshot fades out under the plain dim, the app shows.
+            BackdropSnapshot.BlurRadius = 0;
+            Assert.False(scrim.IsOpaqueCover);
+            BackdropSnapshot.BlurRadius = BackdropSnapshot.DefaultBlurRadius;
+            Assert.True(PumpUntil(() => scrim.IsOpaqueCover, 2000));
+
+            scrim.Opacity = 0;
+            Assert.False(scrim.IsOpaqueCover);
+            scrim.IsVisible = false;
+            scrim.Release();
+            scrim.Opacity = 1;
+            Assert.False(scrim.IsOpaqueCover); // no snapshot
+        }
+        finally
+        {
+            BackdropSnapshot.BlurRadius = BackdropSnapshot.DefaultBlurRadius;
+            win.Close();
+        }
+    }
+
+    [AvaloniaFact]
+    public void TheLiveBlur_IsNeverAnOpaqueCover()
+    {
+        AppGlass.Clear();
+        var (win, scrim) = BuildScrim(live: true);
+        try
+        {
+            scrim.IsVisible = true;
+            var prepare = scrim.PrepareAsync();
+            Assert.True(PumpUntil(() => prepare.IsCompleted, 3000));
+            scrim.Opacity = 1;
+            PumpUntil(() => false, 200);
+            Assert.True(scrim.IsLive);
+            Assert.False(scrim.IsOpaqueCover);
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
+    public void TheSettingsFrost_FollowsTheScrimsOpaqueCover()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        AppGlass.Set(true, Colors.Black, Colors.Black); // the scrim then takes its snapshot
+        var w = new Noctis.Views.MainWindow { Width = 1280, Height = 800 };
+        try
+        {
+            w.Show();
+            var scrim = w.FindControl<BlurredBackdrop>("SettingsScrim")!;
+            var frost = w.FindControl<GlassPanel>("SettingsGlass")!;
+            scrim.Target = w.FindControl<Panel>("AppContentLayer");
+            Assert.False(frost.BeneathRepaintsWhole);
+
+            PumpUntil(() => false, 300); // rendered once, as the app is before Settings opens
+            scrim.IsVisible = true;
+            var prepare = scrim.PrepareAsync();
+            Assert.True(PumpUntil(() => prepare.IsCompleted && scrim.HasSnapshot, 3000), "no snapshot");
+            scrim.Opacity = 1;
+            Assert.True(PumpUntil(() => frost.BeneathRepaintsWhole, 2000), "the frost never heard the app is hidden");
+            Assert.True(scrim.IsOpaqueCover);
+
+            // The close fades the scrim (a 0.14 s transition): the app shows again from its first step.
+            scrim.Opacity = 0;
+            Assert.True(PumpUntil(() => !frost.BeneathRepaintsWhole, 1000));
+            Assert.True(scrim.Opacity > 0, "the fade had already finished: the test missed its first step");
+        }
+        finally
+        {
+            AppGlass.Clear();
+            w.Close();
+        }
     }
 }
