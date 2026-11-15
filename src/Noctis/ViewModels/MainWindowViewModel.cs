@@ -2512,8 +2512,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Resolve the destination view (Cover Flow was left above, so this always shows
         // the section itself).
+        ViewModelBase destination;
         {
-            CurrentView = key switch
+            destination = key switch
             {
                 "home" => RefreshAndReturn(_homeVm),
                 "songs" => RefreshAndReturnSongs(_songsVm),
@@ -2537,16 +2538,23 @@ public partial class MainWindowViewModel : ViewModelBase
             };
         }
 
-        // Shortcuts (Ctrl/⌘+1…4) and the command palette navigate here without touching the
-        // sidebar, which kept highlighting the section you came from. Sidebar clicks already
-        // selected this item; keys without a sidebar row leave the highlight alone.
-        HighlightSidebarSection(key);
-
-        if (previousEntry != null && !ReferenceEquals(CurrentView, previousEntry.View))
+        // Into history BEFORE the switch: assigning CurrentView disposes the view it replaces
+        // unless history holds it (DisposeViewIfTransient). Pushed after, an album, artist or
+        // playlist page left through the sidebar was disposed and then kept for Back anyway:
+        // restored with its player/library subscriptions gone, and disposed a second time when
+        // it aged out of history, where an artist page threw ObjectDisposedException
+        // (CancellationTokenSource.Cancel) out of Navigate.
+        if (previousEntry != null && !ReferenceEquals(destination, previousEntry.View))
         {
             PushHistoryEntry(previousEntry);
             ClearForwardHistory();
         }
+        CurrentView = destination;
+
+        // Shortcuts (Ctrl/⌘+1…4) and the command palette navigate here without touching the
+        // sidebar, which kept highlighting the section you came from. Sidebar clicks already
+        // selected this item; keys without a sidebar row leave the highlight alone.
+        HighlightSidebarSection(key);
 
         // Clear search when switching views — including the pill itself: a section
         // switch is a fresh context, so an open (now empty) search box shouldn't
