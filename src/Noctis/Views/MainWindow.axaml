@@ -2055,8 +2055,12 @@
       <Panel>
         <!-- Card fill / frost. A sibling UNDER the card with the card's exact geometry and
              scale transform, so it is never inside the card's opacity layer. Off, it paints
-             the same AppMainBackground the card used to. -->
+             the same AppMainBackground the card used to. While the scrim's opaque snapshot
+             hides the app, nothing beneath the frost can change but the scrim itself, which
+             repaints whole: BeneathRepaintsWhole then spares a full-card repaint after every
+             scroll step, and after every frame something animates in the hidden page. -->
         <controls:GlassPanel Name="SettingsGlass"
+                             BeneathRepaintsWhole="{Binding #SettingsScrim.IsOpaqueCover}"
                              MaxWidth="1000" MaxHeight="720" Margin="24,24"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch"
