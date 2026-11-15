@@ -124,6 +124,27 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// the accent-link names in song lists (Styles.axaml) to the plain text colour.</summary>
     private void ApplyTrackLinkAccent(bool accent) => Classes.Set("plain-track-links", !accent);
 
+    private EventHandler? _accentWindowTintGlassHandler;
+
+    /// <summary>GitHub #240: "Tint window with accent colour" on or off. App re-applies the
+    /// accent with (or without) the shaded backgrounds; Liquid Glass then re-reads them.</summary>
+    private void ApplyAccentWindowTint(bool on)
+    {
+        if (Avalonia.Application.Current is not App app || app.TintWindowWithAccent == on) return;
+        app.SetTintWindowWithAccent(on);
+        // On: the accent re-apply already refreshed the glass (RefreshLiquidGlassForAccentTint).
+        if (!on && _liquidGlassActive) ApplyLiquidGlass(true);
+    }
+
+    /// <summary>With the accent window tint on, every accent change (picker, "Accent follows
+    /// album art", a theme switch) reshades the backgrounds; Liquid Glass tints its backdrop and
+    /// translucent surfaces from them, so it re-reads them. Nothing to do with the tint off.</summary>
+    private void RefreshLiquidGlassForAccentTint()
+    {
+        if (_liquidGlassActive && Avalonia.Application.Current is App { TintWindowWithAccent: true })
+            ApplyLiquidGlass(true);
+    }
+
     /// <summary>
     /// "Accent follows album art": recolours the accent from the playing cover's vibrant
     /// colour (path-cached; first decode runs off the UI thread), and restores the user's
@@ -158,6 +179,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private EventHandler<bool>? _liquidGlassChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _settingsBackdropRefreshHandler;
     private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
+    private System.ComponentModel.PropertyChangedEventHandler? _sidebarAutoHideHandler;
     private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
     private ResourceDictionary? _liquidGlassOverlay;
     private bool _liquidGlassActive;
@@ -192,6 +214,34 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private Border? _queuePopupPanel;
     private Controls.GlassPanel? _queueGlass;
     private MiniPlayerWindow? _miniPlayer;
+
+    /// <summary>How long the window stays minimized or hidden before the trim runs. Internal for tests.</summary>
+    internal static TimeSpan BackgroundTrimDelay { get; set; } = TimeSpan.FromSeconds(60);
+    private int _backgroundTrimGeneration;
+    private bool IsInBackground => !IsVisible || WindowState == WindowState.Minimized;
+
+    /// <summary>
+    /// A music player spends hours minimized or in the tray. Meanwhile the artwork cache stays at
+    /// its byte budget (128 MB of decoded covers, native memory) with covers of pages that are not
+    /// even shown. Once the window has been in the background for <see cref="BackgroundTrimDelay"/>,
+    /// the covers no control holds are dropped (<see cref="ArtworkCache.TrimUnheld"/>; what is on
+    /// screen stays) and the managed heap is compacted after it (<see cref="MemoryTrim"/>, a
+    /// background collection while music plays, #139). Coming back and quick minimize/restore
+    /// cycles cancel it.
+    /// </summary>
+    private void ScheduleBackgroundTrim()
+    {
+        var generation = ++_backgroundTrimGeneration;
+        if (!IsInBackground) return;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (generation != _backgroundTrimGeneration || !IsInBackground) return;
+            var (count, bytes) = ArtworkCache.TrimUnheld();
+            DebugLog.Write("Memory", $"window in the background: dropped {count} covers not on screen ({bytes / 1048576} MB)");
+            MemoryTrim.RequestAfterIdle("window in the background");
+        }, BackgroundTrimDelay);
+    }
+
     private Action<IReadOnlyList<string>>? _singleInstanceActivationHandler;
     private Action? _detachFileActivation;
     private Action? _detachReopenActivation;
@@ -670,9 +720,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         ApplyArtworkAccent();
                     else if (e.PropertyName == nameof(SettingsViewModel.AccentTrackLinks))
                         ApplyTrackLinkAccent(vm.Settings.AccentTrackLinks);
+                    else if (e.PropertyName == nameof(SettingsViewModel.TintWindowWithAccent))
+                        ApplyAccentWindowTint(vm.Settings.TintWindowWithAccent);
                 };
                 vm.Settings.PropertyChanged += _artworkAccentSettingsHandler;
                 ApplyTrackLinkAccent(vm.Settings.AccentTrackLinks);
+                ApplyAccentWindowTint(vm.Settings.TintWindowWithAccent);
+                _accentWindowTintGlassHandler = (_, _) => RefreshLiquidGlassForAccentTint();
+                App.AccentApplied += _accentWindowTintGlassHandler;
 
                 _liquidGlassChangedHandler = (_, on) => ApplyLiquidGlass(on);
                 vm.Settings.LiquidGlassChanged += _liquidGlassChangedHandler;
@@ -723,7 +778,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
                 _settingsScrim = this.FindControl<Controls.BlurredBackdrop>("SettingsScrim");
                 if (_settingsScrim != null)
+                {
                     _settingsScrim.Target = this.FindControl<Panel>("AppContentLayer");
+                    // Owner 11-14/15 (choppy Settings over the live blur): the scrim stands in for
+                    // the live blur once the sheet is up, drawn around the card only, and hides
+                    // the app under it; see BlurredBackdrop.TargetHost / Hole.
+                    _settingsScrim.TargetHost = this.FindControl<Panel>("AppContentHost");
+                    _settingsScrim.Hole = this.FindControl<Controls.GlassPanel>("SettingsGlass");
+                }
                 _settingsGlass = this.FindControl<Controls.GlassPanel>("SettingsGlass");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
                 _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
@@ -836,7 +898,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     if (e.PropertyName == nameof(MainWindowViewModel.IsSettingsModalOpen))
                     {
                         if (mainVm2.IsSettingsModalOpen)
+                        {
                             EnsureSettingsViewLoaded();
+                            // Builds the pages not visited yet in small idle slices while it is open.
+                            (this.FindControl<ContentControl>("SettingsViewHost")?.Content as SettingsView)?.OnSheetOpened();
+                        }
 
                         if (_settingsOverlay != null && _settingsCard != null)
                         {
@@ -965,9 +1031,23 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             () => vm.IsSidebarHidden,
                             () => vm.Settings.SidebarHoverExpand,
                             () => vm.Settings.SidebarAlwaysExpanded,
-                            expanded => vm.Sidebar.IsExpanded = expanded);
+                            expanded => vm.Sidebar.IsExpanded = expanded)
+                        {
+                            // A short grace before tucking away, so overshooting the rail by a
+                            // few pixels does not snap it shut (GitHub #233 auto-hide).
+                            CloseDelay = TimeSpan.FromMilliseconds(300),
+                        };
                         _sidebarPeek.SyncHidden();
                     }
+                    // GitHub #233: "Hide sidebar until hover" hides the sidebar the way fullscreen
+                    // lyrics do (the edge strip above brings it back), on every page.
+                    _sidebarAutoHideHandler = (_, e) =>
+                    {
+                        if (e.PropertyName == nameof(SettingsViewModel.SidebarAutoHide))
+                            UpdateImmersiveLyricsState();
+                    };
+                    vm.Settings.PropertyChanged += _sidebarAutoHideHandler;
+                    UpdateImmersiveLyricsState();
                     // The settings load may have finished before this subscription existed,
                     // so apply the current value once now (idempotent).
                     _sidebarAlwaysExpandedHandler(vm.Settings, vm.Settings.SidebarAlwaysExpanded);
@@ -1056,6 +1136,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         // added later and so runs first (newest first); it stands aside through
         // IsOverlayCapturingKeys, so Ctrl+A / Escape inside the queue don't hit the page.
         AddHandler(KeyDownEvent, OnQueueKeyDown, RoutingStrategies.Tunnel);
+        // GitHub #207: a click anywhere in the queue panel (its header too) makes it the
+        // keyboard target, and a click on the island keeps it so; focus alone did not.
+        _queueKeys = new QueueKeyFocus(this, () => _queuePopupPanel,
+            () => this.FindControl<ContentControl>("PageHost"),
+            v => v.FindAncestorOfType<PlaybackBarView>(includeSelf: true) != null);
 
         // Volume control via mouse wheel and keyboard
         KeyDown += OnWindowKeyDown;
@@ -1118,6 +1203,14 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             {
                 Hide();
             }
+        };
+
+        // Minimized, in the tray or behind the mini player for a while: let go of what only
+        // pages nobody is looking at hold (see ScheduleBackgroundTrim).
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty)
+                ScheduleBackgroundTrim();
         };
 
         // If the main window goes down (OS shutdown, etc.) take the mini player with it
@@ -1570,6 +1663,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             if (_artworkAccentSettingsHandler != null)
                 vm.Settings.PropertyChanged -= _artworkAccentSettingsHandler;
 
+            if (_accentWindowTintGlassHandler != null)
+                App.AccentApplied -= _accentWindowTintGlassHandler;
+
             if (_liquidGlassChangedHandler != null)
                 vm.Settings.LiquidGlassChanged -= _liquidGlassChangedHandler;
             if (_settingsBackdropRefreshHandler != null)
@@ -1577,6 +1673,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             if (_sidebarAlwaysExpandedHandler != null)
                 vm.Settings.SidebarAlwaysExpandedChanged -= _sidebarAlwaysExpandedHandler;
+            if (_sidebarAutoHideHandler != null)
+                vm.Settings.PropertyChanged -= _sidebarAutoHideHandler;
 
             if (_playerPropertyChangedHandler != null)
                 vm.Player.PropertyChanged -= _playerPropertyChangedHandler;
@@ -1632,7 +1730,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             // Queue popup and lyrics panel share the right edge — mutual exclusion.
             if (vm.Player.IsQueuePopupOpen)
                 vm.IsLyricsPanelOpen = false;
-            else if (_queueSelection is { Count: > 0 } selection)
+            else _queueKeys?.Disarm();
+            if (!vm.Player.IsQueuePopupOpen && _queueSelection is { Count: > 0 } selection)
             {
                 // A closed panel doesn't keep a selection to reappear with (GitHub #85).
                 selection.Clear();
@@ -2294,7 +2393,13 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 return true;
             case ShortcutAction.ScanReplayGain:
             {
-                var tracks = TrackSelection.ForReplayGain(QueueSelectedTracks(vm), PageSelectedTracks(vm), vm.Player.CurrentTrack);
+                // GitHub #206: the selection the keys address first (the queue panel's when it
+                // is the keyboard target), then the other one, then the playing track.
+                var queue = QueueSelectedTracks(vm);
+                var page = PageSelectedTracks(vm);
+                var tracks = IsQueueKeyTarget()
+                    ? TrackSelection.ForReplayGain(queue, page, vm.Player.CurrentTrack)
+                    : TrackSelection.ForReplayGain(page, queue, vm.Player.CurrentTrack);
                 if (tracks.Count == 0) return false;
                 _ = MetadataHelper.OpenReplayGainScannerDialog(tracks);
                 return true;
@@ -2332,11 +2437,18 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         return true;
     }
 
-    /// <summary>The queue panel's row selection, only while focus is in the panel.</summary>
+    /// <summary>The queue panel's row selection, while the panel is open. Its indices
+    /// are rows of QueueRows (GitHub #134: played songs and the playing one come first with
+    /// Keep Played Songs on), not of Up Next: read against Up Next, rows past the played ones
+    /// mapped to later songs or to nothing, and the shortcut fell back to the playing track
+    /// (GitHub #206).</summary>
     private IReadOnlyList<Track>? QueueSelectedTracks(MainWindowViewModel vm) =>
-        _queueSelection is { Count: > 0 } selection && IsFocusInQueuePanel()
-            ? TrackSelection.FromIndices(vm.Player.UpNext, selection.Snapshot())
+        _queueSelection is { Count: > 0 } selection && _queueKeys?.IsPanelShown == true
+            ? QueueSelectionTracks(vm.Player, selection)
             : null;
+
+    internal static List<Track> QueueSelectionTracks(PlayerViewModel player, QueueRowSelection<Track> selection) =>
+        TrackSelection.FromIndices(player.QueueRows, selection.Snapshot());
 
     /// <summary>The Ctrl-selection on the page currently shown, unless the Settings sheet
     /// covers it.</summary>
@@ -2423,14 +2535,15 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     /// nothing else would un-hide it). The same condition feeds the lyrics VM's
     /// fullscreen flag, which gates the opt-in focus dimming. Runs off both the
     /// WindowState observer and the IsLyricsViewActive handler so every path lands on
-    /// the same answer.
+    /// the same answer. "Hide sidebar until hover" (GitHub #233) hides it on every page.
     /// </summary>
     private void UpdateImmersiveLyricsState()
     {
         if (DataContext is not MainWindowViewModel vm) return;
         var immersive = WindowState == WindowState.FullScreen && vm.IsLyricsViewActive;
-        if (vm.IsSidebarHidden != immersive)
-            vm.IsSidebarHidden = immersive;
+        var hidden = immersive || vm.Settings.SidebarAutoHide;
+        if (vm.IsSidebarHidden != hidden)
+            vm.IsSidebarHidden = hidden;
         if (vm.Lyrics.IsFullScreenPageActive != immersive)
             vm.Lyrics.IsFullScreenPageActive = immersive;
     }
@@ -2581,20 +2694,27 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }
     }
 
-    private bool IsFocusInQueuePanel() =>
-        _queuePopupPanel is { IsVisible: true } panel
-        && FocusManager?.GetFocusedElement() is Visual focused
-        && (focused == panel || panel.IsVisualAncestorOf(focused));
+    private QueueKeyFocus? _queueKeys;
+
+    /// <summary>
+    /// The queue panel's keys (Ctrl+A, Delete, Escape) and selection are what the keyboard
+    /// addresses (GitHub #207): focus is in the panel, or it was clicked last (header
+    /// included; island clicks since don't count), or the page under it is Lyrics or the
+    /// Visualizer, which have nothing of their own to select. Never under the Settings sheet.
+    /// </summary>
+    private bool IsQueueKeyTarget() =>
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: false } vm
+        && _queueKeys?.IsKeyTarget(pageHasNothingToSelect: vm.IsLyricsViewActive || vm.CurrentView is VisualizerViewModel) == true;
 
     /// <summary>Page shortcuts (Ctrl+A, Escape) stay off the page while the Settings sheet
-    /// covers it or the queue panel holds focus; the sheet and panel handle those keys.</summary>
+    /// covers it or the queue panel takes the keys; the sheet and panel handle those keys.</summary>
     bool IPageKeyOverlayHost.IsOverlayCapturingKeys =>
-        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsFocusInQueuePanel();
+        DataContext is MainWindowViewModel { IsSettingsModalOpen: true } || IsQueueKeyTarget();
 
     private void OnQueueKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm || _queueSelection is not { } selection) return;
-        if (e.Source is TextBox || !IsFocusInQueuePanel()) return;
+        if (e.Source is TextBox || !IsQueueKeyTarget()) return;
 
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
         {

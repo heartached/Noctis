@@ -5,9 +5,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Noctis.Plugins</RootNamespace>
     <AssemblyName>Noctis.Plugins.Abstractions</AssemblyName>
-    <!-- API version: major = breaking, minor = additive (docs/PLUGINS.md). Keep PluginApi.Major/Minor in step. -->
-    <Version>1.6.0</Version>
-    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, playback control, library search and playlists, BPM/key writes, adding files to the library, decoding songs for analysis, settings, storage) and extension points (views, visual layers, lyrics providers, track menu commands).</Description>
+    <!-- API version: major = breaking, minor = additive (docs/PLUGINS.md). Keep PluginApi.Major/Minor in step.
+         Version is the package/file version only. AssemblyVersion is what every plugin references and
+         must stay what Noctis 1.6.6-1.6.9 shipped: the default load context refuses a plugin compiled
+         against a higher one (PluginKitBindingTests). Only a breaking major may move it. -->
+    <Version>1.8.0</Version>
+    <AssemblyVersion>1.6.0.0</AssemblyVersion>
+    <FileVersion>1.8.0.0</FileVersion>
+    <Description>The public SDK a Noctis plugin compiles against: plugin entry point, host services (now playing, beat and spectrum taps, playback control, library search and playlists, BPM/key writes, adding files to the library, decoding songs for analysis, settings, storage) and extension points (views, visual layers, lyrics providers, lyrics effects and renderers, track menu commands).</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- NuGet metadata (not published yet; `dotnet pack -c Release` produces the package). -->
     <IsPackable>true</IsPackable>
@@ -18,13 +23,13 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/heartached/Noctis</PackageProjectUrl>
     <RepositoryUrl>https://github.com/heartached/Noctis</RepositoryUrl>
-    <PackageReleaseNotes>1.6: IAudioDecoder (host.AudioDecoder, "audio.decode"): decode a song file to mono PCM for offline analysis. 1.5: IPlaybackControl.GetQueue/SetUpNext/TracksQueued, TrackInfo.IsDisliked/IsExplicit/SkipWhenShuffling/SnoozedUntil, lyrics effects (RegisterLyricsEffect, ILyricsEffect), ILibraryImport (host.LibraryImport, "library.import"): add audio files the plugin saved to the library, and read the music folders; IPluginViewProvider.PreferredWindowSize/MinWindowSize/WindowSizeToContent: the size a view's window opens at. 1.4: ILibraryReader.GetPlaylists (PlaylistInfo: id, name, cover, ordered track ids, colour). 1.3: views of a plugin's own (RegisterView/OpenView), ShowAlbum, IPlaybackControl.PlayTracks, TrackInfo.AlbumId/ArtworkPath/ReleaseType/DateAdded/LastPlayed. 1.2: TrackInfo.Bpm/MusicalKey, ILibraryReader.GetAll, BPM/key writes ("library.write.analysis"). 1.1: plugin.json manifest, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notifications. Additive over 1.0.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.8: lyrics renderers (RegisterLyricsRenderer, ILyricsRenderer, ILyricsLineView): draw the lyric lines in place of Noctis's own, picked by the user in Settings. 1.7: ILibraryReader.GetLyricLines, IPlaybackControl.QueueTracks, RegisterLibraryCommand. 1.6: IAudioDecoder (host.AudioDecoder, "audio.decode"): decode a song file to mono PCM for offline analysis. 1.5: IPlaybackControl.GetQueue/SetUpNext/TracksQueued, TrackInfo.IsDisliked/IsExplicit/SkipWhenShuffling/SnoozedUntil, lyrics effects (RegisterLyricsEffect, ILyricsEffect), ILibraryImport (host.LibraryImport, "library.import"): add audio files the plugin saved to the library, and read the music folders; IPluginViewProvider.PreferredWindowSize/MinWindowSize/WindowSizeToContent: the size a view's window opens at. 1.4: ILibraryReader.GetPlaylists (PlaylistInfo: id, name, cover, ordered track ids, colour). 1.3: views of a plugin's own (RegisterView/OpenView), ShowAlbum, IPlaybackControl.PlayTracks, TrackInfo.AlbumId/ArtworkPath/ReleaseType/DateAdded/LastPlayed. 1.2: TrackInfo.Bpm/MusicalKey, ILibraryReader.GetAll, BPM/key writes ("library.write.analysis"). 1.1: plugin.json manifest, playback control, library search, lyrics providers, track menu commands, scrobble hook, declared settings, notifications. Additive over 1.0.</PackageReleaseNotes>
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
     <!-- Visual plugins return Avalonia controls; keep the version in step with the app. -->
-    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia" Version="12.1.6" />
   </ItemGroup>
 </Project>

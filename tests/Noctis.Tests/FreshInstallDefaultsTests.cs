@@ -101,6 +101,10 @@ public class FreshInstallDefaultsTests
         Assert.False(Fresh.LiquidGlassEnabled);
         Assert.False(Fresh.LyricsFlowingLightEnabled);
         Assert.False(Fresh.LyricsFullScreenFocusEnabled);
+        // GitHub #211: the full-screen lyrics page keeps its island unless asked not to.
+        Assert.False(Fresh.LyricsFullScreenHideIsland);
+        // Discord (f7uh): the lyrics page shows its lyrics unless the user hides them.
+        Assert.False(Fresh.LyricsPageHideLyrics);
         Assert.False(Fresh.LyricsJoinSplitWords);
         // Minimum line opacity ships ON (15%) so every lyric line can be clicked to seek
         // (Discord, Mistery 09-20); the constant is what the slider's double-tap restores.
@@ -157,6 +161,17 @@ public class FreshInstallDefaultsTests
         Assert.Equal(300, Fresh.PlayPauseFadeMs);
         Assert.True(Fresh.IgnoreLeadingWordsInArtistSort);
         Assert.Equal(new[] { "The" }, Fresh.ArtistSortIgnoredWords);
+    }
+
+    [Fact]
+    public void DroppedFilesStayPut_AndAPlayCountsAtHalfTheSong()
+    {
+        // 2026-11-14, for new installs (older settings files keep theirs: ChangedDefaultsUpgradeTests).
+        // Import dropped files moved a song dragged in from Downloads into Noctis Imports; off,
+        // the drop zones say what happens and nothing moves.
+        Assert.False(Fresh.ImportDroppedMedia);
+        // GitHub #101 ("just clicking a song counted it as played"): half the song, not the start.
+        Assert.Equal(50, Fresh.PlayCountThresholdPercent);
     }
 
     [Fact]

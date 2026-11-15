@@ -165,6 +165,12 @@
                     <SolidColorBrush x:Key="QueueDrawerForeground" Color="White" />
                     <SolidColorBrush x:Key="InputOutlineBrush" Color="White" />
                     <SolidColorBrush x:Key="TrackListMultiSelectBrush" Color="#3FFFFFFF" />
+                    <!-- GitHub #209: the one Ctrl-selection look (album tiles, track rows, queue):
+                         an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
+                    <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
+                    <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
+                    <!-- GitHub #218: the soft glow behind a hovered album (Album Hover Zoom). -->
+                    <BoxShadows x:Key="AlbumHoverGlow">0 0 24 1 #3DFFFFFF</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -324,6 +330,11 @@
                     <SolidColorBrush x:Key="QueueDrawerForeground" Color="White" />
                     <SolidColorBrush x:Key="InputOutlineBrush" Color="White" />
                     <SolidColorBrush x:Key="TrackListMultiSelectBrush" Color="#3FFFFFFF" />
+                    <!-- GitHub #209: the one Ctrl-selection look (album tiles, track rows, queue):
+                         an accent-tinted plate with an accent outline. App.SetAccent re-derives both. -->
+                    <SolidColorBrush x:Key="SelectionFillBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.2" />
+                    <SolidColorBrush x:Key="SelectionStrokeBrush" Color="{StaticResource SystemAccentColor}" Opacity="0.9" />
+                    <BoxShadows x:Key="AlbumHoverGlow">0 8 24 0 #40000000</BoxShadows>
                     <SolidColorBrush x:Key="ToggleTrackOffBrush" Color="#484C54" />
                     <SolidColorBrush x:Key="ToggleKnobOffBrush" Color="White" />
                     <SolidColorBrush x:Key="ArtworkPlaceholderBackground" Color="#2E2E2E" />
@@ -343,16 +354,23 @@
             <ControlTheme x:Key="TrackListBoxItemTheme" TargetType="ListBoxItem">
                 <Setter Property="Template">
                     <ControlTemplate TargetType="ListBoxItem">
-                        <ContentPresenter Name="PART_ContentPresenter"
-                                          Background="{TemplateBinding Background}"
-                                          BorderBrush="{TemplateBinding BorderBrush}"
-                                          BorderThickness="{TemplateBinding BorderThickness}"
-                                          ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          Content="{TemplateBinding Content}"
-                                          Padding="{TemplateBinding Padding}"
-                                          CornerRadius="{TemplateBinding CornerRadius}"
-                                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <!-- GitHub #209: the Ctrl-selection plate is its own overlay above the
+                             row, faded by opacity (see Border.select-ring), so selecting never
+                             touches the row's layout or its stripe/hover/now-playing fills. -->
+                        <Panel>
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Background="{TemplateBinding Background}"
+                                              BorderBrush="{TemplateBinding BorderBrush}"
+                                              BorderThickness="{TemplateBinding BorderThickness}"
+                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              Content="{TemplateBinding Content}"
+                                              Padding="{TemplateBinding Padding}"
+                                              CornerRadius="{TemplateBinding CornerRadius}"
+                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                            <Border Name="PART_SelectRing" Classes="select-ring"
+                                    CornerRadius="{TemplateBinding CornerRadius}" />
+                        </Panel>
                     </ControlTemplate>
                 </Setter>
             </ControlTheme>
@@ -413,24 +431,6 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="TextAlignment" Value="Center" />
         <Setter Property="Margin" Value="0" />
-    </Style>
-
-    <!-- "BETA" tag sitting next to a settings-row title. Non-interactive marker, so it
-         uses the neutral chip fill rather than the accent — the accent in this app means
-         "active control", which a status tag is not. -->
-    <Style Selector="Border.beta-badge">
-        <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
-        <Setter Property="CornerRadius" Value="999" />
-        <Setter Property="Padding" Value="7,2" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-
-    <Style Selector="TextBlock.beta-badge-text">
-        <Setter Property="FontSize" Value="9" />
-        <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="LetterSpacing" Value="0.8" />
-        <Setter Property="Opacity" Value="0.7" />
-        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- Global input text alignment: keep dropdown/numeric text visually centered -->
@@ -745,16 +745,23 @@
     <Style Selector="ContextMenu /template/ ScrollViewer, MenuItem /template/ Popup ScrollViewer">
         <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
     </Style>
-    <!-- Submenu cards (Tools ▸, Sleep Timer ▸, Pitch ▸ …) match the parent card and fade +
-         slide out of it instead of popping in. OffsetX is set before Enable: the open run
-         reads OffsetX when Enable is applied. -->
+    <!-- A long submenu (Link Tracks From ▸) scrolls like a list (owner 11-14): no arrow strips,
+         the thin pill scrollbar, the wheel glide, and no scrolling to a row the pointer rests on
+         (helpers:SubmenuScroller). -->
+    <Style Selector="MenuItem /template/ Popup ScrollViewer">
+        <Setter Property="(helpers:SubmenuScroller.IsEnabled)" Value="True" />
+    </Style>
+    <!-- Submenu cards (Tools ▸, Carousel Style ▸, Sleep Timer ▸, Pitch ▸ …) match the parent card
+         and open and close with its pop (owner 11-14): they grow out of their row while they fade
+         in, and shrink back and fade out when they close. Submenu is set before Enable: the open
+         run reads it when Enable is applied. -->
     <Style Selector="MenuItem /template/ Popup > Border">
         <Setter Property="MinWidth" Value="200" />
         <!-- Background / border / radius / 300 cap (MenuChrome.SubmenuCard) and padding: the
              template writes those from the Fluent MenuFlyoutPresenter* resources. -->
         <Setter Property="(helpers:MenuChrome.SubmenuCard)" Value="True" />
         <Setter Property="(helpers:MenuChrome.Padding)" Value="6" />
-        <Setter Property="(helpers:MenuOpenAnimation.OffsetX)" Value="-8" />
+        <Setter Property="(helpers:MenuOpenAnimation.Submenu)" Value="True" />
         <Setter Property="(helpers:MenuOpenAnimation.Enable)" Value="True" />
     </Style>
 
@@ -905,21 +912,6 @@
         <Setter Property="Fade" Value="1" />
     </Style>
 
-
-    <!-- Solid red pill (dialog Close buttons): keeps the same red on hover/press
-         instead of falling back to the theme's pointerover background. -->
-    <Style Selector="Button.danger-pill">
-        <Setter Property="Background" Value="#E74856" />
-        <Setter Property="Foreground" Value="White" />
-    </Style>
-    <Style Selector="Button.danger-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#E74856" />
-        <Setter Property="Foreground" Value="White" />
-    </Style>
-    <Style Selector="Button.danger-pill:pressed /template/ ContentPresenter#PART_ContentPresenter">
-        <Setter Property="Background" Value="#E74856" />
-        <Setter Property="Foreground" Value="White" />
-    </Style>
 
     <!-- Solid accent pill: keeps the themed accent (red) on hover/press instead of
          falling back to the theme's pointerover background. Fill comes from
@@ -1322,35 +1314,6 @@
     </Style>
 
     <!-- Album grid tile styling -->
-    <!-- Favorite-heart fade-grow: hearts tagged with this class gently scale from
-         70% while fading in when they appear (favorite toggled) — smooth, no
-         bounce. While hidden the transform is pinned small so the release
-         animates; hiding stays instant. Not applied inside virtualized grids
-         (recycled containers would animate on scroll — same reason album tiles
-         opt out of the global hover scale). -->
-    <Style Selector="PathIcon.heart-pop">
-        <Setter Property="RenderTransformOrigin" Value="50%,50%"/>
-        <Setter Property="RenderTransform" Value="scale(1)"/>
-        <Setter Property="Opacity" Value="1"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.25">
-                    <TransformOperationsTransition.Easing>
-                        <CubicEaseOut/>
-                    </TransformOperationsTransition.Easing>
-                </TransformOperationsTransition>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.2">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Setter>
-    </Style>
-    <Style Selector="PathIcon.heart-pop[IsVisible=False]">
-        <Setter Property="RenderTransform" Value="scale(0.7)"/>
-        <Setter Property="Opacity" Value="0"/>
-    </Style>
 
     <Style Selector="Button.album-tile">
         <Setter Property="Background" Value="Transparent" />
@@ -1377,23 +1340,89 @@
         <Setter Property="Background" Value="Transparent"/>
     </Style>
 
-    <!-- Ctrl+Click multi-select highlight for album tiles (red border) -->
-    <Style Selector="Button.album-tile.ctrl-selected">
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    <!-- Ctrl-selection (GitHub #209): one look for album tiles, track rows and the queue — an
+         accent-tinted plate with an accent outline, eased in and out. The tile used to grow a
+         2px border on selection, which widened it by 4px: the Home WrapPanel then pushed its
+         last column onto a new row, and Albums tiles nudged their content. The plate is now a
+         template overlay (PART_SelectRing) that is always there and only fades, so selecting
+         never touches layout. It sits BEHIND the content so the cover itself is not tinted. -->
+    <Style Selector="Button.album-tile">
+        <Setter Property="Template">
+            <ControlTemplate TargetType="Button">
+                <Panel>
+                    <!-- GitHub #218: hover-zoom glow, shown only under .hover-zoom. -->
+                    <Border Name="PART_Glow" Classes="tile-glow"
+                            CornerRadius="{TemplateBinding CornerRadius}" />
+                    <Border Name="PART_SelectRing" Classes="select-ring"
+                            CornerRadius="{TemplateBinding CornerRadius}" />
+                    <ContentPresenter Name="PART_ContentPresenter"
+                                      Background="{TemplateBinding Background}"
+                                      BorderBrush="{TemplateBinding BorderBrush}"
+                                      BorderThickness="{TemplateBinding BorderThickness}"
+                                      CornerRadius="{TemplateBinding CornerRadius}"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Padding="{TemplateBinding Padding}"
+                                      RecognizesAccessKey="True"
+                                      HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+                </Panel>
+            </ControlTemplate>
+        </Setter>
     </Style>
-    <Style Selector="Button.album-tile.ctrl-selected:pointerover">
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    <Style Selector="Border.select-ring">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="{DynamicResource SelectionFillBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SelectionStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="1.5" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.16">
+                    <DoubleTransition.Easing>
+                        <helpers:CubicBezierEase>
+                            <x:Arguments><x:Double>0.25</x:Double><x:Double>0.1</x:Double><x:Double>0.25</x:Double><x:Double>1</x:Double></x:Arguments>
+                        </helpers:CubicBezierEase>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <!-- Tiles: the plate also settles from 96% as it fades in (render transform only). -->
+    <Style Selector="Button.album-tile /template/ Border.select-ring">
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="RenderTransform" Value="scale(0.96)" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.16">
+                    <DoubleTransition.Easing>
+                        <helpers:CubicBezierEase>
+                            <x:Arguments><x:Double>0.25</x:Double><x:Double>0.1</x:Double><x:Double>0.25</x:Double><x:Double>1</x:Double></x:Arguments>
+                        </helpers:CubicBezierEase>
+                    </DoubleTransition.Easing>
+                </DoubleTransition>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18">
+                    <TransformOperationsTransition.Easing>
+                        <helpers:CubicBezierEase>
+                            <x:Arguments><x:Double>0.2</x:Double><x:Double>0.9</x:Double><x:Double>0.3</x:Double><x:Double>1</x:Double></x:Arguments>
+                        </helpers:CubicBezierEase>
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.album-tile.ctrl-selected /template/ Border.select-ring, ListBoxItem.ctrl-selected /template/ Border.select-ring">
+        <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.album-tile.ctrl-selected /template/ Border.select-ring">
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
-    <Style Selector="Button.album-tile.ctrl-selected /template/ ContentPresenter">
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-    </Style>
-    <Style Selector="Button.album-tile.ctrl-selected:pointerover /template/ ContentPresenter">
-        <Setter Property="BorderThickness" Value="2" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
+    <!-- MultiSelectHelper sets .sel-instant around a selection change that must land on this
+         frame: a container realized or recycled on scroll takes its state without a fade. -->
+    <Style Selector="Button.album-tile.sel-instant /template/ Border.select-ring, ListBoxItem.sel-instant /template/ Border.select-ring">
+        <Setter Property="Transitions">
+            <Transitions />
+        </Setter>
     </Style>
 
     <!-- Album/single tile hover (09-13, Apple Music): the artwork dims a little, a
@@ -1485,31 +1514,9 @@
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
-    <!-- Ctrl+Click multi-select highlight for track rows (theme-keyed wash) -->
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n)">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:nth-child(2n):pointerover">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
-    <Style Selector="ListBox.track-list ListBoxItem.ctrl-selected:selected /template/ ContentPresenter">
-        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}" />
-    </Style>
+    <!-- Ctrl-selected track rows: no wash of their own any more. The row keeps its stripe /
+         hover / now-playing fill and the template's select-ring overlay (TrackListBoxItemTheme)
+         carries the selection, the same plate as the album tiles (GitHub #209). -->
 
     <!-- Generic pill-shaped button (fully rounded) -->
     <Style Selector="Button.pill">
@@ -1634,14 +1641,49 @@
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
-    <Style Selector="Button.browse-item:pointerover">
-        <Setter Property="RenderTransform" Value="scale(1)" />
+    <!-- Album Hover Zoom (GitHub #218, Settings › Appearance, off by default): under a view
+         tagged .hover-zoom (the Albums page) the hovered tile grows to 104% with a soft glow
+         and LibraryAlbumsView tags the tiles around it .hover-neighbor, which step back to 97%.
+         Render transforms and opacity only, so nothing re-lays out; declared after the
+         album-tile scale(1) opt-outs above so these win. -->
+    <Style Selector="Border.tile-glow">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BoxShadow" Value="{DynamicResource AlbumHoverGlow}" />
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile">
+        <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.04" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22">
+                    <TransformOperationsTransition.Easing>
+                        <helpers:CubicBezierEase>
+                            <x:Arguments><x:Double>0.2</x:Double><x:Double>0.9</x:Double><x:Double>0.3</x:Double><x:Double>1</x:Double></x:Arguments>
+                        </helpers:CubicBezierEase>
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile.hover-neighbor">
+        <Setter Property="RenderTransform" Value="scale(0.97)" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile:pointerover">
+        <Setter Property="RenderTransform" Value="scale(1.04)" />
+        <Setter Property="ZIndex" Value="1" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile:pointerover /template/ Border.tile-glow">
+        <Setter Property="Opacity" Value="1" />
     </Style>
 
-    <!-- Opt out of the global hover scale: the release-type filter chips (All/Albums/
-         Singles/EPs/Other) sit flush against the top bar edges, so scaling them up on
-         hover clips the first/last pills at the container bounds. -->
-    <Style Selector="Button.release-chip:pointerover">
+    <Style Selector="Button.browse-item:pointerover">
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
@@ -1673,14 +1715,6 @@
         <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
     </Style>
     <Style Selector="Button.accent-btn:pressed /template/ ContentPresenter">
-        <Setter Property="Background" Value="{TemplateBinding Background}" />
-        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
-    </Style>
-    <Style Selector="Button.album-desc-btn:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="{TemplateBinding Background}" />
-        <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
-    </Style>
-    <Style Selector="Button.album-desc-btn:pressed /template/ ContentPresenter">
         <Setter Property="Background" Value="{TemplateBinding Background}" />
         <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
     </Style>
@@ -1755,34 +1789,11 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
     </Style>
 
-    <!-- Perfect pill outline for compact text inputs (e.g. timestamp boxes). Rounds the
-         control AND its inner PART_BorderElement to a full pill, and uses a 1.5px stroke so
-         the curved ends read as strongly as the straight edges — the same trick the player
-         bar's island outline uses. Matches the metadata fields' look but works app-wide. -->
-    <Style Selector="TextBox.pill-input">
-        <Setter Property="CornerRadius" Value="999" />
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeWhiteBrush}" />
-        <Setter Property="UseLayoutRounding" Value="True" />
-    </Style>
-    <Style Selector="TextBox.pill-input /template/ Border#PART_BorderElement">
-        <Setter Property="CornerRadius" Value="999" />
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
-        <Setter Property="UseLayoutRounding" Value="True" />
-    </Style>
-    <Style Selector="TextBox.pill-input:focus /template/ Border#PART_BorderElement">
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-    </Style>
-    <Style Selector="TextBox.pill-input:focus-within /template/ Border#PART_BorderElement">
-        <Setter Property="BorderThickness" Value="1.5" />
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}" />
-    </Style>
-
-    <!-- Round circle checkbox with check mark -->
+    <!-- Round circle checkbox with check mark. Fluent's CheckBox theme clips to bounds: where
+         the box is only as tall as the 22 px circle (a row tick with no label), the hover's
+         scale(1.06) cut the ring's top and bottom off (owner 11-14). -->
     <Style Selector="CheckBox.metadata-pill-checkbox">
+        <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FontSize" Value="14" />
         <Setter Property="Template">

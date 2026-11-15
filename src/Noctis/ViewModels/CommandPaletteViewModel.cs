@@ -108,6 +108,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Songs")), "songs", "SongsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Albums")), "albums", "AlbumsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Artists")), "artists", "ArtistsIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Genres")), "genres", "TagIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Folders")), "folders", "FolderIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Playlists")), "playlists", "PlaylistsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Favorites")), "favorites", "FavoritesIcon");

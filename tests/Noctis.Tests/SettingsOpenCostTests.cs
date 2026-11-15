@@ -241,6 +241,16 @@ public class SettingsOpenCostTests : IDisposable
     [AvaloniaFact]
     public async Task TabFirstVisit_PutsItsPageBackInItsSlot_AndGlidesIn()
     {
+        // Only the visited pages join here; the idle warm-up (SettingsPageWarmUpTests) would
+        // bring the others in too once Settings has sat still long enough.
+        var keep = SettingsView.WarmUpEnabled;
+        SettingsView.WarmUpEnabled = false;
+        try { await TabFirstVisitCore(); }
+        finally { SettingsView.WarmUpEnabled = keep; }
+    }
+
+    private async Task TabFirstVisitCore()
+    {
         EnsureAppStyles();
         var (vm, _) = await CreateVmAsync();
         var view = new SettingsView { DataContext = vm };
@@ -251,7 +261,7 @@ public class SettingsOpenCostTests : IDisposable
         vm.SelectedSettingsTab = SettingsViewModel.TabAudio;
         Dispatcher.UIThread.RunJobs(DispatcherPriority.Render); // before the Loaded-priority release
         Assert.Same(host, view.AudioTabPanel.Parent);
-        Assert.Equal(0, view.AudioTabPanel.Opacity); // enters from the hidden tab-page state
+        Assert.Equal(0, view.AudioTabPanel.Opacity); // held at the glide's start until laid out
         Pump(400);
 
         // Original XAML order, whatever order the tabs were visited in.

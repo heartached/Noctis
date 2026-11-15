@@ -34,6 +34,23 @@ public partial class PlaybackBarView : UserControl
     }
 
     /// <summary>
+    /// GitHub #211: the widest the lyrics-page pill may be drawn — the page's player column
+    /// less its edge margins, set by the lyrics page. A pill whose buttons need more (the
+    /// opt-in extras add 36px each) is scaled down to this width instead of running out of
+    /// the window's left edge and over the lyrics. Infinity (the default) never scales.
+    /// </summary>
+    public static readonly StyledProperty<double> LyricsPageFitWidthProperty =
+        AvaloniaProperty.Register<PlaybackBarView, double>(
+            nameof(LyricsPageFitWidth),
+            defaultValue: double.PositiveInfinity);
+
+    public double LyricsPageFitWidth
+    {
+        get => GetValue(LyricsPageFitWidthProperty);
+        set => SetValue(LyricsPageFitWidthProperty, value);
+    }
+
+    /// <summary>
     /// The plain colour under the island (MainWindow: a tinted album page or the whole-window
     /// tint), or null for the theme's own page, which the island's colours are made for. The
     /// fill is translucent, so a light colour here turns the pill light; its text and icons
@@ -129,6 +146,8 @@ public partial class PlaybackBarView : UserControl
         }
         if (QuickPlaylistButton.Flyout is MenuFlyout quickPlaylistMenu)
             quickPlaylistMenu.Opening += OnQuickPlaylistMenuOpening;
+        if (ChaptersButton.Flyout is MenuFlyout chaptersMenu)
+            chaptersMenu.Opening += OnChaptersMenuOpening;
 
         // Seek slider: use Tunnel routing so our handlers fire BEFORE the
         // Slider's internal Thumb/Track handlers.  When we mark Handled the
@@ -216,6 +235,8 @@ public partial class PlaybackBarView : UserControl
             UpdateResizeGripVisibility();
             UpdateIslandWidth();
         }
+        else if (e.Property == LyricsPageFitWidthProperty)
+            UpdateIslandWidth();
 
         if (e.Property == BackdropColorProperty)
             UpdateSurfaceContrast();
@@ -394,6 +415,8 @@ public partial class PlaybackBarView : UserControl
             e.PropertyName == nameof(PlayerViewModel.IslandShowLyricsButton) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowQuickPlaylist) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTrash) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandChaptersButtonVisible) ||
+            e.PropertyName == nameof(PlayerViewModel.IslandStopButtonVisible) ||
             e.PropertyName == nameof(PlayerViewModel.IslandShowTime))
         {
             UpdateIslandWidth();
@@ -1691,7 +1714,13 @@ public partial class PlaybackBarView : UserControl
             // chopped the pill's rounded ends straight (Discord report, 2026-09-10).
             // Carrying the pill's width as the bar's minimum lets it overflow the column
             // symmetrically (Stretch centres an oversized child) with its ends intact.
-            MinWidth = IslandBorder.Width;
+            // GitHub #211: with many extras the pill outgrew the whole page column (700px
+            // in a 683px column at 1366×768: off the window's left edge, over the lyrics).
+            // Past LyricsPageFitWidth it is drawn scaled down to that width, every button
+            // kept, and the bar takes only that width, so its hit area stays off the lyrics.
+            var scale = LyricsPageIslandScale(IslandBorder.Width, LyricsPageFitWidth);
+            IslandBorder.RenderTransform = scale < 1 ? new ScaleTransform(scale, scale) : null;
+            MinWidth = scale < 1 ? LyricsPageFitWidth : IslandBorder.Width;
         }
         else if (!CompactWhenLyricsPageActive && _observedPlayerViewModel is { } vm)
         {
@@ -1699,9 +1728,13 @@ public partial class PlaybackBarView : UserControl
             if (Math.Abs(width - IslandBaseWidth) < 0.5)
                 width += extra;
             IslandBorder.Width = width;
+            IslandBorder.RenderTransform = null;
         }
         else
+        {
             IslandBorder.Width = IslandBaseWidth + extra;
+            IslandBorder.RenderTransform = null;
+        }
 
         // SizeChanged only fires when the arranged size actually changes, so re-apply
         // here too: a lyrics-page flip must refresh the track-info visibility even
@@ -1725,6 +1758,8 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandShowMiniPlayer ? 1 : 0)
                         + (vm.IslandShowQuickPlaylist ? 1 : 0) // GitHub #186
                         + (vm.IslandShowTrash ? 1 : 0)
+                        + (vm.IslandChaptersButtonVisible ? 1 : 0) // Discord: audiobook chapters
+                        + (vm.IslandStopButtonVisible ? 1 : 0) // Discord: Stop after Play/Pause
                         // GitHub #183: Lyrics is a stock button; hidden, it hands its 36px back.
                         - (vm.IslandLyricsButtonVisible ? 0 : 1);
             return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);
@@ -1735,6 +1770,11 @@ public partial class PlaybackBarView : UserControl
     /// window, enforced live via MaxWidth (see UpdateIslandMaxWidth).</summary>
     private static double ClampUserIslandWidth(double width) =>
         double.IsFinite(width) ? Math.Max(IslandMinUserWidth, width) : IslandBaseWidth;
+
+    /// <summary>How far the lyrics-page pill of <paramref name="width"/> is scaled to fit
+    /// <paramref name="fitWidth"/> (GitHub #211): 1 when it fits or no fit width is known.</summary>
+    internal static double LyricsPageIslandScale(double width, double fitWidth) =>
+        double.IsFinite(fitWidth) && fitWidth > 0 && width > fitWidth ? fitWidth / width : 1;
 
     /// <summary>Adapts the persistent bar's layout to its width, reusing the same
     /// hide-the-track-info trick the 340px lyrics state already relies on: full
@@ -2014,7 +2054,28 @@ public partial class PlaybackBarView : UserControl
     {
         var item = ChaptersMenuItem;
         item.Items.Clear();
-        if (!vm.HasChapters) return;
+        foreach (var row in BuildChapterItems(vm))
+            item.Items.Add(row);
+    }
+
+    /// <summary>
+    /// Discord "Chapter Button in Player Island": the island's Chapters menu, rebuilt per open
+    /// with the same rows as "…" → Chapters ▸ (<see cref="BuildChapterItems"/>).
+    /// </summary>
+    private void OnChaptersMenuOpening(object? sender, EventArgs e)
+    {
+        if (sender is not MenuFlyout menu || DataContext is not PlayerViewModel vm) return;
+        // Index 0 is the hidden placeholder from the XAML (see the quick playlist menu).
+        for (var i = menu.Items.Count - 1; i >= 1; i--) menu.Items.RemoveAt(i);
+        foreach (var row in BuildChapterItems(vm))
+            menu.Items.Add(row);
+    }
+
+    /// <summary>One row per chapter of the playing track, for both chapter menus.</summary>
+    private List<MenuItem> BuildChapterItems(PlayerViewModel vm)
+    {
+        var rows = new List<MenuItem>();
+        if (!vm.HasChapters) return rows;
         var chapters = vm.Chapters;
         var current = TrackChapter.IndexAt(chapters, vm.Position);
         for (var i = 0; i < chapters.Count; i++)
@@ -2035,8 +2096,9 @@ public partial class PlaybackBarView : UserControl
             Avalonia.Automation.AutomationProperties.SetName(row, $"{title.Text}, {start.Text}");
             if (i == current)
                 row.Icon = new LineIcon { Data = MenuV2.FindGeometry(this, "MenuLineCheck"), Classes = { "mv2-icon", "mv2-check" } };
-            item.Items.Add(row);
+            rows.Add(row);
         }
+        return rows;
     }
 
     private int _artistAvatarGeneration;

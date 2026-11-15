@@ -9,15 +9,35 @@
              x:Class="Noctis.Views.FavoritesView"
              x:DataType="vm:FavoritesViewModel"
              Focusable="True"
+             Classes.wide-album-gap="{Binding IsWideAlbumSpacing}"
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
     </UserControl.Resources>
 
+    <UserControl.Styles>
+        <!-- Album spacing as on the Albums page: 1.6.9's 8px between covers by default,
+             GitHub #210's 18px with Settings › "Wider spacing between albums". -->
+        <Style Selector="Button.album-tile">
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="4" />
+        </Style>
+        <Style Selector=".wide-album-gap Button.album-tile">
+            <Setter Property="Margin" Value="3,2" />
+            <Setter Property="Padding" Value="6" />
+        </Style>
+        <Style Selector="DockPanel.favorites-dock">
+            <Setter Property="Margin" Value="12,8,2,8" />
+        </Style>
+        <Style Selector=".wide-album-gap DockPanel.favorites-dock">
+            <Setter Property="Margin" Value="12,13,2,8" />
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="*">
         <!-- Right margin trimmed to 2 so the vertical scrollbar sits at the window edge. -->
-        <DockPanel Grid.Row="0" Margin="12,8,2,8">
+        <DockPanel Grid.Row="0" Classes="favorites-dock">
 
         <!-- Content area with overlay for empty state -->
         <Grid>
@@ -31,6 +51,12 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      SelectionMode="Single"
                      AutoScrollToSelectedItem="False">
+                <!-- Rows scrolled off stay in the tree and take the next favorites (11-14). -->
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <controls:RetainingVirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Focusable" Value="False" />
@@ -38,22 +64,19 @@
                 </ListBox.Styles>
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:FavoriteItemRow">
-                        <ItemsControl ItemsSource="{Binding Items}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <!-- Column count mirrors the VM's row chunk size (cover-size setting) -->
-                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).GridColumns}" Rows="1" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <!-- Column count mirrors the VM's row chunk size (cover-size setting). A row
+                             re-used for other favorites keeps its tiles (TileRow, 11-14). -->
+                        <controls:TileRow Items="{Binding Items}"
+                                          Columns="{Binding $parent[UserControl].((vm:FavoritesViewModel)DataContext).GridColumns}" Rows="1">
+                            <controls:TileRow.ItemTemplate>
                                 <DataTemplate x:DataType="m:FavoriteItem">
                                     <!-- Single button per item — left-click routed in code-behind -->
                                     <Button Classes="album-tile"
                                             AutomationProperties.Name="{Binding Title}"
                                             Focusable="False"
-                                            Margin="2"
                                             HorizontalAlignment="Stretch"
-                                            VerticalAlignment="Top"
+                                            VerticalAlignment="Stretch"
+                                            VerticalContentAlignment="Top"
                                             helpers:DragFileBehavior.EnableFileDrag="True"
                                             Tag="{Binding}"
                                             Loaded="OnAlbumTileLoaded"
@@ -145,8 +168,8 @@
                                         </StackPanel>
                                     </Button>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </controls:TileRow.ItemTemplate>
+                        </controls:TileRow>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

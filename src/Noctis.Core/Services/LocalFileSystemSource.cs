@@ -57,6 +57,7 @@ public sealed class LocalFileSystemSource : IFileSystemSource
             {
                 var ext = Path.GetExtension(file);
                 if (!MetadataService.SupportedExtensions.Contains(ext)) continue;
+                if (MetadataService.IsOwnTempFile(file)) continue;
 
                 // A file deleted or renamed between the listing above and now (NoBuffering
                 // pulls files lazily, so that window can be seconds to minutes on a large

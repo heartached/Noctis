@@ -17,7 +17,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 {
     private readonly PlayerViewModel _player;
     private readonly ILibraryService _library;
-    private readonly IPersistenceService _persistence;
     private readonly SidebarViewModel _sidebar;
     private readonly SettingsViewModel _settings;
 
@@ -68,7 +67,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         _player = player;
         _library = library;
-        _persistence = persistence;
         _sidebar = sidebar;
         _settings = settings;
 
@@ -77,8 +75,11 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         // and handles its own dirty/active gating when the column count changes.
         _settingsPropertyChangedHandler = (_, e) =>
         {
+            if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
+                OnPropertyChanged(nameof(IsWideAlbumSpacing));
             if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
-                or nameof(SettingsViewModel.AlbumTileTargetSize))
+                or nameof(SettingsViewModel.AlbumTileTargetSize)
+                or nameof(SettingsViewModel.AlbumGridWideSpacing))
                 Dispatcher.UIThread.Post(() => UpdateGridMetrics(_lastUsableWidth));
         };
         _settings.PropertyChanged += _settingsPropertyChangedHandler;
@@ -99,6 +100,9 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private EventHandler? _favoritesChangedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _settingsPropertyChangedHandler;
 
+    /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
+    public bool IsWideAlbumSpacing => _settings.AlbumGridWideSpacing;
+
     /// <summary>
     /// Recomputes column count and tile size from the view's usable width and the
     /// cover-size setting (mirrors <see cref="LibraryAlbumsViewModel.UpdateGridMetrics"/>).
@@ -112,7 +116,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 
         var columns = Helpers.AlbumGridMetrics.ComputeColumns(
             usableWidth, _settings.AlbumTileSizeAuto, _settings.AlbumTileTargetSize);
-        var newSize = Helpers.AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+        var newSize = Helpers.AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
 
         var columnsChanged = columns != GridColumns;
         if (!columnsChanged && Math.Abs(newSize - TileArtworkSize) < 0.5)
@@ -367,28 +371,28 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.Tracks, 0);
+        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.Tracks);
+        _player.PlayShuffled(album.EditionTracks);
     }
 
     [RelayCommand]
     private void PlayNextAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.AddNextRange(album.Tracks.ToList(), album.Name);
+        _player.AddNextRange(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
     private void AddAlbumToQueue(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
+        _player.AddRangeToQueue(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -445,7 +449,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         {
             var album = item.Album!;
             if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
-            var ordered = Helpers.AlbumTile.OrderedTracks(album);
+            var ordered = Helpers.AlbumTile.EditionOrder(album);
             if (ordered.Count == 0) return;
             _player.ReplaceQueueAndPlay(ordered, 0);
             return;
@@ -547,6 +551,17 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         await MetadataHelper.OpenAudioConverterDialog(tracks);
     }
 
+    /// <summary>GitHub #208: the album menu's lyrics entry is Find Lyrics… for every song (or the Ctrl-selection), as on the Albums page.</summary>
+    [RelayCommand]
+    private async Task FindLyricsItem(FavoriteItem item)
+    {
+        var items = SelectionOr(item);
+        CtrlSelectedItems.Clear();
+        var tracks = ExpandToTracks(items);
+        if (tracks.Count == 0) return;
+        await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: false);
+    }
+
     [RelayCommand]
     private async Task ScanItemReplayGain(FavoriteItem item)
     {
@@ -609,14 +624,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void SearchLyricsTrack(Track track)
     {
         if (track != null) _searchLyricsAction?.Invoke(track);
-    }
-
-    /// <summary>Album menu: Search Lyrics for the album's first song (as on Home).</summary>
-    [RelayCommand]
-    private void SearchLyricsAlbum(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _searchLyricsAction?.Invoke(album.Tracks[0]);
     }
 
     private Action<string>? _viewArtistAction;

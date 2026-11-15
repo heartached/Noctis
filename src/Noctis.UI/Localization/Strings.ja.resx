@@ -575,6 +575,14 @@
     <value>プレイリスト、「曲」、プレーヤーのアーティスト名・アルバム名・ジャンル名をアクセントカラーで表示します。オフにすると通常の文字色になります。</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve">
+    <value>ウィンドウをアクセントカラーで色付け</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment>
+  </data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve">
+    <value>ウィンドウとページの背景にアクセントカラーをほんのり加えます。</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
+  </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} 曲</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
@@ -1013,6 +1021,14 @@
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
     <value>現在のものとその隣のものを除くすべての行を暗くします。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>全画面ではプレイヤーアイランドを隠す</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>全画面の歌詞ページでは、曲の下に進行バーだけを表示します。再生はキーボードショートカットで操作できます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -3144,6 +3160,14 @@
     <value>歌詞を検索</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>歌詞を追加</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>歌詞を編集</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>歌詞を検索中</value>
     <comment>Text in LyricsView.axaml</comment>
@@ -4520,6 +4544,10 @@
   </data>
   <data name="PlaybackBar.Plain" xml:space="preserve">
     <value>プレーン</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>歌詞を隠す</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
@@ -7312,12 +7340,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>ダウンロードを削除</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0}個のプレイリスト</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>アクセントは17色に。「アートワークに合わせる」で再生中のジャケットの色になります。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>再生画面にスリープタイマー。曲のメニューに「1か月スヌーズ」と「曲を非表示」。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>＋でプレイリストを作成し、好きなカバーを設定できます。カバーはパソコンと同期されます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>曲のメニューに「再生中の曲の前に追加」。再生済みの曲をキューに残せます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>スマホの曲とパソコンの同じ曲は1つにまとめて表示されます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>スクロールがなめらかに、ページ表示が速くなり、横向きでは歌詞がジャケットの横に表示されます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>プレイリストの中で「曲を追加」：＋をタップしてライブラリから曲を選べます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>歌詞が画面に合わせて表示され、なめらかにスクロールします。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>コンピュータの曲が「最近追加した項目」に表示されます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>曲をキューの上端か下端までドラッグすると、リストが一緒にスクロールします。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>起動が速くなり、ライブラリの読み込み中も固まらず、メニューもなめらかになりました。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>再生バーは高さ全体でタップに反応し、横向きでも画面に収まります。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>再生、メディアセッション、デコーダのJNIラッパー。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザインターフェイスのフレームワーク。</value></data>
@@ -7438,6 +7466,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>すべて選択</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>すべて選択解除</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>完了</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>曲を追加</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>ライブラリを検索</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>プレイリストを読み込む</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}曲中{0}曲を読み込みました</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0}件のプレイリストを読み込みました</value></data>
@@ -7475,6 +7505,7 @@
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>ファイルを読み込めませんでした: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} は空です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} をインポートしました</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>貼り付けた歌詞</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} を通常の歌詞としてインポートしました（タイムスタンプなし）。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>検索サービスを利用できません。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>タイトルとアーティストが必要です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -7528,7 +7559,6 @@
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>ライブラリの歌詞を探す（{0}）</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0}の歌詞を取得</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis がこれらの曲に保存した歌詞（.lrc ファイルとキャッシュ）を削除します。自分で作成した歌詞ファイルはそのままです。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>オンラインで歌詞を探し（単語同期を優先）、曲の横に保存します。自分の歌詞ファイルが置き換えられることはありません。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>まだ何も削除していません。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>準備完了。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>隠す</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -7557,6 +7587,17 @@
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} 曲は通常の歌詞のみです。Lyrics Studio はこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>最初の {0} 曲を一度に開きます。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} 枚のアルバム</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>すべてのアーティスト</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>小規模なアーティストを隠す</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>{0:N0} 曲未満</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>フィルターですべてのアーティストが非表示になっています</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>フィルターメニューで「すべてのアーティスト」を選ぶか、名前で検索してください</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>小規模なアーティストを隠す</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>曲数の少ないアーティストをアーティストページから外します。検索や、曲・アルバムのアーティストリンクからは引き続き開けます。各名前の下に表示される、そのアーティストがメインの曲数で数えます。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>次の曲数未満のアーティストを隠す</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>ホバーするまでサイドバーを隠す</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>サイドバーを完全に隠し、ページを全幅で表示します。ポインターをウィンドウの左端に移動すると表示されます。</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} トラック</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} 項目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value><comment>Short duration (sidebar playlist row)</comment></data>

@@ -56,12 +56,40 @@
                         <Border Background="{DynamicResource PillDialogScrimBrush}" />
                     </Panel>
 
+                    <!-- The card's frame: PART_Card and, under it, the card's Liquid Glass (#234).
+                         Sized by the card, so the glass has the card's exact geometry. -->
+                    <Panel HorizontalAlignment="Center"
+                           VerticalAlignment="Center">
+                    <!-- Liquid Glass card (GitHub #234), the Settings sheet's frost: shown only
+                         while Liquid Glass is on AND the blurred owner snapshot is up (the
+                         window is transparent, so without the snapshot there is nothing to
+                         frost but the live app). A sibling UNDER the card, never inside its
+                         opacity layer (the GPU backend does not fade a GlassPanel's draw with
+                         an ancestor's opacity), so PillDialogHost moves it with the card and
+                         fades its Fade. Off, it is hidden and the fill below paints the card
+                         exactly as before.
+                         BeneathRepaintsWhole: all that lies beneath it is PART_BackdropLayer, which
+                         fills the host, so any change there repaints the whole card; a list
+                         scrolling inside the card then never costs a second, full-card frame. -->
+                    <controls:GlassPanel x:Name="PART_CardGlass"
+                                         BeneathRepaintsWhole="True"
+                                         UseAppGlass="False"
+                                         IsGlassActive="False"
+                                         IsVisible="False"
+                                         IsHitTestVisible="False"
+                                         Background="{TemplateBinding Background}"
+                                         CornerRadius="{TemplateBinding CornerRadius}"
+                                         BlurRadius="22"
+                                         EdgeThickness="0"
+                                         BoxShadow="0 24 64 0 #8C000000, 0 2 10 0 #40000000"
+                                         Fade="0" />
                     <Panel x:Name="PART_Card"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center">
                         <!-- Fill + shadow on their own Border: a clipping Border would clip
-                             its own shadow too. -->
-                        <Border Background="{TemplateBinding Background}"
+                             its own shadow too. Hidden while the glass above paints the card. -->
+                        <Border x:Name="PART_CardFill"
+                                Background="{TemplateBinding Background}"
                                 CornerRadius="{TemplateBinding CornerRadius}"
                                 BoxShadow="0 24 64 0 #8C000000, 0 2 10 0 #40000000" />
                         <Border CornerRadius="{TemplateBinding CornerRadius}"
@@ -75,6 +103,7 @@
                                 BorderThickness="1"
                                 BorderBrush="{DynamicResource PillDialogRimBrush}"
                                 IsHitTestVisible="False" />
+                    </Panel>
                     </Panel>
                 </Panel>
             </ControlTemplate>

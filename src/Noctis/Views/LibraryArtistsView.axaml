@@ -35,6 +35,12 @@
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                      SelectionMode="Single"
                      AutoScrollToSelectedItem="False">
+                <!-- Rows scrolled off stay in the tree and take the next artists (11-14). -->
+                <ListBox.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ctrl:RetainingVirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
                 <ListBox.Styles>
                     <Style Selector="ListBoxItem">
                         <Setter Property="Focusable" Value="False" />
@@ -56,13 +62,10 @@
                 </ListBox.Styles>
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="m:ArtistRow">
-                        <ItemsControl ItemsSource="{Binding Artists}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                        <!-- A row re-used for other artists keeps its tiles (TileRow, 11-14). -->
+                        <ctrl:TileRow Items="{Binding Artists}"
+                                      Columns="{Binding $parent[UserControl].((vm:LibraryArtistsViewModel)DataContext).GridColumns, FallbackValue=7}" Rows="1">
+                            <ctrl:TileRow.ItemTemplate>
                                 <DataTemplate DataType="{x:Type m:Artist}">
                                     <!-- Only the portrait circle is interactive: the Button IS the circle
                                          (fixed square + elliptical Clip, which Avalonia hit-testing honours),
@@ -139,10 +142,23 @@
                                                              TextAlignment="Center"
                                                              MaxWidth="198"
                                                              HorizontalAlignment="Center" />
+                                    <!-- GitHub #233: "3 albums · 41 songs", built with the rows (Artist.CountsLine),
+                                         so a scrolled-in tile binds a ready string. Every tile has one, so the
+                                         rows stay one height. Pulled up under the name, not the panel's 10px gap. -->
+                                    <TextBlock Text="{Binding CountsLine}"
+                                               Margin="0,-8,0,0"
+                                               FontSize="12"
+                                               Opacity="0.55"
+                                               TextWrapping="NoWrap"
+                                               MaxLines="1"
+                                               TextTrimming="CharacterEllipsis"
+                                               TextAlignment="Center"
+                                               MaxWidth="198"
+                                               HorizontalAlignment="Center" />
                                     </StackPanel>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </ctrl:TileRow.ItemTemplate>
+                        </ctrl:TileRow>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
@@ -167,6 +183,8 @@
                             Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
                     <Button ctrl:ColumnsPanel.Column="Time" Content="{loc:T LibraryArtists.ColumnTime}" Command="{Binding SortByColumnCommand}" CommandParameter="time"
                             Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
+                    <Button ctrl:ColumnsPanel.Column="Plays" Content="{loc:T LibraryArtists.ColumnPlays}" Command="{Binding SortByColumnCommand}" CommandParameter="plays"
+                            Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Center" HorizontalAlignment="Center" />
                     <Button ctrl:ColumnsPanel.Column="Genre" Content="{loc:T LibraryArtists.ColumnGenre}" Command="{Binding SortByColumnCommand}" CommandParameter="genre"
                             Background="Transparent" BorderThickness="0" Padding="0" MinWidth="0" FontSize="12" FontWeight="SemiBold" Opacity="0.7" Cursor="Hand" HorizontalContentAlignment="Left" HorizontalAlignment="Left" />
                 </ctrl:ColumnHeaderPanel>
@@ -187,6 +205,12 @@
                          Padding="0,0,0,115"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <!-- Rows scrolled off stay in the tree and take the next artist (11-14). -->
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <ctrl:RetainingVirtualizingStackPanel />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
                     <ListBox.Styles>
                         <Style Selector="ListBoxItem">
                             <Setter Property="Focusable" Value="False" />
@@ -295,6 +319,10 @@
                                         <TextBlock Text="{Binding DurationFormatted}" FontSize="12" Opacity="0.5"
                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                                     </Border>
+                                    <Border ctrl:ColumnsPanel.Column="Plays">
+                                        <TextBlock Text="{Binding PlayCount}" FontSize="12" Opacity="0.5"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
                                     <Border ctrl:ColumnsPanel.Column="Genre">
                                         <TextBlock Text="{Binding Genre}" FontSize="12" Opacity="0.5"
                                                    TextTrimming="CharacterEllipsis"
@@ -332,13 +360,26 @@
                         VerticalAlignment="Center"
                         Spacing="8">
                 <TextBlock Text="{loc:T LibraryArtists.NoArtistsFound}"
-                           IsVisible="{Binding !HasActiveFilter}"
+                           IsVisible="{Binding IsNoArtistsState}"
                            FontSize="18"
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
                 <TextBlock Text="{loc:T LibraryArtists.AddMusicFoldersSettings}"
-                           IsVisible="{Binding !HasActiveFilter}"
+                           IsVisible="{Binding IsNoArtistsState}"
+                           FontSize="13"
+                           Opacity="0.3"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <!-- GitHub #233: every artist is under the Hide Small Artists threshold. -->
+                <TextBlock Text="{loc:T LibraryArtists.AllArtistsHidden}"
+                           IsVisible="{Binding IsSmallArtistsHiddenState}"
+                           FontSize="18"
+                           Opacity="0.5"
+                           HorizontalAlignment="Center"
+                           TextAlignment="Center" />
+                <TextBlock Text="{loc:T LibraryArtists.AllArtistsHiddenHint}"
+                           IsVisible="{Binding IsSmallArtistsHiddenState}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"

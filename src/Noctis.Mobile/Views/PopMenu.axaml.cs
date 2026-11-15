@@ -55,6 +55,18 @@ public partial class PopMenu : UserControl
     internal static readonly Avalonia.Animation.Easings.Easing PopCloseEase = new CubicBezierEase(0.2, 0, 0, 1);
     internal static readonly Avalonia.Animation.Easings.Easing PopCloseFadeEase = new CubicBezierEase(0.4, 0, 1, 1);
 
+    // The glass is lite while it moves (GlassPanel.Lite: one blur, no spill, no lens; on an S23 the
+    // full glass cost frames over 25 ms through most of the pop, 11-14): lite from the first frame
+    // of the open, cross-fading into the full glass once the spring has run (LiteOutMs), and back to
+    // lite as the close starts (LiteInMs, quick: the card is still at full strength then).
+    internal const double LiteOutMs = 140;
+    internal const double LiteInMs = 90;
+
+    // Bumped by every pose change of a glass: a deferred cross-fade of an older run sees it changed.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<GlassPanel, System.Runtime.CompilerServices.StrongBox<int>> LiteRuns = new();
+
+    private static int NextLiteRun(GlassPanel glass) => ++LiteRuns.GetOrCreateValue(glass).Value;
+
     /// <summary>The card's width for an item's menu, and for the Library's three rows.</summary>
     internal const double ItemWidth = 250, LibraryWidth = 250;
     /// <summary>The card keeps this far from the screen's sides and the bottom chrome, and
@@ -95,6 +107,32 @@ public partial class PopMenu : UserControl
         _top = TopLevel.GetTopLevel(this);
         _top?.AddHandler(Button.ClickEvent, OnTapped, RoutingStrategies.Bubble, handledEventsToo: true);
         _top?.AddHandler(LongPress.FiredEvent, OnTapped, RoutingStrategies.Bubble, handledEventsToo: true);
+    }
+
+    /// <summary>How long after the shell appears the song menu's card is built while hidden
+    /// (<see cref="ShellView.PrebuildMenuSoon"/>).</summary>
+    internal const double PrebuildDelayMs = 2500;
+
+    /// <summary>
+    /// Builds the song menu's card (the ⋯ every list and Now Playing opens) while nothing is on
+    /// screen, a moment after launch (the Android head asks, through ShellView): the first open
+    /// otherwise built its rows inside the tap's frame, a 61-75 ms stall on an S23 (11-14) that
+    /// every later open skips, the built view
+    /// being recycled and only rebound (see Close). A hidden card is never measured, so it is
+    /// shown for this one layout pass, inert, and hidden again before any frame draws it; the
+    /// next open of a song's menu rebinds it to that song. Skipped once any menu has opened.
+    /// </summary>
+    internal void Prebuild()
+    {
+        if (_shell == null || IsVisible || MenuContent.Content != null || !this.IsAttachedToVisualTree()) return;
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        MenuContent.Content = ContextSheetViewModel.ForTrack(_shell, new Noctis.Models.Track { Title = string.Empty, Artist = string.Empty });
+        Card.Width = ItemWidth;
+        IsHitTestVisible = false;
+        IsVisible = true;
+        UpdateLayout();
+        IsVisible = false;
+        Services.FrameStallMonitor.AddTime("menu prebuild", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -236,7 +274,9 @@ public partial class PopMenu : UserControl
     internal static void PopFrom(Control card, GlassPanel glass, Control body, RelativePoint origin, PopPose pose, Control? scrim = null)
     {
         PopDone(card, glass, body, scrim);
+        NextLiteRun(glass);
         glass.Fade = 0;
+        glass.Lite = 1;
         body.Opacity = 0;
         if (scrim != null) scrim.Opacity = 0;
         card.RenderTransform = pose.Transform();
@@ -262,6 +302,15 @@ public partial class PopMenu : UserControl
         body.Opacity = 1;
         if (scrim != null) scrim.Opacity = 1;
         card.RenderTransform = PopPose.Rest.Transform();
+
+        // At rest: into the full glass.
+        var run = NextLiteRun(glass);
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (LiteRuns.TryGetValue(glass, out var now) && now.Value != run) return;
+            glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.LiteProperty, Duration = TimeSpan.FromMilliseconds(LiteOutMs) } };
+            glass.Lite = 0;
+        }, TimeSpan.FromMilliseconds(PopOpenMs));
     }
 
     /// <summary>The pop reversed, quicker (<see cref="PopCloseMs"/>): back to
@@ -270,7 +319,12 @@ public partial class PopMenu : UserControl
     internal static void PopOut(Control card, GlassPanel glass, Control body, PopPose pose, Control? scrim = null)
     {
         var duration = TimeSpan.FromMilliseconds(PopCloseMs);
-        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseFadeEase } };
+        NextLiteRun(glass);
+        glass.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseFadeEase },
+            new DoubleTransition { Property = GlassPanel.LiteProperty, Duration = TimeSpan.FromMilliseconds(LiteInMs) },
+        };
         body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
         if (scrim != null)
             scrim.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
@@ -279,6 +333,7 @@ public partial class PopMenu : UserControl
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = duration, Easing = PopCloseEase },
         };
         glass.Fade = 0;
+        glass.Lite = 1;
         body.Opacity = 0;
         if (scrim != null) scrim.Opacity = 0;
         card.RenderTransform = pose.Transform();

@@ -57,7 +57,7 @@ public class LinuxResumeWatcherTests
         // signal that throws, and Tmds disconnects the bus when a handler throws.
         var wokeUp = TmdsNotification(value: false, isCompletion: false);
         Assert.True(wokeUp.HasValue);
-        Assert.Throws<InvalidOperationException>(() => wokeUp.Exception);
+        Assert.Throws<InvalidOperationException>(() => wokeUp.CompletionReason);
     }
 
     [Fact]

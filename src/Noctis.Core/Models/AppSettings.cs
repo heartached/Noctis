@@ -34,8 +34,12 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>GitHub #71: whether files/folders dropped onto Noctis are moved into the
     /// managed "Noctis Imports" folder and added to the library (true, the original
-    /// behaviour) or played/queued from where they are without touching the library.</summary>
-    public bool ImportDroppedMedia { get; set; } = true;
+    /// behaviour) or played/queued from where they are without touching the library.
+    /// Off on a new install (2026-11-14): a song dragged in from Downloads vanished from there
+    /// (File.Move); off, the drop zones say what happens (Play now / Add to library, files stay
+    /// where they are / New playlist). A settings.json saved before the setting existed keeps
+    /// it on (<see cref="OnDeserializing"/>).</summary>
+    public bool ImportDroppedMedia { get; set; }
 
     /// <summary>GitHub #74: playlist page furniture, each opt-out. Album run headers
     /// above each same-album run, the NEW badge on tracks added in the last 7 days,
@@ -127,6 +131,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #125: artist, album and genre names in song lists take the accent colour.
     /// Off shows them in the plain text colour.</summary>
     public bool AccentTrackLinks { get; set; } = true;
+
+    /// <summary>GitHub #240: the window and page background take a subtle shade of the accent
+    /// colour (App.SetAccent via AccentWindowTint). Off keeps the theme's own colours.</summary>
+    public bool TintWindowWithAccent { get; set; }
 
     /// <summary>Settings › Appearance › App Icon: id of the window/taskbar/tray icon
     /// ("classic", "blush", "sky", ...). Unknown ids fall back to classic.</summary>
@@ -327,8 +335,11 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
     /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
-    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>.</summary>
-    public int PlayCountThresholdPercent { get; set; }
+    /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>. Half the song on a
+    /// new install (2026-11-14): counted at the start, skipping through a shuffle filled Home,
+    /// Stats and Wrapped with songs never heard (what #101 was about). A settings.json saved
+    /// before the setting existed keeps 0 (<see cref="OnDeserializing"/>).</summary>
+    public int PlayCountThresholdPercent { get; set; } = 50;
 
     /// <summary>The Settings picker's choices for <see cref="PlayCountThresholdPercent"/>.</summary>
     public static IReadOnlyList<int> PlayCountThresholdChoices { get; } = new[] { 0, 25, 50, 75, 90 };
@@ -660,6 +671,14 @@ public class AppSettings : IJsonOnDeserializing
     /// "Vinyl" or "Cassette" (<see cref="AlbumCarouselStyles.Parse"/>). Shared by both carousels.</summary>
     public string AlbumCarouselStyle { get; set; } = AlbumCarouselStyles.DefaultSetting;
 
+    /// <summary>GitHub #233: a soft glow in the cover's colour behind the carousel's centred album.</summary>
+    public bool AlbumCarouselGlow { get; set; } = true;
+
+    /// <summary>GitHub #233: albums wearing their own carousel style whatever
+    /// <see cref="AlbumCarouselStyle"/> is: album id (Guid "N", stable across rescans) →
+    /// style name. Set from the album menu's Carousel Style ▸; never pruned automatically.</summary>
+    public Dictionary<string, string>? AlbumCarouselStyleOverrides { get; set; }
+
     /// <summary>Built-in feature switch (Settings › Plugins › Built-in Features): the album
     /// carousel and its cases. Off shows the grid on the Albums page and the artist page and
     /// hides the way to the carousel; <see cref="AlbumViewMode"/> is kept for when it returns.</summary>
@@ -675,6 +694,14 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Artists page layout: "grid" (portrait tiles, the default) or "list" (rows
     /// with Albums / Songs / Time / Genre columns, like the Songs page).</summary>
     public string ArtistViewMode { get; set; } = "grid";
+
+    /// <summary>GitHub #233: leave artists with fewer than <see cref="SmallArtistMinSongs"/>
+    /// songs out of the Artists page (search and artist links still reach them). Off by default.</summary>
+    public bool HideSmallArtists { get; set; }
+
+    /// <summary>The song count an artist needs to stay on the Artists page while
+    /// <see cref="HideSmallArtists"/> is on: 2, 3, 5 or 10.</summary>
+    public int SmallArtistMinSongs { get; set; } = 3;
 
     /// <summary>Artists list view columns (GitHub #151): order, dragged widths and hidden
     /// columns, in the same comma-separated forms as <see cref="SongsColumnOrder"/>.</summary>
@@ -792,8 +819,9 @@ public class AppSettings : IJsonOnDeserializing
     /// <see cref="UiScaleChoices"/>; 100 = unchanged.</summary>
     public int UiScalePercent { get; set; } = 100;
 
-    /// <summary>The Settings picker's choices for <see cref="UiScalePercent"/>.</summary>
-    public static IReadOnlyList<int> UiScaleChoices { get; } = new[] { 90, 100, 110, 125, 150, 175, 200 };
+    /// <summary>The Settings picker's choices for <see cref="UiScalePercent"/>. Down to 60% for
+    /// small screens and dense layouts (Discord, Major D ark); UiScale.MinFactor stays below.</summary>
+    public static IReadOnlyList<int> UiScaleChoices { get; } = new[] { 60, 70, 75, 80, 90, 100, 110, 125, 150, 175, 200 };
 
     /// <summary>The nearest of <see cref="UiScaleChoices"/>: a hand-edited value snaps.</summary>
     public static int SnapUiScale(int percent) =>
@@ -838,11 +866,29 @@ public class AppSettings : IJsonOnDeserializing
     /// to fill the row. 220 mirrors the classic five-per-row look at a typical window width.</summary>
     public double AlbumTileTargetSize { get; set; } = 220;
 
+    /// <summary>GitHub #213: the Albums grid stacks covers per column by their real height
+    /// (Masonry) instead of in rows. Off keeps the row grid.</summary>
+    public bool AlbumGridMasonry { get; set; }
+
+    /// <summary>The album grids (Albums, Favorites, Home, artist page) keep GitHub #210's
+    /// spacing: 18px between covers and Albums rows sized to their own captions. Off (default)
+    /// is 1.6.9's look: 8px between covers and one row height for every Albums row.</summary>
+    public bool AlbumGridWideSpacing { get; set; }
+
+    /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
+    /// glow and its neighbours step back. Off by default.</summary>
+    public bool AlbumHoverZoom { get; set; }
+
     /// <summary>How the large now-playing cover on the Lyrics page is dressed: "Cover"
     /// (default, the plain square), "CompactDisc", "Vinyl" or "Cassette" — see
     /// <see cref="ArtworkMedium"/>. Stored as a string like the other style pickers so an
     /// unknown value from a newer build falls back to the cover instead of failing to load.</summary>
     public string NowPlayingArtworkStyle { get; set; } = ArtworkMediums.DefaultSetting;
+
+    /// <summary>Disc scratching (Discord, Mistery): the CD / vinyl record on the Lyrics page and
+    /// the Sleeve mini player can be grabbed and turned to move through the song like a DJ.
+    /// Off by default.</summary>
+    public bool DiscScratching { get; set; }
 
     /// <summary>Mini player design: "Classic" (the size-morphing card), "Pill" or "Sleeve";
     /// see <see cref="MiniPlayerStyle"/>. Stored by name like the other style pickers.</summary>
@@ -909,6 +955,18 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #186: a Quick Add to Playlist button in the island's right cluster (off by default).</summary>
     public bool PlaybackBarShowQuickPlaylist { get; set; }
 
+    /// <summary>Discord "Chapter Button in Player Island": a Chapters button in the island's right
+    /// cluster, opening the "…" menu's chapter list; shown only while the track has chapters.
+    /// Off by default, like the #186 buttons.</summary>
+    public bool PlaybackBarShowChapters { get; set; }
+
+    /// <summary>Discord (Major D ark): a Stop button after Play/Pause that halts playback and
+    /// releases the audio device (Exclusive Mode). Off by default.</summary>
+    public bool PlaybackBarShowStop { get; set; }
+
+    /// <summary>Show the Stop button only while Exclusive Mode is on (saves island room).</summary>
+    public bool PlaybackBarStopOnlyInExclusiveMode { get; set; }
+
     /// <summary>GitHub #186: the quick playlists' ids, one per slot (at most three;
     /// <see cref="Guid.Empty"/> = an empty slot).</summary>
     public List<Guid> PlaybackBarQuickPlaylistIds { get; set; } = new();
@@ -948,6 +1006,12 @@ public class AppSettings : IJsonOnDeserializing
     /// Off by default to preserve the compact icon rail.</summary>
     public bool SidebarAlwaysExpanded { get; set; } = false;
 
+    /// <summary>GitHub #233: the sidebar is hidden entirely (the page takes the full width) and
+    /// slides in over the page while the pointer is at the left window edge or on it. Off by
+    /// default. Settings greys it out while <see cref="SidebarAlwaysExpanded"/> is on, and
+    /// the other way round.</summary>
+    public bool SidebarAutoHide { get; set; }
+
     /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
     /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
     /// from the list keeps its built-in place.</summary>
@@ -956,6 +1020,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Sidebar page keys the user hid (GitHub #199). Settings can never be hidden.
     /// A hidden page stays reachable from shortcuts, menus and links.</summary>
     public List<string> SidebarHiddenPages { get; set; } = new();
+
+    /// <summary>The Genres page is hidden by default (owner 11-14). False on a new profile, on
+    /// Reset and on a profile from before 1.7.0: the page is hidden once, then the user's
+    /// choice in Settings › General › Pages stands.</summary>
+    public bool SidebarGenresDefaultApplied { get; set; }
 
     /// <summary>Page Noctis opens on (a sidebar page key). Falls back to "home" when the page is
     /// hidden or not available (GitHub #199).</summary>
@@ -987,6 +1056,10 @@ public class AppSettings : IJsonOnDeserializing
     /// files the grouping re-keyed, so other players show the same album. Off by default; only
     /// acts while <see cref="AlbumGroupingEnabled"/> is on.</summary>
     public bool AlbumGroupingWriteTags { get; set; }
+
+    /// <summary>Albums that also list another album's songs (Link Tracks From, a deluxe edition
+    /// borrowing the original's tracks). Read by LibraryService when it builds albums.</summary>
+    public List<AlbumLink> AlbumLinks { get; set; } = new();
 
     /// <summary>GitHub #193: the one-time re-read of songs a 1.6.8 grouping re-keyed without
     /// keeping their own album artist (LibraryService.ResolveUngroupedAlbumsAsync) has run.</summary>
@@ -1137,6 +1210,11 @@ public class AppSettings : IJsonOnDeserializing
     /// connecting is the opt-in; this lets a connected user turn them off.</summary>
     public bool LastFmTasteEnabled { get; set; } = true;
 
+    /// <summary>GitHub #222: where the Statistics page's listening figures come from: "Library"
+    /// (the play log, default) or "LastFm" (the connected account's charts; offered only while an
+    /// account is connected, and the library is used whenever none is).</summary>
+    public string StatisticsSource { get; set; } = "Library";
+
     /// <summary>GitHub #160: how an imported play count combines with Noctis's count:
     /// "KeepHigher" (default, never lowers a count) or "Replace" (PlayCountImportMode).</summary>
     public string PlayCountImportMode { get; set; } = "KeepHigher";
@@ -1251,6 +1329,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Visualizer bars take the current artwork's colour (default) instead of white/accent.</summary>
     public bool LyricsVisualizerArtworkColor { get; set; } = true;
 
+    /// <summary>GitHub #205: the visualizer's bars weighted like a studio analyser (tilted up toward
+    /// the treble, deeper floor) so the quiet top octave shows. Off by default: the stock look.</summary>
+    public bool LyricsVisualizerFullSpectrum { get; set; }
+
     /// <summary>Optional looping video/GIF the lyrics page paints behind the lyrics
     /// (copied into the data root by Settings → Appearance). Empty = none; the blurred
     /// artwork background shows as usual.</summary>
@@ -1270,6 +1352,13 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Share Lyrics › Lyrics Page: readability tint strength, 0–100.</summary>
     public int ShareLyricsPageBackgroundStrength { get; set; } = 70;
 
+    /// <summary>Share Lyrics: draw the Noctis wordmark on the card and its video (off = no watermark).</summary>
+    public bool ShareLyricsShowWordmark { get; set; } = true;
+
+    /// <summary>Share Lyrics: the dialog opens following playback (off = the user turned Follow
+    /// playback off, by its box or by picking a line; it stays off until they tick it again).</summary>
+    public bool ShareLyricsFollowPlayback { get; set; } = true;
+
     /// <summary>Show a music video found next to the song (same name, or a videos folder) in place of the cover on the lyrics page.</summary>
     public bool MusicVideosEnabled { get; set; } = true;
 
@@ -1287,6 +1376,11 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Opt-in fullscreen focus — dims everything but the active line and its
     /// closest neighbors while the lyrics page is fullscreen.</summary>
     public bool LyricsFullScreenFocusEnabled { get; set; }
+
+    /// <summary>GitHub #211: the full-screen lyrics page hides the player island (its buttons);
+    /// the progress line under the song stays, and keyboard shortcuts keep controlling
+    /// playback. Windowed, the island shows as always. Off by default.</summary>
+    public bool LyricsFullScreenHideIsland { get; set; }
 
     /// <summary>Fresh-install value of <see cref="LyricsMinLineOpacity"/>; double-tapping the
     /// slider thumb in Settings snaps back to it.</summary>
@@ -1308,10 +1402,21 @@ public class AppSettings : IJsonOnDeserializing
     /// sweep alone marks the vocal).</summary>
     public bool LyricsGlowAndLift { get; set; } = true;
 
+    /// <summary>The plugin renderer that draws the lyric lines (plugin API 1.8, Settings → Lyrics →
+    /// Lyrics Renderer), as "&lt;plugin id&gt;/&lt;renderer name&gt;"; empty (the default) is
+    /// Noctis's own. Kept while that plugin is off or gone: Noctis draws its own lines meanwhile,
+    /// and the choice comes back with the plugin.</summary>
+    public string LyricsRenderer { get; set; } = "";
+
     /// <summary>The full-screen lyrics page slides the cover, track info and controls to the
     /// middle when the song has no lyrics (none found, instrumental, or marked as none),
     /// instead of leaving the lyrics half empty. Ships on.</summary>
     public bool LyricsCenterWhenNoLyrics { get; set; } = true;
+
+    /// <summary>Discord (f7uh): the lyrics page hides the lyrics and shows the centred player
+    /// even when the song has lyrics (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics). The lyrics
+    /// stay loaded; only the page's lyrics column goes. Off by default.</summary>
+    public bool LyricsPageHideLyrics { get; set; }
 
     /// <summary>GitHub #184: the lyrics page's background (blurred cover, flowing style,
     /// background video, colour) reaches the window's left edge under the sidebar rail, so
@@ -1345,6 +1450,17 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>GitHub #195: songs new to the library go through a background bulk lyrics run.</summary>
     public bool LyricsAutoFindNew { get; set; }
 
+    /// <summary>GitHub #217: the Find Lyrics dialog's options as last ticked ("Also upgrade songs with
+    /// plain or line-synced lyrics", "Look again at songs an earlier run already checked", "Review
+    /// what's found before saving"), so the next run starts with them.</summary>
+    public bool BulkLyricsUpgrade { get; set; }
+    public bool BulkLyricsRecheck { get; set; }
+    public bool BulkLyricsReviewFirst { get; set; }
+
+    /// <summary>GitHub #219: every song without synced lyrics is looked up gradually in the background
+    /// (and new songs as they arrive); misses are asked again after a month. Off by default.</summary>
+    public bool LyricsAutoFindLibrary { get; set; }
+
     // ── Lyrics providers ──
 
     /// <summary>Whether LRCLIB online lyrics search is enabled.</summary>
@@ -1371,6 +1487,11 @@ public class AppSettings : IJsonOnDeserializing
     /// automatically. On: keyless, documented for third-party reads (120 a minute per IP), two
     /// small requests per lookup.</summary>
     public bool UnisonEnabled { get; set; } = true;
+
+    /// <summary>GitHub #219: whether lrcmux (lrcmux.dev: Deezer, KuGou, YouTube Music and Musixmatch
+    /// relayed, keyless, 60 requests a minute) is searched automatically, after the other sources.
+    /// Off: a third-party relay whose loose match often credits the composer, so fewer answers validate.</summary>
+    public bool LrcMuxEnabled { get; set; }
 
     /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
     /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
@@ -1499,7 +1620,33 @@ public class AppSettings : IJsonOnDeserializing
         IgnoreLeadingWordsInArtistSort = false;
         // Sleep timer Fade Out (2026-10-29): the timer used to pause outright.
         SleepTimerFadeSeconds = 0;
+        // New-install defaults of 2026-11-14: plays counted at the start, drops moved in.
+        PlayCountThresholdPercent = 0;
+        ImportDroppedMedia = true;
     }
+
+    // ── One data folder, several Noctis versions (GitHub #230) ──
+
+    /// <summary>
+    /// Settings this build does not know, read from a file a newer Noctis saved, written back
+    /// unchanged on every save. Noctis 1.6.9 and older dropped them: opening a shared data
+    /// folder with an older build lost every setting it did not have yet.
+    /// </summary>
+    [JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>The newest Noctis version that has saved this file (empty before 1.7.0).
+    /// PersistenceService stamps it on every save; it never goes down.</summary>
+    public string WrittenByVersion { get; set; } = "";
+
+    /// <summary>The newer version the "saved by a newer Noctis" notice was last shown for,
+    /// so it shows once per newer version rather than on every start.</summary>
+    public string NewerVersionNoticeShownFor { get; set; } = "";
+
+    /// <summary>Set on load when <see cref="WrittenByVersion"/> is newer than this build:
+    /// that version. Not saved.</summary>
+    [JsonIgnore]
+    public string? OpenedFromNewerVersion { get; set; }
 }
 
 /// <summary>Names of the flowing-lyrics-background styles. Plugins add their own by layer name.</summary>

@@ -65,7 +65,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// </summary>
     internal string FilterKey => _currentFilter;
 
-    // ── Sort (Name / Songs / Albums + direction) ──
+    // ── Sort (Name / Songs / Albums / Time / Genre / Plays + direction) ──
     // Mirrored into the top bar by MainWindowViewModel, persisted through SettingsViewModel
     // (same pattern as the Albums grid sort). Favorites float to the top only for the
     // name sort; a count sort is a ranking, so favorites take their real rank there.
@@ -80,11 +80,12 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         "albums" => Noctis.Localization.Loc.T("Main.AlbumCount"),
         "time" => Noctis.Localization.Loc.T("Main.Time"),
         "genre" => Noctis.Localization.Loc.T("Main.Genre"),
+        "plays" => Noctis.Localization.Loc.T("Main.Plays"),
         _ => Noctis.Localization.Loc.T("Main.Name"),
     };
 
-    /// <summary>Top-bar sort menu: a mode ("name" / "songs" / "albums" / "time" / "genre")
-    /// or "Ascending" / "Descending".</summary>
+    /// <summary>Top-bar sort menu: a mode ("name" / "songs" / "albums" / "time" / "genre" /
+    /// "plays", GitHub #231) or "Ascending" / "Descending".</summary>
     [RelayCommand]
     private void SetSort(string? parameter)
     {
@@ -92,10 +93,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             case "Ascending": SortAscending = true; break;
             case "Descending": SortAscending = false; break;
-            case "name" or "songs" or "albums" or "time" or "genre":
+            case "name" or "songs" or "albums" or "time" or "genre" or "plays":
                 if (SortMode == parameter) return;
                 SortMode = parameter;
-                // Counts and lengths read naturally biggest-first; names and genres A→Z.
+                // Counts, plays and lengths read naturally biggest-first (most played first,
+                // like Last.fm); names and genres A→Z.
                 SortAscending = parameter is "name" or "genre";
                 break;
             default: return;
@@ -133,6 +135,8 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     {
         // Only "grid" and "list" exist; anything else (a hand-edited settings file) is the grid.
         if (value is not ("grid" or "list")) ViewMode = "grid";
+        // The list's Plays column was left behind by plays counted while the grid showed.
+        else if (value == "list" && _playsStale) ApplyFilter(_currentFilter);
     }
 
     partial void OnSortModeChanged(string value) => ApplyFilter(_currentFilter);
@@ -155,6 +159,36 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         else _isDirty = true;
     }
 
+    // GitHub #233 (5): artists with fewer songs than this are left out of the browse list (0 =
+    // every artist). Counted on Artist.TrackCount, the number the tile's counts line and the
+    // list's Songs column show, so what the user reads and what the filter cuts agree. A
+    // search on the page ignores it, and artist links elsewhere never read it. Pushed in by
+    // MainWindowViewModel from Settings (ActiveArtistMinSongs).
+    private int _minSongs;
+
+    /// <summary>The active "hide artists with fewer than N songs" threshold; 0 when off.</summary>
+    public int MinSongs => _minSongs;
+
+    /// <summary>The empty grid is the small-artist filter's doing, not an empty library.</summary>
+    public bool IsSmallArtistsHiddenState => !HasActiveFilter && _minSongs > 0 && _allArtists.Count > 0;
+
+    /// <summary>The empty grid means the library has no artists at all.</summary>
+    public bool IsNoArtistsState => !HasActiveFilter && !IsSmallArtistsHiddenState;
+
+    /// <summary>
+    /// Sets the small-artist threshold and re-filters. Gated like <see cref="SetSortIgnoredWords"/>:
+    /// while hidden (under the Settings modal the option lives in) it only marks dirty.
+    /// </summary>
+    public void SetMinSongs(int minSongs)
+    {
+        minSongs = Math.Max(0, minSongs);
+        if (minSongs == _minSongs) return;
+        _minSongs = minSongs;
+        OnPropertyChanged(nameof(MinSongs));
+        if (_isActive) ApplyFilter(_currentFilter);
+        else _isDirty = true;
+    }
+
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
@@ -164,8 +198,8 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>The same artists, in the same order, one per row for the list view.</summary>
     public BulkObservableCollection<ArtistListRow> ListRows { get; } = new();
 
-    /// <summary>Per-artist totals the list view's Time and Genre columns (and sorts) read.</summary>
-    internal readonly record struct ArtistStats(TimeSpan Duration, string Genre);
+    /// <summary>Per-artist totals the list view's Time, Genre and Plays columns (and sorts) read.</summary>
+    internal readonly record struct ArtistStats(TimeSpan Duration, string Genre, long Plays = 0);
 
     private static readonly Dictionary<string, ArtistStats> NoStats = new(StringComparer.OrdinalIgnoreCase);
 
@@ -173,12 +207,27 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// on the rebuild's worker thread, and reused by every rebuild until the library changes.</summary>
     private Lazy<Dictionary<string, ArtistStats>> _stats = new(() => NoStats);
 
+    // The snapshot _stats is computed over, kept so a counted play can recompute the totals
+    // (GitHub #231) without a library rebuild: a counted play raises no LibraryUpdated.
+    private IReadOnlyList<Track> _statsTracks = Array.Empty<Track>();
+    private ArtistGroupMode _statsGroupMode;
+
+    /// <summary>Plays were counted since the shown rows were built, and the rows that show
+    /// them (Plays sort, list view) were not rebuilt yet because the page was hidden.</summary>
+    private bool _playsStale;
+
+    private readonly FinishedPlays? _finishedPlays;
+
     /// <summary>Fires when the user opens a specific artist's page.</summary>
     public event EventHandler<Artist>? ArtistOpened;
 
-    public LibraryArtistsViewModel(ILibraryService library)
+    public LibraryArtistsViewModel(ILibraryService library, PlayerViewModel? player = null)
     {
         _library = library;
+
+        // The Plays sort and column (GitHub #231): a counted play re-ranks once its song is
+        // over (FinishedPlays, as the Songs and Albums pages do), not on every count.
+        if (player != null) _finishedPlays = new FinishedPlays(player, OnPlaysFinished);
 
         // Dispatch to UI thread since scan fires LibraryUpdated from a background thread.
         // Held in a field so Dispose can detach it — an anonymous lambda with no stored
@@ -192,9 +241,20 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
                 Dispatcher.UIThread.Post(() => UiStallWatchdog.Time("ArtistsRefresh", Refresh));
         };
         _library.LibraryUpdated += _libraryUpdatedHandler;
+
+        // The tiles' "3 albums · 41 songs" lines are cached on the Artist objects; a language
+        // switch clears them so the next rebuild writes them in the new language.
+        _cultureChangedHandler = (_, _) =>
+        {
+            foreach (var artist in _allArtists) artist.CountsLine = null;
+            if (_isActive) ApplyFilter(_currentFilter);
+            else _isDirty = true;
+        };
+        Noctis.Localization.Loc.Instance.CultureChanged += _cultureChangedHandler;
     }
 
     private EventHandler? _libraryUpdatedHandler;
+    private EventHandler? _cultureChangedHandler;
 
     /// <summary>
     /// Set by MainWindowViewModel when Artists becomes (or stops being) the current view.
@@ -220,10 +280,32 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// <summary>Forces the next Refresh() call to rebuild even if data hasn't changed.</summary>
     public void MarkDirty() => _isDirty = true;
 
+    private void RecomputeStats()
+    {
+        var tracks = _statsTracks;
+        var groupMode = _statsGroupMode;
+        _stats = new Lazy<Dictionary<string, ArtistStats>>(() => ComputeStats(tracks, groupMode));
+    }
+
+    /// <summary>Songs whose counted play is over: fresh totals (computed lazily on the rebuild's
+    /// worker), and one rebuild only when the rows show plays — the Plays sort or the list's
+    /// Plays column. Hidden, it waits for the page to show again.</summary>
+    private bool OnPlaysFinished(List<Track> finished)
+    {
+        RecomputeStats();
+        if (_isActive && ShowsPlays) ApplyFilter(_currentFilter);
+        else _playsStale = true;
+        return true;
+    }
+
+    private bool ShowsPlays => SortMode == "plays" || IsListView;
+
     public void Refresh()
     {
         if (!_isDirty && ArtistRows.Count > 0)
         {
+            if (_playsStale && ShowsPlays) ApplyFilter(_currentFilter);
+
             // Nothing to rebuild, but cached portraits may be due for a re-check against
             // the service (ArtistImageService.RefreshInterval). Kicking the sweep here is
             // what lets a changed photo land without a library change; throttled so
@@ -246,9 +328,9 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         // The list view's Time / Genre totals: the visible songs only (LibraryService.Tracks,
         // like the counts on Artist), grouped by the same key the Artist buckets use. The
         // list is swapped, never edited, by the library, so the worker can read it later.
-        var tracks = _library.Tracks;
-        var groupMode = ArtistCredit.GroupMode;
-        _stats = new Lazy<Dictionary<string, ArtistStats>>(() => ComputeStats(tracks, groupMode));
+        _statsTracks = _library.Tracks;
+        _statsGroupMode = ArtistCredit.GroupMode;
+        RecomputeStats();
         foreach (var artist in _allArtists)
         {
             artist.IsFavorite = _favoriteArtists.IsFavorite(artist.Name);
@@ -341,6 +423,9 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
         _currentFilter = query;
         OnPropertyChanged(nameof(HasActiveFilter));
+        OnPropertyChanged(nameof(IsSmallArtistsHiddenState));
+        OnPropertyChanged(nameof(IsNoArtistsState));
+        _playsStale = false; // the rebuild below reads the current totals
 
         // Off-UI-thread rebuild via the same generation-guarded path as
         // LibraryAlbumsViewModel.RebuildFilteredRows. The sort + row chunking is
@@ -355,10 +440,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         var ignoredWords = _sortIgnoredWords;
         var columns = GridColumns;
         var stats = _stats;
+        var minSongs = _minSongs;
         ThreadPool.QueueUserWorkItem(_ =>
         {
             var statsByName = stats.Value;
-            var ordered = OrderArtists(artists, query, sortMode, ascending, ignoredWords, statsByName);
+            var ordered = OrderArtists(artists, query, sortMode, ascending, ignoredWords, statsByName, minSongs);
             var rows = ChunkRows(ordered, columns);
             var listRows = BuildListRows(ordered, statsByName);
             if (Volatile.Read(ref _rebuildGeneration) == generation)
@@ -371,9 +457,6 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         });
     }
 
-    private static List<ArtistRow> BuildRows(List<Artist> allArtists, string query)
-        => BuildRows(allArtists, query, "name", ascending: true);
-
     /// <summary>
     /// Pure ordering logic (static for unit tests). Under a search the match rank stays
     /// first and the chosen sort only breaks ties inside a rank, so relevance is intact.
@@ -381,13 +464,18 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// </summary>
     internal static List<ArtistRow> BuildRows(List<Artist> allArtists, string query, string sortMode, bool ascending,
         IReadOnlyList<string>? ignoredWords = null, int columns = ArtistsPerRow,
-        IReadOnlyDictionary<string, ArtistStats>? stats = null)
-        => ChunkRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats ?? NoStats), columns);
+        IReadOnlyDictionary<string, ArtistStats>? stats = null, int minSongs = 0)
+        => ChunkRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats ?? NoStats, minSongs), columns);
 
     /// <summary>The list view's rows over the same ordering (static for unit tests).</summary>
     internal static List<ArtistListRow> BuildListRows(List<Artist> allArtists, string query, string sortMode, bool ascending,
-        IReadOnlyDictionary<string, ArtistStats> stats, IReadOnlyList<string>? ignoredWords = null)
-        => BuildListRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats), stats);
+        IReadOnlyDictionary<string, ArtistStats> stats, IReadOnlyList<string>? ignoredWords = null, int minSongs = 0)
+        => BuildListRows(OrderArtists(allArtists, query, sortMode, ascending, ignoredWords, stats, minSongs), stats);
+
+    /// <summary>The grid tile's line under the name (GitHub #233): "3 albums · 41 songs", in the
+    /// language's plural forms. The same TrackCount the small-artist filter compares.</summary>
+    internal static string CountsLineFor(Artist artist)
+        => $"{Noctis.Localization.Loc.Plural("Count.Albums", artist.AlbumCount)} · {Noctis.Localization.Loc.Plural("Count.Songs", artist.TrackCount)}";
 
     private static List<ArtistListRow> BuildListRows(List<Artist> ordered, IReadOnlyDictionary<string, ArtistStats> stats)
     {
@@ -395,14 +483,19 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         foreach (var artist in ordered)
         {
             var s = StatsOf(stats, artist);
-            rows.Add(new ArtistListRow { Artist = artist, TotalDuration = s.Duration, Genre = s.Genre });
+            rows.Add(new ArtistListRow { Artist = artist, TotalDuration = s.Duration, Genre = s.Genre, PlayCount = s.Plays });
         }
         return rows;
     }
 
     private static List<Artist> OrderArtists(List<Artist> allArtists, string query, string sortMode, bool ascending,
-        IReadOnlyList<string>? ignoredWords, IReadOnlyDictionary<string, ArtistStats> stats)
+        IReadOnlyList<string>? ignoredWords, IReadOnlyDictionary<string, ArtistStats> stats, int minSongs = 0)
     {
+        // The tiles' counts lines, written once per Artist object here on the rebuild's worker
+        // rather than per realized tile: a scrolled-in row only binds a ready string.
+        foreach (var artist in allArtists)
+            artist.CountsLine ??= CountsLineFor(artist);
+
         IEnumerable<Artist> filtered;
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -418,7 +511,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         }
         else
         {
-            filtered = ApplySort(allArtists, sortMode, ascending, ignoredWords, stats);
+            // GitHub #233 (5): small artists drop out of the browse list only; a search above
+            // still reaches every artist.
+            IEnumerable<Artist> source = minSongs > 0 ? allArtists.Where(a => a.TrackCount >= minSongs) : allArtists;
+            filtered = ApplySort(source, sortMode, ascending, ignoredWords, stats);
         }
         return filtered.ToList();
     }
@@ -449,16 +545,19 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
     /// the grouping artist exactly like LibraryService's Artist counts, so Time covers the
     /// songs the Songs column counts. The genre follows ArtistDetailViewModel.DominantGenre
     /// (each tag of a multi-genre song counts, ties alphabetical) in the artist page's GENRE
-    /// fact casing. One pass, no LINQ grouping: it runs on every library change.
+    /// fact casing. Plays (GitHub #231) sum PlayCount per the same grouping artist that Home's
+    /// Top Artists sums (Track.GroupingArtist: a "A feat. B" credit counts for A), so the two
+    /// rank alike. One pass, no LINQ grouping: it runs on every library change.
     /// </summary>
     internal static Dictionary<string, ArtistStats> ComputeStats(IReadOnlyList<Track> tracks, ArtistGroupMode mode)
     {
-        var acc = new Dictionary<string, (long Ticks, Dictionary<string, int>? Genres)>(StringComparer.OrdinalIgnoreCase);
+        var acc = new Dictionary<string, (long Ticks, long Plays, Dictionary<string, int>? Genres)>(StringComparer.OrdinalIgnoreCase);
         foreach (var track in tracks)
         {
             var key = track.GetGroupingArtist(mode);
             acc.TryGetValue(key, out var a);
             a.Ticks += track.Duration.Ticks;
+            if (track.PlayCount > 0) a.Plays += track.PlayCount;
             if (!string.IsNullOrWhiteSpace(track.Genre))
             {
                 foreach (var genre in Track.SplitGenres(track.Genre))
@@ -484,7 +583,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
                         topCount = count;
                     }
             result[name] = new ArtistStats(TimeSpan.FromTicks(a.Ticks),
-                top == null ? string.Empty : textInfo.ToTitleCase(top.ToLowerInvariant()));
+                top == null ? string.Empty : textInfo.ToTitleCase(top.ToLowerInvariant()), a.Plays);
         }
         return result;
     }
@@ -517,6 +616,10 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
                 return ascending
                     ? ordered.ThenBy(a => StatsOf(stats, a).Duration).ThenBy(name, nameCmp)
                     : ordered.ThenByDescending(a => StatsOf(stats, a).Duration).ThenBy(name, nameCmp);
+            case "plays":
+                return ascending
+                    ? ordered.ThenBy(a => StatsOf(stats, a).Plays).ThenBy(name, nameCmp)
+                    : ordered.ThenByDescending(a => StatsOf(stats, a).Plays).ThenBy(name, nameCmp);
             case "genre":
                 // Untagged artists sit after every genre in both directions: a blank is no
                 // genre, not one that sorts first.
@@ -686,6 +789,7 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
 
     public void Dispose()
     {
+        _finishedPlays?.Dispose();
         if (_searchDebounce != null)
         {
             _searchDebounce.Stop();
@@ -700,6 +804,11 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         {
             _library.LibraryUpdated -= _libraryUpdatedHandler;
             _libraryUpdatedHandler = null;
+        }
+        if (_cultureChangedHandler != null)
+        {
+            Noctis.Localization.Loc.Instance.CultureChanged -= _cultureChangedHandler;
+            _cultureChangedHandler = null;
         }
     }
 

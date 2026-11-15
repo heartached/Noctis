@@ -207,7 +207,19 @@ public class CollapsibleContent : Decorator
 
             ApplyMotion(open);
 
-            SetReveal(open ? 1.0 : 0.0);
+            // Retarget with the reveal handler muted. When a toggle lands while the previous
+            // transition is still running, Avalonia tears that transition down BEFORE it starts
+            // the new one, so the effective value flashes to the new base (0 on a close) for one
+            // synchronous notification and only then comes back as the animated value the new
+            // transition resumes from. Acting on that flash shut the section on the spot: the
+            // close "stopped" and snapped away instead of folding from where the open was.
+            _retargeting = true;
+            try { SetReveal(open ? 1.0 : 0.0); }
+            finally { _retargeting = false; }
+
+            // The new transition has emitted its first value by now (or, unarmed, the snap has
+            // landed), so the settled effective value is what drives the visuals.
+            ApplyReveal(Reveal);
         }
         else if (change.Property == MotionProperty)
         {
@@ -215,28 +227,41 @@ public class CollapsibleContent : Decorator
         }
         else if (change.Property == RevealProperty)
         {
-            var reveal = Math.Clamp(change.GetNewValue<double>(), 0, 1);
-
-            if (Motion == CollapsibleMotion.Glide)
-            {
-                // Two shaped curves off the one animated value, so the reveal still costs a
-                // single transition. Opacity finishes early (see GlideFadeWindow) and the
-                // slide settles ahead of the height, so the body reads as arriving and then
-                // the panel growing to fit it — not as one block scaling into place.
-                Opacity = Noctis.Helpers.Easing.SmootherStep(reveal / GlideFadeWindow);
-                var remaining = 1 - reveal;
-                _lift.Y = -Lift * remaining * remaining;
-            }
-            else
-            {
-                Opacity = reveal;
-                _lift.Y = -Lift * (1 - reveal);
-            }
-
-            InvalidateMeasure();
-
-            if (reveal <= ShutEpsilon && !IsOpen) IsVisible = false;
+            if (_retargeting) return;
+            ApplyReveal(change.GetNewValue<double>());
         }
+    }
+
+    /// <summary>
+    /// Set while <see cref="IsOpen"/> writes the new reveal target; see the IsOpen branch of
+    /// <see cref="OnPropertyChanged"/>.
+    /// </summary>
+    private bool _retargeting;
+
+    /// <summary>Drives opacity, slide, height and (at rest shut) visibility off one reveal value.</summary>
+    private void ApplyReveal(double value)
+    {
+        var reveal = Math.Clamp(value, 0, 1);
+
+        if (Motion == CollapsibleMotion.Glide)
+        {
+            // Two shaped curves off the one animated value, so the reveal still costs a
+            // single transition. Opacity finishes early (see GlideFadeWindow) and the
+            // slide settles ahead of the height, so the body reads as arriving and then
+            // the panel growing to fit it — not as one block scaling into place.
+            Opacity = Noctis.Helpers.Easing.SmootherStep(reveal / GlideFadeWindow);
+            var remaining = 1 - reveal;
+            _lift.Y = -Lift * remaining * remaining;
+        }
+        else
+        {
+            Opacity = reveal;
+            _lift.Y = -Lift * (1 - reveal);
+        }
+
+        InvalidateMeasure();
+
+        if (reveal <= ShutEpsilon && !IsOpen) IsVisible = false;
     }
 
     protected override Size MeasureOverride(Size availableSize)

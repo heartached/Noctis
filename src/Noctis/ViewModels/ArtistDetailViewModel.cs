@@ -50,6 +50,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Cover-size setting shared with Home/Albums (defaults when no settings are wired).</summary>
     public bool AlbumTileSizeAuto => _settings?.AlbumTileSizeAuto ?? true;
     public double AlbumTileTargetSize => _settings?.AlbumTileTargetSize ?? 220;
+    /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
+    public bool IsWideAlbumSpacing => _settings?.AlbumGridWideSpacing ?? false;
 
     partial void OnGridColumnsChanged(int value)
     {
@@ -139,8 +141,39 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [NotifyPropertyChangedFor(nameof(GenreFact))]
     [NotifyPropertyChangedFor(nameof(HasGenreFact))]
     [NotifyPropertyChangedFor(nameof(HasAboutFacts))]
+    [NotifyPropertyChangedFor(nameof(GenreFactLinks))]
     private string _genreKicker = string.Empty;
     public bool HasGenreKicker => GenreKicker.Length > 0;
+
+    /// <summary>The kicker's genre as the library tags it ("Hip-Hop"); empty when the kicker
+    /// came from MusicBrainz. Only a library genre opens a genre page (GitHub #220).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOpenKickerGenre))]
+    private string _kickerGenre = string.Empty;
+    public bool CanOpenKickerGenre => KickerGenre.Length > 0;
+
+    /// <summary>Every genre tag on the artist's songs (case-insensitive, as tagged), so a
+    /// MusicBrainz genre in the GENRE fact links to the library genre of the same name.</summary>
+    private HashSet<string> _libraryGenres = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The GENRE fact as links: each name opens its genre when the library has it.</summary>
+    public IReadOnlyList<GenreLink> GenreFactLinks => BuildGenreFactLinks(About, KickerGenre, _libraryGenres);
+
+    internal static IReadOnlyList<GenreLink> BuildGenreFactLinks(ArtistInfo? about, string kickerGenre, HashSet<string> libraryGenres)
+    {
+        if (about is { HasGenres: true })
+        {
+            var genres = about.Genres;
+            return genres
+                .Select((g, i) => new GenreLink(ArtistInfo.Capitalize(g),
+                    libraryGenres.TryGetValue(g.Trim(), out var tagged) ? tagged : null,
+                    i == genres.Count - 1))
+                .ToList();
+        }
+        if (kickerGenre.Length == 0) return Array.Empty<GenreLink>();
+        var title = System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(kickerGenre.ToLowerInvariant());
+        return new[] { new GenreLink(title, kickerGenre, true) };
+    }
 
     /// <summary>The About card's GENRE fact: MusicBrainz's genres ("Pop rap · Alternative
     /// pop"), else the library's dominant tag in title case, else nothing.</summary>
@@ -347,6 +380,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [NotifyPropertyChangedFor(nameof(HasAboutFacts))]
     [NotifyPropertyChangedFor(nameof(GenreFact))]
     [NotifyPropertyChangedFor(nameof(HasGenreFact))]
+    [NotifyPropertyChangedFor(nameof(GenreFactLinks))]
     private ArtistInfo? _about;
     public bool HasAbout => About != null;
     /// <summary>True from page open until the web lookup settles; the card says so instead
@@ -427,6 +461,8 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>A Similar Artists tile for an artist in the library: open their page.</summary>
     public event EventHandler<string>? ArtistOpened;
     public event EventHandler<Track>? SearchLyricsRequested;
+    /// <summary>A genre link (hero kicker or GENRE fact) was clicked: open that genre (GitHub #220).</summary>
+    public event EventHandler<string>? GenreOpened;
 
     public ArtistDetailViewModel(
         string artistName,
@@ -560,7 +596,10 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     /// <summary>The most common non-empty genre tag across the artist's songs, upper-cased
     /// for the hero kicker; ties break alphabetically. Null when nothing is tagged.</summary>
-    internal static string? DominantGenre(IEnumerable<Track> songs)
+    internal static string? DominantGenre(IEnumerable<Track> songs) => DominantGenreName(songs)?.ToUpperInvariant();
+
+    /// <summary><see cref="DominantGenre"/> as tagged (the first spelling met), for opening the genre.</summary>
+    internal static string? DominantGenreName(IEnumerable<Track> songs)
     {
         // Each genre of a multi-genre song counts (GitHub #123 follow-up).
         var top = songs
@@ -569,7 +608,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             .OrderByDescending(g => g.Count())
             .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
-        return top?.Key.ToUpperInvariant();
+        return top?.Key;
     }
 
     /// <summary>Splits releases into the Albums tab (anything that is not a single, EP, live
@@ -669,7 +708,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         ReleaseCount = releases.Count;
         SongCount = songs.Count;
         TotalLengthDisplay = total.TotalHours >= 1 ? $"{(int)total.TotalHours}h {total.Minutes}m" : $"{(int)total.TotalMinutes}m";
-        GenreKicker = DominantGenre(songs) ?? (About?.Genres.FirstOrDefault() ?? string.Empty).ToUpperInvariant();
+        _libraryGenres = new HashSet<string>(songs.SelectMany(t => Track.SplitGenres(t.Genre)), StringComparer.OrdinalIgnoreCase);
+        KickerGenre = DominantGenreName(songs) ?? string.Empty;
+        GenreKicker = KickerGenre.ToUpperInvariant() is { Length: > 0 } kicker
+            ? kicker
+            : (About?.Genres.FirstOrDefault() ?? string.Empty).ToUpperInvariant();
+        OnPropertyChanged(nameof(GenreFactLinks));
 
         // Library-side About facts.
         var mostPlayed = songs.OrderByDescending(t => t.PlayCount).FirstOrDefault();
@@ -689,6 +733,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     internal static bool SameAlbums(IList<Album> current, IList<Album> next)
         => current.Count == next.Count && current.Zip(next).All(p => ReferenceEquals(p.First, p.Second));
 
+    /// <summary>A row's place in a list: a re-read file is a new Track object with the same id.</summary>
+    private static (Guid, int) RowKey(TopSongRow r) => (r.Track.Id, r.Rank);
+
     /// <summary>Same tracks at the same ranks: TopSongRow is rebuilt per pass, so compare what it shows.</summary>
     internal static bool SameRows(IList<TopSongRow> current, IList<TopSongRow> next)
         => current.Count == next.Count &&
@@ -697,6 +744,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private static void ReplaceAlbums(ObservableCollection<Album> target, IList<Album> next)
     {
         if (SameAlbums(target, next)) return;
+        // A rebuild hands out new Album objects for the same releases (GitHub #223): swap them
+        // in place, or the section empties for a moment and the page scrolls to the top.
+        if (InPlaceUpdate.TryReplace(target, next, a => a.Id)) return;
         target.Clear();
         foreach (var a in next) target.Add(a);
     }
@@ -704,6 +754,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private static void ReplaceRows(ObservableCollection<TopSongRow> target, IList<TopSongRow> next)
     {
         if (SameRows(target, next)) return;
+        if (InPlaceUpdate.TryReplace(target, next, RowKey)) return;
         target.Clear();
         foreach (var r in next) target.Add(r);
     }
@@ -735,13 +786,13 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         _tabLive = SortReleases(live, ReleaseSortMode);
         _tabCompilations = SortReleases(compilations, ReleaseSortMode);
         if (IsTabAlbums) FillTabAlbums();
-        else { _albumsFilled = null; ++_albumsGeneration; AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _albumsFilled = null; ++_albumsGeneration; if (AlbumReleases.Count > 0) AlbumReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabSingles) FillTabSingles();
-        else { _singlesFilled = null; ++_singlesGeneration; SingleReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _singlesFilled = null; ++_singlesGeneration; if (SingleReleases.Count > 0) SingleReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabLive) FillTabLive();
-        else { _liveFilled = null; ++_liveGeneration; LiveReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _liveFilled = null; ++_liveGeneration; if (LiveReleases.Count > 0) LiveReleases.ReplaceAll(Array.Empty<Album>()); }
         if (IsTabCompilations) FillTabCompilations();
-        else { _compilationsFilled = null; ++_compilationsGeneration; CompilationReleases.ReplaceAll(Array.Empty<Album>()); }
+        else { _compilationsFilled = null; ++_compilationsGeneration; if (CompilationReleases.Count > 0) CompilationReleases.ReplaceAll(Array.Empty<Album>()); }
 
         // One full-width row of each on the Overview: the newest GridColumns releases.
         var albumCap = searching ? 0 : GridColumns;
@@ -754,7 +805,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         ReplaceAlbums(AppearsOn, _allAppearsOn.Where(a => AlbumMatches(a, q)).ToList());
 
         if (IsTabSongs) FillAllSongs();
-        else { _allSongsRanking = null; ++_songsGeneration; AllSongs.ReplaceAll(Array.Empty<TopSongRow>()); OnPropertyChanged(nameof(HasAllSongs)); }
+        else { _allSongsRanking = null; ++_songsGeneration; if (AllSongs.Count > 0) AllSongs.ReplaceAll(Array.Empty<TopSongRow>()); OnPropertyChanged(nameof(HasAllSongs)); }
 
         OnPropertyChanged(nameof(HasPopular));
         OnPropertyChanged(nameof(HasFavorites));
@@ -796,6 +847,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var rows = RankPopular(_allSongs, _query.Trim(), 0);
         if (_allSongsRanking != null && SameRows(_allSongsRanking, rows)) return;
+        // Same songs in the same order, the stream finished: new objects swap in place (#223).
+        if (_allSongsRanking != null && InPlaceUpdate.TryReplace(AllSongs, rows, RowKey))
+        {
+            _allSongsRanking = rows;
+            return;
+        }
         _allSongsRanking = rows;
         var generation = ++_songsGeneration;
         StreamingFill.Into(AllSongs, rows, generation, () => _songsGeneration, first: 30, chunk: 40);
@@ -809,6 +866,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabAlbums()
     {
         if (_albumsFilled != null && SameAlbums(_albumsFilled, _tabAlbums)) return;
+        if (_albumsFilled != null && InPlaceUpdate.TryReplace(AlbumReleases, _tabAlbums, x => x.Id))
+        {
+            _albumsFilled = _tabAlbums;
+            return;
+        }
         _albumsFilled = _tabAlbums;
         var generation = ++_albumsGeneration;
         StreamingFill.Into(AlbumReleases, _tabAlbums, generation, () => _albumsGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -817,6 +879,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabSingles()
     {
         if (_singlesFilled != null && SameAlbums(_singlesFilled, _tabSingles)) return;
+        if (_singlesFilled != null && InPlaceUpdate.TryReplace(SingleReleases, _tabSingles, x => x.Id))
+        {
+            _singlesFilled = _tabSingles;
+            return;
+        }
         _singlesFilled = _tabSingles;
         var generation = ++_singlesGeneration;
         StreamingFill.Into(SingleReleases, _tabSingles, generation, () => _singlesGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -825,6 +892,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabLive()
     {
         if (_liveFilled != null && SameAlbums(_liveFilled, _tabLive)) return;
+        if (_liveFilled != null && InPlaceUpdate.TryReplace(LiveReleases, _tabLive, x => x.Id))
+        {
+            _liveFilled = _tabLive;
+            return;
+        }
         _liveFilled = _tabLive;
         var generation = ++_liveGeneration;
         StreamingFill.Into(LiveReleases, _tabLive, generation, () => _liveGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -833,6 +905,11 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void FillTabCompilations()
     {
         if (_compilationsFilled != null && SameAlbums(_compilationsFilled, _tabCompilations)) return;
+        if (_compilationsFilled != null && InPlaceUpdate.TryReplace(CompilationReleases, _tabCompilations, x => x.Id))
+        {
+            _compilationsFilled = _tabCompilations;
+            return;
+        }
         _compilationsFilled = _tabCompilations;
         var generation = ++_compilationsGeneration;
         StreamingFill.Into(CompilationReleases, _tabCompilations, generation, () => _compilationsGeneration, first: TabGridFirstSlice, chunk: TabGridSlice);
@@ -1134,7 +1211,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var album = LatestRelease;
         if (album == null || album.Tracks.Count == 0) return;
-        var tracks = album.Tracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
+        var tracks = album.EditionTracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
         _player.ReplaceQueueAndPlay(tracks, 0);
     }
 
@@ -1182,6 +1259,12 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private void SearchLyrics(Track? track)
     {
         if (track != null) SearchLyricsRequested?.Invoke(this, track);
+    }
+
+    [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (!string.IsNullOrWhiteSpace(genre)) GenreOpened?.Invoke(this, genre);
     }
 
     [RelayCommand]
@@ -1361,4 +1444,11 @@ public sealed partial class SimilarArtistRow : ObservableObject
     /// <summary>True when the library has this artist: the tile opens their page; a
     /// stranger's tile is inert and dimmed.</summary>
     [ObservableProperty] private bool _isInLibrary;
+}
+
+/// <summary>One name in the artist page's GENRE fact; <see cref="Genre"/> is the library genre
+/// it opens, or null when the library has no songs tagged with it (GitHub #220).</summary>
+public sealed record GenreLink(string Text, string? Genre, bool IsLast)
+{
+    public bool CanOpen => Genre != null;
 }

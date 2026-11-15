@@ -182,6 +182,189 @@ public class LyricsBulkUpgradeTests : IDisposable
         Assert.Equal(4, again.WordSynced);
     }
 
+    // ── GitHub #232: search as another artist name; the first name of a joined credit ──
+
+    private sealed class ArtistSource
+    {
+        public readonly List<string> Asked = new();
+        private readonly string _knows;
+        public ArtistSource(string knows) => _knows = knows;
+        public LyricsBulkSource Bulk => new("A", _ => true, (a, t, d, c) =>
+        {
+            lock (Asked) Asked.Add(a);
+            return Task.FromResult<LrcLibResult?>(a == _knows ? Word() : null);
+        });
+    }
+
+    private LyricsBulkService Service(ArtistSource source) => new(
+        null!,
+        new LyricsWriter(new LyricsSaveTargetTests.RecordingMetadata(), null,
+            new AppWrittenSidecarRegistry(Path.Combine(_dir, "registry.json")), Path.Combine(_dir, "cache"))
+        {
+            SaveTarget = () => LyricsSaveTarget.Sidecar,
+        },
+        _library, () => _settings, () => new[] { source.Bulk }, Path.Combine(_dir, "ledger.json"))
+    {
+        Clock = () => _clock,
+        Delay = (t, _) => { _clock += t; return Task.CompletedTask; },
+    };
+
+    [Fact]
+    public async Task ArtistOverride_IsSearched_AndTheSongKeepsItsArtist()
+    {
+        var source = new ArtistSource("GusGus");
+        var t = NewTrack();
+        t.Artist = "Gus Gus";
+        var overrides = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["gus gus"] = "GusGus" };
+        var s = await Service(source).FetchAsync(new[] { t }, new LyricsBulkOptions(ArtistOverrides: overrides), null, CancellationToken.None);
+
+        Assert.Equal(1, s.WordSynced);
+        Assert.Equal(new[] { "GusGus" }, source.Asked);
+        Assert.Equal("Gus Gus", t.Artist);
+        Assert.True(File.Exists(Side(t, ".elrc")));
+    }
+
+    [Fact]
+    public async Task ArtistOverride_AsksAgainAboutASongAnEarlierRunChecked()
+    {
+        var t = NewTrack();
+        t.Artist = "Gus Gus";
+        var miss = await Service(new ArtistSource("GusGus")).FetchAsync(new[] { t }, new LyricsBulkOptions(), null, CancellationToken.None);
+        Assert.Equal(1, miss.NotFound);
+
+        var overrides = new Dictionary<string, string> { ["Gus Gus"] = "GusGus" };
+        var s = await Service(new ArtistSource("GusGus")).FetchAsync(new[] { t }, new LyricsBulkOptions(ArtistOverrides: overrides), null, CancellationToken.None);
+        Assert.Equal((1, 0), (s.WordSynced, s.CheckedBefore));
+    }
+
+    [Fact]
+    public async Task JoinedCredit_WithNothingFound_IsAskedAgainUnderItsFirstName()
+    {
+        var source = new ArtistSource("Tim Neuhaus");
+        var t = NewTrack();
+        t.Artist = "Tim Neuhaus & The Cabinet";
+        var s = await Service(source).FetchAsync(new[] { t }, new LyricsBulkOptions(), null, CancellationToken.None);
+
+        Assert.Equal(1, s.WordSynced);
+        Assert.Equal(new[] { "Tim Neuhaus & The Cabinet", "Tim Neuhaus" }, source.Asked);
+    }
+
+    [Fact]
+    public async Task JoinedCredit_FoundUnderTheFullName_IsAskedOnce()
+    {
+        var source = new ArtistSource("Simon & Garfunkel");
+        var t = NewTrack();
+        t.Artist = "Simon & Garfunkel";
+        await Service(source).FetchAsync(new[] { t }, new LyricsBulkOptions(), null, CancellationToken.None);
+        Assert.Equal(new[] { "Simon & Garfunkel" }, source.Asked);
+    }
+
+    // ── GitHub #228: songs that ended "sources busy" are asked again at the end of the run ──
+
+    [Fact]
+    public async Task SourcesBusyRows_AreAskedAgainAtTheEndOfTheRun_AndSaved()
+    {
+        // Busy for the first five answers: the source is left alone after four, so all three songs
+        // end the first pass "sources busy"; after the wait it answers.
+        var a = new Source("A", n => n <= 5 ? throw Busy("A") : Word());
+        var tracks = Enumerable.Range(0, 3).Select(i => NewTrack("r" + i)).ToArray();
+        var reports = new List<LyricsBulkProgress>();
+        var s = await Service(a).FetchAsync(tracks, new LyricsBulkOptions(RetryBusy: true),
+            new SyncProgress(reports.Add), CancellationToken.None);
+
+        Assert.Equal(3, s.WordSynced);
+        Assert.Equal(0, s.StillBusy);
+        Assert.Equal(0, s.NotFound);
+        Assert.Contains(TimeSpan.FromSeconds(60), _waits);
+        var waiting = Assert.Single(reports, r => r.Waiting);
+        Assert.Equal(3, waiting.BusyLeft);
+        // Each song's row ends with what the second ask found.
+        foreach (var t in tracks)
+            Assert.Equal("word-synced", reports.Last(r => r.TrackId == t.Id).Outcome);
+        Assert.True(File.Exists(Side(tracks[0], ".elrc")));
+    }
+
+    [Fact]
+    public async Task StillBusyAfterTheRetries_IsReportedBusy_NotNotFound_AndNotRecordedAsLookedUp()
+    {
+        var a = new Source("A", _ => throw Busy("A"));
+        var tracks = Enumerable.Range(0, 3).Select(i => NewTrack("b" + i)).ToArray();
+        var s = await Service(a).FetchAsync(tracks, new LyricsBulkOptions(RetryBusy: true), null, CancellationToken.None);
+
+        Assert.Equal((3, 0), (s.StillBusy, s.NotFound));
+        Assert.Equal(3, s.Total);
+        // Two waits (60 s, 120 s) and two more passes, each giving up after four busy answers: bounded.
+        Assert.Contains(TimeSpan.FromSeconds(60), _waits);
+        Assert.Contains(TimeSpan.FromSeconds(120), _waits);
+        Assert.Equal(12, a.Calls);
+
+        var b = new Source("A", _ => Word());
+        var again = await Service(b).FetchAsync(tracks, new LyricsBulkOptions(), null, CancellationToken.None);
+        Assert.Equal(3, again.WordSynced); // not skipped as "checked before"
+    }
+
+    [Fact]
+    public async Task WithoutRetryBusy_TheRunEndsAtOnce() // one-song lookups (lyrics page, background) keep their speed
+    {
+        var a = new Source("A", _ => throw Busy("A"));
+        var s = await Service(a).FetchAsync(new[] { NewTrack() }, new LyricsBulkOptions(), null, CancellationToken.None);
+        Assert.Equal(1, s.StillBusy);
+        Assert.DoesNotContain(TimeSpan.FromSeconds(60), _waits);
+    }
+
+    [Fact]
+    public async Task StoppingWhileWaitingForBusySources_EndsTheRun()
+    {
+        using var cts = new CancellationTokenSource();
+        var a = new Source("A", _ => throw Busy("A"));
+        var service = new LyricsBulkService(null!,
+            new LyricsWriter(new LyricsSaveTargetTests.RecordingMetadata(), null,
+                new AppWrittenSidecarRegistry(Path.Combine(_dir, "registry.json")), Path.Combine(_dir, "cache")),
+            _library, () => _settings, () => new[] { a.Bulk }, Path.Combine(_dir, "ledger.json"))
+        {
+            Clock = () => _clock,
+            Delay = (t, ct) => { ct.ThrowIfCancellationRequested(); _clock += t; return Task.CompletedTask; },
+        };
+        // Stop pressed while the dialog says "Waiting for busy sources…".
+        var s = await service.FetchAsync(new[] { NewTrack("x1"), NewTrack("x2") }, new LyricsBulkOptions(RetryBusy: true),
+            new SyncProgress(r => { if (r.Waiting) cts.Cancel(); }), cts.Token);
+        Assert.Equal(2, s.StillBusy);
+        Assert.Equal(4, a.Calls); // the first pass only
+    }
+
+    [Fact]
+    public void Gate_WaitsOutRetryAfter_AndWidensItsSpacingAfterABusyAnswer()
+    {
+        var now = new DateTime(2026, 1, 1);
+        var waits = new List<TimeSpan>();
+        var gate = new PoliteGate(TimeSpan.FromMilliseconds(350), () => now, (t, _) => { waits.Add(t); now += t; return Task.CompletedTask; });
+        gate.WaitTurnAsync(default).GetAwaiter().GetResult();
+        gate.ReportBusy(TimeSpan.FromSeconds(90));
+        gate.WaitTurnAsync(default).GetAwaiter().GetResult();
+        Assert.Equal(TimeSpan.FromSeconds(90), waits.Sum(w => w.Ticks) is var t ? TimeSpan.FromTicks(t) : default);
+        Assert.Equal(TimeSpan.FromMilliseconds(700), gate.CurrentInterval);
+        gate.ReportOk();
+        gate.WaitTurnAsync(default).GetAwaiter().GetResult();
+        Assert.Equal(TimeSpan.FromMilliseconds(700), waits[^1]); // the wider spacing stays for the run
+
+        // Asked to wait longer than the longest back-off: left alone, and a later pass keeps it so.
+        gate.ReportBusy(TimeSpan.FromMinutes(10));
+        Assert.True(gate.GaveUp);
+        gate.Reset();
+        Assert.True(gate.GaveUp);
+    }
+
+    [Fact]
+    public void BusyAnswer_CarriesRetryAfter()
+    {
+        using var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+        response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(30));
+        var ex = Assert.Throws<BusyResponseException>(() => HttpSafety.EnsureSuccess(response));
+        var wrapped = new LyricsProviderException("X", ex);
+        Assert.True(wrapped.IsBusy);
+        Assert.Equal(TimeSpan.FromSeconds(30), wrapped.RetryAfter);
+    }
+
     [Fact]
     public async Task NotFound_IsRemembered_SoTheNextRunSkipsIt_UnlessRechecking()
     {
@@ -237,6 +420,29 @@ public class LyricsBulkUpgradeTests : IDisposable
         var s = await Service(a).FetchAsync(tracks, new LyricsBulkOptions(), null, cts.Token);
         Assert.InRange(s.WordSynced, 1, 2);
         Assert.True(a.Calls < 6);
+    }
+
+    [Fact]
+    public async Task ASourceWithItsOwnInterval_IsAskedAtThatPace() // GitHub #219: lrcmux, 60 a minute
+    {
+        var calls = 0;
+        var slow = new LyricsBulkSource("slow", _ => true, (a, t, d, c) => { Interlocked.Increment(ref calls); return Task.FromResult<LrcLibResult?>(null); })
+        {
+            MinInterval = TimeSpan.FromSeconds(1.1),
+        };
+        var service = new LyricsBulkService(null!,
+            new LyricsWriter(new LyricsSaveTargetTests.RecordingMetadata(), null,
+                new AppWrittenSidecarRegistry(Path.Combine(_dir, "registry.json")), Path.Combine(_dir, "cache")),
+            _library, () => _settings, () => new[] { slow }, Path.Combine(_dir, "ledger.json"))
+        {
+            Clock = () => _clock,
+            Delay = (t, _) => { lock (_waits) _waits.Add(t); _clock += t; return Task.CompletedTask; },
+        };
+
+        await service.FetchAsync(new[] { NewTrack("p1"), NewTrack("p2") }, new LyricsBulkOptions(), null, CancellationToken.None);
+
+        Assert.Equal(2, calls);
+        Assert.Contains(TimeSpan.FromSeconds(1.1), _waits);
     }
 
     [Fact]

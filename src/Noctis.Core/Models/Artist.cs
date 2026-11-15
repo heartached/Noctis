@@ -24,6 +24,11 @@ public class Artist
     /// it is stamped during list builds and reflected by re-materializing the rows.</summary>
     public bool IsFavorite { get; set; }
 
+    /// <summary>"3 albums · 41 songs" under the name on the Artists grid (GitHub #233). Like
+    /// IsFavorite, NOT observable: written once per object by the Artists page's rebuild (off
+    /// the UI thread, in the user's language) and shown when the rows re-materialize.</summary>
+    public string? CountsLine { get; set; }
+
     public override string ToString() => Name;
 }
 

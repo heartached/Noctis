@@ -183,6 +183,51 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Same(p1, Phone(_t1));
     }
 
+    [Fact]
+    public async Task SyncedSongs_JoinRecentlyAdded_WhenTheyReachThePhone_InTheComputersOrder_AndStayPut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        // The computer added these long ago; the phone's own song came shortly before the sync.
+        _t1.DateAdded = _t2.DateAdded = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        _t3.DateAdded = new DateTime(2021, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        Directory.CreateDirectory(PhoneMusic);
+        NoctisAccountLibraryTests.WriteMp3(Path.Combine(PhoneMusic, "local.mp3"), "Phone song");
+        await _phonePersistence.SaveSettingsAsync(new AppSettings { MusicFolders = { PhoneMusic } });
+        await _phoneLibrary.ScanAsync(new[] { PhoneMusic }, ct);
+        var local = Assert.Single(_phoneLibrary.Tracks);
+        local.DateAdded = DateTime.UtcNow.AddMinutes(-5);
+        List<Guid> Rail() => MobileLibrary.RecentlyAddedAlbums(_phoneLibrary, 12).Select(a => a.Id).ToList();
+
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+
+        // On top of the phone's song, the computer's newer album first.
+        Assert.Equal(new[] { AlbumB, AlbumA, local.AlbumId }, Rail());
+        Assert.True(Phone(_t1).DateAdded > local.DateAdded);
+        var dates = new[] { _t1, _t2, _t3 }.ToDictionary(t => t.Id, t => Phone(t).DateAdded);
+
+        // A sync with nothing new moves nothing.
+        await svc.SyncNowAsync(ct);
+        Assert.All(dates, d => Assert.Equal(d.Value, _phoneLibrary.GetTrackById(d.Key)!.DateAdded));
+
+        // A song the computer gets later arrives with that sync, whatever its date there.
+        var albumC = Guid.NewGuid();
+        var t4 = new Track { Id = Guid.NewGuid(), Title = "Delta", Artist = "Zed", AlbumArtist = "Zed", Album = "Third", AlbumId = albumC, FilePath = _t1.FilePath, Duration = TimeSpan.FromSeconds(60), TrackNumber = 1, FileSize = _audio.Length, DateAdded = new DateTime(2019, 1, 1, 0, 0, 0, DateTimeKind.Utc) };
+        _desk.Show(_t1, _t2, _t3, t4);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(new[] { albumC, AlbumB, AlbumA, local.AlbumId }, Rail());
+        Assert.All(dates, d => Assert.Equal(d.Value, _phoneLibrary.GetTrackById(d.Key)!.DateAdded));
+
+        // A phone synced before this rule kept the computer's dates: the next sync re-dates them once.
+        foreach (var t in new[] { _t1, _t2, _t3, t4 }) Phone(t).DateAdded = t.DateAdded;
+        var syncFile = Path.Combine(AccountDir, "sync.json");
+        File.WriteAllText(syncFile, File.ReadAllText(syncFile).Replace("\"arrivalDates\":true", "\"arrivalDates\":false"));
+        var updated = Restart();
+        await updated.SyncNowAsync(ct);
+        Assert.Equal(new[] { AlbumB, AlbumA, albumC, local.AlbumId }, Rail());
+        Assert.Contains("\"arrivalDates\":true", File.ReadAllText(syncFile));
+    }
+
     /// <summary>The socket handler, with the requests <paramref name="fail"/> picks failing the way
     /// a dropped connection does.</summary>
     private sealed class FlakyHandler(HttpMessageHandler inner, Func<HttpRequestMessage, bool> fail) : DelegatingHandler(inner)

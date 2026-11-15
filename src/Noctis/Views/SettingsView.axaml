@@ -214,24 +214,6 @@
                             <TextBlock x:Name="PluginPageDescription" Text="{Binding Description}" FontSize="13" Opacity="0.78"
                                        TextWrapping="Wrap" LineHeight="19" MaxWidth="560" HorizontalAlignment="Left" Margin="0,6,0,0"
                                        IsVisible="{Binding HasDescription}"/>
-                            <!-- An installed plugin's Update (or Cancel) from the list. Install, and the plugin's
-                                 own views ("Open Album Town"), sit top-right beside "..." instead. -->
-                            <WrapPanel x:Name="PluginPageActions" Orientation="Horizontal" ItemSpacing="8" LineSpacing="8" Margin="0,12,0,0"
-                                       IsVisible="{Binding HasHeaderActions}">
-                                <Button x:Name="PluginPageUpdateButton"
-                                        Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
-                                        Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
-                                        Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
-                                        MaxWidth="260"
-                                        IsVisible="{Binding ShowInlineButton}"
-                                        IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
-                                        AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
-                                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
-                                        CommandParameter="{Binding Listing}">
-                                    <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
-                                               TextWrapping="Wrap" TextAlignment="Center"/>
-                                </Button>
-                            </WrapPanel>
                             <TextBlock Text="{Binding Listing.Error, FallbackValue={x:Null}}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap"
                                        Margin="0,6,0,0" IsVisible="{Binding Listing.HasError, FallbackValue=False}"/>
                             <ProgressBar Value="{Binding Listing.Progress, FallbackValue=0}" Minimum="0" Maximum="1" Height="3" CornerRadius="2"
@@ -241,7 +223,7 @@
                                        Margin="0,4,0,0" IsVisible="{Binding Listing.HasProgressDetail, FallbackValue=False}"/>
                         </StackPanel>
                         <!-- Top-right (owner 10-29): Install / Replace / Cancel while the plugin is not
-                             installed; once it is, the plugin's own views ("Open Album Town") and "..." with
+                             installed; once it is, the plugin's own views ("Open Album Town"), Update and "..." with
                              Visit homepage and Open folder (SettingsView.axaml.cs OnPluginMoreClick). -->
                         <StackPanel x:Name="PluginPageCorner" Grid.Column="2" Orientation="Horizontal" Spacing="8"
                                     VerticalAlignment="Top" Margin="0,4,0,0">
@@ -271,6 +253,21 @@
                                     Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
                                     MaxWidth="200" HorizontalAlignment="Right"
                                     IsVisible="{Binding ShowCornerButton}"
+                                    IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
+                                    AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
+                                    Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
+                                    CommandParameter="{Binding Listing}">
+                                <TextBlock Text="{Binding Listing.ButtonText, FallbackValue={x:Null}}" FontSize="12.5" FontWeight="SemiBold"
+                                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Listing.ButtonText, FallbackValue={x:Null}}"/>
+                            </Button>
+                            <!-- An installed plugin's Update (or Cancel): left of "..." (owner 11-12), not under
+                                 the description. -->
+                            <Button x:Name="PluginPageUpdateButton"
+                                    Classes.accent-pill="{Binding Listing.IsPrimary, FallbackValue=False}"
+                                    Classes.pill-action="{Binding !Listing.IsPrimary, FallbackValue=True}"
+                                    Height="34" Padding="18,0" CornerRadius="999" Cursor="Hand" VerticalContentAlignment="Center"
+                                    MaxWidth="200" HorizontalAlignment="Right"
+                                    IsVisible="{Binding ShowInlineButton}"
                                     IsEnabled="{Binding Listing.CanClick, FallbackValue=False}"
                                     AutomationProperties.Name="{Binding Listing.ButtonText, FallbackValue={x:Null}}"
                                     Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OfficialPluginActionCommand}"
@@ -362,24 +359,24 @@
                                                       IsVisible="{Binding Installed.HasPermissions, FallbackValue=False}"/>
                                         </Grid>
                                     </Button>
-                                    <controls:CollapsibleContent IsOpen="{Binding IsPermissionsExpanded}" Lift="6">
-                                        <ItemsControl x:Name="PluginPagePermissionList" ItemsSource="{Binding Installed.PermissionDetails, FallbackValue={x:Null}}"
-                                                      Margin="0,10,0,0">
-                                            <ItemsControl.ItemsPanel>
-                                                <ItemsPanelTemplate>
-                                                    <StackPanel Spacing="6"/>
-                                                </ItemsPanelTemplate>
-                                            </ItemsControl.ItemsPanel>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate x:DataType="sys:String">
-                                                    <Grid ColumnDefinitions="Auto,*">
-                                                        <Ellipse Width="4" Height="4" Margin="2,7,10,0" VerticalAlignment="Top"
-                                                                 Fill="{DynamicResource AccentColorBrush}"/>
-                                                        <TextBlock Grid.Column="1" Text="{Binding}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
-                                                    </Grid>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                    <controls:CollapsibleContent IsOpen="{Binding IsPermissionsExpanded}" Lift="10" Motion="Glide">
+                                    <ItemsControl x:Name="PluginPagePermissionList" ItemsSource="{Binding Installed.PermissionDetails, FallbackValue={x:Null}}"
+                                                  Margin="0,10,0,0">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="6"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <Ellipse Width="4" Height="4" Margin="2,7,10,0" VerticalAlignment="Top"
+                                                             Fill="{DynamicResource AccentColorBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
                                     </controls:CollapsibleContent>
                                 </StackPanel>
                             </Border>
@@ -652,18 +649,6 @@
             <Setter Property="Padding" Value="22,16"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
-        <Style Selector="Border.setting-card.advanced-first">
-            <Setter Property="CornerRadius" Value="24,24,0,0"/>
-            <Setter Property="Margin" Value="0"/>
-        </Style>
-        <Style Selector="Border.setting-card.advanced-middle">
-            <Setter Property="CornerRadius" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-        </Style>
-        <Style Selector="Border.setting-card.advanced-last">
-            <Setter Property="CornerRadius" Value="0,0,24,24"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-        </Style>
 
         <!-- Selectable card used by the Song Transitions style picker -->
         <Style Selector="RadioButton.transition-card">
@@ -832,24 +817,6 @@
             <Setter Property="BorderBrush" Value="Transparent"/>
         </Style>
 
-        <!-- Profile name TextBox: no chrome on any state -->
-        <Style Selector="TextBox.profile-input /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-        </Style>
-        <Style Selector="TextBox.profile-input:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.profile-input:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.profile-input:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
         <Style Selector="Button.theme-btn.active /template/ ContentPresenter">
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
@@ -872,24 +839,6 @@
             <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}"/>
         </Style>
 
-        <Style Selector="TextBox.accent-hex-input /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="UseLayoutRounding" Value="True"/>
-        </Style>
-        <Style Selector="TextBox.accent-hex-input:pointerover /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.accent-hex-input:focus /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
-        <Style Selector="TextBox.accent-hex-input:focus-within /template/ Border#PART_BorderElement">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="Transparent"/>
-        </Style>
 
         <!-- Pill-shaped action buttons -->
         <!-- Create-account fields: full-width rounded boxes of one height. -->
@@ -954,24 +903,6 @@
             <Setter Property="Padding" Value="16,10"/>
         </Style>
 
-        <!-- Social links (GitHub / Discord) in the About card: brand-coloured icon,
-             brighter label, and a soft brand-tinted pill on hover. -->
-        <Style Selector="Button.social-link">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10,6"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.social-link /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="Button.social-discord:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#265865F2"/>
-        </Style>
-        <Style Selector="Button.social-github:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="#26F1C40F"/>
-        </Style>
 
         <!-- About: three equal-width brand tiles (GitHub / Discord / Website). The tile
              is a Button whose chrome is fully transparent; the wash Border underneath
@@ -1179,22 +1110,6 @@
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
         </Style>
-        <Style Selector="ComboBox.transition-pill">
-            <Setter Property="Width" Value="132"/>
-            <Setter Property="MinHeight" Value="40"/>
-            <Setter Property="Padding" Value="14,8"/>
-            <Setter Property="FontSize" Value="14"/>
-        </Style>
-        <Style Selector="ComboBox.transition-pill /template/ Border#Background">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource TextControlBorderBrush}"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="CornerRadius" Value="999"/>
-        </Style>
-        <Style Selector="ComboBox.transition-pill:pointerover /template/ Border#Background">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundBaseLowBrush}"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Style>
 
         <!-- Accent sliders (horizontal) -->
         <Style Selector="Slider.accent-slider">
@@ -1250,7 +1165,7 @@
             <Setter Property="Height" Value="18"/>
             <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
             <Setter Property="RenderTransform" Value="scale(1)"/>
-            <!-- An explicit circle, as accent-vertical's (no theme thumb chrome). -->
+            <!-- An explicit circle (no theme thumb chrome). -->
             <Setter Property="Template">
                 <ControlTemplate>
                     <Border Width="{TemplateBinding Width}"
@@ -1334,76 +1249,6 @@
             <Setter Property="BorderBrush" Value="{DynamicResource AccentColorBrush}"/>
         </Style>
 
-        <!-- Accent sliders (vertical EQ) -->
-        <Style Selector="Slider.accent-vertical">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="28"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="ClipToBounds" Value="False"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ Track">
-            <Setter Property="Width" Value="8"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton">
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border/>
-                </ControlTemplate>
-            </Setter>
-        </Style>
-        <!-- Fill (bottom) and track (top) tuck 1px under the thumb, as accent-slider above. -->
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_DecreaseButton">
-            <Setter Property="Margin" Value="0,-1,0,0"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_IncreaseButton">
-            <Setter Property="Margin" Value="0,0,0,-1"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-            <Setter Property="Opacity" Value="0.95"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Width" Value="8"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_DecreaseButton /template/ Border">
-            <Setter Property="CornerRadius" Value="0,0,4,4"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
-            <Setter Property="Opacity" Value="0.45"/>
-            <Setter Property="CornerRadius" Value="4,4,0,0"/>
-        </Style>
-        <Style Selector="Slider.accent-vertical /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource SystemControlHighlightAccentBrush}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="18"/>
-            <Setter Property="Height" Value="18"/>
-            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Width="{TemplateBinding Width}"
-                            Height="{TemplateBinding Height}"
-                            Background="{TemplateBinding Background}"
-                            CornerRadius="999"/>
-                </ControlTemplate>
-            </Setter>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                    <DoubleTransition Property="Width" Duration="0:0:0.12"/>
-                    <DoubleTransition Property="Height" Duration="0:0:0.12"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Slider.accent-vertical:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
 
         <!-- Pre-amp pill slider: the real Slider is transparent and only handles hit
              testing; the visible pill track/fill/thumb are drawn on a Canvas and driven
@@ -1440,8 +1285,10 @@
         <Style Selector="Button.rail-item:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
+        <!-- The accent fill is the sliding rail pill (Border.rail-pill) under the row; the row
+             itself stays clear (no hover wash over the pill either). -->
         <Style Selector="Button.rail-item.active /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
         </Style>
         <!-- The app-wide Button:pointerover scale(1.045) reads as a jump on a list of
@@ -1456,22 +1303,6 @@
              zoom makes it wobble under the pointer. -->
         <Style Selector="Button.version-copy:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
-        <Style Selector="Button.rail-profile">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="8,6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        </Style>
-        <Style Selector="Button.rail-profile /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="14"/>
-        </Style>
-        <Style Selector="Button.rail-profile:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
         <Style Selector="TextBox.settings-search">
             <Setter Property="CornerRadius" Value="999"/>
@@ -1492,25 +1323,36 @@
             <Setter Property="IsHitTestVisible" Value="False"/>
             <Setter Property="ClipToBounds" Value="True"/>
         </Style>
-        <!-- Tab switch: the incoming page fades in with a short upward glide.
-             Keyframe animations can't drive RenderTransform (no registered
-             animator — crashed at startup), so the hidden state pins
-             opacity 0 / translateY(10px) and releasing it on IsVisible=True
-             transitions both back to their natural values. -->
-        <Style Selector="StackPanel.tab-page">
-            <!-- Explicit resting transform: transitions interpolate between two
-                 TransformOperations values, never to an unset (null) transform. -->
-            <Setter Property="RenderTransform" Value="translateY(0px)"/>
+        <!-- Tab switch: the incoming page fades in with a short glide (up when the page is
+             further down the rail, down when it is above). Driven from code-behind
+             (SettingsView.axaml.cs ShowTabPage): the glide starts only after the page's
+             first layout pass, so a heavy page's first visit no longer eats the animation. -->
+        <!-- Rail selection: one pill slides between the rows (SettingsView.axaml.cs
+             PlaceRailPill) and the rows' text colour cross-fades in step with it. -->
+        <Style Selector="Border.rail-pill">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
+            <Setter Property="CornerRadius" Value="999"/>
+        </Style>
+        <Style Selector="Button.rail-item /template/ ContentPresenter">
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut"/>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut"/>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.18" Easing="{StaticResource PluginPageEase}"/>
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="StackPanel.tab-page[IsVisible=False]">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="RenderTransform" Value="translateY(6px)"/>
+        <Style Selector="controls|MaskIcon.rail-bitmap">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.18" Easing="{StaticResource PluginPageEase}"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <!-- Reduce motion: every change in the rail is instant. -->
+        <Style Selector=":is(UserControl).motion-off Button.rail-item /template/ ContentPresenter">
+            <Setter Property="Transitions" Value="{x:Null}"/>
+        </Style>
+        <Style Selector=":is(UserControl).motion-off controls|MaskIcon.rail-bitmap">
+            <Setter Property="Transitions" Value="{x:Null}"/>
         </Style>
         <!-- ── Pill BOXES in Settings (text fields, number fields and combo boxes, never buttons):
              the metadata editor's filled pill (owner 10-08, PillDialog.axaml pill-field). A soft
@@ -1709,11 +1551,6 @@
         <Style Selector="Border.setting-row.divided">
             <Setter Property="BorderThickness" Value="0,1,0,0"/>
         </Style>
-        <!-- Plugins page: a plugin that cannot run while Community plugins is off greys out like
-             Song Transitions under Exclusive audio (same 0.5), instead of wearing a Restricted pill. -->
-        <Style Selector="StackPanel.plugin-body.restricted">
-            <Setter Property="Opacity" Value="0.5"/>
-        </Style>
         <!-- Rows an ItemsControl makes inside a group card (Plugins page): a hairline between them,
              none above the first. Each row is the only child of its container, so the
              :nth-child(1) rule above can't tell them apart; the container's index can. -->
@@ -1773,7 +1610,7 @@
              ContentPresenter hover wash), which match the cards too. ── -->
 
         <!-- The grid and a plugin's page slide past each other: the incoming one fades in from
-             28 px to its side. Same trick as tab-page: the hidden state pins opacity and offset,
+             28 px to its side. The hidden state pins opacity and offset,
              and releasing it on IsVisible=True transitions both home (keyframe animations can't
              drive RenderTransform here). A plugin's own view (PluginViewPage) comes in over its
              page the same way, and the page comes back from the left. -->
@@ -1893,11 +1730,6 @@
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListLowBrush}"/>
             <Setter Property="CornerRadius" Value="24"/>
             <Setter Property="Padding" Value="22,16"/>
-        </Style>
-        <Style Selector="TextBlock.plugin-panel-title">
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Opacity" Value="0.5"/>
         </Style>
 
         <!-- A plugin's page (owner 10-29): grouped rows in the Settings card look, a hairline
@@ -2147,6 +1979,12 @@
                      Margin="0,0,0,4"/>
 
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Panel x:Name="RailHost">
+            <!-- The selected row's accent pill, under the rows; slides to the new row on a
+                 switch (SettingsView.axaml.cs PlaceRailPill). Hidden until first placed. -->
+            <Border x:Name="RailSelectionPill" Classes="rail-pill"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    IsHitTestVisible="False" Opacity="0"/>
             <ItemsControl ItemsSource="{Binding SectionGroups}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SettingsSectionGroup">
@@ -2203,6 +2041,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </Panel>
             </ScrollViewer>
         </DockPanel>
     </Border>
@@ -2270,6 +2109,7 @@
                         <TextBlock Text="{loc:T Settings.ControlHowNoctisStarts}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.OpenNoctisWhenComputer}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
@@ -2281,9 +2121,11 @@
                          ~/.config/autostart, an unbundled macOS run). The toggle snaps
                          back to what the OS reports and says so, rather than sitting ON
                          with nothing registered. -->
-                    <TextBlock Text="{Binding LaunchAtStartupError}"
-                               IsVisible="{Binding LaunchAtStartupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    <controls:CollapsibleContent IsOpen="{Binding LaunchAtStartupError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,12,0,0" Text="{Binding LaunchAtStartupError}"
                                FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                     <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
                     <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray}" FontSize="13" VerticalAlignment="Center"/>
@@ -2327,7 +2169,9 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
-                    <Grid ColumnDefinitions="*,Auto">
+                    <!-- Greyed while "Hide sidebar until hover" is on, and that one while this is
+                         (GitHub #233): a pinned-open sidebar and a hidden one cannot both hold. -->
+                    <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding !SidebarAutoHide}">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.KeepSidebarExpanded}" FontSize="13"/>
                             <TextBlock Text="{loc:T Settings.PinSidebarOpenAt}"
@@ -2348,6 +2192,17 @@
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.HoverExpandSidebar}"
                                               IsChecked="{Binding SidebarHoverExpand}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding !SidebarAlwaysExpanded}">
+                        <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.HideSidebarUntilHover}" FontSize="13"/>
+                            <TextBlock Text="{loc:T Settings.HideSidebarUntilHoverHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.HideSidebarUntilHover}"
+                                              IsChecked="{Binding SidebarAutoHide}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                 </StackPanel>
@@ -2446,6 +2301,7 @@
             <StackPanel>
             <Border Classes="setting-row" IsVisible="{Binding IsFileAssociationSupported}">
                 <StackPanel Spacing="10">
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.OpenAudioFilesNoctis}" FontSize="15" FontWeight="SemiBold"/>
@@ -2471,9 +2327,11 @@
                             </Panel>
                         </Button>
                     </Grid>
-                    <TextBlock Text="{Binding FileTypesStatus}"
-                               IsVisible="{Binding FileTypesStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                    <controls:CollapsibleContent IsOpen="{Binding FileTypesStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding FileTypesStatus}"
                                FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row" Classes.first="{Binding !IsFileAssociationSupported}">
@@ -2947,6 +2805,19 @@
                                               IsChecked="{Binding AccentTrackLinks}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+
+                    <!-- GitHub #240: a subtle accent shade on the window and page background -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.TintWindowWithAccent}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.TintWindowWithAccentHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.TintWindowWithAccent}"
+                                              IsChecked="{Binding TintWindowWithAccent}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -3246,7 +3117,8 @@
             </Border>
             <!-- GitHub #167: fetch on opening an album into a size-capped cache (oldest loops go
                  first). Only while animated artwork is on; its cache options fold under it. -->
-            <Border Classes="setting-row" IsVisible="{Binding EnableAnimatedCovers}">
+            <controls:CollapsibleContent IsOpen="{Binding EnableAnimatedCovers}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <StackPanel>
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
@@ -3321,6 +3193,7 @@
                 </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
+            </controls:CollapsibleContent>
             <Border Classes="setting-row">
                 <!-- Toggle + its Tint strength slider share a spacing-free panel so the gap folds
                      with the body (see the Crossfade block). -->
@@ -3422,6 +3295,48 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+            <!-- GitHub #213: Masonry album grid. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumGridMasonry}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumGridMasonryDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumGridMasonry}"
+                                          IsChecked="{Binding AlbumGridMasonry}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Album grid spacing: off = 1.6.9 (8px gaps, one row height), on = GitHub #210. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumGridWideSpacing}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumGridWideSpacingDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumGridWideSpacing}"
+                                          IsChecked="{Binding AlbumGridWideSpacing}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #218: hover zoom in the Albums grid. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.AlbumHoverZoom}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumHoverZoomDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumHoverZoom}"
+                                          IsChecked="{Binding AlbumHoverZoom}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 
@@ -3469,6 +3384,32 @@
                         <TextBlock Text="{loc:T Settings.AddExtraControlsPlayer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <!-- Discord (Major D ark): Stop after Play/Pause, which also lets go of the Exclusive
+                         Mode device; optionally shown only while Exclusive Mode is on. -->
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.StopButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.StopButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.StopButton}"
+                                              IsChecked="{Binding PlaybackBarShowStop}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding PlaybackBarShowStop}" Lift="10" Motion="Glide">
+                    <Grid ColumnDefinitions="*,Auto" Margin="20,12,0,0" IsVisible="{Binding IsExclusiveAudioSupported}">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.StopOnlyInExclusive}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.StopOnlyInExclusiveHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.StopOnlyInExclusive}"
+                                              IsChecked="{Binding PlaybackBarStopOnlyInExclusiveMode}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                     <!-- Header + picker share a spacing-free panel so the 12px gap folds with the body
                          (see the Crossfade block). -->
                     <Grid ColumnDefinitions="*,Auto">
@@ -3491,8 +3432,22 @@
                                               IsChecked="{Binding PlaybackBarShowFavorite}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Discord "Chapter Button in Player Island": audiobook chapters one click away. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.ChaptersButton}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.ChaptersButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.ChaptersButton}"
+                                              IsChecked="{Binding PlaybackBarShowChapters}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <!-- GitHub #186: Quick Add to Playlist (up to three picked playlists) and Move to
                          Trash (into a folder picked here, or the Recycle Bin / Trash), both off by default. -->
+                    <!-- Wrapper without Spacing: the gap sits on the body, inside the animated height
+                         (same as Skip back and forward below). -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.QuickPlaylistButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3503,7 +3458,8 @@
                                               IsChecked="{Binding PlaybackBarShowQuickPlaylist}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <StackPanel Spacing="8" IsVisible="{Binding PlaybackBarShowQuickPlaylist}">
+                    <controls:CollapsibleContent IsOpen="{Binding PlaybackBarShowQuickPlaylist}" Lift="10" Motion="Glide">
+                    <StackPanel Spacing="8" Margin="0,12,0,0">
                         <ComboBox x:Name="QuickPlaylist1Combo"
                                   AutomationProperties.Name="{loc:T Settings.QuickPlaylist1}"
                                   Classes="pill-list"
@@ -3529,6 +3485,9 @@
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.TrashButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3539,11 +3498,13 @@
                                               IsChecked="{Binding PlaybackBarShowTrash}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <StackPanel Spacing="6" IsVisible="{Binding PlaybackBarShowTrash}">
+                    <controls:CollapsibleContent IsOpen="{Binding PlaybackBarShowTrash}" Lift="10" Motion="Glide">
+                    <StackPanel Spacing="6" Margin="0,12,0,0">
                         <StackPanel Spacing="2">
                             <TextBlock Text="{loc:T Settings.TrashFolder}" FontSize="13" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.TrashFolderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
+                        <StackPanel>
                         <Grid ColumnDefinitions="*,Auto,Auto">
                             <TextBox Grid.Column="0"
                                      x:Name="TrashFolderBox"
@@ -3571,9 +3532,13 @@
                                     Margin="8,0,0,0"
                                     Cursor="Hand"/>
                         </Grid>
-                        <TextBlock Text="{loc:T Settings.TrashFolderMissing}"
-                                   IsVisible="{Binding ShowTrashFolderMissingHint}"
+                        <controls:CollapsibleContent IsOpen="{Binding ShowTrashFolderMissingHint}" Lift="10" Motion="Glide">
+                        <TextBlock Margin="0,6,0,0" Text="{loc:T Settings.TrashFolderMissing}"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
                     </StackPanel>
                     <!-- GitHub #183: the stock Lyrics button can go; the lyrics page's own bar keeps it. -->
                     <Grid ColumnDefinitions="*,Auto">
@@ -3730,6 +3695,7 @@
             <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->
             <Border Classes="setting-row">
                 <StackPanel Spacing="8">
+                <StackPanel>
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
                         <TextBlock Text="{loc:T Settings.ArtworkClick}" FontSize="15" FontWeight="SemiBold"/>
@@ -3747,9 +3713,11 @@
                               CornerRadius="999"
                               Padding="14,8"/>
                 </Grid>
-                <TextBlock Text="{loc:T Settings.ArtworkClickLyricsHiddenHint}"
-                           IsVisible="{Binding ShowArtworkLyricsHint}"
+                <controls:CollapsibleContent IsOpen="{Binding ShowArtworkLyricsHint}" Lift="10" Motion="Glide">
+                <TextBlock Margin="0,8,0,0" Text="{loc:T Settings.ArtworkClickLyricsHiddenHint}"
                            FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                </controls:CollapsibleContent>
+                </StackPanel>
                 </StackPanel>
             </Border>
             <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->
@@ -3884,8 +3852,17 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.MiniPlayerFrostedBackground}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.BlurDesktopBehindMiniPlayer}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <!-- Discord (BEAGLE): the switch is on but nothing blurs, and the card
+                             is see-through over a sharp desktop. Say why, and what helps. -->
+                        <controls:CollapsibleContent IsOpen="{Binding MiniPlayerFrostUnavailable}" Lift="10" Motion="Glide">
+                        <TextBlock x:Name="MiniPlayerFrostUnavailableNote"
+                                   Text="{loc:T Settings.MiniPlayerFrostNeedsTransparency}"
+                                   FontSize="12" Foreground="#FFB454" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.MiniPlayerFrostedBackground}"
@@ -3966,6 +3943,21 @@
                         </RadioButton>
                     </Grid>
                 </StackPanel>
+            </Border>
+            <!-- Disc scratching (Discord, Mistery "Scratching"): grab the CD / record on the
+                 lyrics page or the Sleeve mini player and turn it to move through the song. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.DiscScratching}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.DiscScratchingDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.DiscScratching}"
+                                          IsChecked="{Binding DiscScratching}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
             </Border>
             </StackPanel>
             </Border>
@@ -4159,6 +4151,20 @@
                     </Grid>
                 </StackPanel>
             </Border>
+            <!-- GitHub #233: a soft cover-coloured glow behind the carousel's centred album. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.CarouselGlow}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.CarouselGlowDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.CarouselGlow}"
+                                          IsChecked="{Binding AlbumCarouselGlow}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 
@@ -4274,6 +4280,7 @@
                         <TextBlock Text="{loc:T Settings.LyricsPresets.Title}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.LyricsPresets.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
+                    <StackPanel>
                     <ItemsControl ItemsSource="{Binding LyricsPresets}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -4298,8 +4305,10 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <TextBlock Text="{Binding LyricsPresetStatus}" FontSize="12" Opacity="0.8"
-                               IsVisible="{Binding LyricsPresetStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <controls:CollapsibleContent IsOpen="{Binding LyricsPresetStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding LyricsPresetStatus}" FontSize="12" Opacity="0.8"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-card group-card">
@@ -4321,7 +4330,7 @@
                     </Grid>
                     <!-- Drift knobs (GitHub #111): only while a Drift style is chosen. 100% everywhere
                          is the stock look; double-tap a slider to snap back to it. -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsDriftStyle}" Lift="6">
+                    <controls:CollapsibleContent IsOpen="{Binding IsDriftStyle}" Lift="10" Motion="Glide">
                     <StackPanel Spacing="8" Margin="0,12,0,0">
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.DriftMovement}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
@@ -4353,7 +4362,7 @@
                     </StackPanel>
                     </controls:CollapsibleContent>
                     <!-- Kawarp knobs (GitHub #58): only while a Kawarp style is chosen. -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsKawarpStyle}" Lift="6">
+                    <controls:CollapsibleContent IsOpen="{Binding IsKawarpStyle}" Lift="10" Motion="Glide">
                     <StackPanel Spacing="8" Margin="0,12,0,0">
                         <Grid ColumnDefinitions="110,*,Auto">
                             <TextBlock Grid.Column="0" Text="{loc:T Settings.KawarpWarp}" FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
@@ -4376,7 +4385,7 @@
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
-                <StackPanel Spacing="12">
+                <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.AudioVisualizer}" FontSize="15" FontWeight="SemiBold"/>
@@ -4389,9 +4398,10 @@
                                               IsEnabled="{Binding VisualizerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <!-- Artwork colour row + style picker share a spacing-free panel so the 12px gap folds
-                         with the body (see the Crossfade block). -->
-                    <StackPanel>
+                    <!-- Artwork colour, Full spectrum and the style picker are ONE glide under the switch
+                         (owner 11-14). The row's panel is spacing-free so the 12px gap folds with the body. -->
+                    <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,12,0,0">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.ArtworkColour}" FontSize="13" FontWeight="SemiBold"/>
@@ -4403,7 +4413,18 @@
                                               IsChecked="{Binding LyricsVisualizerArtworkColor}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
+                    <!-- GitHub #205: the analyser-weighted spectrum (SpectrumMeter.FullSpectrumTiltDbPerOctave). -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.FullSpectrum}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.FullSpectrumHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.FullSpectrum}"
+                                              IsChecked="{Binding LyricsVisualizerFullSpectrum}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,12,0,0">
                         <RadioButton Grid.Column="0" Classes="transition-card medium-card"
                                      AutomationProperties.Name="{loc:T Settings.Bars}"
@@ -4449,8 +4470,8 @@
                             </StackPanel>
                         </RadioButton>
                     </Grid>
-                    </controls:CollapsibleContent>
                     </StackPanel>
+                    </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
@@ -4463,6 +4484,36 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.FullscreenLyricsFocus}"
                                           IsChecked="{Binding LyricsFullScreenFocusEnabled}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #211: the full-screen lyrics page without the island's buttons; the
+                 progress line stays and the keyboard shortcuts keep working. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsFullScreenHideIsland}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsFullScreenHideIslandHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsFullScreenHideIsland}"
+                                          IsChecked="{Binding LyricsFullScreenHideIsland}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Hide Lyrics on the Lyrics page (Discord, f7uh): also in the island's Lyrics Display
+                 menu, which is out of reach while the island is hidden in full screen. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsPageHideLyrics}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsPageHideLyricsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsPageHideLyrics}"
+                                          IsChecked="{Binding LyricsPageHideLyrics}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -4508,6 +4559,21 @@
                                           AutomationProperties.Name="{loc:T Settings.LyricsGlowAndLift}"
                                           IsChecked="{Binding LyricsGlowAndLift}"
                                           VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Plugin API 1.8: a plugin renderer draws the lyric lines. Shown only when a
+                 renderer plugin runs (or a stored choice waits for its plugin). -->
+            <Border Classes="setting-row" IsVisible="{Binding HasLyricsRendererChoice}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.LyricsRenderer}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsRendererHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" MinWidth="200" VerticalAlignment="Center"
+                              AutomationProperties.Name="{loc:T Settings.LyricsRenderer}"
+                              ItemsSource="{Binding LyricsRendererOptions}"
+                              SelectedItem="{Binding SelectedLyricsRendererOption, Mode=TwoWay}"/>
                 </Grid>
             </Border>
             <!-- Discord request: songs with no lyrics (or instrumentals) centre the player
@@ -4675,6 +4741,17 @@
                                               IsChecked="{Binding YouTubeMusicLyricsEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #219: lrcmux, asked last, off by default. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.LrcMux}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.LrcMuxHint}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.LrcMux}"
+                                              IsChecked="{Binding LrcMuxEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <TextBlock Text="{loc:T Settings.LyricsSourcesPickerHint}"
                                FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                 </StackPanel>
@@ -4760,6 +4837,20 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.LyricsAutoFindNew}"
                                           IsChecked="{Binding LyricsAutoFindNew}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- GitHub #219: the whole library, gradually, in the background. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindLibrary}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsAutoFindLibraryHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsAutoFindLibrary}"
+                                          IsChecked="{Binding LyricsAutoFindLibrary}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -4853,14 +4944,16 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.SongTransitions}" FontSize="15" FontWeight="SemiBold"/>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.SongsBlendSmoothlyInto}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioEnabled}" Lift="6">
-                                <TextBlock Text="{loc:T Settings.UnavailableWhileExclusiveMode}"
-                                           FontSize="12" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentColorBrush}"
-                                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioEnabled}" Lift="10" Motion="Glide">
+                            <TextBlock Text="{loc:T Settings.UnavailableWhileExclusiveMode}"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       TextWrapping="Wrap" Margin="0,6,0,0"/>
                             </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.SongTransitions}"
@@ -4966,6 +5059,7 @@
             <!-- GitHub #73: the level fades out before a pause lands and back in after a resume. -->
             <Border Classes="setting-row">
                 <StackPanel Spacing="6">
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.PlayPauseFade}" FontSize="15" FontWeight="SemiBold"/>
@@ -4977,24 +5071,25 @@
                                               IsChecked="{Binding PlayPauseFadeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <controls:CollapsibleContent IsOpen="{Binding PlayPauseFadeEnabled}" Lift="10">
-                        <StackPanel Classes="sub-setting" Spacing="6" Margin="2,10,0,0">
-                            <TextBlock Text="{loc:T Settings.FadeDuration}" FontSize="13" FontWeight="SemiBold"/>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <controls:SmoothSlider Grid.Column="0"
-                                        AutomationProperties.Name="{loc:T Settings.FadeDuration}"
-                                        Classes="accent-slider" Step="50"
-                                        Minimum="100" Maximum="2000"
-                                        SteppedValue="{Binding PlayPauseFadeMs, Mode=TwoWay}"
-                                        VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding PlayPauseFadeMs, StringFormat='{}{0:0} ms'}"
-                                           FontSize="12" Opacity="0.7"
-                                           VerticalAlignment="Center"
-                                           MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
-                            </Grid>
-                        </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding PlayPauseFadeEnabled}" Lift="10" Motion="Glide">
+                    <StackPanel Classes="sub-setting" Spacing="6" Margin="2,16,0,0">
+                        <TextBlock Text="{loc:T Settings.FadeDuration}" FontSize="13" FontWeight="SemiBold"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:SmoothSlider Grid.Column="0"
+                                    AutomationProperties.Name="{loc:T Settings.FadeDuration}"
+                                    Classes="accent-slider" Step="50"
+                                    Minimum="100" Maximum="2000"
+                                    SteppedValue="{Binding PlayPauseFadeMs, Mode=TwoWay}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding PlayPauseFadeMs, StringFormat='{}{0:0} ms'}"
+                                       FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <!-- GitHub #101: how much of a song has to be heard before it counts as played. -->
@@ -5083,6 +5178,7 @@
             <StackPanel>
             <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <StackPanel Spacing="8">
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.OutputDevice}" FontSize="15" FontWeight="SemiBold"/>
@@ -5100,22 +5196,25 @@
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </Grid>
-                    <controls:CollapsibleContent IsOpen="{Binding OutputDeviceMissing}" Lift="6">
-                        <TextBlock Text="{loc:T Settings.OutputDeviceMissingHint}"
-                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+                    <controls:CollapsibleContent IsOpen="{Binding OutputDeviceMissing}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,8,0,0" Text="{loc:T Settings.OutputDeviceMissingHint}"
+                               FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.ExclusiveMode}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.BitPerfectOutputBypasses}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6">
-                            <TextBlock Text="{Binding ExclusiveAudioStatus}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{Binding ExclusiveAudioStatus}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.ExclusiveMode}"
@@ -5129,12 +5228,14 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.MultichannelOutput}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.MultichannelOutputDesc}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <controls:CollapsibleContent IsOpen="{Binding MultichannelOutputNeedsRestart}" Lift="6">
-                            <TextBlock Text="{loc:T Settings.MultichannelOutputRestart}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding MultichannelOutputNeedsRestart}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{loc:T Settings.MultichannelOutputRestart}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.MultichannelOutput}"
@@ -5181,12 +5282,14 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.HeadphoneSurround}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.HeadphoneSurroundDesc}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <controls:CollapsibleContent IsOpen="{Binding HeadphoneSurroundNeedsRestart}" Lift="6">
-                            <TextBlock Text="{loc:T Settings.HeadphoneSurroundRestart}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding HeadphoneSurroundNeedsRestart}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{loc:T Settings.HeadphoneSurroundRestart}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.HeadphoneSurround}"
@@ -5209,6 +5312,7 @@
                                               IsChecked="{Binding MonoAudio}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <StackPanel>
                     <StackPanel Spacing="6" IsEnabled="{Binding IsChannelMixEnabled}">
                         <TextBlock Text="{loc:T Settings.Balance}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.BalanceDesc}"
@@ -5227,12 +5331,13 @@
                                        MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
                         </Grid>
                     </StackPanel>
-                    <controls:CollapsibleContent IsOpen="{Binding ChannelMixNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6">
-                        <TextBlock Text="{Binding ChannelMixNote}"
-                                   FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentColorBrush}"
-                                   TextWrapping="Wrap"/>
+                    <controls:CollapsibleContent IsOpen="{Binding ChannelMixNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,14,0,0" Text="{Binding ChannelMixNote}"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource AccentColorBrush}"
+                               TextWrapping="Wrap"/>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
@@ -5625,7 +5730,8 @@
             </Border>
             <!-- Folders hidden from the library in the Folders view (right-click a folder →
                  Hide from Library). Only shown while there is at least one. -->
-            <Border Classes="setting-row" IsVisible="{Binding HasHiddenLibraryFolders}">
+            <controls:CollapsibleContent IsOpen="{Binding HasHiddenLibraryFolders}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Settings.HiddenFolders}" FontSize="15" FontWeight="SemiBold"/>
@@ -5662,6 +5768,7 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+            </controls:CollapsibleContent>
             <!-- GitHub #71: off = dropped files play / queue from where they are, nothing is
                  moved into Noctis Imports or added to the library. -->
             <Border Classes="setting-row">
@@ -5879,6 +5986,22 @@
                                               AutomationProperties.Name="{loc:T Settings.AlbumGroupingWriteTags}"
                                               IsChecked="{Binding AlbumGroupingWriteTags}"
                                               VerticalAlignment="Center"/>
+                    </Grid>
+                    <!-- GitHub #201: albums grouped earlier (saving off, or a file not writable then) into their files, once. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AlbumGroupingSaveNowHint}" Margin="0,0,12,0"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                AutomationProperties.Name="{loc:T Settings.AlbumGroupingSaveNow}"
+                                Command="{Binding SaveAlbumGroupingToFilesNowCommand}"
+                                Classes="pill-action"
+                                Padding="14,8"
+                                CornerRadius="999"
+                                Cursor="Hand"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.AlbumGroupingSaveNow}" FontSize="13"
+                                       VerticalAlignment="Center"/>
+                        </Button>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -6121,6 +6244,37 @@
                                 Command="{Binding ResetArtistSortIgnoredWordsCommand}"/>
                     </Grid>
                 </StackPanel>
+                </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
+            <!-- GitHub #233: hide small artists from the Artists page. Same toggle + folding
+                 sub-setting shape as the ignored words above; the page's filter menu flips it. -->
+            <Border Classes="setting-row">
+                <StackPanel>
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.HideSmallArtists}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.HideSmallArtistsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.HideSmallArtists}"
+                                          IsChecked="{Binding HideSmallArtists}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+                <controls:CollapsibleContent IsOpen="{Binding HideSmallArtists}" Lift="10" Motion="Glide">
+                <Grid Classes="sub-setting" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+                    <TextBlock Grid.Column="0" Text="{loc:T Settings.HideArtistsFewerThan}" FontSize="13" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1"
+                              AutomationProperties.Name="{loc:T Settings.HideArtistsFewerThan}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding SmallArtistMinSongsOptions}"
+                              SelectedItem="{Binding SmallArtistMinSongsChoice, Mode=TwoWay}"
+                              MinWidth="140"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
                 </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
@@ -6481,11 +6635,17 @@
                             </Button>
                         </StackPanel>
                     </Grid>
+                    <StackPanel>
+                    <StackPanel>
+                    <StackPanel>
+                    <StackPanel>
+                    <StackPanel>
                     <SelectableTextBlock Text="{Binding DataFolderPath}"
                                          FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
 
                     <!-- Copying -->
-                    <StackPanel Spacing="6" IsVisible="{Binding IsDataFolderCopying}">
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderCopying}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Spacing="6">
                         <TextBlock Text="{Binding DataFolderCopyText}" FontSize="12" Opacity="0.7"/>
                         <Grid ColumnDefinitions="*,Auto">
                             <ProgressBar Grid.Column="0" Minimum="0" Maximum="100"
@@ -6499,41 +6659,48 @@
                             </Button>
                         </Grid>
                     </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
 
                     <!-- The picked folder already holds Noctis data -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderUseExistingVisible}" Lift="6">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="{loc:T Settings.DataFolderExistingTitle}"
-                                       FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding DataFolderUseExistingDetail}"
-                                       FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="pill-action"
-                                        AutomationProperties.Name="{loc:T Settings.Cancel}"
-                                        Command="{Binding CancelUseExistingDataFolderCommand}"
-                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
-                                    <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
-                                </Button>
-                                <Button Classes="pill-action"
-                                        AutomationProperties.Name="{loc:T Settings.DataFolderUseThis}"
-                                        Command="{Binding ConfirmUseExistingDataFolderCommand}"
-                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
-                                    <TextBlock Text="{loc:T Settings.DataFolderUseThis}" FontSize="13" FontWeight="SemiBold"/>
-                                </Button>
-                            </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderUseExistingVisible}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Spacing="8">
+                        <TextBlock Text="{loc:T Settings.DataFolderExistingTitle}"
+                                   FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DataFolderUseExistingDetail}"
+                                   FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="pill-action"
+                                    AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                    Command="{Binding CancelUseExistingDataFolderCommand}"
+                                    Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
+                            </Button>
+                            <Button Classes="pill-action"
+                                    AutomationProperties.Name="{loc:T Settings.DataFolderUseThis}"
+                                    Command="{Binding ConfirmUseExistingDataFolderCommand}"
+                                    Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.DataFolderUseThis}" FontSize="13" FontWeight="SemiBold"/>
+                            </Button>
                         </StackPanel>
+                    </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
 
-                    <TextBlock Text="{Binding DataFolderStatus}"
-                               IsVisible="{Binding IsDataFolderInfoVisible}"
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderInfoVisible}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding DataFolderStatus}"
                                FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding DataFolderStatus}"
-                               IsVisible="{Binding IsDataFolderErrorVisible}"
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderErrorVisible}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding DataFolderStatus}"
                                FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
 
                     <!-- A change waits for a restart -->
-                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                IsVisible="{Binding IsDataFolderRestartNeeded}">
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderRestartNeeded}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="8">
                         <Button Classes="pill-action"
                                 AutomationProperties.Name="{loc:T Settings.Cancel}"
                                 Command="{Binding CancelDataFolderChangeCommand}"
@@ -6547,6 +6714,8 @@
                             <TextBlock Text="{loc:T Settings.DataFolderRestartNow}" FontSize="13" FontWeight="SemiBold"/>
                         </Button>
                     </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
@@ -6554,6 +6723,7 @@
 
                     <!-- Reset Settings -->
                     <StackPanel Spacing="12">
+                        <StackPanel>
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0">
                                 <StackPanel Spacing="2">
@@ -6575,8 +6745,8 @@
                                            VerticalAlignment="Center"/>
                             </Button>
                         </Grid>
-                        <controls:CollapsibleContent IsOpen="{Binding IsResetConfirmVisible}" Lift="6">
-                        <StackPanel Spacing="8">
+                        <controls:CollapsibleContent IsOpen="{Binding IsResetConfirmVisible}" Lift="10" Motion="Glide">
+                        <StackPanel Margin="0,12,0,0" Spacing="8">
                             <TextBlock Text="{loc:T Settings.AreYouSureAction}"
                                        FontSize="13" Foreground="#E74856"/>
                             <TextBlock Text="{Binding ResetConfirmDetail}"
@@ -6599,6 +6769,7 @@
                             </StackPanel>
                         </StackPanel>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
@@ -6691,6 +6862,7 @@
             <Border Classes="setting-row">
                 <StackPanel Spacing="10">
                     <!-- Toggle -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.DeveloperMode}" FontSize="15" FontWeight="SemiBold"/>
@@ -6703,8 +6875,8 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
-                    <controls:CollapsibleContent IsOpen="{Binding DeveloperMode}" Lift="6">
-                    <StackPanel Spacing="10">
+                    <controls:CollapsibleContent IsOpen="{Binding DeveloperMode}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Spacing="10">
 
                         <!-- ── Version manager ── -->
                         <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
@@ -6825,12 +6997,15 @@
                         </Button>
 
                         <!-- Download status / progress -->
-                        <StackPanel x:Name="DevDownloadPanel" Spacing="10">
+                        <StackPanel>
+                        <!-- Spacing-free so each line's gap folds with it (the bar's 10px rides on its margin). -->
+                        <StackPanel x:Name="DevDownloadPanel">
+                            <controls:CollapsibleContent IsOpen="{Binding DevStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding DevStatusText}"
-                                       FontSize="12" Opacity="0.7"
-                                       IsVisible="{Binding DevStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="12"
-                                        IsVisible="{Binding IsDevDownloading}">
+                                       FontSize="12" Opacity="0.7"/>
+                            </controls:CollapsibleContent>
+                            <controls:CollapsibleContent IsOpen="{Binding IsDevDownloading}" Lift="10" Motion="Glide">
+                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,10,0,0">
                                 <ProgressBar Minimum="0" Maximum="100"
                                              Value="{Binding DevDownloadProgress}"
                                              Height="4" CornerRadius="2"
@@ -6842,15 +7017,18 @@
                                     <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12"/>
                                 </Button>
                             </StackPanel>
+                            </controls:CollapsibleContent>
                         </StackPanel>
 
                         <!-- ── Debug logs ── -->
+                        <controls:CollapsibleContent IsOpen="{Binding PreservedCrashBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                         <TextBlock Text="{Binding PreservedCrashBanner}"
                                    FontSize="12" FontWeight="SemiBold"
                                    Foreground="#E5A34D"
                                    TextWrapping="Wrap"
-                                   Margin="0,10,0,0"
-                                   IsVisible="{Binding PreservedCrashBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                   Margin="0,20,0,0"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                         <TextBlock Text="{loc:T Settings.SessionLogTroubleshootingShare}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"
                                    Margin="0,10,0,0"/>
@@ -6885,6 +7063,7 @@
 
                     </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
@@ -6896,10 +7075,6 @@
                  sync), the browser remote, and the API for apps on this PC. -->
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,2,0,8">
                 <TextBlock Classes="section-title" Text="{loc:T Settings.Section.YourAccount}" Margin="0" VerticalAlignment="Center"/>
-                <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="7,2" VerticalAlignment="Center">
-                    <TextBlock Text="{loc:T Settings.BetaBadge}" FontSize="10" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AccentForegroundBrush}"/>
-                </Border>
             </StackPanel>
             <Border Classes="setting-card group-card">
             <StackPanel>
@@ -6940,6 +7115,7 @@
                     <!-- Name: an editable box, the way a profile field reads. -->
                     <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Spacing="5">
                         <TextBlock Text="{loc:T Settings.Name}" FontSize="11.5" FontWeight="SemiBold" Opacity="0.55"/>
+                        <StackPanel>
                         <TextBox Classes="profile-name"
                                  AutomationProperties.Name="{loc:T Settings.Name}"
                                  Text="{Binding ProfileName, Mode=TwoWay}"
@@ -6949,12 +7125,14 @@
                                  KeyDown="OnProfileNameKeyDown"/>
                         <!-- The account this profile signs devices in with: under the name, beside
                              the one profile picture (no second avatar). -->
-                        <TextBlock x:Name="AccountIdentityLine" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis"
-                                   IsVisible="{Binding HasPrimaryAccount}">
+                        <controls:CollapsibleContent IsOpen="{Binding HasPrimaryAccount}" Lift="10" Motion="Glide">
+                        <TextBlock Margin="0,5,0,0" x:Name="AccountIdentityLine" FontSize="12" Opacity="0.6" TextTrimming="CharacterEllipsis">
                             <Run Text="{Binding PrimaryAccountName}" FontWeight="SemiBold"/>
                             <Run Text=" · "/>
                             <Run Text="{Binding PrimaryAccountSince}"/>
                         </TextBlock>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -7068,7 +7246,7 @@
                     <!-- The message glides in and out: a plain show/hide reflowed the card in one
                          jump (it read as the page shaking), and a fixed empty slot left a band
                          under the buttons. -->
-                    <controls:CollapsibleContent IsOpen="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6" Motion="Glide">
+                    <controls:CollapsibleContent IsOpen="{Binding ServerUserError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                         <TextBlock Text="{Binding ServerUserError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,10,0,0"/>
                     </controls:CollapsibleContent>
                 </StackPanel>
@@ -7089,19 +7267,17 @@
                         <StackPanel Grid.Column="0" Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <TextBlock Text="{loc:T Phone.Title}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <Border Background="{DynamicResource AccentColorBrush}" CornerRadius="999" Padding="7,2" VerticalAlignment="Center">
-                                    <TextBlock Text="{loc:T Settings.BetaBadge}" FontSize="10" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AccentForegroundBrush}"/>
-                                </Border>
                             </StackPanel>
                             <TextBlock Text="{loc:T Phone.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle AutomationProperties.Name="{loc:T Phone.Title}" x:Name="PhoneServerToggle" Grid.Column="1" IsChecked="{Binding NoctisServerEnabled}" VerticalAlignment="Center"/>
                     </Grid>
-                    <TextBlock Text="{loc:T Phone.NeedsAccount}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0"
-                               IsVisible="{Binding !HasPrimaryAccount}"/>
-                    <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,8,0,0"
-                               IsVisible="{Binding NoctisServerStartFailed}"/>
+                    <controls:CollapsibleContent IsOpen="{Binding !HasPrimaryAccount}" Lift="10" Motion="Glide">
+                    <TextBlock Text="{loc:T Phone.NeedsAccount}" FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </controls:CollapsibleContent>
+                    <controls:CollapsibleContent IsOpen="{Binding NoctisServerStartFailed}" Lift="10" Motion="Glide">
+                    <TextBlock Text="{Binding NoctisServerError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                    </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
 
@@ -7284,7 +7460,7 @@
                             </StackPanel>
                             <controls:LottieToggle AutomationProperties.Name="{loc:T Sync.Title}" x:Name="PhoneSyncToggle" Grid.Column="1" IsChecked="{Binding SyncEnabled}" VerticalAlignment="Center"/>
                         </Grid>
-                        <controls:CollapsibleContent x:Name="LastSyncedReveal" Lift="6" Motion="Glide"
+                        <controls:CollapsibleContent x:Name="LastSyncedReveal" Lift="10" Motion="Glide"
                                                      IsOpen="{Binding SyncStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="0,10,0,0">
                                 <!-- Drawn at its own 14px size (a stroked path, not a scaled 24-grid fill), so it stays crisp. -->
@@ -7317,6 +7493,8 @@
                         </Button>
                         <controls:CollapsibleContent IsOpen="{Binding IsPhoneAdvancedOpen}" Lift="10" Motion="Glide">
                         <StackPanel x:Name="PhoneAdvancedBody" Spacing="16" Margin="0,14,0,0">
+                            <StackPanel>
+                            <StackPanel>
                             <Grid Classes="sub-setting" ColumnDefinitions="140,*">
                                 <TextBlock Grid.Column="0" Text="{loc:T Sync.DeviceName}" VerticalAlignment="Center" FontSize="13"/>
                                 <TextBox Grid.Column="1" Text="{Binding SyncDeviceName}" MaxWidth="320" HorizontalAlignment="Left" MinWidth="220"
@@ -7324,7 +7502,8 @@
                                          CornerRadius="999" Padding="14,8" BorderThickness="1.5" MinHeight="0"/>
                             </Grid>
 
-                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" IsVisible="{Binding HasPrimaryAccount}">
+                            <controls:CollapsibleContent IsOpen="{Binding HasPrimaryAccount}" Lift="10" Motion="Glide">
+                            <Grid Margin="0,16,0,0" ColumnDefinitions="*,Auto" ColumnSpacing="12">
                                 <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                                     <TextBlock Text="{loc:T Phone.OtherAppsTitle}" FontSize="13" FontWeight="SemiBold"/>
                                     <TextBlock Text="{loc:T Phone.OtherAppsDesc}" FontSize="12" Opacity="0.55" TextWrapping="Wrap"/>
@@ -7339,10 +7518,12 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- Freshly issued key: shown once, never stored in clear. Hidden behind dots until
                                  the eye is pressed; Copy works either way. -->
                             <controls:CollapsibleContent IsOpen="{Binding IsIssuedApiKeyOpen}" Lift="10" Motion="Glide">
-                            <Border x:Name="ApiKeyPanel" Background="#18000000" CornerRadius="14" Padding="14,12">
+                            <Border Margin="0,16,0,0" x:Name="ApiKeyPanel" Background="#18000000" CornerRadius="14" Padding="14,12">
                                 <StackPanel Spacing="10">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <PathIcon Data="{StaticResource AccountKeyIcon}" Width="14" Height="14" Opacity="0.75" VerticalAlignment="Center"/>
@@ -7380,6 +7561,7 @@
                                 </StackPanel>
                             </Border>
                             </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         </controls:CollapsibleContent>
                     </StackPanel>
@@ -7414,6 +7596,7 @@
                             <!-- Running: QR thumbnail + connection details. The card shows the
                                  token-free URL; the full auth link lives in the QR, the copy
                                  button and the enlarge flyout (screenshots leaked a live key). -->
+                            <StackPanel>
                             <Grid ColumnDefinitions="Auto,*"
                                   IsVisible="{Binding WebRemoteQr, Converter={x:Static ObjectConverters.IsNotNull}}">
                                 <Button Grid.Column="0" Classes="qr-thumb" Padding="0" Background="Transparent" BorderThickness="0"
@@ -7467,9 +7650,12 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Grid>
-                            <!-- Enabled but the server threw on start -->
-                            <TextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                                       IsVisible="{Binding WebRemoteStartFailed}"/>
+                            <!-- Enabled but the server threw on start. No top gap: it replaces the QR row
+                                 above (never shown with it), so there is nothing to space it from. -->
+                            <controls:CollapsibleContent IsOpen="{Binding WebRemoteStartFailed}" Lift="10" Motion="Glide">
+                            <TextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     </controls:CollapsibleContent>
@@ -7486,6 +7672,7 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="10">
+                    <StackPanel>
                     <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -7507,6 +7694,7 @@
                             </StackPanel>
                             <StackPanel Spacing="2">
                                 <TextBlock Text="{loc:T Settings.LocalApiToken}" FontSize="10" Opacity="0.5"/>
+                                <StackPanel>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <TextBlock Text="{Binding LocalApiTokenDisplay}" FontSize="12"
                                                FontFamily="Consolas,Menlo,monospace"
@@ -7544,14 +7732,15 @@
                                 <!-- Full token glides open under the row on Show and folds away on
                                      Hide; the row above never re-flows. -->
                                 <controls:CollapsibleContent IsOpen="{Binding LocalApiTokenRevealed}"
-                                                             Lift="8" Motion="Glide">
+                                                             Lift="10" Motion="Glide">
                                     <Border Background="#14FFFFFF" CornerRadius="6"
-                                            Padding="10,8" Margin="0,6,0,0">
+                                            Padding="10,8" Margin="0,8,0,0">
                                         <SelectableTextBlock Text="{Binding LocalApiToken}" FontSize="12"
                                                              FontFamily="Consolas,Menlo,monospace"
                                                              TextWrapping="Wrap"/>
                                     </Border>
                                 </controls:CollapsibleContent>
+                                </StackPanel>
                             </StackPanel>
                             <TextBlock Text="{loc:T Settings.LocalApiWarning}"
                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
@@ -7561,8 +7750,10 @@
                     </Border>
                     </controls:CollapsibleContent>
                     </StackPanel>
-                    <TextBlock Text="{Binding LocalApiError}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
-                               IsVisible="{Binding LocalApiError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <controls:CollapsibleContent IsOpen="{Binding LocalApiError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding LocalApiError}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
@@ -7642,6 +7833,7 @@
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="8">
+                    <StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                         <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
                                 Width="40" Height="40" CornerRadius="10"
@@ -7660,23 +7852,29 @@
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.LastFmScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <StackPanel>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.SendPlaysLastFm}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
                                        Margin="-2,0,0,0"/>
                             <!-- ACCOUNT line sits inline with title/description so it pulls up tight
                                  against the description instead of dropping into its own grid row. -->
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding LastFmUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Margin="-2,2,0,0">
+                                        Margin="-2,4,0,0">
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding LastFmUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding LastFmQueueNote}"
-                                       IsVisible="{Binding LastFmQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
+                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Not connected state -->
@@ -7720,8 +7918,8 @@
                     </Grid>
 
                     <!-- Enable Scrobbling (when connected) -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsLastFmConnected}" Lift="6">
-                    <StackPanel Spacing="8">
+                    <controls:CollapsibleContent IsOpen="{Binding IsLastFmConnected}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,8,0,0" Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
@@ -7749,13 +7947,16 @@
                     <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
                                        FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding LastFmImportStatus}"
-                                       IsVisible="{Binding LastFmImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                            <TextBlock Margin="0,2,0,0" Text="{Binding LastFmImportStatus}"
                                        FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="1"
                                   AutomationProperties.Name="{loc:T Settings.PlayCountImport.ModeName}"
@@ -7806,10 +8007,12 @@
                     </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="8">
+                    <StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
                         <!-- Official multi-colour ListenBrainz logo (transparent PNG). It's the
                              hexagonal brand mark, so it stands on its own at the same 40×40 footprint
@@ -7824,6 +8027,10 @@
                         <StackPanel Grid.Column="1" Grid.Row="0" Grid.RowSpan="2"
                                     VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.ListenBrainzScrobbling}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                            <StackPanel>
+                            <StackPanel>
+                            <StackPanel>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.SendPlaysListenBrainz}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left"
@@ -7831,32 +8038,38 @@
 
                             <!-- ACCOUNT line sits inline with the title/description block so it pulls
                                  up tight against the description instead of dropping into its own grid row. -->
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding ListenBrainzUsername, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Margin="-2,2,0,0">
+                                        Margin="-2,4,0,0">
                                 <TextBlock Text="{loc:T Settings.ACCOUNT}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzUsername}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                             </StackPanel>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- Self-hosted server in use (Koito, Maloja, …); hidden for the official one. -->
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzServerDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <StackPanel Orientation="Horizontal" Spacing="6"
-                                        IsVisible="{Binding ListenBrainzServerDisplay, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Margin="-2,0,0,0">
+                                        Margin="-2,2,0,0">
                                 <TextBlock Text="{loc:T Settings.ListenBrainzServer}" FontSize="12" Opacity="0.45" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding ListenBrainzServerDisplay}" FontSize="12" Opacity="0.85" VerticalAlignment="Center"
                                            TextTrimming="CharacterEllipsis" MaxWidth="420"/>
                             </StackPanel>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                             <!-- GitHub #197: signed in on another computer only, and plays waiting to be sent. -->
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding ListenBrainzQueueNote}"
-                                       IsVisible="{Binding ListenBrainzQueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
-                                       HorizontalAlignment="Left" Margin="-2,2,0,0"/>
+                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
 
                             <!-- Token row lives inside the same StackPanel as the title so it sits
                                  right under the description instead of leaving a gap. The Connect
                                  button is hoisted to column 2 (top-right) to match the Last.fm card. -->
-                            <controls:CollapsibleContent IsOpen="{Binding !IsListenBrainzConnected}" Lift="6" Margin="-2,0,0,0">
+                            <controls:CollapsibleContent IsOpen="{Binding !IsListenBrainzConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
                             <StackPanel
-                                        Margin="0,6,0,0"
+                                        Margin="0,8,0,0"
                                         Spacing="4">
                                 <TextBox x:Name="ListenBrainzTokenBox"
                                          AutomationProperties.Name="{loc:T Settings.ListenBrainzUserToken}"
@@ -7874,18 +8087,22 @@
                                          Watermark="{loc:T Settings.ListenBrainzApiUrl}"
                                          Width="280"
                                          HorizontalAlignment="Left"/>
+                                <StackPanel>
                                 <TextBlock Text="{loc:T Settings.ListenBrainzApiUrlHint}"
                                            FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="420"
                                            HorizontalAlignment="Left"
                                            Margin="8,0,0,0"/>
                                 <!-- Inline validation error (e.g. "Token required"), semantically red. -->
+                                <controls:CollapsibleContent IsOpen="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                                 <TextBlock Text="{Binding ListenBrainzError}"
-                                           IsVisible="{Binding ListenBrainzError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                            Foreground="#E74856"
                                            FontSize="11"
-                                           Margin="8,0,0,0"/>
+                                           Margin="8,4,0,0"/>
+                                </controls:CollapsibleContent>
+                                </StackPanel>
                             </StackPanel>
                             </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- Not connected state (top-right, mirrors the Last.fm Connect button) -->
@@ -7927,8 +8144,8 @@
                     </Grid>
 
                     <!-- Enable Scrobbling (when connected) -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsListenBrainzConnected}" Lift="6">
-                    <StackPanel Spacing="8">
+                    <controls:CollapsibleContent IsOpen="{Binding IsListenBrainzConnected}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,8,0,0" Spacing="8">
                     <Grid ColumnDefinitions="*,Auto" Margin="54,0,0,0">
                         <TextBlock Grid.Column="0"
                                    Text="{loc:T Settings.EnableScrobbling}"
@@ -7943,13 +8160,16 @@
                     <Grid ColumnDefinitions="*,Auto,Auto" Margin="54,4,0,0">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,12,0">
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Title}" FontSize="13"/>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.PlayCountImport.Line}"
                                        FontSize="11" Opacity="0.5" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
-                            <TextBlock Text="{Binding ListenBrainzImportStatus}"
-                                       IsVisible="{Binding ListenBrainzImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                            <controls:CollapsibleContent IsOpen="{Binding ListenBrainzImportStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                            <TextBlock Margin="0,2,0,0" Text="{Binding ListenBrainzImportStatus}"
                                        FontSize="11" Opacity="0.85" TextWrapping="Wrap" MaxWidth="460"
                                        HorizontalAlignment="Left"/>
+                            </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         <ComboBox Grid.Column="1"
                                   AutomationProperties.Name="{loc:T Settings.PlayCountImport.ModeName}"
@@ -8000,6 +8220,7 @@
                     </Grid>
                     </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
@@ -8027,11 +8248,14 @@
 
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2" Margin="0,0,12,0">
                         <TextBlock Text="{loc:T Settings.TidalTitle}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Left"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.TidalDescription}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap" MaxWidth="560"
                                    HorizontalAlignment="Left" Margin="-2,0,0,0"/>
-                        <TextBlock Text="{loc:T Settings.TidalConnected}" FontSize="12" Opacity="0.85"
-                                   IsVisible="{Binding IsTidalConnected}" Margin="-2,2,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding IsTidalConnected}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{loc:T Settings.TidalConnected}" FontSize="12" Opacity="0.85" Margin="-2,4,0,0"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
 
                     <Button Grid.Column="2"
@@ -8075,7 +8299,8 @@
                                        HorizontalAlignment="Left" Margin="-2,0,0,0"/>
 
                             <!-- Connected summary -->
-                            <controls:CollapsibleContent IsOpen="{Binding IsMediaServerConnected}" Lift="6" Margin="-2,0,0,0">
+                            <StackPanel>
+                            <controls:CollapsibleContent IsOpen="{Binding IsMediaServerConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
                             <StackPanel Spacing="3" Margin="0,8,0,0">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <TextBlock Classes="server-field-label" Text="{loc:T Settings.TYPE}" Width="68" VerticalAlignment="Center"/>
@@ -8098,7 +8323,7 @@
                                  and long input scrolls inside the boxes. Left-aligned, the grid
                                  sized its star columns to content and the boxes resized on every
                                  keystroke. -->
-                            <controls:CollapsibleContent IsOpen="{Binding !IsMediaServerConnected}" Lift="6" Margin="-2,0,0,0">
+                            <controls:CollapsibleContent IsOpen="{Binding !IsMediaServerConnected}" Lift="10" Margin="-2,0,0,0" Motion="Glide">
                             <Grid
                                   ColumnDefinitions="*,12,*" RowDefinitions="Auto,Auto"
                                   HorizontalAlignment="Stretch" Margin="0,10,0,0">
@@ -8152,6 +8377,7 @@
                                 </StackPanel>
                             </Grid>
                             </controls:CollapsibleContent>
+                            </StackPanel>
 
                             <!-- Status line: dot follows the state (green connected, red error),
                                  spinner while a connection attempt is running. -->
@@ -8251,7 +8477,7 @@
             <!-- Search (both sections) and the small actions: Install from file, the plugins folder
                  (its path in the tooltip), refresh (the folder and the list). On a narrow pane the
                  actions drop under the search box (SettingsView.axaml.cs LayoutPluginsHeader). -->
-            <Grid x:Name="PluginsHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,4">
+            <Grid x:Name="PluginsHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,4">
                 <TextBox x:Name="PluginSearchBox" Grid.Column="0" Classes="settings-search plugin-search"
                          Watermark="{loc:T Plugins.Search}"
                          AutomationProperties.Name="{loc:T Plugins.Search}"
@@ -8296,15 +8522,18 @@
                         </Panel>
                     </Button>
                 </WrapPanel>
+                <!-- After a refresh: a check and "Refreshed · 8 plugins", gone again after a few
+                     seconds. Its own header row, so the glide folds its gap with it (as a sibling in
+                     the page's Spacing it would snap by that spacing at the end of the close). -->
+                <controls:CollapsibleContent Grid.Row="2" Grid.ColumnSpan="2" IsOpen="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="14,10,0,4">
+                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="11" Height="11"
+                              Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
+                               VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+                </controls:CollapsibleContent>
             </Grid>
-            <!-- After a refresh: a check and "Refreshed · 8 plugins", gone again after a few seconds. -->
-            <StackPanel Orientation="Horizontal" Spacing="6" Margin="14,2,0,4"
-                        IsVisible="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="11" Height="11"
-                          Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
-                           VerticalAlignment="Center" TextWrapping="Wrap"/>
-            </StackPanel>
 
             <!-- Built-in Features (Discord, Mistery 11-02): parts of Noctis behind one switch each, like
                  plugins that ship on. A row is the feature's own setting where one existed (Discord,
@@ -8592,6 +8821,7 @@
             <Border Classes="setting-card" Padding="18,16" Margin="0,0,0,16">
                 <StackPanel Spacing="10">
                     <!-- Row 1: logo + version on left, update button on right -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
                             <!-- White note, transparent corners, plus a small transparent margin
@@ -8769,8 +8999,8 @@
                     </Grid>
 
                     <!-- Update status area (failures in red behind a "!" badge) -->
-                    <StackPanel Classes="update-fade" Orientation="Horizontal" Spacing="12"
-                                IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <controls:CollapsibleContent IsOpen="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Classes="update-fade" Orientation="Horizontal" Spacing="12">
                         <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
                             <Border Width="14" Height="14" CornerRadius="7" Background="#E74856"
                                     VerticalAlignment="Center"
@@ -8793,6 +9023,8 @@
                                 IsVisible="{Binding ShowWhatsNew}">
                             <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
                         </Button>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
                     </StackPanel>
 
                     <!-- Auto-update (opt-in): background download + install at next launch. Hidden for Scoop /

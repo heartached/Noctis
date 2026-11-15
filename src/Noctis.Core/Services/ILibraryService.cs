@@ -225,8 +225,29 @@ public interface ILibraryService
     Task<AlbumGroupResult> GroupIntoAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
         CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
 
+    /// <summary>
+    /// GitHub #239 "Move to Album": moves <paramref name="tracks"/> (in this order) into the
+    /// album named <paramref name="album"/> by <paramref name="albumArtist"/>: an existing one
+    /// (matched as albums are, case-insensitively; its own spelling is kept) or a new one, which
+    /// exists from then on because its songs name it. The files get the album's tags
+    /// (<see cref="AlbumMove"/>); songs already on it are left alone. Failures, cover carry,
+    /// rebuild, save and LibraryUpdated as <see cref="GroupIntoAlbumAsync"/>.
+    /// </summary>
+    Task<AlbumGroupResult> MoveToAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default) => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
     /// <summary>GitHub #193: whether the automatic album grouping (#178) is on.</summary>
     bool AlbumGroupingEnabled => true;
+
+    /// <summary>Albums that also list another album's songs (<see cref="Services.AlbumLinks"/>).</summary>
+    IReadOnlyList<AlbumLink> AlbumLinks => Array.Empty<AlbumLink>();
+
+    /// <summary>Makes <paramref name="albumId"/> list <paramref name="sourceAlbumId"/>'s songs too
+    /// (a deluxe edition and its original): saved, rebuilt, LibraryUpdated. No file changes.</summary>
+    Task LinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId) => Task.CompletedTask;
+
+    /// <summary>Undoes <see cref="LinkAlbumTracksAsync"/>.</summary>
+    Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId) => Task.CompletedTask;
 
     /// <summary>
     /// GitHub #193: switches the automatic album grouping (#178) on or off and rebuilds right
@@ -244,6 +265,16 @@ public interface ILibraryService
     /// files written, and the names of those that could not be.
     /// </summary>
     Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
+        => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
+
+    /// <summary>
+    /// GitHub #201: writes every grouping the files do not carry yet, once, whatever Save
+    /// Grouping to Files is set to: the songs the automatic grouping re-keyed (while it is on),
+    /// and "Group into One Album" songs whose file could not be written then. The same two tags
+    /// a new grouping writes (Album Artist and album name); nothing else in the file changes.
+    /// Missing and read-only files are skipped and listed. Returns files written and not written.
+    /// </summary>
+    Task<AlbumGroupResult> SaveAlbumGroupingToFilesAsync(CancellationToken ct = default)
         => Task.FromResult(new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>()));
 
     /// <summary>GitHub #190: a background pass wrote the grouping into files (Grouped = files

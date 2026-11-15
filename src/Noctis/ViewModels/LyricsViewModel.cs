@@ -245,8 +245,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     partial void OnIsFullScreenPageActiveChanged(bool value)
     {
         OnPropertyChanged(nameof(IsLyricsFocusActive));
+        OnPropertyChanged(nameof(IsLyricsIslandHidden));
         RefreshFocusDimming();
     }
+
+    /// <summary>GitHub #211: the page hides its player island (Settings ▸ Lyrics ▸ Hide the
+    /// Player Island in Full Screen) — full screen only, so it is back the moment the window
+    /// leaves full screen or the page closes. The progress line stays either way.</summary>
+    public bool IsLyricsIslandHidden => IsFullScreenPageActive && Player.LyricsFullScreenHideIsland;
+
+    /// <summary>Discord (f7uh): the page hides its lyrics and shows the centred player
+    /// (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics), lyrics or not. View-only: the lyrics stay
+    /// loaded and in sync, nothing is searched, and the side panel / mini player ignore it.</summary>
+    public bool IsLyricsHiddenOnPage => Player.LyricsPageHideLyrics;
 
     /// <summary>True while the opt-in fullscreen focus dimming is in effect (fullscreen
     /// lyrics page + Appearance toggle). The page view also anchors the active line
@@ -699,12 +710,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Opens the Search Lyrics (source picker) dialog; set by MainWindowViewModel.</summary>
     internal Func<LyricsSearchViewModel, Task>? ShowLyricsSearchDialog { get; set; }
 
+    /// <summary>GitHub #212: opens the lyrics editor (Edit Info on the song's lyrics) for a
+    /// track; set by MainWindowViewModel to MetadataHelper.OpenLyricsEditor, which calls
+    /// <see cref="OnLyricsEdited"/> after a save.</summary>
+    internal Func<Track, Task>? OpenLyricsEditor { get; set; }
+
     public LyricsViewModel(PlayerViewModel player, ILrcLibService lrcLib, INetEaseService netEase, IMetadataService metadata, IPersistenceService persistence, ILibraryService library)
     {
         _timeline = new LyricsTimeline(LyricLines, WordLookahead, LyricsLookahead);
         // First handler on the collection, ahead of every view's: a long document's lines are
         // set to rest before any view builds their word layers (see WordLayerWindowMinWords).
         LyricLines.CollectionChanged += (_, _) => OnLyricLinesChangedForWordLayers();
+        // Any change the window did not make itself (a clear, a new song's lines) ends it.
+        LyricLines.CollectionChanged += (_, _) => { if (!_windowUpdating) _windowAll = null; };
+        UnsyncedLines.CollectionChanged += (_, _) => { if (!_windowUpdating) _windowMirrorsUnsynced = false; };
         // Plugin API 1.5: a lyrics effect says which lines read right to left.
         LyricLines.CollectionChanged += (_, _) => ApplyLineDirections();
         Controls.LyricsWordEffect.Changed += OnLyricsWordEffectChanged;
@@ -756,7 +775,24 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // binding) so voice-2 lines right-align against a stable edge; single-voice
         // files keep today's content-hugging layout untouched.
         LyricLines.CollectionChanged += (_, _) =>
-            HasDuetLines = LyricLines.Any(l => l.Voice != LyricVoice.Default);
+            HasDuetLines = AllLyricLines.Any(l => l.Voice != LyricVoice.Default);
+
+        // GitHub #212: Add Lyrics / Edit Lyrics follow what the page shows and which song it is.
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(ShareAvailable))
+                OnPropertyChanged(nameof(EditLyricsLabel));
+            else if (e.PropertyName == nameof(IsPreviewActive))
+                OnPropertyChanged(nameof(CanEditLyrics));
+        };
+        _player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.CurrentTrack))
+            {
+                OnPropertyChanged(nameof(CanEditLyrics));
+                OnPropertyChanged(nameof(EditLyricsLabel));
+            }
+        };
 
         // Lines arriving is what ends a centred no-lyrics layout (see UpdateNoLyricsCentered).
         LyricLines.CollectionChanged += (_, _) => UpdateNoLyricsCentered();
@@ -778,7 +814,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // during the wheel-scroll pause window left the view parked while every visible
         // line dimmed to opacity 0 (outside the ±9 window around the new active line).
         // The views re-anchor on the resulting IsAutoFollowPaused change.
-        _player.Seeked += (_, _) => IsAutoFollowPaused = false;
+        _player.Seeked += (_, _) =>
+        {
+            IsAutoFollowPaused = false;
+            _windowHeldUntil = 0;
+        };
 
         // React to accent colour changes so the artist/album text recolours live.
         _accentHandler = (_, _) => Dispatcher.UIThread.Post(RefreshAccentForegrounds);
@@ -1042,16 +1082,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         await PersistArtworkBackgroundPreferenceAsync(false, gradient: true);
     }
 
+    // Through UpdateSettingsAsync: a plain load-then-save let a Settings save or Reset's
+    // defaults land in between, and the stale copy saved after it undid them.
     private async Task PersistArtworkBackgroundPreferenceAsync(bool showArtwork, bool? gradient = null)
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
-            if (settings.LyricsShowArtworkBackground == showArtwork
-                && (gradient is null || settings.LyricsBackgroundGradient == gradient)) return;
-            settings.LyricsShowArtworkBackground = showArtwork;
-            if (gradient is { } g) settings.LyricsBackgroundGradient = g;
-            await _persistence.SaveSettingsAsync(settings);
+            await _persistence.UpdateSettingsAsync(settings =>
+            {
+                settings.LyricsShowArtworkBackground = showArtwork;
+                if (gradient is { } g) settings.LyricsBackgroundGradient = g;
+            });
         }
         catch { }
     }
@@ -1107,14 +1148,29 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
         }
 
-        // Persist preference
+        // Persist preference (gated, as PersistArtworkBackgroundPreferenceAsync).
+        var savedHex = _selectedColorHex ?? "";
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
-            settings.LyricsBackgroundColorHex = _selectedColorHex ?? "";
-            await _persistence.SaveSettingsAsync(settings);
+            await _persistence.UpdateSettingsAsync(settings => settings.LyricsBackgroundColorHex = savedHex);
         }
         catch { }
+    }
+
+    /// <summary>
+    /// Settings › Reset: the background back to a fresh install's (the artwork, Auto colours).
+    /// The reset wrote the defaults to settings.json, but this view-model read them once at
+    /// start, so a chosen colour stayed on the lyrics page until the next launch.
+    /// </summary>
+    public void ResetBackgroundToDefault()
+    {
+        IsColorModeArtwork = true;
+        IsColorModeSolid = false;
+        IsColorModeGradient = false;
+        _selectedColorHex = null;
+        ActiveSwatchKey = "";
+        ResetForegroundsToDefault();
+        UpdateAdaptiveBackground(_player.AlbumArt);
     }
 
     private async Task LoadSavedBackgroundColorAsync()
@@ -1281,6 +1337,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
         DebugLogger.Info(DebugLogger.Category.Lyrics, "SearchLyrics", $"artist={track.Artist}, title={track.Title}");
         var generation = ++_searchGeneration;
+        _searchedOnline.Add(track.Id);
         IsSearching = true;
         ShowSearchButton = false;
         SearchFailedMessage = string.Empty;
@@ -1682,16 +1739,83 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     // ── Search Lyrics with a source picker (issue #113) ──
 
+    // ── Add / edit the song's lyrics by hand (GitHub #212) ──
+    // Lyrics could already be typed or pasted in Edit Info's lyrics tabs, but nothing on the
+    // lyrics page led there: its ⋯ ▸ Lyrics menu had Search / Save / Share / Mark / Remove
+    // only, Edit Info opened on Details with a song's empty Plain Lyrics box switched off, and
+    // LRC could only come in by Import file. The page now offers Add Lyrics (no lyrics shown)
+    // or Edit Lyrics, opening Edit Info on the lyrics themselves.
+
+    /// <summary>The song on the page is a file whose lyrics can be written (not a stream, not a Studio preview).</summary>
+    public bool CanEditLyrics => _player.CurrentTrack is { IsRemoteStream: false } track
+                                 && !string.IsNullOrWhiteSpace(track.FilePath) && !IsPreviewActive;
+
+    /// <summary>"Add Lyrics" while the page shows none, else "Edit Lyrics".</summary>
+    public string EditLyricsLabel => Localization.Loc.T(ShareAvailable ? "Lyrics.EditLyrics" : "Lyrics.AddLyrics");
+
+    [RelayCommand]
+    private async Task EditLyrics()
+    {
+        if (!CanEditLyrics || OpenLyricsEditor == null || _player.CurrentTrack is not { } track) return;
+        await OpenLyricsEditor(track);
+    }
+
+    /// <summary>
+    /// The lyrics editor saved <paramref name="track"/>'s lyrics: show them now, not when the
+    /// library's re-index gets round to LibraryUpdated. A song marked as having no lyrics
+    /// that now has some loses the mark (it would hide them).
+    /// </summary>
+    public void OnLyricsEdited(Track track)
+    {
+        var hasLyrics = !string.IsNullOrWhiteSpace(track.SyncedLyrics) || !string.IsNullOrWhiteSpace(track.Lyrics);
+        if (hasLyrics && track.NoLyrics) SetNoLyricsMark(track, false);
+        if (_currentTrack is not { } current || current.Id != track.Id) return;
+        ReloadCurrentLyrics(current);
+    }
+
     /// <summary>Opens the Search Lyrics dialog for the track on the page.</summary>
     [RelayCommand]
     private async Task OpenLyricsSearch()
     {
-        if (_currentTrack == null || ShowLyricsSearchDialog == null) return;
-        var search = CreateLyricsSearchViewModel(_currentTrack);
+        if (_currentTrack == null) return;
+        await OpenLyricsSearchForTrackAsync(_currentTrack);
+    }
+
+    /// <summary>
+    /// Search Lyrics for <paramref name="track"/>, which need not be the song on the page: a pick
+    /// is saved for that song (<see cref="ApplySearchedLyrics"/>). GitHub #208: a song menu's
+    /// Search Lyrics on a song that isn't playing opens this, not the lyrics page, which always
+    /// shows the playing song.
+    /// </summary>
+    public async Task OpenLyricsSearchForTrackAsync(Track track)
+    {
+        if (ShowLyricsSearchDialog == null) return;
+        var search = CreateLyricsSearchViewModel(track);
         // Auto runs straight away, so the dialog opens on results rather than an empty list.
         _ = search.SearchAsync();
         await ShowLyricsSearchDialog(search);
     }
+
+    /// <summary>
+    /// Song menus' Search Lyrics (every page's, and the player island's ⋯ › Lyrics). For the
+    /// player's song: <paramref name="showLyricsPage"/> (which leaves an open page alone) and
+    /// <see cref="SearchLyricsForTrack"/>. For any other song (GitHub #208): the Search Lyrics
+    /// dialog for that song alone. The lyrics page follows the player, so opening it for another
+    /// song showed the playing song's page with the other song's lyrics loaded into it.
+    /// </summary>
+    public void SearchLyricsFromSongMenu(Track track, Action showLyricsPage)
+    {
+        if (!IsPlayerTrack(track))
+        {
+            _ = OpenLyricsSearchForTrackAsync(track);
+            return;
+        }
+        showLyricsPage();
+        SearchLyricsForTrack(track);
+    }
+
+    /// <summary>The song the player is on (playing or paused): the one the lyrics page follows.</summary>
+    public bool IsPlayerTrack(Track track) => _player.CurrentTrack is { } current && current.Id == track.Id;
 
     /// <summary>The source picker for <paramref name="track"/>, searching through this page's providers.</summary>
     internal LyricsSearchViewModel CreateLyricsSearchViewModel(Track track) => new(
@@ -1719,6 +1843,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
             : null,
         CanOfferLrcRedModel = async () => LrcRed != null && await LrcRedModelAllowedAsync(),
+        // GitHub #212: nothing found that fits — add the lyrics by hand.
+        AddOwnLyrics = OpenLyricsEditor is { } openEditor && !track.IsRemoteStream && !string.IsNullOrWhiteSpace(track.FilePath)
+            ? () => _ = openEditor(track)
+            : null,
     };
 
     private IReadOnlyList<Services.Plugins.PluginLyricsSource> CurrentPluginSources()
@@ -2040,7 +2168,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// </summary>
     internal static string? SyncedToWrite(LrcLibResult result) =>
         (result.HasLyricsfile ? LyricsfileParser.ToElrc(result.Lyricsfile) : null)
-        ?? (string.IsNullOrWhiteSpace(result.SyncedLyrics) ? null : result.SyncedLyrics);
+        // Untimed text in the synced slot is plain lyrics, not synced ones (GitHub #215).
+        ?? (Noctis.Helpers.LyricsTextHelper.ContainsTimestamps(result.SyncedLyrics) ? result.SyncedLyrics : null);
 
     /// <summary>
     /// GitHub #115: saves the online lyrics on the page next to the song, under its name, and
@@ -2558,6 +2687,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Probe source of a song marked as having no lyrics: nothing is read for it.</summary>
     private const string NoLyricsSource = "NoLyrics";
 
+    /// <summary>Probe source of a song whose lyrics only say it is instrumental (GitHub #236:
+    /// LRCGET's "[au: instrumental]" file for an LRCLIB instrumental): shown as one, no lookup.</summary>
+    internal const string InstrumentalSource = "Instrumental";
+
     /// <summary>
     /// Marks the song on the page as having no lyrics (an instrumental): no automatic lookup
     /// searches it again, and the lyrics it has from this app go as Remove Lyrics takes them —
@@ -2714,9 +2847,60 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (lines.Count == 0) return;
         // A probe still in flight (an earlier reload) must not land over these lines.
         ++_searchGeneration;
+        // The lines that were lit keep word-sweep state of their own: they are always rebuilt.
+        _previewRelit = new HashSet<LyricLine>(_timeline.ActiveLines);
         _timeline.Reset();
         ActiveLineIndex = -1;
-        ApplyLocalLyricsResult(current, new LocalLyricsProbe(lines, null, PreviewSource, FromCache: false));
+        try { ApplyLocalLyricsResult(current, new LocalLyricsProbe(lines, null, PreviewSource, FromCache: false)); }
+        finally { _previewRelit = null; }
+    }
+
+    // Set while UpdatePreview applies new text: ShowLines swaps only the lines that changed.
+    private HashSet<LyricLine>? _previewRelit;
+
+    /// <summary>
+    /// GitHub #237: every tap or nudge in the Studio sends the whole review here, and replacing
+    /// every line rebuilt every line's word cells in each open lyrics view (~100 MB and most of a
+    /// second per view for 40 word-timed lines; the Studio froze 2-5 s per tap, and taps queued
+    /// during the freeze all read one stale position). A tap changes one line: only the lines
+    /// whose content differs are replaced. False (rebuild all) when the shape changed or most did.
+    /// </summary>
+    private bool PatchPreviewLines(List<LyricLine> shown)
+    {
+        if (_previewRelit is not { } relit || shown.Count != LyricLines.Count) return false;
+        var changed = new List<int>();
+        for (var i = 0; i < shown.Count; i++)
+        {
+            var old = LyricLines[i];
+            if (relit.Contains(old) || !SamePreviewLine(old, shown[i])) changed.Add(i);
+        }
+        if (changed.Count * 2 > shown.Count) return false;
+        foreach (var i in changed) LyricLines[i] = shown[i];
+        return true;
+    }
+
+    private static bool SamePreviewLine(LyricLine a, LyricLine b) =>
+        a.Timestamp == b.Timestamp && a.EndTimestamp == b.EndTimestamp && a.Text == b.Text && a.Voice == b.Voice
+        && a.IsIntroPlaceholder == b.IsIntroPlaceholder && a.IsInterlude == b.IsInterlude && a.IsBackgroundOnly == b.IsBackgroundOnly
+        && a.Translation == b.Translation && a.Transliteration == b.Transliteration
+        && a.BackgroundEndTimestamp == b.BackgroundEndTimestamp && a.TransliterationEndTimestamp == b.TransliterationEndTimestamp
+        && SameWords(a.Words, b.Words) && SameWords(a.BackgroundWords, b.BackgroundWords)
+        && SameWords(a.TransliterationWords, b.TransliterationWords);
+
+    private static bool SameWords(IReadOnlyList<WordTiming>? a, IReadOnlyList<WordTiming>? b)
+    {
+        if (a is null || b is null) return a is null && b is null;
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+        {
+            WordTiming x = a[i], y = b[i];
+            if (x.Text != y.Text || x.Start != y.Start || x.End != y.End || x.IsEmphasis != y.IsEmphasis
+                || x.HeldDurationMs != y.HeldDurationMs || x.IsLastInLine != y.IsLastInLine
+                || x.SweepLeadIn != y.SweepLeadIn || x.SweepTrailOut != y.SweepTrailOut
+                || !(x.Syllables ?? []).SequenceEqual(y.Syllables ?? []))
+                return false;
+        }
+        return true;
     }
 
     /// <summary>Drops the preview; if it was for the loaded track, its real lyrics reload.</summary>
@@ -2754,8 +2938,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             catch { /* probe failures already surface via the load path */ }
             if (generation != _searchGeneration) return; // another track took over
 
-            // If no local lyrics were found, trigger online search automatically
-            if (ShowSearchButton)
+            // If no local lyrics were found, trigger online search automatically — once. A song the
+            // page already searched online (the automatic download included) gets the dialog, as
+            // the island's search button gives it: repeating the empty search showed nothing (GitHub #221).
+            if (ShowSearchButton && !_searchedOnline.Contains(track.Id))
                 SearchLyricsCommand.Execute(null);
             else if (!IsSearching)
                 await OpenLyricsSearchCommand.ExecuteAsync(null);
@@ -2806,12 +2992,12 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 LrcParser.InsertInterludePlaceholders(parsedLines);
             }
 
-            List<LyricLine> synced = parsedLines;
+            List<LyricLine> synced = WindowFor(parsedLines);
             FillLyricCollections(
-                () => LyricLines.ReplaceAll(synced),
+                () => ShowLines(synced),
                 () =>
                 {
-                    if (!string.IsNullOrWhiteSpace(plainForUnsync))
+                    if (!string.IsNullOrWhiteSpace(plainForUnsync) && !IsLyricsWindowed)
                         PopulateUnsyncedFromPlainText(plainForUnsync);
                     else
                         PopulateUnsyncedLines(synced);
@@ -2826,9 +3012,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 var wrapped = LrcParser.SoftWrap(line);
                 rendered.Add(new LyricLine { Text = wrapped, IsActive = true });
             }
+            var shown = WindowFor(rendered);
             FillLyricCollections(
-                () => LyricLines.ReplaceAll(rendered),
-                () => UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true })));
+                () => ShowLines(shown),
+                () => PopulatePlainCopies(shown));
         }
         else
         {
@@ -2956,6 +3143,17 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(ShowMetadataFavoriteHeart));
     }
 
+    /// <summary>Re-reads the page's song's lyrics (files first, as on any load) and restarts the sync timer.</summary>
+    private void ReloadCurrentLyrics(Track track)
+    {
+        LoadLyricsForTrack(track);
+
+        if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
+            _lyricsSyncTimer.Start();
+        else
+            _lyricsSyncTimer.Stop();
+    }
+
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
         Dispatcher.UIThread.Post(() =>
@@ -2966,14 +3164,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             // Reload lyrics only if the track's lyrics content actually changed
             if (_currentTrack.Lyrics != _loadedLyrics ||
                 _currentTrack.SyncedLyrics != _loadedSyncedLyrics)
-            {
-                LoadLyricsForTrack(_currentTrack);
-
-                if (_hasSyncedLyrics && IsSyncTabSelected && _player.State == Models.PlaybackState.Playing)
-                    _lyricsSyncTimer.Start();
-                else
-                    _lyricsSyncTimer.Stop();
-            }
+                ReloadCurrentLyrics(_currentTrack);
 
             // A metadata edit can change Composer without touching the lyrics text —
             // the collection hooks never fire then, so refresh the credit directly.
@@ -3105,6 +3296,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             OnPropertyChanged(nameof(IsLyricsFocusActive));
             RefreshFocusDimming();
         }
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsFullScreenHideIsland))
+            OnPropertyChanged(nameof(IsLyricsIslandHidden));
+        else if (e.PropertyName == nameof(PlayerViewModel.LyricsPageHideLyrics))
+            OnPropertyChanged(nameof(IsLyricsHiddenOnPage));
         // Glow & lift flipped: the running lines settle (off) or pick it up next frame (on).
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsGlowAndLift))
         {
@@ -3349,6 +3544,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarElrc = TryReadSidecar(track.FilePath, new[] { ".elrc", ".ELRC", ".Elrc" });
             if (sidecarElrc != null)
             {
+                if (LyricsSearchSelector.IsInstrumentalPlaceholder(sidecarElrc)) return InstrumentalProbe;
                 var lines = ParseLrcContent(sidecarElrc);
                 if (lines.Count > 0)
                     return new LocalLyricsProbe(lines, null, "Sidecar:Elrc", FromCache: false, sidecarElrc);
@@ -3362,6 +3558,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var sidecarLrc = TryReadSidecar(track.FilePath, new[] { ".lrc", ".LRC", ".Lrc" });
             if (sidecarLrc != null)
             {
+                if (LyricsSearchSelector.IsInstrumentalPlaceholder(sidecarLrc)) return InstrumentalProbe;
                 var lines = ParseLrcContent(sidecarLrc);
                 if (lines.Count > 0)
                     return new LocalLyricsProbe(lines, null, "Sidecar:Lrc", FromCache: false, sidecarLrc);
@@ -3373,6 +3570,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         // or lyrics saved for the song since.
         var hasSyncedField = !string.IsNullOrWhiteSpace(track.SyncedLyrics);
         var hasPlainField = !string.IsNullOrWhiteSpace(track.Lyrics);
+        if (LyricsSearchSelector.IsInstrumentalPlaceholder(hasSyncedField ? track.SyncedLyrics : track.Lyrics))
+            return InstrumentalProbe;
         // A whole TTML document as the song's lyrics text (pasted into a tagger's lyrics field,
         // GitHub #132) is Apple's timed lyrics, not words to print: it showed as its markup.
         if (!hasSyncedField && ProbeTtmlText(track.Lyrics, joinSplitWords, uiLanguage) is { } ttmlField)
@@ -3401,6 +3600,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var cachedLrc = TryReadCacheFile(track.Id, ".lrc");
             if (cachedLrc != null)
             {
+                if (LyricsSearchSelector.IsInstrumentalPlaceholder(cachedLrc)) return InstrumentalProbe;
                 if (cachedLrc.Contains('[') && LrcParser.ContainsTimestamp(cachedLrc))
                 {
                     var lines = ParseLrcContent(cachedLrc);
@@ -3426,6 +3626,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         if (track.SourceType != SourceType.Local || string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return null;
         var embedded = EmbeddedLyrics.ReadFile(path);
         if (embedded.IsEmpty) return null;
+        if (LyricsSearchSelector.IsInstrumentalPlaceholder(!string.IsNullOrWhiteSpace(embedded.TimedText) ? embedded.TimedText
+                : string.IsNullOrWhiteSpace(rowPlain) ? embedded.PlainText : null))
+            return InstrumentalProbe;
 
         if (string.IsNullOrWhiteSpace(rowPlain) && ProbeTtmlText(embedded.Text, joinSplitWords, uiLanguage) is { } ttml)
             return ttml;
@@ -3461,6 +3664,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             TtmlParser.ToLrc(text, joinSplitWords, uiLanguage));
     }
 
+    private static readonly LocalLyricsProbe InstrumentalProbe = new(null, null, InstrumentalSource, FromCache: false);
+
     private void ApplyLocalLyricsResult(Track track, LocalLyricsProbe probe)
     {
         IsPreviewActive = probe.Source == PreviewSource;
@@ -3483,13 +3688,13 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                 LrcParser.InsertInterludePlaceholders(probe.Lines);
             }
 
-            List<LyricLine> synced = probe.Lines;
+            List<LyricLine> synced = WindowFor(probe.Lines);
             var unsyncedPlain = probe.UnsyncedPlain;
             FillLyricCollections(
-                () => LyricLines.ReplaceAll(synced),
+                () => ShowLines(synced),
                 () =>
                 {
-                    if (!string.IsNullOrWhiteSpace(unsyncedPlain))
+                    if (!string.IsNullOrWhiteSpace(unsyncedPlain) && !IsLyricsWindowed)
                         PopulateUnsyncedFromPlainText(unsyncedPlain);
                     else
                         PopulateUnsyncedLines(synced);
@@ -3521,9 +3726,10 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             var rendered = new List<LyricLine>(split.Length);
             foreach (var line in split)
                 rendered.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
+            var shown = WindowFor(rendered);
             FillLyricCollections(
-                () => LyricLines.ReplaceAll(rendered),
-                () => UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true })));
+                () => ShowLines(shown),
+                () => PopulatePlainCopies(shown));
             LyricsSourceName = string.Empty;
             CanRemoveLyrics = true;
             RefreshActiveLyricPosition();
@@ -3540,6 +3746,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             IsMarkedNoLyrics = true;
             AutoSelectTab();
             RefreshActiveLyricPosition();
+            return;
+        }
+        if (probe.Source == InstrumentalSource)
+        {
+            // GitHub #236: its lyrics only say it is instrumental. Shown as LRCLIB's own
+            // instrumental answer is (search pill + "This track is instrumental."), and the
+            // automatic download skips it this session.
+            DebugLogger.Info(DebugLogger.Category.Lyrics, "Instrumental", $"title={track.Title}");
+            _autoDownloadTried.Add(track.Id);
+            SearchFailedMessage = Localization.Loc.T("Lyrics.Instrumental");
+            ShowSearchButton = true;
+            AutoSelectTab();
+            RefreshActiveLyricPosition();
+            UpdateNoLyricsCentered();
             return;
         }
         DebugLogger.Warn(DebugLogger.Category.Lyrics, "NoLyricsFound", $"title={track.Title}, artist={track.Artist}");
@@ -3563,6 +3783,9 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     // Songs the automatic download already searched for this session: a song with no lyrics
     // online is not searched again every time its lyrics are opened.
     private readonly HashSet<Guid> _autoDownloadTried = new();
+
+    // Songs the page's own online search (SearchLyrics) ran for this session, found or not.
+    private readonly HashSet<Guid> _searchedOnline = new();
 
     /// <summary>
     /// Settings ▸ Lyrics ▸ "Automatically download lyrics" (GitHub #135): when a lyrics view is
@@ -3671,22 +3894,24 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
 
             syncedLines = parsedLines;
-            fillUnsynced = () => PopulateUnsyncedLines(parsedLines);
+            fillUnsynced = () => PopulateUnsyncedLines(syncedLines);
         }
 
         if (hasPlainField && !plainIsActuallyLrc)
         {
-            var split = LrcParser.SplitPlain(track.Lyrics);
             if (!hasSyncedField)
             {
+                var split = LrcParser.SplitPlain(track.Lyrics);
                 var rendered = new List<LyricLine>(split.Length);
                 foreach (var line in split)
                     rendered.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
                 syncedLines = rendered;
-                fillUnsynced = () => UnsyncedLines.ReplaceAll(rendered.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
+                fillUnsynced = () => PopulatePlainCopies(syncedLines);
             }
             else
             {
+                // The Plain tab of synced lyrics shows the separate plain text, up to a list's worth.
+                var split = LrcParser.SplitPlain(track.Lyrics, LrcParser.ListMaxLines);
                 var unsynced = new List<LyricLine>(split.Length);
                 foreach (var line in split)
                     unsynced.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
@@ -3694,8 +3919,19 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             }
         }
 
+        if (syncedLines != null)
+        {
+            syncedLines = WindowFor(syncedLines);
+            // A window's Plain tab mirrors the window, whatever the plain text would have been.
+            if (IsLyricsWindowed)
+            {
+                var shown = syncedLines;
+                fillUnsynced = () => PopulateUnsyncedLines(shown);
+            }
+        }
+
         FillLyricCollections(
-            () => { if (syncedLines != null) LyricLines.ReplaceAll(syncedLines); },
+            () => { if (syncedLines != null) ShowLines(syncedLines); },
             () => fillUnsynced?.Invoke());
         LyricsSourceName = string.Empty;
         RefreshActiveLyricPosition();
@@ -3742,6 +3978,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private void PopulateUnsyncedLines(List<LyricLine> sourceLyrics)
     {
+        if (IsLyricsWindowed)
+        {
+            ShowUnsyncedMirror(sourceLyrics);
+            return;
+        }
         var batch = new List<LyricLine>(sourceLyrics.Count);
         foreach (var line in sourceLyrics)
         {
@@ -3760,10 +4001,20 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         UnsyncedLines.ReplaceAll(batch);
     }
 
-    /// <summary>Populates the Unsync tab from a Lyricsfile's `plain` block (preserves blank-line spacing).</summary>
+    /// <summary>Plain lyrics on both tabs: the Plain tab gets copies of the lines shown.</summary>
+    private void PopulatePlainCopies(List<LyricLine> shown)
+    {
+        if (IsLyricsWindowed)
+            ShowUnsyncedMirror(shown);
+        else
+            UnsyncedLines.ReplaceAll(shown.Select(r => new LyricLine { Text = r.Text, IsActive = true }));
+    }
+
+    /// <summary>Populates the Unsync tab from a Lyricsfile's `plain` block (preserves blank-line
+    /// spacing), up to a list's worth of lines (a window's Plain tab mirrors the window instead).</summary>
     private void PopulateUnsyncedFromPlainText(string plain)
     {
-        var split = LrcParser.SplitPlain(plain);
+        var split = LrcParser.SplitPlain(plain, LrcParser.ListMaxLines);
         var batch = new List<LyricLine>(split.Length);
         foreach (var line in split)
             batch.Add(new LyricLine { Text = LrcParser.SoftWrap(line), IsActive = true });
@@ -3840,20 +4091,69 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ShareLyrics()
     {
+        AppSettings? settings = null;
+        try { settings = await _persistence.LoadSettingsAsync(); }
+        catch (Exception ex)
+        {
+            DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn,
+                "Share lyrics settings load failed", ex.Message);
+        }
+        if (BuildShareViewModel(settings ?? new AppSettings()) is { } vm)
+            await Views.LyricShareDialog.ShowAsync(vm);
+    }
+
+    /// <summary>Where the share dialog was left per song this session (Follow playback off).</summary>
+    private readonly LyricShareSpots _shareSpots = new();
+
+    /// <summary>
+    /// The share dialog's view model for the current song, opened as the user left it: Follow
+    /// playback and the watermark as remembered in <paramref name="settings"/>, and with
+    /// following off, the lines picked when it last closed on this song (<see cref="LyricShareSpots"/>).
+    /// Null when there is nothing to share. Internal for tests.
+    /// </summary>
+    internal LyricShareViewModel? BuildShareViewModel(AppSettings settings)
+    {
         var track = _player.CurrentTrack;
-        if (track == null) return;
+        if (track == null) return null;
+
+        // The song's whole lyrics, to remember lines by their place in it (windowed lyrics hand
+        // the dialog only a stretch around playback), and to see whether they changed since.
+        bool hasSynced = LyricLines.Count > 0 && LyricLines.Any(l => l.Timestamp.HasValue);
+        IReadOnlyList<LyricLine> whole = IsLyricsWindowed ? AllLyricLines
+            : hasSynced ? LyricLines : UnsyncedLines;
+        var key = LyricShareSpots.KeyOf(track);
+        long fingerprint = LyricShareSpots.Fingerprint(whole);
+        var spot = _shareSpots.Get(key, fingerprint);
 
         // Prefer the synced lines whenever they carry timestamps so the share dialog's
         // playback-sync (follow-along) works, even if the plain tab is currently showing.
-        bool hasSynced = LyricLines.Count > 0 && LyricLines.Any(l => l.Timestamp.HasValue);
-        var source = hasSynced ? (IEnumerable<LyricLine>)LyricLines : UnsyncedLines;
-        var shareable = source
-            .Where(l => !l.IsIntroPlaceholder && !string.IsNullOrWhiteSpace(l.Text))
-            .ToList();
-        if (shareable.Count == 0) return;
+        // Windowed lyrics: the lines around playback, not the window alone nor all of them
+        // (ShareSourceLines); around the remembered lines when they are picked again.
+        bool restoring = spot != null && !(settings.ShareLyricsFollowPlayback && hasSynced);
+        var (start, shown) = IsLyricsWindowed
+            ? ShareSourceWindow(restoring ? (spot![0] + spot[^1]) / 2 : null)
+            : (0, (IReadOnlyList<LyricLine>)(hasSynced ? LyricLines : UnsyncedLines));
+        var shareable = new List<LyricLine>();
+        var wholeIndex = new List<int>();
+        for (int i = 0; i < shown.Count; i++)
+        {
+            var l = shown[i];
+            if (l.IsIntroPlaceholder || string.IsNullOrWhiteSpace(l.Text)) continue;
+            shareable.Add(l);
+            wholeIndex.Add(start + i);
+        }
+        if (shareable.Count == 0) return null;
 
         int preselect = _timeline.ActiveLine is { } active ? shareable.IndexOf(active) : 0;
         if (preselect < 0) preselect = 0;
+
+        // Every remembered line has to be in this list, or none is picked again.
+        List<int>? restore = null;
+        if (restoring)
+        {
+            restore = spot!.Select(w => wholeIndex.IndexOf(w)).ToList();
+            if (restore.Any(i => i < 0)) restore = null;
+        }
 
         var vm = new LyricShareViewModel(
             track,
@@ -3863,8 +4163,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
             shareable.Select(l => l.Words).ToList(),
             shareable.Select(l => l.EndTimestamp).ToList(),
             preselect,
-            sources: shareable);
-        await Views.LyricShareDialog.ShowAsync(vm);
+            sources: shareable,
+            open: new LyricShareOpenState
+            {
+                FollowPlayback = settings.ShareLyricsFollowPlayback,
+                ShowWordmark = settings.ShareLyricsShowWordmark,
+                RestoreSelection = restore,
+            });
+
+        // On close: following off keeps the spot for the next open of this song; following on
+        // (or nothing picked) has none to keep.
+        vm.Closed += () =>
+        {
+            if (vm.SyncEnabled) { _shareSpots.Forget(key); return; }
+            _shareSpots.Set(key, fingerprint, vm.SelectedIndices.Select(i => wholeIndex[i]).ToArray());
+        };
+        return vm;
     }
 
     /// <summary>
@@ -3911,7 +4225,8 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         if (!_hasSyncedLyrics || LyricLines.Count == 0) return null;
 
-        var lines = LyricLines
+        // Every line, not the window: the editor's save writes the whole file back.
+        var lines = AllLyricLines
             .Where(l => !string.IsNullOrWhiteSpace(l.Text) && l.Text != "...")
             .ToList();
 
@@ -4036,10 +4351,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
 
     private void UpdateActiveLine(TimeSpan position)
     {
+        // Windowed lyrics (a long transcript): bring the window to playback first, so the
+        // timeline below resolves the line in it. Ordinary lyrics skip straight through.
+        if (_windowAll == null)
+        {
+            UpdateActiveLineCore(position);
+            return;
+        }
+        var lyricsPosition = position - LyricsOffset;
+        var moved = MaybeMoveWindowForPlayback(lyricsPosition < TimeSpan.Zero ? TimeSpan.Zero : lyricsPosition);
+        try
+        {
+            UpdateActiveLineCore(position);
+        }
+        finally
+        {
+            if (moved) LyricsWindowMoved?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void UpdateActiveLineCore(TimeSpan position)
+    {
         // Every caller passes the audio position; the track's lyrics offset (GitHub #102)
         // moves the lyrics, not the audio, so read the timeline that much behind it.
         position -= LyricsOffset;
         if (position < TimeSpan.Zero) position = TimeSpan.Zero;
+        _rendererClockMs = position.TotalMilliseconds;
+        _rendererClockAt = System.Diagnostics.Stopwatch.GetTimestamp();
         var step = _timeline.Update(position);
         // The set also changes without a line change: an overlapping (duet) line that
         // stays lit under the active one finishes, so the ramp re-centres on what's left.
@@ -4056,6 +4394,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
                   (step.ActiveLine?.Timestamp is { } ts ? $" (line starts {ts.TotalMilliseconds:0}ms)" : "") + lit
                 : $"lit set [{string.Join(",", _timeline.ActiveIndices)}] at {position.TotalMilliseconds:0}ms (active {step.ActiveIndex})");
         }
+        if (step.LineChanged) _lastLineChangeTicks = System.Diagnostics.Stopwatch.GetTimestamp();
         ActiveLineIndex = step.ActiveIndex;
         ScrollLineIndex = _timeline.Lead(position, ScrollLead);
         UpdateLineOpacities(step.ActiveIndex);
@@ -4063,6 +4402,27 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     }
 
     private static readonly TimeSpan ScrollLead = TimeSpan.FromMilliseconds(Helpers.LineMotion.ScrollLeadMs);
+
+    // Plugin API 1.8: the position plugin lyrics renderers draw from (LyricsLineFrame.PositionMs).
+    private double _rendererClockMs;
+    private long _rendererClockAt;
+
+    /// <summary>
+    /// The lyrics position (offset applied, as <see cref="LyricsTimeline"/> last saw it), carried
+    /// forward at the playback rate since then while playing, so a plugin renderer reads a smooth
+    /// value every frame between the timeline's updates (every frame of the word clock, or every
+    /// 100 ms of the line timer). Never more than half a second ahead of the last update. Reading
+    /// it changes nothing.
+    /// </summary>
+    internal double LyricsClockMs
+    {
+        get
+        {
+            if (_player.State != Models.PlaybackState.Playing || _rendererClockAt == 0) return _rendererClockMs;
+            var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_rendererClockAt).TotalMilliseconds;
+            return _rendererClockMs + Math.Min(elapsed, 500) * _player.PlaybackRate;
+        }
+    }
 
     /// <summary>
     /// Continuous playback clock for the sweep and line engine. The raw position
@@ -4096,6 +4456,7 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         }
 
         var nowMs = System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        _clock.Rate = _player.PlaybackRate;
         var estimate = _clock.Sample(raw.TotalMilliseconds, nowMs) - _player.OutputLatency.TotalMilliseconds;
         return TimeSpan.FromMilliseconds(Math.Max(0, estimate));
     }
@@ -4330,6 +4691,212 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     {
         if (line.IsWordLayerLive != live)
             line.IsWordLayerLive = live;
+    }
+
+    // ── Long transcripts: a window of the lines (Discord, Luwi 11-12) ──
+    // An 8.5 h audiobook's .lrc stopped at line 3000, four hours in. Every lyrics list realizes
+    // every line it holds, at a cost that grows with the count (LyricsLineWindow has the
+    // numbers), so lyrics past LrcParser.ListMaxLines keep all their lines here and LyricLines
+    // shows LyricsLineWindow.Size of them around the playback position. The window slides as
+    // playback nears an edge (at a quiet moment, in small steps), jumps on a seek, and moves
+    // when the reader scrolls to its edge; the views keep the lines on screen where they were
+    // (LyricsWindowMoving / LyricsWindowMoved). Lyrics up to the cap never take this path.
+
+    /// <summary>Every line of windowed lyrics; null when <see cref="LyricLines"/> holds them all.</summary>
+    private List<LyricLine>? _windowAll;
+    private int _windowStart;
+    // Set while the window itself changes the collections (see the guards in the constructor).
+    private bool _windowUpdating;
+    // The Plain tab shows the window's lines (as rows of their own, kept per line so a slide
+    // keeps the rows both windows share).
+    private bool _windowMirrorsUnsynced;
+    private Dictionary<LyricLine, LyricLine>? _mirrorRows;
+    // When the active line last changed: the window only takes a soft step once the glide
+    // that change started is over.
+    private long _lastLineChangeTicks;
+    // The reader scrolled the window away from playback: playback does not pull it back
+    // until this passes (the views resume following after 4-5 s) or a seek.
+    private long _windowHeldUntil;
+
+    /// <summary>A quiet moment for a soft step: no line change for this long.</summary>
+    internal const int WindowQuietMs = 900;
+    private const int WindowHoldMs = 6000;
+
+    /// <summary>Raised before the window moves: views note what is on screen and stop gliding.</summary>
+    public event EventHandler? LyricsWindowMoving;
+
+    /// <summary>Raised once the window moved and the active line is resolved in it: views put the
+    /// lines they noted back where they were (or jump to the active line).</summary>
+    public event EventHandler? LyricsWindowMoved;
+
+    /// <summary>Every line of the lyrics, windowed or not — what an edit, a save, an export or the
+    /// Local API must read; <see cref="LyricLines"/> may hold only a window of them.</summary>
+    internal IReadOnlyList<LyricLine> AllLyricLines => (IReadOnlyList<LyricLine>?)_windowAll ?? LyricLines;
+
+    /// <summary>The lyrics are longer than a list shows, and <see cref="LyricLines"/> is a window.</summary>
+    internal bool IsLyricsWindowed => _windowAll != null;
+
+    /// <summary>Index in <see cref="AllLyricLines"/> of <see cref="LyricLines"/>[0].</summary>
+    internal int LyricsWindowStart => _windowAll != null ? _windowStart : 0;
+
+    /// <summary>Lines above the window (the reader can scroll up into them).</summary>
+    public bool HasLinesAboveWindow => _windowAll != null && _windowStart > 0;
+
+    /// <summary>Lines below the window.</summary>
+    public bool HasLinesBelowWindow => _windowAll != null && _windowStart + LyricLines.Count < _windowAll.Count;
+
+    /// <summary>
+    /// What <see cref="LyricLines"/> should show of <paramref name="lines"/>: the list itself
+    /// when it fits (no window — the path every song takes), else the window around the playback
+    /// position, with the whole list kept as <see cref="AllLyricLines"/>.
+    /// </summary>
+    private List<LyricLine> WindowFor(List<LyricLine> lines)
+    {
+        _windowMirrorsUnsynced = false;
+        _mirrorRows = null;
+        if (!LyricsLineWindow.IsWindowed(lines.Count))
+        {
+            _windowAll = null;
+            return lines;
+        }
+        _windowAll = lines;
+        var position = _player.Position - LyricsOffset;
+        _windowStart = LyricsLineWindow.StartAround(LyricsLineWindow.IndexAt(lines, position), lines.Count);
+        return lines.GetRange(_windowStart, LyricsLineWindow.CountAt(_windowStart, lines.Count));
+    }
+
+    /// <summary>Puts lines from <see cref="WindowFor"/> in <see cref="LyricLines"/> without ending the window.</summary>
+    private void ShowLines(List<LyricLine> shown)
+    {
+        var all = _windowAll;
+        _windowUpdating = true;
+        try
+        {
+            if (all is not null || !PatchPreviewLines(shown)) LyricLines.ReplaceAll(shown);
+        }
+        finally { _windowUpdating = false; }
+        _windowAll = all;
+    }
+
+    /// <summary>The Plain tab of windowed lyrics: one plain row per window line, intro and
+    /// interlude dots left out (as <see cref="PopulateUnsyncedLines"/> does for all lines).</summary>
+    private void ShowUnsyncedMirror(IEnumerable<LyricLine> window)
+    {
+        _windowUpdating = true;
+        try { UnsyncedLines.ShiftTo(MirrorRows(window)); }
+        finally { _windowUpdating = false; }
+        _windowMirrorsUnsynced = true;
+    }
+
+    private List<LyricLine> MirrorRows(IEnumerable<LyricLine> window)
+    {
+        var rows = _mirrorRows ??= new Dictionary<LyricLine, LyricLine>();
+        var result = new List<LyricLine>();
+        foreach (var line in window)
+        {
+            if (line.IsIntroPlaceholder || line.Timestamp == TimeSpan.Zero && line.Text == "...") continue;
+            if (!rows.TryGetValue(line, out var row))
+                rows[line] = row = new LyricLine
+                {
+                    Text = LyricsTextHelper.CleanDisplayText(line.Text),
+                    Transliteration = line.Transliteration,
+                    Translation = line.Translation,
+                    IsActive = true,
+                };
+            result.Add(row);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Shows the window starting at <paramref name="start"/>: only the lines the two windows do
+    /// not share are built or dropped. The timeline is left to re-resolve the active line in the
+    /// new list (Rewind; Reset when the line it held left). Raises
+    /// <see cref="LyricsWindowMoving"/>; the caller raises <see cref="LyricsWindowMoved"/> once the
+    /// active line is resolved.
+    /// </summary>
+    private void MoveWindowTo(int start)
+    {
+        if (_windowAll is not { } all) return;
+        LyricsWindowMoving?.Invoke(this, EventArgs.Empty);
+        var window = all.GetRange(start, LyricsLineWindow.CountAt(start, all.Count));
+        _windowUpdating = true;
+        try
+        {
+            LyricLines.ShiftTo(window);
+            _windowStart = start;
+            if (_windowMirrorsUnsynced)
+                UnsyncedLines.ShiftTo(MirrorRows(window));
+        }
+        finally
+        {
+            _windowUpdating = false;
+        }
+        if (_timeline.ActiveLine is { } held && !window.Contains(held))
+            _timeline.Reset();
+        else
+            _timeline.Rewind();
+        OnPropertyChanged(nameof(HasLinesAboveWindow));
+        OnPropertyChanged(nameof(HasLinesBelowWindow));
+    }
+
+    /// <summary>Slides the window for playback at <paramref name="position"/> (offset applied)
+    /// when it nears an edge; true when it moved (the caller then raises LyricsWindowMoved).</summary>
+    private bool MaybeMoveWindowForPlayback(TimeSpan position)
+    {
+        if (_windowAll is not { } all || _windowUpdating) return false;
+        // Not in the middle of a timeline drag: the window follows where it is let go, instead of
+        // rebuilding lines for every position the thumb passes.
+        if (_player.IsSeeking) return false;
+        var now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (now < _windowHeldUntil) return false;
+        var index = LyricsLineWindow.IndexAt(all, position + LyricsLookahead);
+        // Quiet: the line has been sung a while and is not about to change on this tick, so the
+        // step lands between glides rather than on the frame one starts.
+        var quiet = ActiveLineIndex >= 0 && index == _windowStart + ActiveLineIndex
+                    && System.Diagnostics.Stopwatch.GetElapsedTime(_lastLineChangeTicks).TotalMilliseconds >= WindowQuietMs;
+        if (LyricsLineWindow.PlaybackMove(_windowStart, all.Count, index, quiet) is not { } start) return false;
+        MoveWindowTo(start);
+        return true;
+    }
+
+    /// <summary>
+    /// The reader scrolled to the top (<paramref name="direction"/> &lt; 0) or bottom edge of the
+    /// window: move it <see cref="LyricsLineWindow.ScrollStep"/> lines that way so they can keep
+    /// reading, and keep playback from pulling it back for a few seconds. Called by the views.
+    /// </summary>
+    public void ScrollLyricsWindow(int direction)
+    {
+        if (_windowAll is not { } all || _windowUpdating) return;
+        if (LyricsLineWindow.ScrollMove(_windowStart, all.Count, direction) is not { } start) return;
+        _windowHeldUntil = System.Diagnostics.Stopwatch.GetTimestamp()
+                           + WindowHoldMs * System.Diagnostics.Stopwatch.Frequency / 1000;
+        MoveWindowTo(start);
+        try
+        {
+            if (_hasSyncedLyrics && LyricLines.Count > 0)
+                UpdateActiveLineCore(GetPlaybackPosition());
+            else
+                UpdateLineOpacities(-1);
+        }
+        finally
+        {
+            LyricsWindowMoved?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>The lines a share card picks from: the lines shown, or for windowed lyrics up to
+    /// a list's worth around the playback position (the share dialog's list is not virtualized either).</summary>
+    private IReadOnlyList<LyricLine> ShareSourceLines() => ShareSourceWindow(null).Lines;
+
+    /// <summary><see cref="ShareSourceLines"/> with where they start in <see cref="AllLyricLines"/>,
+    /// centred on <paramref name="center"/> (an index there) instead of playback when given.</summary>
+    private (int Start, IReadOnlyList<LyricLine> Lines) ShareSourceWindow(int? center)
+    {
+        if (_windowAll is not { } all) return (0, LyricLines);
+        var middle = center ?? _windowStart + Math.Max(0, ActiveLineIndex);
+        var start = Math.Clamp(middle - LrcParser.ListMaxLines / 2, 0, Math.Max(0, all.Count - LrcParser.ListMaxLines));
+        return (start, all.GetRange(start, Math.Min(LrcParser.ListMaxLines, all.Count - start)));
     }
 
     // The focus gate flips mid-line (fullscreen entered/left, or the Settings toggle),

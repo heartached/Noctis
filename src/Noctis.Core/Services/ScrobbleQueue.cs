@@ -9,6 +9,11 @@ public enum ScrobbleService { LastFm, ListenBrainz }
 /// owed to, cleared when that service has taken it (or never will), the play dropped once both are clear.</summary>
 public sealed class PendingScrobble
 {
+    /// <summary>Members a newer Noctis saved that this build does not know, written back
+    /// unchanged so an older build sharing the data folder does not erase them (GitHub #230).</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
+
     public string Artist { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Album { get; set; }

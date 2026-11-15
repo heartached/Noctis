@@ -16,12 +16,12 @@
     <RootNamespace>Noctis</RootNamespace>
     <Product>Noctis</Product>
     <Company>Noctis</Company>
-    <Version>1.6.9</Version>
+    <Version>1.7.0</Version>
     <!-- Pre-release marker: numeric Version stays 1.1.16 (update checks + the
          displayed number are unchanged); the "-prerelease" SemVer suffix on the
          informational version is what lights the "Pre-release" badge in Settings.
          Remove this line (or drop the suffix) when cutting a stable release. -->
-    <InformationalVersion>1.6.9</InformationalVersion>
+    <InformationalVersion>1.7.0</InformationalVersion>
     <ApplicationManifest Condition="$([MSBuild]::IsOSPlatform('Windows'))">app.manifest</ApplicationManifest>
 
     <!-- Avalonia requires this for XAML compilation -->
@@ -91,15 +91,15 @@
 
   <!-- Avalonia UI -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
-    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Labs.Lottie" Version="12.0.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Labs.Lottie" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
     <!-- MPRIS media keys on Linux (MprisService). Same version Avalonia's
          FreeDesktop backend already ships transitively — no new vendor. -->
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.2" />
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <PackageReference Include="Whisper.net" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
@@ -130,19 +130,18 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
   </ItemGroup>
 
-  <!-- Dependency Injection -->
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
-  </ItemGroup>
+  <!-- Dependency Injection: Microsoft.Extensions.DependencyInjection needs no PackageReference.
+       The Microsoft.AspNetCore.App framework reference above already carries the 10.0.x copy,
+       so an 8.x package ref was inert and the SDK flagged it (NU1510). -->
 
   <!-- Audio playback via libVLC -->
   <ItemGroup>
-    <PackageReference Include="LibVLCSharp" Version="3.10.1" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.23.1" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="LibVLCSharp" Version="3.10.2" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.24" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     <!-- macOS gets NO libvlc NuGet on purpose: VideoLAN.LibVLC.Mac's 3.0.21 pin
          never existed on nuget.org, so restore floated to the abandoned 2019-era
          3.1.3.1 payload (x86_64-only, no plugins, pre-3.0.8 security state).
-         The CI .app packaging step bundles official VLC 3.0.23 universal dylibs
+         The CI .app packaging step bundles official VLC 3.0.24 universal dylibs
          + plugins at Contents/MacOS/libvlc instead; VlcAudioPlayer probes that
          path (before any user-installed VLC.app). AUDIT H7/H8. -->
     <!-- WASAPI output for click-free per-sample-gain volume (NOCTIS_WASAPI=1,
@@ -168,20 +167,22 @@
        the framework's in-box copy (10.0.x) supersedes any 8.x package and the
        SDK flags the reference as inert (NU1510). -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.31" />
-    <!-- Floats the native SQLite past CVE-2025-6965 / GHSA-2m69-gcr7-jv3q (High).
-         Microsoft.Data.Sqlite 8.0.11 pins SQLitePCLRaw.lib.e_sqlite3 2.1.6, which
-         bundles SQLite < 3.50.2 and shipped e_sqlite3.dll in every release. This
-         explicit reference wins over the transitive pin without moving off the 8.0.x
-         Microsoft.Data.Sqlite line. Verify with a vulnerable/transitive package audit. -->
-    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <!-- The native SQLite ships in every release (e_sqlite3), so it is pinned here rather than
+         left to Microsoft.Data.Sqlite's transitive 2.1.x pin: that is how CVE-2025-6965 /
+         GHSA-2m69-gcr7-jv3q (High, SQLite < 3.50.2) once shipped. Since SQLitePCLRaw 3 the native
+         library is its own "SQLite" package (version = SQLite version), pinned explicitly so it
+         is not left at whatever bundle_e_sqlite3 names (3.0.5 names 3.53.4). Verify with a
+         vulnerable/transitive package audit. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    <PackageReference Include="SQLite" Version="3.54.1" />
     <!-- Windows DPAPI: scrobbler tokens encrypted at rest in settings.json (runtime-guarded, no-op elsewhere) -->
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.14" />
   </ItemGroup>
 
   <!-- YAML: Lyricsfile (word-level sync) parsing -->
   <ItemGroup>
-    <PackageReference Include="YamlDotNet" Version="15.3.0" />
+    <PackageReference Include="YamlDotNet" Version="18.1.0" />
   </ItemGroup>
 
   <!-- Web Remote QR code (Settings → Integrations). Pure managed MIT port of

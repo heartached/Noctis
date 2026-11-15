@@ -17,7 +17,7 @@ namespace Noctis.ViewModels;
 /// Controls audio playback and exposes state for the persistent bottom playback bar.
 /// Owns the relationship between the queue and the audio player service.
 /// </summary>
-public partial class PlayerViewModel : ViewModelBase
+public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
 {
     private readonly IAudioPlayer _audioPlayer;
 
@@ -195,6 +195,7 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>The current file's chapters sorted by start; empty when it has none.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasChapters))]
+    [NotifyPropertyChangedFor(nameof(IslandChaptersButtonVisible))]
     private IReadOnlyList<TrackChapter> _chapters = Array.Empty<TrackChapter>();
 
     /// <summary>Two or more chapters: something to jump between (a lone chapter is the whole file).</summary>
@@ -561,6 +562,8 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
     /// <summary>Visualizer paints with the artwork's colour (else white/accent). Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+    /// <summary>GitHub #205: the visualizer reads the analyser-weighted spectrum. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
     /// <summary>The current cover's vibrant colour (ShareCardRenderer's path-cached hue-bucket
     /// vote, computed off the UI thread when the track changes); null without artwork.
     /// The visualizer surfaces tint their bars with it.</summary>
@@ -613,6 +616,8 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Opt-in fullscreen lyrics focus — dims all but the active line and its
     /// closest neighbors while the lyrics page is fullscreen. Driven by Settings.</summary>
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    /// <summary>GitHub #211: the full-screen lyrics page hides the player island. Driven by Settings.</summary>
+    [ObservableProperty] private bool _lyricsFullScreenHideIsland;
     /// <summary>Percent floor (0–60) under the dimmed lyric lines; above 0 every line
     /// stays faintly visible and clickable. Driven by Settings.</summary>
     [ObservableProperty] private int _lyricsMinLineOpacity;
@@ -625,6 +630,9 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Whether the lyrics page centres the player when the song has no lyrics.
     /// Driven by Settings; display-only.</summary>
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>Discord (f7uh): the lyrics page hides its lyrics column and centres the player,
+    /// lyrics or not. Driven by Settings (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics); display-only.</summary>
+    [ObservableProperty] private bool _lyricsPageHideLyrics;
     /// <summary>GitHub #184: the lyrics page's background reaches under the sidebar rail.
     /// Driven by Settings; display-only (LyricsView extends its backdrop layers).</summary>
     [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
@@ -647,11 +655,14 @@ public partial class PlayerViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanMarkNoLyrics))]
     [NotifyPropertyChangedFor(nameof(IslandLyricsButtonVisible))]
+    [NotifyPropertyChangedFor(nameof(CanEditLyrics))]
     private bool _isLyricsPageActive;
     [ObservableProperty] private bool _isLyricsSyncedActive;
     [ObservableProperty] private bool _isLyricsPlainActive;
     [ObservableProperty] private bool _isLyricsSyncedAvailable;
-    [ObservableProperty] private bool _canShareLyrics;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EditLyricsHeader))]
+    private bool _canShareLyrics;
     /// <summary>The lyrics page shows synced online lyrics of a local file (GitHub #115): Save Lyrics to File ▸ LRC.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSaveLyricsMenu))]
@@ -668,6 +679,11 @@ public partial class PlayerViewModel : ViewModelBase
     private bool _isLyricsMarkedNoLyrics;
     /// <summary>Lyrics ▸ Mark as No Lyrics: on the lyrics page, for a song not marked yet.</summary>
     public bool CanMarkNoLyrics => IsLyricsPageActive && !IsLyricsMarkedNoLyrics;
+    /// <summary>GitHub #212: Lyrics ▸ Add Lyrics / Edit Lyrics, on the lyrics page, for a song file.</summary>
+    public bool CanEditLyrics => IsLyricsPageActive && CurrentTrack is { IsRemoteStream: false } track
+                                 && !string.IsNullOrWhiteSpace(track.FilePath);
+    /// <summary>"Add Lyrics" while the page shows none (nothing to share), else "Edit Lyrics".</summary>
+    public string EditLyricsHeader => Localization.Loc.T(CanShareLyrics ? "Lyrics.EditLyrics" : "Lyrics.AddLyrics");
 
     /// <summary>
     /// Path to the current track's artwork file (or null if none).
@@ -1528,6 +1544,16 @@ public partial class PlayerViewModel : ViewModelBase
     /// <summary>Sets the action to search lyrics for a track.</summary>
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
+    private Action? _editLyricsAction;
+    /// <summary>GitHub #212: the lyrics page's Add Lyrics / Edit Lyrics; set by MainWindowViewModel.</summary>
+    public void SetEditLyricsAction(Action action) => _editLyricsAction = action;
+
+    [RelayCommand]
+    private void EditCurrentTrackLyrics()
+    {
+        if (CanEditLyrics) _editLyricsAction?.Invoke();
+    }
+
     [RelayCommand]
     private void SearchCurrentTrackLyrics()
     {
@@ -1803,6 +1829,15 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (CurrentTrack == null) return;
         await MetadataHelper.OpenMetadataWindow(CurrentTrack);
+    }
+
+    /// <summary>GitHub #239: the playing song → Move to Album (it keeps playing; the tag save
+    /// is the one Edit Info does on the playing file).</summary>
+    [RelayCommand]
+    private async Task MoveCurrentTrackToAlbum()
+    {
+        if (CurrentTrack is not { } track) return;
+        await MetadataHelper.OpenMoveToAlbumDialog(new[] { track });
     }
 
     [RelayCommand]
@@ -2524,6 +2559,10 @@ public partial class PlayerViewModel : ViewModelBase
     private readonly object _queueSaveLock = new();
     private Task _queueSaveChain = Task.CompletedTask;
 
+    /// <summary>What a newer Noctis saved in queue.json that this build does not know, written
+    /// back with every queue save (GitHub #230).</summary>
+    private Dictionary<string, System.Text.Json.JsonElement>? _queueExtensionData;
+
     /// <summary>Saves the current queue state so it can be restored on next launch.</summary>
     public async Task SaveQueueStateAsync()
     {
@@ -2535,6 +2574,7 @@ public partial class PlayerViewModel : ViewModelBase
             HistoryIds = History.Select(t => t.Id).ToList(),
             RepeatMode = RepeatMode,
             IsShuffleEnabled = IsShuffleEnabled,
+            ExtensionData = _queueExtensionData,
             IsMuted = IsMuted,
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
             OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
@@ -2595,6 +2635,7 @@ public partial class PlayerViewModel : ViewModelBase
                 HistoryIds = History.Select(t => t.Id).ToList(),
                 RepeatMode = RepeatMode,
                 IsShuffleEnabled = IsShuffleEnabled,
+                ExtensionData = _queueExtensionData,
                 IsMuted = IsMuted,
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
                 OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
@@ -2627,6 +2668,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         var state = await _persistence.LoadQueueStateAsync();
         if (state == null) return;
+        _queueExtensionData = state.ExtensionData;
 
         // GitHub #86: non-library tracks (dropped with "Import dropped files" off) are
         // unknown to the library, so they are re-read from their saved files.
@@ -2891,6 +2933,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(HasContent));
         OnPropertyChanged(nameof(CurrentArtistLine));
+        OnPropertyChanged(nameof(CanEditLyrics));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
         OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();
@@ -2929,6 +2972,9 @@ public partial class PlayerViewModel : ViewModelBase
             oldValue.IsCurrentlyPlaying = false;
         }
         if (newValue != null) newValue.IsNowPlaying = true;
+        // A song change (hotkey, media key, API) while a disc is held ends the scratch
+        // without its seek: the new song keeps its own start.
+        if (_scratchActive && newValue?.Id != _scratchTrackId) AbortScratch("track changed");
         SyncNowPlayingFlags();
         OnCurrentTrackChangedForRows(oldValue, newValue);
         DebugLogger.Info(DebugLogger.Category.Playback, "CurrentTrack.Changed",
@@ -3110,17 +3156,7 @@ public partial class PlayerViewModel : ViewModelBase
     {
         if (!_isSeeking) return; // already ended — prevent duplicate seeks
         _isSeeking = false;
-
-        // A committed seek cancels the player's prepared/staged next track
-        // (Seek → CancelPreparedNext), but this path never re-armed the prepare
-        // latch — so a seek inside the prepare window left the transition with
-        // "no prepared standby" and an audible cold fallback. Re-arm: the next
-        // position tick re-prepares (a no-op duplicate if the standby survived).
-        if (!_autoMixAdvanceQueued)
-        {
-            _autoMixPreparedTrackId = Guid.Empty;
-            _autoMixPreparedSnapshot = null;
-        }
+        RearmPrepareAfterSeek();
 
         if (CurrentTrack == null || Duration <= TimeSpan.Zero)
             return;
@@ -3156,6 +3192,100 @@ public partial class PlayerViewModel : ViewModelBase
             _audioPlayer.Seek(target);
             Dispatcher.UIThread.Post(() => Seeked?.Invoke(this, target));
         }, null, SeekDebounceMs, Timeout.Infinite);
+    }
+
+    /// <summary>
+    /// A committed seek cancels the player's prepared/staged next track
+    /// (Seek → CancelPreparedNext), but the drag paths never re-armed the prepare
+    /// latch — so a seek inside the prepare window left the transition with
+    /// "no prepared standby" and an audible cold fallback. Re-arm: the next
+    /// position tick re-prepares (a no-op duplicate if the standby survived).
+    /// </summary>
+    private void RearmPrepareAfterSeek()
+    {
+        if (_autoMixAdvanceQueued) return;
+        _autoMixPreparedTrackId = Guid.Empty;
+        _autoMixPreparedSnapshot = null;
+    }
+
+    // ── Disc scratching (Settings → Player → Disc Scratching) ──
+    // The disc on the lyrics page / Sleeve mini player is grabbed and turned by hand. It rides
+    // the timeline-drag protocol (IsSeeking: Position, the time labels and the lyrics follow the
+    // hand, position ticks from the engine are ignored) with two differences. The engine is
+    // paused underneath while a PLAYING track is held — a held record is silent, and a paused
+    // engine can never reach the track end mid-scratch — while the UI stays "playing", so the
+    // play button, Discord and the media overlay do not flicker. And the release seeks at once
+    // (no debounce), then resumes, so nothing of the old position is heard.
+
+    private bool _scratchActive;
+    private bool _scratchHeldEngine;
+    private Guid _scratchTrackId;
+    private long _scratchSessionId;
+    private TimeSpan _scratchOrigin;
+
+    /// <summary>True while a disc is held (between <see cref="BeginScratch"/> and <see cref="EndScratch"/>).</summary>
+    public bool IsScratching => _scratchActive;
+
+    public bool BeginScratch()
+    {
+        if (_scratchActive) return true;
+        if (CurrentTrack == null || Duration <= TimeSpan.Zero) return false;
+
+        BeginSeek();
+        _scratchActive = true;
+        _scratchTrackId = CurrentTrack.Id;
+        _scratchSessionId = _audioPlayer.CurrentSessionId;
+        _scratchOrigin = Position;
+        if (State == PlaybackState.Playing)
+        {
+            CancelAutoMixTransition("disc scratch");
+            _audioPlayer.Pause();
+            _scratchHeldEngine = true;
+        }
+        DebugLogger.Info(DebugLogger.Category.Playback, "Scratch.Begin",
+            $"originMs={_scratchOrigin.TotalMilliseconds:F0}, state={State}, track={CurrentTrack.Id}");
+        return true;
+    }
+
+    public double ScratchTo(double degrees)
+    {
+        if (!_scratchActive || CurrentTrack == null || Duration <= TimeSpan.Zero || !double.IsFinite(degrees))
+            return 0;
+        var target = DiscScratch.TargetFor(_scratchOrigin, degrees, Duration);
+        // The timeline drag's setter: Position, the labels and the pending target follow.
+        PositionFraction = Math.Clamp(target.Ticks / (double)Duration.Ticks, 0.0, 1.0);
+        return DiscScratch.DegreesFor(target - _scratchOrigin);
+    }
+
+    public void EndScratch()
+    {
+        if (!_scratchActive) return;
+        var resume = _scratchHeldEngine;
+        var moved = _hasPendingSeekTarget;
+        var target = _pendingSeekTarget;
+        var sameSession = _audioPlayer.CurrentSessionId == _scratchSessionId && CurrentTrack?.Id == _scratchTrackId;
+        _scratchActive = false;
+        _scratchHeldEngine = false;
+        _isSeeking = false;
+        _hasPendingSeekTarget = false;
+        RearmPrepareAfterSeek();
+
+        DebugLogger.Info(DebugLogger.Category.Playback, "Scratch.End",
+            $"targetMs={target.TotalMilliseconds:F0}, moved={moved}, resume={resume}, sameSession={sameSession}, state={State}");
+        if (!sameSession) return;
+        if (moved) SeekTo(target);
+        // Resume only what the scratch paused, and only if nobody paused it meanwhile.
+        if (resume && State == PlaybackState.Playing) _audioPlayer.Resume();
+    }
+
+    /// <summary>Drops a scratch without its seek or resume (the song changed under it).</summary>
+    private void AbortScratch(string reason)
+    {
+        _scratchActive = false;
+        _scratchHeldEngine = false;
+        _isSeeking = false;
+        _hasPendingSeekTarget = false;
+        DebugLogger.Info(DebugLogger.Category.Playback, "Scratch.Abort", reason);
     }
 
     // ── Private helpers ──────────────────────────────────────
@@ -3594,6 +3724,9 @@ public partial class PlayerViewModel : ViewModelBase
             if (SleepTimerFadeSeconds > 0)
                 _playbackFadeHoldUntilPlay = true;
             StopAfterCurrentTrack = false;
+            // Stop the engine too, as the end of the queue does: without it the output
+            // stayed open, and in Exclusive Mode the device stayed locked all night.
+            _audioPlayer.Stop();
             State = PlaybackState.Stopped;
             DebugLogger.Info(DebugLogger.Category.Playback, "SleepTimer.StoppedAfterTrack",
                 $"track={CurrentTrack?.Title}");
@@ -3940,14 +4073,25 @@ public partial class PlayerViewModel : ViewModelBase
             // Cache miss: decode on a background thread so click-to-play doesn't stall.
             // Keep the previous AlbumArt visible until the new bitmap is ready —
             // clearing here causes a placeholder flash on every track switch.
+            // The decode comes back held (acquire): until the UI thread takes it, other decodes
+            // filling the cache's byte budget could evict it, and with no holder it was disposed,
+            // so a busy UI thread then gave the player a disposed cover (PlayerArtworkLeaseTests).
+            // AlbumArt takes its own hold; the decode's is let go either way.
             _ = Task.Run(() =>
             {
-                var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth);
+                var bitmap = ArtworkCache.LoadAndCache(artPath, PlayerArtDecodeWidth, exact: false, acquire: true);
                 if (bitmap == null) return;
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (generation == Volatile.Read(ref _albumArtGeneration))
-                        AlbumArt = bitmap;
+                    try
+                    {
+                        if (generation == Volatile.Read(ref _albumArtGeneration))
+                            AlbumArt = bitmap;
+                    }
+                    finally
+                    {
+                        ArtworkCache.Release(bitmap);
+                    }
                 });
             });
         }
@@ -4755,6 +4899,12 @@ public partial class PlayerViewModel : ViewModelBase
             // Reload album art in case artwork was changed via metadata editor
             if (CurrentTrack != null)
             {
+                // A rescan of the playing file (every tag save re-imports it) gave the library a
+                // new Track; the player kept the old one, so the bar, lyrics page and Now Playing
+                // showed the tags from before the edit (Discord, NJZ).
+                if (!CurrentTrack.IsExternal && _library.GetTrackById(CurrentTrack.Id) is { } own
+                    && CurrentTrack.CopyTagsFrom(own))
+                    CurrentTrack.NotifyMetadataUpdated();
                 // The decodes LoadAlbumArt starts run on the pool; "album art" brackets
                 // only its UI-thread part (cache hit, CurrentArtPath, animated cover).
                 if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: album art");

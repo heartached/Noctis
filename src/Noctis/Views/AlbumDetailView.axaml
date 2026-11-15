@@ -290,9 +290,7 @@
         <Style Selector="Border.row-body:pointerover controls|RatingStars.row-rating.rated">
             <Setter Property="Opacity" Value="1" />
         </Style>
-        <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
-            <Setter Property="Background" Value="#3FFFFFFF" />
-        </Style>
+        <!-- Ctrl-selected rows: the row container's select-ring overlay (Styles.axaml, GitHub #209). -->
         <Style Selector="Border.cover-viewable">
             <Setter Property="Cursor" Value="Hand" />
         </Style>
@@ -458,10 +456,40 @@
                 </ItemsControl>
                 <StackPanel Orientation="Horizontal" Spacing="0" Margin="0,4,0,0"
                             TextElement.Foreground="{Binding PageForegroundBrush}">
+                    <!-- Genres (GitHub #220): one link per genre, each opens that genre's page. -->
+                    <ItemsControl ItemsSource="{Binding GenreTokens}" Opacity="0.5" VerticalAlignment="Center"
+                                  IsVisible="{Binding HasGenreTokens}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ArtistTokenItem">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Classes="no-hover-scale artist-credit-link"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="0"
+                                            MinHeight="0"
+                                            Cursor="Hand"
+                                            ToolTip.Tip="{loc:T Genres.ShowGenreTip}"
+                                            Command="{Binding $parent[ItemsControl].((vm:AlbumDetailViewModel)DataContext).OpenGenreCommand}"
+                                            CommandParameter="{Binding Name}">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"
+                                                   Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+                                    </Button>
+                                    <TextBlock Text="{Binding Separator}" FontSize="13" VerticalAlignment="Center"
+                                               IsVisible="{Binding !IsLast}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text=" · " FontSize="13" Opacity="0.5" VerticalAlignment="Center"
+                               IsVisible="{Binding HasGenreTokens}" />
                     <TextBlock FontSize="13" Opacity="0.5" VerticalAlignment="Center">
                         <TextBlock.Text>
                             <MultiBinding Converter="{StaticResource MetadataLine}">
-                                <Binding Path="Album.GenreDisplay" />
                                 <Binding Path="Album.ReleaseDateFormatted" />
                                 <Binding Path="Album.TrackCountText" />
                                 <Binding Path="Album.HeaderDurationFormatted" />
@@ -737,12 +765,6 @@
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="{loc:T AlbumDetail.EditDescription}"
-                                  Command="{Binding EditAlbumDescriptionCommand}">
-                            <MenuItem.Icon>
-                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineText}"/>
-                            </MenuItem.Icon>
-                        </MenuItem>
                         <!-- GitHub #167: one click for a wrong loop; it is not fetched again. -->
                         <MenuItem Header="{loc:T AlbumDetail.RemoveAnimatedArtwork}"
                                   Command="{Binding RemoveAnimatedArtworkCommand}"
@@ -791,6 +813,18 @@
                                   Command="{Binding ShowAlbumInExplorerCommand}">
                             <MenuItem.Icon>
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineFolder}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <!-- Discord 11-11: a deluxe edition lists the original's songs. Items are
+                             filled from LinkCandidates / LinkedSourceAlbums when the menu opens. -->
+                        <MenuItem Header="{loc:T AlbumDetail.LinkTracksFrom}" Tag="LinkTracksFrom">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="{loc:T AlbumDetail.UnlinkTracksFrom}" Tag="UnlinkTracksFrom">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLinePlaylistAdd}"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />

@@ -2,6 +2,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.Models;
 using Noctis.ViewModels;
@@ -102,6 +103,76 @@ public class PlaybackBarChaptersTests
 
             rows[0].Command!.Execute(rows[0].CommandParameter);
             Assert.Equal(TimeSpan.Zero, audio.Seeks[^1]);
+        }
+        finally { menu.Hide(); win.Close(); }
+    }
+
+    /// <summary>Discord "Chapter Button in Player Island": an opt-in island button (off by
+    /// default) that shows only while the track has chapters and adds its 36px like the other
+    /// extras, gone again for a song without chapters.</summary>
+    [AvaloniaFact]
+    public async Task IslandChaptersButton_IsOptIn_ShowsOnlyWithChapters_AndBudgetsItsWidth()
+    {
+        Assert.False(new AppSettings().PlaybackBarShowChapters);
+        var (player, _) = Player(Fixture("aac_chapters_tiny.m4b"));
+        await player.ChaptersLoaded;
+
+        var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = false };
+        var win = new Window { Width = 1000, Height = 200, Content = bar };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            var island = bar.FindControl<Border>("IslandBorder")!;
+            var button = bar.FindControl<Button>("ChaptersButton")!;
+            var stock = island.Width;
+            Assert.False(button.IsVisible);
+
+            player.IslandShowChapters = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(button.IsEffectivelyVisible);
+            Assert.Equal(stock + 36, island.Width);
+            Assert.Equal("Chapters", ToolTip.GetTip(button));
+            Assert.Equal("Chapters", AutomationProperties.GetName(button));
+
+            player.CurrentTrack = new Track { Id = Guid.NewGuid(), Title = "Song", FilePath = "C:/m/no-such.mp3" };
+            await player.ChaptersLoaded;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(button.IsVisible);
+            Assert.Equal(stock, island.Width);
+        }
+        finally { win.Close(); }
+    }
+
+    /// <summary>The island button opens the same chapter list as "…" → Chapters: title and start,
+    /// the playing chapter ticked, a click seeks there.</summary>
+    [AvaloniaFact]
+    public async Task IslandChaptersMenu_ListsTheChapters_TicksThePlayingOne_AndSeeksOnClick()
+    {
+        var (player, audio) = Player(Fixture("aac_chapters_tiny.m4b"));
+        await player.ChaptersLoaded;
+        player.Position = TimeSpan.FromSeconds(1.2);
+        player.IslandShowChapters = true;
+
+        var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = false };
+        var win = new Window { Width = 1000, Height = 600, Content = bar };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        var button = bar.FindControl<Button>("ChaptersButton")!;
+        var menu = Assert.IsType<MenuFlyout>(button.Flyout);
+        menu.ShowAt(button);
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            var rows = menu.Items.OfType<MenuItem>().ToList();
+            Assert.Equal(3, rows.Count);
+            Assert.True(rows[0].IsAttachedToVisualTree());
+            Assert.Equal("Chapter One — Начало, 0:01", AutomationProperties.GetName(rows[1]));
+            Assert.Null(rows[0].Icon);
+            Assert.Contains("mv2-check", Assert.IsType<LineIcon>(rows[1].Icon).Classes);
+
+            rows[2].Command!.Execute(rows[2].CommandParameter);
+            Assert.InRange(audio.Seeks[^1].TotalMilliseconds, 2499, 2501);
         }
         finally { menu.Hide(); win.Close(); }
     }

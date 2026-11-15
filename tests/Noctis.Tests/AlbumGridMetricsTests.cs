@@ -46,10 +46,16 @@ public class AlbumGridMetricsTests
         => Assert.InRange(AlbumGridMetrics.ComputeColumns(1100, autoSize: false, targetSize: double.NaN), 2, 20);
 
     [Theory]
-    [InlineData(1100, 5, 212)]   // 1100/5 - 8
+    [InlineData(1100, 5, 212)]   // 1100/5 - 8 (1.6.9 tile chrome, the default)
     [InlineData(1650, 8, 198.25)]
     public void ComputeTileSize_FillsRowMinusChrome(double width, int columns, double expected)
         => Assert.Equal(expected, AlbumGridMetrics.ComputeTileSize(width, columns), 3);
+
+    [Theory]
+    [InlineData(1100, 5, 202)]   // 1100/5 - 18 (GitHub #210 tile chrome, "Wider spacing between albums")
+    [InlineData(1650, 8, 188.25)]
+    public void ComputeTileSize_WideSpacing_FillsRowMinusWideChrome(double width, int columns, double expected)
+        => Assert.Equal(expected, AlbumGridMetrics.ComputeTileSize(width, columns, wideSpacing: true), 3);
 
     [Fact]
     public void ComputeTileSize_NeverBelowLegibilityFloor()

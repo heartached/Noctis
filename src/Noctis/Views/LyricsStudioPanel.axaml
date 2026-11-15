@@ -92,7 +92,7 @@
             <Setter Property="UseLayoutRounding" Value="True" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        <Style Selector="Button.nudge-step">
+        <Style Selector="Button.nudge-step, Button.speed-step">
             <Setter Property="Width" Value="28" />
             <Setter Property="Height" Value="26" />
             <Setter Property="MinHeight" Value="0" />
@@ -105,15 +105,69 @@
             <Setter Property="FontSize" Value="15" />
             <Setter Property="Cursor" Value="Hand" />
         </Style>
-        <Style Selector="Button.nudge-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.nudge-step:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.speed-step:pointerover /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-        <Style Selector="Button.nudge-step:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Style Selector="Button.nudge-step:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.speed-step:pressed /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
-        <Style Selector="Button.nudge-step:pointerover, Button.nudge-step:pressed">
+        <Style Selector="Button.nudge-step:pointerover, Button.nudge-step:pressed, Button.speed-step:pointerover, Button.speed-step:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+        <!-- The nudge bar (11-14): every control 30 px tall. The stepper's four steps are equal and wide
+             enough for their "−0.01" text; the speed pill's value is a step that reads its number. -->
+        <Style Selector="Border.nudge-stepper Button.nudge-step">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFeatures" Value="+tnum" />
+        </Style>
+        <Style Selector="Button.speed-step.speed-value">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontFeatures" Value="+tnum" />
+        </Style>
+        <!-- In the header the speed pill takes the row's height, so it matches Preview and Save. -->
+        <Style Selector="Border.studio-speed">
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Border.studio-speed Button.speed-step">
+            <Setter Property="Height" Value="NaN" />
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.studio-btn.nudge-hear">
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Grid.review-nudge TextBlock.nudge-label-strut">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Grid.review-nudge Panel.nudge-controls-slot">
+            <Setter Property="Grid.Column" Value="1" />
+            <Setter Property="Margin" Value="12,0,0,0" />
+        </Style>
+        <!-- Too narrow for the label beside the controls (about 430 px of them): the label goes above.
+             While nothing is picked the hint spans both rows, so the kept height reads as one row. -->
+        <ContainerQuery Name="ReviewNudge" Query="max-width:520">
+            <Style Selector="Grid.review-nudge TextBlock.nudge-label">
+                <Setter Property="Grid.ColumnSpan" Value="2" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+            </Style>
+            <Style Selector="Grid.review-nudge Panel.nudge-controls-slot">
+                <Setter Property="Grid.Column" Value="0" />
+                <Setter Property="Grid.ColumnSpan" Value="2" />
+                <Setter Property="Grid.Row" Value="1" />
+                <Setter Property="Margin" Value="0" />
+            </Style>
+            <Style Selector="Grid.review-nudge.idle TextBlock.nudge-label">
+                <Setter Property="Grid.RowSpan" Value="2" />
+                <Setter Property="Margin" Value="0" />
+            </Style>
+            <Style Selector="Grid.review-nudge TextBlock.nudge-label-strut">
+                <Setter Property="IsVisible" Value="True" />
+            </Style>
+        </ContainerQuery>
         <Style Selector="Border.model-banner">
             <Setter Property="CornerRadius" Value="14" />
             <Setter Property="Padding" Value="16,12" />
@@ -808,6 +862,25 @@
                                             <TextBlock Text="{loc:T LyricsStudio.Preview}" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
+                                    <!-- Speed (GitHub #238): the player's own speed, 0.05 steps from 0.5x to 1.5x; restored when
+                                         the Studio closes. In the header since 11-14, the height of its neighbours; the value
+                                         itself goes back to 1×. -->
+                                    <Border Classes="edit-nudge-pill studio-speed" IsVisible="{Binding CanChangeSpeed}" ToolTip.Tip="{loc:T LyricsStudio.SpeedTip}">
+                                        <StackPanel Orientation="Horizontal" Spacing="0">
+                                            <Button Classes="speed-step" Command="{Binding SlowerCommand}"
+                                                    ToolTip.Tip="{loc:T LyricsStudio.SpeedSlower}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedSlower}">
+                                                <TextBlock Text="−" />
+                                            </Button>
+                                            <Button Classes="speed-step speed-value" Command="{Binding ResetSpeedCommand}"
+                                                    ToolTip.Tip="{loc:T LyricsStudio.SpeedReset}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedReset}">
+                                                <TextBlock Text="{Binding Player.PlaybackRateText}" />
+                                            </Button>
+                                            <Button Classes="speed-step" Command="{Binding FasterCommand}"
+                                                    ToolTip.Tip="{loc:T LyricsStudio.SpeedFaster}" AutomationProperties.Name="{loc:T LyricsStudio.SpeedFaster}">
+                                                <TextBlock Text="+" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
                                     <!-- Save and "…" wrap as a pair, so the dots never sit alone on a line. -->
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <Button Command="{Binding SaveCommand}" IsEnabled="{Binding CanSave}"
@@ -889,54 +962,69 @@
                             </DockPanel>
                             <!-- Nudge bar (Discord "Manual lyrics editing", 10-14): the selected line or word,
                                  whole or one edge, 10 ms / 100 ms each way, and Hear it. Keys outside text boxes:
-                                 , and . (Shift: 100 ms), / hears it. Clamped, never pushed (TimingNudge). -->
-                            <WrapPanel Classes="review-nudge" ItemSpacing="8" LineSpacing="6">
-                                <TextBlock Text="{Binding NudgeTargetText}" FontSize="12" Opacity="0.6" VerticalAlignment="Center"
-                                           FontFeatures="+tnum" TextTrimming="CharacterEllipsis" MaxWidth="320" />
-                                <Border Classes="pill-well" CornerRadius="999" Padding="3" VerticalAlignment="Center" IsEnabled="{Binding HasNudgeTarget}">
-                                    <StackPanel Orientation="Horizontal" Spacing="2">
-                                        <RadioButton Classes="studio-seg" GroupName="NudgeEdge" MinWidth="0" Padding="10,0" Content="{loc:T LyricsStudio.NudgeWhole}"
-                                                     IsChecked="{Binding NudgeWhole}" ToolTip.Tip="{loc:T LyricsStudio.NudgeWholeTip}" />
-                                        <RadioButton Classes="studio-seg" GroupName="NudgeEdge" MinWidth="0" Padding="10,0" Content="{loc:T LyricsStudio.NudgeStart}"
-                                                     IsChecked="{Binding NudgeStart}" ToolTip.Tip="{loc:T LyricsStudio.NudgeStartTip}" />
-                                        <RadioButton Classes="studio-seg" GroupName="NudgeEdge" MinWidth="0" Padding="10,0" Content="{loc:T LyricsStudio.NudgeEnd}"
-                                                     IsChecked="{Binding NudgeEnd}" ToolTip.Tip="{loc:T LyricsStudio.NudgeEndTip}" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="edit-nudge-pill" IsEnabled="{Binding HasNudgeTarget}">
-                                    <StackPanel Orientation="Horizontal" Spacing="2">
-                                        <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="-10"
-                                                ToolTip.Tip="{loc:T LyricsStudio.NudgeFineEarlier}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeFineEarlier}">
-                                            <TextBlock Text="−" />
-                                        </Button>
-                                        <TextBlock Text="0.01s" FontSize="12" Opacity="0.75" FontFeatures="+tnum" VerticalAlignment="Center" />
-                                        <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="10"
-                                                ToolTip.Tip="{loc:T LyricsStudio.NudgeFineLater}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeFineLater}">
-                                            <TextBlock Text="+" />
-                                        </Button>
-                                    </StackPanel>
-                                </Border>
-                                <Border Classes="edit-nudge-pill" IsEnabled="{Binding HasNudgeTarget}">
-                                    <StackPanel Orientation="Horizontal" Spacing="2">
-                                        <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="-100"
-                                                ToolTip.Tip="{loc:T LyricsStudio.NudgeCoarseEarlier}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeCoarseEarlier}">
-                                            <TextBlock Text="−" />
-                                        </Button>
-                                        <TextBlock Text="0.1s" FontSize="12" Opacity="0.75" FontFeatures="+tnum" VerticalAlignment="Center" />
-                                        <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="100"
-                                                ToolTip.Tip="{loc:T LyricsStudio.NudgeCoarseLater}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeCoarseLater}">
-                                            <TextBlock Text="+" />
-                                        </Button>
-                                    </StackPanel>
-                                </Border>
-                                <Button Classes="studio-btn pill-outline" Padding="12,5" Command="{Binding AuditionCommand}"
-                                        IsEnabled="{Binding HasNudgeTarget}" ToolTip.Tip="{loc:T LyricsStudio.HearTip}" AutomationProperties.Name="{loc:T LyricsStudio.Hear}">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <PathIcon Data="{StaticResource PlayIcon}" Width="10" Height="10" VerticalAlignment="Center" />
-                                        <TextBlock Text="{loc:T LyricsStudio.Hear}" VerticalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                            </WrapPanel>
+                                 , and . (Shift: 100 ms), / hears it. Clamped, never pushed (TimingNudge).
+                                 11-14 (owner: "looks awful"): the label takes the star column and trims, so the
+                                 controls sit right-aligned and never move as it changes; one stepper pill
+                                 [−0.1 −0.01 +0.01 +0.1]; with nothing picked only the hint shows, in a row that
+                                 keeps its height. Narrow, the label goes above the controls. -->
+                            <Border Container.Name="ReviewNudge" Container.Sizing="Width">
+                                <Grid Classes="review-nudge" Classes.idle="{Binding !HasNudgeTarget}" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto">
+                                    <TextBlock Classes="nudge-label" Text="{Binding NudgeTargetText}" FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                                               FontFeatures="+tnum" TextTrimming="CharacterEllipsis" />
+                                    <!-- Narrow only: holds the label's row while the hint spans both. -->
+                                    <TextBlock Classes="nudge-label-strut" Text="&#160;" FontSize="12" Width="0" Margin="0,0,0,6" IsHitTestVisible="False" />
+                                    <Panel Classes="nudge-controls-slot" MinHeight="30">
+                                        <!-- One line beside the label; it wraps only below the narrow query's width. -->
+                                        <WrapPanel Classes="nudge-controls" ItemSpacing="8" LineSpacing="8" VerticalAlignment="Center"
+                                                   IsVisible="{Binding HasNudgeTarget}">
+                                            <Border Classes="pill-well nudge-edge" CornerRadius="999" Padding="2" VerticalAlignment="Center" IsEnabled="{Binding HasNudgeTarget}">
+                                                <StackPanel Orientation="Horizontal" Spacing="2">
+                                                    <RadioButton Classes="studio-seg" GroupName="NudgeEdge" MinWidth="0" MinHeight="26" Padding="10,0" Content="{loc:T LyricsStudio.NudgeWhole}"
+                                                                 IsChecked="{Binding NudgeWhole}" ToolTip.Tip="{loc:T LyricsStudio.NudgeWholeTip}" />
+                                                    <RadioButton Classes="studio-seg" GroupName="NudgeEdge" MinWidth="0" MinHeight="26" Padding="10,0" Content="{loc:T LyricsStudio.NudgeStart}"
+                                                                 IsChecked="{Binding NudgeStart}" ToolTip.Tip="{loc:T LyricsStudio.NudgeStartTip}" />
+                                                    <RadioButton Classes="studio-seg" GroupName="NudgeEdge" MinWidth="0" MinHeight="26" Padding="10,0" Content="{loc:T LyricsStudio.NudgeEnd}"
+                                                                 IsChecked="{Binding NudgeEnd}" ToolTip.Tip="{loc:T LyricsStudio.NudgeEndTip}" />
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Classes="edit-nudge-pill nudge-stepper" IsEnabled="{Binding HasNudgeTarget}">
+                                                <StackPanel Orientation="Horizontal" Spacing="0">
+                                                    <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="-100"
+                                                            ToolTip.Tip="{loc:T LyricsStudio.NudgeCoarseEarlier}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeCoarseEarlier}">
+                                                        <TextBlock Text="−0.1" />
+                                                    </Button>
+                                                    <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="-10"
+                                                            ToolTip.Tip="{loc:T LyricsStudio.NudgeFineEarlier}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeFineEarlier}">
+                                                        <TextBlock Text="−0.01" />
+                                                    </Button>
+                                                    <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="10"
+                                                            ToolTip.Tip="{loc:T LyricsStudio.NudgeFineLater}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeFineLater}">
+                                                        <TextBlock Text="+0.01" />
+                                                    </Button>
+                                                    <Button Classes="nudge-step" Command="{Binding NudgeSelectionCommand}" CommandParameter="100"
+                                                            ToolTip.Tip="{loc:T LyricsStudio.NudgeCoarseLater}" AutomationProperties.Name="{loc:T LyricsStudio.NudgeCoarseLater}">
+                                                        <TextBlock Text="+0.1" />
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                            <Button Classes="studio-btn pill-outline nudge-hear" Command="{Binding AuditionCommand}"
+                                                    IsEnabled="{Binding HasNudgeTarget}" ToolTip.Tip="{loc:T LyricsStudio.HearTip}" AutomationProperties.Name="{loc:T LyricsStudio.Hear}">
+                                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                                    <PathIcon Data="{StaticResource PlayIcon}" Width="10" Height="10" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{loc:T LyricsStudio.Hear}" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </Button>
+                                        </WrapPanel>
+                                    </Panel>
+                                    <!-- GitHub #237: why a nudge stopped short ("No room: the next word starts at …").
+                                         Its line is always kept, so the row never grows or jumps when it shows. -->
+                                    <TextBlock Classes="nudge-hint" Grid.Row="2" Grid.ColumnSpan="2" Text="{Binding NudgeHintText}"
+                                               FontSize="12" Opacity="0.8" Height="16" Margin="0,4,0,0" FontFeatures="+tnum"
+                                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NudgeHintText}"
+                                               ToolTip.ServiceEnabled="{Binding NudgeHintText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               AutomationProperties.LiveSetting="Polite" />
+                                </Grid>
+                            </Border>
                             <Border CornerRadius="10" Padding="12,8" Background="{DynamicResource AccentButtonBackground}" IsVisible="{Binding IsTapping}">
                                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                                     <TextBlock Grid.Column="0" Text="{Binding TapHint}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"

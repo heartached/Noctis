@@ -37,30 +37,6 @@
          (Settings › Shortcuts makes them rebindable); nothing is hardcoded here. -->
 
     <Window.Styles>
-        <!-- Ghost buttons inside the translucent page-actions pill (Songs top bar):
-             muted icons that brighten with a chip-hover highlight on pointerover. -->
-        <Style Selector="Button.ghost-btn">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="Opacity" Value="0.65"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.ghost-btn:pointerover">
-            <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <Style Selector="Button.ghost-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Style>
-        <Style Selector="Button.ghost-btn:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-        </Style>
 
         <!-- Top-right corner (09-13): round 34px icon buttons for filter / sort / view
              options / view mode, an accent dot on one that is away from its default, and
@@ -127,7 +103,11 @@
     <Panel Background="Transparent">
     <!-- Everything the Settings sheet sits over. Its own layer so SettingsScrim can snapshot
          it (BlurredBackdrop.Target) without catching the scrim or the sheet, also while the
-         sheet is up. Every child keeps its ZIndex order inside it, all under the scrim (99). -->
+         sheet is up. Every child keeps its ZIndex order inside it, all under the scrim (99).
+         AppContentHost holds it alone: while the scrim's stand-in or opaque snapshot hides the
+         app, the host goes to Opacity 0 (not drawn at all) and AppContentLayer can still be
+         rendered on its own for them (BlurredBackdrop.TargetHost). -->
+    <Panel x:Name="AppContentHost">
     <Panel x:Name="AppContentLayer">
     <!-- Liquid Glass backdrop (Appearance toggle). Hidden by default so rendering is
          untouched while the setting is off. When active, code-behind (ApplyLiquidGlass)
@@ -166,6 +146,29 @@
         </DockPanel.RenderTransform>
 
         <Grid RowDefinitions="Auto,*">
+            <!-- GitHub #240: the window around the page (the rail's margin on the left, the top
+                 bar above) gets the same two AppMainBackground layers the page area stacks over
+                 the window background (the content Grid and the page's own root). Opaque themes
+                 look the same; with Liquid Glass those layers are translucent, and without these
+                 the area behind the sidebar showed a lighter band. Inside RootPanel so it follows
+                 the pinned margin and the hover slide; 240 covers the widest left margin (236).
+                 Hidden while Tint Whole Window or the lyrics page paints that area itself. -->
+            <Border x:Name="PageSurroundTop" Grid.Row="0" Margin="-240,0,0,0"
+                    Background="{DynamicResource AppMainBackground}" IsHitTestVisible="False">
+                <Border.IsVisible>
+                    <MultiBinding Converter="{x:Static BoolConverters.And}">
+                        <Binding Path="!IsWindowTinted" FallbackValue="True" />
+                        <Binding Path="!IsLyricsViewActive" FallbackValue="True" />
+                    </MultiBinding>
+                </Border.IsVisible>
+                <Border Background="{DynamicResource AppMainBackground}" />
+            </Border>
+            <Border x:Name="PageSurroundLeft" Grid.Row="1" HorizontalAlignment="Left"
+                    Width="240" Margin="-240,0,0,0"
+                    Background="{DynamicResource AppMainBackground}" IsHitTestVisible="False"
+                    IsVisible="{Binding #PageSurroundTop.IsVisible}">
+                <Border Background="{DynamicResource AppMainBackground}" />
+            </Border>
             <!-- Zone A: Top bar left | centered playback island | right actions.
                  Auto-height: collapses on pages where the bar renders nothing
                  (e.g. Album Detail, whose Back/Search live in the sidebar rail). -->
@@ -384,6 +387,17 @@
                                     </MenuItem>
                                     <MenuItem Header="{loc:T Main.AlbumCarousel}" Command="{Binding AlbumViewCommand}" CommandParameter="carousel">
                                         <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumCarouselView}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <Separator/>
+                                    <!-- GitHub #213: the grid's Masonry layout (Settings › Appearance has it too). -->
+                                    <MenuItem Header="{loc:T Main.AlbumMasonry}" Command="{Binding AlbumMasonryCommand}"
+                                              IsEnabled="{Binding !IsAlbumCarouselView}">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumMasonry}"/></MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- Wider spacing between albums (Settings › Appearance has it too). -->
+                                    <MenuItem Header="{loc:T Main.AlbumWideSpacing}" Command="{Binding AlbumWideSpacingCommand}"
+                                              IsEnabled="{Binding !IsAlbumCarouselView}">
+                                        <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsAlbumWideSpacing}"/></MenuItem.Icon>
                                     </MenuItem>
                                     <Separator/>
                                     <!-- GitHub #176: the case style only shows in the carousel, so its four
@@ -678,10 +692,35 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Artists page: sort popover (Name / Songs / Albums / Time / Genre + direction)
+                    <!-- Artists page: sort popover (Name / Songs / Albums / Time / Plays / Genre + direction)
                          and the View menu (Grid / List). Both hide under Cover Flow. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding ArtistSortVisible}">
+                        <!-- Filter (GitHub #233): All Artists / Hide Small Artists. Flips the Settings ›
+                             Artists option; the dot shows while small artists are hidden. -->
+                        <Panel VerticalAlignment="Center">
+                            <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.FilterTip}" ToolTip.Tip="{loc:T Main.FilterTip}">
+                                <PathIcon Data="{StaticResource FilterIcon}"/>
+                                <Button.Flyout>
+                                    <MenuFlyout Placement="BottomEdgeAlignedRight"
+                                                helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                        <MenuItem Header="{loc:T Main.AllArtists}" Command="{Binding ArtistSmallFilterCommand}" CommandParameter="all">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsArtistSmallFilterOff}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Command="{Binding ArtistSmallFilterCommand}" CommandParameter="small">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsArtistSmallFilterActive}"/></MenuItem.Icon>
+                                            <MenuItem.Header>
+                                                <StackPanel Margin="0,5" Spacing="2">
+                                                    <TextBlock Text="{loc:T Main.HideSmallArtists}" FontSize="13" />
+                                                    <TextBlock Text="{Binding ArtistSmallFilterDetail}" FontSize="11" Opacity="0.55" />
+                                                </StackPanel>
+                                            </MenuItem.Header>
+                                        </MenuItem>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                            </Button>
+                            <Border Classes="corner-dot" IsVisible="{Binding IsArtistSmallFilterActive}"/>
+                        </Panel>
                         <Panel VerticalAlignment="Center">
                             <Button Classes="corner-icon" AutomationProperties.Name="{loc:T Main.Sort}">
                                 <ToolTip.Tip>
@@ -702,6 +741,9 @@
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Time}" Command="{Binding ArtistSortCommand}" CommandParameter="time">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=time}"/></MenuItem.Icon>
+                                        </MenuItem>
+                                        <MenuItem Header="{loc:T Main.Plays}" Command="{Binding ArtistSortCommand}" CommandParameter="plays">
+                                            <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=plays}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Genre}" Command="{Binding ArtistSortCommand}" CommandParameter="genre">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding ArtistSortMode, Converter={StaticResource StringEquals}, ConverterParameter=genre}"/></MenuItem.Icon>
@@ -860,7 +902,6 @@
                         IsVisible="{Binding IsWindowTinted}"
                         IsHitTestVisible="False" />
                 <ContentControl x:Name="PageHost"
-                                Content="{Binding CurrentView}"
                                 Classes="page-host"
                                 RenderTransformOrigin="50%,50%">
                     <ContentControl.Transitions>
@@ -872,6 +913,8 @@
                             </DoubleTransition>
                         </Transitions>
                     </ContentControl.Transitions>
+                    <!-- Cached sections stay styled while another page shows (PageDeck, 11-15). -->
+                    <controls:PageDeck Page="{Binding CurrentView}" />
                 </ContentControl>
 
                 <!-- Lyrics side panel overlays content so opening it does not resize album grids.
@@ -1314,6 +1357,13 @@
                                      ScrollViewer.VerticalScrollBarVisibility="Hidden"
                                      DragDrop.AllowDrop="True"
                                      DoubleTapped="OnQueueItemDoubleTapped">
+                                <!-- Rows scrolled off stay in the tree and take the next song (11-14);
+                                     the prepare handler (QueuePanelRows.Stamp) is idempotent. -->
+                                <ListBox.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <controls:RetainingVirtualizingStackPanel />
+                                    </ItemsPanelTemplate>
+                                </ListBox.ItemsPanel>
                                 <ListBox.Styles>
                                     <Style Selector="ListBoxItem">
                                         <Setter Property="Padding" Value="0"/>
@@ -1328,21 +1378,28 @@
                                         </Setter>
                                     </Style>
                                     <!-- Hover highlight on each queue row, matching album track-list. -->
+                                    <!-- The 1px border is always there (transparent until selected, and
+                                         the row's padding is 1px less to match) so selecting never moves
+                                         the row content (GitHub #209). -->
                                     <Style Selector="Border.queue-row">
                                         <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
                                         <Setter Property="Transitions">
                                             <Transitions>
                                                 <BrushTransition Property="Background" Duration="0:0:0.12"/>
+                                                <BrushTransition Property="BorderBrush" Duration="0:0:0.16"/>
                                             </Transitions>
                                         </Setter>
                                     </Style>
                                     <Style Selector="Border.queue-row:pointerover">
                                         <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}"/>
                                     </Style>
-                                    <!-- GitHub #85: selected rows (click / Ctrl / Shift) carry the track
-                                         lists' multi-select wash; declared after hover so it wins. -->
+                                    <!-- GitHub #85: selected rows (click / Ctrl / Shift) carry the app's
+                                         selection plate (GitHub #209); declared after hover so it wins. -->
                                     <Style Selector="ListBoxItem.ctrl-selected Border.queue-row">
-                                        <Setter Property="Background" Value="{DynamicResource TrackListMultiSelectBrush}"/>
+                                        <Setter Property="Background" Value="{DynamicResource SelectionFillBrush}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource SelectionStrokeBrush}"/>
                                     </Style>
                                     <!-- GitHub #134 (Keep Played Songs). Played rows: same size, a
                                          little dimmed, a check in the number slot. -->
@@ -1398,7 +1455,7 @@
                                              drag highlight covers album art + text + number as one card. -->
                                         <Border Classes="queue-row"
                                                 Margin="12,1,12,1"
-                                                Padding="8,4"
+                                                Padding="7,3"
                                                 CornerRadius="10"
                                                 Tag="{Binding}"
                                                 PointerPressed="OnQueueItemPointerPressed"
@@ -1937,6 +1994,7 @@
     </Border>
 
     </Panel>
+    </Panel>
 
     <!-- Settings modal overlay (dark backdrop + centered popup card).
          Visibility and the fade/scale open-close animation are driven from
@@ -1986,8 +2044,12 @@
       <Panel>
         <!-- Card fill / frost. A sibling UNDER the card with the card's exact geometry and
              scale transform, so it is never inside the card's opacity layer. Off, it paints
-             the same AppMainBackground the card used to. -->
+             the same AppMainBackground the card used to. While the scrim's opaque snapshot
+             hides the app, nothing beneath the frost can change but the scrim itself, which
+             repaints whole: BeneathRepaintsWhole then spares a full-card repaint after every
+             scroll step, and after every frame something animates in the hidden page. -->
         <controls:GlassPanel Name="SettingsGlass"
+                             BeneathRepaintsWhole="{Binding #SettingsScrim.IsOpaqueCover}"
                              MaxWidth="1000" MaxHeight="720" Margin="24,24"
                              HorizontalAlignment="Stretch"
                              VerticalAlignment="Stretch"

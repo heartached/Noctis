@@ -688,6 +688,15 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    /// <summary>GitHub #240: the window and page background take a subtle shade of the accent
+    /// (MainWindow applies it through App.SetTintWindowWithAccent).</summary>
+    [ObservableProperty] private bool _tintWindowWithAccent;
+
+    partial void OnTintWindowWithAccentChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     /// <summary>Drives the custom colour-picker flyout.</summary>
     [ObservableProperty] private Avalonia.Media.Color _pickerColor = Avalonia.Media.Color.Parse("#E74856");
 
@@ -771,7 +780,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
     /// (0 = as soon as it starts). The player reads it on every position tick, so a change
     /// also applies to the rest of the song playing now.</summary>
-    [ObservableProperty] private int _playCountThresholdPercent;
+    [ObservableProperty] private int _playCountThresholdPercent = 50;
 
     /// <summary>Settings ▸ Lyrics ▸ Save lyrics to (GitHub #135): "Sidecar", "Embedded" or "Both".</summary>
     [ObservableProperty] private string _lyricsSaveTarget = nameof(Models.LyricsSaveTarget.Sidecar);
@@ -787,6 +796,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Settings ▸ Lyrics ▸ Find lyrics for new songs (GitHub #195).</summary>
     [ObservableProperty] private bool _lyricsAutoFindNew;
+    [ObservableProperty] private bool _lyricsAutoFindLibrary;
 
     /// <summary>One row of a string-valued picker (lyrics saving, Discord status, queue rows): the stored value and its label.</summary>
     public sealed record LyricsChoiceOption(string Value, string Label)
@@ -1011,6 +1021,17 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnLyricsAutoFindLibraryChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+        if (!_settingsLoaded) return;
+        // GitHub #219: on, a sweep starts shortly (after the save above, which it reads); off, the
+        // library's waiting songs are dropped (new ones stay while "Find lyrics for new songs" is on).
+        var auto = App.Services?.GetService<Services.Lyrics.LyricsAutoFindService>();
+        if (value) auto?.ScheduleLibrarySweep();
+        else auto?.StopLibrarySweep();
+    }
+
     partial void OnLyricsPreferredTypeChanged(string value)
     {
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
@@ -1084,8 +1105,8 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    /// <summary>GitHub #71: drops import into the library (default) or play/queue in place.</summary>
-    [ObservableProperty] private bool _importDroppedMedia = true;
+    /// <summary>GitHub #71: drops import into the library or play/queue in place (the default).</summary>
+    [ObservableProperty] private bool _importDroppedMedia;
 
     /// <summary>GitHub #74: playlist page furniture toggles (all on by default).</summary>
     [ObservableProperty] private bool _playlistShowAlbumHeaders = true;
@@ -1121,6 +1142,10 @@ public partial class SettingsViewModel : ViewModelBase
     /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
     /// shape as the Song Transitions style cards.</summary>
     [ObservableProperty] private string _nowPlayingArtworkStyle = ArtworkMediums.DefaultSetting;
+
+    /// <summary>Disc scratching: the CD / vinyl record can be grabbed and turned to move
+    /// through the song. The lyrics page and the Sleeve mini player bind it directly.</summary>
+    [ObservableProperty] private bool _discScratching;
 
     /// <summary>Typed view of <see cref="NowPlayingArtworkStyle"/> for the lyrics page's MediaArtwork.</summary>
     public ArtworkMedium NowPlayingArtworkMedium => ArtworkMediums.Parse(NowPlayingArtworkStyle);
@@ -1195,6 +1220,12 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _playbackBarTrashFolder = string.Empty;
     /// <summary>GitHub #186: the island's Quick Add to Playlist button (off by default).</summary>
     [ObservableProperty] private bool _playbackBarShowQuickPlaylist;
+    /// <summary>Discord: the island's Chapters button, for audiobooks (off by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowChapters;
+    /// <summary>Discord: the island's Stop button, after Play/Pause (off by default).</summary>
+    [ObservableProperty] private bool _playbackBarShowStop;
+    /// <summary>Discord: the Stop button shows only while Exclusive Mode is on.</summary>
+    [ObservableProperty] private bool _playbackBarStopOnlyInExclusiveMode;
 
     /// <summary>The Trash folder row's status: a set folder that's gone falls back to the bin.</summary>
     public bool ShowTrashFolderMissingHint =>
@@ -1342,6 +1373,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
     /// <summary>Visualizer bars take the artwork's colour (Appearance tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
+    /// <summary>GitHub #205: Full spectrum, the analyser-weighted visualizer (Appearance tab).</summary>
+    [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
 
     /// <summary>One entry of the Language picker: "" = follow the OS, else a shipped culture.</summary>
     public sealed record LanguageOption(string Code, string Display)
@@ -1507,11 +1540,19 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleMusicVideoAudio() => MusicVideoUseVideoAudio = !MusicVideoUseVideoAudio;
     [ObservableProperty] private bool _lyricsFullScreenFocusEnabled;
+    [ObservableProperty] private bool _lyricsFullScreenHideIsland;
     /// <summary>Percent floor (0–60) under the dimmed lyric lines; 0 = default ramp.</summary>
     [ObservableProperty] private int _lyricsMinLineOpacity;
     [ObservableProperty] private bool _lyricsJoinSplitWords;
     [ObservableProperty] private bool _lyricsGlowAndLift = true;
+    /// <summary>Plugin API 1.8: the lyrics renderer key ("" = Noctis's own). See <see cref="AppSettings.LyricsRenderer"/>.</summary>
+    [ObservableProperty] private string _lyricsRenderer = "";
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>Discord (f7uh): the lyrics page shows the centred player with its lyrics hidden.</summary>
+    [ObservableProperty] private bool _lyricsPageHideLyrics;
+
+    [RelayCommand]
+    private void ToggleLyricsPageHideLyrics() => LyricsPageHideLyrics = !LyricsPageHideLyrics;
     [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
     [ObservableProperty] private bool _lyricsShowTranslations = true;
     [ObservableProperty] private bool _lyricsShowRomanization = true;
@@ -1567,10 +1608,10 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         LaunchAtStartupError = !value
-            ? "Couldn't remove the launch-at-login entry."
+            ? Loc.T("Settings.LaunchAtLoginRemoveFailed")
             : OperatingSystem.IsMacOS() && !Helpers.StartupHelper.IsRunningFromMacAppBundle
-                ? "Launch at login needs Noctis to run from its app bundle (Noctis.app), e.g. from the Applications folder."
-                : "Couldn't register Noctis to launch at login. Check the app has permission to write its startup entry.";
+                ? Loc.T("Settings.LaunchAtLoginNeedsAppBundle")
+                : Loc.T("Settings.LaunchAtLoginRegisterFailed");
 
         if (actual != value)
         {
@@ -1664,6 +1705,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _artistAlbumsViewMode = "grid";
     /// <summary>Album carousel case style (<see cref="AlbumCarouselStyles"/>), both carousels.</summary>
     [ObservableProperty] private string _albumCarouselStyle = AlbumCarouselStyles.DefaultSetting;
+    /// <summary>GitHub #233: a soft cover-coloured glow behind the carousel's centred album.</summary>
+    [ObservableProperty] private bool _albumCarouselGlow = true;
+    /// <summary>GitHub #233: albums wearing their own carousel style, album id ("N") → style
+    /// name; see <see cref="AlbumCarouselStyleOverrides"/>.</summary>
+    private Dictionary<string, string> _albumCarouselStyleOverrides = new(StringComparer.OrdinalIgnoreCase);
     [ObservableProperty] private bool _albumSortAscending = true;
     [ObservableProperty] private bool _albumSortNewestFirst;
     [ObservableProperty] private string _albumReleaseTypeFilter = "";
@@ -1688,6 +1734,39 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
     partial void OnArtistAlbumsViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumCarouselGlowChanged(bool value)
+    {
+        AlbumCarouselStyleOverrides.RaiseChanged();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>The album's own carousel style (GitHub #233), or null when it follows the global one.</summary>
+    public AlbumCarouselStyle? GetAlbumCarouselStyleOverride(Guid albumId) =>
+        _albumCarouselStyleOverrides.TryGetValue(albumId.ToString("N"), out var name) ? AlbumCarouselStyles.Parse(name) : null;
+
+    /// <summary>Gives the album its own carousel style, or (null) back to the global one; saved.</summary>
+    public void SetAlbumCarouselStyleOverride(Guid albumId, AlbumCarouselStyle? style)
+    {
+        var key = albumId.ToString("N");
+        var changed = style is { } s
+            ? !_albumCarouselStyleOverrides.TryGetValue(key, out var old) || old != s.ToString()
+            : _albumCarouselStyleOverrides.ContainsKey(key);
+        if (!changed) return;
+        if (style is { } pick) _albumCarouselStyleOverrides[key] = pick.ToString();
+        else _albumCarouselStyleOverrides.Remove(key);
+        AlbumCarouselStyleOverrides.RaiseChanged();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    /// <summary>Every album's own carousel style, by album id (a copy).</summary>
+    public IReadOnlyDictionary<Guid, AlbumCarouselStyle> AlbumCarouselStyleOverrideMap()
+    {
+        var map = new Dictionary<Guid, AlbumCarouselStyle>();
+        foreach (var (key, name) in _albumCarouselStyleOverrides)
+            if (Guid.TryParseExact(key, "N", out var id)) map[id] = AlbumCarouselStyles.Parse(name);
+        return map;
+    }
+
     partial void OnAlbumCarouselStyleChanged(string value)
     {
         OnPropertyChanged(nameof(IsAlbumCaseCover));
@@ -2244,7 +2323,7 @@ public partial class SettingsViewModel : ViewModelBase
             }
             catch (Exception ex)
             {
-                WebRemoteUrl = $"Failed to start: {ex.Message}";
+                WebRemoteUrl = Loc.T("Settings.WebRemoteStartFailed", ex.Message);
                 WebRemoteDisplayUrl = string.Empty;
                 WebRemoteStartFailed = true;
                 SetWebRemoteQr(null);
@@ -2432,17 +2511,34 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>OS blur-behind for the mini player (GitHub #76). Mirrors
     /// <see cref="AppSettings.MiniPlayerFrostedBackground"/>; the open mini player window
     /// listens to this property and swaps its transparency hint live.</summary>
-    [ObservableProperty] private bool _miniPlayerFrostedBackground;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MiniPlayerFrostUnavailable))]
+    private bool _miniPlayerFrostedBackground;
     /// <summary>The frost uses Windows' acrylic / blur-behind backdrop; the row is hidden
     /// elsewhere (same pattern as <see cref="IsTaskbarProgressSupported"/>).</summary>
     public bool IsMiniPlayerFrostSupported => OperatingSystem.IsWindows();
+    /// <summary>The frost is switched on but Windows' Transparency effects are off, so DWM
+    /// gives no blur (the mini player then shows the plain card; see MiniPlayerWindow.WantsFrost).
+    /// Drives the note under the switch.</summary>
+    public bool MiniPlayerFrostUnavailable =>
+        MiniPlayerFrostedBackground && OperatingSystem.IsWindows() && !Helpers.TrayMenuFrost.TransparencyEffectsOn();
     /// <summary>Album cover sizing for the Albums/Favorites grids. Auto = classic five per
     /// row; otherwise the grids derive their column count from the target size. The album
     /// and favorites view models react through this view model's PropertyChanged.</summary>
     [ObservableProperty] private bool _albumTileSizeAuto = true;
+    /// <summary>GitHub #213: Masonry layout for the Albums grid.</summary>
+    [ObservableProperty] private bool _albumGridMasonry;
+    /// <summary>Wider spacing between albums (GitHub #210's 18px gaps, rows fit their captions);
+    /// off is 1.6.9's close grid. The album grid view models watch this property.</summary>
+    [ObservableProperty] private bool _albumGridWideSpacing;
+    /// <summary>GitHub #218: hover zoom in the Albums grid.</summary>
+    [ObservableProperty] private bool _albumHoverZoom;
     [ObservableProperty] private double _albumTileTargetSize = 220;
     [ObservableProperty] private bool _sidebarHoverExpand = true;
     [ObservableProperty] private bool _sidebarAlwaysExpanded = false;
+    /// <summary>GitHub #233: hide the sidebar until the pointer reaches the left window edge
+    /// (MainWindow.UpdateSidebarHidden, SidebarEdgePeek).</summary>
+    [ObservableProperty] private bool _sidebarAutoHide;
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
     /// (issue #26), so the Settings card is hidden there (same pattern as
@@ -2611,6 +2707,50 @@ public partial class SettingsViewModel : ViewModelBase
     public IReadOnlyList<string> ActiveArtistSortIgnoredWords =>
         IgnoreLeadingWordsInArtistSort ? ArtistSortIgnoredWords.ToArray() : Array.Empty<string>();
 
+    // ── Hide small artists (GitHub #233) ──
+
+    /// <summary>The song counts the "hide artists with fewer than" picker offers.</summary>
+    public static readonly int[] SmallArtistMinSongsValues = { 2, 3, 5, 10 };
+
+    /// <summary>When on, the Artists page leaves out artists with fewer than
+    /// <see cref="SmallArtistMinSongs"/> songs. Search and artist links still find them.</summary>
+    [ObservableProperty] private bool _hideSmallArtists;
+
+    /// <summary>The threshold, one of <see cref="SmallArtistMinSongsValues"/>.</summary>
+    [ObservableProperty] private int _smallArtistMinSongs = 3;
+
+    public IReadOnlyList<ArtistMinSongsOption> SmallArtistMinSongsOptions { get; } =
+        SmallArtistMinSongsValues.Select(n => new ArtistMinSongsOption(n)).ToArray();
+
+    /// <summary>The picker's selection (records compare by value, so a fresh one selects).</summary>
+    public ArtistMinSongsOption SmallArtistMinSongsChoice
+    {
+        get => new(SmallArtistMinSongs);
+        set { if (value != null) SmallArtistMinSongs = value.Songs; }
+    }
+
+    /// <summary>The threshold in force: 0 while the toggle is off. MainWindowViewModel pushes it
+    /// into LibraryArtistsViewModel.</summary>
+    public int ActiveArtistMinSongs => HideSmallArtists ? SmallArtistMinSongs : 0;
+
+    partial void OnHideSmallArtistsChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ActiveArtistMinSongs));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSmallArtistMinSongsChanged(int value)
+    {
+        if (Array.IndexOf(SmallArtistMinSongsValues, value) < 0)
+        {
+            SmallArtistMinSongs = 3; // a hand-edited file: back to the default choice
+            return;
+        }
+        OnPropertyChanged(nameof(SmallArtistMinSongsChoice));
+        OnPropertyChanged(nameof(ActiveArtistMinSongs));
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     // ── Lyrics Providers ──
 
     [ObservableProperty] private bool _lrcLibEnabled = true;
@@ -2619,6 +2759,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _kugouEnabled = true;
     [ObservableProperty] private bool _lrcRedEnabled = true;
     [ObservableProperty] private bool _unisonEnabled = true;
+    [ObservableProperty] private bool _lrcMuxEnabled;
     [ObservableProperty] private bool _youTubeMusicLyricsEnabled;
 
     // ── Metadata Providers ──
@@ -2881,6 +3022,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _lastFmStatusText = Loc.T("Settings.NotConnected");
     /// <summary>GitHub #177: Home's Last.fm mixes and Discover; see <see cref="AppSettings.LastFmTasteEnabled"/>.</summary>
     [ObservableProperty] private bool _lastFmTasteEnabled = true;
+    /// <summary>GitHub #222: the Statistics page's source; see <see cref="AppSettings.StatisticsSource"/>.</summary>
+    [ObservableProperty] private string _statisticsSource = "Library";
 
     // ── ListenBrainz ──
     [ObservableProperty] private bool _listenBrainzScrobblingEnabled; // AppSettings default: off until a token validates
@@ -3179,6 +3322,11 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>False for Scoop / portable / read-only copies and Debug builds: the toggle is hidden.</summary>
     public bool CanAutoUpdate => UpdateService.AutoMode != AutoUpdateMode.Off;
     public bool AutoUpdateInstallsAtLaunch => UpdateService.AutoMode == AutoUpdateMode.InstallAtLaunch;
+
+    /// <summary>The status line for a downloaded, queued update.</summary>
+    private string QueuedUpdateText(string tag) => AutoUpdateInstallsAtLaunch
+        ? Loc.T("Settings.UpdateInstallsAtLaunch", tag)
+        : Loc.T("Settings.UpdateDownloadedClickInstall", tag);
     public bool AutoUpdateDownloadOnly => UpdateService.AutoMode == AutoUpdateMode.DownloadOnly;
     public bool ShowPostponeButton => IsReadyToInstall && IsAutoInstallPending && !IsAutoInstallPostponed && AutoUpdateInstallsAtLaunch;
     private bool AutoUpdateActive => AutoInstallUpdates && CanAutoUpdate;
@@ -3520,6 +3668,7 @@ public partial class SettingsViewModel : ViewModelBase
             CustomAccentHex = ActiveAccentHex;
             AccentFollowsArtwork = _settings.AccentFollowsArtwork;
             AccentTrackLinks = _settings.AccentTrackLinks;
+            TintWindowWithAccent = _settings.TintWindowWithAccent;
             AppIcon = AppIconService.Normalize(_settings.AppIcon);
             AppIconService.Apply(AppIcon); // also when it equals the field default (no change event)
             try
@@ -3577,6 +3726,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumPageTintWholeWindow = _settings.AlbumPageTintWholeWindow;
             // Round-trip through Parse so a stale/unknown file value normalizes to "Cover".
             NowPlayingArtworkStyle = ArtworkMediums.Parse(_settings.NowPlayingArtworkStyle).ToString();
+            DiscScratching = _settings.DiscScratching;
             CoverFlowLayout = CoverFlowLayouts.Parse(_settings.CoverFlowLayout).ToString();
             MiniPlayerStyle = MiniPlayerStyles.Parse(_settings.MiniPlayerStyle).ToString();
             PlaybackBarShowSkipButtons = _settings.PlaybackBarShowSkipButtons;
@@ -3593,6 +3743,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowTrash = _settings.PlaybackBarShowTrash;
             PlaybackBarTrashFolder = _settings.PlaybackBarTrashFolder ?? string.Empty;
             PlaybackBarShowQuickPlaylist = _settings.PlaybackBarShowQuickPlaylist;
+            PlaybackBarShowChapters = _settings.PlaybackBarShowChapters;
+            PlaybackBarShowStop = _settings.PlaybackBarShowStop;
+            PlaybackBarStopOnlyInExclusiveMode = _settings.PlaybackBarStopOnlyInExclusiveMode;
             SetQuickPlaylistSlots(_settings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
@@ -3609,6 +3762,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerEnabled = _settings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = _settings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = _settings.LyricsVisualizerArtworkColor;
+            LyricsVisualizerFullSpectrum = _settings.LyricsVisualizerFullSpectrum;
             LanguageOptions = BuildLanguageOptions(PackContent); // pack languages were preloaded above
             LanguageChoice = LanguageOptions.FirstOrDefault(o => o.Code == (_settings.Language ?? string.Empty)) ?? LanguageOptions[0];
             LyricsBackgroundMediaPath = File.Exists(_settings.LyricsBackgroundMediaPath)
@@ -3626,16 +3780,20 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoUseVideoAudio = _settings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = _settings.MusicVideoAsBackground;
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
+            LyricsFullScreenHideIsland = _settings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
             LyricsJoinSplitWords = _settings.LyricsJoinSplitWords;
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
+            LyricsRenderer = _settings.LyricsRenderer ?? "";
             LyricsCenterWhenNoLyrics = _settings.LyricsCenterWhenNoLyrics;
+            LyricsPageHideLyrics = _settings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = _settings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = LyricsSaveOptions.ParseTarget(_settings.LyricsSaveTarget).ToString();
             LyricsAutoDownload = _settings.LyricsAutoDownload;
             LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(_settings.LyricsPreferredType).ToString();
             LyricsUpgradePlain = _settings.LyricsUpgradePlain;
             LyricsAutoFindNew = _settings.LyricsAutoFindNew;
+            LyricsAutoFindLibrary = _settings.LyricsAutoFindLibrary;
             LyricsShowTranslations = _settings.LyricsShowTranslations;
             LyricsShowRomanization = _settings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = _settings.LyricsShowBackgroundVocals;
@@ -3679,12 +3837,18 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumViewMode = _settings.AlbumViewMode;
             ArtistAlbumsViewMode = _settings.ArtistAlbumsViewMode;
             AlbumCarouselStyle = _settings.AlbumCarouselStyle;
+            AlbumCarouselGlow = _settings.AlbumCarouselGlow;
+            _albumCarouselStyleOverrides = new Dictionary<string, string>(
+                _settings.AlbumCarouselStyleOverrides ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
+            AlbumCarouselStyleOverrides.RaiseChanged();
             AlbumSortAscending = _settings.AlbumSortAscending;
             AlbumSortNewestFirst = _settings.AlbumSortNewestFirst;
             AlbumReleaseTypeFilter = _settings.AlbumReleaseTypeFilter;
             ArtistSortMode = _settings.ArtistSortMode;
             ArtistSortAscending = _settings.ArtistSortAscending;
             ArtistViewMode = _settings.ArtistViewMode;
+            HideSmallArtists = _settings.HideSmallArtists;
+            SmallArtistMinSongs = _settings.SmallArtistMinSongs;
             FoldersSortMode = _settings.FoldersSortMode;
             ArtistReleaseSortMode = _settings.ArtistReleaseSortMode;
             ArtistSimilarExpanded = _settings.ArtistSimilarExpanded;
@@ -3712,10 +3876,14 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerBackgroundOpacity = Math.Clamp(_settings.MiniPlayerBackgroundOpacity, 0, 1);
             MiniPlayerFrostedBackground = _settings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
+            AlbumGridMasonry = _settings.AlbumGridMasonry;
+            AlbumGridWideSpacing = _settings.AlbumGridWideSpacing;
+            AlbumHoverZoom = _settings.AlbumHoverZoom;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
+            SidebarAutoHide = _settings.SidebarAutoHide;
             LoadSidebarLayout(_settings);
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
@@ -3770,6 +3938,7 @@ public partial class SettingsViewModel : ViewModelBase
             KugouEnabled = _settings.KugouEnabled;
             LrcRedEnabled = _settings.LrcRedEnabled;
             UnisonEnabled = _settings.UnisonEnabled;
+            LrcMuxEnabled = _settings.LrcMuxEnabled;
             YouTubeMusicLyricsEnabled = _settings.YouTubeMusicLyricsEnabled;
             LoadFeatureSettings();
             LoadBuiltInFeatureSettings();
@@ -3826,6 +3995,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = _settings.LastFmScrobblingEnabled;
             LastFmUsername = _settings.LastFmUsername;
             LastFmTasteEnabled = _settings.LastFmTasteEnabled;
+            StatisticsSource = _settings.StatisticsSource ?? "Library";
             LoadPlayCountImportSettings(_settings);
 
             if (_lastFm != null && !string.IsNullOrEmpty(_settings.LastFmSessionKey))
@@ -3931,6 +4101,20 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// GitHub #230: when the data folder was last saved by a newer Noctis than this one, the
+    /// notice to show — once per newer version (remembered in the shared settings) — else null.
+    /// </summary>
+    public string? TakeNewerVersionNotice()
+    {
+        if (!_settingsLoaded || _settings.OpenedFromNewerVersion is not { Length: > 0 } newer) return null;
+        if (string.Equals(_settings.NewerVersionNoticeShownFor, newer, StringComparison.Ordinal)) return null;
+        _settings.NewerVersionNoticeShownFor = newer;
+        // Straight to the file: SaveAsync re-bases on the file first, which would undo it.
+        _ = _persistence.UpdateSettingsAsync(s => s.NewerVersionNoticeShownFor = newer);
+        return Loc.T("Settings.DataFolderNewerVersion", newer);
+    }
+
     /// <summary>Saves current settings to disk.</summary>
     public async Task SaveAsync()
     {
@@ -3941,9 +4125,25 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var saveStart = Stopwatch.GetTimestamp();
-            await MergeExternalSettingChangesAsync();
+            var onDisk = await MergeExternalSettingChangesAsync();
             SyncToSettings();
-            await _persistence.SaveSettingsAsync(_settings);
+            if (onDisk is null)
+            {
+                await _persistence.SaveSettingsAsync(_settings);
+            }
+            else
+            {
+                // The merge read the file outside the settings.json gate, so a gated update from
+                // elsewhere (the lyrics page, the library) could land before this save and be
+                // overwritten by the copy read before it. Save only what this view-model changed
+                // against that read (taken here, on the UI thread), onto the file as it is under
+                // the gate.
+                var changes = ChangesSinceMerge(onDisk);
+                await _persistence.UpdateSettingsAsync(current =>
+                {
+                    foreach (var (prop, value) in changes) prop.SetValue(current, value);
+                });
+            }
             UiStallWatchdog.ReportIfSlow("SettingsSave", saveStart);
         }
         catch (Exception ex)
@@ -4011,27 +4211,50 @@ public partial class SettingsViewModel : ViewModelBase
         nameof(AppSettings.SyncDeviceId),
     };
 
-    private async Task MergeExternalSettingChangesAsync()
+    private static readonly System.Reflection.PropertyInfo[] MergedSettingsProperties = typeof(AppSettings)
+        .GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+        .Where(p => p.CanRead && p.CanWrite)
+        .ToArray();
+
+    /// <summary>Returns the settings read from disk, or null when the merge failed.</summary>
+    private async Task<AppSettings?> MergeExternalSettingChangesAsync()
     {
         try
         {
             var onDisk = await _persistence.LoadSettingsAsync();
-            if (onDisk == null) return;
+            if (onDisk == null) return null;
 
-            foreach (var prop in typeof(AppSettings).GetProperties(
-                         System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance))
+            foreach (var prop in MergedSettingsProperties)
             {
-                if (!prop.CanRead || !prop.CanWrite) continue;
                 if (ProcessOwnedPlacementKeys.Contains(prop.Name)) continue;
                 prop.SetValue(_settings, prop.GetValue(onDisk));
             }
+            return onDisk;
         }
         catch (Exception ex)
         {
             // A failed merge must not block the save — worst case we write the
             // in-memory view, which is the old behaviour.
             Debug.WriteLine($"[SettingsViewModel] Settings merge failed: {ex.Message}");
+            return null;
         }
+    }
+
+    /// <summary>
+    /// The fields of <see cref="_settings"/> that differ from <paramref name="onDisk"/>, the file as
+    /// the merge read it: what <see cref="SyncToSettings"/> wrote, plus the process-owned keys the
+    /// merge leaves alone. A field the merge copied and nothing changed since is the same value
+    /// (the same instance for lists), so the file's current value stands for it.
+    /// </summary>
+    private List<(System.Reflection.PropertyInfo Prop, object? Value)> ChangesSinceMerge(AppSettings onDisk)
+    {
+        var changes = new List<(System.Reflection.PropertyInfo, object?)>();
+        foreach (var prop in MergedSettingsProperties)
+        {
+            var value = prop.GetValue(_settings);
+            if (!Equals(value, prop.GetValue(onDisk))) changes.Add((prop, value));
+        }
+        return changes;
     }
 
     private void SyncToSettings()
@@ -4048,7 +4271,9 @@ public partial class SettingsViewModel : ViewModelBase
         if (!string.IsNullOrEmpty(ActiveCustomThemeId)) _settings.Theme = "Custom:" + ActiveCustomThemeId;
         else if (!string.IsNullOrEmpty(ActivePackThemeKey)) _settings.Theme = App.PackThemePrefix + ActivePackThemeKey;
 
-        _settings.CustomThemes = CustomThemes.Select(t => new CustomThemeDefinition
+        // GitHub #230: these lists are rebuilt from the view on every save; what a newer Noctis
+        // stored on an entry (members this build does not know) goes over to the rebuilt entry.
+        _settings.CustomThemes = JsonExtensible.CarryOver(_settings.CustomThemes, CustomThemes.Select(t => new CustomThemeDefinition
         {
             Id = t.Id,
             Name = t.Name,
@@ -4056,7 +4281,7 @@ public partial class SettingsViewModel : ViewModelBase
             MainBackgroundHex = t.MainHex,
             SidebarBackgroundHex = t.SidebarHex,
             AccentHex = t.AccentHex,
-        }).ToList();
+        }).ToList(), t => t.Id);
 
         _settings.ThemeV2Migrated = true;
         _settings.ProfileName = ProfileName ?? string.Empty;
@@ -4065,6 +4290,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AccentPresetName = ActiveAccentName;
         _settings.AccentFollowsArtwork = AccentFollowsArtwork;
         _settings.AccentTrackLinks = AccentTrackLinks;
+        _settings.TintWindowWithAccent = TintWindowWithAccent;
         _settings.AppIcon = AppIconService.Normalize(AppIcon);
 
         _settings.ScanOnStartup = ScanOnStartup;
@@ -4085,7 +4311,7 @@ public partial class SettingsViewModel : ViewModelBase
         // back, and the file was saved with the old value.
         _settings.Language = LanguageChoice?.Code ?? string.Empty;
         _settings.MusicFolders = _collectionSnapshot?.MusicFolders ?? MusicFolders.ToList();
-        _settings.FolderRules = _collectionSnapshot?.FolderRules ?? FolderRules
+        _settings.FolderRules = JsonExtensible.CarryOver(_settings.FolderRules, _collectionSnapshot?.FolderRules ?? FolderRules
             .Where(r => !string.IsNullOrWhiteSpace(r.Path))
             .Select(r => new FolderRule
             {
@@ -4093,7 +4319,7 @@ public partial class SettingsViewModel : ViewModelBase
                 Include = r.Include,
                 Enabled = r.Enabled
             })
-            .ToList();
+            .ToList(), r => r.Path);
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
@@ -4126,6 +4352,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumPageTintWholePage = AlbumPageTintWholePage;
         _settings.AlbumPageTintWholeWindow = AlbumPageTintWholeWindow;
         _settings.NowPlayingArtworkStyle = NowPlayingArtworkStyle ?? ArtworkMediums.DefaultSetting;
+        _settings.DiscScratching = DiscScratching;
         _settings.CoverFlowLayout = CoverFlowLayout ?? CoverFlowLayouts.DefaultSetting;
         _settings.MiniPlayerStyle = MiniPlayerStyle ?? MiniPlayerStyles.DefaultSetting;
         _settings.PlaybackBarShowSkipButtons = PlaybackBarShowSkipButtons;
@@ -4142,6 +4369,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowTrash = PlaybackBarShowTrash;
         _settings.PlaybackBarTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _settings.PlaybackBarShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
+        _settings.PlaybackBarShowChapters = PlaybackBarShowChapters;
+        _settings.PlaybackBarShowStop = PlaybackBarShowStop;
+        _settings.PlaybackBarStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode;
         _settings.PlaybackBarQuickPlaylistIds = _quickPlaylistSlots.ToList();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
@@ -4157,6 +4387,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsVisualizerEnabled = LyricsVisualizerEnabled;
         _settings.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _settings.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
+        _settings.LyricsVisualizerFullSpectrum = LyricsVisualizerFullSpectrum;
         _settings.LyricsBackgroundMediaPath = LyricsBackgroundMediaPath ?? string.Empty;
         _settings.LyricsBackgroundMediaOverrides = new Dictionary<string, string>(_lyricsBackgroundOverrides);
         _settings.ScrobbleExcludedKeys = _scrobbleExclusions.Count > 0 ? _scrobbleExclusions.ToList() : null;
@@ -4166,16 +4397,20 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicVideoUseVideoAudio = MusicVideoUseVideoAudio;
         _settings.MusicVideoAsBackground = MusicVideoAsBackground;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _settings.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _settings.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
+        _settings.LyricsRenderer = LyricsRenderer ?? "";
         _settings.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
+        _settings.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _settings.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
         _settings.LyricsSaveTarget = LyricsSaveOptions.ParseTarget(LyricsSaveTarget).ToString();
         _settings.LyricsAutoDownload = LyricsAutoDownload;
         _settings.LyricsPreferredType = LyricsSaveOptions.ParsePreferredType(LyricsPreferredType).ToString();
         _settings.LyricsUpgradePlain = LyricsUpgradePlain;
         _settings.LyricsAutoFindNew = LyricsAutoFindNew;
+        _settings.LyricsAutoFindLibrary = LyricsAutoFindLibrary;
         _settings.LyricsShowTranslations = LyricsShowTranslations;
         _settings.LyricsShowRomanization = LyricsShowRomanization;
         _settings.LyricsShowBackgroundVocals = LyricsShowBackgroundVocals;
@@ -4216,12 +4451,18 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumViewMode = AlbumViewMode;
         _settings.ArtistAlbumsViewMode = ArtistAlbumsViewMode;
         _settings.AlbumCarouselStyle = AlbumCarouselStyle;
+        _settings.AlbumCarouselGlow = AlbumCarouselGlow;
+        _settings.AlbumCarouselStyleOverrides = _albumCarouselStyleOverrides.Count > 0
+            ? new Dictionary<string, string>(_albumCarouselStyleOverrides)
+            : null;
         _settings.AlbumSortAscending = AlbumSortAscending;
         _settings.AlbumSortNewestFirst = AlbumSortNewestFirst;
         _settings.AlbumReleaseTypeFilter = AlbumReleaseTypeFilter;
         _settings.ArtistSortMode = ArtistSortMode;
         _settings.ArtistSortAscending = ArtistSortAscending;
         _settings.ArtistViewMode = ArtistViewMode;
+        _settings.HideSmallArtists = HideSmallArtists;
+        _settings.SmallArtistMinSongs = SmallArtistMinSongs;
         _settings.FoldersSortMode = FoldersSortMode;
         _settings.ArtistReleaseSortMode = ArtistReleaseSortMode;
         _settings.ArtistSimilarExpanded = ArtistSimilarExpanded;
@@ -4248,10 +4489,14 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MiniPlayerBackgroundOpacity = Math.Clamp(MiniPlayerBackgroundOpacity, 0, 1);
         _settings.MiniPlayerFrostedBackground = MiniPlayerFrostedBackground;
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
+        _settings.AlbumGridMasonry = AlbumGridMasonry;
+        _settings.AlbumGridWideSpacing = AlbumGridWideSpacing;
+        _settings.AlbumHoverZoom = AlbumHoverZoom;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
+        _settings.SidebarAutoHide = SidebarAutoHide;
         SaveSidebarLayout();
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
@@ -4297,15 +4542,21 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.KugouEnabled = KugouEnabled;
         _settings.LrcRedEnabled = LrcRedEnabled;
         _settings.UnisonEnabled = UnisonEnabled;
+        _settings.LrcMuxEnabled = LrcMuxEnabled;
         _settings.YouTubeMusicLyricsEnabled = YouTubeMusicLyricsEnabled;
         _settings.EqualizerEnabled = EqualizerEnabled;
         _settings.EqPreampDb = EqPreampDb;
         _settings.EqualizerPresetIndex = SelectedEqPresetIndex - 1;
         _settings.SelectedUserEqPreset = FindUserEqPreset(SelectedEqPresetName)?.Name;
-        _settings.UserEqPresets = _userEqPresets.Select(CloneUserEqPreset).ToList();
+        _settings.UserEqPresets = JsonExtensible.CarryOver(_settings.UserEqPresets, _userEqPresets.Select(CloneUserEqPreset).ToList(), p => p.Name);
         _settings.HiddenEqPresets = EqPresetNames.Where(_hiddenEqPresets.Contains).ToList();
+        var earlierBands = _settings.ParametricEqBands;
         _settings.ParametricEqBands = EqBands
-            .Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q })
+            .Select((b, i) => new ParametricEqBand
+            {
+                FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q,
+                ExtensionData = earlierBands is { } e && i < e.Count ? e[i]?.ExtensionData : null,
+            })
             .ToList();
         // Downgrade-safe mirror of the applied 10-band curve.
         _settings.EqualizerBands = GetGraphicEqBands().bands;
@@ -4315,6 +4566,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LastFmScrobblingEnabled = LastFmScrobblingEnabled;
         _settings.LastFmUsername = LastFmUsername;
         _settings.LastFmTasteEnabled = LastFmTasteEnabled;
+        _settings.StatisticsSource = StatisticsSource;
         SavePlayCountImportSettings(_settings);
         if (_lastFm is LastFmService lfm)
             _settings.LastFmSessionKey = lfm.GetSessionKey() ?? "";
@@ -4515,6 +4767,10 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowTrash = PlaybackBarShowTrash;
         _player.IslandTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
+        _player.IslandShowChapters = PlaybackBarShowChapters;
+        _player.IslandShowStop = PlaybackBarShowStop;
+        _player.IslandStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode;
+        _player.ExclusiveModeEnabled = ExclusiveAudioEnabled;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
@@ -4534,6 +4790,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsVisualizerEnabled = LyricsVisualizerEnabled && VisualizerEnabled;
         _player.LyricsVisualizerStyle = LyricsVisualizerStyle;
         _player.LyricsVisualizerArtworkColor = LyricsVisualizerArtworkColor;
+        _player.LyricsVisualizerFullSpectrum = LyricsVisualizerFullSpectrum;
         _player.SetLyricsBackgroundSources(LyricsBackgroundMediaPath ?? string.Empty,
             new Dictionary<string, string>(_lyricsBackgroundOverrides, StringComparer.OrdinalIgnoreCase));
         _player.LyricsBackgroundPausesWithPlayback = LyricsBackgroundPausesWithPlayback;
@@ -4542,10 +4799,12 @@ public partial class SettingsViewModel : ViewModelBase
         _player.MusicVideoAudioEnabled = MusicVideoUseVideoAudio;
         _player.MusicVideoAsBackground = MusicVideoAsBackground;
         _player.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
+        _player.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _player.LyricsMinLineOpacity = LyricsMinLineOpacity;
         _player.LyricsJoinSplitWords = LyricsJoinSplitWords;
         _player.LyricsGlowAndLift = LyricsGlowAndLift;
         _player.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
+        _player.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _player.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
         _player.LyricsSaveTarget = LyricsSaveTarget;
         _player.LyricsAutoDownload = LyricsAutoDownload;
@@ -5307,6 +5566,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnExclusiveAudioEnabledChanged(bool value)
     {
         _audioPlayer?.SetExclusiveMode(value);
+        if (_player != null) _player.ExclusiveModeEnabled = value; // the island's Stop button
         if (!value) ExclusiveAudioStatus = "";
         RefreshChannelMixAvailability();
         _ = SaveAsync();
@@ -5315,6 +5575,11 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnSidebarHoverExpandChanged(bool value)
     {
         _ = SaveAsync();
+    }
+
+    partial void OnSidebarAutoHideChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnSidebarAlwaysExpandedChanged(bool value)
@@ -5488,6 +5753,35 @@ public partial class SettingsViewModel : ViewModelBase
                 Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
     }
 
+    /// <summary>GitHub #201: "Save to Files Now" writes every grouping the files do not carry yet
+    /// (made while saving was off, or a file that could not be written then), once.</summary>
+    [RelayCommand]
+    private async Task SaveAlbumGroupingToFilesNow()
+    {
+        SetScanStatus(Loc.T("Settings.AlbumGroupingWriting"));
+        AlbumGroupResult result;
+        try
+        {
+            result = await _library.SaveAlbumGroupingToFilesAsync();
+        }
+        catch (Exception)
+        {
+            SetScanStatus(Loc.T("Settings.AlbumGroupingFailed"), autoClear: true);
+            return;
+        }
+        if (result.Grouped == 0 && result.UnwrittenFiles.Count == 0)
+        {
+            SetScanStatus(Loc.T("Settings.AlbumGroupingFilesUpToDate"), autoClear: true);
+            return;
+        }
+        ReportAlbumGroupingWrite(result);
+        if (result.UnwrittenFiles.Count > 0)
+            await ShowAlbumGroupingNotice(new Views.ConfirmationRequest(
+                Loc.T("Settings.AlbumGroupingNotWritten", result.UnwrittenFiles.Count),
+                Loc.T("Settings.AlbumGroupingSaveNow"),
+                Details: result.UnwrittenFiles.Take(8).ToList(), InfoOnly: true));
+    }
+
     private void ReportAlbumGroupingWrite(AlbumGroupResult result) =>
         SetScanStatus(result.UnwrittenFiles.Count > 0
             ? Loc.T("Settings.AlbumGroupingWrittenSome", result.Grouped, result.UnwrittenFiles.Count)
@@ -5496,6 +5790,24 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumTileSizeAutoChanged(bool value)
     {
         // No Apply* step: the album/favorites view models watch this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumHoverZoomChanged(bool value)
+    {
+        // The Albums view model watches this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumGridMasonryChanged(bool value)
+    {
+        // The Albums view model watches this property.
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnAlbumGridWideSpacingChanged(bool value)
+    {
+        // The album grid view models watch this property.
         if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
     }
 
@@ -5738,9 +6050,7 @@ public partial class SettingsViewModel : ViewModelBase
         {
             var changed = await _library.ApplyArtistCreditJoinAsync();
             if (changed > 0)
-                SetScanStatus(changed == 1
-                    ? "Artist credits updated on 1 track."
-                    : Loc.T("Settings.ArtistCreditsUpdated", changed), autoClear: true);
+                SetScanStatus(ArtistCreditsUpdatedText(changed), autoClear: true);
         }
         catch (Exception)
         {
@@ -5776,13 +6086,13 @@ public partial class SettingsViewModel : ViewModelBase
         }
 
         if (generation != _mergeFeatApplyGeneration) return;
-        SetScanStatus(changed switch
-        {
-            0 => Loc.T("Settings.ArtistCreditsUpToDate"),
-            1 => "Artist credits updated on 1 track.",
-            _ => Loc.T("Settings.ArtistCreditsUpdated", changed)
-        }, autoClear: true);
+        SetScanStatus(changed == 0 ? Loc.T("Settings.ArtistCreditsUpToDate") : ArtistCreditsUpdatedText(changed), autoClear: true);
     }
+
+    /// <summary>"Artist credits updated on 1 track." / "… on 12 tracks." Internal for tests.</summary>
+    internal static string ArtistCreditsUpdatedText(int changed) => changed == 1
+        ? Loc.T("Settings.ArtistCreditsUpdatedOne")
+        : Loc.T("Settings.ArtistCreditsUpdated", changed);
 
     partial void OnTrackTitleMarqueeEnabledChanged(bool value)
     {
@@ -5953,6 +6263,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (changed && _settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnDiscScratchingChanged(bool value)
+    {
+        // No Apply* step: the discs bind DiscScratching directly.
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnNowPlayingArtworkStyleChanged(string value)
     {
         // No Apply* step: the lyrics page binds NowPlayingArtworkMedium directly.
@@ -6065,6 +6381,24 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPlaybackBarTrashFolderChanged(string value)
     {
         OnPropertyChanged(nameof(ShowTrashFolderMissingHint));
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowChaptersChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarShowStopChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarStopOnlyInExclusiveModeChanged(bool value)
+    {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
     }
@@ -6215,6 +6549,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (oldValue is not null)
         {
             oldValue.VisualLayersChanged -= OnPluginVisualLayersChanged;
+            oldValue.LyricsRenderersChanged -= OnPluginLyricsRenderersChanged;
             oldValue.CommunityPluginsChanged -= OnCommunityPluginsChanged;
             oldValue.Content.Changed -= OnPluginContentChanged;
             oldValue.Plugins.CollectionChanged -= OnInstalledPluginsChanged;
@@ -6223,6 +6558,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (newValue is not null)
         {
             newValue.VisualLayersChanged += OnPluginVisualLayersChanged;
+            newValue.LyricsRenderersChanged += OnPluginLyricsRenderersChanged;
             newValue.CommunityPluginsChanged += OnCommunityPluginsChanged;
             newValue.Content.Changed += OnPluginContentChanged;
             newValue.Plugins.CollectionChanged += OnInstalledPluginsChanged;
@@ -6230,8 +6566,80 @@ public partial class SettingsViewModel : ViewModelBase
         }
         SyncCommunityPluginsSwitch();
         RefreshFlowingStyleOptions();
+        RefreshLyricsRendererOptions();
         RefreshOfficialPluginStates();
         OnPropertyChanged(nameof(PluginsFolderTip));
+    }
+
+    // ── Lyrics renderer (plugin API 1.8) ──
+    // Noctis's own lines, then every renderer the running plugins offer. A choice whose plugin is
+    // off stays listed and stored (Noctis draws its own lines meanwhile); nothing picks a renderer
+    // but the user.
+
+    /// <summary>Noctis's own renderer, then the plugins' (Key = what is stored).</summary>
+    public ObservableCollection<FlowingOption> LyricsRendererOptions { get; } = new();
+
+    /// <summary>The row shows only when there is something to choose (a renderer plugin, or a
+    /// stored choice whose plugin is off): without renderer plugins Settings looks as it always did.</summary>
+    public bool HasLyricsRendererChoice => LyricsRendererOptions.Count > 1;
+
+    public FlowingOption? SelectedLyricsRendererOption
+    {
+        get => LyricsRendererOptions.FirstOrDefault(o => o.Key == (LyricsRenderer ?? "")) ?? LyricsRendererOptions.FirstOrDefault();
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            LyricsRenderer = value.Key;
+            OnPropertyChanged();
+        }
+    }
+
+    private void OnPluginLyricsRenderersChanged(object? sender, EventArgs e)
+        => Dispatcher.UIThread.Post(RefreshLyricsRendererOptions);
+
+    private void RefreshLyricsRendererOptions()
+    {
+        var options = new List<FlowingOption> { new("", Loc.T("Settings.LyricsRendererBuiltIn")) };
+        if (Plugins is not null)
+            foreach (var r in Plugins.LyricsRenderers)
+                if (!r.Failed && options.All(o => !string.Equals(o.Key, r.Key, StringComparison.OrdinalIgnoreCase)))
+                {
+                    // A renderer never reads as Noctis's own or as another one: a label already in
+                    // the list is told apart by its plugin's id.
+                    var label = r.Label;
+                    if (options.Any(o => string.Equals(o.Label, label, StringComparison.OrdinalIgnoreCase)))
+                        label = $"{label} ({r.Plugin.Id})";
+                    options.Add(new FlowingOption(r.Key, label));
+                }
+        var stored = LyricsRenderer ?? "";
+        if (options.All(o => !string.Equals(o.Key, stored, StringComparison.OrdinalIgnoreCase)))
+            options.Add(new FlowingOption(stored, Loc.T("Settings.LyricsRendererOff", StoredRendererName(stored))));
+
+        if (!options.SequenceEqual(LyricsRendererOptions))
+        {
+            LyricsRendererOptions.Clear();
+            foreach (var o in options) LyricsRendererOptions.Add(o);
+        }
+        OnPropertyChanged(nameof(SelectedLyricsRendererOption));
+        OnPropertyChanged(nameof(HasLyricsRendererChoice));
+    }
+
+    /// <summary>"dev.example.lines/Lines" → "Lines".</summary>
+    private static string StoredRendererName(string key)
+    {
+        var slash = key.IndexOf('/');
+        return slash >= 0 && slash < key.Length - 1 ? key[(slash + 1)..] : key;
+    }
+
+    partial void OnLyricsRendererChanged(string value)
+    {
+        // Only a well-formed key is kept (the settings file is just text): anything else is Noctis's own.
+        var key = PluginHost.NormalizeLyricsRendererKey(value);
+        if (!string.Equals(key, value, StringComparison.Ordinal)) { LyricsRenderer = key; return; }
+        Plugins?.SelectLyricsRenderer(value);
+        RefreshLyricsRendererOptions();
+        if (_settingsLoaded) _ = SaveAsync();
     }
 
     private void OnCommunityPluginsChanged(object? sender, EventArgs e) => SyncCommunityPluginsSwitch();
@@ -6283,6 +6691,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnLyricsVisualizerFullSpectrumChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLyricsVisualizerStyleChanged(string value)
     {
         OnPropertyChanged(nameof(LyricsVisualizerStyleMode));
@@ -6294,6 +6708,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsFullScreenFocusEnabledChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsFullScreenHideIslandChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -6319,6 +6739,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLyricsCenterWhenNoLyricsChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnLyricsPageHideLyricsChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -6379,6 +6805,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnUnisonEnabledChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnLrcMuxEnabledChanged(bool value)
     {
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
@@ -6572,8 +7004,8 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 if (generation != _ffmpegProbeGeneration) return; // superseded by a newer edit
                 FfmpegStatus = version != null
-                    ? $"ffmpeg found ✓ — {version}"
-                    : $"Not a valid ffmpeg executable — {path}";
+                    ? Loc.T("Settings.FfmpegFound", version)
+                    : Loc.T("Settings.FfmpegInvalid", path);
             });
         });
     }
@@ -6774,6 +7206,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnLastFmTasteEnabledChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnStatisticsSourceChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
 
     [RelayCommand]
     private async Task LoginLastFm()
@@ -6877,6 +7310,8 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
         // The account's charts behind Home's Last.fm mixes (GitHub #177) go with it.
         _ = App.Services?.GetService<LastFmTasteService>()?.ClearAsync();
+        // And the Statistics page's Last.fm figures (GitHub #222).
+        _ = App.Services?.GetService<LastFmStatsService>()?.ClearAsync();
     }
 
     // ── ListenBrainz handlers ──
@@ -6952,7 +7387,7 @@ public partial class SettingsViewModel : ViewModelBase
                 ListenBrainzValidationError.InvalidToken => Loc.T("Settings.ListenBrainzTokenRejected"),
                 ListenBrainzValidationError.Unreachable => Loc.T("Settings.ListenBrainzUnreachable"),
                 ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
-                _ => "Token invalid or network error.",
+                _ => Loc.T("Settings.ListenBrainzTokenOrNetwork"),
             };
             ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         }
@@ -7216,7 +7651,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         Name = p.Name,
         PreampDb = p.PreampDb,
-        Bands = p.Bands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q }).ToList(),
+        Bands = p.Bands.Select(b => new ParametricEqBand { FrequencyHz = b.FrequencyHz, GainDb = b.GainDb, Q = b.Q, ExtensionData = b.ExtensionData }).ToList(),
+        ExtensionData = p.ExtensionData,
     };
 
     /// <summary>Built-in names (Custom and Flat included) and "None" — the metadata editor's
@@ -7758,8 +8194,6 @@ public partial class SettingsViewModel : ViewModelBase
         _dirSizeCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly TimeSpan _dirSizeCacheTtl = TimeSpan.FromSeconds(5);
 
-    private static long GetDirectorySize(string path) => GetDirectorySize(path, forceRefresh: false);
-
     private static long GetDirectorySize(string path, bool forceRefresh)
     {
         try
@@ -8019,7 +8453,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Status line for a scan the library abandoned because these folders were unreachable.</summary>
     internal static string ScanAbortedStatus(IReadOnlyList<string> roots) =>
-        $"Can't reach {string.Join(", ", roots)} — library kept unchanged. Check the drive, then refresh.";
+        Loc.T("Settings.ScanAbortedUnreachable", string.Join(", ", roots));
 
     private async Task RunScanCoreAsync(Task prior, CancellationTokenSource cts)
     {
@@ -8113,13 +8547,23 @@ public partial class SettingsViewModel : ViewModelBase
         // playlists.json, and playlists are hand-authored content that no rescan brings
         // back. Name what actually gets destroyed, with the real playlist count.
         await RefreshPlaylistCountAsync();
-        ResetConfirmDetail = TotalPlaylists switch
-        {
-            0 => "This clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
-            1 => "This permanently deletes 1 playlist, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
-            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default."
-        };
+        ResetConfirmDetail = BuildResetConfirmDetail(TotalPlaylists);
         IsResetConfirmVisible = true;
+    }
+
+    /// <summary>
+    /// The reset confirm's text: the playlists it deletes, what it clears and what it keeps
+    /// (<see cref="ResetKeptSettings"/>, plus the plugins, the phone pairing and the data folder
+    /// location, which live outside settings.json). Internal for tests.
+    /// </summary>
+    internal static string BuildResetConfirmDetail(int playlists)
+    {
+        var parts = new List<string>(3);
+        if (playlists == 1) parts.Add(Loc.T("Settings.ResetConfirmOnePlaylist"));
+        else if (playlists > 1) parts.Add(Loc.T("Settings.ResetConfirmPlaylists", playlists));
+        parts.Add(Loc.T("Settings.ResetConfirmClears"));
+        parts.Add(Loc.T("Settings.ResetConfirmKeeps"));
+        return string.Join(" ", parts);
     }
 
     /// <summary>Spelled-out consequences shown above the reset confirm buttons.</summary>
@@ -8136,10 +8580,9 @@ public partial class SettingsViewModel : ViewModelBase
         // Library, playlists, queue, listening history, caches and ledgers: see SettingsViewModel.Reset.cs.
         await ClearSavedDataAsync();
 
-        // Reset settings to defaults and save. The plugins folder survives the reset, so the
-        // community-plugins switch is decided (restricted) rather than left null, which the
-        // plugin host treats as a pre-switch install and approves every plugin it finds.
-        var defaultSettings = new AppSettings { CommunityPluginsEnabled = false };
+        // Reset settings to defaults and save (CreateResetSettings: what a fresh install has,
+        // plus the few fields a reset keeps).
+        var defaultSettings = CreateResetSettings();
         await WriteDefaultSettingsAsync(defaultSettings);
 
         // Launch-at-login is an OS-level registration, not a settings field — a reset
@@ -8160,6 +8603,54 @@ public partial class SettingsViewModel : ViewModelBase
         RefreshStorageInfo();
 
         SettingsReset?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// The settings.json fields a reset keeps; every other field goes back to a fresh install's
+    /// value (<see cref="CreateResetSettings"/>). SettingsResetTests fails when a setting is
+    /// neither reset nor listed here.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> ResetKeptSettings = new[]
+    {
+        // This computer's id in the sync ledger: server/ and sync/ stay (Reset.cs), and a new id
+        // made the paired phones see a new computer.
+        nameof(AppSettings.SyncDeviceId),
+        // The plugins stay installed and loaded (Reset.cs). The verified-official record is a
+        // check of the installed zip, not a choice: without it the official plugins counted as
+        // community plugins (restricted) from the next launch until reinstalled. The approvals,
+        // on/off choices and sidebar entries are kept with them: dropped, every plugin still
+        // running switched itself off only at the next launch. The community switch and the
+        // plugins' own settings do reset (ResetSettingsToDefaults applies both live).
+        nameof(AppSettings.VerifiedOfficialPlugins),
+        nameof(AppSettings.PluginPermissionGrants),
+        nameof(AppSettings.DisabledPlugins),
+        nameof(AppSettings.SidebarHiddenPlugins),
+        // Where the windows are and the player's volume: live state that a reset does not move
+        // (the windows write their placement back on close anyway).
+        nameof(AppSettings.WindowWidth), nameof(AppSettings.WindowHeight),
+        nameof(AppSettings.WindowX), nameof(AppSettings.WindowY), nameof(AppSettings.MainWindowState),
+        nameof(AppSettings.MiniPlayerWidth), nameof(AppSettings.MiniPlayerHeight),
+        nameof(AppSettings.MiniPlayerX), nameof(AppSettings.MiniPlayerY), nameof(AppSettings.MiniPlayerPinned),
+        nameof(AppSettings.Volume),
+    };
+
+    /// <summary>
+    /// A fresh install's settings with <see cref="ResetKeptSettings"/> copied over from the
+    /// current ones. The plugins folder survives the reset, so the community-plugins switch is
+    /// decided (restricted) rather than left null, which the plugin host treats as a pre-switch
+    /// install and approves every plugin it finds. Internal for tests.
+    /// </summary>
+    internal AppSettings CreateResetSettings()
+    {
+        var defaults = new AppSettings { CommunityPluginsEnabled = false };
+        foreach (var name in ResetKeptSettings)
+        {
+            var prop = typeof(AppSettings).GetProperty(name)!;
+            // A copy, so the kept lists are not shared with the settings being replaced.
+            var json = System.Text.Json.JsonSerializer.Serialize(prop.GetValue(_settings), prop.PropertyType);
+            prop.SetValue(defaults, System.Text.Json.JsonSerializer.Deserialize(json, prop.PropertyType));
+        }
+        return defaults;
     }
 
     /// <summary>
@@ -8198,7 +8689,13 @@ public partial class SettingsViewModel : ViewModelBase
         _suspendSettingPersistence = true;
         try
         {
+            // Restricted mode, live: the defaults already say off, so once they are in place the
+            // host's own switch is a no-op and the community plugins kept running until a restart.
+            Plugins?.SetCommunityPluginsEnabled(false);
             _settings = defaultSettings;
+            // Each plugin's own settings back to its plugin.json defaults, telling the plugin.
+            Plugins?.ResetSettingValues();
+            SyncCommunityPluginsSwitch();
 
             // Theme — reset to default (Gray).
             // SetActiveThemeFlags alone left ActiveCustomThemeId and the CustomThemes
@@ -8216,6 +8713,7 @@ public partial class SettingsViewModel : ViewModelBase
             CustomAccentHex = ActiveAccentHex;
             AccentFollowsArtwork = defaultSettings.AccentFollowsArtwork;
             AccentTrackLinks = defaultSettings.AccentTrackLinks;
+            TintWindowWithAccent = defaultSettings.TintWindowWithAccent;
             AppIcon = AppIconService.Normalize(defaultSettings.AppIcon);
             try
             {
@@ -8273,6 +8771,7 @@ public partial class SettingsViewModel : ViewModelBase
             HomeNewAlbumsCount = defaultSettings.HomeNewAlbumsCount;
             HomeNewAlbumsFirst = defaultSettings.HomeNewAlbumsFirst;
             NowPlayingArtworkStyle = defaultSettings.NowPlayingArtworkStyle;
+            DiscScratching = defaultSettings.DiscScratching;
             CoverFlowLayout = defaultSettings.CoverFlowLayout;
             MiniPlayerStyle = defaultSettings.MiniPlayerStyle;
             PlaybackBarShowSkipButtons = defaultSettings.PlaybackBarShowSkipButtons;
@@ -8289,6 +8788,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowTrash = defaultSettings.PlaybackBarShowTrash;
             PlaybackBarTrashFolder = defaultSettings.PlaybackBarTrashFolder;
             PlaybackBarShowQuickPlaylist = defaultSettings.PlaybackBarShowQuickPlaylist;
+            PlaybackBarShowChapters = defaultSettings.PlaybackBarShowChapters;
+            PlaybackBarShowStop = defaultSettings.PlaybackBarShowStop;
+            PlaybackBarStopOnlyInExclusiveMode = defaultSettings.PlaybackBarStopOnlyInExclusiveMode;
             SetQuickPlaylistSlots(defaultSettings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
@@ -8305,25 +8807,32 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsVisualizerEnabled = defaultSettings.LyricsVisualizerEnabled;
             LyricsVisualizerStyle = defaultSettings.LyricsVisualizerStyle;
             LyricsVisualizerArtworkColor = defaultSettings.LyricsVisualizerArtworkColor;
+            LyricsVisualizerFullSpectrum = defaultSettings.LyricsVisualizerFullSpectrum;
             LanguageChoice = LanguageOptions[0];
             LyricsBackgroundMediaPath = defaultSettings.LyricsBackgroundMediaPath;
             _lyricsBackgroundOverrides.Clear(); // ApplyPlayerSettings below pushes the empty map
+            // "Don't scrobble" choices: SyncToSettings writes the set back, so it survived the reset.
+            _scrobbleExclusions.Clear();
             LyricsBackgroundPausesWithPlayback = defaultSettings.LyricsBackgroundPausesWithPlayback;
             MusicVideosEnabled = defaultSettings.MusicVideosEnabled;
             MusicVideoRoundedCorners = defaultSettings.MusicVideoRoundedCorners;
             MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = defaultSettings.MusicVideoAsBackground;
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
+            LyricsFullScreenHideIsland = defaultSettings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;
             LyricsJoinSplitWords = defaultSettings.LyricsJoinSplitWords;
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;
+            LyricsRenderer = defaultSettings.LyricsRenderer;
             LyricsCenterWhenNoLyrics = defaultSettings.LyricsCenterWhenNoLyrics;
+            LyricsPageHideLyrics = defaultSettings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = defaultSettings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = defaultSettings.LyricsSaveTarget;
             LyricsAutoDownload = defaultSettings.LyricsAutoDownload;
             LyricsPreferredType = defaultSettings.LyricsPreferredType;
             LyricsUpgradePlain = defaultSettings.LyricsUpgradePlain;
             LyricsAutoFindNew = defaultSettings.LyricsAutoFindNew;
+            LyricsAutoFindLibrary = defaultSettings.LyricsAutoFindLibrary;
             LyricsShowTranslations = defaultSettings.LyricsShowTranslations;
             LyricsShowRomanization = defaultSettings.LyricsShowRomanization;
             LyricsShowBackgroundVocals = defaultSettings.LyricsShowBackgroundVocals;
@@ -8337,6 +8846,9 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerBackgroundOpacity = defaultSettings.MiniPlayerBackgroundOpacity;
             MiniPlayerFrostedBackground = defaultSettings.MiniPlayerFrostedBackground;
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
+            AlbumGridMasonry = defaultSettings.AlbumGridMasonry;
+            AlbumGridWideSpacing = defaultSettings.AlbumGridWideSpacing;
+            AlbumHoverZoom = defaultSettings.AlbumHoverZoom;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings
             // would re-persist the pre-reset width over the freshly defaulted file
@@ -8382,12 +8894,18 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumViewMode = defaultSettings.AlbumViewMode;
             ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
             AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
+            AlbumCarouselGlow = defaultSettings.AlbumCarouselGlow;
+            // GitHub #233 per-album carousel styles: written back by SyncToSettings like the rest.
+            _albumCarouselStyleOverrides.Clear();
+            AlbumCarouselStyleOverrides.RaiseChanged();
             AlbumSortAscending = defaultSettings.AlbumSortAscending;
             AlbumSortNewestFirst = defaultSettings.AlbumSortNewestFirst;
             AlbumReleaseTypeFilter = defaultSettings.AlbumReleaseTypeFilter;
             ArtistSortMode = defaultSettings.ArtistSortMode;
             ArtistSortAscending = defaultSettings.ArtistSortAscending;
             ArtistViewMode = defaultSettings.ArtistViewMode;
+            HideSmallArtists = defaultSettings.HideSmallArtists;
+            SmallArtistMinSongs = defaultSettings.SmallArtistMinSongs;
             FoldersSortMode = defaultSettings.FoldersSortMode;
             ArtistReleaseSortMode = defaultSettings.ArtistReleaseSortMode;
             ArtistSimilarExpanded = defaultSettings.ArtistSimilarExpanded;
@@ -8444,6 +8962,7 @@ public partial class SettingsViewModel : ViewModelBase
             MiniPlayerAlbumMarqueeEnabled = true;
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
+            SidebarAutoHide = defaultSettings.SidebarAutoHide;
             LoadSidebarLayout(defaultSettings);
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
@@ -8460,6 +8979,7 @@ public partial class SettingsViewModel : ViewModelBase
             KugouEnabled = defaultSettings.KugouEnabled;
             LrcRedEnabled = defaultSettings.LrcRedEnabled;
             UnisonEnabled = defaultSettings.UnisonEnabled;
+            LrcMuxEnabled = defaultSettings.LrcMuxEnabled;
             YouTubeMusicLyricsEnabled = defaultSettings.YouTubeMusicLyricsEnabled;
 
             // Metadata providers
@@ -8489,6 +9009,7 @@ public partial class SettingsViewModel : ViewModelBase
             LastFmScrobblingEnabled = defaultSettings.LastFmScrobblingEnabled;
             LastFmUsername = "";
             LastFmTasteEnabled = defaultSettings.LastFmTasteEnabled;
+            StatisticsSource = defaultSettings.StatisticsSource;
             ResetPlayCountImportSettings(defaultSettings);
             IsLastFmConnected = false;
             LastFmStatusText = Loc.T("Settings.NotConnected");
@@ -8691,8 +9212,7 @@ public partial class SettingsViewModel : ViewModelBase
                     if (IsReadyToInstall) return; // keep the queued older build; it installs first
                     // Says when, so a known update with "Update automatically" on doesn't look stuck.
                     var waitText = retry is { } when
-                        ? $"{update.TagName} is available. It downloads automatically after {when.LocalDateTime:g} " +
-                          "and installs the next time you open Noctis."
+                        ? Loc.T("Settings.UpdateDownloadsAfter", update.TagName, when.LocalDateTime)
                         : null;
                     if (waitText is not null) UpdateStatusText = waitText;
                     else if (UpdateStatusText == _autoWaitStatusText) UpdateStatusText = "";
@@ -8762,7 +9282,7 @@ public partial class SettingsViewModel : ViewModelBase
                 IsUpToDate = false;
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
-                UpdateStatusText = $"{update.TagName} available — installer not found. Visit GitHub.";
+                UpdateStatusText = Loc.T("Settings.UpdateInstallerMissing", update.TagName);
             }
             else
             {
@@ -8770,8 +9290,8 @@ public partial class SettingsViewModel : ViewModelBase
                 LatestVersionTag = update.TagName;
                 IsLatestPrerelease = update.IsPrerelease;
                 UpdateStatusText = CanInstallInApp
-                    ? $"{update.TagName} is available."
-                    : $"{update.TagName} is available. {ExternalUpdateHint}";
+                    ? Loc.T("Settings.UpdateVersionAvailable", update.TagName)
+                    : Loc.T("Settings.UpdateVersionAvailableHint", update.TagName, ExternalUpdateHint ?? "");
                 IsUpdateAvailable = true;
                 DebugLog.Write("Updater", $"Update found: {update.TagName}");
             }
@@ -8875,9 +9395,7 @@ public partial class SettingsViewModel : ViewModelBase
                     IsAutoInstallPending = true;
                     IsAutoInstallPostponed = false;
                     LatestVersionTag = update.TagName;
-                    UpdateStatusText = AutoUpdateInstallsAtLaunch
-                        ? $"{update.TagName} is ready. It installs the next time you open Noctis."
-                        : $"{update.TagName} downloaded. Click Install & Restart to finish.";
+                    UpdateStatusText = QueuedUpdateText(update.TagName);
                 }
                 catch (Exception ex)
                 {
@@ -8968,7 +9486,7 @@ public partial class SettingsViewModel : ViewModelBase
         IsLatestPrerelease = update.IsPrerelease;
         IsUpdateAvailable = true;
         var isError = UpdateStatusIsError;
-        UpdateStatusText += " Use the Update button.";
+        UpdateStatusText += " " + Loc.T("Settings.UpdateUseButton");
         UpdateStatusIsError = isError;
     }
 
@@ -9029,7 +9547,7 @@ public partial class SettingsViewModel : ViewModelBase
             p.PostponedUntilUtc = until;
             AutoStore.Save(state);
             IsAutoInstallPostponed = true;
-            UpdateStatusText = $"Postponed. {p.Tag} won't install before {until.LocalDateTime:g}. Install & Restart still works.";
+            UpdateStatusText = Loc.T("Settings.UpdatePostponed", p.Tag, until.LocalDateTime);
             DebugLog.Write("Updater", $"Auto-update: install postponed until {until.LocalDateTime:g}.");
         }
         catch (Exception ex)
@@ -9128,10 +9646,8 @@ public partial class SettingsViewModel : ViewModelBase
                 IsUpdateAvailable = false;
                 IsReadyToInstall = true;
                 UpdateStatusText = IsAutoInstallPostponed
-                    ? $"Postponed. {pending.Tag} won't install before {pending.PostponedUntilUtc!.Value.LocalDateTime:g}. Install & Restart still works."
-                    : AutoUpdateInstallsAtLaunch
-                        ? $"{pending.Tag} is ready. It installs the next time you open Noctis."
-                        : $"{pending.Tag} downloaded. Click Install & Restart to finish.";
+                    ? Loc.T("Settings.UpdatePostponed", pending.Tag, pending.PostponedUntilUtc!.Value.LocalDateTime)
+                    : QueuedUpdateText(pending.Tag);
             });
         });
     }
@@ -9571,3 +10087,9 @@ public partial class SettingsViewModel : ViewModelBase
     }
 }
 
+/// <summary>One choice of Settings › Artists › Hide small artists: "3 songs".</summary>
+public sealed record ArtistMinSongsOption(int Songs)
+{
+    public string Label => Noctis.Localization.Loc.Plural("Count.Songs", Songs);
+    public override string ToString() => Label;
+}

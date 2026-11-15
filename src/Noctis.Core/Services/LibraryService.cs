@@ -44,6 +44,10 @@ public class LibraryService : ILibraryService
     private volatile bool _albumGroupingEnabled = true;
     private volatile bool _albumGroupingWriteTags;
     private readonly SemaphoreSlim _ungroupedResolveGate = new(1, 1);
+
+    // AppSettings.AlbumLinks (Link Tracks From, Discord 11-11), read with the hidden folders and
+    // replaced (never mutated) by Link/UnlinkAlbumTracksAsync and the rebuild's re-key follow.
+    private volatile List<AlbumLink> _albumLinks = new();
     private readonly SemaphoreSlim _groupingWriteGate = new(1, 1);
 
     // Last VisibleTracks result, keyed by the exact _tracks list and hidden array it came
@@ -289,6 +293,12 @@ public class LibraryService : ILibraryService
         async Task RunProgressivePublishAsync(CancellationToken pubCt)
         {
             var lastCount = 0;
+            // GitHub #225: on a startup rescan every unchanged file is the known Track object
+            // itself, so until the walk meets a new or re-read file a publish would show the
+            // library exactly as it is. Publishing anyway rebuilt every view (the Albums grid
+            // flickered and dropped its Ctrl-selection) every 1.5 s until the walk ended.
+            var known = new HashSet<Track>(originalTracks, ReferenceEqualityComparer.Instance);
+            var anythingNew = false;
             try
             {
                 while (!pubCt.IsCancellationRequested)
@@ -298,6 +308,8 @@ public class LibraryService : ILibraryService
                     var snapshot = newTracks.ToArray();
                     if (snapshot.Length == 0 || snapshot.Length == lastCount) continue;
                     lastCount = snapshot.Length;
+                    if (!anythingNew && snapshot.All(known.Contains)) continue;
+                    anythingNew = true;
 
                     // On a rescan the known tracks the walk has not reached yet stay in (the
                     // snapshot alone made the library shrink to the walked part and grow back,
@@ -308,7 +320,7 @@ public class LibraryService : ILibraryService
                         .GroupBy(t => t.Id).Select(g => g.First())
                         .OrderBy(t => t.Artist).ThenBy(t => t.Album)
                         .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true).ConfigureAwait(false);
                     didPublishPartial = true;
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
@@ -401,8 +413,10 @@ public class LibraryService : ILibraryService
                                 // A file we already knew was re-tagged: its embedded cover is
                                 // the freshest truth for the album. Every writer used to
                                 // short-circuit on File.Exists, so a changed cover never
-                                // reached the cache until the user wiped it.
-                                RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
+                                // reached the cache until the user wiped it. Only when the
+                                // picture itself changed, though (EmbeddedArtChanged).
+                                if (EmbeddedArtChanged(existing, track))
+                                    RefreshAlbumArtworkIfChanged(track.AlbumId, embeddedArt);
                             }
                             else if (!File.Exists(_persistence.GetArtworkPath(track.AlbumId)))
                             {
@@ -692,7 +706,7 @@ public class LibraryService : ILibraryService
                 var refreshed = await RefreshStaleFolderArtworkAsync(_tracks, ct);
                 if (refreshed > 0 && !ct.IsCancellationRequested)
                 {
-                    await RebuildIndexesAsync();
+                    await RebuildIndexesAsync(reuseUnchangedAlbums: true);
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
             }
@@ -708,7 +722,7 @@ public class LibraryService : ILibraryService
             .GroupBy(t => t.Id).Select(g => g.First()) // deduplicate by track ID
             .OrderBy(t => t.Artist).ThenBy(t => t.Album)
             .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-        await RebuildIndexesAsync(persistCache: false);
+        await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true);
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         // #97: a startup scan that found new albums ended the process after this publish
         // with no managed exception logged. Only a scan that found changes runs the steps
@@ -755,7 +769,7 @@ public class LibraryService : ILibraryService
         // Final authoritative rebuild (persists the index cache and attaches all
         // extracted covers), then write through to disk.
         DebugLog.Write("Scan", "rebuild: start");
-        await RebuildIndexesAsync();
+        await RebuildIndexesAsync(reuseUnchangedAlbums: true);
         DebugLog.Write("Scan", "rebuild: done");
 
         // Persist to disk
@@ -886,7 +900,7 @@ public class LibraryService : ILibraryService
                 while (!pubCts.Token.IsCancellationRequested)
                 {
                     await Task.Delay(ProgressivePublishMs, pubCts.Token).ConfigureAwait(false);
-                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true).ConfigureAwait(false);
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
             }
@@ -941,6 +955,18 @@ public class LibraryService : ILibraryService
         }
         return extracted;
     }
+
+    /// <summary>
+    /// False when a known file was rewritten but the picture inside it is the one it already
+    /// had (GitHub #224): saving lyrics, a rating or ReplayGain into the file changes nothing
+    /// about the album's cover. Re-reading it then put whichever track was written last on the
+    /// album, rewrote the cached cover and had every tile showing it decode it again — once per
+    /// song of a Find Lyrics run, while the next song's import could be rewriting it. A file
+    /// with no embedded picture (its cover comes from the folder) or one known from before the
+    /// fingerprint was kept is still re-read.
+    /// </summary>
+    internal static bool EmbeddedArtChanged(Track existing, Track reread)
+        => reread.ArtworkHash == null || !string.Equals(existing.ArtworkHash, reread.ArtworkHash, StringComparison.Ordinal);
 
     /// <summary>
     /// Replaces the cached cover for <paramref name="albumId"/> when <paramref name="freshBytes"/>
@@ -1214,7 +1240,7 @@ public class LibraryService : ILibraryService
                 // Persist the rebuilt indexes: the launch fast path restores each
                 // album's ArtworkPath straight from the index cache without checking
                 // disk, so an unpersisted heal would look lost again on next start.
-                await RebuildIndexesAsync();
+                await RebuildIndexesAsync(reuseUnchangedAlbums: true);
                 LibraryUpdated?.Invoke(this, EventArgs.Empty);
             }
             return extracted;
@@ -1271,6 +1297,7 @@ public class LibraryService : ILibraryService
             .Select(p => p!)
             .Where(File.Exists)
             .Where(p => MetadataService.SupportedExtensions.Contains(Path.GetExtension(p)))
+            .Where(p => !MetadataService.IsOwnTempFile(p))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
@@ -1278,12 +1305,16 @@ public class LibraryService : ILibraryService
 
         // Clear exclusions for files being explicitly re-imported
         var settings = await _persistence.LoadSettingsAsync();
-        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
-        if (excludedSet.Overlaps(files))
+        if (new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer).Overlaps(files))
         {
-            excludedSet.ExceptWith(files);
-            settings.ExcludedFilePaths = excludedSet.ToList();
-            await _persistence.SaveSettingsAsync(settings);
+            // Gated load-change-save: a save landing between the load above and this one was
+            // undone by the stale copy.
+            await _persistence.UpdateSettingsAsync(s =>
+            {
+                var excludedSet = new HashSet<string>(s.ExcludedFilePaths, PathComparison.Comparer);
+                excludedSet.ExceptWith(files);
+                s.ExcludedFilePaths = excludedSet.ToList();
+            });
         }
 
         var trackById = _tracks.ToDictionary(t => t.Id);
@@ -1344,7 +1375,7 @@ public class LibraryService : ILibraryService
                     _tracks = merged.Values
                         .OrderBy(t => t.Artist).ThenBy(t => t.Album)
                         .ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-                    await RebuildIndexesAsync(persistCache: false).ConfigureAwait(false);
+                    await RebuildIndexesAsync(persistCache: false, reuseUnchangedAlbums: true).ConfigureAwait(false);
                     didPublishPartial = true;
                     LibraryUpdated?.Invoke(this, EventArgs.Empty);
                 }
@@ -1433,7 +1464,7 @@ public class LibraryService : ILibraryService
                 if (artBytes != null)
                     _persistence.SaveArtwork(track.AlbumId, artBytes);
             }
-            else if (existing != null)
+            else if (existing != null && EmbeddedArtChanged(existing, track))
             {
                 // Known file changed on disk (watcher / drop-import): re-read its art
                 // and replace the cached cover when it differs.
@@ -1947,37 +1978,6 @@ public class LibraryService : ILibraryService
     /// </summary>
     private async Task ExcludeFilePathsAndCleanFoldersAsync(IEnumerable<string> removedPaths)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-
-        // Add to exclusion list
-        var excluded = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
-        foreach (var path in removedPaths)
-        {
-            if (!string.IsNullOrWhiteSpace(path))
-                excluded.Add(path);
-        }
-
-        // Prune stale exclusions. Nothing ever cleaned this list, so removing a large
-        // folder left tens of thousands of absolute paths in settings.json permanently —
-        // re-read and re-hashed on every scan and every subsequent removal. An entry is
-        // only meaningful while its file exists and still sits under a configured root;
-        // otherwise a plain rescan would never have re-imported it anyway.
-        var configuredRoots = settings.MusicFolders
-            .Select(TryNormalizePath)
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .Select(p => p!)
-            .ToArray();
-
-        static bool UnderAnyRoot(string path, string[] roots)
-        {
-            var normalized = TryNormalizePath(path);
-            return normalized != null && roots.Any(r => IsUnderRoot(normalized, r));
-        }
-
-        settings.ExcludedFilePaths = excluded
-            .Where(p => UnderAnyRoot(p, configuredRoots) && File.Exists(p))
-            .ToList();
-
         // Auto-remove folder locations that have zero remaining library tracks.
         // Normalize each remaining track path exactly once instead of calling
         // Path.GetFullPath per track per folder — that was 300k syscall-backed
@@ -1989,28 +1989,64 @@ public class LibraryService : ILibraryService
             .Select(p => p!)
             .ToArray();
 
-        var removedFolders = settings.MusicFolders.RemoveAll(folder =>
+        // Gated load-change-save: the exclusion pruning checks every excluded file on disk, and
+        // a save landing between a plain load and save (a Settings toggle, Reset's defaults) was
+        // undone by the stale copy.
+        var removedFolders = 0;
+        List<string> folders = new();
+        await _persistence.UpdateSettingsAsync(settings =>
         {
-            if (string.IsNullOrWhiteSpace(folder)) return true;
-            var normalized = TryNormalizePath(folder);
-            if (string.IsNullOrWhiteSpace(normalized)) return true;
+            // Add to exclusion list
+            var excluded = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
+            foreach (var path in removedPaths)
+            {
+                if (!string.IsNullOrWhiteSpace(path))
+                    excluded.Add(path);
+            }
 
-            // Only drop a root the user configured if it is genuinely gone from disk.
-            // Removing the last tracks under a still-present folder used to silently
-            // delete it from Settings and stop the watcher for it, with no message.
-            if (Directory.Exists(normalized)) return false;
+            // Prune stale exclusions. Nothing ever cleaned this list, so removing a large
+            // folder left tens of thousands of absolute paths in settings.json permanently —
+            // re-read and re-hashed on every scan and every subsequent removal. An entry is
+            // only meaningful while its file exists and still sits under a configured root;
+            // otherwise a plain rescan would never have re-imported it anyway.
+            var configuredRoots = settings.MusicFolders
+                .Select(TryNormalizePath)
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p!)
+                .ToArray();
 
-            return !normalizedRemaining.Any(fp => IsUnderRoot(fp, normalized!));
+            static bool UnderAnyRoot(string path, string[] roots)
+            {
+                var normalized = TryNormalizePath(path);
+                return normalized != null && roots.Any(r => IsUnderRoot(normalized, r));
+            }
+
+            settings.ExcludedFilePaths = excluded
+                .Where(p => UnderAnyRoot(p, configuredRoots) && File.Exists(p))
+                .ToList();
+
+            removedFolders = settings.MusicFolders.RemoveAll(folder =>
+            {
+                if (string.IsNullOrWhiteSpace(folder)) return true;
+                var normalized = TryNormalizePath(folder);
+                if (string.IsNullOrWhiteSpace(normalized)) return true;
+
+                // Only drop a root the user configured if it is genuinely gone from disk.
+                // Removing the last tracks under a still-present folder used to silently
+                // delete it from Settings and stop the watcher for it, with no message.
+                if (Directory.Exists(normalized)) return false;
+
+                return !normalizedRemaining.Any(fp => IsUnderRoot(fp, normalized!));
+            });
+            folders = settings.MusicFolders.ToList();
         });
-
-        await _persistence.SaveSettingsAsync(settings);
 
         // This is the only place the library rewrites the user's folder list. Announcing
         // it directly means Settings no longer has to re-read and re-parse settings.json
         // (plus a DPAPI unprotect) on every LibraryUpdated — an event that also fires on
         // every scan, drop-import, removal and metadata write.
         if (removedFolders > 0)
-            MusicFoldersChanged?.Invoke(this, settings.MusicFolders.ToList());
+            MusicFoldersChanged?.Invoke(this, folders);
     }
 
     /// <summary>
@@ -2137,6 +2173,11 @@ public class LibraryService : ILibraryService
                     if (await ResolveUngroupedAlbumsAsync() > 0)
                         await RebuildAndPersistAlbumKeysAsync(forceSave: true);
 
+                    // GitHub #201: groupings whose files were not written yet (a file read-only,
+                    // missing or held open then, or a pass cut short by closing the app) are
+                    // tried again. A no-op once every grouped file names its album.
+                    await ResumeAlbumGroupingWritesAsync();
+
                     // GitHub #187: with "Show artists as written in the tags" on, songs indexed
                     // before the tag's own credit was kept get it re-read once.
                     if (ArtistCredit.ShowAsTagged)
@@ -2198,6 +2239,7 @@ public class LibraryService : ILibraryService
             _inboxEnabledAtLoad = settings.InboxEnabled;
             _albumGroupingEnabled = settings.AlbumGroupingEnabled;
             _albumGroupingWriteTags = settings.AlbumGroupingWriteTags;
+            _albumLinks = settings.AlbumLinks?.ToList() ?? new List<AlbumLink>();
         }
         catch (Exception ex)
         {
@@ -2450,6 +2492,11 @@ public class LibraryService : ILibraryService
         _trackIndex = new Dictionary<Guid, Track>();
         _albumIndex = new Dictionary<Guid, Album>();
         lock (_albumsByArtistLock) { _albumsByArtistIndex = null; }
+        // The hidden folders and linked albums are settings the reset puts back to none. Read
+        // once at load and kept here, they hid the same folders and re-linked the same albums
+        // after a rescan, and the next hide/link wrote them back into settings.json.
+        _hiddenFolders = Array.Empty<string>();
+        _albumLinks = new List<AlbumLink>();
         await _persistence.SaveLibraryAsync(_tracks);
         await _sqliteIndex.ClearAsync();
         // The ratings / favorites / play counts journal too: it outlives scans on purpose (a
@@ -2504,12 +2551,19 @@ public class LibraryService : ILibraryService
     // same problem, and its output survives restarts because the cache validates.
     private readonly SemaphoreSlim _rebuildGate = new(1, 1);
 
-    private async Task RebuildIndexesAsync(bool persistCache = true)
+    /// <param name="reuseUnchangedAlbums">Keep the Album object of every album whose songs and
+    /// tile fields came out the same (GitHub #225). Only for passes that never edit a known
+    /// song in place (a scan or import publishes new Track objects for what it re-read, an
+    /// artwork pass changes covers): views compare albums by reference, so an unchanged album
+    /// keeps its tile, its Ctrl-selection and its now-playing flag instead of being rebuilt
+    /// every 1.5 s. A pass that edits songs in place must build fresh albums, or a tile bound
+    /// to the old object would keep showing the old song facts.</param>
+    private async Task RebuildIndexesAsync(bool persistCache = true, bool reuseUnchangedAlbums = false)
     {
         await _rebuildGate.WaitAsync().ConfigureAwait(false);
         try
         {
-            await RebuildIndexesCoreAsync(persistCache).ConfigureAwait(false);
+            await RebuildIndexesCoreAsync(persistCache, reuseUnchangedAlbums).ConfigureAwait(false);
         }
         finally
         {
@@ -2517,16 +2571,20 @@ public class LibraryService : ILibraryService
         }
     }
 
-    private async Task RebuildIndexesCoreAsync(bool persistCache)
+    private async Task RebuildIndexesCoreAsync(bool persistCache, bool reuseUnchangedAlbums)
     {
         // Albums, artists and the id lookup are built from the visible tracks only, so a
         // hidden folder's songs vanish from every view that reads them.
         var allTracks = _tracks;
+        var previousAlbums = reuseUnchangedAlbums ? _albumIndex : null;
         var tracks = VisibleTracks(allTracks);
         var persistence = _persistence;
         var grouping = _albumGroupingEnabled;
         List<AlbumGrouping.Move>? albumMoves = null;
         var groupedCount = 0;
+        var previousAlbumIndex = _albumIndex;
+        var links = _albumLinks;
+        List<AlbumLink>? remappedLinks = null;
 
         var (albums, artists, trackIndex, albumIndex, artistGroupingSignature) = await Task.Run(() =>
         {
@@ -2587,7 +2645,7 @@ public class LibraryService : ILibraryService
                     var first = albumTracks[0];
                     var hasArt = artworkExists.Contains(first.AlbumId);
 
-                    return new Album
+                    var album = new Album
                     {
                         Id = first.AlbumId,
                         Name = first.Album,
@@ -2599,6 +2657,8 @@ public class LibraryService : ILibraryService
                         ArtworkPath = hasArt ? artworkPaths[first.AlbumId] : null,
                         Tracks = albumTracks
                     };
+                    return previousAlbums != null && previousAlbums.TryGetValue(album.Id, out var previous)
+                        && Album.SameContent(previous, album) ? previous : album;
                 })
                 .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Year)
@@ -2609,6 +2669,12 @@ public class LibraryService : ILibraryService
             var ai = new Dictionary<Guid, Album>(albs.Count);
             foreach (var a in albs)
                 ai[a.Id] = a;
+
+            // Linked albums (a deluxe edition listing the original's songs): a link follows its
+            // album to a new key first, then each edition gets its borrowed songs. Album.Tracks
+            // keeps the own files, so the artwork and artist passes below are unchanged.
+            remappedLinks = Services.AlbumLinks.Remap(links, previousAlbumIndex, ti, ai);
+            Services.AlbumLinks.Attach(ai, remappedLinks ?? links);
 
             // Aggregate artists by their grouping name only (GitHub #51: the primary
             // track artist, or the primary album artist when Settings says so).
@@ -2674,6 +2740,12 @@ public class LibraryService : ILibraryService
         if (persistCache)
             _ = SaveIndexCacheAsync(tracks, albums, artists, artistGroupingSignature);
 
+        if (remappedLinks != null && ReferenceEquals(_albumLinks, links))
+        {
+            _albumLinks = remappedLinks;
+            await SaveAlbumLinksAsync(remappedLinks).ConfigureAwait(false);
+        }
+
         if (albumMoves is { Count: > 0 })
         {
             DebugLog.Write("Library", $"Album grouping (#178): {albumMoves.Count} song(s) re-keyed into " +
@@ -2702,14 +2774,140 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc />
+    public IReadOnlyList<AlbumLink> AlbumLinks => _albumLinks;
+
+    /// <inheritdoc />
+    public Task LinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId)
+        => ChangeAlbumLinksAsync(Services.AlbumLinks.With(_albumLinks, albumId, sourceAlbumId));
+
+    /// <inheritdoc />
+    public Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId)
+        => ChangeAlbumLinksAsync(Services.AlbumLinks.Without(_albumLinks, albumId, sourceAlbumId));
+
+    private async Task ChangeAlbumLinksAsync(List<AlbumLink> next)
+    {
+        if (next.Count == _albumLinks.Count
+            && next.All(n => _albumLinks.Any(l => l.AlbumId == n.AlbumId && l.SourceAlbumId == n.SourceAlbumId)))
+            return;
+        _albumLinks = next;
+        // No ConfigureAwait(false): LibraryUpdated goes out on the caller's (UI) thread, as
+        // RemoveTrackAsync's does.
+        await SaveAlbumLinksAsync(next);
+        await RebuildIndexesAsync();
+        LibraryUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private async Task SaveAlbumLinksAsync(List<AlbumLink> links)
+    {
+        try
+        {
+            var copy = links.Select(l => new AlbumLink { AlbumId = l.AlbumId, SourceAlbumId = l.SourceAlbumId }).ToList();
+            await _persistence.UpdateSettingsAsync(s => s.AlbumLinks = copy).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"Album links not saved: {ex.Message}");
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<AlbumGroupResult> SetAlbumGroupingWriteTagsAsync(bool enabled, CancellationToken ct = default)
     {
         _albumGroupingWriteTags = enabled;
         if (!enabled || !_albumGroupingEnabled)
             return new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
-        if (await ResolveUngroupedAlbumsAsync(ct) > 0)
+        return await SaveAlbumGroupingToFilesAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> SaveAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    {
+        // Songs a 1.6.8 grouping re-keyed carry no record of their own album yet: read once,
+        // or the pass below would not know they were grouped.
+        if (_albumGroupingEnabled && await ResolveUngroupedAlbumsAsync(ct) > 0)
             await RebuildAndPersistAlbumKeysAsync(forceSave: true);
+        // Groupings an older build failed to write left no record: looked for here only, when
+        // the user asks (it reads the tags of most files), never at startup.
+        await MarkUnwrittenAlbumChangesAsync(ct);
         return await WriteAlbumGroupingToFilesAsync(ct);
+    }
+
+    /// <summary>
+    /// GitHub #201: "Group into One Album" in 1.6.8 and 1.6.9 set a song's album and album artist
+    /// and marked them as the song's own tag even when its file could not be written, and kept no
+    /// record of the failure, so <see cref="Track.AlbumGroupingUnwritten"/> is not set on those.
+    /// They are found by what the files say: a song is marked when
+    ///   - Noctis holds its album artist as a real tag (AlbumArtistFromTag true; the automatic
+    ///     rule's songs are false and go through <see cref="AlbumGrouping.RegroupedSongs"/>),
+    ///   - its album name is a real one and not its folder's,
+    ///   - its file is a local or network file that has not changed since Noctis last read it
+    ///     (same modification time: a file retagged elsewhere is the newer truth, and the next
+    ///     scan reads it), and
+    ///   - the file's own Album / Album Artist tags put it on another album than Noctis shows
+    ///     (<see cref="Track.ComputeAlbumId"/>, the key Noctis groups by).
+    /// A song nobody changed in Noctis reads back as it was scanned and is never marked. Only
+    /// Noctis's own album changes leave the two apart: Group into One Album, or an Edit Info save
+    /// whose write failed (the editor keeps the edit and reports the file); both are writes the
+    /// user asked for. The in-memory filter runs first; tags are read only for songs it lets
+    /// through, off the UI thread. Returns how many songs were marked.
+    /// </summary>
+    internal async Task<int> MarkUnwrittenAlbumChangesAsync(CancellationToken ct = default)
+    {
+        var snapshot = _tracks;
+        var marked = await Task.Run(() =>
+        {
+            var count = 0;
+            foreach (var t in snapshot)
+            {
+                if (ct.IsCancellationRequested) break;
+                if (t.AlbumArtistFromTag != true || t.AlbumGroupingUnwritten || t.AlbumFromFolder
+                    || !Track.IsRealAlbumName(t.Album) || string.IsNullOrWhiteSpace(t.AlbumArtist)
+                    || !t.HasFilesystemPath || t.IsRemoteStream
+                    || t.SourceType is not (SourceType.Local or SourceType.Smb) || t.LastModified == default)
+                    continue;
+                try
+                {
+                    var info = new FileInfo(t.FilePath);
+                    if (!info.Exists || info.LastWriteTimeUtc != t.LastModified) continue;
+                    if (_metadata.ReadTrackMetadata(t.FilePath) is not { } own) continue;
+                    if (Track.ComputeAlbumId(own.AlbumArtist, own.Album) == t.AlbumId) continue;
+                    // A file with no artist at all takes its folder's artist in the scan
+                    // (FolderMetadata), not a change made in Noctis.
+                    if (FolderMetadata.IsPlaceholderArtist(own.Artist) && FolderMetadata.IsPlaceholderArtist(own.AlbumArtist)) continue;
+                    t.AlbumGroupingUnwritten = true;
+                    count++;
+                }
+                catch
+                {
+                    // Unreadable now: left alone (Save to Files Now looks again).
+                }
+            }
+            return count;
+        }, CancellationToken.None);
+        if (marked > 0)
+        {
+            DebugLog.Write("Library", $"Album grouping (#201): {marked} song(s) whose file does not name the album Noctis shows");
+            await SaveAsync();
+        }
+        return marked;
+    }
+
+    /// <summary>
+    /// GitHub #201, at startup: writes the groupings whose files do not name their album yet.
+    /// "Group into One Album" songs whose write failed (<see cref="Track.AlbumGroupingUnwritten"/>)
+    /// always, since that action always writes the files; songs the automatic rule grouped only
+    /// while Save Grouping to Files is on. Reported through <see cref="AlbumGroupingWritten"/>
+    /// when a file was written.
+    /// </summary>
+    internal async Task ResumeAlbumGroupingWritesAsync()
+    {
+        var rule = _albumGroupingWriteTags && _albumGroupingEnabled;
+        var snapshot = _tracks;
+        var pending = await Task.Run(() => AlbumGrouping.SongsToWrite(snapshot, rule).Count, CancellationToken.None);
+        if (pending == 0) return;
+        var result = await WriteAlbumGroupingCoreAsync(rule, CancellationToken.None);
+        if (result.Grouped > 0)
+            AlbumGroupingWritten?.Invoke(this, result);
     }
 
     /// <inheritdoc />
@@ -2818,8 +3016,14 @@ public class LibraryService : ILibraryService
     /// whose file is written has a real album-artist tag from then on. Files that are missing,
     /// read-only, not on a local or network drive, or held open are listed in the result and
     /// tried again on the next pass. Off the UI thread; one pass at a time.
+    /// GitHub #201: also the "Group into One Album" songs whose file could not be written then
+    /// (<see cref="Track.AlbumGroupingUnwritten"/>), with the same two tags.
     /// </summary>
-    public async Task<AlbumGroupResult> WriteAlbumGroupingToFilesAsync(CancellationToken ct = default)
+    public Task<AlbumGroupResult> WriteAlbumGroupingToFilesAsync(CancellationToken ct = default)
+        => WriteAlbumGroupingCoreAsync(rule: true, ct);
+
+    /// <param name="rule">Also the songs the automatic rule grouped (only while it is on).</param>
+    private async Task<AlbumGroupResult> WriteAlbumGroupingCoreAsync(bool rule, CancellationToken ct)
     {
         var none = new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_shutdownCts.Token, ct);
@@ -2828,13 +3032,13 @@ public class LibraryService : ILibraryService
         catch (OperationCanceledException) { return none; }
         try
         {
-            if (!_albumGroupingEnabled) return none;
+            rule &= _albumGroupingEnabled;
             var snapshot = _tracks;
             var written = new List<Track>();
             var unwritten = new List<string>();
             await Task.Run(() =>
             {
-                foreach (var t in AlbumGrouping.RegroupedSongs(snapshot))
+                foreach (var t in AlbumGrouping.SongsToWrite(snapshot, rule))
                 {
                     if (token.IsCancellationRequested) break;
                     var ok = false;
@@ -2859,6 +3063,7 @@ public class LibraryService : ILibraryService
                     t.AlbumArtistFromTag = true;
                     t.UngroupedAlbumArtist = null;
                     t.UngroupedAlbum = null;
+                    t.AlbumGroupingUnwritten = false;
                     written.Add(t);
                 }
             }, CancellationToken.None);
@@ -2907,13 +3112,8 @@ public class LibraryService : ILibraryService
         // Album order, so the first song's old cover is the one the new album keeps.
         targets.Sort(AlbumGrouping.AlbumOrder);
         var albumId = Track.ComputeAlbumId(albumArtist, album);
-        var moves = new List<AlbumGrouping.Move>();
-        var unwritten = new List<string>();
-        var grouped = 0;
-
-        await Task.Run(() =>
-        {
-            foreach (var t in targets)
+        return await ReAlbumAsync(targets, album, albumArtist,
+            apply: t =>
             {
                 // An album artist the grouping rule filled in (not from a tag) matches in the
                 // library but not in the file: write it too, or other apps and the next
@@ -2922,20 +3122,95 @@ public class LibraryService : ILibraryService
                               || !string.Equals(t.AlbumArtist, albumArtist, StringComparison.Ordinal)
                               || t.AlbumId != albumId
                               || t.AlbumArtistFromTag != true;
-                if (!changed) continue;
-                grouped++;
+                if (!changed) return false;
                 t.Album = album;
                 t.AlbumArtist = albumArtist;
+                return true;
+            },
+            write: t => _metadata.WriteTrackMetadata(t),
+            logLabel: "Group into album (#178)");
+    }
+
+    /// <inheritdoc />
+    public async Task<AlbumGroupResult> MoveToAlbumAsync(IReadOnlyList<Track> tracks, string album, string albumArtist,
+        CancellationToken ct = default)
+    {
+        album = album?.Trim() ?? string.Empty;
+        albumArtist = albumArtist?.Trim() ?? string.Empty;
+        var none = new AlbumGroupResult(Guid.Empty, 0, Array.Empty<string>());
+        if (!Track.IsRealAlbumName(album) || string.IsNullOrWhiteSpace(albumArtist)) return none;
+        var albumId = Track.ComputeAlbumId(albumArtist, album);
+        // Songs already on the album stay as they are (no renumbering); the rest move in the
+        // order given (the selection's order: a new album is numbered so).
+        var moving = (tracks ?? Array.Empty<Track>()).Where(t => t != null).DistinctBy(t => t.Id)
+            .Where(t => t.AlbumId != albumId).ToList();
+        if (moving.Count == 0) return new AlbumGroupResult(albumId, 0, Array.Empty<string>());
+
+        var movingIds = moving.Select(t => t.Id).ToHashSet();
+        var target = _tracks.Where(t => t.AlbumId == albumId && !movingIds.Contains(t.Id)).ToList();
+        target.Sort(AlbumGrouping.AlbumOrder);
+        AlbumIdentityTags? identity = AlbumIdentityTags.None;
+        if (target.Count > 0)
+        {
+            // An existing album (whatever casing was typed): its own spelling, so no song of it
+            // differs, and its identity tags from its first file that can be read. None
+            // readable: the moved files keep theirs rather than lose them for nothing.
+            album = target[0].Album;
+            albumArtist = target[0].AlbumArtist;
+            identity = await Task.Run(() => target
+                .Where(t => t.HasFilesystemPath && !t.IsRemoteStream && File.Exists(t.FilePath))
+                .Take(3)
+                .Select(t => _metadata.ReadAlbumIdentity(t.FilePath))
+                .FirstOrDefault(i => i != null), CancellationToken.None);
+        }
+
+        var plans = AlbumMove.PlanMove(moving, target, album, albumArtist).ToDictionary(p => p.Track);
+        return await ReAlbumAsync(moving, album, albumArtist,
+            apply: t =>
+            {
+                AlbumMove.Apply(plans[t]);
+                return true;
+            },
+            write: t => identity != null ? _metadata.WriteTrackMetadata(t, identity) : _metadata.WriteTrackMetadata(t),
+            logLabel: "Move to album (#239)");
+    }
+
+    /// <summary>
+    /// The shared body of Group into One Album (#178) and Move to Album (#239): each of
+    /// <paramref name="targets"/> that <paramref name="apply"/> changes (it sets the new values
+    /// on the track and returns true) is written by <paramref name="write"/> and re-keyed to the
+    /// album. A file that cannot be written still moves in the library, is listed in the result
+    /// and is tried again later (Album and Album Artist only). Cached covers follow, then the
+    /// library is rebuilt, saved and LibraryUpdated raised.
+    /// </summary>
+    private async Task<AlbumGroupResult> ReAlbumAsync(List<Track> targets, string album, string albumArtist,
+        Func<Track, bool> apply, Func<Track, bool> write, string logLabel)
+    {
+        var albumId = Track.ComputeAlbumId(albumArtist, album);
+        var moves = new List<AlbumGrouping.Move>();
+        var unwritten = new List<string>();
+        var grouped = 0;
+
+        await Task.Run(() =>
+        {
+            foreach (var t in targets)
+            {
+                if (!apply(t)) continue;
+                grouped++;
                 // Through the metadata editor's writer, so every other tag is kept as the
                 // editor would. Streams and phone documents have no file to write here.
                 var written = false;
                 if (t.HasFilesystemPath && !t.IsRemoteStream)
                 {
-                    try { written = _metadata.WriteTrackMetadata(t); }
-                    catch (Exception ex) { DebugLog.Write("Library", $"Group into album: write failed for '{t.FilePath}': {ex.Message}"); }
+                    try { written = write(t); }
+                    catch (Exception ex) { DebugLog.Write("Library", $"{logLabel}: write failed for '{t.FilePath}': {ex.Message}"); }
                 }
                 if (!written)
                     unwritten.Add(t.HasFilesystemPath ? Path.GetFileName(t.FilePath) : t.Title);
+                // GitHub #201: a file that could be written later (read-only or held open now)
+                // is tried again by the next pass; streams and phone documents never can be.
+                t.AlbumGroupingUnwritten = !written && t.HasFilesystemPath && !t.IsRemoteStream
+                                           && t.SourceType is SourceType.Local or SourceType.Smb;
                 // The user's album artist: the grouping pass must not re-key it, written or not.
                 t.AlbumArtistFromTag = true;
                 if (t.AlbumId != albumId)
@@ -2952,10 +3227,10 @@ public class LibraryService : ILibraryService
         await RebuildIndexesAsync();
         await SaveAsync();
         try { await _sqliteIndex.UpsertTracksAsync(targets, CancellationToken.None); }
-        catch (Exception ex) { DebugLog.Write("Library", $"Group into album: index update failed: {ex.Message}"); }
+        catch (Exception ex) { DebugLog.Write("Library", $"{logLabel}: index update failed: {ex.Message}"); }
         if (moves.Count > 0)
             await RepointPinnedAlbumsAsync(moves, _tracks);
-        DebugLog.Write("Library", $"Group into album (#178): {grouped} song(s) → '{album}' by '{albumArtist}'" +
+        DebugLog.Write("Library", $"{logLabel}: {grouped} song(s) → '{album}' by '{albumArtist}'" +
             (unwritten.Count > 0 ? $", {unwritten.Count} file(s) not written" : ""));
         LibraryUpdated?.Invoke(this, EventArgs.Empty);
         return new AlbumGroupResult(albumId, grouped, unwritten);
@@ -4626,6 +4901,7 @@ public class LibraryService : ILibraryService
                         t.AlbumArtworkPath = album.ArtworkPath;
                 }
                 ApplyOwnTrackArtwork(_persistence, tracks);
+                Services.AlbumLinks.Attach(albumIndex, _albumLinks);
 
                 newAlbums = albums
                     .OrderBy(a => GetPrimaryArtist(a.Artist), StringComparer.OrdinalIgnoreCase)
@@ -4686,8 +4962,12 @@ public class LibraryService : ILibraryService
                     Artist = album.Artist,
                     Year = album.Year,
                     Genre = album.Genre,
-                    TrackCount = album.TrackCount,
-                    TotalDurationTicks = album.TotalDuration.Ticks,
+                    // The own files: the restore checks the count against them and adds the
+                    // linked songs again (AlbumLinks.Attach).
+                    TrackCount = album.Tracks.Count,
+                    TotalDurationTicks = album.HasLinkedTracks
+                        ? album.Tracks.Sum(t => t.Duration.Ticks)
+                        : album.TotalDuration.Ticks,
                     ArtworkPath = album.ArtworkPath,
                     TrackIds = album.Tracks.Select(t => t.Id).ToList()
                 });

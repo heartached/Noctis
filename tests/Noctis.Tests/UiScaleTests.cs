@@ -84,10 +84,14 @@ public class UiScaleTests : IDisposable
     public void Choices_AndSnapping()
     {
         Assert.Equal(100, new AppSettings().UiScalePercent);
-        Assert.Equal(new[] { 90, 100, 110, 125, 150, 175, 200 }, AppSettings.UiScaleChoices);
+        Assert.Equal(new[] { 60, 70, 75, 80, 90, 100, 110, 125, 150, 175, 200 }, AppSettings.UiScaleChoices);
         Assert.Equal(150, AppSettings.SnapUiScale(140));
         Assert.Equal(200, AppSettings.SnapUiScale(900));
-        Assert.Equal(90, AppSettings.SnapUiScale(-5));
+        Assert.Equal(60, AppSettings.SnapUiScale(-5));
+        Assert.Equal(75, AppSettings.SnapUiScale(76));
+        Assert.Equal(60, AppSettings.SnapUiScale(50));
+        // Every choice is inside UiScale's sanity bounds, so none is clamped to another size.
+        Assert.All(AppSettings.UiScaleChoices, c => Assert.InRange(c / 100.0, UiScale.MinFactor, UiScale.MaxFactor));
         var s = new AppSettings { UiScalePercent = 133 };
         s.ClampToValidRanges();
         Assert.Equal(125, s.UiScalePercent);
@@ -101,6 +105,8 @@ public class UiScaleTests : IDisposable
         Assert.Equal(1.6, UiScale.Effective(2.0, room, new Size(780, 500)));      // 800/500
         Assert.Equal(1.0, UiScale.Effective(2.0, room, new Size(2000, 2000)));    // floor 100%
         Assert.Equal(0.9, UiScale.Effective(0.9, room, new Size(2000, 2000)));    // a shrink stays
+        Assert.Equal(0.6, UiScale.Effective(0.6, room, new Size(2000, 2000)));
+        Assert.Equal(0.6, UiScale.Effective(0.6, room, new Size(780, 500)));
         Assert.Equal(1.25, UiScale.Effective(1.25, room, new Size(double.NaN, 500)));
     }
 
@@ -152,7 +158,7 @@ public class UiScaleTests : IDisposable
         var before = new[] { label, button, (Control)list }.Select(c => OnScreen(c, w)).ToArray();
         var rowBefore = OnScreen(list.GetVisualDescendants().OfType<ListBoxItem>().First(), w);
 
-        foreach (var f in new[] { 1.5, 2.0 })
+        foreach (var f in new[] { 0.6, 0.75, 1.5, 2.0 })
         {
             UiScale.SetFactor(f);
             Pump();
@@ -198,7 +204,7 @@ public class UiScaleTests : IDisposable
             => inside.GetVisualAncestors().OfType<LayoutTransformControl>()
                    .FirstOrDefault(l => l is not UiScaleHost)?.LayoutTransform?.Value.M11 ?? 1.0;
 
-        foreach (var f in new[] { 1.0, 1.5 })
+        foreach (var f in new[] { 1.0, 1.5, 0.6 })
         {
             UiScale.SetFactor(f);
             Pump();
@@ -255,6 +261,39 @@ public class UiScaleTests : IDisposable
         Assert.Equal(1.0, UiScale.GetApplied(w));
     }
 
+    /// <summary>Below 100% (down to 60%) the window keeps its designed minimum (it is not
+    /// shrunk with the scale), the whole client area is used, and the content lays out in the
+    /// larger room the scale gives it.</summary>
+    [AvaloniaFact]
+    public void MainWindow_BelowOneHundredPercent_KeepsItsMinimum_AndFillsTheWindow()
+    {
+        AddToPlaylistDialogTests.EnsureAppStyles();
+        var w = Track(new MainWindow { Width = 780, Height = 500 });
+        w.Show();
+        Pump();
+
+        foreach (var (f, width, height) in new[] { (0.6, 780.0, 500.0), (0.7, 1366.0, 728.0), (0.75, 1280.0, 800.0), (0.8, 1600.0, 1000.0) })
+        {
+            UiScale.SetFactor(f);
+            w.Width = width;
+            w.Height = height;
+            Pump();
+            Assert.Equal(f, UiScale.GetApplied(w));
+            Assert.Equal(780, w.MinWidth);
+            Assert.Equal(500, w.MinHeight);
+            var content = UiScale.ContentSize(w);
+            Assert.Equal(w.ClientSize.Width / f, content.Width, 1);
+            Assert.Equal(w.ClientSize.Height / f, content.Height, 1);
+            Assert.Equal(w.ClientSize.Width, OnScreen((Control)w.Content!, w).Width, 0);
+            Assert.Equal(w.ClientSize.Height, OnScreen((Control)w.Content!, w).Height, 0);
+        }
+
+        UiScale.SetFactor(1.0);
+        Pump();
+        Assert.Equal(1.0, UiScale.GetApplied(w));
+        Assert.Null(Host(w).LayoutTransform);
+    }
+
     /// <summary>The Settings sheet (where Interface Size is picked) must stay whole when the
     /// content has only its designed minimum width — at 200% that is a normal 1560 px window.
     /// It was a fixed 1000 px card, cut off on both sides (close button and rail edge) below
@@ -264,6 +303,8 @@ public class UiScaleTests : IDisposable
     [InlineData(2.0, 1560.0, 1000.0)]
     [InlineData(1.25, 1280.0, 800.0)]
     [InlineData(1.0, 1280.0, 800.0)]
+    [InlineData(0.6, 780.0, 500.0)]
+    [InlineData(0.8, 1366.0, 728.0)]
     public void SettingsSheet_FitsTheWindow(double f, double width, double height)
     {
         AddToPlaylistDialogTests.EnsureAppStyles();
@@ -334,7 +375,7 @@ public class UiScaleTests : IDisposable
         Assert.Equal(175, vm.UiScalePercent);
         Assert.Equal(1.75, UiScale.Factor);
         Assert.Equal(175, vm.SelectedUiScaleOption!.Percent);
-        Assert.Equal(7, vm.UiScaleOptions.Count);
+        Assert.Equal(11, vm.UiScaleOptions.Count);
 
         vm.SelectedUiScaleOption = vm.UiScaleOptions.Single(o => o.Percent == 125);
         Assert.Equal(1.25, UiScale.Factor);
@@ -343,6 +384,10 @@ public class UiScaleTests : IDisposable
 
         vm.UiScalePercent = 160;                     // not a choice: snaps
         Assert.Equal(150, vm.UiScalePercent);
+        vm.SelectedUiScaleOption = vm.UiScaleOptions.Single(o => o.Percent == 60);
+        Assert.Equal(0.6, UiScale.Factor);
+        Assert.Equal("60%", vm.SelectedUiScaleOption!.Label);
+        vm.UiScalePercent = 150;
         vm.SelectedUiScaleOption = null;             // ComboBox rebuild: ignored
         Assert.Equal(150, vm.UiScalePercent);
     }
@@ -370,6 +415,8 @@ public class UiScaleTests : IDisposable
     /// 22 px by area, so a stroke keeps its weight wherever it falls: every source column counts
     /// once, none twice or not at all, and the total coverage is kept.</summary>
     [Theory]
+    [InlineData(12)]
+    [InlineData(15)]
     [InlineData(18)]
     [InlineData(22)]
     [InlineData(25)]

@@ -756,6 +756,15 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         await MetadataHelper.OpenSendToFolderDialog(tracks);
     }
 
+    /// <summary>GitHub #239: the song (or the Ctrl-selection it is in) → Move to Album.</summary>
+    [RelayCommand]
+    private async Task MoveToAlbum(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenMoveToAlbumDialog(tracks);
+    }
+
     /// <summary>Whole playlist → folder (header action).</summary>
     [RelayCommand]
     private async Task SendPlaylistToFolder()

@@ -371,12 +371,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     //                           triggered by MediaPlayer.VolumeChanged → ViewModel → setter.
     //   _pendingVolumeTarget:   the most-recent target requested while throttled
     //                           (-1 = none pending).
-    //   _lastVolumeWriteTicks:  Stopwatch ticks of the last successful write.
     //   _volumeTrailingCts:     cancellation for the scheduled trailing write.
     //   _lastWrittenVolume:     deadband baseline (last value handed to the player).
     private int _applyingVolume;
     private volatile int _pendingVolumeTarget = -1;
-    private long _lastVolumeWriteTicks;
     private int _lastWrittenVolume = -1;
     private CancellationTokenSource? _volumeTrailingCts;
     private readonly object _volumeWriteLock = new();
@@ -1097,7 +1095,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _pendingVolumeTarget = -1;
                 SetPlayerVolumeGuarded(_player, target);
                 _lastWrittenVolume = target;
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
             return;
         }
@@ -1292,7 +1289,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     _pendingVolumeTarget = -1;
                     SetPlayerVolumeGuarded(_player, pending);
                     _lastWrittenVolume = pending;
-                    _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
                 }
             });
         }
@@ -3943,7 +3939,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
                 _lastWrittenVolume = finalVolume;
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             _transitionInFlight = false;
@@ -4129,7 +4124,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             lock (_volumeWriteLock)
             {
                 _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             // Re-assert in case the session resolved late, then tear down the outgoing.
@@ -4279,7 +4273,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             lock (_volumeWriteLock)
             {
                 _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             ScheduleSessionVolumeReassert(sessionId);
@@ -5829,8 +5822,27 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 var oldMedia = _currentMedia;
                 _currentMedia = null;
                 oldMedia?.Dispose();
+
+                // Let go of the Exclusive Mode device (or its shared fallback stream): the sink
+                // stays open across tracks for gapless reuse, so without this a stopped player
+                // kept the endpoint locked and every other app silent. _player.Stop() above has
+                // joined LibVLC's aout, so no callback can reach the sink while it closes; the
+                // next Play reopens it (PrepareExclusiveOutputFor). The keep-warm stream stays
+                // parked: a shared stream would block another app's exclusive open.
+                var releasedExclusive = false;
+                lock (_exclusiveSinkLock)
+                {
+                    if (_exclusiveOut != null)
+                    {
+                        try { _exclusiveOut.Dispose(); } catch { }
+                        _exclusiveOut = null;
+                        releasedExclusive = true;
+                    }
+                }
+                if (releasedExclusive)
+                    ApplyMuteToOwner(); // sink gone: the player owns mute again until the next open
                 DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Stop",
-                    $"session={CurrentSessionId}, engine={_gaplessEngine}");
+                    $"session={CurrentSessionId}, engine={_gaplessEngine}, releasedDevice={releasedExclusive}");
             }
             finally
             {
@@ -7066,7 +7078,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     {
         // The libvlc payload the CI .app packaging step bundles at
         // Contents/MacOS/libvlc (dylibs + plugins/) comes first: it is the pinned
-        // universal VLC 3.0.23, so it loads on both arm64 and x64 builds and matches
+        // universal VLC 3.0.24, so it loads on both arm64 and x64 builds and matches
         // LibVLCSharp 3's major version. A VLC.app in /Applications may be Intel-only
         // (dlopen fails on the arm64 build) or VLC 4.x (version-mismatch VLCException),
         // and Core.Initialize gets one shot, so preferring it failed startup even with

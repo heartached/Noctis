@@ -22,6 +22,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     private AlbumDetailViewModel? _trackedVm;
     // Multi-select tracked by Track (data) so it survives container recycling.
     private readonly HashSet<Track> _selectedTracks = new();
+    /// <summary>The song a Shift+click spans from: the last row clicked (GitHub #226).</summary>
+    private Track? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
@@ -39,6 +41,9 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     public AlbumDetailView()
     {
         InitializeComponent();
+        // Closing a modal editor gave focus back to a header button and the page scrolled
+        // up to it (GitHub #223); only keyboard focus moves the page now.
+        KeyboardFocusScroll.Apply(TrackScrollViewer);
 
         DiscGroupList.ContainerPrepared += OnDiscGroupContainerPrepared;
         DiscGroupList.ContainerClearing += OnDiscGroupContainerClearing;
@@ -118,6 +123,17 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         if (src is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
 
+        // GitHub #226: Shift+click spans from the last clicked row, in album order (across discs).
+        if (MultiSelectHelper.IsRangePress(e) && DataContext is AlbumDetailViewModel vm)
+        {
+            _rangeAnchor = MultiSelectHelper.HandleTrackRangeClickByData(vm.Tracks.ToList(),
+                _rangeAnchor, track, e, _selectedTracks, MultiSelectHelper.RealizedRows(DiscGroupList));
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = track;
+
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
         if (_selectedTracks.Count > 0)
             Focus();
@@ -153,10 +169,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
 
         foreach (var li in DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>())
         {
-            if (li.DataContext is Track t && _selectedTracks.Contains(t))
-                li.Classes.Add("ctrl-selected");
-            else
-                li.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(li, li.DataContext is Track t && _selectedTracks.Contains(t));
         }
     }
 
@@ -164,7 +177,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     {
         _selectedTracks.Clear();
         foreach (var li in DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>())
-            li.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(li, false);
         if (DataContext is AlbumDetailViewModel vm)
             vm.CtrlSelectedTracks = new List<Track>();
     }
@@ -266,7 +279,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         if (e.Container is ListBoxItem item)
         {
             item.ContextRequested -= OnTrackItemContextRequested;
-            item.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(item, false, animate: false);
         }
     }
 
@@ -316,7 +329,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             removeLyricsCommand: vm.RemoveLyricsCommand,
             sendToFolderCommand: vm.SendToFolderCommand,
             // Featured artists: View Artist (a submenu when the song credits several).
-            viewArtistCommand: vm.ViewArtistFromTrackCommand);
+            viewArtistCommand: vm.ViewArtistFromTrackCommand,
+            moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
     }
 
     /// <summary>Click on a row's stars rates that track (or the Ctrl-selection it is in). The
@@ -463,7 +477,23 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         e.Handled = true;
     }
 
-    private void OnAlbumFlyoutOpened(object? sender, EventArgs e) { }
+    /// <summary>Fills Link / Unlink Tracks From with the albums they can act on (AlbumLinkMenu:
+    /// cover, title, E, count); each submenu is hidden when it has none.</summary>
+    private void OnAlbumFlyoutOpened(object? sender, EventArgs e)
+    {
+        if (sender is not MenuFlyout flyout || DataContext is not AlbumDetailViewModel vm) return;
+        foreach (var item in flyout.Items.OfType<MenuItem>())
+        {
+            var (albums, command) = item.Tag switch
+            {
+                "LinkTracksFrom" => (vm.LinkCandidates, vm.LinkTracksFromCommand),
+                "UnlinkTracksFrom" => (vm.LinkedSourceAlbums, vm.UnlinkTracksFromCommand),
+                _ => (null, null),
+            };
+            if (albums == null || command == null) continue;
+            AlbumLinkMenu.Fill(item, albums, command);
+        }
+    }
 
     private void OnOptionsFlyoutButtonPointerPressed(object? sender, PointerPressedEventArgs e)
         => OnTrackRowPointerPressed(e);

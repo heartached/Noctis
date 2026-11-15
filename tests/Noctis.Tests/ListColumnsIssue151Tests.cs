@@ -478,9 +478,6 @@ public class ListColumnsIssue151Tests : IDisposable
 
     // ── ReplayGain column ─────────────────────────────────────────────────
 
-    private static List<string?> VisibleTexts(Control row) =>
-        row.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
-
     private static void WaitForOrder(LibrarySongsViewModel vm, Window win, Func<IReadOnlyList<Track>, bool> done)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);
@@ -511,10 +508,10 @@ public class ListColumnsIssue151Tests : IDisposable
 
             var rows = view.TrackList.GetRealizedContainers().OfType<ListBoxItem>().ToList();
             var firstRow = rows.Single(r => ReferenceEquals(r.DataContext, first));
-            var firstCell = (Border)Cell(firstRow.GetVisualDescendants().OfType<ColumnsPanel>().First(), "ReplayGain");
+            var firstCell = (Decorator)Cell(firstRow.GetVisualDescendants().OfType<ColumnsPanel>().First(), "ReplayGain");
             Assert.Equal((-7.2).ToString("+0.0;-0.0;0.0") + " dB", ((TextBlock)firstCell.Child!).Text);
             var otherRow = rows.First(r => !ReferenceEquals(r.DataContext, first));
-            var otherCell = (Border)Cell(otherRow.GetVisualDescendants().OfType<ColumnsPanel>().First(), "ReplayGain");
+            var otherCell = (Decorator)Cell(otherRow.GetVisualDescendants().OfType<ColumnsPanel>().First(), "ReplayGain");
             Assert.True(string.IsNullOrEmpty(((TextBlock)otherCell.Child!).Text)); // no gain: blank
 
             // The backfill and the ReplayGain scan set it off the UI thread.

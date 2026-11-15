@@ -52,6 +52,46 @@ public partial class MetadataViewModel : ViewModelBase
     // ── Tab selection ──
     [ObservableProperty] private int _selectedTabIndex;
 
+    /// <summary>MetadataWindow's TabControl positions of the Plain Lyrics and Synced Lyrics
+    /// tabs (hidden tabs keep their index). Pinned by LyricsEditEntryTests.</summary>
+    public const int PlainLyricsTabIndex = 4;
+    public const int SyncedLyricsTabIndex = 5;
+
+    /// <summary>GitHub #212: opened from the lyrics page's Add Lyrics / Edit Lyrics, so the
+    /// window lands where the song's lyrics are edited (see <see cref="OpenOnLyrics"/>).</summary>
+    private bool _openOnLyrics;
+
+    /// <summary>
+    /// GitHub #212: open on the lyrics. Timed lyrics: the Synced Lyrics tab with the raw LRC
+    /// text, editable. Otherwise the Plain Lyrics tab with its box switched on, so a song with
+    /// no lyrics can be typed or pasted into straight away (Enable used to be off for it, the
+    /// box greyed out). Re-applied when the load lands, as a sidecar .lrc may arrive with it.
+    /// </summary>
+    public void OpenOnLyrics()
+    {
+        _openOnLyrics = true;
+        ApplyOpenOnLyrics();
+    }
+
+    private void ApplyOpenOnLyrics()
+    {
+        if (!_openOnLyrics || _albumScoped) return;
+        if (!string.IsNullOrWhiteSpace(SyncedLyrics))
+        {
+            SelectedTabIndex = SyncedLyricsTabIndex;
+            ShowRawSyncedLyrics = true;
+        }
+        else
+        {
+            SelectedTabIndex = PlainLyricsTabIndex;
+            HasCustomLyrics = true;
+        }
+    }
+
+    /// <summary>The Synced Lyrics tab shows the raw LRC text (editable) instead of the
+    /// formatted preview (the tab's Raw toggle).</summary>
+    [ObservableProperty] private bool _showRawSyncedLyrics;
+
     // ── Details tab ──
     [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private string _artist = string.Empty;
@@ -173,13 +213,65 @@ public partial class MetadataViewModel : ViewModelBase
     /// Text that is not a whole document yet (still being typed) is left alone, and so is
     /// TTML the song's own tag holds, loaded with the dialog.
     /// </summary>
-    partial void OnLyricsChanged(string value)
+    partial void OnLyricsChanged(string? oldValue, string newValue)
     {
-        if (_applyingLyrics || !TtmlParser.LooksLikeTtml(value)) return;
-        var (lines, plain) = TtmlParser.Parse(value);
+        if (_applyingLyrics) return;
+        if (LooksLikePastedLrc(oldValue, newValue))
+        {
+            // GitHub #212: LRC pasted into the Plain Lyrics box (lyrics found online, the
+            // lyrics page's Add Lyrics) — kept as typed, the timestamps were saved as plain
+            // lyrics. It becomes the synced lyrics, its words the plain ones, and the window
+            // shows where it went.
+            ImportLyricsText(newValue, Localization.Loc.T("Metadata.PastedLyrics"));
+            _applyingLyrics = true;
+            try { Lyrics = LyricsTextHelper.StripTimestamps(SyncedLyrics).Replace("\r\n", "\n").Trim(); }
+            finally { _applyingLyrics = false; }
+            SelectedTabIndex = SyncedLyricsTabIndex;
+            return;
+        }
+        if (!TtmlParser.LooksLikeTtml(newValue)) return;
+        var (lines, plain) = TtmlParser.Parse(newValue);
         if (lines is not { Count: > 0 } || plain is null) return;
-        ImportLyricsText(value, "pasted TTML");
+        ImportLyricsText(newValue, "pasted TTML");
         Lyrics = plain;
+    }
+
+    /// <summary>
+    /// The Plain Lyrics box just received LRC in one go (a paste, not typing): at least two
+    /// more timestamped lines than it had, and most of its lines timestamped. Typing a line
+    /// at a time never qualifies, so a "[00:12.00]" typed by hand stays where it is.
+    /// </summary>
+    internal static bool LooksLikePastedLrc(string? oldValue, string? newValue)
+    {
+        if (string.IsNullOrWhiteSpace(newValue) || !LyricsTextHelper.ContainsTimestamps(newValue)) return false;
+        static (int Timed, int Lines) Count(string? text)
+        {
+            int timed = 0, lines = 0;
+            foreach (var raw in (text ?? string.Empty).Split('\n'))
+            {
+                if (string.IsNullOrWhiteSpace(raw)) continue;
+                lines++;
+                if (LyricsTextHelper.ContainsTimestamps(raw)) timed++;
+            }
+            return (timed, lines);
+        }
+        var (oldTimed, _) = Count(oldValue);
+        var (newTimed, newLines) = Count(newValue);
+        return newTimed - oldTimed >= 2 && newTimed * 2 >= newLines;
+    }
+
+    /// <summary>Set while the line editor writes <see cref="SyncedLyrics"/> back from its rows.</summary>
+    private bool _writingSyncedFromLines;
+
+    /// <summary>
+    /// GitHub #212: the Synced Lyrics tab's raw LRC box is editable (a wrong word fixed in
+    /// place, a whole LRC pasted over it). The Timestamp Lyrics rows follow the text; edits
+    /// that came from those rows are not read back into them.
+    /// </summary>
+    partial void OnSyncedLyricsChanged(string value)
+    {
+        if (_writingSyncedFromLines) return;
+        RebuildSyncedLinesFromText();
     }
 
     // ── Synced lyrics manual editor ──
@@ -1043,7 +1135,12 @@ public partial class MetadataViewModel : ViewModelBase
             .ToList();
         if (lines.Count == 0) return;
 
-        var vm = new LyricShareViewModel(_track, lines, 0);
+        // The remembered watermark choice, known before the first preview is drawn.
+        bool showWordmark = true;
+        try { showWordmark = (await _persistence.LoadSettingsAsync()).ShareLyricsShowWordmark; }
+        catch (Exception ex) { DebugLogger.Log(DebugLogger.Category.Lyrics, DebugLogger.Level.Warn, "Share lyrics settings load failed", ex.Message); }
+        var vm = new LyricShareViewModel(_track, lines, null, null, null, null, 0, null,
+            new LyricShareOpenState { ShowWordmark = showWordmark });
         await Noctis.Views.LyricShareDialog.ShowAsync(vm);
     }
 
@@ -1394,6 +1491,7 @@ public partial class MetadataViewModel : ViewModelBase
         _loadedSyncedLyrics = synced;
         _loadedPlainLyrics = plain;
         if (!keepSynced) RebuildSyncedLinesFromText();
+        ApplyOpenOnLyrics();
     }
 
     private void LoadFromTrack()
@@ -1515,22 +1613,6 @@ public partial class MetadataViewModel : ViewModelBase
         return lower.Contains("alac") || lower.Contains("apple lossless")
             ? "ALAC"
             : normalized;
-    }
-
-    private static byte[]? SelectPreferredArtworkData(byte[]? cachedData, byte[]? extractedData)
-    {
-        var hasCached = cachedData != null && cachedData.Length > 0;
-        var hasExtracted = extractedData != null && extractedData.Length > 0;
-
-        if (!hasCached && !hasExtracted)
-            return null;
-        if (!hasCached)
-            return extractedData;
-        if (!hasExtracted)
-            return cachedData;
-
-        // Use payload size as a quality proxy when dimensions aren't available.
-        return extractedData!.Length > cachedData!.Length ? extractedData : cachedData;
     }
 
     [RelayCommand]
@@ -1927,11 +2009,19 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>Regenerates the SyncedLyrics LRC text from the edited lines, in list order.</summary>
     private void RebuildSyncedTextFromLines()
     {
-        SyncedLyrics = string.Join("\n", SyncedLyricLines.Select(l =>
-            (l.Timestamp is { } t
-                ? $"[{LrcEditorViewModel.FormatTimestamp(t)}]{l.SavedText}"
-                : l.SavedText)
-            + (l.SavedBackgroundLines is { Count: > 0 } bg ? "\n" + string.Join("\n", bg) : string.Empty)));
+        _writingSyncedFromLines = true;
+        try
+        {
+            SyncedLyrics = string.Join("\n", SyncedLyricLines.Select(l =>
+                (l.Timestamp is { } t
+                    ? $"[{LrcEditorViewModel.FormatTimestamp(t)}]{l.SavedText}"
+                    : l.SavedText)
+                + (l.SavedBackgroundLines is { Count: > 0 } bg ? "\n" + string.Join("\n", bg) : string.Empty)));
+        }
+        finally
+        {
+            _writingSyncedFromLines = false;
+        }
 
         // Manually timing lines counts as having custom synced lyrics. Save gates
         // the synced write on HasCustomSyncedLyrics, which stays false when the
@@ -2672,7 +2762,8 @@ public partial class MetadataViewModel : ViewModelBase
             var oldPath = _persistence.GetArtworkPath(oldAlbumId);
             if (File.Exists(oldPath) && _track.AlbumId != Track.UnknownAlbumBucketId)
             {
-                try { File.Copy(oldPath, _persistence.GetArtworkPath(_track.AlbumId), overwrite: true); }
+                // Through SaveArtwork: never written in place under a decode (GitHub #224).
+                try { _persistence.SaveArtwork(_track.AlbumId, File.ReadAllBytes(oldPath)); }
                 catch { /* Non-fatal */ }
             }
             ArtworkCache.Invalidate(oldPath);

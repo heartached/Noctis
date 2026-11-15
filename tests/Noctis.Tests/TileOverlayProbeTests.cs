@@ -107,11 +107,11 @@ public class TileOverlayProbeTests
             var cp = cover.TranslatePoint(new Point(0, 0), tile)!.Value;
             var title = tile.GetVisualDescendants().OfType<TextBlock>().First(t => t.FontSize == 13);
             _o.WriteLine($"tile '{name}': at x={tp.X:0.#} width={tile.Bounds.Width:0.#} | cover at x={cp.X:0.#} w={cover.Bounds.Width:0.#} | title w={title.Bounds.Width:0.#} h={title.Bounds.Height:0.#}");
-            // The WrapPanel measures tiles unbounded: the tile must stay at cover width (+2px
-            // padding each side) with the cover flush left, and a long title wraps (MaxLines=2)
-            // instead of stretching the tile.
-            Assert.Equal(vm.AlbumTileSize + 4, tile.Bounds.Width, precision: 0);
-            Assert.Equal(2, cp.X, precision: 0);
+            // The WrapPanel measures tiles unbounded: the tile must stay at cover width (+4px
+            // padding each side, 1.6.9 spacing) with the cover flush left, and a long title wraps
+            // (MaxLines=2) instead of stretching the tile.
+            Assert.Equal(vm.AlbumTileSize + 8, tile.Bounds.Width, precision: 0);
+            Assert.Equal(4, cp.X, precision: 0);
             Assert.True(title.Bounds.Width <= vm.AlbumTileSize, $"title width {title.Bounds.Width}");
             AssertGlyphsCentred(tile);
         }

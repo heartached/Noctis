@@ -2,10 +2,14 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Models;
 using Noctis.Services.Lyrics;
 
 namespace Noctis.ViewModels;
+
+/// <summary>GitHub #217: the fetch options as the user last ticked them.</summary>
+public sealed record BulkLyricsOptionPrefs(bool Upgrade, bool Recheck, bool ReviewFirst);
 
 /// <summary>
 /// Bulk lyrics over a selection or the whole library: look every song up in the lyrics sources
@@ -21,6 +25,9 @@ public partial class BulkLyricsViewModel : ViewModelBase
     private readonly Dictionary<Guid, Row> _rowById = new();
     private CancellationTokenSource? _cts;
     private IReadOnlyList<Track> _plainOnly = Array.Empty<Track>();
+    private readonly Action<BulkLyricsOptionPrefs>? _savePrefs;
+    /// <summary>GitHub #214: the dialog was closed after the run ended, so its results have been seen.</summary>
+    private bool _closedAfterRun;
 
     /// <summary>Most songs handed to Lyrics Studio at once, so its review stays manageable.</summary>
     internal const int StudioBatch = 40;
@@ -30,7 +37,8 @@ public partial class BulkLyricsViewModel : ViewModelBase
     /// <summary>Opened for the whole library (Settings > Tools), not a selection.</summary>
     public bool IsLibrary { get; }
 
-    /// <summary>Also look up songs with plain or line-synced lyrics and save a richer find.</summary>
+    /// <summary>Also look up songs with line-synced lyrics and save a word-synced find (songs with plain
+    /// lyrics are looked up either way; see <see cref="LyricsBulkOptions.Upgrade"/>).</summary>
     [ObservableProperty] private bool _upgradeExisting;
     /// <summary>Ask again about songs an earlier run already looked up.</summary>
     [ObservableProperty] private bool _recheck;
@@ -51,6 +59,28 @@ public partial class BulkLyricsViewModel : ViewModelBase
 
     public ObservableCollection<Row> Rows { get; } = new();
 
+    /// <summary>
+    /// GitHub #232: one row per artist of the selection (as its songs are tagged), each with the
+    /// name to search the lyrics sources under ("Tim Neuhaus &amp; The Cabinet" → "Tim Neuhaus").
+    /// For the lookup only: the tags stay as they are. Not offered for the whole library, nor past
+    /// <see cref="MaxArtistNames"/> artists (<see cref="TooManyArtists"/>).
+    /// </summary>
+    public ObservableCollection<ArtistName> ArtistNames { get; } = new();
+    internal const int MaxArtistNames = 6;
+    public bool CanRenameArtists => ArtistNames.Count > 0;
+    /// <summary>The selection has more artists than the dialog lists names for.</summary>
+    public bool TooManyArtists { get; }
+    public string TooManyArtistsText => L("BulkLyrics.SearchAsTooMany", MaxArtistNames);
+
+    /// <summary>The names changed in <see cref="ArtistNames"/>, by the songs' own artist; null when none was.</summary>
+    internal IReadOnlyDictionary<string, string>? ArtistOverrides()
+    {
+        var map = ArtistNames
+            .Where(a => !string.IsNullOrWhiteSpace(a.SearchAs) && !string.Equals(a.SearchAs.Trim(), a.Original, StringComparison.Ordinal))
+            .ToDictionary(a => a.Original, a => a.SearchAs.Trim(), StringComparer.OrdinalIgnoreCase);
+        return map.Count == 0 ? null : map;
+    }
+
     [ObservableProperty] private bool _isRunning;
     [ObservableProperty] private bool _isDone;
     [ObservableProperty] private double _progress;
@@ -60,26 +90,87 @@ public partial class BulkLyricsViewModel : ViewModelBase
 
     public event EventHandler? Closed;
 
+    /// <param name="prefs">GitHub #217: the options to start with (the last ones ticked).</param>
+    /// <param name="savePrefs">Called with the options whenever the user changes one.</param>
+    /// <param name="settings">Settings ▸ Lyrics as the dialog opens; null reads the app's (defaults without one).</param>
     public BulkLyricsViewModel(IReadOnlyList<Track> tracks, ILyricsBulkService service, bool remove,
-        bool library = false, Func<IReadOnlyList<Track>, Task>? openStudio = null)
+        bool library = false, Func<IReadOnlyList<Track>, Task>? openStudio = null,
+        BulkLyricsOptionPrefs? prefs = null, Action<BulkLyricsOptionPrefs>? savePrefs = null,
+        AppSettings? settings = null)
     {
         _tracks = tracks;
         _service = service;
         _openStudio = openStudio;
         IsRemove = remove;
         IsLibrary = library && !remove;
+        if (prefs is not null && !remove)
+        {
+            UpgradeExisting = prefs.Upgrade;
+            Recheck = prefs.Recheck;
+            ReviewFirst = prefs.ReviewFirst;
+        }
+        // Set after the restore above, so restoring them is not taken for a change.
+        _savePrefs = remove ? null : savePrefs;
         var n = tracks.Count;
         var songs = n == 1 ? L("LibrarySongs.SummarySong") : L("LibrarySongs.SummarySongs", n);
         TitleText = remove ? L("BulkLyrics.TitleRemove", songs) : IsLibrary ? L("BulkLyrics.TitleLibrary", songs) : L("BulkLyrics.TitleFetch", songs);
-        SubtitleText = remove ? L("BulkLyrics.SubtitleRemove") : L("BulkLyrics.SubtitleFetch");
+        // GitHub #203: what a run looks for and where it saves follow Settings ▸ Lyrics (the bulk
+        // service stops at the preferred type; LyricsWriter saves per "Save lyrics to").
+        var lyricsSettings = settings ?? CurrentSettings();
+        var preferred = LyricsSaveOptions.ParsePreferredType(lyricsSettings.LyricsPreferredType);
+        SubtitleText = remove ? L("BulkLyrics.SubtitleRemove") : FetchSubtitle(preferred, LyricsSaveOptions.ParseTarget(lyricsSettings.LyricsSaveTarget));
+        // The option only adds line-synced → word-synced (plain lyrics are always looked up): with
+        // line-synced or plain preferred there is nothing to upgrade them to.
+        CanUpgradeLineSynced = !remove && preferred == LyricsPreferredType.WordSynced;
         foreach (var t in tracks)
         {
             var row = new Row(t);
             Rows.Add(row);
             _rowById.TryAdd(t.Id, row);
         }
+        if (!remove && !IsLibrary)
+        {
+            var artists = tracks.Select(t => t.Artist?.Trim() ?? string.Empty)
+                .Where(a => !Noctis.Services.LyricsSearchSelector.IsUnknownArtist(a))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (artists.Count > MaxArtistNames) TooManyArtists = true;
+            else foreach (var a in artists) ArtistNames.Add(new ArtistName(a));
+        }
         StatusMessage = remove ? L("BulkLyrics.NothingRemovedYet") : L("BulkLyrics.Ready");
         RowStatusesLoaded = LoadRowStatusesAsync();
+    }
+
+    /// <summary>The "upgrade line-synced lyrics" option shows: word-synced is the preferred type (GitHub #203).</summary>
+    public bool CanUpgradeLineSynced { get; }
+
+    internal static string FetchSubtitle(LyricsPreferredType preferred, LyricsSaveTarget target)
+    {
+        var finds = preferred switch
+        {
+            LyricsPreferredType.LineSynced => L("BulkLyrics.FetchLine"),
+            LyricsPreferredType.Plain => L("BulkLyrics.FetchPlain"),
+            _ => L("BulkLyrics.FetchWord"),
+        };
+        var saves = target switch
+        {
+            LyricsSaveTarget.Embedded => L("BulkLyrics.SaveEmbedded"),
+            LyricsSaveTarget.Both => L("BulkLyrics.SaveBoth"),
+            _ => L("BulkLyrics.SaveSidecar"),
+        };
+        return $"{finds} {saves} {L("BulkLyrics.FollowsSettings")}";
+    }
+
+    private static AppSettings CurrentSettings()
+    {
+        try
+        {
+            return App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() ?? new AppSettings();
+        }
+        catch
+        {
+            return new AppSettings();
+        }
     }
 
     /// <summary>Completes once the rows' lyrics states have been read and posted to the UI thread.</summary>
@@ -92,13 +183,42 @@ public partial class BulkLyricsViewModel : ViewModelBase
         var rows = Rows.ToArray();
         return Task.Run(() =>
         {
-            var states = Array.ConvertAll(rows, r => Row.LyricsState(r.Track));
+            // What the find run itself compares against (sidecars, then the synced field, then
+            // timed text in the file's lyrics tag): GitHub #216, a song whose synced lyrics live
+            // in its USLT / LYRICS / ©lyr tag read "plain lyrics" here.
+            IReadOnlyList<Services.LyricsStudio.LyricsFormat> formats;
+            try { formats = Services.LyricsStudio.ExistingLyricsLoader.DetectFormats(rows.Select(r => r.Track).ToList()); }
+            catch { return; }
+            var states = formats.Select(Row.LyricsState).ToArray();
             Dispatcher.UIThread.Post(() =>
             {
                 for (var i = 0; i < rows.Length; i++)
                     if (!rows[i].Done) rows[i].Status = states[i]; // a run already reported this row
             });
         });
+    }
+
+    partial void OnUpgradeExistingChanged(bool value) => SavePrefs();
+    partial void OnRecheckChanged(bool value) => SavePrefs();
+    partial void OnReviewFirstChanged(bool value) => SavePrefs();
+
+    private void SavePrefs()
+    {
+        try { _savePrefs?.Invoke(new BulkLyricsOptionPrefs(UpgradeExisting, Recheck, ReviewFirst)); }
+        catch (Exception ex) { Services.DebugLogger.Warn(Services.DebugLogger.Category.Lyrics, "Bulk.SavePrefsFailed", ex.Message); }
+    }
+
+    /// <summary>
+    /// GitHub #214: a run the user hasn't finished with, so Find Lyrics brings this window back
+    /// instead of starting another: still running (hidden or not), or ended — results or finds
+    /// waiting for Save Selected — and not closed since.
+    /// </summary>
+    public bool NeedsReopen => IsRunning || ((IsDone || IsReviewing) && !_closedAfterRun);
+
+    /// <summary>The dialog window closed: once the run is over, its results count as seen.</summary>
+    public void OnDialogClosed()
+    {
+        if (!IsRunning && (IsDone || IsReviewing)) _closedAfterRun = true;
     }
 
     partial void OnIsRunningChanged(bool value)
@@ -147,10 +267,19 @@ public partial class BulkLyricsViewModel : ViewModelBase
         var progress = new Progress<LyricsBulkProgress>(p => Dispatcher.UIThread.Post(() =>
         {
             Progress = p.Total == 0 ? 1 : p.Done / (double)p.Total;
+            // GitHub #228: the run waits, then asks again about the songs sources were busy for.
+            if (p.Waiting)
+            {
+                if (IsRunning) StatusMessage = L("BulkLyrics.WaitingForSources", p.BusyLeft);
+                return;
+            }
             var row = _rowById.GetValueOrDefault(p.TrackId)
                       ?? Rows.FirstOrDefault(r => r.Track.Title == p.CurrentTitle && !r.Done) ?? Rows.FirstOrDefault(r => !r.Done);
             if (row is not null) { row.Status = p.Outcome; row.Done = true; row.Failed = p.Outcome is "failed" or "not found" or "sources busy"; }
-            if (IsRunning) StatusMessage = L(IsRemove ? "BulkLyrics.RemovingProgress" : "BulkLyrics.LookingUpProgress", p.Done, p.Total);
+            if (IsRunning)
+                StatusMessage = p.Done >= p.Total && p.BusyLeft > 0 && !IsRemove
+                    ? L("BulkLyrics.RetryingBusy", p.BusyLeft)
+                    : L(IsRemove ? "BulkLyrics.RemovingProgress" : "BulkLyrics.LookingUpProgress", p.Done, p.Total);
         }));
         try
         {
@@ -161,7 +290,8 @@ public partial class BulkLyricsViewModel : ViewModelBase
             }
             else
             {
-                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst), progress, _cts.Token);
+                var s = await _service.FetchAsync(_tracks, new LyricsBulkOptions(UpgradeExisting, Recheck, ReviewOnly: ReviewFirst, RetryBusy: true,
+                    ArtistOverrides: ArtistOverrides()), progress, _cts.Token);
                 if (ReviewFirst && s.Finds.Count > 0)
                 {
                     // GitHub #195: nothing saved yet; the finds wait for Save Selected.
@@ -262,6 +392,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         if (s.CheckedBefore > 0) parts.Add(L("BulkLyrics.SumCheckedBefore", s.CheckedBefore));
         if (s.Failed > 0) parts.Add(L("BulkLyrics.SumFailed", s.Failed));
         if (s.KeptOwnFile > 0) parts.Add(L("BulkLyrics.SumKeptOwnFile", s.KeptOwnFile));
+        if (s.StillBusy > 0) parts.Add(L("BulkLyrics.SumStillBusy", s.StillBusy));
         if (s.BusySources.Count > 0) parts.Add(L("BulkLyrics.SumBusy", string.Join(", ", s.BusySources)));
         return parts.Count == 0 ? L("BulkLyrics.SumNothing") : string.Join(" · ", parts);
     }
@@ -298,6 +429,20 @@ public partial class BulkLyricsViewModel : ViewModelBase
     [RelayCommand]
     private void Cancel() => Closed?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>GitHub #232: an artist of the selection and the name to search for its songs' lyrics under.</summary>
+    public sealed partial class ArtistName : ObservableObject
+    {
+        public ArtistName(string original)
+        {
+            Original = original;
+            _searchAs = original;
+        }
+
+        public string Original { get; }
+        [ObservableProperty] private string _searchAs;
+        public string AccessibleName => L("BulkLyrics.SearchAsFor", Original);
+    }
+
     public sealed partial class Row : ObservableObject
     {
         public Row(Track track)
@@ -305,8 +450,13 @@ public partial class BulkLyricsViewModel : ViewModelBase
             Track = track;
         }
 
-        internal static string LyricsState(Track track)
-            => string.IsNullOrWhiteSpace(track.SyncedLyrics) ? (string.IsNullOrWhiteSpace(track.Lyrics) ? "no lyrics" : "plain lyrics") : "synced";
+        internal static string LyricsState(Services.LyricsStudio.LyricsFormat format) => format switch
+        {
+            Services.LyricsStudio.LyricsFormat.Elrc => L("BulkLyrics.HasWordSynced"),
+            Services.LyricsStudio.LyricsFormat.Lrc => L("BulkLyrics.HasLineSynced"),
+            Services.LyricsStudio.LyricsFormat.Plain => L("BulkLyrics.HasPlain"),
+            _ => L("BulkLyrics.HasNone"),
+        };
 
         public Track Track { get; }
         public string Title => Track.Title;

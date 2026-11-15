@@ -38,9 +38,24 @@ public static class AlbumGridMetrics
     }
 
     /// <summary>
-    /// Artwork edge for a given usable width and column count. Each tile carries 8px
-    /// of chrome (2px margin + 2px padding per side); 80 is the legibility floor.
+    /// Space each tile adds around its cover with "Wider spacing between albums" on: 3px margin
+    /// + 6px padding per side (GitHub #210). Two neighbours' chrome make the 18px gap between
+    /// covers, the same gap the rows keep between one caption and the next cover.
     /// </summary>
-    public static double ComputeTileSize(double usableWidth, int columns)
-        => Math.Max(80, usableWidth / columns - 8);
+    public const double TileChrome = 18;
+
+    /// <summary>
+    /// Space each tile adds around its cover by default: 4px per side, so neighbouring covers
+    /// sit 8px apart as they did in 1.6.9 (2px margin + 2px padding then; now all padding, which
+    /// is also the selection plate's breathing room, #209).
+    /// </summary>
+    public const double ClassicTileChrome = 8;
+
+    /// <summary>
+    /// Artwork edge for a given usable width and column count, less each tile's chrome
+    /// (<see cref="ClassicTileChrome"/>, or <see cref="TileChrome"/> with wide spacing);
+    /// 80 is the legibility floor.
+    /// </summary>
+    public static double ComputeTileSize(double usableWidth, int columns, bool wideSpacing = false)
+        => Math.Max(80, usableWidth / columns - (wideSpacing ? TileChrome : ClassicTileChrome));
 }

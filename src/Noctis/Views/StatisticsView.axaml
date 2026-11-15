@@ -142,12 +142,19 @@
         </Style>
 
         <!-- Top Artists / Albums / Songs and Play History rows are read-only (owner 10-09: no
-             click to open, no hover zoom or square). -->
+             click to open, no hover zoom or square), except Last.fm rows the library has (#222). -->
         <Style Selector="Border.stats-item">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Padding" Value="6,4" />
             <Setter Property="CornerRadius" Value="12" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
+        </Style>
+        <!-- GitHub #222: with Last.fm as the source, rows the library has open their page. -->
+        <Style Selector="Border.stats-item.linked">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Border.stats-item.linked:pointerover">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
         </Style>
 
         <!-- Rank numerals: tabular, the podium in the accent colour. -->
@@ -285,23 +292,42 @@
                         <RadioButton Classes="stats-seg" Content="{loc:T Statistics.Overview}"
                                      IsChecked="{Binding IsOverviewTabSelected}" />
                         <RadioButton Classes="stats-seg" Content="{loc:T Statistics.PlayHistory}"
-                                     IsChecked="{Binding IsHistoryTabSelected}" />
+                                     IsChecked="{Binding IsHistoryTabSelected}"
+                                     IsEnabled="{Binding !IsLastFmSource}"
+                                     ToolTip.Tip="{loc:T Stats.LastFm.NoHistoryTip}"
+                                     ToolTip.ShowOnDisabled="True" ToolTip.ServiceEnabled="{Binding IsLastFmSource}" />
                     </StackPanel>
                 </Border>
             </StackPanel>
 
-            <Border Grid.Row="1" Grid.Column="0" Classes="seg-well" HorizontalAlignment="Left">
-                <StackPanel Orientation="Horizontal" Spacing="2">
-                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.Period7Days}"
-                                 IsChecked="{Binding IsLast7DaysSelected}" />
-                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.Period30Days}"
-                                 IsChecked="{Binding IsLast30DaysSelected}" />
-                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.PeriodYear}"
-                                 IsChecked="{Binding IsThisYearSelected}" />
-                    <RadioButton Classes="stats-seg" Content="{loc:T Stats.PeriodAll}"
-                                 IsChecked="{Binding IsAllTimeSelected}" />
-                </StackPanel>
-            </Border>
+            <WrapPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Left">
+                <Border Classes="seg-well" Margin="0,0,10,0">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <RadioButton Classes="stats-seg" Content="{loc:T Stats.Period7Days}"
+                                     IsChecked="{Binding IsLast7DaysSelected}" />
+                        <RadioButton Classes="stats-seg" Content="{loc:T Stats.Period30Days}"
+                                     IsChecked="{Binding IsLast30DaysSelected}" />
+                        <!-- Last.fm has no calendar-year chart (GitHub #222). -->
+                        <RadioButton Classes="stats-seg" Content="{loc:T Stats.PeriodYear}"
+                                     IsChecked="{Binding IsThisYearSelected}"
+                                     IsEnabled="{Binding !IsLastFmSource}"
+                                     ToolTip.Tip="{loc:T Stats.LastFm.NoYearTip}"
+                                     ToolTip.ShowOnDisabled="True" ToolTip.ServiceEnabled="{Binding IsLastFmSource}" />
+                        <RadioButton Classes="stats-seg" Content="{loc:T Stats.PeriodAll}"
+                                     IsChecked="{Binding IsAllTimeSelected}" />
+                    </StackPanel>
+                </Border>
+                <!-- Source (GitHub #222): only while a Last.fm account is connected. -->
+                <Border x:Name="SourceWell" Classes="seg-well" IsVisible="{Binding IsLastFmSourceAvailable}"
+                        ToolTip.Tip="{loc:T Stats.SourceTip}">
+                    <StackPanel Orientation="Horizontal" Spacing="2">
+                        <RadioButton Classes="stats-seg" Content="{loc:T Stats.SourceLibrary}"
+                                     IsChecked="{Binding IsLibrarySourceSelected}" />
+                        <RadioButton Classes="stats-seg" Content="{loc:T Stats.SourceLastFm}"
+                                     IsChecked="{Binding IsLastFmSourceSelected}" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
             <TextBlock Grid.Row="1" Grid.Column="1" Classes="section-caption"
                        Text="{Binding LogCoverageText}" Margin="12,0,0,0" HorizontalAlignment="Right" />
         </Grid>
@@ -314,11 +340,22 @@
             <StackPanel Margin="17,0,17,115" Spacing="14"
                         Container.Name="StatsOverview" Container.Sizing="Width">
 
+                <!-- Last.fm source: loading, offline or error, with Try Again after a failed read. -->
+                <Border x:Name="LastFmStatusCard" Classes="stats-card" IsVisible="{Binding HasLastFmStatus}">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                        <TextBlock Classes="empty-note" Text="{Binding LastFmStatusText}" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="stats-wrap" Height="32"
+                                Command="{Binding RetryLastFmCommand}" IsVisible="{Binding CanRetryLastFm}">
+                            <TextBlock Text="{loc:T Stats.LastFm.TryAgain}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </Button>
+                    </Grid>
+                </Border>
+
                 <!-- Nothing logged yet: one compact note instead of a page of zeros. -->
-                <Border Classes="stats-card" IsVisible="{Binding !HasPlayHistory}">
+                <Border Classes="stats-card" IsVisible="{Binding IsEmptyNoteVisible}">
                     <StackPanel Spacing="4">
-                        <TextBlock Text="{loc:T Stats.NoHistoryTitle}" FontSize="15" FontWeight="Bold" />
-                        <TextBlock Classes="empty-note" Text="{loc:T Statistics.NoPlaysRecordedYet}" />
+                        <TextBlock Text="{Binding EmptyTitle}" FontSize="15" FontWeight="Bold" />
+                        <TextBlock Classes="empty-note" Text="{Binding EmptyText}" />
                     </StackPanel>
                 </Border>
 
@@ -377,7 +414,8 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:StatsArtistTile">
-                                    <Border Classes="stats-item" Padding="6,10">
+                                    <Border Classes="stats-item" Classes.linked="{Binding IsLinked}" Padding="6,10"
+                                            Tapped="OnStatsItemTapped">
                                         <StackPanel Spacing="8" HorizontalAlignment="Center">
                                             <Panel Width="88" Height="88" HorizontalAlignment="Center">
                                                 <Border Width="88" Height="88" CornerRadius="44" ClipToBounds="True"
@@ -426,7 +464,8 @@
                             <ItemsControl ItemsSource="{Binding TopAlbums}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:StatsRankRow">
-                                        <Border Classes="stats-item">
+                                        <Border Classes="stats-item" Classes.linked="{Binding IsLinked}"
+                                                Tapped="OnStatsItemTapped">
                                             <Grid ColumnDefinitions="24,44,*,Auto" ColumnSpacing="12">
                                                 <TextBlock Classes="rank" Classes.podium="{Binding IsPodium}" Text="{Binding RankText}" />
                                                 <Border Grid.Column="1" Classes="thumb" Width="44" Height="44">
@@ -462,7 +501,8 @@
                             <ItemsControl ItemsSource="{Binding TopTracks}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:StatsRankRow">
-                                        <Border Classes="stats-item">
+                                        <Border Classes="stats-item" Classes.linked="{Binding IsLinked}"
+                                                Tapped="OnStatsItemTapped">
                                             <Grid ColumnDefinitions="24,44,*,Auto" ColumnSpacing="12">
                                                 <TextBlock Classes="rank" Classes.podium="{Binding IsPodium}" Text="{Binding RankText}" />
                                                 <Border Grid.Column="1" Classes="thumb" Width="44" Height="44">

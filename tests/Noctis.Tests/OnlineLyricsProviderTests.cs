@@ -286,6 +286,23 @@ public class OnlineLyricsProviderTests
         Assert.Single(router.Requests);
     }
 
+    /// <summary>GitHub #228, live 11-11: past ~60 requests a minute Musixmatch's load balancer answers
+    /// 403 for a minute or two, and token.get a captcha: both are its rate limit, so "busy".</summary>
+    [Fact]
+    public async Task Musixmatch_RateLimit403AndCaptcha_AreBusy()
+    {
+        var blocked = new MusixmatchService(new HttpClient(new Router((_, _) => Status(HttpStatusCode.Forbidden))), tokenPath: null);
+        var ex = await Assert.ThrowsAsync<LyricsProviderException>(() => blocked.SearchLyricsAsync("Coldplay", "Yellow", 266));
+        Assert.True(ex.IsBusy);
+
+        var captcha = new MusixmatchService(new HttpClient(new Router((_, _) =>
+            Ok("{\"message\":{\"header\":{\"status_code\":401,\"hint\":\"captcha\"}}}"))), tokenPath: null);
+        var first = await Assert.ThrowsAsync<LyricsProviderException>(() => captcha.SearchLyricsAsync("Coldplay", "Yellow", 266));
+        var second = await Assert.ThrowsAsync<LyricsProviderException>(() => captcha.SearchLyricsAsync("Coldplay", "Yellow", 266));
+        Assert.True(first.IsBusy && second.IsBusy);
+        Assert.InRange(second.RetryAfter!.Value, TimeSpan.FromMinutes(9), MusixmatchService.TokenRefusedBackoff);
+    }
+
     [Fact]
     public async Task Musixmatch_TokenRefusedTwice_ThrowsProviderError()
     {

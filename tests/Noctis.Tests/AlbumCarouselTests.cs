@@ -439,6 +439,198 @@ public class AlbumCarouselTests
         Assert.True(other.IsAlbumsCarousel);
     }
 
+    // ── GitHub #233: reflections, glow, per-album styles ─────────────────────
+
+    private static void Frames(int n)
+    {
+        for (var i = 0; i < n; i++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        }
+    }
+
+    [AvaloniaFact]
+    public void EveryStyle_StandsOnAReflectionStripUnderTheWholeCard()
+    {
+        foreach (var style in Enum.GetValues<AlbumCarouselStyle>())
+        {
+            Assert.True(AlbumCarouselCard.ReflectionFactor(style) > 0.25, style.ToString());
+            var card = new AlbumCarouselCard { CaseStyle = style, CoverSize = 200, Album = Alb("Bad") };
+            card.Measure(Size.Infinity);
+            card.Arrange(new Rect(card.DesiredSize));
+            var strip = card.ReflectionBounds;
+            // As wide as the composed card (case, disc, shell), right under it.
+            // (Within a pixel: layout rounding.)
+            Assert.Equal(card.CardSize.Width, strip.Width, 1.0);
+            Assert.Equal(card.CardSize.Height + 200 * AlbumCarouselCard.ReflectionGap, strip.Y, 1.0);
+            Assert.Equal(200 * AlbumCarouselCard.ReflectionHeight, strip.Height, 1.0);
+        }
+    }
+
+    [Fact]
+    public void ReflectionCover_CropsLikeUniformToFill()
+    {
+        Assert.Equal(new Rect(0, 0, 500, 500), AlbumCarouselCard.UniformToFillSource(new Size(500, 500), new Size(200, 200)));
+        // A wide image shows its middle square.
+        Assert.Equal(new Rect(100, 0, 400, 400), AlbumCarouselCard.UniformToFillSource(new Size(600, 400), new Size(100, 100)));
+    }
+
+    [AvaloniaFact]
+    public void Glide_DoesNotRedrawReflections()
+    {
+        var (c, w) = Show(Many(5));
+        c.CaseStyle = AlbumCarouselStyle.Vinyl;
+        Frames(4);
+        var cards = c.RealizedCards.Values.ToList();
+        Assert.Equal(5, cards.Count);
+        Assert.All(cards, card => Assert.True(card.ReflectionRenders > 0));
+        var before = cards.Select(card => card.ReflectionRenders).ToList();
+
+        c.MoveTo(4);
+        for (var i = 0; i < 40; i++)
+        {
+            c.StepGlide(1 / 60.0);
+            Frames(1);
+        }
+        Assert.Equal(4, c.Position);
+        // Moving cards is transforms only: no reflection was re-recorded.
+        Assert.Equal(before, cards.Select(card => card.ReflectionRenders).ToList());
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public void Glow_SitsBehindTheCentredAlbum_AndDimsBetweenTwo()
+    {
+        var (c, w) = Show(Many(9));
+        c.SnapTo(4);
+        Frames(2);
+        var centre = c.RealizedCards[4];
+        var cardRect = new Rect(Canvas.GetLeft(centre), Canvas.GetTop(centre), centre.CardSize.Width, centre.CardSize.Height);
+        Assert.Equal(1, c.GlowOpacity, 3);
+        Assert.Equal(cardRect.Center.X, c.GlowRect.Center.X, 1);
+        Assert.Equal(cardRect.Center.Y, c.GlowRect.Center.Y, 1);
+        Assert.True(c.GlowRect.Width > cardRect.Width && c.GlowRect.Height > cardRect.Height, "the glow reaches past the card");
+
+        // Half way to the next album the glow is at half strength, never on a side album.
+        c.MoveTo(5);
+        while (c.Position < 4.5) c.StepGlide(1 / 120.0);
+        Assert.InRange(c.GlowOpacity, 0.45, 0.7);
+        Assert.InRange(c.GlowRect.Center.X, cardRect.Center.X - 1, cardRect.Center.X + 1);
+        Settle(c);
+        Assert.Equal(1, c.GlowOpacity, 3);
+
+        c.GlowEnabled = false;
+        Assert.Equal(0, c.GlowOpacity);
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public void Glow_MovesOnlyWhatItMust_WhileGliding()
+    {
+        var (c, w) = Show(Many(30));
+        Frames(3);
+        var renders = c.GlowRenders;
+        c.MoveTo(20);
+        for (var i = 0; i < 60; i++)
+        {
+            c.StepGlide(1 / 60.0);
+            Frames(1);
+        }
+        // One ellipse per frame at most (same style, same accent: usually none at all).
+        Assert.InRange(c.GlowRenders - renders, 0, 60);
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public void MixedStyles_EachCardWearsItsOwn_OnOneFloor()
+    {
+        var albums = Many(7);
+        var (c, w) = Show(albums);
+        c.CaseStyle = AlbumCarouselStyle.JewelCase;
+        c.StyleOverrides = new Dictionary<Guid, AlbumCarouselStyle>
+        {
+            [albums[2].Id] = AlbumCarouselStyle.Cover,
+            [albums[3].Id] = AlbumCarouselStyle.Vinyl,
+            [albums[4].Id] = AlbumCarouselStyle.Cassette,
+        };
+        c.SnapTo(3);
+        w.UpdateLayout();
+
+        Assert.Equal(AlbumCarouselStyle.JewelCase, c.RealizedCards[1].CaseStyle);
+        Assert.Equal(AlbumCarouselStyle.Cover, c.RealizedCards[2].CaseStyle);
+        Assert.Equal(AlbumCarouselStyle.Vinyl, c.RealizedCards[3].CaseStyle);
+        Assert.Equal(AlbumCarouselStyle.Cassette, c.RealizedCards[4].CaseStyle);
+        // Different heights, one floor line (so the reflections line up).
+        var floors = c.RealizedCards.Values.Select(card => Canvas.GetTop(card) + card.CardSize.Height).Distinct().ToList();
+        Assert.All(floors, f => Assert.Equal(floors[0], f, 1));
+        // The centred record's sleeve is centred, its disc hangs to the right.
+        var vinyl = c.RealizedCards[3];
+        Assert.Equal(c.Bounds.Width / 2, Canvas.GetLeft(vinyl) + vinyl.CoverSize / 2, 1);
+        // Clicking still centres the right album.
+        c.Click(c.RealizedCards[4]);
+        Assert.Equal(4, c.TargetIndex);
+
+        // Back to the global style: the override map empties.
+        c.StyleOverrides = new Dictionary<Guid, AlbumCarouselStyle>();
+        Assert.All(c.RealizedCards.Values, card => Assert.Equal(AlbumCarouselStyle.JewelCase, card.CaseStyle));
+        w.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task PerAlbumStyle_IsSavedByAlbumId_AndSurvivesARestart()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var persistence = new Noctis.Services.PersistenceService(dir);
+        var lib = new FakeLibraryService();
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistoryService());
+        await settings.LoadAsync();
+        var bad = Alb("Bad");
+        Assert.Null(settings.GetAlbumCarouselStyleOverride(bad.Id));
+        Assert.True(settings.AlbumCarouselGlow);
+
+        settings.SetAlbumCarouselStyleOverride(bad.Id, AlbumCarouselStyle.Cassette);
+        settings.AlbumCarouselGlow = false;
+        await settings.SaveAsync();
+
+        // A rescan rebuilds the Album object; the id (artist + title) stays.
+        var again = new SettingsViewModel(persistence, lib, new NoOpPlayHistoryService());
+        await again.LoadAsync();
+        Assert.Equal(AlbumCarouselStyle.Cassette, again.GetAlbumCarouselStyleOverride(bad.Id));
+        Assert.Equal(AlbumCarouselStyle.Cassette, again.AlbumCarouselStyleOverrideMap()[bad.Id]);
+        Assert.False(again.AlbumCarouselGlow);
+
+        // Default = follow the global style again.
+        again.SetAlbumCarouselStyleOverride(bad.Id, null);
+        Assert.Null(again.GetAlbumCarouselStyleOverride(bad.Id));
+        Assert.Empty(again.AlbumCarouselStyleOverrideMap());
+    }
+
+    [AvaloniaFact]
+    public void AlbumMenu_CarouselStyle_ChecksTheAlbumsPick()
+    {
+        var host = new Window();
+        var builder = new AlbumContextMenuBuilder();
+        builder.Build("Remove", host, v2: true);
+        var album = Alb("Bad");
+        builder.BindCarouselStyle(album, null, visible: true);
+        Assert.True(builder.CarouselStyle.IsVisible);
+        Assert.Equal(1 + Enum.GetValues<AlbumCarouselStyle>().Length, builder.CarouselStyleRows.Length);
+        Assert.Equal(new object?[] { true, false, false, false, false }, builder.CarouselStyleRows.Select(r => r.Tag));
+        Assert.NotNull(builder.CarouselStyleRows[0].Icon);
+
+        builder.BindCarouselStyle(album, AlbumCarouselStyle.Vinyl, visible: true);
+        Assert.Equal(new object?[] { false, false, false, true, false }, builder.CarouselStyleRows.Select(r => r.Tag));
+        var vinylRow = builder.CarouselStyleRows[1 + (int)AlbumCarouselStyle.Vinyl];
+        var choice = Assert.IsType<AlbumCarouselStyleOverrides.Choice>(vinylRow.CommandParameter);
+        Assert.Same(album, choice.Album);
+        Assert.Equal(AlbumCarouselStyle.Vinyl, choice.Style);
+        Assert.Null(((AlbumCarouselStyleOverrides.Choice)builder.CarouselStyleRows[0].CommandParameter!).Style);
+
+        builder.BindCarouselStyle(album, null, visible: false);
+        Assert.False(builder.CarouselStyle.IsVisible);
+    }
+
     // ── Opt-in renders for eyeballing the case styles ─────────────────────────
 
     /// <summary>Saves one PNG per style. Runs only with NOCTIS_TEST_SKIA=1 and
@@ -477,17 +669,18 @@ public class AlbumCarouselTests
             albums.Add(Alb($"Album Number {i}", 1980 + i, path));
         }
 
-        foreach (var style in Enum.GetValues<AlbumCarouselStyle>())
+        void Shot(string name, AlbumCarouselStyle style, Action<AlbumCarousel>? setup = null, double width = 1280)
         {
             var carousel = new AlbumCarousel { Albums = albums, CaseStyle = style };
             var window = new Window
             {
-                Width = 1280, Height = 560, Content = carousel,
+                Width = width, Height = 560, Content = carousel,
                 Background = new SolidColorBrush(Color.Parse("#141414")),
                 RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark,
             };
             window.Show();
             carousel.SnapTo(7);
+            setup?.Invoke(carousel);
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 900)
             {
@@ -495,8 +688,24 @@ public class AlbumCarouselTests
                 AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 Thread.Sleep(10);
             }
-            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"carousel-{style}.png"));
+            window.CaptureRenderedFrame()!.Save(Path.Combine(dir, $"carousel-{name}.png"));
             window.Close();
         }
+
+        foreach (var style in Enum.GetValues<AlbumCarouselStyle>())
+            Shot(style.ToString(), style);
+        Shot("Cover-NoGlow", AlbumCarouselStyle.Cover, c => c.GlowEnabled = false);
+        // GitHub #233: one row, every case side by side (global Jewel Case).
+        var mixed = new Dictionary<Guid, AlbumCarouselStyle>
+        {
+            [albums[5].Id] = AlbumCarouselStyle.Cassette,
+            [albums[6].Id] = AlbumCarouselStyle.Cover,
+            [albums[7].Id] = AlbumCarouselStyle.Vinyl,
+            [albums[8].Id] = AlbumCarouselStyle.Cassette,
+            [albums[9].Id] = AlbumCarouselStyle.Cover,
+        };
+        Shot("Mixed", AlbumCarouselStyle.JewelCase, c => c.StyleOverrides = mixed);
+        Shot("Mixed-CentreCassette", AlbumCarouselStyle.JewelCase, c => { c.StyleOverrides = mixed; c.SnapTo(8); });
+        Shot("Mixed-Narrow", AlbumCarouselStyle.Cassette, c => c.StyleOverrides = mixed, width: 820);
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -14,6 +15,130 @@ namespace Noctis.Helpers;
 public static class MultiSelectHelper
 {
     private const string SelectedClass = "ctrl-selected";
+
+    /// <summary>Set for the duration of a selection change that must land on this frame
+    /// (Styles.axaml drops the select-ring transitions under it).</summary>
+    private const string InstantClass = "sel-instant";
+
+    /// <summary>
+    /// Shows or hides the Ctrl-selection plate on a tile or row container (GitHub #209). A
+    /// user action (<paramref name="animate"/> true) eases it in or out; a container that is
+    /// being realized or recycled on scroll takes its state at once, or a recycled container
+    /// would fade a stale plate out over the album or track it now shows.
+    /// </summary>
+    public static void SetSelectedVisual(StyledElement element, bool selected, bool animate = true)
+    {
+        if (element.Classes.Contains(SelectedClass) == selected) return;
+        if (animate)
+        {
+            element.Classes.Set(SelectedClass, selected);
+            return;
+        }
+        element.Classes.Add(InstantClass);
+        element.Classes.Set(SelectedClass, selected);
+        element.Classes.Remove(InstantClass);
+    }
+
+    /// <summary>
+    /// A ListBox that only virtualizes ROWS of tiles (Albums grid, Favorites): its rows are
+    /// layout and never selected. A press beside the tiles (plain, Shift or Ctrl) reached the
+    /// ListBox and selected the whole row (Discord, Halil: "its the whole line everytime");
+    /// the tiles keep their own selection.
+    /// </summary>
+    public static void KeepRowsUnselected(ListBox rows)
+    {
+        rows.SelectionChanged += (_, _) =>
+        {
+            if (rows.SelectedItem != null) rows.SelectedItem = null;
+        };
+    }
+
+    /// <summary>
+    /// GitHub #209: a plain left press on empty space beside the tiles or rows clears the
+    /// selection, as in the queue. "Empty" means the press hit no control of its own: no
+    /// button (tiles, pills, play buttons), no row container, text box, scroll bar or splitter
+    /// thumb, so scrolling or using a control keeps the selection. Ctrl / Shift presses never
+    /// clear, and neither does a right press (it opens menus that act on the selection).
+    /// <paramref name="rowsAreLayout"/>: the album grid's ListBoxItems are rows of tiles, so
+    /// the gaps between tiles inside one still count as empty space there.
+    /// </summary>
+    public static bool IsPlainBackgroundPress(PointerPressedEventArgs e, bool rowsAreLayout = false)
+    {
+        if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed) return false;
+        if (e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier) || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            return false;
+        return HitsNoControl(e.Source, rowsAreLayout);
+    }
+
+    /// <summary>The press source is empty space: no button, row container (unless rows are
+    /// layout), text box, scroll bar, splitter thumb, slider, combo box or menu item.</summary>
+    public static bool HitsNoControl(object? source, bool rowsAreLayout = false)
+    {
+        for (var v = source as Visual; v != null; v = v.GetVisualParent())
+        {
+            if (v is Button or TextBox or Avalonia.Controls.Primitives.ScrollBar
+                or Avalonia.Controls.Primitives.Thumb or Slider or ComboBox or MenuItem)
+                return false;
+            if (v is ListBoxItem && !rowsAreLayout) return false;
+        }
+        return true;
+    }
+
+    // ── Shift+click ranges (GitHub #226) ──
+    //
+    // The anchor is the item of the last plain or Ctrl click. A Shift+click selects every
+    // item from the anchor to the clicked one in display order, by data, so items between
+    // them that are scrolled out of view (unrealized) are selected too. Ctrl+Shift adds the
+    // range to the selection; Shift alone replaces it. The anchor stays put, so further
+    // Shift+clicks re-span from the same place, as in Explorer.
+
+    /// <summary>A left press with Shift held: extend the selection to the clicked item.</summary>
+    public static bool IsRangePress(PointerPressedEventArgs e) =>
+        e.GetCurrentPoint(null).Properties.IsLeftButtonPressed && e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+
+    /// <summary>Selects <paramref name="ordered"/> from <paramref name="anchor"/> to
+    /// <paramref name="target"/> (inclusive). Without an anchor in the list the target alone is
+    /// selected and becomes the anchor. Returns the anchor to keep.</summary>
+    public static T SelectRange<T>(IReadOnlyList<T> ordered, T? anchor, T target, bool additive, HashSet<T> selected) where T : class
+    {
+        var to = IndexOf(ordered, target);
+        if (to < 0) return anchor ?? target;
+        var from = anchor == null ? -1 : IndexOf(ordered, anchor);
+        if (from < 0) { from = to; anchor = target; }
+        if (!additive) selected.Clear();
+        for (var i = Math.Min(from, to); i <= Math.Max(from, to); i++)
+            selected.Add(ordered[i]);
+        return anchor!;
+    }
+
+    private static int IndexOf<T>(IReadOnlyList<T> list, T item) where T : class
+    {
+        for (var i = 0; i < list.Count; i++)
+            if (ReferenceEquals(list[i], item)) return i;
+        return -1;
+    }
+
+    /// <summary>
+    /// Shift+click on a data-tracked track row: selects the range from the anchor in the list's
+    /// display order and repaints the realized rows. Marks the press handled so the ListBox's
+    /// own (invisible) range selection and the row's drag gesture stay out of it.
+    /// </summary>
+    public static T HandleTrackRangeClickByData<T>(IReadOnlyList<T> ordered, T? anchor, T target, PointerPressedEventArgs e,
+        HashSet<T> selected, IEnumerable<ListBoxItem> realizedRows) where T : class
+    {
+        e.Handled = true;
+        anchor = SelectRange(ordered, anchor, target, e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier), selected);
+        foreach (var row in realizedRows)
+            SetSelectedVisual(row, row.DataContext is T d && selected.Contains(d));
+        return anchor;
+    }
+
+    /// <summary>The ListBox's items of type <typeparamref name="T"/> in display order.</summary>
+    public static List<T> ItemsOf<T>(ItemsControl list) where T : class =>
+        list.ItemsSource is System.Collections.IEnumerable items ? items.OfType<T>().ToList() : new List<T>();
+
+    /// <summary>The ListBox's realized rows (rows a RetainingVirtualizingStackPanel parked are hidden and skipped).</summary>
+    public static IEnumerable<ListBoxItem> RealizedRows(Control list) => list.GetVisualDescendants().OfType<ListBoxItem>().Where(r => r.IsVisible);
 
     /// <summary>
     /// Handles Ctrl+Click on an album-tile Button.
@@ -36,12 +161,12 @@ public static class MultiSelectHelper
         e.Handled = true;
         if (selectedTiles.Contains(tileButton))
         {
-            tileButton.Classes.Remove(SelectedClass);
+            SetSelectedVisual(tileButton, false);
             selectedTiles.Remove(tileButton);
         }
         else
         {
-            tileButton.Classes.Add(SelectedClass);
+            SetSelectedVisual(tileButton, true);
             selectedTiles.Add(tileButton);
         }
         return true;
@@ -70,7 +195,7 @@ public static class MultiSelectHelper
             selectedTiles.Clear();
             foreach (var tile in allTiles)
             {
-                tile.Classes.Add(SelectedClass);
+                SetSelectedVisual(tile, true);
                 selectedTiles.Add(tile);
             }
         }
@@ -83,7 +208,7 @@ public static class MultiSelectHelper
     public static void ClearAlbumSelections(HashSet<Button> selectedTiles)
     {
         foreach (var tile in selectedTiles)
-            tile.Classes.Remove(SelectedClass);
+            SetSelectedVisual(tile, false);
         selectedTiles.Clear();
     }
 
@@ -106,12 +231,12 @@ public static class MultiSelectHelper
         e.Handled = true;
         if (selectedItems.Contains(item))
         {
-            item.Classes.Remove(SelectedClass);
+            SetSelectedVisual(item, false);
             selectedItems.Remove(item);
         }
         else
         {
-            item.Classes.Add(SelectedClass);
+            SetSelectedVisual(item, true);
             selectedItems.Add(item);
         }
         return true;
@@ -146,7 +271,7 @@ public static class MultiSelectHelper
             selectedItems.Clear();
             foreach (var item in allItems)
             {
-                item.Classes.Add(SelectedClass);
+                SetSelectedVisual(item, true);
                 selectedItems.Add(item);
             }
         }
@@ -159,7 +284,7 @@ public static class MultiSelectHelper
     public static void ClearTrackSelections(HashSet<ListBoxItem> selectedItems)
     {
         foreach (var item in selectedItems)
-            item.Classes.Remove(SelectedClass);
+            SetSelectedVisual(item, false);
         selectedItems.Clear();
     }
 
@@ -224,12 +349,12 @@ public static class MultiSelectHelper
         if (selectedData.Contains(data))
         {
             selectedData.Remove(data);
-            item.Classes.Remove(SelectedClass);
+            SetSelectedVisual(item, false);
         }
         else
         {
             selectedData.Add(data);
-            item.Classes.Add(SelectedClass);
+            SetSelectedVisual(item, true);
         }
         return true;
     }
@@ -250,14 +375,14 @@ public static class MultiSelectHelper
             ClearTrackSelectionsByData(selectedData);
             // Strip the class from any currently realized rows.
             foreach (var child in listBox.GetVisualDescendants())
-                if (child is ListBoxItem li) li.Classes.Remove(SelectedClass);
+                if (child is ListBoxItem li) SetSelectedVisual(li, false);
         }
         else
         {
             selectedData.Clear();
             foreach (var d in allData) selectedData.Add(d);
             foreach (var child in listBox.GetVisualDescendants())
-                if (child is ListBoxItem li) li.Classes.Add(SelectedClass);
+                if (child is ListBoxItem li) SetSelectedVisual(li, true);
         }
         return true;
     }
@@ -266,12 +391,7 @@ public static class MultiSelectHelper
     /// DataContext is in the data selection set. Call from ContainerPrepared so
     /// recycled containers reflect the right state after scroll/rebind.</summary>
     public static void SyncContainerVisual<T>(ListBoxItem item, HashSet<T> selectedData) where T : class
-    {
-        if (item.DataContext is T data && selectedData.Contains(data))
-            item.Classes.Add(SelectedClass);
-        else
-            item.Classes.Remove(SelectedClass);
-    }
+        => SetSelectedVisual(item, item.DataContext is T data && selectedData.Contains(data), animate: false);
 
     /// <summary>Clear all data-tracked track selections.</summary>
     public static void ClearTrackSelectionsByData<T>(HashSet<T> selectedData) where T : class
@@ -285,7 +405,7 @@ public static class MultiSelectHelper
     {
         selectedData.Clear();
         foreach (var child in listBox.GetVisualDescendants())
-            if (child is ListBoxItem li) li.Classes.Remove(SelectedClass);
+            if (child is ListBoxItem li) SetSelectedVisual(li, false);
     }
 
     // ── Data-tracked album-tile variants ──
@@ -312,12 +432,12 @@ public static class MultiSelectHelper
         if (selectedData.Contains(data))
         {
             selectedData.Remove(data);
-            tile.Classes.Remove(SelectedClass);
+            SetSelectedVisual(tile, false);
         }
         else
         {
             selectedData.Add(data);
-            tile.Classes.Add(SelectedClass);
+            SetSelectedVisual(tile, true);
         }
         return true;
     }
@@ -335,32 +455,27 @@ public static class MultiSelectHelper
         if (all.Count > 0 && all.All(d => selectedData.Contains(d)))
         {
             selectedData.Clear();
-            foreach (var tile in tiles) tile.Classes.Remove(SelectedClass);
+            foreach (var tile in tiles) SetSelectedVisual(tile, false);
         }
         else
         {
             selectedData.Clear();
             foreach (var d in all) selectedData.Add(d);
-            foreach (var tile in tiles) SyncAlbumTileVisual(tile, selectedData);
+            foreach (var tile in tiles) SyncAlbumTileVisual(tile, selectedData, animate: true);
         }
         return true;
     }
 
     /// <summary>Re-apply/strip the ctrl-selected class on a tile based on the data
     /// selection set. Call from Button.Loaded so recycled tiles reflect the right
-    /// state after a scroll.</summary>
-    public static void SyncAlbumTileVisual<T>(Button tile, HashSet<T> selectedData) where T : class
-    {
-        if (tile.DataContext is T data && selectedData.Contains(data))
-            tile.Classes.Add(SelectedClass);
-        else
-            tile.Classes.Remove(SelectedClass);
-    }
+    /// state after a scroll (no fade there: see <see cref="SetSelectedVisual"/>).</summary>
+    public static void SyncAlbumTileVisual<T>(Button tile, HashSet<T> selectedData, bool animate = false) where T : class
+        => SetSelectedVisual(tile, tile.DataContext is T data && selectedData.Contains(data), animate);
 
     /// <summary>Clear all data-tracked album selections and strip the class from realized tiles.</summary>
     public static void ClearAlbumSelectionsByData<T>(HashSet<T> selectedData, IEnumerable<Button> realizedTiles) where T : class
     {
         selectedData.Clear();
-        foreach (var tile in realizedTiles) tile.Classes.Remove(SelectedClass);
+        foreach (var tile in realizedTiles) SetSelectedVisual(tile, false);
     }
 }

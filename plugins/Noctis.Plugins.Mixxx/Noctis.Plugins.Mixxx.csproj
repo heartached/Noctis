@@ -22,7 +22,7 @@
     <!-- Compile-time only: Noctis ships this exact Microsoft.Data.Sqlite (and the native SQLite
          behind it) for its own library index, and a plugin's load context resolves assemblies the
          app has to the app's copy, so the package carries no SQLite of its own. -->
-    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="8.0.31" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.14" ExcludeAssets="runtime" />
   </ItemGroup>
   <Import Project="..\..\samples\PluginPackage.targets" />
 </Project>

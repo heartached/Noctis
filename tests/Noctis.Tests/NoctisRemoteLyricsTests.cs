@@ -196,6 +196,65 @@ public class NoctisRemoteLyricsTests : IAsyncLifetime
         AssertIssueTtmlWithLayers(await LoadOnPhone(offline, phoneTrack));
     }
 
+    private sealed class ManualTime : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 11, 14, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan by) => _now += by;
+    }
+
+    [Fact]
+    public void LyricsQuiet_DoublesWithEachFailureInARow_UpToHalfAnHour()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(1), NoctisAccountService.LyricsQuietAfter(1));
+        Assert.Equal(TimeSpan.FromMinutes(2), NoctisAccountService.LyricsQuietAfter(2));
+        Assert.Equal(TimeSpan.FromMinutes(4), NoctisAccountService.LyricsQuietAfter(3));
+        Assert.Equal(TimeSpan.FromMinutes(16), NoctisAccountService.LyricsQuietAfter(5));
+        Assert.Equal(TimeSpan.FromMinutes(30), NoctisAccountService.LyricsQuietAfter(6));
+        Assert.Equal(TimeSpan.FromMinutes(30), NoctisAccountService.LyricsQuietAfter(64));
+    }
+
+    /// <summary>S23 11-14: away from the desktop every new song waited out the lookup timeout
+    /// before its saved lyrics showed (the quiet lasted one minute, a song three). Failures in a row
+    /// stretch the quiet; the desktop answering a sync ends it at once.</summary>
+    [Fact]
+    public async Task AwayFromTheDesktop_LookupsStayQuietLonger_AndASyncEndsTheQuiet()
+    {
+        var time = new ManualTime();
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a(), time: time);
+        var fingerprint = await svc.ProbeFingerprintAsync(_url, TestContext.Current.CancellationToken);
+        await svc.SignInAsync(_url, "alice", "correct horse", fingerprint, TestContext.Current.CancellationToken);
+        var phoneTrack = PhoneCopy(_storedSong);
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Contains((await LoadOnPhone(svc, phoneTrack)).Lines, l => l.Text == "Stored second");
+
+        // A sync makes the saved copy due; then the desktop goes away: the first lookup fails.
+        time.Advance(TimeSpan.FromSeconds(1));
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        var port = _server.Port;
+        await _server.StopAsync();
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Contains((await LoadOnPhone(svc, phoneTrack)).Lines, l => l.Text == "Stored second");
+
+        // A minute later the lookup asks again and fails again: two in a row quiet it for two minutes.
+        time.Advance(TimeSpan.FromSeconds(61));
+        Assert.Contains((await LoadOnPhone(svc, phoneTrack)).Lines, l => l.Text == "Stored second");
+
+        // The desktop is back with an edit, no sync yet.
+        _storedSong.SyncedLyrics = "[00:01.00]Edited on the desktop";
+        _server = new NoctisServer(new LyricsDesk(new List<Track> { _ttmlSong, _storedSong }), _users, "test", _sync) { PrivateClientsOnly = true };
+        await _server.StartAsync(port, certificate: null);
+        time.Advance(TimeSpan.FromSeconds(61));
+        // Within the stretched quiet: the saved copy, the desktop not asked.
+        Assert.Contains((await LoadOnPhone(svc, phoneTrack)).Lines, l => l.Text == "Stored second");
+
+        // The desktop answers a sync: the quiet ends, the next lookup asks and gets the edit.
+        time.Advance(TimeSpan.FromSeconds(1));
+        await svc.SyncNowAsync(TestContext.Current.CancellationToken);
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.Contains((await LoadOnPhone(svc, phoneTrack)).Lines, l => l.Text == "Edited on the desktop");
+    }
+
     [Fact]
     public async Task SignOut_RemovesTheSavedLyrics()
     {

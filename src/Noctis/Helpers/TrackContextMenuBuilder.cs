@@ -31,13 +31,6 @@ public sealed record VersionSwitchRequest(Track From, Track To);
 /// </summary>
 public sealed class TrackContextMenuBuilder
 {
-    private static IBrush ResolveAccentBrush()
-    {
-        if (Application.Current?.Resources.TryGetResource("AccentColorBrush", null, out var brush) == true && brush is IBrush b)
-            return b;
-        return new SolidColorBrush(Color.Parse("#E74856"));
-    }
-
     // ── Named menu item references ──
     public MenuItem Play { get; private set; } = null!;
     public MenuItem Shuffle { get; private set; } = null!;
@@ -60,6 +53,8 @@ public sealed class TrackContextMenuBuilder
     public MenuItem Favorite { get; private set; } = null!;
     public MenuItem Unfavorite { get; private set; } = null!;
     public MenuItem Metadata { get; private set; } = null!;
+    /// <summary>"Move to Album" (GitHub #239): hidden unless the view passes a moveToAlbumCommand.</summary>
+    public MenuItem MoveToAlbum { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
     public MenuItem Spectrogram { get; private set; } = null!;
@@ -67,6 +62,8 @@ public sealed class TrackContextMenuBuilder
     /// <summary>"Lyrics ▸" submenu: Search Lyrics plus the bulk actions (hidden until a view wires them).</summary>
     public MenuItem Lyrics { get; private set; } = null!;
     public MenuItem FetchLyrics { get; private set; } = null!;
+    /// <summary>The entry's own label, put back once no hidden Find Lyrics run is pending.</summary>
+    private object? _fetchLyricsHeader;
     public MenuItem LyricsStudio { get; private set; } = null!;
     public MenuItem RemoveLyrics { get; private set; } = null!;
     /// <summary>"Rate ▸" submenu: ★ … ★★★★★ and Clear rating. Hidden unless the view passes a rateCommand.</summary>
@@ -235,6 +232,10 @@ public sealed class TrackContextMenuBuilder
         Metadata.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(Metadata);
 
+        MoveToAlbum = new MenuItem { Header = Loc.T("MoveToAlbum.Menu"), IsVisible = false };
+        MoveToAlbum.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Albums%20ICON.png");
+        items.Add(MoveToAlbum);
+
         Convert = new MenuItem { Header = "Convert File", IsVisible = false };
         Convert.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(Convert);
@@ -257,6 +258,7 @@ public sealed class TrackContextMenuBuilder
         SearchLyrics = new MenuItem { Header = "Search Lyrics" };
         Lyrics.Items.Add(SearchLyrics);
         FetchLyrics = new MenuItem { Header = "Fetch & Save Lyrics", IsVisible = false };
+        _fetchLyricsHeader = FetchLyrics.Header;
         Lyrics.Items.Add(FetchLyrics);
         LyricsStudio = new MenuItem { Header = "Open in Lyrics Studio", IsVisible = false };
         Lyrics.Items.Add(LyricsStudio);
@@ -381,10 +383,13 @@ public sealed class TrackContextMenuBuilder
         items.Add(new Separator());
         Metadata = MenuV2.Row(host, Loc.T("LibraryAlbums.Metadata"), "MenuLineEdit");
         items.Add(Metadata);
+        MoveToAlbum = MenuV2.Row(host, Loc.T("MoveToAlbum.Menu"), "MenuLineAlbum", visible: false);
+        items.Add(MoveToAlbum);
         Lyrics = MenuV2.Row(host, Loc.T("Tab.Lyrics"), "MenuLineLyrics");
         SearchLyrics = new MenuItem { Header = Loc.T("Lyrics.SearchLyrics") };
         Lyrics.Items.Add(SearchLyrics);
         FetchLyrics = new MenuItem { Header = Loc.T("Menu.FetchLyrics"), IsVisible = false };
+        _fetchLyricsHeader = FetchLyrics.Header;
         Lyrics.Items.Add(FetchLyrics);
         LyricsStudio = new MenuItem { Header = Loc.T("Menu.LyricsStudio"), IsVisible = false };
         Lyrics.Items.Add(LyricsStudio);
@@ -479,7 +484,8 @@ public sealed class TrackContextMenuBuilder
         IReadOnlyList<string>? badgeNames = null,
         ICommand? viewAlbumCommand = null,
         ICommand? viewArtistCommand = null,
-        Func<string, string?>? artistPhotoSource = null)
+        Func<string, string?>? artistPhotoSource = null,
+        ICommand? moveToAlbumCommand = null)
     {
         Menu.DataContext = track;
 
@@ -544,9 +550,12 @@ public sealed class TrackContextMenuBuilder
 
         // Lyrics ▸ bulk entries (optional).
         BindOptional(FetchLyrics, fetchLyricsCommand, track);
+        // GitHub #214: while a hidden Find Lyrics run is pending, this entry brings it back.
+        FetchLyrics.Header = ViewModels.MetadataHelper.PendingFindLyricsMenuHeader() ?? _fetchLyricsHeader;
         BindOptional(LyricsStudio, lyricsStudioCommand, track);
         BindOptional(RemoveLyrics, removeLyricsCommand, track);
         BindOptional(SendToFolder, sendToFolderCommand, track);
+        BindOptional(MoveToAlbum, moveToAlbumCommand, track);
 
         LyricsBackgroundChoose.CommandParameter = track;
         LyricsBackgroundClear.CommandParameter = track;

@@ -165,6 +165,29 @@ public class GlassPanel : Decorator
     public static readonly StyledProperty<double> BackdropShadeProperty =
         AvaloniaProperty.Register<GlassPanel, double>(nameof(BackdropShade));
 
+    /// <summary>
+    /// Set by a host whose layers beneath the panel only ever change as a whole: any change
+    /// there repaints the panel's entire bounds (the pop-up card over its full-window blurred
+    /// snapshot and dim). A frame that repaints only part of the panel then cannot have changed
+    /// what lies beneath it, so it asks for no full repaint afterwards. Without it, the GPU
+    /// backend asks after every partial frame (a list scrolling inside the card): its surface
+    /// copy is a texture that cannot be read back to rule a change out.
+    /// </summary>
+    public static readonly StyledProperty<bool> BeneathRepaintsWholeProperty =
+        AvaloniaProperty.Register<GlassPanel, bool>(nameof(BeneathRepaintsWhole));
+
+    /// <summary>
+    /// 0..1: how much of the frost is the lite frost instead of the full glass, for a panel in motion
+    /// (the phone menus' pop: PopMenu). At 1 the lens's expensive passes are skipped (no spill blur,
+    /// no lens shader) and the backdrop is one blur through a colour table that follows the lens's
+    /// tone range, saturation and lift (<see cref="GlassLens.LiteFilter"/>); in between the two are
+    /// cross-faded from one snapshot. On an S23 the full glass cost frames over 25 ms through most of
+    /// the 340 ms pop (11-14). 0 (default): the full glass only, exactly as before; the desktop never
+    /// sets it. Only matters with a lens (<see cref="HasLens"/>): the plain frost is already one blur.
+    /// </summary>
+    public static readonly StyledProperty<double> LiteProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Lite));
+
     /// <summary>Shadows cast outside the panel, as on a <see cref="Border"/>; none by default.</summary>
     public static readonly StyledProperty<BoxShadows> BoxShadowProperty =
         Border.BoxShadowProperty.AddOwner<GlassPanel>();
@@ -176,7 +199,8 @@ public class GlassPanel : Decorator
             EdgeBrushProperty, EdgeThicknessProperty, FadeProperty,
             RefractionProperty, RefractionAmountProperty, DispersionProperty, MagnificationProperty,
             SaturationProperty, SpecularProperty, BoxShadowProperty, BackdropMinLuminanceProperty, BackdropMaxLuminanceProperty,
-            SpecularStyleProperty, BackdropToneCurveProperty, BackdropLiftProperty, BackdropSpillProperty, BackdropShadeProperty);
+            SpecularStyleProperty, BackdropToneCurveProperty, BackdropLiftProperty, BackdropSpillProperty, BackdropShadeProperty,
+            BeneathRepaintsWholeProperty, LiteProperty);
         AffectsArrange<GlassPanel>(BlurRadiusProperty);
     }
 
@@ -194,6 +218,8 @@ public class GlassPanel : Decorator
     public double BackdropSpill { get => GetValue(BackdropSpillProperty); set => SetValue(BackdropSpillProperty, value); }
     public double BackdropShade { get => GetValue(BackdropShadeProperty); set => SetValue(BackdropShadeProperty, value); }
     public BoxShadows BoxShadow { get => GetValue(BoxShadowProperty); set => SetValue(BoxShadowProperty, value); }
+    public bool BeneathRepaintsWhole { get => GetValue(BeneathRepaintsWholeProperty); set => SetValue(BeneathRepaintsWholeProperty, value); }
+    public double Lite { get => GetValue(LiteProperty); set => SetValue(LiteProperty, value); }
 
     /// <summary>Any lens setting is on: the backdrop is drawn through <see cref="GlassLens"/>.</summary>
     internal bool HasLens =>
@@ -393,7 +419,7 @@ public class GlassPanel : Decorator
         // The fade is folded into every layer here rather than applied as Opacity: see Fade.
         if (NeedsBackdrop)
             context.Custom(new GlassBackdropOp(rect, CornerRadius, BlurRadius, fade,
-                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings(), RepaintFootprint(rect)));
+                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings(), RepaintFootprint(rect), BeneathRepaintsWhole, Math.Clamp(Lite, 0, 1)));
 
         var (tint, opacity) = ResolveTint();
         opacity *= fade;
@@ -457,9 +483,25 @@ public static class GlassBlur
     /// <summary>The plain blur, or the lens over it when <paramref name="lens"/> is set and the
     /// shader runs here (the blur alone otherwise).</summary>
     internal static void DrawFrosted(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha,
-        GlassLensFrame? lens, GRRecordingContext? context)
+        GlassLensFrame? lens, GRRecordingContext? context, float lite = 0)
     {
-        if (lens is { } frame && GlassLens.Draw(canvas, source, at, clip, sigma, alpha, frame, context)) return;
+        if (lens is { } frame && lite > 0)
+        {
+            // The lite frost under the full glass's share (GlassPanel.Lite), both read from this one
+            // snapshot. Each replaces what it covers by its alpha (ClearForFrost), so the lite one at
+            // a*l / (1 - a*(1 - l)) and the full one over it at a*(1 - l) leave
+            // beneath*(1 - a) + lite*a*l + full*a*(1 - l): a straight cross-fade.
+            lite = Math.Min(lite, 1f);
+            var full = alpha * (1 - lite);
+            using (var filter = GlassLens.LiteFilter(frame))
+                DrawBlurred(canvas, source, at, clip, sigma, full < 1 ? alpha * lite / (1 - full) : 0, filter);
+            Interlocked.Increment(ref GlassLens.LitePasses);
+            if (full <= 0) return;
+            if (GlassLens.Draw(canvas, source, at, clip, sigma, full, frame, context)) return;
+            DrawBlurred(canvas, source, at, clip, sigma, full);
+            return;
+        }
+        if (lens is { } f && GlassLens.Draw(canvas, source, at, clip, sigma, alpha, f, context)) return;
         DrawBlurred(canvas, source, at, clip, sigma, alpha);
     }
 
@@ -473,8 +515,26 @@ public static class GlassBlur
     internal static SKRectI SourceRect(SKRect deviceRect, float sigma)
     {
         var bleed = (float)Math.Ceiling(sigma * 3);
-        return RoundOut(SKRect.Inflate(deviceRect, bleed, bleed));
+        return ToGrid(RoundOut(SKRect.Inflate(deviceRect, bleed, bleed)));
     }
+
+    /// <summary>
+    /// The device-pixel grid the backdrop copies are sized to (<see cref="ToGrid"/>, <see cref="GridSize"/>).
+    /// A panel that scales or moves every frame (a menu's pop) asked the GPU for a texture of a new
+    /// exact size on every frame for each copy (the snapshot, the clean copy, the frost and the
+    /// spill), none of which Skia's texture cache could hand back; on the grid the size stays put
+    /// for most frames and the cache reuses the last one.
+    /// </summary>
+    internal const int Grid = 32;
+
+    /// <summary><paramref name="r"/> grown out to the <see cref="Grid"/>.</summary>
+    internal static SKRectI ToGrid(SKRectI r) => new(
+        FloorTo(r.Left), FloorTo(r.Top), -FloorTo(-r.Right), -FloorTo(-r.Bottom));
+
+    /// <summary>A copy's size rounded up to the <see cref="Grid"/>.</summary>
+    internal static SKSizeI GridSize(int width, int height) => new(-FloorTo(-width), -FloorTo(-height));
+
+    private static int FloorTo(int v) => (int)Math.Floor(v / (double)Grid) * Grid;
 
     internal static SKRectI RoundOut(SKRect r) => new(
         (int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Right), (int)Math.Ceiling(r.Bottom));
@@ -495,7 +555,8 @@ public static class GlassBlur
 
     /// <summary>Draws <paramref name="source"/>, whose pixels sit at device rect
     /// <paramref name="at"/>, through the blur, clipped to the device path <paramref name="clip"/>.</summary>
-    internal static void DrawBlurred(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha)
+    internal static void DrawBlurred(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha,
+        SKColorFilter? colorFilter = null)
     {
         canvas.Save();
         canvas.SetMatrix(SKMatrix.Identity);
@@ -508,6 +569,7 @@ public static class GlassBlur
             FilterQuality = SKFilterQuality.Low,
             Color = new SKColor(255, 255, 255, AlphaByte(alpha)),
             BlendMode = SKBlendMode.Plus,
+            ColorFilter = colorFilter,
         };
         ClearForFrost(canvas, dst, alpha);
         canvas.DrawImage(source, SKRect.Create(source.Width, source.Height), dst, paint);
@@ -576,6 +638,7 @@ internal sealed class GlassBackdropCache
     private SKSurface? _clean;
     private IntPtr _context;
     private SKRectI _rect;
+    private SKSizeI _cleanSize;
     private bool _suspect, _repaintQueued, _released;
 
     /// <param name="requestFullRepaint">Asks for the whole panel to be repainted next frame;
@@ -631,6 +694,29 @@ internal sealed class GlassBackdropCache
         return false;
     }
 
+    /// <summary>
+    /// Device pixels the compositor's dirty rect runs past what actually changed: Avalonia 12
+    /// inflates every dirty rect by 1 px for antialiasing and rounds it out to whole pixels
+    /// (SingleDirtyRectTracker / MultiDirtyRectTracker / RegionDirtyRectTracker: Inflate(1),
+    /// then FromRectUnscaled). A change inside a panel therefore reports up to this far beyond
+    /// it, and those pixels are repainted exactly as they were.
+    /// </summary>
+    internal const int DirtySlack = 2;
+
+    /// <summary>A dirty rect <paramref name="repainted"/> reaches past <paramref name="panel"/> by
+    /// more than <see cref="DirtySlack"/>: something beside the panel changed.</summary>
+    internal static bool SpillsPast(SKRectI repainted, SKRectI panel)
+    {
+        if (repainted.IsEmpty) return false;
+        var allowed = panel;
+        allowed.Inflate(DirtySlack, DirtySlack);
+        return !allowed.Contains(repainted);
+    }
+
+    /// <summary>Tests: behave as on the GPU backend, where the surface copy is a texture that
+    /// <see cref="SKImage.PeekPixels()"/> cannot read, so a change beneath can never be ruled out.</summary>
+    internal static bool UnreadableForTests;
+
     /// <summary>True while pixels under the panel may still hold frost the copy does not cover.</summary>
     internal bool IsSuspect { get { lock (_gate) return _suspect; } }
 
@@ -644,9 +730,10 @@ internal sealed class GlassBackdropCache
     /// the panel's own pixels (inward), all of which the composed copy holds clean, so a
     /// partial frame stays exact; a change beneath moves its output further than the blur's,
     /// which the full repaint this already asks for covers.
+    /// <paramref name="beneathRepaintsWhole"/>: see <see cref="GlassPanel.BeneathRepaintsWhole"/>.
     /// </summary>
     public bool Draw(SKCanvas canvas, SKSurface surface, SKPath clip, float sigma, float alpha, bool wholePanelRepainted,
-        GlassLensFrame? lens = null)
+        GlassLensFrame? lens = null, bool beneathRepaintsWhole = false, float lite = 0)
     {
         DrainRetired();
         sigma = GlassBlur.ClampSigma(sigma);
@@ -673,8 +760,11 @@ internal sealed class GlassBackdropCache
                 // 3σ past that rect, where this frame repaints nothing: repaint the whole panel
                 // next frame. Children draw above the frost and never feed it, so a frame that only
                 // repainted them (the island's title, a hovered button) needs no second pass; nor
-                // does another glass panel repainting itself over or beside this one.
-                var followUp = !whole && !neighbourRepaint && (repainted != fresh || BeneathChanged(source, at, panel, fresh));
+                // does another glass panel repainting itself over or beside this one. Nor does the
+                // pixel or two the compositor adds round every dirty rect (DirtySlack): a list
+                // scrolling edge to edge inside the panel reaches just past it on every step.
+                var followUp = !whole && !neighbourRepaint
+                    && (SpillsPast(repainted, panel) || (!beneathRepaintsWhole && BeneathChanged(source, at, panel, fresh)));
                 Capture(source, at, panel, fresh, surface.Context, whole);
                 if ((followUp || _suspect) && !_repaintQueued && _requestFullRepaint != null)
                     askRepaint = _repaintQueued = true;
@@ -686,7 +776,7 @@ internal sealed class GlassBackdropCache
         try
         {
             if (!fresh.IsEmpty && alpha > 0f)
-                GlassBlur.DrawFrosted(canvas, composed ?? source, at, clip, sigma, alpha, lens, surface.Context);
+                GlassBlur.DrawFrosted(canvas, composed ?? source, at, clip, sigma, alpha, lens, surface.Context, lite);
         }
         finally { composed?.Dispose(); }
         return true;
@@ -702,6 +792,7 @@ internal sealed class GlassBackdropCache
     {
         if (fresh.IsEmpty) return false;
         if (_clean == null || _rect != panel || !_captured.Contains(fresh)) return true;
+        if (UnreadableForTests) return true;
         using var now = source.PeekPixels();
         using var before = _clean.PeekPixels();
         if (now == null || before == null || now.ColorType != before.ColorType) return true;
@@ -725,17 +816,24 @@ internal sealed class GlassBackdropCache
         var contextHandle = context?.Handle ?? IntPtr.Zero;
         if (_clean == null || _rect != panel || _context != contextHandle)
         {
-            FreeClean(onRenderThread: true);
             _captured.SetEmpty();
             // Remade outside a whole-panel repaint: frost from before may sit outside the copy.
             _suspect = true;
-            if (!panel.IsEmpty)
+            // Sized to the grid (GlassBlur.Grid), and kept while the panel still fits it: a panel
+            // scaling every frame (a menu's pop) no longer makes a new GPU texture every frame.
+            var size = GlassBlur.GridSize(panel.Width, panel.Height);
+            if (_clean == null || _context != contextHandle || _cleanSize != size)
             {
-                var info = new SKImageInfo(panel.Width, panel.Height, source.ColorType, source.AlphaType, source.ColorSpace);
-                _clean = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
-                _rect = panel;
-                _context = contextHandle;
+                FreeClean(onRenderThread: true);
+                if (!panel.IsEmpty)
+                {
+                    var info = new SKImageInfo(size.Width, size.Height, source.ColorType, source.AlphaType, source.ColorSpace);
+                    _clean = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
+                    _cleanSize = size;
+                    _context = contextHandle;
+                }
             }
+            if (!panel.IsEmpty) _rect = panel;
         }
         if (wholePanelRepainted)
         {
@@ -835,11 +933,14 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
     private readonly GlassBackdropCache? _cache;
     private readonly GlassLensSettings? _lens;
     private readonly Rect _footprint;
+    private readonly double _lite;
+    private readonly bool _beneathRepaintsWhole;
     private bool _drawn;
 
     public GlassBackdropOp(Rect bounds, CornerRadius corners, double blurRadius, double fade = 1, GlassBackdropCache? cache = null,
-        GlassLensSettings? lens = null, Rect? footprint = null)
+        GlassLensSettings? lens = null, Rect? footprint = null, bool beneathRepaintsWhole = false, double lite = 0)
     {
+        _lite = lite;
         Bounds = bounds;
         _corners = corners;
         _blurRadius = blurRadius;
@@ -847,13 +948,15 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
         _cache = cache;
         _lens = lens;
         _footprint = footprint ?? bounds.Inflate(1);
+        _beneathRepaintsWhole = beneathRepaintsWhole;
     }
 
     public Rect Bounds { get; }
     public bool HitTest(Point p) => false;
     public bool Equals(ICustomDrawOperation? other) =>
         other is GlassBackdropOp o && o.Bounds == Bounds && o._corners == _corners && o._blurRadius == _blurRadius && o._fade == _fade
-        && ReferenceEquals(o._cache, _cache) && o._lens == _lens && o._footprint == _footprint;
+        && ReferenceEquals(o._cache, _cache) && o._lens == _lens && o._footprint == _footprint
+        && o._beneathRepaintsWhole == _beneathRepaintsWhole && o._lite == _lite;
     public void Dispose() { }
 
     public void Render(ImmediateDrawingContext context)
@@ -907,7 +1010,7 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
         // this op's first draw leaves no stale frost of the panel anywhere.
         var first = !_drawn;
         _drawn = true;
-        _cache.Draw(canvas, surface, path, sigma, (float)_fade, wholePanelRepainted: first, lens);
+        _cache.Draw(canvas, surface, path, sigma, (float)_fade, wholePanelRepainted: first, lens, _beneathRepaintsWhole, (float)_lite);
     }
 
     /// <summary>The lens in device px under <paramref name="m"/>; null without one, or when the
@@ -1067,9 +1170,10 @@ internal sealed class GlassReachOp : ICustomDrawOperation
     /// </summary>
     internal static bool ShouldRepaint(SKRectI clip, SKRectI panel, IntPtr surface, GlassBackdropCache? self)
     {
-        // Inside the panel the backdrop op handles the repaint itself; a repaint covering the
-        // whole panel frosted it from what is there now.
-        if (clip.IsEmpty || panel.Contains(clip) || clip.Contains(panel)) return false;
+        // Inside the panel the backdrop op handles the repaint itself (within the compositor's
+        // own slack round a dirty rect); a repaint covering the whole panel frosted it from what
+        // is there now.
+        if (clip.IsEmpty || !GlassBackdropCache.SpillsPast(clip, panel) || clip.Contains(panel)) return false;
         return !GlassBackdropCache.IsAnotherPanelsOwnRepaint(clip, surface, self);
     }
 }

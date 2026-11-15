@@ -190,6 +190,111 @@ public class SearchQueryTests
         Assert.Equal(new[] { Creep }, result);
     }
 
+    // GitHub #227: a quoted tag value is the whole field (or one whole artist/genre of a
+    // multi-value credit), not a substring; unquoted stays "contains".
+    private static readonly Track Coin = T("Talk Too Much", "COIN", "How Will You Know If You Never Try", "Indie Pop", 2017);
+    private static readonly Track Aucoin = T("Want to Want", "Rich Aucoin", "Release", "Electronic", 2016);
+
+    [Fact]
+    public void QuotedArtist_IsExactArtist()
+    {
+        Assert.True(M("artist:\"Coin\"", Coin));
+        Assert.False(M("artist:\"Coin\"", Aucoin));
+        Assert.True(M("artist:coin", Aucoin));              // unquoted keeps contains
+        Assert.False(M("artist:\"Rich\"", Aucoin));
+        Assert.True(M("artist:\"rich aucoin\"", Aucoin));
+    }
+
+    [Fact]
+    public void QuotedArtist_MatchesOneWholeArtistOfACredit()
+    {
+        Assert.True(M("artist:\"Coin\"", T("Crash My Car", "Coin feat. Someone", "X")));
+        Assert.True(M("artist:\"Someone\"", T("Crash My Car", "Coin feat. Someone", "X")));
+        Assert.True(M("artist:\"Coin\"", T("Guest Spot", "Guest", "X", albumArtist: "Coin")));
+        Assert.False(M("albumartist:\"Coin\"", T("Guest Spot", "Coin", "X", albumArtist: "Various Artists")));
+        // A protected name stays whole, and the whole credit always matches itself.
+        Assert.False(M("artist:\"AC\"", T("Thunderstruck", "AC/DC", "X")));
+        Assert.True(M("artist:\"ac/dc\"", T("Thunderstruck", "AC/DC", "X")));
+        Assert.True(M("artist:\"Simon & Garfunkel\"", T("Mrs. Robinson", "Simon & Garfunkel", "X")));
+    }
+
+    [Fact]
+    public void QuotedArtist_FoldsCaseAndAccentsLikeUnquoted()
+    {
+        Assert.True(M("artist:\"beyonce\"", T("Halo", "Beyoncé", "I Am... Sasha Fierce")));
+        Assert.True(M("artist:\"COIN\"", Coin));
+    }
+
+    [Fact]
+    public void QuotedGenre_IsOneWholeGenre()
+    {
+        Assert.False(M("genre:\"Rock\"", Airbag));                       // "Alternative Rock"
+        Assert.True(M("genre:\"alternative rock\"", Airbag));
+        Assert.True(M("genre:\"Rock\"", T("x", "y", "z", genre: "Pop; Rock")));
+        Assert.True(M("genre:rock", Airbag));                              // unquoted keeps contains
+    }
+
+    [Fact]
+    public void QuotedTitleAlbumComposer_AreWholeValues()
+    {
+        Assert.True(M("title:\"creep\"", Creep));
+        Assert.False(M("title:\"creep\"", T("Creep (Acoustic)", "Radiohead", "X")));
+        Assert.False(M("album:\"ok\"", Airbag));
+        Assert.False(M("composer:\"bach\"", T("Air", "Orchestra", "Suites", composer: "J.S. Bach")));
+        Assert.True(M("composer:\"j.s. bach\"", T("Air", "Orchestra", "Suites", composer: "J.S. Bach")));
+    }
+
+    [Fact]
+    public void QuotedWord_WithoutTag_MatchesWholeWordsOnly()
+    {
+        Assert.True(M("\"coin\"", Coin));
+        Assert.False(M("\"coin\"", Aucoin));                              // was a substring hit
+        Assert.True(M("coin", Aucoin));                                    // unquoted unchanged
+        Assert.True(M("\"too much\"", Coin));                             // phrase inside a title
+        Assert.False(M("\"much too\"", Coin));
+        Assert.True(M("\"dont you\"", T("Don't You (Forget About Me)", "Simple Minds", "X")));
+        Assert.True(M("\"ok computer\"", T("x", "Radiohead", "OK Computer OKNOTOK 1997 2017")));
+        Assert.True(M("\"1997\"", Airbag));
+        Assert.True(M("\"&\"", T("Rock & Roll", "X", "Y")));              // punctuation-only phrase
+        Assert.False(M("\"&\"", Airbag));
+    }
+
+    [Fact]
+    public void UnterminatedQuote_StaysContainsWhileTyping()
+    {
+        Assert.True(M("artist:\"Coin", Aucoin));
+        Assert.True(M("artist:\"rich auc", Aucoin));
+        Assert.True(M("\"auco", Aucoin));
+    }
+
+    [Fact]
+    public void EscapedQuote_IsPartOfTheValue()
+    {
+        var t = T("Say \"Hi\"", "X", "Y");
+        Assert.True(M("title:\"Say \\\"Hi\\\"\"", t));
+        Assert.False(M("title:\"Say\"", t));
+    }
+
+    [Fact]
+    public void QuotedValues_OnNameAndAlbumSurfaces()
+    {
+        Assert.True(SearchQuery.Parse("artist:\"Coin\"").MatchesName("COIN", "coin"));
+        Assert.False(SearchQuery.Parse("artist:\"Coin\"").MatchesName("Rich Aucoin", "richaucoin"));
+        Assert.False(SearchQuery.Parse("\"coin\"").MatchesName("Rich Aucoin", "richaucoin"));
+        Assert.True(SearchQuery.Parse("\"aucoin\"").MatchesName("Rich Aucoin", "richaucoin"));
+
+        var album = new Album { Name = "Release", Artist = "Rich Aucoin", Genre = "Electronic", Year = 2016,
+            Tracks = new List<Track> { Aucoin } };
+        Assert.False(SearchQuery.Parse("artist:\"Coin\"").MatchesAlbum(album));
+        Assert.True(SearchQuery.Parse("artist:coin").MatchesAlbum(album));
+        Assert.True(SearchQuery.Parse("album:\"release\"").MatchesAlbum(album));
+        Assert.False(SearchQuery.Parse("\"coin\"").MatchesAlbum(album));
+    }
+
+    [Fact]
+    public void HighlightTerms_DropQuotes()
+        => Assert.Equal(new[] { "Coin" }, SearchQuery.Parse("artist:\"Coin\"").HighlightTerms);
+
     [Fact]
     public void PlaylistFind_UsesSameSyntax()
     {

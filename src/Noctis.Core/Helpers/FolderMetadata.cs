@@ -131,7 +131,7 @@ public static partial class FolderMetadata
         return changed;
     }
 
-    private static bool IsPlaceholderArtist(string? artist) =>
+    internal static bool IsPlaceholderArtist(string? artist) =>
         string.IsNullOrWhiteSpace(artist) ||
         artist.Trim().Equals("Unknown Artist", StringComparison.OrdinalIgnoreCase);
 

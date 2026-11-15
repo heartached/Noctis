@@ -24,7 +24,7 @@ namespace Noctis.ViewModels;
 ///   artwork/ (artists/, similar/), animated_covers/, playlist_covers/, artist_info/ (incl.
 ///     pinned MusicBrainz ids), artist_bios/ (legacy), cache/ (artwork_thumbs/, waveforms/,
 ///     lastfm_album_descriptions.json with the user's description overrides,
-///     lastfm_taste.json, the Last.fm mixes' account charts)
+///     lastfm_taste.json, the Last.fm mixes' account charts, lastfm_stats.json, Statistics' Last.fm source)
 ///   lyrics_cache/, lyrics_store/ (lyrics read from tags; a rescan reads them again),
 ///     lyrics_studio_drafts/, lyrics_background/ (its settings reset with the rest)
 ///   profile/ (avatar; its setting resets), app-icons/ (after the classic icon is back)
@@ -34,12 +34,17 @@ namespace Noctis.ViewModels;
 ///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, *-backfill.progress,
 ///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
+///   computers.json (each computer's own sign-ins and window/device/size settings, GitHub #230;
+///     the default settings save writes this computer's part again)
 ///   server/covers/, server/transcode/ (caches; cleared once the server is off)
 ///
 /// KEPT
-///   settings.json: rewritten with defaults (the reset's other half).
-///   plugins/, plugin-data/: installed plugins stay installed (see CommunityPluginsEnabled in
-///     ConfirmResetLibrary); their data is deleted only with the plugin, because the plugins
+///   settings.json: rewritten with defaults (the reset's other half), all but the fields in
+///     SettingsViewModel.ResetKeptSettings: the sync id, the plugins' approvals / on-off /
+///     sidebar entries / verified-official records, window placement and the volume.
+///   plugins/, plugin-data/: installed plugins stay installed (see CreateResetSettings; the
+///     community switch goes back to restricted and each plugin's settings to its defaults,
+///     both live); their data is deleted only with the plugin, because the plugins
 ///     stay loaded and would write into, or fail on, a folder removed under them.
 ///   models/: Lyrics Studio speech models, hundreds of MB to download again; not settings.
 ///   tools/: the yt-dlp binary and its update state.
@@ -61,7 +66,7 @@ public partial class SettingsViewModel
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json",
         "queue-position.json", "queue-position.json.tmp",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json",
-        "mp3_decoder_fallback.txt", "musixmatch_token",
+        "mp3_decoder_fallback.txt", "musixmatch_token", "computers.json",
     };
 
     /// <summary>File patterns deleted in the data folder itself (not below it).</summary>
@@ -105,6 +110,11 @@ public partial class SettingsViewModel
         await Step("bulk runs", MetadataHelper.StopLibraryRunsAsync);
         // The Artists tab's portrait sweep walks the old artist list for minutes.
         await Step("artist pictures", () => App.Services?.GetService<ArtistImageService>()?.StopFetchesAsync() ?? Task.CompletedTask);
+        // The BPM / key pass works through a list taken before the reset and stores each result
+        // in library.db, so it refilled the analysis table emptied below (and kept writing tags).
+        await Step("audio analysis run", () => App.Services?.GetService<AudioAnalysisCoordinator>()?.StopAsync(TimeSpan.FromSeconds(5)) ?? Task.CompletedTask);
+        // New songs waiting for the automatic ReplayGain scan, which writes into their files.
+        await StepSync("ReplayGain auto scan", () => App.Services?.GetService<ReplayGainAutoScanService>()?.Clear());
 
         // Stop playback now, and write the play counts / positions the player still holds, so
         // they land in the journal before it is emptied rather than in the new one after it.
@@ -128,6 +138,7 @@ public partial class SettingsViewModel
         await Step("audio analysis", () => (services?.GetService<IAudioAnalysisStore>() ?? new AudioAnalysisStore(_persistence)).ClearAsync());
         await Step("album descriptions", () => _lastFm?.ClearAlbumDescriptionsAsync() ?? Task.CompletedTask);
         await Step("Last.fm mixes", () => services?.GetService<LastFmTasteService>()?.ClearAsync() ?? Task.CompletedTask);
+        await Step("Last.fm statistics", () => services?.GetService<LastFmStatsService>()?.ClearAsync() ?? Task.CompletedTask);
         await StepSync("MP3 decoder list", () => (_audioPlayer as VlcAudioPlayer)?.ForgetDecoderFallbacks());
         await StepSync("lyrics store", () => _persistence.ClearLyricsStore());
         await StepSync("TIDAL sign-in", () => { _tidal?.Disconnect(); IsTidalConnected = false; });

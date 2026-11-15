@@ -152,6 +152,9 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private double _albumTileSize = 220;
     private double _lastAlbumUsableWidth;
 
+    /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
+    public bool IsWideAlbumSpacing => _settings?.AlbumGridWideSpacing ?? false;
+
     public void UpdateAlbumTileSize(double usableWidth)
     {
         if (!double.IsFinite(usableWidth) || usableWidth <= 0) return;
@@ -159,7 +162,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var auto = _settings?.AlbumTileSizeAuto ?? true;
         var target = _settings?.AlbumTileTargetSize ?? 220;
         var columns = AlbumGridMetrics.ComputeColumns(usableWidth, auto, target);
-        var size = AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+        var size = AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
         if (Math.Abs(size - AlbumTileSize) >= 0.5) AlbumTileSize = size;
     }
 
@@ -368,6 +371,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                 }
                 else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto) or nameof(SettingsViewModel.AlbumTileTargetSize))
                     UpdateAlbumTileSize(_lastAlbumUsableWidth);
+                else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
+                {
+                    OnPropertyChanged(nameof(IsWideAlbumSpacing));
+                    UpdateAlbumTileSize(_lastAlbumUsableWidth);
+                }
                 else if (e.PropertyName == nameof(SettingsViewModel.IsScanning))
                     UpdateEmptyLibraryState();
                 else if (e.PropertyName == nameof(SettingsViewModel.HomeRecentAlbumsCount))
@@ -1223,7 +1231,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.Tracks, 0);
+        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1233,7 +1241,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null) return;
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
-        var ordered = Helpers.AlbumTile.OrderedTracks(album);
+        var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
         _player.ReplaceQueueAndPlay(ordered, 0);
     }
@@ -1242,7 +1250,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.Tracks);
+        _player.PlayShuffled(album.EditionTracks);
     }
 
     [RelayCommand]
@@ -1250,7 +1258,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddNextRange(album.Tracks.ToList(), album.Name);
+        _player.AddNextRange(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -1258,7 +1266,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
+        _player.AddRangeToQueue(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -1383,13 +1391,6 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
 
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
-
-    [RelayCommand]
-    private void SearchLyricsAlbum(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _searchLyricsAction?.Invoke(album.Tracks[0]);
-    }
 
     private Action<string>? _viewArtistAction;
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;

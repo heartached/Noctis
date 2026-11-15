@@ -44,22 +44,6 @@ internal static class AdvancedTagIO
         "NOCTIS_SHOWCOMPOSER", "NOCTIS_USEWORKMOVEMENT",
     };
 
-    // ── ID3v2 frame IDs that map to standard TagLib# properties (skip in enumeration) ──
-    private static readonly HashSet<string> KnownId3FrameIds = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "TIT2", "TPE1", "TPE2", "TALB", "TCON", "TCOM", "TRCK", "TPOS",
-        "TBPM", "TDRC", "TDRL", "TYER", "COMM", "USLT", "GRP1", "TIT1",
-        "TCOP", "APIC", "TXXX", // TXXX handled separately
-        // Sort frames
-        "TSOT", "TSOP", "TSOA", "TSO2", "TSOC",
-        // People
-        "TPE3", "TEXT", "TPUB", "TENC", "TSSE",
-        // ID
-        "TSRC",
-        // Content
-        "TLAN", "TIT3",
-    };
-
     /// <summary>
     /// Represents a single advanced metadata field with its current value.
     /// </summary>
@@ -787,7 +771,4 @@ internal static class AdvancedTagIO
         if (string.IsNullOrWhiteSpace(value)) return Array.Empty<string>();
         return value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
     }
-
-    /// <summary>Apple atom byte vector for ©pub.</summary>
-    private static readonly ByteVector ApplePubAtom = new byte[] { 0xa9, (byte)'p', (byte)'u', (byte)'b' };
 }

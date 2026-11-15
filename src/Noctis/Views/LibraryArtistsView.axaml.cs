@@ -114,8 +114,10 @@ public partial class LibraryArtistsView : UserControl
 
     private void OnArtistTableContainerPrepared(object? sender, ContainerPreparedEventArgs e)
     {
-        if (e.Container is ListBoxItem item)
-            item.ContextRequested += OnArtistRowContextRequested;
+        if (e.Container is not ListBoxItem item) return;
+        // A row parked by RetainingVirtualizingStackPanel is prepared again without being cleared.
+        item.ContextRequested -= OnArtistRowContextRequested;
+        item.ContextRequested += OnArtistRowContextRequested;
     }
 
     private void OnArtistTableContainerClearing(object? sender, ContainerClearingEventArgs e)

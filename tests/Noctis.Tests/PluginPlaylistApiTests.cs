@@ -47,7 +47,7 @@ public class PluginPlaylistApiTests : IDisposable
     public void Kit_HasThe14Members_AndA14PluginRunsOn166()
     {
         Assert.True(PluginApi.Minor >= 4); // 1.5 added library.import on top
-        Assert.Equal((1, PluginApi.Minor), (typeof(PluginApi).Assembly.GetName().Version!.Major, typeof(PluginApi).Assembly.GetName().Version!.Minor));
+        Assert.Equal((1, PluginApi.Minor), (KitFileVersion().Major, KitFileVersion().Minor));
         Assert.Null(PluginManifest.Parse(M()).CheckCompatibility("1.6.6"));
         Assert.NotNull(PluginManifest.Parse(M()).CheckCompatibility("1.6.5"));
     }
@@ -148,4 +148,9 @@ public class PluginPlaylistApiTests : IDisposable
         Assert.Same(tracks[1], player.CurrentTrack);
         Assert.Equal(new[] { tracks[2] }, player.UpNext.ToArray());
     }
+
+    /// <summary>The kit's package/file version (its API level). Its AssemblyVersion stays 1.6.0.0
+    /// on purpose (PluginKitBindingTests).</summary>
+    private static Version KitFileVersion() => Version.Parse(System.Reflection.CustomAttributeExtensions
+        .GetCustomAttribute<System.Reflection.AssemblyFileVersionAttribute>(typeof(PluginApi).Assembly)!.Version);
 }

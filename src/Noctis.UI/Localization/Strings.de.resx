@@ -26,6 +26,7 @@
   <data name="Nav.Albums" xml:space="preserve"><value>Alben</value><comment>Sidebar</comment></data>
   <data name="Nav.Artists" xml:space="preserve"><value>Künstler</value><comment>Sidebar</comment></data>
   <data name="Nav.Folders" xml:space="preserve"><value>Ordner</value><comment>Sidebar</comment></data>
+  <data name="Nav.Genres" xml:space="preserve"><value>Genres</value><comment>Sidebar</comment></data>
   <data name="Nav.Playlists" xml:space="preserve"><value>Playlists</value><comment>Sidebar</comment></data>
   <data name="Nav.Visualizer" xml:space="preserve"><value>Visualisierung</value><comment>Sidebar</comment></data>
   <data name="Nav.LyricsStudio" xml:space="preserve"><value>Songtext-Studio</value><comment>Sidebar</comment></data>
@@ -161,7 +162,10 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.AlbumGroupingWriting" xml:space="preserve"><value>Albuminterpreten werden in Dateien gespeichert…</value><comment>Settings status line (GitHub #193/#190)</comment></data>
   <data name="Settings.AlbumGroupingWritten" xml:space="preserve"><value>Albuminterpret in {0:N0} Datei(en) gespeichert.</value><comment>Settings status line (GitHub #193/#190); {0} file count</comment></data>
   <data name="Settings.AlbumGroupingWrittenSome" xml:space="preserve"><value>Albuminterpret in {0:N0} Datei(en) gespeichert; {1:N0} konnten nicht gespeichert werden.</value><comment>Settings status line (GitHub #193/#190); {0} files written, {1} files not written</comment></data>
-  <data name="Settings.AlbumGroupingNotWritten" xml:space="preserve"><value>{0} Datei(en) konnten nicht gespeichert werden (fehlend, schreibgeschützt oder in einer anderen App geöffnet). In Noctis bleiben sie zusammengefasst; schalte „Zusammenfassung in Dateien speichern“ aus und wieder ein, um es erneut zu versuchen.</value><comment>{0} file count; list of file names follows (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingNotWritten" xml:space="preserve"><value>{0} Datei(en) konnten nicht gespeichert werden (fehlend, schreibgeschützt oder in einer anderen App geöffnet). In Noctis bleiben sie zusammengefasst; Noctis versucht es beim nächsten Start erneut, oder nutze „Jetzt in Dateien speichern“.</value><comment>{0} file count; list of file names follows (GitHub #190)</comment></data>
+  <data name="Settings.AlbumGroupingSaveNow" xml:space="preserve"><value>Jetzt in Dateien speichern</value><comment>Button in SettingsView.axaml (GitHub #201)</comment></data>
+  <data name="Settings.AlbumGroupingSaveNowHint" xml:space="preserve"><value>Schreibt früher zusammengefasste Alben einmal in ihre Dateien, damit andere Player sie auch als ein Album zeigen.</value><comment>Text in SettingsView.axaml (GitHub #201)</comment></data>
+  <data name="Settings.AlbumGroupingFilesUpToDate" xml:space="preserve"><value>Alle zusammengefassten Dateien haben ihr Album bereits gespeichert.</value><comment>Settings status line (GitHub #201)</comment></data>
   <data name="Settings.MergeFeaturedArtistsFrom" xml:space="preserve"><value>Featuring-Künstler aus Titeln zusammenführen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TurnFeatXTrack" xml:space="preserve"><value>„(feat. X)“ in Titeln zu Künstler-Credits machen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowArtistsAsTagged" xml:space="preserve"><value>Künstler so anzeigen, wie sie in den Tags stehen</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
@@ -246,6 +250,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve"><value>Färbt den Akzent nach dem laufenden Cover. Dein gewählter Akzent kehrt zurück, sobald nichts mehr spielt.</value><comment>Appearance toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve"><value>Akzentfarbe für Künstler- und Albumnamen</value><comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment></data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve"><value>Künstler-, Album- und Genrenamen in Playlists, Songs und Player bekommen die Akzentfarbe. Aus zeigt sie in der normalen Textfarbe.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment></data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve"><value>Fenster mit Akzentfarbe tönen</value><comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment></data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve"><value>Gibt dem Fenster- und Seitenhintergrund einen dezenten Hauch der Akzentfarbe.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment></data>
   <data name="Playlist.DragCount" xml:space="preserve"><value>{0} Songs</value><comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>Akzentfarbe</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PickPresetOpenPicker" xml:space="preserve"><value>Wähle ein Preset oder öffne die Auswahl für eine eigene Farbe.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -271,12 +277,18 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.SleeveRecordPeekingOutTip" xml:space="preserve"><value>Eine Hülle, aus der die Platte schaut</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CassetteCoverItsLabelTip" xml:space="preserve"><value>Eine Kassette mit dem Cover auf dem Label</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratching" xml:space="preserve"><value>Disc-Scratching</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DiscScratchingDesc" xml:space="preserve"><value>Zieh die CD oder Schallplatte, um wie ein DJ durch den Song zu springen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Cassette" xml:space="preserve"><value>Kassette</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve"><value>Cover-Flow-Layout</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve"><value>Wie die Cover-Flow-Seite die Cover der Warteschlange anordnet.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumsView" xml:space="preserve"><value>Alben-Ansicht</value><comment>Settings › Player card title</comment></data>
   <data name="Settings.AlbumsViewDesc" xml:space="preserve"><value>Wie die Alben-Seite deine Alben zeigt und wie das Karussell jedes kleidet.</value><comment>Settings › Player Albums View card subtitle</comment></data>
   <data name="Settings.CarouselCase" xml:space="preserve"><value>Karussell-Hülle</value><comment>Settings › Player Albums View card: case style row label</comment></data>
+  <data name="Settings.CarouselGlow" xml:space="preserve"><value>Leuchten hinter dem ausgewählten Album</value><comment>Settings › Player Albums View card: glow behind the carousel's centred album (GitHub #233)</comment></data>
+  <data name="Settings.CarouselGlowDesc" xml:space="preserve"><value>Ein sanftes Licht in der Farbe des Covers hinter dem Album in der Mitte des Karussells.</value><comment>Settings › Player Albums View card: glow toggle description</comment></data>
+  <data name="Menu.CarouselStyle" xml:space="preserve"><value>Karussell-Stil</value><comment>Album menu: submenu choosing this album's carousel style (GitHub #233)</comment></data>
+  <data name="Menu.CarouselStyleDefault" xml:space="preserve"><value>Standard</value><comment>Album menu › Carousel Style: follow the global carousel style</comment></data>
   <data name="Settings.ClassicRowPlayingCoverTip" xml:space="preserve"><value>Die klassische Zeile: laufendes Cover mittig, Verlauf und Als Nächstes daneben</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Carousel" xml:space="preserve"><value>Karussell</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TiltedCoversDiagonalPathTip" xml:space="preserve"><value>Geneigte Cover auf diagonalem Pfad mit den Titeldetails daneben</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -327,7 +339,13 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.QuickPlaylist3" xml:space="preserve"><value>Schnell-Playlist 3</value><comment>Accessible name of the third quick playlist picker (GitHub #186, SettingsView.axaml)</comment></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Keine</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>In den Papierkorb</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Eine Schaltfläche rechts, die den laufenden Song mit einem Klick und ohne Rückfrage aus der Bibliothek nimmt. Er kommt in den Papierkorb-Ordner unten oder, wenn keiner gesetzt ist, in den Papierkorb.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Fügt eine Schaltfläche hinzu, die den laufenden Song in den Papierkorb-Ordner unten oder den Papierkorb verschiebt.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ChaptersButton" xml:space="preserve"><value>Kapitel</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
+  <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Öffnet die Kapitelliste. Nur sichtbar, während ein Hörbuch mit Kapiteln läuft.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopButton" xml:space="preserve"><value>Stopp-Schaltfläche</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
+  <data name="Settings.StopButtonHint" xml:space="preserve"><value>Fügt eine Stopp-Schaltfläche neben Wiedergabe/Pause hinzu.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StopOnlyInExclusive" xml:space="preserve"><value>Nur im Exklusivmodus</value><comment>Text in SettingsView.axaml: sub-toggle under the island Stop button</comment></data>
+  <data name="Settings.StopOnlyInExclusiveHint" xml:space="preserve"><value>Die Stopp-Schaltfläche nur zeigen, solange der Exklusivmodus an ist. Das spart Platz auf der Player-Insel.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolder" xml:space="preserve"><value>Papierkorb-Ordner</value><comment>Text in SettingsView.axaml; also the folder picker title</comment></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Hier landen die Songs, damit du sie später durchsehen kannst. Wähle einen Ordner außerhalb deiner Musikordner, sonst fügt der nächste Scan sie wieder hinzu.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Nicht gesetzt: der Papierkorb</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
@@ -351,6 +369,12 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.AutomaticAlbumCoverSize" xml:space="preserve"><value>Automatische Albumcover-Größe</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumCoverSize" xml:space="preserve"><value>Albumcover-Größe</value><comment>Accessible name of the cover size slider (Smaller / Larger) in SettingsView.axaml</comment></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Fünf Cover pro Zeile. Aus schaltet auf deine eigene Covergröße.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Albumraster als Mauerwerk</value><comment>Settings toggle (GitHub #213)</comment></data>
+  <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Cover stapeln sich spaltenweise nach ihrer echten Höhe, kurze Titel lassen keine Lücken.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Mehr Abstand zwischen Alben</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
+  <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>Mehr Platz zwischen den Covern. Jede Reihe passt sich ihren Beschriftungen an.</value><comment>Settings toggle description</comment></data>
+  <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Album-Zoom beim Überfahren</value><comment>Settings toggle (GitHub #218)</comment></data>
+  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>Im Albenraster wird das Album unter dem Zeiger etwas größer und leuchtet sanft, die Nachbarn treten zurück.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Kleiner</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Größer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Fließender Songtext-Hintergrund</value><comment>Text in SettingsView.axaml</comment></data>
@@ -359,6 +383,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.DrawLiveSpectrumMusic" xml:space="preserve"><value>Ein Live-Spektrum am unteren Rand der Songtextseite.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Artwork-Farbe</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Balken in der aktuellen Coverfarbe tönen. Aus malt sie weiß.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.FullSpectrum" xml:space="preserve"><value>Volles Spektrum</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Balken wie ein Studio-Analyzer gewichten, damit leise Höhen bis 20 kHz sichtbar bleiben.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Frequenzbalken von unten aufsteigend</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Bars" xml:space="preserve"><value>Balken</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>An der Mittellinie gespiegelte Balken</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -420,12 +446,18 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.Remove" xml:space="preserve"><value>Entfernen</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Vollbild-Songtext-Fokus</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Alle Zeilen außer der aktuellen und ihren Nachbarn dimmen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Player-Insel im Vollbild ausblenden</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>Im Vollbild zeigt die Songtext-Seite unter dem Song nur noch den Fortschrittsbalken. Tastenkürzel steuern die Wiedergabe weiterhin.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>Minimale Zeilendeckkraft</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Jede Songtextzeile schwach sichtbar lassen, damit du per Klick dorthin springen kannst. 0 % blendet ferne Zeilen aus.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Geteilte Wörter verbinden</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Wörter ganz lassen, wenn TTML-Songtexte sie in Silben teilen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Glühen &amp; Schweben</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Gesungene Wörter schweben hoch und lange Töne glühen, wie bei Apple Music. Aus lässt Wortsync-Songtexte still stehen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRenderer" xml:space="preserve"><value>Songtext-Darstellung</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Songtextzeilen mit einem Plugin zeichnen. Scrollen, Timing und Springen per Klick bleiben bei Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (Plugin aus)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Player zentrieren, wenn ein Song keinen Songtext hat</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Hat ein Song keinen Songtext oder ist er instrumental, rückt die Songtextseite Cover, Songinfos und Steuerung in die Mitte.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Hintergrund hinter der Seitenleiste</value><comment>Text in SettingsView.axaml</comment></data>
@@ -450,6 +482,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.MiniPlayerOpacity" xml:space="preserve"><value>Mini-Player-Deckkraft</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve"><value>Wie deckend der Mini-Player-Hintergrund wirkt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>Mattierter Hintergrund</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MiniPlayerFrostNeedsTransparency" xml:space="preserve"><value>Die Windows-Transparenzeffekte sind aus, daher wird der Desktop nicht weichgezeichnet. Aktiviere sie in den Windows-Einstellungen &gt; Personalisierung &gt; Farben oder erhöhe die Mini-Player-Deckkraft, damit der Text lesbar bleibt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BlurDesktopBehindMiniPlayer" xml:space="preserve"><value>Schreibtisch hinter dem Mini-Player weichzeichnen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PLAYBACK" xml:space="preserve"><value>WIEDERGABE</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongTransitions" xml:space="preserve"><value>Songübergänge</value><comment>Text in SettingsView.axaml</comment></data>
@@ -618,6 +651,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.LrcRedHint" xml:space="preserve"><value>Wort- und zeilensynchrone Songtexte mit Duetten. Songs mit nur Zeilensync kann sein Modell von der Songtextseite wortgenau syncen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better-Lyrics-Community-Songtexte · Songtexte von Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
+  <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>Songtexte von Deezer, KuGou, YouTube Music und Musixmatch über lrcmux.dev, zuletzt gefragt</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Synchrone Songtexte · langsamere Suche</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>„Quelle wählen“ auf der Songtextseite durchsucht jede davon, auch wenn sie hier aus ist.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -634,7 +669,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.ShowHiddenFolder" xml:space="preserve"><value>Einblenden</value><comment>Button in SettingsView.axaml (Hidden Folders list)</comment></data>
   <data name="Settings.AddFolder" xml:space="preserve"><value>Ordner hinzufügen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ImportDroppedFiles" xml:space="preserve"><value>Hineingezogene Dateien importieren</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Hineingezogene Dateien wandern in den Noctis-Importordner und in die Bibliothek. Aus bleiben Dateien, wo sie sind; ziehst du sie, spielst du sie ab, legst sie in Bibliothek oder Playlist oder erstellst eine neue Playlist.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ImportDroppedFilesHint" xml:space="preserve"><value>Verschiebt Dateien, die du auf Noctis ziehst, in den Importordner. Aus bleiben sie, wo sie sind.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Section.PlaylistPage" xml:space="preserve"><value>Playlistseite</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeaders" xml:space="preserve"><value>Album-Überschriften</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistAlbumHeadersHint" xml:space="preserve"><value>Albumname über jeder Folge von Titeln desselben Albums zeigen.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -800,6 +835,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="AlbumDetail.ConvertAlbum" xml:space="preserve"><value>Album konvertieren</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ScanReplayGain" xml:space="preserve"><value>ReplayGain scannen</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve"><value>Ordner anzeigen</value><comment>Header in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.LinkTracksFrom" xml:space="preserve"><value>Titel verknüpfen aus</value><comment>Submenu in AlbumDetailView.axaml: list another album's songs on this one (deluxe edition)</comment></data>
+  <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Verknüpfung lösen mit</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Aus Bibliothek entfernen</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Andere Versionen</value><comment>Text in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Als Nächstes abspielen</value><comment>Header in AlbumDetailView.axaml</comment></data>
@@ -1130,7 +1167,15 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="LibraryArtists.ColumnAlbums" xml:space="preserve"><value>Alben</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnSongs" xml:space="preserve"><value>Songs</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnTime" xml:space="preserve"><value>Dauer</value><comment>List view column header (total length) in LibraryArtistsView.axaml</comment></data>
+  <data name="LibraryArtists.ColumnPlays" xml:space="preserve"><value>Wiedergaben</value><comment>List view column header (summed plays, GitHub #231) in LibraryArtistsView.axaml</comment></data>
   <data name="LibraryArtists.ColumnGenre" xml:space="preserve"><value>Genre</value><comment>List view column header in LibraryArtistsView.axaml</comment></data>
+  <data name="Genres.Unknown" xml:space="preserve"><value>Unbekannt</value><comment>Genres page (GitHub #220): songs with no genre tag</comment></data>
+  <data name="Genres.NoGenresFound" xml:space="preserve"><value>Keine Genres gefunden</value><comment>Genres page (GitHub #220): empty state</comment></data>
+  <data name="Genres.NoFilterMatches" xml:space="preserve"><value>Keine passenden Genres</value><comment>Genres page (GitHub #220): empty state while a search is active</comment></data>
+  <data name="Genres.NoFilterMatchesHint" xml:space="preserve"><value>Versuch eine andere Suche oder lösche sie, um alle Genres zu sehen</value><comment>Genres page (GitHub #220): empty state hint while a search is active</comment></data>
+  <data name="Genres.PlayTip" xml:space="preserve"><value>Abspielen</value><comment>Genres page (GitHub #220): row button tooltip</comment></data>
+  <data name="Genres.ShuffleTip" xml:space="preserve"><value>Zufallswiedergabe</value><comment>Genres page (GitHub #220): row button tooltip</comment></data>
+  <data name="Genres.ShowGenreTip" xml:space="preserve"><value>Dieses Genre anzeigen</value><comment>Tooltip on a genre name on album and artist pages (GitHub #220)</comment></data>
 
   <!-- LibraryFoldersView.axaml (auto-migrated) -->
   <data name="LibraryFolders.ExplicitTip" xml:space="preserve"><value>Explizit</value><comment>ToolTip.Tip in LibraryFoldersView.axaml</comment></data>
@@ -1263,6 +1308,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="LyricsColor.ArtworkHint" xml:space="preserve"><value>Folgt jedem Songcover. Bewegung stellst du unter Songtext ein.</value><comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.VideoNote" xml:space="preserve"><value>Ein Hintergrundvideo läuft und liegt über diesem Hintergrund.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Songtext suchen</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve"><value>Songtext hinzufügen</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve"><value>Songtext bearbeiten</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
   <data name="Lyrics.MarkedNoLyrics" xml:space="preserve"><value>Als ohne Songtext markiert</value><comment>LyricsView.axaml / LyricsPanelView.axaml: the song is marked as having no lyrics (GitHub #162)</comment></data>
   <data name="Lyrics.UndoNoLyrics" xml:space="preserve"><value>Rückgängig</value><comment>LyricsView.axaml: button taking the no-lyrics mark off</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Suche Songtext</value><comment>Text in LyricsView.axaml</comment></data>
@@ -1843,6 +1890,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="PlaybackBar.1Normal" xml:space="preserve"><value>1× (normal)</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.PreviousTip" xml:space="preserve"><value>Zurück</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ForwardTip" xml:space="preserve"><value>Weiter</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.StopTip" xml:space="preserve"><value>Stopp</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the optional island Stop button</comment></data>
   <data name="PlaybackBar.SleepTimerTip" xml:space="preserve"><value>Sleep-Timer</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pausing" xml:space="preserve"><value>Pause in</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.15Minutes" xml:space="preserve"><value>15 Minuten</value><comment>Header in PlaybackBarView.axaml</comment></data>
@@ -1891,6 +1939,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="PlaybackBar.LyricsDisplay" xml:space="preserve"><value>Songtextanzeige</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Synced" xml:space="preserve"><value>Synchron</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Reintext</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve"><value>Songtext ausblenden</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Hintergrundfarbe</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Songtext teilen</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.SaveLyrics" xml:space="preserve"><value>Songtext in Datei speichern</value><comment>Submenu header in PlaybackBarView.axaml (lyrics page, time-synced lyrics shown); its items pick the file format</comment></data>
@@ -2018,7 +2067,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="ReplayGainScanner.Cancel" xml:space="preserve"><value>Abbrechen</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Album-Gain berechnen (nach AlbumId gruppieren)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Warteschlange</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
-  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Dateien hinzufügen…</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Dateien hinzufügen</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Subtitle" xml:space="preserve"><value>Lautheit messen und ReplayGain-Tags schreiben.</value><comment>Header line under the title in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.SubtitleTip" xml:space="preserve"><value>EBU-R128-Lautheit, geschrieben als ReplayGain-2.0-Tags (−18 LUFS Referenz)</value><comment>Tooltip on the header line in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.TitleOne" xml:space="preserve"><value>ReplayGain scannen · 1 Titel</value><comment>Title in ReplayGainScannerViewModel, one ticked track</comment></data>
@@ -2075,7 +2124,8 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Sidebar.SearchSyntaxTip" xml:space="preserve"><value>Wörter können jedes Feld treffen: „radiohead ok computer“, „rock 1994“.
 Enge ein Wort mit einem Tag ein: artist:madonna remix
 Tags: title: artist: albumartist: album: genre: composer: year:
-Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
+Anführungszeichen heißen genau: artist:"coin" (nur dieser Künstler), "coin" (ganzes Wort), album:"ok computer"
+Jahre: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar search box (GitHub #107 search syntax). Keep the tag names (title:, artist:, …) untranslated — they are typed literally.</comment></data>
   <data name="Sidebar.Text" xml:space="preserve"><value>&#x2715;</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLAYLISTS" xml:space="preserve"><value>PLAYLISTS</value><comment>Text in SidebarView.axaml</comment></data>
   <data name="Sidebar.PLUGINS" xml:space="preserve"><value>PLUGINS</value><comment>Sidebar section header above the screens plugins add</comment></data>
@@ -2209,6 +2259,27 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="Stats.Yesterday" xml:space="preserve"><value>Gestern</value><comment>Play History day heading</comment></data>
   <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>Noch kein Hörverlauf</value><comment>Statistics empty state title</comment></data>
   <data name="Stats.Formats" xml:space="preserve"><value>Formate</value><comment>Library section: format bars title</comment></data>
+  <data name="Stats.SourceLibrary" xml:space="preserve"><value>Diese Bibliothek</value><comment>Statistics source pill: plays counted in Noctis</comment></data>
+  <data name="Stats.SourceLastFm" xml:space="preserve"><value>Last.fm</value><comment>Statistics source pill: the connected Last.fm account</comment></data>
+  <data name="Stats.SourceTip" xml:space="preserve"><value>Woher die Hörzahlen kommen. Last.fm zählt jeden Player und jedes Gerät, das an dein Konto scrobbelt; Diese Bibliothek zählt in Noctis gespielte Titel.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Loading" xml:space="preserve"><value>Deine Last.fm-Charts werden geladen…</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Updating" xml:space="preserve"><value>Wird von Last.fm aktualisiert…</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Unreachable" xml:space="preserve"><value>Last.fm ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fm ist nicht erreichbar. Angezeigt werden die Zahlen vom {0}.</value><comment>Statistics source (GitHub #222); {0} = date and time</comment></data>
+  <data name="Stats.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm kennt das Konto „{0}“ nicht.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.Private" xml:space="preserve"><value>Dieses Last.fm-Konto hält seinen Hörverlauf privat.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.BadReply" xml:space="preserve"><value>Last.fm hat eine Antwort gesendet, die Noctis nicht lesen konnte. Versuche es später erneut.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoYear" xml:space="preserve"><value>Last.fm hat keine Charts für ein Kalenderjahr. Wähle 7 Tage, 30 Tage oder Gesamt.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoYearTip" xml:space="preserve"><value>Last.fm hat keine Charts für ein Kalenderjahr.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoHistoryTip" xml:space="preserve"><value>Der Wiedergabeverlauf listet in dieser Bibliothek gespielte Titel. Stelle die Quelle auf Diese Bibliothek, um ihn zu sehen.</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoListeningTime" xml:space="preserve"><value>Last.fm erfasst keine Hörzeit</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.NoStreak" xml:space="preserve"><value>Bei Last.fm nicht verfügbar</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.PlaysTip" xml:space="preserve"><value>Scrobbles an {0} von jedem Player und Gerät</value><comment>Statistics source (GitHub #222); {0} = Last.fm user name</comment></data>
+  <data name="Stats.LastFm.Coverage" xml:space="preserve"><value>Last.fm · {0} · scrobbelt seit {1}</value><comment>Statistics source (GitHub #222); {0} = user name, {1} = date</comment></data>
+  <data name="Stats.LastFm.CoverageNoDate" xml:space="preserve"><value>Last.fm · {0}</value><comment>Statistics source (GitHub #222); {0} = user name</comment></data>
+  <data name="Stats.LastFm.EmptyTitle" xml:space="preserve"><value>Noch keine Scrobbles</value><comment>Statistics source (GitHub #222)</comment></data>
+  <data name="Stats.LastFm.EmptyText" xml:space="preserve"><value>In diesem Zeitraum wurde nichts an {0} gescrobbelt.</value><comment>Statistics source (GitHub #222); {0} = user name</comment></data>
+  <data name="Stats.LastFm.TryAgain" xml:space="preserve"><value>Erneut versuchen</value><comment>Statistics source (GitHub #222)</comment></data>
 
   <!-- TextPromptDialog.axaml (auto-migrated) -->
   <data name="TextPrompt.EnterName" xml:space="preserve"><value>Namen eingeben</value><comment>Title in TextPromptDialog.axaml</comment></data>
@@ -2437,6 +2508,7 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="Plugins.Detail.RemoveRow" xml:space="preserve"><value>Plugin deinstallieren</value></data>
   <data name="Plugins.Detail.ShowInSidebar" xml:space="preserve"><value>In Seitenleiste zeigen</value><comment>Plugin page row: the plugin's screen gets a sidebar entry</comment></data>
   <data name="Plugins.PermSummary" xml:space="preserve"><value>Darf {0}</value></data>
+  <data name="Plugins.LyricsRendererFailed" xml:space="preserve"><value>Die Songtext-Darstellung funktioniert nicht mehr, Noctis zeichnet den Songtext wieder selbst.</value></data>
   <data name="Plugins.PermSummarySeparator" xml:space="preserve"><value>, </value></data>
   <data name="Plugins.PermVerb.PlaybackControl" xml:space="preserve"><value>Wiedergabe steuern</value></data>
   <data name="Plugins.PermVerb.LibraryRead" xml:space="preserve"><value>deine Bibliothek lesen</value></data>
@@ -2551,7 +2623,6 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="SendToFolder.StateMoved" xml:space="preserve"><value>Verschoben</value><comment>Row chip: moved</comment></data>
   <data name="BulkLyrics.Title" xml:space="preserve"><value>Songtext</value><comment>Dialog title (window)</comment></data>
   <data name="BulkLyrics.Close" xml:space="preserve"><value>Schließen</value><comment>Secondary button</comment></data>
-  <data name="BulkLyrics.Upgrade" xml:space="preserve"><value>Auch Songs mit Reintext- oder zeilensynchronem Songtext aufwerten</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>Songs erneut prüfen, die ein früherer Durchlauf schon geprüft hat</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>Funde vor dem Speichern prüfen</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
   <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>Auswahl speichern ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
@@ -2561,9 +2632,15 @@ Zitiere Phrasen: album:„ok computer“ · Jahre: year:1990-1999, year:&gt;2000
   <data name="BulkLyrics.KindPlain" xml:space="preserve"><value>Nur Text</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
   <data name="BulkLyrics.NotSaved" xml:space="preserve"><value>nicht gespeichert</value><comment>Row status: an unticked find in a bulk lyrics review (GitHub #195)</comment></data>
   <data name="BulkLyrics.Saving" xml:space="preserve"><value>Wird gespeichert…</value><comment>Status while a bulk lyrics review saves (GitHub #195)</comment></data>
-  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Songtexte finden…</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyrics" xml:space="preserve"><value>Songtexte finden</value><comment>Album menu: bulk lyrics for every song of the album (GitHub #195)</comment></data>
+  <data name="LibraryAlbums.FindLyricsRunning" xml:space="preserve"><value>Songtextsuche anzeigen (läuft)</value><comment>Album / song menu: brings back a hidden Find Lyrics run that is still looking (GitHub #214)</comment></data>
+  <data name="LibraryAlbums.FindLyricsResults" xml:space="preserve"><value>Ergebnisse der Songtextsuche anzeigen</value><comment>Album / song menu: brings back a hidden Find Lyrics run that has finished (GitHub #214)</comment></data>
   <data name="BulkLyrics.OpenStudio" xml:space="preserve"><value>Songtext-Studio öffnen</value><comment>Button after a bulk lyrics run</comment></data>
   <data name="BulkLyrics.Stop" xml:space="preserve"><value>Stopp</value><comment>Button: stops a bulk run</comment></data>
+  <data name="BulkLyrics.HasWordSynced" xml:space="preserve"><value>wortsynchrone Songtexte</value><comment>Row status in the bulk lyrics dialog: the song already has word-synced lyrics (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasLineSynced" xml:space="preserve"><value>zeilensynchrone Songtexte</value><comment>Row status in the bulk lyrics dialog: the song already has line-synced lyrics (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasPlain" xml:space="preserve"><value>einfache Songtexte</value><comment>Row status in the bulk lyrics dialog: the song has plain lyrics only (GitHub #216)</comment></data>
+  <data name="BulkLyrics.HasNone" xml:space="preserve"><value>keine Songtexte</value><comment>Row status in the bulk lyrics dialog: the song has no lyrics (GitHub #216)</comment></data>
   <data name="BulkArtwork.Title" xml:space="preserve"><value>Animiertes Artwork</value><comment>Dialog title (window)</comment></data>
   <data name="BulkArtwork.Subtitle" xml:space="preserve"><value>Bewegt Cover von Apple Music zu Alben, die keines haben. Nur eindeutige Treffer werden gespeichert.</value></data>
   <data name="BulkArtwork.Recheck" xml:space="preserve"><value>Alben erneut prüfen, für die ein früherer Durchlauf nichts fand</value><comment>Checkbox</comment></data>
@@ -2795,8 +2872,26 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="LyricsStudio.NudgeFineLater" xml:space="preserve"><value>10 ms später · Kürzel .</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeCoarseEarlier" xml:space="preserve"><value>100 ms früher · Kürzel Shift+,</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeCoarseLater" xml:space="preserve"><value>100 ms später · Kürzel Shift+.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.NudgeNoRoom" xml:space="preserve"><value>Kein Platz: {0}.</value><comment>Nudge hint when a nudge could not move at all; {0} is the reason</comment></data>
+  <data name="LyricsStudio.NudgeMovedAsFar" xml:space="preserve"><value>So weit wie möglich verschoben: {0}.</value><comment>Nudge hint when a nudge moved less than its step; {0} is the reason</comment></data>
+  <data name="LyricsStudio.NudgeLimitZero" xml:space="preserve"><value>0:00 ist der Anfang des Songs</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"</comment></data>
+  <data name="LyricsStudio.NudgeLimitSongEnd" xml:space="preserve"><value>der Song endet bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39</comment></data>
+  <data name="LyricsStudio.NudgeLimitPreviousLine" xml:space="preserve"><value>die vorherige Zeile beginnt bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39</comment></data>
+  <data name="LyricsStudio.NudgeLimitNextLine" xml:space="preserve"><value>die nächste Zeile beginnt bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39</comment></data>
+  <data name="LyricsStudio.NudgeLimitPreviousWord" xml:space="preserve"><value>das vorherige Wort beginnt bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39</comment></data>
+  <data name="LyricsStudio.NudgeLimitNextWord" xml:space="preserve"><value>das nächste Wort beginnt bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39</comment></data>
+  <data name="LyricsStudio.NudgeLimitThisWord" xml:space="preserve"><value>dieses Wort beginnt bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39 (the word's own start; its end cannot go before it)</comment></data>
+  <data name="LyricsStudio.NudgeLimitLineStart" xml:space="preserve"><value>die Zeile beginnt bei {0} und jedes Wort braucht 0,01 s</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39 (each word keeps at least 0.01 s)</comment></data>
+  <data name="LyricsStudio.NudgeLimitLineEnd" xml:space="preserve"><value>die Zeile endet bei {0}</value><comment>Nudge hint reason, after "No room:" or "Moved as far as it could:"; {0} is a time like 00:35.39</comment></data>
+  <data name="LyricsStudio.NudgeAdviceWord" xml:space="preserve"><value>Verschiebe zuerst dieses Wort oder tippe die Zeile neu.</value><comment>Nudge hint advice after a word blocked by its neighbour</comment></data>
+  <data name="LyricsStudio.NudgeAdviceLine" xml:space="preserve"><value>Zeilen behalten ihre Reihenfolge: verschiebe zuerst diese Zeile.</value><comment>Nudge hint advice after a line blocked by its neighbour; lines never change order</comment></data>
+  <data name="LyricsStudio.NudgeAdviceLineEnd" xml:space="preserve"><value>Verschiebe zuerst das Zeilenende.</value><comment>Nudge hint advice after a last word blocked by its line end</comment></data>
   <data name="LyricsStudio.Hear" xml:space="preserve"><value>Anhören</value><comment>Nudge bar button: play from just before the selection</comment></data>
   <data name="LyricsStudio.HearTip" xml:space="preserve"><value>Ab einer Sekunde vor der gewählten Zeile oder dem Wort abspielen · Kürzel /</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.SpeedSlower" xml:space="preserve"><value>Langsamer</value><comment>Speed pill: play the song slower (0.05x step)</comment></data>
+  <data name="LyricsStudio.SpeedFaster" xml:space="preserve"><value>Schneller</value><comment>Speed pill: play the song faster (0.05x step)</comment></data>
+  <data name="LyricsStudio.SpeedTip" xml:space="preserve"><value>Wiedergabetempo, 0,5x bis 1,5x. Taps landen weiter auf der Zeit des Songs. Das vorherige Tempo kommt zurück, wenn das Studio schließt.</value><comment>Tooltip</comment></data>
+  <data name="LyricsStudio.SpeedReset" xml:space="preserve"><value>Zurück auf 1× Tempo</value><comment>Speed pill value: click to go back to normal speed</comment></data>
   <data name="LyricsStudio.LivePreview" xml:space="preserve"><value>Live-Vorschau</value><comment>Review button: show or hide the lyrics preview beside the editor</comment></data>
   <data name="LyricsStudio.LivePreviewTip" xml:space="preserve"><value>Den Songtext zeigen, wie er aussehen wird, neben dem Editor, dem Song folgend. Aktualisiert sich beim Bearbeiten; nichts wird gespeichert.</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.LivePreviewIdle" xml:space="preserve"><value>Spiele diesen Song ab, um hier seinen Songtext zu sehen</value><comment>Preview pane, when another song (or none) is playing</comment></data>
@@ -2902,6 +2997,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Hat ein Song nur einfachen Text, wird nach deinem bevorzugten synchronisierten Typ gesucht. Wird nichts gefunden, bleibt der einfache Text.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Songtexte für neue Songs finden</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Sucht im Hintergrund Songtexte für Songs, die zur Mediathek hinzukommen. Songs mit synchronisierten Texten bleiben unverändert.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>Songtexte für die ganze Mediathek finden</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Sucht im Hintergrund Songtexte für Songs, die noch keinen synchronisierten Text haben.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>Wortsynchron (beste Wahl)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>Zeilensynchron</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Reintext</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -3159,6 +3256,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Main.AlbumView" xml:space="preserve"><value>Ansicht</value><comment>Albums page top-right view menu tooltip</comment></data>
   <data name="Main.AlbumGrid" xml:space="preserve"><value>Raster</value><comment>Albums view menu: tile grid</comment></data>
   <data name="Main.AlbumCarousel" xml:space="preserve"><value>Karussell</value><comment>Albums view menu: album carousel</comment></data>
+  <data name="Main.AlbumMasonry" xml:space="preserve"><value>Mauerwerk</value><comment>Albums view menu: Masonry layout for the grid (GitHub #213)</comment></data>
+  <data name="Main.AlbumWideSpacing" xml:space="preserve"><value>Mehr Abstand</value><comment>Albums view menu: wider spacing between albums (Settings toggle)</comment></data>
   <data name="Main.NowPlayingCoverFlow" xml:space="preserve"><value>Now-Playing-Cover-Flow</value><comment>Albums view menu: opens the queue-driven Cover Flow page (GitHub #164)</comment></data>
   <data name="Main.ViewList" xml:space="preserve"><value>Liste</value><comment>Artists view menu: list rows</comment></data>
   <data name="Main.CarouselCover" xml:space="preserve"><value>Cover</value><comment>Albums view menu: carousel case style, plain cover</comment></data>
@@ -3666,12 +3765,12 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Downloads entfernen</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} Song|{0:N0} Songs</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} Playlist|{0} Playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Akzent hat 17 Farben, und „Farbe vom Cover“ folgt dem Cover, das gerade läuft.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Ein Sleep-Timer auf „Wird gespielt“; „Einen Monat pausieren“ und „Song ausblenden“ im Menü eines Songs.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Erstelle eine Playlist mit + und gib ihr ein eigenes Cover; Cover werden mit deinem Computer synchronisiert.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>„Vor dem aktuellen einfügen“ im Menü eines Songs, und gespielte Songs können in der Warteschlange bleiben.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Ein Song auf deinem Handy und derselbe Song von deinem Computer erscheinen nur einmal.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Flüssigeres Scrollen, schnellere Seiten und Liedtexte neben dem Cover im Querformat.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>„Songs hinzufügen“ in einer Playlist: Tippe auf + und wähle Songs aus deiner Bibliothek.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>Songtexte passen sich deinem Bildschirm an und scrollen flüssig.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Songs von deinem Computer erscheinen unter „Zuletzt hinzugefügt“.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Zieh einen Song an den oberen oder unteren Rand der Warteschlange, und die Liste scrollt mit.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Schnellerer Start ohne Hänger beim Laden der Bibliothek und flüssigere Menüs.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Fortschrittsbalken reagieren auf ihrer ganzen Höhe, und das Querformat passt auf den Bildschirm.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Der mitgelieferte ALAC-Decoder, gebaut aus dem unveränderten FFmpeg-6.0-Quellcode ohne GPL- oder unfreie Teile: git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Wiedergabe, Mediensitzung und der JNI-Wrapper des Decoders.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Das Framework der Benutzeroberfläche.</value><comment>Open-source licenses</comment></data>
@@ -3792,6 +3891,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Select.All" xml:space="preserve"><value>Alle auswählen</value><comment>Select mode: tick every song in the list</comment></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Auswahl aufheben</value><comment>Select mode: untick every song</comment></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>Fertig</value><comment>Select mode: leave it; also closes the import result</comment></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Songs hinzufügen</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Deine Bibliothek durchsuchen</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Playlist importieren</value><comment>Playlists page menu: import .m3u/.m3u8 files</comment></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{0} von {1} Songs importiert</value><comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} Playlist importiert|{0} Playlists importiert</value><comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment></data>
@@ -3829,6 +3930,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Datei konnte nicht gelesen werden: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} ist leer.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} importiert</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>eingefügter Songtext</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} als einfacher Songtext importiert (keine Zeitstempel gefunden).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Suchdienst nicht verfügbar.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Titel und Künstler erforderlich.</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -3882,7 +3984,14 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Songtexte für deine Bibliothek suchen ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Songtexte für {0} abrufen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Löscht die Songtexte, die Noctis für diese Songs gespeichert hat (seine .lrc-Dateien und zwischengespeicherte Songtexte). Songtext-Dateien, die du selbst erstellt hast, bleiben unberührt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Sucht Songtexte online, wortsynchrone zuerst, und speichert sie neben deinen Songs. Deine eigenen Songtext-Dateien werden nie ersetzt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.UpgradeLine" xml:space="preserve"><value>Auch zeilensynchrone Songtexte auf wortsynchrone aufwerten</value><comment>Checkbox in the bulk lyrics dialog, shown when word-synced is the preferred type</comment></data>
+  <data name="BulkLyrics.FetchWord" xml:space="preserve"><value>Sucht Songtexte online, wenn möglich wortsynchron.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchLine" xml:space="preserve"><value>Sucht zeilensynchrone Songtexte online.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FetchPlain" xml:space="preserve"><value>Sucht einfache Songtexte online.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveSidecar" xml:space="preserve"><value>Gespeichert neben deinen Songs.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveEmbedded" xml:space="preserve"><value>Gespeichert in deinen Musikdateien.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.SaveBoth" xml:space="preserve"><value>Gespeichert in deinen Musikdateien und daneben.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
+  <data name="BulkLyrics.FollowsSettings" xml:space="preserve"><value>Deine eigenen Songtexte bleiben erhalten.</value><comment>Fetch / remove lyrics in bulk dialog (GitHub #203)</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Noch nichts entfernt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>Bereit.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>Ausblenden</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -3906,11 +4015,28 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="BulkLyrics.SumFailed" xml:space="preserve"><value>{0:N0} fehlgeschlagen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumKeptOwnFile" xml:space="preserve"><value>{0:N0} mit deiner eigenen Songtext-Datei belassen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumBusy" xml:space="preserve"><value>{0} ausgelastet, versuch es später noch mal</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsHeader" xml:space="preserve"><value>Unter einem anderen Künstlernamen suchen. Deine Tags bleiben unverändert.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsFor" xml:space="preserve"><value>{0} suchen als</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SearchAsTooMany" xml:space="preserve"><value>Die Suche unter einem anderen Künstlernamen gibt es für Auswahlen mit bis zu {0} Künstlern.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.SumStillBusy" xml:space="preserve"><value>{0} nicht gesucht, Quellen ausgelastet: der nächste Durchlauf fragt erneut</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.WaitingForSources" xml:space="preserve"><value>Warte auf ausgelastete Quellen … noch {0} erneut zu suchen</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>Frage ausgelastete Quellen erneut … noch {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>nichts zu tun</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>1 Song hat nur einen unsynchronisierten Songtext. Das Lyrics Studio kann ihn auf diesem PC mit seinem Sprachmodell timen: Das kann pro Song eine Minute oder länger dauern (mit Grafikkarte schneller), und du prüfst jeden, bevor er gespeichert wird.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} Songs haben nur unsynchronisierte Songtexte. Das Lyrics Studio kann sie auf diesem PC mit seinem Sprachmodell timen: Das kann pro Song eine Minute oder länger dauern (mit Grafikkarte schneller), und du prüfst jeden, bevor er gespeichert wird.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>Die ersten {0} werden auf einmal geöffnet.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} Song|{0:N0} Songs</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} Album|{0:N0} Alben</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>Alle Künstler</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>Kleine Künstler ausblenden</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>Weniger als {0:N0} Song|Weniger als {0:N0} Songs</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>Alle Künstler sind durch den Filter ausgeblendet</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Wähle im Filtermenü „Alle Künstler“ oder suche nach einem Namen</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Kleine Künstler ausblenden</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Blendet Künstler mit nur wenigen Songs auf der Künstlerseite aus. Die Suche findet sie weiterhin.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Künstler ausblenden mit weniger als</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Seitenleiste bis zum Überfahren ausblenden</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Blendet die Seitenleiste ganz aus, damit Seiten die volle Breite nutzen. Bewege den Zeiger an den linken Fensterrand, um sie einzublenden.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} Titel|{0:N0} Titel</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} Element|{0:N0} Elemente</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} Std. {1} Min.</value><comment>Short duration (sidebar playlist row)</comment></data>
@@ -3953,6 +4079,30 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.ScanError" xml:space="preserve"><value>Fehler beim Durchsuchen: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.IndexRebuildError" xml:space="preserve"><value>Fehler beim Neuaufbau des Index: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ResetDone" xml:space="preserve"><value>Alle Einstellungen und Daten wurden zurückgesetzt.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetConfirmOnePlaylist" xml:space="preserve"><value>Deine Playlist wird endgültig gelöscht.</value><comment>Reset confirm, one playlist</comment></data>
+  <data name="Settings.ResetConfirmPlaylists" xml:space="preserve"><value>Alle {0} Playlists werden endgültig gelöscht.</value><comment>Reset confirm; {0} playlist count (2 or more)</comment></data>
+  <data name="Settings.ResetConfirmClears" xml:space="preserve"><value>Das Zurücksetzen löscht deine Bibliothek, die Liste der Musikordner, die Warteschlange, Hörverlauf und Statistiken, Bewertungen und Favoriten, Anmeldungen sowie zwischengespeicherte Songtexte und Cover. Alle Einstellungen werden auf Standard zurückgesetzt.</value><comment>Reset confirm</comment></data>
+  <data name="Settings.ResetConfirmKeeps" xml:space="preserve"><value>Erhalten bleiben: installierte Plugins mit ihren Berechtigungen, verbundene Smartphones, Fensterpositionen, Lautstärke und der Ort des Datenordners.</value><comment>Reset confirm</comment></data>
+  <data name="Settings.LaunchAtLoginRemoveFailed" xml:space="preserve"><value>Noctis konnte nicht aus dem Autostart entfernt werden.</value><comment>Settings › General launch-at-login error</comment></data>
+  <data name="Settings.LaunchAtLoginNeedsAppBundle" xml:space="preserve"><value>Damit Noctis beim Hochfahren öffnet, muss es aus seinem App-Paket (Noctis.app) laufen, z. B. aus dem Ordner „Programme“.</value><comment>Settings › General launch-at-login error</comment></data>
+  <data name="Settings.LaunchAtLoginRegisterFailed" xml:space="preserve"><value>Noctis konnte nicht für den Start beim Hochfahren eingetragen werden. Prüfe, ob die App ihren Autostart-Eintrag schreiben darf.</value><comment>Settings › General launch-at-login error</comment></data>
+  <data name="Settings.ArtistCreditsUpdatedOne" xml:space="preserve"><value>Künstlerangaben bei 1 Titel aktualisiert.</value><comment>Settings status line (one track; more use Settings.ArtistCreditsUpdated)</comment></data>
+  <data name="Settings.FfmpegFound" xml:space="preserve"><value>ffmpeg gefunden ✓ — {0}</value><comment>Settings status line; {0} ffmpeg version</comment></data>
+  <data name="Settings.FfmpegInvalid" xml:space="preserve"><value>Keine gültige ffmpeg-Programmdatei — {0}</value><comment>Settings status line; {0} file path</comment></data>
+  <data name="Settings.ListenBrainzTokenOrNetwork" xml:space="preserve"><value>Ungültiges Token oder Netzwerkfehler.</value><comment>ListenBrainz Connect error in SettingsViewModel</comment></data>
+  <data name="Settings.WebRemoteStartFailed" xml:space="preserve"><value>Start fehlgeschlagen: {0}</value><comment>Web Remote status; {0} error message</comment></data>
+  <data name="Settings.UpdateDownloadsAfter" xml:space="preserve"><value>{0} ist verfügbar. Es wird nach {1:g} automatisch heruntergeladen und beim nächsten Öffnen von Noctis installiert.</value><comment>Settings › About update status; {0} version tag, {1} date and time</comment></data>
+  <data name="Settings.UpdateInstallerMissing" xml:space="preserve"><value>{0} verfügbar — Installer nicht gefunden. Besuche GitHub.</value><comment>Settings › About update status; {0} version tag</comment></data>
+  <data name="Settings.UpdateVersionAvailable" xml:space="preserve"><value>{0} ist verfügbar.</value><comment>Settings › About update status; {0} version tag</comment></data>
+  <data name="Settings.UpdateVersionAvailableHint" xml:space="preserve"><value>{0} ist verfügbar. {1}</value><comment>Settings › About update status; {0} version tag, {1} how to update this copy</comment></data>
+  <data name="Settings.UpdateInstallsAtLaunch" xml:space="preserve"><value>{0} ist bereit und wird beim nächsten Öffnen von Noctis installiert.</value><comment>Settings › About update status; {0} version tag</comment></data>
+  <data name="Settings.UpdateDownloadedClickInstall" xml:space="preserve"><value>{0} heruntergeladen. Klicke auf „Installieren &amp; Neustarten“, um abzuschließen.</value><comment>Settings › About update status; {0} version tag</comment></data>
+  <data name="Settings.UpdateUseButton" xml:space="preserve"><value>Nutze die Update-Schaltfläche.</value><comment>Settings › About update status, added after a failed automatic download</comment></data>
+  <data name="Settings.UpdatePostponed" xml:space="preserve"><value>Verschoben. {0} wird nicht vor {1:g} installiert. „Installieren &amp; Neustarten“ funktioniert weiterhin.</value><comment>Settings › About update status; {0} version tag, {1} date and time</comment></data>
+  <data name="Settings.UpdateHintScoop" xml:space="preserve"><value>Aktualisieren mit: scoop update noctis</value><comment>How to update a Scoop install</comment></data>
+  <data name="Settings.UpdateHintPortable" xml:space="preserve"><value>Lade die neue Version von GitHub herunter.</value><comment>How to update a portable copy</comment></data>
+  <data name="Settings.UpdateHintDeb" xml:space="preserve"><value>Lade das neue .deb von GitHub herunter und öffne es zum Installieren.</value><comment>How to update a .deb install</comment></data>
+  <data name="Settings.ScanAbortedUnreachable" xml:space="preserve"><value>{0} nicht erreichbar — Bibliothek unverändert. Prüfe das Laufwerk und aktualisiere dann.</value><comment>Settings status line; {0} unreachable music folders</comment></data>
   <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>Artwork-Cache geleert.</value><comment>Settings status line</comment></data>
   <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>Cache konnte nicht geleert werden: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.NoFolderSelected" xml:space="preserve"><value>Kein Ordner ausgewählt</value><comment>Settings status line</comment></data>
@@ -4069,7 +4219,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} Alben, {1} Titel. Wird in die Tags Album und Albuminterpret der Dateien geschrieben.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Zusammenfassen</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Kein anderes Album hat diesen Namen. Klicke in der Albenansicht mit Strg auf die zusammengehörenden Alben und dann mit der rechten Maustaste auf eines davon.</value><comment>Shown when only one album is chosen</comment></data>
-  <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>In Noctis zusammengefasst, aber {0} Datei(en) konnten nicht gespeichert werden (schreibgeschützt oder in einer anderen App geöffnet). Ändert sich eine solche Datei, kehrt sie beim nächsten Scan zu ihrem alten Album zurück.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>In Noctis zusammengefasst, aber einige Dateien ({0}) konnten nicht gespeichert werden (schreibgeschützt oder in einer anderen App geöffnet). Ändert sich eine solche Datei, kehrt sie beim nächsten Scan zu ihrem alten Album zurück.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
   <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
@@ -4116,4 +4266,26 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Search.LyricsOff" xml:space="preserve"><value>Songtexte nicht durchsuchen</value></data>
   <data name="Search.LyricsInclude" xml:space="preserve"><value>Songtexte einbeziehen</value></data>
   <data name="Search.LyricsOnly" xml:space="preserve"><value>Nur Songtexte</value></data>
+  <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>Dieser Datenordner wurde von Noctis {0} gespeichert. Seine neueren Einstellungen bleiben erhalten, diese Version kann sie aber erst nach einem Update nutzen.</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
+  <data name="Settings.LyricsPageHideLyrics" xml:space="preserve"><value>Songtext auf der Songtext-Seite ausblenden</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Zeigt stattdessen den zentrierten Player, auch wenn ein Song Songtext hat.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="LyricShare.Watermark" xml:space="preserve"><value>Noctis-Wasserzeichen</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
+  <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>Zeigt das Noctis-Logo auf der Karte und im Video</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
+  <data name="MoveToAlbum.Menu" xml:space="preserve"><value>In ein Album verschieben</value><comment>Song menu row (GitHub #239)</comment></data>
+  <data name="MoveToAlbum.Title" xml:space="preserve"><value>In ein Album verschieben</value><comment>Dialog title (MoveToAlbumDialog)</comment></data>
+  <data name="MoveToAlbum.NewTitle" xml:space="preserve"><value>In ein neues Album verschieben</value><comment>Dialog title while naming a new album</comment></data>
+  <data name="MoveToAlbum.SongCount" xml:space="preserve"><value>{0} Songs</value><comment>{0} number of songs</comment></data>
+  <data name="MoveToAlbum.NewAlbum" xml:space="preserve"><value>Neues Album</value><comment>Button above the album list</comment></data>
+  <data name="MoveToAlbum.Search" xml:space="preserve"><value>Alben durchsuchen</value><comment>Search box watermark</comment></data>
+  <data name="MoveToAlbum.NoAlbums" xml:space="preserve"><value>Kein Album passt.</value><comment>Empty list</comment></data>
+  <data name="MoveToAlbum.CurrentAlbum" xml:space="preserve"><value>Aktuelles Album</value><comment>Row note: the songs are on this album already</comment></data>
+  <data name="MoveToAlbum.AlbumName" xml:space="preserve"><value>Albumname</value><comment>Field label</comment></data>
+  <data name="MoveToAlbum.AlbumArtist" xml:space="preserve"><value>Albuminterpret</value><comment>Field label</comment></data>
+  <data name="MoveToAlbum.NewExplain" xml:space="preserve"><value>Alben entstehen aus den Tags der Songs: Das Album beginnt mit den Songs, die du hineinverschiebst.</value><comment>Hint under the new album fields</comment></data>
+  <data name="MoveToAlbum.PickHint" xml:space="preserve"><value>Wähle ein Album oder lege ein neues an.</value><comment>Footer line before an album is picked</comment></data>
+  <data name="MoveToAlbum.NewHint" xml:space="preserve"><value>Gib dem neuen Album einen Namen.</value><comment>Footer line while the new album has no name</comment></data>
+  <data name="MoveToAlbum.ConfirmExisting" xml:space="preserve"><value>Verschiebt {2} nach „{1}“. Die Album-Tags der Dateien (Album, Albuminterpret, Track- und CD-Nummer, Jahr) werden geändert.</value><comment>{0} song count, {1} album name</comment></data>
+  <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>Legt mit {2} das neue Album „{1}“ an. Die Album-Tags der Dateien (Album, Albuminterpret, Track- und CD-Nummer) werden geändert.</value><comment>{0} song count, {1} new album name</comment></data>
+  <data name="MoveToAlbum.Move" xml:space="preserve"><value>Verschieben</value><comment>Confirm button</comment></data>
+  <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>In Noctis verschoben, aber einige Dateien ({0}) konnten nicht gespeichert werden (schreibgeschützt oder in einer anderen App geöffnet). Ändert sich so eine Datei, kommt sie beim nächsten Scan in ihr altes Album zurück.</value><comment>{0} file count; list of file names follows</comment></data>
 </root>

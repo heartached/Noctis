@@ -22,6 +22,9 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     private readonly SettingsViewModel? _settings;
 
     private List<Track> _allTracks = new();
+    /// <summary>The library's songs this list was last filled from (the view keeps its
+    /// Ctrl-selection to these across a refill, GitHub #225).</summary>
+    internal IReadOnlyList<Track> AllTracks => _allTracks;
     private string _currentFilter = string.Empty;
     private int _filterGeneration;
     /// <summary>The newest request's lyric-index wait. A newer request cancels the older one's,
@@ -512,6 +515,15 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         var tracks = SelectionOr(track);
         CtrlSelectedTracks.Clear();
         await MetadataHelper.OpenSendToFolderDialog(tracks);
+    }
+
+    /// <summary>GitHub #239: the song (or the Ctrl-selection it is in) → Move to Album.</summary>
+    [RelayCommand]
+    private async Task MoveToAlbum(Track track)
+    {
+        var tracks = SelectionOr(track);
+        CtrlSelectedTracks.Clear();
+        await MetadataHelper.OpenMoveToAlbumDialog(tracks);
     }
 
     private Action<Track>? _searchLyricsAction;

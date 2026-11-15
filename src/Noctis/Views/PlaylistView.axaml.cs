@@ -22,6 +22,8 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
     private EventHandler? _pendingScrollRestore;
     // See LibrarySongsView for why this is data-tracked rather than container-tracked.
     private readonly HashSet<Track> _selectedTracks = new();
+    /// <summary>The song a Shift+click spans from: the last row clicked (GitHub #226).</summary>
+    private Track? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
@@ -366,6 +368,19 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         if (source is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
 
+        // GitHub #226: Shift+click spans from the last clicked row, in list order.
+        if (MultiSelectHelper.IsRangePress(e))
+        {
+            _clearSelectionOnRelease = false;
+            _rangeAnchor = MultiSelectHelper.HandleTrackRangeClickByData(MultiSelectHelper.ItemsOf<Track>(TrackList),
+                _rangeAnchor, track, e, _selectedTracks, MultiSelectHelper.RealizedRows(TrackList));
+            SyncSelectionToViewModel();
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = track;
+
         // GitHub #125: this tunnel runs before the row's drag handler, and clearing here
         // emptied the selection before a drag could begin, so dragging a selected row
         // only ever moved that one row. OnTrackRowPointerReleased clears it on a click.
@@ -451,7 +466,8 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
             removeLyricsCommand: vm.RemoveLyricsCommand,
             sendToFolderCommand: vm.SendToFolderCommand,
             badgeCommand: vm.SetBadgeCommand,
-            badgeNames: vm.BadgeNames);
+            badgeNames: vm.BadgeNames,
+            moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
         // Same gate as the selection bar's Remove: smart playlists are rule-driven.
         _menuBuilder.Remove.IsVisible = vm.IsManualPlaylist;
         // Bind settled the separators with Remove still shown; the views open the menu with
@@ -531,7 +547,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         {
             item.ContextRequested -= OnTrackItemContextRequested;
             item.ContextMenu = null;
-            item.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(item, false, animate: false);
             item.RemoveHandler(PointerPressedEvent, OnTrackRowPointerPressed);
             item.RemoveHandler(PointerMovedEvent, OnTrackRowPointerMoved);
             item.RemoveHandler(PointerReleasedEvent, OnTrackRowPointerReleased);
@@ -831,7 +847,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         _selectedTracks.Clear();
         foreach (var child in TrackList.GetVisualDescendants())
-            if (child is ListBoxItem li) li.Classes.Remove("ctrl-selected");
+            if (child is ListBoxItem li) MultiSelectHelper.SetSelectedVisual(li, false, animate: false);
         if (DataContext is PlaylistViewModel selVm)
         {
             selVm.CtrlSelectedTracks = new List<Track>();

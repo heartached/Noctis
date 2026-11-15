@@ -75,7 +75,6 @@ public class PerfAuditHarnessTests
         }
     }
 
-    private static T Await<T>(Task<T> task) { PumpUntil(() => task.IsCompleted); return task.GetAwaiter().GetResult(); }
     private static void Await(Task task) { PumpUntil(() => task.IsCompleted); task.GetAwaiter().GetResult(); }
 
     // ── the app's own App.Initialize (App.axaml resources, styles, view locator, installs) ──

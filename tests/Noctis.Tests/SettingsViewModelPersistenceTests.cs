@@ -130,11 +130,11 @@ public class SettingsViewModelPersistenceTests : IDisposable
     {
         var vm = CreateViewModel();
         await vm.LoadAsync();
-        Assert.True(vm.ImportDroppedMedia);
+        Assert.False(vm.ImportDroppedMedia); // off on a new install (2026-11-14)
         Assert.True(vm.PlayPauseFadeEnabled);
         Assert.Equal(300, vm.PlayPauseFadeMs);
 
-        vm.ImportDroppedMedia = false;
+        vm.ImportDroppedMedia = true;
         vm.PlayPauseFadeEnabled = false;
         vm.PlayPauseFadeMs = 750;
         await vm.SaveAsync();
@@ -142,7 +142,7 @@ public class SettingsViewModelPersistenceTests : IDisposable
         var reloaded = CreateViewModel();
         await reloaded.LoadAsync();
 
-        Assert.False(reloaded.ImportDroppedMedia);
+        Assert.True(reloaded.ImportDroppedMedia);
         Assert.False(reloaded.PlayPauseFadeEnabled);
         Assert.Equal(750, reloaded.PlayPauseFadeMs);
     }
@@ -540,5 +540,55 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.Contains("[Profile] Avatar set", DebugLog.Snapshot());
         await vm.ClearProfileAvatarCommand.ExecuteAsync(null);
         Assert.Contains("[Profile] Avatar removed", DebugLog.Snapshot());
+    }
+
+    /// <summary>
+    /// settings.json on disk (a real PersistenceService), where a gated update from another
+    /// writer lands right after the next settings read: the window between SaveAsync's merge
+    /// read and its write.
+    /// </summary>
+    private sealed class GapWriter : TestPersistenceService, IPersistenceService
+    {
+        private readonly PersistenceService _real;
+        public GapWriter(PersistenceService real) => _real = real;
+        public Action<AppSettings>? Gap;
+        public override async Task<AppSettings> LoadSettingsAsync()
+        {
+            var settings = await _real.LoadSettingsAsync();
+            if (Interlocked.Exchange(ref Gap, null) is { } gap) await _real.UpdateSettingsAsync(gap);
+            return settings;
+        }
+        public override Task SaveSettingsAsync(AppSettings settings) => _real.SaveSettingsAsync(settings);
+        public Task UpdateSettingsAsync(Action<AppSettings> change) => _real.UpdateSettingsAsync(change);
+    }
+
+    /// <summary>
+    /// SaveAsync read the file (MergeExternalSettingChangesAsync) outside the settings.json gate
+    /// and saved under it, so a gated update from elsewhere (the lyrics page's background, the
+    /// library's exclusions) that landed in between was overwritten by the copy read before it.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Save_KeepsAGatedUpdateThatLandedAfterItsRead()
+    {
+        var real = new PersistenceService(_root);
+        var persistence = new GapWriter(real);
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        vm.DeveloperMode = true;
+        await vm.SaveAsync();
+        await Task.Delay(300); // any save a toggle queued
+
+        persistence.Gap = s =>
+        {
+            s.LyricsBackgroundColorHex = "#123456";
+            s.ExcludedFilePaths = new List<string> { @"D:\Music\removed.flac" };
+        };
+        await vm.SaveAsync();
+        Assert.Null(persistence.Gap);
+
+        var saved = await real.LoadSettingsAsync();
+        Assert.Equal("#123456", saved.LyricsBackgroundColorHex);
+        Assert.Equal(new[] { @"D:\Music\removed.flac" }, saved.ExcludedFilePaths);
+        Assert.True(saved.DeveloperMode);
     }
 }

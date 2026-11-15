@@ -37,6 +37,11 @@ public partial class DuplicateFinderViewModel : ViewModelBase
 
     public event EventHandler? Closed;
 
+    /// <summary>Asks before deleting. The dialog points it at itself: the default prompt is
+    /// owned by the main window, which this modal tool window covers, so the question opened
+    /// behind it (#235) and the only way to reach it was to close the tool.</summary>
+    public Func<string, Task<bool>> Confirm { get; set; } = Views.ConfirmationDialog.ShowAsync;
+
     public DuplicateFinderViewModel(IDuplicateFinderService service)
     {
         _service = service;
@@ -101,8 +106,7 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         var question = OperatingSystem.IsWindows()
             ? L("DuplicateFinder.ConfirmRecycleBin", Files(ids.Count))
             : L("DuplicateFinder.ConfirmTrash", Files(ids.Count));
-        var confirmed = await Views.ConfirmationDialog.ShowAsync(
-            question + "\n\n" + L("DuplicateFinder.ConfirmKeepNote"));
+        var confirmed = await Confirm(question + "\n\n" + L("DuplicateFinder.ConfirmKeepNote"));
         if (!confirmed) return;
 
         IsBusy = true;

@@ -199,7 +199,7 @@ public class ContextMenuV2Tests
         var card = b.Tools.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Popup>().First().Child as Border;
         Assert.NotNull(card);
         Assert.True(MenuOpenAnimation.GetEnable(card!));
-        Assert.Equal(-8, MenuOpenAnimation.GetOffsetX(card!));
+        Assert.True(MenuOpenAnimation.GetSubmenu(card!));
         Assert.Contains(card!.Transitions!, t => t is Avalonia.Animation.TransformOperationsTransition);
         Assert.Contains(card.Transitions!, t => t is Avalonia.Animation.DoubleTransition d && d.Property == Visual.OpacityProperty);
 
@@ -403,13 +403,15 @@ public class ContextMenuV2Tests
                      vm.PlayAlbumCommand, vm.ShuffleAlbumCommand, vm.PlayNextCommand, vm.AddToQueueCommand,
                      vm.AddToNewPlaylistCommand, vm.ToggleAlbumFavoritesCommand, vm.OpenMetadataCommand,
                      vm.ConvertAlbumCommand, vm.ScanAlbumReplayGainCommand, vm.ShowInExplorerCommand,
-                     vm.RemoveFromLibraryCommand, vm.SearchLyricsAlbumCommand, LyricsBackgroundOverrides.ChooseForAlbumCommand,
+                     vm.RemoveFromLibraryCommand, vm.FindLyricsAlbumCommand, LyricsBackgroundOverrides.ChooseForAlbumCommand,
                  })
             Assert.Contains(command, reachable);
 
         // Every row and tile acts on the right-clicked album.
         foreach (var item in menu.GetLogicalDescendants().OfType<MenuItem>().Where(i => i.Command != null && i.IsVisible))
-            if (item.Command != ScrobbleMenu.ToggleCommand)
+            if (item.Command == AlbumCarouselStyleOverrides.SetCommand) // GitHub #233: album + its pick
+                Assert.Same(album, Assert.IsType<AlbumCarouselStyleOverrides.Choice>(item.CommandParameter).Album);
+            else if (item.Command != ScrobbleMenu.ToggleCommand)
                 Assert.Same(album, item.CommandParameter);
         foreach (var button in menu.GetLogicalDescendants().OfType<Button>().Where(b => b.Classes.Contains("mv2-tile")))
             Assert.Same(album, button.CommandParameter);
@@ -457,12 +459,33 @@ public class ContextMenuV2Tests
 
         Assert.False(b.Convert.IsVisible);
         Assert.False(b.ScanReplayGain.IsVisible);
-        Assert.False(b.SearchLyrics.IsVisible);
+        Assert.False(b.FindLyrics.IsVisible);
         Assert.False(b.EditDescription.IsVisible);
         Assert.False(b.Tools.IsVisible); // nothing left inside (scrobbling off in tests)
         var first = Assert.IsType<MenuItem>(b.Menu.Items[0]);
         Assert.Contains(b.QuickPlay, ((Control)first.Header!).GetLogicalDescendants());
         AssertSeparatorsClean(b.Menu.Items);
+    }
+
+    /// <summary>
+    /// GitHub #208: the album menu had "Search Lyrics" (the album's first song only, on the lyrics
+    /// page of whatever was playing) beside "Find Lyrics…". Albums keep Find Lyrics… alone.
+    /// </summary>
+    [AvaloniaFact]
+    public void AlbumMenu_HasFindLyrics_AndNoSearchLyrics()
+    {
+        EnsureAppStyles();
+        var b = new AlbumContextMenuBuilder();
+        b.Build("Remove from Library", new Border(), v2: true);
+        var none = new RelayCommand<object?>(_ => { });
+        var album = new Album { Id = Guid.NewGuid(), Name = "X", Artist = "Y", TrackCount = 1 };
+        b.Bind(album, none, none, none, none, none, none, none, none, none, convertCommand: none, scanReplayGainCommand: none);
+        b.BindFindLyrics(album, none);
+
+        var headers = b.Menu.GetLogicalDescendants().OfType<MenuItem>().Where(i => i.IsVisible).Select(i => i.Header as string).ToList();
+        Assert.Contains(Noctis.Localization.Loc.T("LibraryAlbums.FindLyrics"), headers);
+        Assert.DoesNotContain(Noctis.Localization.Loc.T("Lyrics.SearchLyrics"), headers);
+        Assert.DoesNotContain("Search Lyrics", headers);
     }
 
     // ── Long translations (es "Reproducir a continuación", fr "Ajouter à la file d'attente") ──
@@ -484,7 +507,8 @@ public class ContextMenuV2Tests
             var none = new RelayCommand<object?>(_ => { });
             album.Bind(new Album { Id = Guid.NewGuid(), Name = "Un álbum con un título realmente muy largo", Artist = "Artista", TrackCount = 12 },
                 none, none, none, none, none, none, none, none, none,
-                convertCommand: none, scanReplayGainCommand: none, searchLyricsCommand: none);
+                convertCommand: none, scanReplayGainCommand: none);
+            album.BindFindLyrics((Album)album.Menu.DataContext!, none);
 
             // Translated labels are in use, not English fallbacks.
             Assert.Equal(Noctis.Localization.Loc.T("LibraryAlbums.AddQueue"), TileLabel(track.QuickAddToQueue).Text);
@@ -574,7 +598,8 @@ public class ContextMenuV2Tests
             album.Build("Remove from Library", new Border(), v2: true);
             var none = new RelayCommand<object?>(_ => { });
             album.Bind(new Album { Id = Guid.NewGuid(), Name = "25", Artist = "Adele", TrackCount = 11 },
-                none, none, none, none, none, none, none, none, none, convertCommand: none, scanReplayGainCommand: none, searchLyricsCommand: none);
+                none, none, none, none, none, none, none, none, none, convertCommand: none, scanReplayGainCommand: none);
+            album.BindFindLyrics((Album)album.Menu.DataContext!, none);
 
             var sheet = new WrapPanel { Width = 300, Margin = new Thickness(10) };
             foreach (var key in new[] { "MenuLinePlay", "MenuLineShuffle", "MenuLinePlayNext", "MenuLineQueue", "MenuLinePlaylistAdd",

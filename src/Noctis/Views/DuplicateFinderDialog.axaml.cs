@@ -32,6 +32,8 @@ public partial class DuplicateFinderDialog : Window
         // PillDialogHost turns this into the animated close; nothing is returned through
         // Close(result), so the deferred close loses nothing.
         vm.Closed += (_, _) => Close();
+        // The delete question must open over this window, not the main one it covers.
+        vm.Confirm = message => ConfirmationDialog.ShowAsync(this, message);
         _vm = vm;
         vm.PropertyChanged += OnVmPropertyChanged;
         Opened += (_, _) => { if (vm.IsBusy) StartSpin(); };

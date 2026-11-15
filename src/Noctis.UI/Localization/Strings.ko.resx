@@ -575,6 +575,14 @@
     <value>재생목록, 노래 페이지, 플레이어의 아티스트, 앨범, 장르 이름을 강조 색상으로 표시합니다. 끄면 일반 글자 색상으로 표시됩니다.</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve">
+    <value>창에 강조 색상 입히기</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment>
+  </data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve">
+    <value>창과 페이지 배경에 강조 색상을 은은하게 더합니다.</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
+  </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0}곡</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
@@ -1013,6 +1021,14 @@
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
     <value>현재 줄과 인접한 줄을 제외한 모든 줄을 어둡게 합니다.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>전체 화면에서 플레이어 아일랜드 숨기기</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>전체 화면 가사 페이지에서는 곡 아래에 진행 막대만 남깁니다. 재생은 계속 키보드 단축키로 조작할 수 있습니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -3144,6 +3160,14 @@
     <value>가사 검색</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>가사 추가</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>가사 편집</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>가사 검색 중</value>
     <comment>Text in LyricsView.axaml</comment>
@@ -4520,6 +4544,10 @@
   </data>
   <data name="PlaybackBar.Plain" xml:space="preserve">
     <value>일반</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>가사 숨기기</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
@@ -7312,12 +7340,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>다운로드 제거</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}곡</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>재생목록 {0}개</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>강조 색상이 17가지로 늘었고, '아트워크에 맞추기'는 재생 중인 커버 색을 따라갑니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>지금 재생 중 화면에 수면 타이머, 노래 메뉴에 '한 달 동안 다시 알림'과 '노래 숨기기'.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>+로 플레이리스트를 만들고 원하는 커버를 지정하세요. 커버는 컴퓨터와 동기화됩니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>노래 메뉴에 '현재 곡 앞에 추가', 재생한 노래를 대기열에 남길 수 있습니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>휴대폰의 노래와 컴퓨터의 같은 노래가 한 번만 표시됩니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>더 부드러운 스크롤, 더 빠른 페이지, 가로 모드에서는 커버 옆에 가사.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>재생목록 안에서 노래 추가: +를 눌러 보관함에서 노래를 고르세요.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>가사가 화면에 맞게 표시되고 부드럽게 스크롤됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>컴퓨터의 노래가 최근 추가된 항목에 표시됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>노래를 대기열 위나 아래 끝으로 끌면 목록이 함께 스크롤됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>더 빨라진 시작, 보관함을 불러오는 동안 멈춤 없음, 더 부드러운 메뉴.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>진행 막대가 높이 전체에서 반응하고, 가로 모드가 화면에 맞습니다.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>내장 ALAC 디코더로, GPL 또는 non-free 구성 요소 없이 수정되지 않은 FFmpeg 6.0 소스에서 빌드되었습니다: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>재생, 미디어 세션 및 디코더의 JNI 래퍼.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>사용자 인터페이스 프레임워크.</value></data>
@@ -7438,6 +7466,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>모두 선택</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>모두 선택 해제</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>완료</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>노래 추가</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>라이브러리 검색</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>플레이리스트 가져오기</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}곡 중 {0}곡을 가져왔습니다</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>플레이리스트 {0}개를 가져왔습니다</value></data>
@@ -7475,6 +7505,7 @@
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>파일을 읽을 수 없습니다: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} 파일이 비어 있습니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} 가져옴</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>붙여 넣은 가사</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0}을(를) 일반 가사로 가져왔습니다(타임스탬프 없음).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>검색 서비스를 사용할 수 없습니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>제목과 아티스트가 필요합니다.</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -7528,7 +7559,6 @@
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>보관함의 가사 찾기({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0}의 가사 가져오기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis가 이 노래에 저장한 가사(.lrc 파일과 캐시된 가사)를 삭제합니다. 직접 만든 가사 파일은 그대로 둡니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>온라인에서 가사를 찾아(단어 싱크 우선) 노래 옆에 저장합니다. 직접 만든 가사 파일은 절대 바꾸지 않습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>아직 제거된 항목이 없습니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>준비됨.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>숨기기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -7557,6 +7587,17 @@
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>노래 {0:N0}곡에 일반 가사만 있습니다. Lyrics Studio가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>처음 {0}곡이 한 번에 열립니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0}곡</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>앨범 {0:N0}개</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>모든 아티스트</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>작은 아티스트 숨기기</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>{0:N0}곡 미만</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>필터 때문에 모든 아티스트가 숨겨져 있습니다</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>필터 메뉴에서 모든 아티스트를 선택하거나 이름을 검색하세요</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>작은 아티스트 숨기기</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>곡이 적은 아티스트를 아티스트 페이지에서 뺍니다. 검색과 곡·앨범의 아티스트 링크로는 계속 찾을 수 있습니다. 각 이름 아래 표시되는 숫자와 같은, 그 아티스트가 주 아티스트인 곡 수로 셉니다.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>다음보다 곡이 적은 아티스트 숨기기</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>마우스를 올릴 때까지 사이드바 숨기기</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>사이드바를 완전히 숨겨 페이지가 전체 너비를 사용합니다. 포인터를 창의 왼쪽 가장자리로 옮기면 나타납니다.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0}개 트랙</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0}개 항목</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0}시간 {1}분</value><comment>Short duration (sidebar playlist row)</comment></data>

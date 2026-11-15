@@ -26,6 +26,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     // ctrl-selected class onto a different track when the user scrolls or
     // tabs back to the page. See MultiSelectHelper's "Data-tracked variants".
     private readonly HashSet<Track> _selectedTracks = new();
+    /// <summary>The song a Shift+click spans from: the last row clicked (GitHub #226).</summary>
+    private Track? _rangeAnchor;
     private DateTime _lastScrollUtc;
 
     /// <summary>Rows selected or a scroll in the last moment: the list must hold still.</summary>
@@ -52,6 +54,9 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         // Double-click to play from here
         TrackList.DoubleTapped += OnTrackDoubleTapped;
         TrackList.AddHandler(PointerPressedEvent, OnTrackPointerPressed, RoutingStrategies.Tunnel);
+        // GitHub #209: a click beside the rows (below the last one, the page margins) clears
+        // the selection, as in the queue.
+        AddHandler(PointerPressedEvent, OnViewPointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a row.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
         // A Plays re-rank waits while the user scrolls (see LibrarySongsViewModel.IsUserBusy).
@@ -88,18 +93,40 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (source is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
 
+        // GitHub #226: Shift+click spans from the last clicked row, in list order.
+        if (MultiSelectHelper.IsRangePress(e))
+        {
+            _rangeAnchor = MultiSelectHelper.HandleTrackRangeClickByData(MultiSelectHelper.ItemsOf<Track>(TrackList),
+                _rangeAnchor, track, e, _selectedTracks, MultiSelectHelper.RealizedRows(TrackList));
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = track;
+
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
 
         if (_selectedTracks.Count > 0)
             Focus();
     }
 
+    private void OnViewPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_selectedTracks.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e))
+            ClearSelection();
+    }
+
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
+        if (DataContext is LibrarySongsViewModel vm) vm.CtrlSelectedTracks = new List<Track>();
+    }
+
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape && _selectedTracks.Count > 0)
         {
-            MultiSelectHelper.ClearTrackSelectionsByData(_selectedTracks, TrackList);
-            if (DataContext is LibrarySongsViewModel vm) vm.CtrlSelectedTracks = new List<Track>();
+            ClearSelection();
             e.Handled = true;
             return;
         }
@@ -152,7 +179,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             fetchLyricsCommand: vm.FetchLyricsCommand,
             lyricsStudioCommand: vm.OpenLyricsStudioCommand,
             removeLyricsCommand: vm.RemoveLyricsCommand,
-            sendToFolderCommand: vm.SendToFolderCommand);
+            sendToFolderCommand: vm.SendToFolderCommand,
+            moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
     }
 
     /// <summary>Click on a row's stars: rate that track (or the whole Ctrl-selection it belongs to).</summary>
@@ -166,6 +194,9 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     {
         if (e.Container is ListBoxItem item)
         {
+            // A row parked by the list's RetainingVirtualizingStackPanel is prepared again
+            // without being cleared: subscribe once.
+            item.ContextRequested -= OnTrackItemContextRequested;
             item.ContextRequested += OnTrackItemContextRequested;
             // Re-apply ctrl-selected visual based on the data set so recycled
             // containers reflect the right state after a scroll.
@@ -193,7 +224,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             item.ContextMenu = null;
             // Strip the visual class so the recycled container doesn't display
             // a stale selection on its next track.
-            item.Classes.Remove("ctrl-selected");
+            MultiSelectHelper.SetSelectedVisual(item, false, animate: false);
         }
     }
 
@@ -276,6 +307,21 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
 
     private void OnFilteredTracksChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        // GitHub #225: a refill (library update, filter) keeps the selected songs that are
+        // still in the library, matched by id: a scan that re-read a file hands back a new
+        // Track for it. Songs gone from the library leave the selection, so no command acts
+        // on them; songs a search hides stay selected, as before.
+        if (_vm != null && e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset
+            && (_selectedTracks.Count > 0 || _rangeAnchor != null))
+        {
+            var listed = new Dictionary<Guid, Track>();
+            foreach (var t in _vm.AllTracks) listed.TryAdd(t.Id, t);
+            var kept = _selectedTracks.Select(t => listed.GetValueOrDefault(t.Id)).OfType<Track>().ToList();
+            _selectedTracks.Clear();
+            _selectedTracks.UnionWith(kept);
+            _rangeAnchor = _rangeAnchor == null ? null : listed.GetValueOrDefault(_rangeAnchor.Id);
+        }
+
         // Scroll to top only when the filter itself changed: a library reload (metadata
         // save, scan tick, analysis pass) re-fills the same results and keeps the user's place.
         if (_vm == null || _vm.FilterKey == _scrollResetFilterKey)
@@ -390,7 +436,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         _selectedTracks.Clear();
         foreach (var child in TrackList.GetVisualDescendants())
-            if (child is ListBoxItem li) li.Classes.Remove("ctrl-selected");
+            if (child is ListBoxItem li) MultiSelectHelper.SetSelectedVisual(li, false, animate: false);
         if (DataContext is LibrarySongsViewModel selVm) selVm.CtrlSelectedTracks = new List<Track>();
 
         base.OnDetachedFromVisualTree(e);

@@ -21,6 +21,8 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     // virtualization recycling the tiles on scroll doesn't drop the ctrl-selected
     // highlight. See MultiSelectHelper's "Data-tracked album-tile variants".
     private readonly HashSet<FavoriteItem> _selectedItems = new();
+    /// <summary>The item a Shift+click spans from: the last one clicked (GitHub #226).</summary>
+    private FavoriteItem? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => FavoritesViewModel.ExpandToTracks(_selectedItems);
@@ -31,6 +33,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         AddHandler(PointerPressedEvent, OnTilePointerPressed, RoutingStrategies.Tunnel);
         // Forward Ctrl+A from the window so it works without first clicking a tile.
         _ = new WindowKeyForwarder(this, OnViewKeyDown);
+        MultiSelectHelper.KeepRowsUnselected(FavoritesList);
     }
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
@@ -38,8 +41,40 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         var source = e.Source as Control;
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
-        if (source is not Button tile) return;
+        if (source is not Button tile)
+        {
+            // GitHub #209, as on Albums: a click beside the tiles clears the selection.
+            if (_selectedItems.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e, rowsAreLayout: true))
+                ClearSelection();
+            return;
+        }
         if (tile.DataContext is not FavoriteItem item) return;
+
+        // GitHub #209, as on Albums: with a selection up, a plain press in the gap around a
+        // cover (the tile's padding) is a click beside the tiles, not a click on that tile.
+        if (_selectedItems.Count > 0 && IsInTilePadding(tile, e)
+            && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
+            && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
+            && !e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            ClearSelection();
+            e.Handled = true;
+            return;
+        }
+
+        // GitHub #226: Shift+click spans from the last clicked item, in grid order.
+        if (MultiSelectHelper.IsRangePress(e) && DataContext is FavoritesViewModel vm)
+        {
+            e.Handled = true;
+            _rangeAnchor = MultiSelectHelper.SelectRange(vm.FavoriteItemRows.SelectMany(r => r.Items).ToList(),
+                _rangeAnchor, item, e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier), _selectedItems);
+            foreach (var t in CollectTiles())
+                MultiSelectHelper.SyncAlbumTileVisual(t, _selectedItems, animate: true);
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = item;
 
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, item, e, _selectedItems)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
@@ -54,8 +89,32 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
             Focus();
     }
 
+    /// <summary>The press landed in the tile's padding (the gap around its cover and caption).</summary>
+    private static bool IsInTilePadding(Button tile, PointerPressedEventArgs e)
+    {
+        var p = e.GetPosition(tile);
+        var pad = tile.Padding;
+        return p.X < pad.Left || p.Y < pad.Top
+            || p.X > tile.Bounds.Width - pad.Right || p.Y > tile.Bounds.Height - pad.Bottom;
+    }
+
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
+        if (DataContext is FavoritesViewModel vm) vm.CtrlSelectedItems = new List<FavoriteItem>();
+    }
+
     /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
     private void OnAlbumTileLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button tile) return;
+        MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
+        // A grid row re-used for other favorites (TileRow) re-binds its tiles instead of loading them.
+        tile.DataContextChanged -= OnAlbumTileRebound;
+        tile.DataContextChanged += OnAlbumTileRebound;
+    }
+
+    private void OnAlbumTileRebound(object? sender, EventArgs e)
     {
         if (sender is Button tile)
             MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
@@ -76,8 +135,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     {
         if (e.Key == Key.Escape && _selectedItems.Count > 0)
         {
-            MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
-            if (DataContext is FavoritesViewModel vm) vm.CtrlSelectedItems = new List<FavoriteItem>();
+            ClearSelection();
             e.Handled = true;
             return;
         }
@@ -143,8 +201,8 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
                 removeCommand: ItemCommand(vm.RemoveItemFromLibraryCommand),
                 convertCommand: ItemCommand(vm.ConvertItemCommand),
                 scanReplayGainCommand: ItemCommand(vm.ScanItemReplayGainCommand),
-                searchLyricsCommand: vm.SearchLyricsAlbumCommand,
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
+            builder.BindFindLyrics(item.Album!, ItemCommand(vm.FindLyricsItemCommand)); // GitHub #208
             _albumViewAlbum!.Command = ItemCommand(vm.ViewItemAlbumCommand);
             _albumViewAlbum.CommandParameter = item.Album;
             MenuV2.RefreshLayout(builder.Menu.Items);
@@ -290,6 +348,7 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         MultiSelectHelper.ClearAlbumSelectionsByData(_selectedItems, CollectTiles());
+        _rangeAnchor = null;
         if (DataContext is FavoritesViewModel selVm) selVm.CtrlSelectedItems = new List<FavoriteItem>();
 
         base.OnDetachedFromVisualTree(e);

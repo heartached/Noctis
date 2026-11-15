@@ -129,13 +129,76 @@ public static class MetadataHelper
         await ShowDialogOwned(new SendToFolderDialog(vm));
     }
 
-    /// <summary>Bulk lyrics: fetch from the enabled sources and save, or remove app-written lyrics.</summary>
+    /// <summary>GitHub #239: Move to Album for a selection (or the playing song).</summary>
+    public static Task OpenMoveToAlbumDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return Task.CompletedTask;
+        var library = App.Services!.GetRequiredService<ILibraryService>();
+        return MoveToAlbumFlow.RunAsync(tracks, library,
+            vm => ShowDialogOwned(new MoveToAlbumDialog(vm)),
+            ConfirmationDialog.ShowAsync);
+    }
+
+    /// <summary>
+    /// Bulk lyrics: fetch from the enabled sources and save, or remove app-written lyrics.
+    /// GitHub #214: a Find Lyrics run the user hid (or whose results they haven't closed yet)
+    /// comes back instead of a new dialog, as the library run does.
+    /// </summary>
     public static async Task OpenBulkLyricsDialog(IReadOnlyList<Track> tracks, bool remove)
     {
         if (tracks == null || tracks.Count == 0) return;
+        if (ReusableSelectionRun(_selectionLyricsRun, remove) is { } pending)
+        {
+            await ShowDialogOwned(new BulkLyricsDialog(pending));
+            return;
+        }
         var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
-        var vm = new BulkLyricsViewModel(tracks, service, remove, openStudio: OpenLyricsStudio);
+        var vm = new BulkLyricsViewModel(tracks, service, remove, openStudio: OpenLyricsStudio,
+            prefs: LyricsOptionPrefs(), savePrefs: SaveLyricsOptionPrefs);
+        if (!remove) _selectionLyricsRun = vm;
         await ShowDialogOwned(new BulkLyricsDialog(vm));
+    }
+
+    /// <summary>GitHub #214: the last album / selection Find Lyrics run, kept while the user isn't done with it.</summary>
+    private static BulkLyricsViewModel? _selectionLyricsRun;
+
+    /// <summary>The run a fetch should bring back instead of starting anew; null for Remove or when there is none.</summary>
+    internal static BulkLyricsViewModel? ReusableSelectionRun(BulkLyricsViewModel? last, bool remove) =>
+        !remove && last is { NeedsReopen: true } ? last : null;
+
+    /// <summary>
+    /// GitHub #214: the label the song and album menus' Find Lyrics entry shows while a hidden
+    /// run is pending ("…in progress" / "…results"), so the way back to it is visible; null
+    /// when there is none and the entry keeps its own label.
+    /// </summary>
+    internal static string? PendingFindLyricsMenuHeader() => ReusableSelectionRun(_selectionLyricsRun, remove: false) switch
+    {
+        { IsRunning: true } => Noctis.Localization.Loc.T("LibraryAlbums.FindLyricsRunning"),
+        { } => Noctis.Localization.Loc.T("LibraryAlbums.FindLyricsResults"),
+        null => null,
+    };
+
+    /// <summary>GitHub #217: the Find Lyrics options as last ticked.</summary>
+    private static BulkLyricsOptionPrefs? LyricsOptionPrefs()
+    {
+        var s = App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings();
+        return s is null ? null : new BulkLyricsOptionPrefs(s.BulkLyricsUpgrade, s.BulkLyricsRecheck, s.BulkLyricsReviewFirst);
+    }
+
+    /// <summary>GitHub #217: keeps the ticked options, in the live settings and on disk.</summary>
+    private static void SaveLyricsOptionPrefs(BulkLyricsOptionPrefs prefs)
+    {
+        static void Apply(AppSettings s, BulkLyricsOptionPrefs p)
+        {
+            s.BulkLyricsUpgrade = p.Upgrade;
+            s.BulkLyricsRecheck = p.Recheck;
+            s.BulkLyricsReviewFirst = p.ReviewFirst;
+        }
+        if (App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() is { } live) Apply(live, prefs);
+        if (App.Services?.GetService<IPersistenceService>() is { } persistence)
+            _ = persistence.UpdateSettingsAsync(s => Apply(s, prefs)).ContinueWith(
+                t => DebugLogger.Warn(DebugLogger.Category.Lyrics, "Bulk.SavePrefsFailed", t.Exception?.GetBaseException().Message ?? string.Empty),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     // The whole-library runs live here, not in their dialogs: Hide closes the dialog and the
@@ -171,6 +234,8 @@ public static class MetadataHelper
     {
         var lyrics = _libraryLyricsRun;
         var artwork = _libraryArtworkRun;
+        var selection = _selectionLyricsRun;
+        _selectionLyricsRun = null;
         _libraryLyricsRun = null;
         _libraryArtworkRun = null;
         // Its block list and "no match" memory belong to the old data; the next page reloads them.
@@ -184,6 +249,13 @@ public static class MetadataHelper
         {
             lyrics.StopCommand.Execute(null);
             try { await (lyrics.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+        }
+        // GitHub #214: an album / selection Find Lyrics run is kept now, so it stops too.
+        if (selection is { IsRunning: true })
+        {
+            selection.StopCommand.Execute(null);
+            try { await (selection.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+            try { await (selection.ApplyCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
         }
         if (artwork is { IsRunning: true })
         {
@@ -204,7 +276,8 @@ public static class MetadataHelper
                 .Where(t => t.SourceType == SourceType.Local).ToList();
             if (tracks.Count == 0) return;
             var service = App.Services!.GetRequiredService<Services.Lyrics.ILyricsBulkService>();
-            _libraryLyricsRun = new BulkLyricsViewModel(tracks, service, remove: false, library: true, openStudio: OpenLyricsStudio);
+            _libraryLyricsRun = new BulkLyricsViewModel(tracks, service, remove: false, library: true, openStudio: OpenLyricsStudio,
+                prefs: LyricsOptionPrefs(), savePrefs: SaveLyricsOptionPrefs);
         }
         await ShowDialogOwned(new BulkLyricsDialog(_libraryLyricsRun));
     }
@@ -367,14 +440,16 @@ public static class MetadataHelper
         var itunes = App.Services!.GetService<ITunesArtworkService>();
         var lrcLib = App.Services!.GetService<ILrcLibService>();
 
-        var vm = new MetadataViewModel(tracks[0], metadata, library, persistence, animatedCovers,
-            albumScoped: true, albumTracks: tracks.ToList(), itunes: itunes, lrcLib: lrcLib, multiSelect: true,
+        var opened = tracks;
+        var edited = tracks.Select(t => EditedInstance(t, library)).ToList();
+        var vm = new MetadataViewModel(edited[0], metadata, library, persistence, animatedCovers,
+            albumScoped: true, albumTracks: edited, itunes: itunes, lrcLib: lrcLib, multiSelect: true,
             metadataSearch: App.Services!.GetService<Services.MetadataSearch.IMetadataSearchService>());
         AddUserEqPresets(vm);
 
-        var edited = tracks.ToList();
         vm.ChangesSaved += (_, _) =>
         {
+            for (var i = 0; i < opened.Count; i++) MirrorSavedEdit(opened[i], edited[i]);
             if (App.Services!.GetService<MainWindowViewModel>() is { } main)
                 LiveApplyPlayingOptions(main, edited);
         };
@@ -407,7 +482,34 @@ public static class MetadataHelper
             string.IsNullOrEmpty(saved.EqPreset) ? null : saved.EqPreset);
     }
 
-    public static async Task OpenMetadataWindow(Track track, bool albumScoped = false)
+    /// <summary>
+    /// GitHub #212: the lyrics page's Add Lyrics / Edit Lyrics. Edit Info opened on the song's
+    /// lyrics (<see cref="MetadataViewModel.OpenOnLyrics"/>): type or paste plain text or LRC,
+    /// fix timed lyrics in their raw text. Save writes them the way every Edit Info save does
+    /// (Settings ▸ Lyrics ▸ Save lyrics to); <paramref name="saved"/> then runs, so the page
+    /// can show them at once.
+    /// </summary>
+    public static Task OpenLyricsEditor(Track track, Action? saved = null) =>
+        OpenMetadataWindow(track, albumScoped: false, openOnLyrics: true, saved: saved);
+
+    /// <summary>
+    /// The song's library instance, which Edit Info edits. The player bar, the queue and the
+    /// lyrics page hand over the queue's Track, and after any rewrite of the file (every tag
+    /// save: the folder watcher re-imports it as a new Track) that is a stale copy: the editor
+    /// showed its old tags and Save wrote them all back into the file, undoing an edit made
+    /// from the Songs list meanwhile (Discord, NJZ: "the metadata edits itself back"); with no
+    /// re-import after the save, the library's row never saw the edit at all.
+    /// </summary>
+    internal static Track EditedInstance(Track track, ILibraryService library) =>
+        !track.IsExternal && library.GetTrackById(track.Id) is { } own ? own : track;
+
+    /// <summary>After a save, the copy Edit Info was opened on shows what was saved.</summary>
+    internal static void MirrorSavedEdit(Track opened, Track edited)
+    {
+        if (opened.CopyTagsFrom(edited)) opened.NotifyMetadataUpdated();
+    }
+
+    public static async Task OpenMetadataWindow(Track track, bool albumScoped = false, bool openOnLyrics = false, Action? saved = null)
     {
         // The metadata editor is file-backed end to end (TagLib reads, atomic
         // file rewrites, sidecar renames) — nothing it does is meaningful for a
@@ -417,6 +519,8 @@ public static class MetadataHelper
         var metadata = App.Services!.GetRequiredService<IMetadataService>();
         var library = App.Services!.GetRequiredService<ILibraryService>();
         var persistence = App.Services!.GetRequiredService<IPersistenceService>();
+        var opened = track;
+        track = EditedInstance(track, library);
 
         List<Track>? albumTracks = null;
         if (albumScoped)
@@ -441,6 +545,8 @@ public static class MetadataHelper
                 main.Player.CurrentAnimatedCoverPath = null;
         };
 
+        // First: the handlers below and `saved` (the lyrics page) read the copy they hold.
+        vm.ChangesSaved += (_, _) => MirrorSavedEdit(opened, track);
         vm.ChangesSaved += (_, _) =>
         {
             var main = App.Services!.GetService<MainWindowViewModel>();
@@ -453,6 +559,8 @@ public static class MetadataHelper
 
             LiveApplyPlayingOptions(main, albumTracks ?? new List<Track> { track });
         };
+        if (saved != null) vm.ChangesSaved += (_, _) => saved();
+        if (openOnLyrics) vm.OpenOnLyrics();
 
         var window = new MetadataWindow(vm);
         await ShowThenLoad(window, vm);

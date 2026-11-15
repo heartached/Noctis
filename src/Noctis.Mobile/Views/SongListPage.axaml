@@ -18,11 +18,19 @@
                     <views:ListTools VerticalAlignment="Center" />
                     <!-- A playlist's page: its ⋯ in a round glass button (Apple's), the playlist's menu with
                          Rename and Delete Playlist. Shown on an empty playlist too, where the tools are not. -->
-                    <controls:GlassPanel Classes="header-glass" IsVisible="{Binding IsPlaylist}">
-                        <Button Name="PlaylistMoreButton" Classes="glass-round" Command="{Binding ShowPlaylistMenuCommand}"
-                                AutomationProperties.Name="{loc:T Mobile.More}">
-                            <PathIcon Data="{DynamicResource PhMore}" />
-                        </Button>
+                    <controls:GlassPanel Classes="header-glass" Width="NaN" IsVisible="{Binding IsPlaylist}">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Add Songs (the desktop's, Apple's): the library on a sheet, tap to tick, Done
+                                 adds them at the end. Not on a smart playlist (its rules pick the songs). -->
+                            <Button Name="PlaylistAddSongsButton" Classes="glass-round" Command="{Binding AddSongsCommand}"
+                                    IsVisible="{Binding CanAddSongs}" AutomationProperties.Name="{loc:T Mobile.AddSongs}">
+                                <PathIcon Data="{DynamicResource PhPlus}" />
+                            </Button>
+                            <Button Name="PlaylistMoreButton" Classes="glass-round" Command="{Binding ShowPlaylistMenuCommand}"
+                                    AutomationProperties.Name="{loc:T Mobile.More}">
+                                <PathIcon Data="{DynamicResource PhMore}" />
+                            </Button>
+                        </StackPanel>
                     </controls:GlassPanel>
                 </StackPanel>
             </views:PageHeader.Tools>

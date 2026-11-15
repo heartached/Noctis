@@ -50,7 +50,11 @@ public sealed class LyricsViewModelLyricsSource : ILocalApiLyricsSource
         var track = vm?.Player.CurrentTrack;
         if (vm == null || track == null || vm.LoadedTrackId != track.Id)
             return null;
-        return Build(track.Id, vm.LyricLines, vm.UnsyncedLines);
+        // A long transcript's lists hold a window of it (LyricsLineWindow): serve every line,
+        // with the plain text built from them rather than from the window's Plain tab.
+        return vm.IsLyricsWindowed
+            ? Build(track.Id, vm.AllLyricLines, Array.Empty<LyricLine>())
+            : Build(track.Id, vm.LyricLines, vm.UnsyncedLines);
     }
 
     /// <summary>Pure conversion, shared with tests.</summary>

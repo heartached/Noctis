@@ -15,7 +15,7 @@ public sealed class ITunesArtworkService
 {
     private const string SearchUrl = "https://itunes.apple.com/search";
     private const string LookupUrl = "https://itunes.apple.com/lookup";
-    private const string AppleMusicSearchUrl = "https://music.apple.com/us/search";
+    private const string AppleMusicHost = "https://music.apple.com";
     private const string AppleMusicHtmlUserAgent =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
         "Chrome/124.0.0.0 Safari/537.36";
@@ -51,6 +51,43 @@ public sealed class ITunesArtworkService
     public ITunesArtworkService(HttpClient http)
     {
         _http = http;
+    }
+
+    /// <summary>
+    /// The user's own Apple storefront (from the OS region), searched alongside the US one for
+    /// animated artwork. GitHub #229: an album is often a different edition, with its own id, in
+    /// each storefront, and the loop may be on one edition only. "Teenage Astronauts" (Thomas
+    /// Dybdahl) is 1735486680 in the US store, whose page has "videoArtwork":null, and
+    /// 1728035192 in de/gb/fr/nl/au, whose page has the loop; the US store does not carry
+    /// 1728035192 at all (its /us/ page is a 404), so a US-only search could never see it.
+    /// </summary>
+    internal string HomeStorefront { get; init; } = RegionStorefront();
+
+    /// <summary>
+    /// Asked only when nothing in the home and US storefronts had a loop: the UK store carries
+    /// the international edition of most European releases, Germany's the continental one.
+    /// </summary>
+    internal static readonly IReadOnlyList<string> OtherStorefronts = new[] { "gb", "de" };
+
+    /// <summary>The storefronts one stage of an animated-artwork search asks, in rank order.</summary>
+    internal IReadOnlyList<string> AnimatedSearchStorefronts(bool otherStorefronts)
+    {
+        var home = new[] { Storefront(HomeStorefront), "us" }.Distinct().ToList();
+        return otherStorefronts ? OtherStorefronts.Except(home).ToList() : home;
+    }
+
+    private static string RegionStorefront()
+    {
+        try
+        {
+            var region = System.Globalization.RegionInfo.CurrentRegion.TwoLetterISORegionName;
+            // "IV" is the invariant culture's region, not a store.
+            return region.Equals("IV", StringComparison.OrdinalIgnoreCase) ? "us" : Storefront(region);
+        }
+        catch (Exception)
+        {
+            return "us";
+        }
     }
 
     /// <summary>
@@ -136,7 +173,7 @@ public sealed class ITunesArtworkService
     /// nothing, so a mistagged artist never costs results the title alone would find.
     /// </summary>
     public async Task<IReadOnlyList<ArtworkCandidate>> SearchAlbumsAsync(
-        string artist, string album, int limit = 8, CancellationToken ct = default)
+        string artist, string album, int limit = 8, CancellationToken ct = default, string? country = null)
     {
         var albumTerm = (album ?? string.Empty).Trim();
         var artistTerm = (artist ?? string.Empty).Trim();
@@ -149,13 +186,13 @@ public sealed class ITunesArtworkService
 
             var enrichedTerm = BuildAlbumSearchTerm(artistTerm, albumTerm);
             if (!string.Equals(enrichedTerm, albumTerm, StringComparison.OrdinalIgnoreCase))
-                await AddSearchResultsAsync(candidates, enrichedTerm, limit * 3, albumAttributeOnly: false, ct);
+                await AddSearchResultsAsync(candidates, enrichedTerm, limit * 3, albumAttributeOnly: false, country, ct);
 
             // Title-only search: the whole query when no artist is known, and the
             // fallback when the enriched term came back empty. Gated on zero results,
             // so the ordinary artist-tagged case stays a single request.
             if (candidates.Count == 0 && albumTerm.Length > 0)
-                await AddSearchResultsAsync(candidates, albumTerm, limit * 3, albumAttributeOnly: true, ct);
+                await AddSearchResultsAsync(candidates, albumTerm, limit * 3, albumAttributeOnly: true, country, ct);
 
             return candidates.Values
                 .OrderBy(c => RankAlbumCandidate(c, albumTerm, artistTerm))
@@ -294,13 +331,18 @@ public sealed class ITunesArtworkService
 
         /// <summary>Songs in the local album, 0 when unknown: only breaks ties between editions.</summary>
         public int TrackCount { get; init; }
+
+        /// <summary>The second stage (GitHub #229): search the other storefronts
+        /// (<see cref="ITunesArtworkService.OtherStorefronts"/>) instead of the home and US ones.</summary>
+        public bool OtherStorefronts { get; init; }
     }
 
     public sealed record RankedAlbumCandidate(ArtworkCandidate Candidate, double Score);
 
     /// <summary>
-    /// Albums worth opening for an animated-artwork search, best first. Both catalogues are
-    /// asked at once — the Apple Music search page (ranks well, finds what the iTunes index
+    /// Albums worth opening for an animated-artwork search, best first. Each storefront of the
+    /// stage (<see cref="AnimatedSearchStorefronts"/>: home then US, or the other ones) is
+    /// searched, and in each both catalogues are asked at once — the Apple Music search page (ranks well, finds what the iTunes index
     /// misses, e.g. Bad Bunny's "YHLQMDLG") and the iTunes Search API (a plain JSON API that
     /// keeps answering if the page's markup shifts) — merged, then scored by
     /// <see cref="RankAnimatedCandidates"/>. Whether each one has a loop is the caller's next
@@ -312,13 +354,19 @@ public sealed class ITunesArtworkService
         if (string.IsNullOrWhiteSpace(query.Album))
             return Array.Empty<RankedAlbumCandidate>();
 
-        var apple = SearchAppleMusicAlbumsAsync(query.Artist, query.Album, limit: 14, ct);
-        var itunes = SearchAlbumsAsync(query.Artist, query.Album, limit: 10, ct);
-        await Task.WhenAll(apple, itunes);
+        var storefronts = AnimatedSearchStorefronts(query.OtherStorefronts);
+        if (storefronts.Count == 0)
+            return Array.Empty<RankedAlbumCandidate>();
+
+        var searches = storefronts
+            .Select(sf => (Apple: SearchAppleMusicAlbumsAsync(query.Artist, query.Album, limit: 14, ct, sf),
+                           ITunes: SearchAlbumsAsync(query.Artist, query.Album, limit: 10, ct, sf)))
+            .ToList();
+        await Task.WhenAll(searches.SelectMany(s => new[] { s.Apple, s.ITunes }));
 
         var merged = new List<ArtworkCandidate>();
         var seen = new HashSet<long>();
-        foreach (var c in apple.Result.Concat(itunes.Result))
+        foreach (var c in searches.SelectMany(s => s.Apple.Result.Concat(s.ITunes.Result)))
         {
             if (seen.Add(c.CollectionId))
                 merged.Add(c);
@@ -326,8 +374,9 @@ public sealed class ITunesArtworkService
 
         var ranked = RankAnimatedCandidates(merged, query, max);
         DebugLog.Write(LogSource,
-            $"search \"{query.Album}\"{(query.Artist.Length > 0 ? $" by \"{query.Artist}\"" : string.Empty)}: " +
-            $"{apple.Result.Count} Apple Music + {itunes.Result.Count} iTunes candidate(s), {ranked.Count} relevant" +
+            $"search \"{query.Album}\"{(query.Artist.Length > 0 ? $" by \"{query.Artist}\"" : string.Empty)} " +
+            $"in {string.Join("+", storefronts)}: " +
+            $"{searches.Sum(s => s.Apple.Result.Count)} Apple Music + {searches.Sum(s => s.ITunes.Result.Count)} iTunes candidate(s), {ranked.Count} relevant" +
             (ranked.Count > 0 ? $"; top \"{ranked[0].Candidate.CollectionName}\" by {ranked[0].Candidate.ArtistName}" : string.Empty));
         return ranked;
     }
@@ -678,7 +727,7 @@ public sealed class ITunesArtworkService
     /// (the page, and /lookup) are ones this class already talks to.
     /// </summary>
     public async Task<IReadOnlyList<ArtworkCandidate>> SearchAppleMusicAlbumsAsync(
-        string artist, string album, int limit = 6, CancellationToken ct = default)
+        string artist, string album, int limit = 6, CancellationToken ct = default, string? country = null)
     {
         // Same primary-artist policy as SearchAlbumsAsync: the featured-artist tail of a
         // multi-artist tag only muddies the page's ranking of the album we want.
@@ -688,7 +737,7 @@ public sealed class ITunesArtworkService
 
         try
         {
-            var url = $"{AppleMusicSearchUrl}?term={Uri.EscapeDataString(term)}";
+            var url = $"{AppleMusicHost}/{Storefront(country)}/search?term={Uri.EscapeDataString(term)}";
             using var req = new HttpRequestMessage(HttpMethod.Get, url);
             // Apple serves the crawlable, server-rendered markup to a browser UA.
             req.Headers.UserAgent.ParseAdd(AppleMusicHtmlUserAgent);
@@ -711,7 +760,8 @@ public sealed class ITunesArtworkService
 
             // The page gives IDs but no dependable title/artist text, and the caller has to
             // check both — so let /lookup name them authoritatively, in one request.
-            return await LookupAlbumsByIdAsync(ids, ct);
+            // In the same storefront: an id from another store's page is unknown to the US one.
+            return await LookupAlbumsByIdAsync(ids, ct, country);
         }
         catch (Exception ex)
         {
@@ -827,9 +877,10 @@ public sealed class ITunesArtworkService
         string term,
         int limit,
         bool albumAttributeOnly,
+        string? country,
         CancellationToken ct)
     {
-        var url = $"{SearchUrl}?term={Uri.EscapeDataString(term)}&media=music&entity=album&country=us&limit={Math.Max(1, limit)}";
+        var url = $"{SearchUrl}?term={Uri.EscapeDataString(term)}&media=music&entity=album&country={Storefront(country)}&limit={Math.Max(1, limit)}";
         if (albumAttributeOnly)
             url += "&attribute=albumTerm";
 

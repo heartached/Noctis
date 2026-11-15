@@ -1597,6 +1597,55 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [RelayCommand]
     private void NudgeLater() => Nudge(TimeSpan.FromMilliseconds(100));
 
+    // ── Speed (GitHub #238): slow the song down to tap or check words ─────────
+    // The player's own speed (the island's menu) in 0.05 steps from 0.5x to 1.5x. Taps stamp
+    // the player's position, which is the song's time at any speed. The speed the Studio found
+    // comes back when it closes or its page is left, so a slow session does not stay on.
+
+    public const int MinSpeedPercent = 50;
+    public const int MaxSpeedPercent = 150;
+    public const int SpeedStepPercent = 5;
+
+    private int? _speedBeforeStudio;
+
+    /// <summary>The player, for the speed pill's text (the player's own, so it follows the island's menu too).</summary>
+    public PlayerViewModel? Player => _player;
+
+    public bool CanChangeSpeed => _player is not null;
+
+    [RelayCommand]
+    private void Slower() => StepSpeed(-SpeedStepPercent);
+
+    [RelayCommand]
+    private void Faster() => StepSpeed(SpeedStepPercent);
+
+    /// <summary>The speed pill's value: back to 1x (still given back on close like a step).</summary>
+    [RelayCommand]
+    private void ResetSpeed()
+    {
+        if (_player is not null) StepSpeed(100 - _player.PlaybackRatePercent);
+    }
+
+    /// <summary>One step on the 5% grid (an off-grid speed snaps to it), kept within 50-150%.</summary>
+    internal void StepSpeed(int stepPercent)
+    {
+        if (_player is null) return;
+        var current = _player.PlaybackRatePercent;
+        var next = (int)Math.Round((current + stepPercent) / (double)SpeedStepPercent, MidpointRounding.AwayFromZero) * SpeedStepPercent;
+        next = Math.Clamp(next, MinSpeedPercent, MaxSpeedPercent);
+        if (next == current) return;
+        _speedBeforeStudio ??= current;
+        _player.SetPlaybackRateCommand.Execute(next.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The Studio closed or its page was left: the speed it found comes back.</summary>
+    internal void RestoreSpeed()
+    {
+        if (_speedBeforeStudio is not { } before) return;
+        _speedBeforeStudio = null;
+        _player?.SetPlaybackRateCommand.Execute(before.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
     /// <summary>Shifts the whole song; an earlier shift stops when the first line reaches 0:00, so the gaps between lines never change.</summary>
     private void Nudge(TimeSpan delta)
     {
@@ -1642,6 +1691,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     partial void OnNudgeEdgeChanged(NudgeEdge value)
     {
+        ClearNudgeHint();
         OnPropertyChanged(nameof(NudgeWhole));
         OnPropertyChanged(nameof(NudgeStart));
         OnPropertyChanged(nameof(NudgeEnd));
@@ -1663,6 +1713,8 @@ public partial class LyricsStudioViewModel : ViewModelBase
 
     private void RaiseNudgeTarget()
     {
+        // A new pick is a new question: the last "No room" no longer applies.
+        ClearNudgeHint();
         OnPropertyChanged(nameof(HasNudgeTarget));
         OnPropertyChanged(nameof(NudgeTargetText));
     }
@@ -1697,9 +1749,75 @@ public partial class LyricsStudioViewModel : ViewModelBase
         TimeSpan? previous = i > 0 ? ReviewLines[i - 1].Start : null;
         TimeSpan? next = i + 1 < ReviewLines.Count ? ReviewLines[i + 1].Start : null;
         var duration = Selected?.Track.Duration ?? TimeSpan.Zero;
-        var moved = line.Nudge(SelectedWord, NudgeEdge, delta, previous, next, duration);
+        var moved = line.Nudge(SelectedWord, NudgeEdge, delta, previous, next, duration, out var clamp);
         if (moved) OnPropertyChanged(nameof(NudgeTargetText));
+        if (clamp.IsClamped) ShowNudgeHint(NudgeHintFor(clamp, moved));
+        else ClearNudgeHint();
         return moved;
+    }
+
+    // ── Why a nudge stopped short (GitHub #237) ──────────────────────────────
+    // Clamp, never push (TimingNudge): a word squeezed against its neighbour cannot move, and the
+    // buttons used to do nothing with no word why. The line under the bar says what is in the way
+    // for a few seconds, or until the next full nudge or a new pick.
+
+    internal const int NudgeHintMs = 6000;
+
+    private CancellationTokenSource? _nudgeHintCts;
+
+    /// <summary>Why the last nudge moved less than its step; empty when it moved the full step.</summary>
+    [ObservableProperty] private string _nudgeHintText = "";
+
+    private void ShowNudgeHint(string text)
+    {
+        _nudgeHintCts?.Cancel();
+        var cts = _nudgeHintCts = new CancellationTokenSource();
+        NudgeHintText = text;
+        _ = ClearNudgeHintSoonAsync(cts.Token);
+    }
+
+    private async Task ClearNudgeHintSoonAsync(CancellationToken token)
+    {
+        try { await Task.Delay(NudgeHintMs, token); }
+        catch (OperationCanceledException) { return; }
+        NudgeHintText = "";
+    }
+
+    private void ClearNudgeHint()
+    {
+        _nudgeHintCts?.Cancel();
+        _nudgeHintCts = null;
+        NudgeHintText = "";
+    }
+
+    /// <summary>The hint for a nudge stopped by <paramref name="clamp"/>: "No room: ..." or, when it moved part of the step, "Moved as far as it could: ...".</summary>
+    internal static string NudgeHintFor(NudgeClamp clamp, bool moved)
+    {
+        var at = TimedLyricsBuilder.FormatTimestamp(clamp.At);
+        var reason = clamp.Limit switch
+        {
+            NudgeLimit.Zero => Loc("LyricsStudio.NudgeLimitZero"),
+            NudgeLimit.SongEnd => Loc("LyricsStudio.NudgeLimitSongEnd", at),
+            NudgeLimit.PreviousLine => Loc("LyricsStudio.NudgeLimitPreviousLine", at),
+            NudgeLimit.NextLine => Loc("LyricsStudio.NudgeLimitNextLine", at),
+            NudgeLimit.PreviousWord => Loc("LyricsStudio.NudgeLimitPreviousWord", at),
+            NudgeLimit.NextWord => Loc("LyricsStudio.NudgeLimitNextWord", at),
+            NudgeLimit.ThisWord => Loc("LyricsStudio.NudgeLimitThisWord", at),
+            NudgeLimit.LineStart => Loc("LyricsStudio.NudgeLimitLineStart", at),
+            NudgeLimit.LineEnd => Loc("LyricsStudio.NudgeLimitLineEnd", at),
+            _ => "",
+        };
+        if (reason.Length == 0) return "";
+        if (moved) return Loc("LyricsStudio.NudgeMovedAsFar", reason);
+        var advice = clamp.Limit switch
+        {
+            NudgeLimit.PreviousWord or NudgeLimit.NextWord => Loc("LyricsStudio.NudgeAdviceWord"),
+            NudgeLimit.PreviousLine or NudgeLimit.NextLine => Loc("LyricsStudio.NudgeAdviceLine"),
+            NudgeLimit.LineEnd => Loc("LyricsStudio.NudgeAdviceLineEnd"),
+            _ => "",
+        };
+        var text = Loc("LyricsStudio.NudgeNoRoom", reason);
+        return advice.Length == 0 ? text : text + " " + advice;
     }
 
     /// <summary>
@@ -1893,6 +2011,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         // The dialog's pane leaves with it: the lyrics page and side panel show the song's own lyrics
         // again, and an edit still waiting for the pane is not pushed after the dialog closed.
         SuspendLivePreview();
+        RestoreSpeed();
         if (_savedCount > 0)
         {
             try { await _library.SaveAsync(); } catch { }

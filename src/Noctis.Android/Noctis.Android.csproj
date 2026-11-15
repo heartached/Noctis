@@ -71,6 +71,16 @@
     <AndroidBundleConfigurationFile>$(MSBuildThisFileDirectory)BundleConfig.json</AndroidBundleConfigurationFile>
   </PropertyGroup>
 
+  <!-- Mono's young-object area (the SGen nursery) defaults to 4 MB: every 4 MB of short-lived
+       objects (drawing the lyrics page made ~3 MB/s) cost a 60-80 ms collection on a Galaxy S23,
+       once a second (11-14). 32 MB makes them ~8x rarer. major=marksweep-conc keeps the concurrent
+       collector the SDK turns on by default (AndroidEnableSGenConcurrent), which this line replaces.
+       minor=simple-par / -conc-par spread each collection over the cores: scrolling a list on the S23
+       went from an 85 ms freeze every ~5 s to none over 32 ms (11-15). -->
+  <ItemGroup>
+    <AndroidEnvironment Include="environment.txt" />
+  </ItemGroup>
+
   <ItemGroup>
     <AndroidResource Include="Icon.png">
       <Link>Resources\drawable\Icon.png</Link>
@@ -78,19 +88,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Android" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Android" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15" />
-    <PackageReference Include="Xamarin.AndroidX.Media3.ExoPlayer" Version="1.11.0" />
-    <PackageReference Include="Xamarin.AndroidX.Media3.Session" Version="1.11.0" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0.3" />
+    <PackageReference Include="Xamarin.AndroidX.Media3.ExoPlayer" Version="1.11.1" />
+    <PackageReference Include="Xamarin.AndroidX.Media3.Session" Version="1.11.1" />
     <PackageReference Include="Xamarin.AndroidX.DocumentFile" Version="1.1.0.4" />
-    <!-- Media3.Session pulls AndroidX.Core 1.19.0.1; SplashScreen's chain leaves
+    <!-- Media3.Session pulls AndroidX.Core 1.19.x; SplashScreen's chain leaves
          AndroidX.Core.Core.Ktx pinned at 1.17.0.2. NuGet does not cross-bump sibling
          package ids, so the two AARs ship duplicate compiled Kotlin extension classes
          (AnimatorKt$addListener$1) and R8 fails with "defined multiple times". Pin
-         Core.Ktx to the same 1.19.0.1 release to keep the pair in lockstep. -->
-    <PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" Version="1.19.0.1" />
+         Core.Ktx to the same release AndroidX.Core resolves to (1.19.1, which Core.Ktx
+         1.19.1 lifts Core to) to keep the pair in lockstep. -->
+    <PackageReference Include="Xamarin.AndroidX.Core.Core.Ktx" Version="1.19.1" />
     <!-- Sign in by QR code (AndroidQrScanner): Google's code scanner. Google Play services
          runs the camera and the decoder in its own process and hands back only the decoded
          text, so the app needs no CAMERA permission and never sees a camera frame. -->

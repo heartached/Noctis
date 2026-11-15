@@ -30,6 +30,9 @@ public partial class ArtistDetailView : UserControl
         // LayoutUpdated covers width changes and text swaps; the check is a few property
         // reads on the already-computed text layout, and the VM write is change-gated.
         BioText.LayoutUpdated += OnBioLayoutUpdated;
+        // Closing Edit Info / Find Lyrics gave focus back to the clicked tab and the page
+        // scrolled up to it (GitHub #223); only keyboard focus moves the page now.
+        KeyboardFocusScroll.Apply(PageScrollViewer);
     }
 
     /// <summary>The header "…" menu: plugin entries (API 1.7) for this artist go at the end.</summary>
@@ -166,7 +169,7 @@ public partial class ArtistDetailView : UserControl
         // slack for layout rounding, as Home's row does).
         var usable = width - 64 - 2;
         var columns = AlbumGridMetrics.ComputeColumns(usable, vm.AlbumTileSizeAuto, vm.AlbumTileTargetSize);
-        var newSize = AlbumGridMetrics.ComputeTileSize(usable, columns);
+        var newSize = AlbumGridMetrics.ComputeTileSize(usable, columns, vm.IsWideAlbumSpacing);
         if (columns == vm.GridColumns && Math.Abs(newSize - vm.TileArtworkSize) < 0.5) return;
 
         var savedY = PageScrollViewer.Offset.Y;
@@ -226,7 +229,6 @@ public partial class ArtistDetailView : UserControl
             removeCommand: albumsVm.RemoveFromLibraryCommand,
             convertCommand: albumsVm.ConvertAlbumCommand,
             scanReplayGainCommand: albumsVm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: albumsVm.SearchLyricsAlbumCommand,
             snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, albumsVm.FindLyricsAlbumCommand); // GitHub #195

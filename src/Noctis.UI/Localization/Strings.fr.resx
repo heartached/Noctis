@@ -575,6 +575,14 @@
     <value>Les noms d'artiste, d'album et de genre des listes de lecture, de Titres et du lecteur prennent la couleur d'accentuation. Désactivé, ils gardent la couleur de texte normale.</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve">
+    <value>Teinter la fenêtre avec la couleur d'accentuation</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment>
+  </data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve">
+    <value>Donne au fond de la fenêtre et des pages une légère nuance de la couleur d'accentuation.</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
+  </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} titres</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
@@ -1013,6 +1021,14 @@
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
     <value>Diminuer chaque ligne à l'exception de la ligne courante et de ses voisins.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>Masquer l'îlot de lecture en plein écran</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>En plein écran, la page des paroles ne garde que la barre de progression sous le morceau. Les raccourcis clavier contrôlent toujours la lecture.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -2024,6 +2040,8 @@
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve">
+  <data name="AlbumDetail.LinkTracksFrom" xml:space="preserve"><value>Lier les morceaux de</value><comment>Submenu in AlbumDetailView.axaml: list another album's songs on this one (deluxe edition)</comment></data>
+  <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Délier les morceaux de</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
     <value>Afficher le dossier</value>
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
@@ -3143,6 +3161,14 @@
   <data name="Lyrics.SearchLyrics" xml:space="preserve">
     <value>Rechercher les paroles</value>
     <comment>Text in LyricsView.axaml</comment>
+  </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>Ajouter des paroles</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>Modifier les paroles</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
   </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>Recherche des paroles</value>
@@ -4520,6 +4546,10 @@
   </data>
   <data name="PlaybackBar.Plain" xml:space="preserve">
     <value>Simples</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>Masquer les paroles</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
@@ -7312,12 +7342,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Supprimer les téléchargements</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} morceau|{0:N0} morceaux</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Accent propose 17 couleurs, et Assortir à la pochette suit la pochette en cours.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Une minuterie de veille dans À l’écoute ; Mettre en pause un mois et Masquer le titre dans le menu d’un titre.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>Créez une playlist avec + et donnez-lui votre propre pochette ; les pochettes se synchronisent avec votre ordinateur.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Ajouter avant le titre en cours dans le menu d’un titre, et les titres écoutés peuvent rester dans la file.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Un titre sur votre téléphone et le même titre de votre ordinateur n’apparaissent qu’une fois.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Défilement plus fluide, pages plus rapides et paroles à côté de la pochette en paysage.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>Ajouter des morceaux depuis une playlist : touchez + et choisissez dans votre bibliothèque.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>Les paroles s'adaptent à votre écran et défilent avec fluidité.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Les morceaux de votre ordinateur apparaissent dans Ajouts récents.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Faites glisser un morceau en haut ou en bas de la file d'attente et la liste défile avec lui.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Démarrage plus rapide, sans blocage pendant le chargement de la bibliothèque, et menus plus fluides.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Les barres de progression répondent sur toute leur hauteur et le mode paysage tient à l'écran.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Le décodeur ALAC intégré, compilé à partir des sources non modifiées de FFmpeg 6.0, sans parties GPL ni non libres : git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Lecture, session multimédia et wrapper JNI du décodeur.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Le framework d’interface utilisateur.</value></data>
@@ -7438,6 +7468,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>Tout sélectionner</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Tout désélectionner</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>OK</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Ajouter des morceaux</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Rechercher dans votre bibliothèque</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Importer une playlist</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{0} morceaux importés sur {1}</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} playlist importée|{0} playlists importées</value></data>
@@ -7475,6 +7507,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Impossible de lire le fichier : {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} est vide.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} importé</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>texte collé</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} importé en paroles simples (aucun horodatage trouvé).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Service de recherche indisponible.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Titre et artiste requis.</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -7528,7 +7561,6 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Trouver les paroles de ta bibliothèque ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>Récupérer les paroles de {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Supprime les paroles enregistrées par Noctis pour ces titres (ses fichiers .lrc et les paroles en cache). Les fichiers de paroles que tu as créés toi-même ne sont pas touchés.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Trouve les paroles en ligne, synchronisées mot à mot en priorité, et les enregistre à côté de tes titres. Tes propres fichiers de paroles ne sont jamais remplacés.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Rien n’a encore été supprimé.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>Prêt.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>Masquer</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -7557,6 +7589,17 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} titres n’ont que des paroles non synchronisées. Lyrics Studio peut les synchroniser sur ce PC avec son modèle vocal : cela peut prendre une minute ou plus par titre (plus rapide avec une carte graphique), et tu vérifies chacun avant l’enregistrement.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>Les {0} premiers s’ouvrent à la fois.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} titre|{0:N0} titres</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} album|{0:N0} albums</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>Tous les artistes</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>Masquer les petits artistes</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>Moins de {0:N0} titre|Moins de {0:N0} titres</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>Le filtre masque tous les artistes</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Choisissez Tous les artistes dans le menu du filtre, ou recherchez un nom</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Masquer les petits artistes</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Retire de la page Artistes les artistes qui n’ont que quelques titres. La recherche et les liens d’artiste des titres et albums les trouvent toujours. Compte les titres dont l’artiste est l’interprète principal, le même nombre que sous chaque nom.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Masquer les artistes avec moins de</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Masquer la barre latérale jusqu’au survol</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Masque complètement la barre latérale pour que les pages occupent toute la largeur. Amenez le pointeur au bord gauche de la fenêtre pour la faire apparaître.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} piste|{0:N0} pistes</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} élément|{0:N0} éléments</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} h {1} min</value><comment>Short duration (sidebar playlist row)</comment></data>

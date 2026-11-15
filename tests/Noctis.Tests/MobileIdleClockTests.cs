@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.ViewModels;
+using Noctis.Mobile.Views;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -61,9 +62,10 @@ public class MobileIdleClockTests
         }
     }
 
-    /// <summary>The device case: the launch scan shows the bar (its template and animation start),
-    /// the scan ends and hides it. Hidden, the endless animation only paused and stayed on the
-    /// clock for good; now it stops.</summary>
+    /// <summary>The device case: the launch scan shows the bar, the scan ends and hides it. The
+    /// bar is the phone's IndeterminateBar, stepped on the frame clock: nothing endless goes on the
+    /// animation clock even while it runs (Fluent's indeterminate ProgressBar did, and its 2 s loop
+    /// stalled three frames at every turn on an S23), and it stops asking for frames when the scan ends.</summary>
     [AvaloniaFact]
     public void A_finished_scan_leaves_no_endless_animation_on_the_clock()
     {
@@ -73,43 +75,54 @@ public class MobileIdleClockTests
 
         rig.Shell.Library.IsScanning = true;
         window.UpdateLayout();
-        var bar = view.GetVisualDescendants().OfType<ProgressBar>().First(b => b.IsEffectivelyVisible);
-        Assert.True(bar.IsIndeterminate);
-        Assert.NotEmpty(EndlessAnimationsOnClock());
+        var bar = view.GetVisualDescendants().OfType<IndeterminateBar>().First(b => b.IsEffectivelyVisible);
+        Assert.True(bar.IsActive);
+        Assert.True(bar.IsRunning);
+        Assert.Empty(EndlessAnimationsOnClock());
+        Assert.Empty(view.GetVisualDescendants().OfType<ProgressBar>().Where(b => b.IsIndeterminate));
 
         rig.Shell.Library.IsScanning = false;
         window.UpdateLayout();
         Assert.Empty(EndlessAnimationsOnClock());
-        Assert.False(bar.IsIndeterminate);
+        Assert.False(bar.IsActive);
+        Assert.False(bar.IsRunning);
 
         rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
         MobileFixtures.Land(window);
         Assert.Empty(EndlessAnimationsOnClock());
-        Assert.All(view.GetVisualDescendants().OfType<ProgressBar>(), b => Assert.False(b.IsIndeterminate));
+        Assert.All(view.GetVisualDescendants().OfType<IndeterminateBar>(), b => Assert.False(b.IsRunning));
         window.Close();
     }
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_timeProvider")]
-    private static extern ref Func<long> TimeProvider(Dispatcher dispatcher);
-
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_impl")]
-    private static extern ref IDispatcherImpl Impl(Dispatcher dispatcher);
-
-    /// <summary>Fails when an Avalonia upgrade renames the fields DispatcherClock reaches (the
-    /// phone would quietly be back to spinning).</summary>
-    [AvaloniaFact]
-    public void Dispatcher_clock_reads_its_loop()
+    /// <summary>The segment enters from the left edge, crosses, and leaves at the right, never
+    /// drawn outside the track.</summary>
+    [Fact]
+    public void IndeterminateBar_segment_sweeps_across_inside_the_track()
     {
-        var dispatcher = Dispatcher.UIThread;
-        var original = TimeProvider(dispatcher);
-        try
+        Assert.Equal(0, IndeterminateBar.Segment(300, 0).Width, 3);
+        var mid = IndeterminateBar.Segment(300, 0.5);
+        Assert.True(mid.Width > 80 && mid.X > 0 && mid.X + mid.Width < 300, $"mid {mid}");
+        Assert.Equal(0, IndeterminateBar.Segment(300, 1).Width, 3);
+        for (var p = 0.0; p <= 1.0; p += 0.05)
         {
-            Assert.True(DispatcherClock.Align(dispatcher));
-            Assert.Same(Impl(dispatcher), TimeProvider(dispatcher).Target);
+            var (x, w) = IndeterminateBar.Segment(300, p);
+            Assert.True(x >= 0 && x + w <= 300.0001 && w >= 0, $"phase {p}: {x}+{w}");
         }
-        finally
-        {
-            TimeProvider(dispatcher) = original;
-        }
+    }
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_clockOffset")]
+    private static extern ref long ClockOffset(Dispatcher dispatcher);
+
+    /// <summary>The phone's idle spin (dispatcher clock 30 ms behind its Android loop, so every
+    /// timer due inside the gap re-armed "at once" forever) is fixed upstream since Avalonia
+    /// 12.1.5 (#22496): when the platform loop replaces the bare dispatcher, the dispatcher keeps
+    /// the clock difference in <c>_clockOffset</c> and hands the loop due times on the loop's
+    /// clock. Our own DispatcherClock patch was removed with that bump. Fails if an Avalonia
+    /// upgrade drops the offset again, so the phone would quietly be back to spinning.</summary>
+    [AvaloniaFact]
+    public void Dispatcher_keeps_due_times_on_its_loops_clock()
+    {
+        var offset = ClockOffset(Dispatcher.UIThread);
+        Assert.InRange(offset, long.MinValue, long.MaxValue);
     }
 }

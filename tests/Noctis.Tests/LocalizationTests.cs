@@ -161,6 +161,56 @@ public class LocalizationTests
     }
 
     /// <summary>
+    /// Settings › Reset's confirm text was built from English literals in SettingsViewModel, so it
+    /// stayed English in every language. It comes from the strings now: the playlists it deletes,
+    /// what it clears and what it keeps.
+    /// </summary>
+    [AvaloniaFact]
+    public void ResetConfirmDetail_ComesFromTheStrings()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            var none = Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(0);
+            Assert.Equal(Loc.T("Settings.ResetConfirmClears") + " " + Loc.T("Settings.ResetConfirmKeeps"), none);
+            Assert.DoesNotContain("playlist", none, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("music folder list", none);
+            Assert.Contains("connected phones", none);
+            Assert.Contains("sign-ins", none);
+            Assert.StartsWith(Loc.T("Settings.ResetConfirmOnePlaylist") + " ", Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(1));
+            Assert.StartsWith("All 7 playlists are deleted for good. ", Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(7));
+
+            Loc.Instance.SetCulture("ru");
+            var ru = Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(7);
+            Assert.StartsWith("Все плейлисты будут удалены навсегда: 7. ", ru);
+            Assert.DoesNotMatch("[A-Za-z]{4,}", ru);
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>
+    /// Settings status lines that were English literals in SettingsViewModel (artist credits on one
+    /// track, an unreachable music folder) come from the strings, one track and many apart.
+    /// </summary>
+    [AvaloniaFact]
+    public void SettingsStatusLines_ComeFromTheStrings()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Artist credits updated on 1 track.", Noctis.ViewModels.SettingsViewModel.ArtistCreditsUpdatedText(1));
+            Assert.Equal("Artist credits updated on 1,234 tracks.", Noctis.ViewModels.SettingsViewModel.ArtistCreditsUpdatedText(1234));
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Исполнители обновлены у 1 трека.", Noctis.ViewModels.SettingsViewModel.ArtistCreditsUpdatedText(1));
+            Assert.Equal(@"Нет доступа к A:\Music — медиатека не изменена. Проверьте диск и обновите.",
+                Noctis.ViewModels.SettingsViewModel.ScanAbortedStatus(new[] { @"A:\Music" }));
+            Assert.Equal("Неверный токен или ошибка сети.", Loc.T("Settings.ListenBrainzTokenOrNetwork"));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>
     /// Translations that ship complete (Russian, GitHub #128) must carry every English key and
     /// nothing else, with the same {0} / {1:N0} placeholders per key: a dropped placeholder loses
     /// a value on screen and an extra one makes string.Format throw.

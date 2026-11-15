@@ -79,10 +79,10 @@ public class AppMenusV2Tests
         Assert.Equal(new Thickness(0), Rows(card).Margin);
         Assert.Equal(Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
             card.GetVisualDescendants().OfType<ScrollViewer>().First().HorizontalScrollBarVisibility);
-        // Slides out of the parent card (not the menu's rise).
+        // Pops out of its row like the menu itself (owner 11-14).
         Assert.True(MenuOpenAnimation.GetEnable(card));
-        Assert.Equal(-8, MenuOpenAnimation.GetOffsetX(card));
-        Assert.Contains(card.Transitions!, t => t is Avalonia.Animation.TransformOperationsTransition);
+        Assert.True(MenuOpenAnimation.GetSubmenu(card));
+        Assert.Contains(card.Transitions!, t => t is Avalonia.Animation.TransformOperationsTransition { Easing: CubicBezierEase });
     }
 
     [AvaloniaFact]

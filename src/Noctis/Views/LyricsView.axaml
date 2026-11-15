@@ -148,30 +148,6 @@
             <Setter Property="RenderTransform" Value="scale(1)"/>
         </Style>
 
-        <!-- Play/Pause prominent button -->
-        <Style Selector="Button.lyrics-play-btn">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="24"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Opacity" Value="0.85"/>
-        </Style>
-        <Style Selector="Button.lyrics-play-btn:pointerover">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
-        <Style Selector="Button.lyrics-play-btn:pressed">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="RenderTransform" Value="scale(1)"/>
-        </Style>
-        <Style Selector="Button.lyrics-play-btn:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-        <Style Selector="Button.lyrics-play-btn:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-
         <!-- Pill button style -->
         <Style Selector="Button.pill-btn">
             <Setter Property="Background" Value="{DynamicResource LyricsBtnBgRes}"/>
@@ -220,34 +196,6 @@
         </Style>
         <Style Selector="Button.mv-seg.on:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource LyricsBtnBgHoverRes}"/>
-        </Style>
-
-        <!-- Color picker circle button -->
-        <Style Selector="Button.icon-circle-btn">
-            <Setter Property="Background" Value="{DynamicResource LyricsBtnBgRes}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="Width" Value="32"/>
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="CornerRadius" Value="16"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.icon-circle-btn:pointerover">
-            <Setter Property="Background" Value="{DynamicResource LyricsBtnBgHoverRes}"/>
-        </Style>
-
-        <!-- Secondary control button (bottom row) -->
-        <Style Selector="Button.lyrics-secondary-btn">
-            <Setter Property="Background" Value="{DynamicResource LyricsSecBtnBgRes}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="CornerRadius" Value="14"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Foreground" Value="#BBBBBB"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-        <Style Selector="Button.lyrics-secondary-btn:pointerover">
-            <Setter Property="Background" Value="{DynamicResource LyricsSecBtnBgHoverRes}"/>
         </Style>
 
         <!-- AMLL-style active-line presentation: inactive lines sit at 0.96× and the
@@ -386,17 +334,6 @@
         <Style Selector="TextBlock.word.current">
             <!-- Base layer goes invisible while the accent overlay renders on top. -->
             <Setter Property="Opacity" Value="0.0"/>
-        </Style>
-        <Style Selector="TextBlock.word-accent">
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut"/>
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="TextBlock.word-accent.current">
-            <Setter Property="Opacity" Value="1.0"/>
         </Style>
 
         <Style Selector="Slider.lyrics-timeline-slider">
@@ -578,6 +515,7 @@
                                      Fill="White"
                                      ArtworkColor="{Binding Player.ArtworkAccentColor}"
                                      UseArtworkColor="{Binding Player.LyricsVisualizerArtworkColor}"
+                                     FullSpectrum="{Binding Player.LyricsVisualizerFullSpectrum}"
                                      StyleName="{Binding Player.LyricsVisualizerStyle}"
                                      IsActive="{Binding $self.IsVisible}"
                                      IsVisible="{Binding Player.LyricsVisualizerEnabled}"/>
@@ -627,6 +565,8 @@
                             AnimatedSource="{Binding Player.CurrentAnimatedCoverPath}"
                             AnimatedActive="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.EnableAnimatedCovers, FallbackValue=False}"
                             Medium="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.NowPlayingArtworkMedium, FallbackValue={x:Static m:ArtworkMedium.Cover}}"
+                            ScratchEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.DiscScratching, FallbackValue=False}"
+                            ScratchTarget="{Binding Player}"
                             IsSpinning="{Binding Player.IsPlaying}">
                             <!-- Also stays up for a clip with no video stream (an audio-only file). -->
                             <controls:MediaArtwork.IsVisible>
@@ -1022,6 +962,20 @@
                         Command="{Binding OpenLyricsSearchCommand}"
                         HorizontalAlignment="Center">
                     <TextBlock Text="{loc:T Lyrics.SearchLyrics}"
+                               FontSize="13"
+                               FontWeight="SemiBold"
+                               Foreground="White"
+                               VerticalAlignment="Center"/>
+                </Button>
+                <!-- GitHub #212: or type / paste them (Edit Info opened on the lyrics). -->
+                <Button x:Name="AddLyricsButton"
+                        Classes="pill-btn"
+                        Padding="20,9"
+                        CornerRadius="22"
+                        Command="{Binding EditLyricsCommand}"
+                        IsVisible="{Binding CanEditLyrics}"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="{loc:T Lyrics.AddLyrics}"
                                FontSize="13"
                                FontWeight="SemiBold"
                                Foreground="White"

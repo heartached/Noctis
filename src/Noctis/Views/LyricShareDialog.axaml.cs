@@ -37,6 +37,9 @@ public partial class LyricShareDialog : Window
         DataContext = vm;
         vm.ScrollToLineRequested += OnScrollToLine;
         vm.AnimatedFrameRendered += OnAnimatedFrameRendered;
+        // The list opens on the picks (the VM's own scroll requests come before this
+        // subscription, so the first one never arrived).
+        Opened += (_, _) => OnScrollToLine(vm.InitialScrollIndex);
         Closed += (_, _) =>
         {
             vm.ScrollToLineRequested -= OnScrollToLine;

@@ -656,6 +656,104 @@ public class AlbumRoulettePluginTests
         Assert.Equal("Solo", Assert.Single(view.Matches).Title);
     }
 
+    // ── Language (GitHub #202): from the script, offline ──
+
+    [Fact]
+    public void ScriptLanguage_TellsTheLanguageFromTheScript()
+    {
+        Assert.Equal("Malayalam", ScriptLanguage.Detect("ജീവാംശമായ്", "Theevandi", "Kailas Menon"));
+        Assert.Equal("Malayalam", ScriptLanguage.Detect("Jeevamshamayi (ജീവാംശമായ്)"));
+        Assert.Equal("Tamil", ScriptLanguage.Detect("வாத்தி கமிங்"));
+        Assert.Equal("Telugu", ScriptLanguage.Detect("బుట్ట బొమ్మ"));
+        Assert.Equal("Hindi / Marathi", ScriptLanguage.Detect("तुम ही हो"));
+        Assert.Equal("Korean", ScriptLanguage.Detect("Butter", "Butter", "방탄소년단"));
+        Assert.Equal("Japanese", ScriptLanguage.Detect("夜に駆ける", "THE BOOK", "YOASOBI")); // kana + kanji
+        Assert.Equal("Chinese", ScriptLanguage.Detect("月亮代表我的心"));
+        Assert.Equal("Cyrillic", ScriptLanguage.Detect("Группа крови", "Кино"));
+        Assert.Equal("Arabic script", ScriptLanguage.Detect("تملی معاک"));
+        Assert.Equal(ScriptLanguage.Latin, ScriptLanguage.Detect("Jeevamshamayi", "Theevandi", "K. S. Harisankar"));
+        Assert.Equal(ScriptLanguage.Latin, ScriptLanguage.Detect("Café Déjà Vu"));
+        Assert.Equal(ScriptLanguage.Latin, ScriptLanguage.Detect("Song × 2", "Ω")); // one stray letter is no language
+        Assert.Null(ScriptLanguage.Detect("1999", "", null));
+
+        // Lyrics: a few words in another script do not make the song that language.
+        Assert.Equal("Malayalam", ScriptLanguage.DetectLyrics(new[] { "ജീവാംശമായ് താനേ", "നീയെന്നിൽ" }));
+        Assert.Null(ScriptLanguage.DetectLyrics(new[] { "I love you more than words can say tonight", "and every night 사랑" }));
+        Assert.Equal("Korean", ScriptLanguage.DetectLyrics(new[] { "사랑해 너를 사랑해", "baby" }));
+        Assert.Null(ScriptLanguage.DetectLyrics(new[] { "Only Latin letters here" }));
+        Assert.Null(ScriptLanguage.DetectLyrics(Array.Empty<string>()));
+    }
+
+    [Fact]
+    public void LanguageChip_FiltersSongsAndAlbums_LatinScriptListedLast()
+    {
+        var tracks = new[]
+        {
+            T("ജീവാംശമായ്", "Theevandi", "Kailas Menon", albumId: "t"),
+            T("Pularikal", "Theevandi", "Kailas Menon", albumId: "t", number: 2),
+            T("ആരാരോ", "Theevandi", "Kailas Menon", albumId: "t", number: 3),
+            T("Ponveene", "Thalavattam", "Raveendran", albumId: "v"),
+            T("Glow", "Nightfall", "Nova", albumId: "n"),
+            T("Ember", "Nightfall", "Nova", albumId: "n", number: 2),
+            T("Dynamite", "Dynamite", "방탄소년단", albumId: "d"),
+        };
+        var songs = SongCatalog.Build(tracks, Now);
+        Assert.Equal(new[] { "Malayalam", "Korean", ScriptLanguage.Latin }, RouletteFilter.Languages(songs));
+        var f = new RouletteFilter { Language = "malayalam" };
+        Assert.True(f.IsActive);
+        Assert.Equal(new[] { "ജീവാംശമായ്", "ആരാരോ" }, f.Apply(songs, Now).Select(s => s.Title));
+        f.Clear();
+        Assert.Null(f.Language);
+
+        var albums = AlbumCatalog.Group(tracks);
+        Assert.Equal("Malayalam", albums.Single(a => a.Title == "Theevandi").Language); // two of its three songs
+        Assert.Equal(ScriptLanguage.Latin, albums.Single(a => a.Title == "Nightfall").Language);
+        Assert.Equal("Korean", albums.Single(a => a.Title == "Dynamite").Language);
+    }
+
+    [AvaloniaFact]
+    public async Task View_LanguageChip_LyricsNameTheLanguageOfSongsWithLatinTitles()
+    {
+        var tracks = new List<TrackInfo>
+        {
+            T("Ponveene", "Thalavattam", "Raveendran", albumId: "v"),
+            T("Kalabham Tharam", "Thalavattam", "Raveendran", albumId: "v", number: 2),
+            T("Glow", "Nightfall", "Nova", albumId: "n"),
+            T("ആരാരോ", "Theevandi", "Kailas Menon", albumId: "t"),
+        };
+        var host = new FakeRouletteHost { Enabled = false, Tracks = tracks };
+        host.Lyrics[tracks[0].Id] = new[] { "പൊൻവീണേ എന്നുള്ളിൽ", "മൗനം വാചാലമായ്" };
+        host.Lyrics[tracks[1].Id] = new[] { "കളഭം തരാം ഭഗവാനെൻ", "മനസ്സും തരാം" };
+        host.Lyrics[tracks[2].Id] = new[] { "Glow in the dark tonight" };
+        host.LyricsGate = new ManualResetEventSlim(false); // holds the lyrics pass until the first check
+        var view = new RouletteView(host, new Random(3), () => Now);
+        view.Reel.ManualFrames = true;
+
+        await view.LoadAsync();
+        view.SetMode(RouletteMode.Songs);
+        view.Filter.Language = "Malayalam";
+        view.ApplyFilters();
+        Assert.Equal("1 song", view.CountText); // only the title in Malayalam letters, so far
+        Assert.True(Find<Button>(view, "Language").IsVisible);
+
+        host.LyricsGate.Set();
+        await view.LyricsLanguagesRead;
+
+        Assert.Equal("3 songs", view.CountText); // the romanized two are sung in Malayalam
+        Assert.DoesNotContain(view.Matches, s => s.Title == "Glow");
+        view.SetMode(RouletteMode.Albums);
+        Assert.Equal(new[] { "Thalavattam", "Theevandi" }, view.Matches.Select(a => a.Title).OrderBy(t => t));
+
+        // Read once while Noctis runs: a second window does not read the lyrics again.
+        var reads = host.LyricReads;
+        var again = new RouletteView(host, new Random(4), () => Now);
+        await again.LoadAsync();
+        await again.LyricsLanguagesRead;
+        Assert.Equal(reads, host.LyricReads);
+        view.Release();
+        again.Release();
+    }
+
     // ── Through the real loader ──
 
     [AvaloniaFact]
@@ -796,6 +894,15 @@ public class AlbumRoulettePluginTests
         public bool Reduced;
 
         public IReadOnlyList<TrackInfo> LoadTracks() => Tracks;
+        public readonly Dictionary<string, string[]> Lyrics = new();
+        public int LyricReads;
+        public ManualResetEventSlim? LyricsGate;
+        public IReadOnlyList<string> LyricLines(string trackId)
+        {
+            LyricsGate?.Wait(TimeSpan.FromSeconds(20));
+            Interlocked.Increment(ref LyricReads);
+            return Lyrics.TryGetValue(trackId, out var lines) ? lines : Array.Empty<string>();
+        }
         public void PlayTracks(IReadOnlyList<string> trackIds) => Played.Add(trackIds.ToArray());
         public void QueueTracks(IReadOnlyList<string> trackIds, bool playNext) => Queued.Add((trackIds.ToArray(), playNext));
         public bool ShowAlbum(string albumId) { Shown.Add(albumId); return true; }

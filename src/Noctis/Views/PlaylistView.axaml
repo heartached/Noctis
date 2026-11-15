@@ -14,8 +14,6 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
-        <conv:DateAddedDisplayConverter x:Key="DateAddedDisplay" />
-        <conv:RecentlyAddedConverter x:Key="RecentAdded" />
         <conv:PlaylistAddedConverter x:Key="PlaylistAdded" />
         <conv:BadgeBrushConverter x:Key="BadgeBrush" />
     </UserControl.Resources>
@@ -164,9 +162,7 @@
         <Style Selector="Border.row-body:pointerover">
             <Setter Property="Background" Value="{DynamicResource TrackListHoverBrush}" />
         </Style>
-        <Style Selector="ListBoxItem.ctrl-selected Border.row-body">
-            <Setter Property="Background" Value="#3FFFFFFF" />
-        </Style>
+        <!-- Ctrl-selected rows: the row container's select-ring overlay (Styles.axaml, GitHub #209). -->
         <!-- Now-playing: the accent-coloured box (see Styles.axaml) must be re-applied
              at view scope because the stripe/hover/ctrl-select styles above live here
              too and would otherwise outrank the app-level fill. Declared after them
@@ -724,6 +720,12 @@
                              Padding="0,0,0,115"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <!-- Rows scrolled off stay in the tree and take the next song (11-14). -->
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <controls:RetainingVirtualizingStackPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
                         <ListBox.Styles>
                             <Style Selector="ListBoxItem">
                                 <Setter Property="Focusable" Value="False" />

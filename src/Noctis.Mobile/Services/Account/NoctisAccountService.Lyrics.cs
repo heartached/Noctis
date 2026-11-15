@@ -20,8 +20,11 @@ public sealed partial class NoctisAccountService : IRemoteLyricsSource
     /// <summary>Largest saved-lyrics file read back: five capped texts plus JSON escaping.</summary>
     private const long MaxLyricsFileBytes = 16L * 1024 * 1024;
     /// <summary>After the desktop fails to answer, lookups use saved copies only for this long,
-    /// so a phone away from home does not wait out a timeout on every track change.</summary>
+    /// doubling with each failure in a row up to <see cref="LyricsQuietMax"/>: a song outlasts one
+    /// minute, so a fixed minute still waited out the timeout on nearly every track change away
+    /// from home (S23, 11-14: ~10 s of no lyrics per song). An answer or a sync ends the quiet.</summary>
     private static readonly TimeSpan LyricsQuietAfterFailure = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan LyricsQuietMax = TimeSpan.FromMinutes(30);
 
     private static readonly JsonSerializerOptions LyricsJson = new(JsonSerializerDefaults.Web)
     {
@@ -42,10 +45,29 @@ public sealed partial class NoctisAccountService : IRemoteLyricsSource
         public string? Plain { get; set; }
     }
 
-    // _lyricsGate guards _lyricsRecent and _lyricsQuietUntil. Never taken with _gate held.
+    // _lyricsGate guards _lyricsRecent, _lyricsQuietUntil and _lyricsFailures. Never taken with _gate held.
     private readonly object _lyricsGate = new();
     private readonly LinkedList<LyricsEntry> _lyricsRecent = new();
     private DateTime _lyricsQuietUntil;
+    private int _lyricsFailures;
+
+    /// <summary>How long lookups stay quiet after the <paramref name="failuresInARow"/>th failure in a row.</summary>
+    internal static TimeSpan LyricsQuietAfter(int failuresInARow)
+    {
+        var doublings = Math.Clamp(failuresInARow - 1, 0, 10);
+        var quiet = TimeSpan.FromTicks(LyricsQuietAfterFailure.Ticks << doublings);
+        return quiet < LyricsQuietMax ? quiet : LyricsQuietMax;
+    }
+
+    /// <summary>The desktop answered (a lookup or a sync): ask it again from the next lookup on.</summary>
+    private void EndLyricsQuiet()
+    {
+        lock (_lyricsGate)
+        {
+            _lyricsFailures = 0;
+            _lyricsQuietUntil = default;
+        }
+    }
     private readonly SemaphoreSlim _lyricsPrefetch = new(1, 1);
 
     private string LyricsDir => Path.Combine(_store.Directory, "lyrics");
@@ -95,6 +117,7 @@ public sealed partial class NoctisAccountService : IRemoteLyricsSource
         try
         {
             var fresh = await client.GetLyricsAsync(trackId, ct).ConfigureAwait(false);
+            EndLyricsQuiet();
             SaveLyrics(trackId, fresh);
             return NullIfEmpty(fresh);
         }
@@ -102,6 +125,7 @@ public sealed partial class NoctisAccountService : IRemoteLyricsSource
         {
             // The desktop answered, with nothing to give: a song it no longer has, or a Noctis too
             // old for getNoctisLyrics. Keep what is saved and do not ask again before the next sync.
+            EndLyricsQuiet();
             var keep = saved?.Lyrics ?? RemoteLyrics.Empty;
             SaveLyrics(trackId, keep);
             return NullIfEmpty(keep);
@@ -110,7 +134,11 @@ public sealed partial class NoctisAccountService : IRemoteLyricsSource
         {
             // Unreachable, too slow, certificate changed, key revoked: the saved copy for now (the
             // next sync deals with a revoked key or a changed certificate).
-            lock (_lyricsGate) _lyricsQuietUntil = UtcNow + LyricsQuietAfterFailure;
+            lock (_lyricsGate)
+            {
+                _lyricsFailures = Math.Min(_lyricsFailures + 1, 64);
+                _lyricsQuietUntil = UtcNow + LyricsQuietAfter(_lyricsFailures);
+            }
             DebugLog.Write("Account", $"lyrics: the desktop did not answer ({(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}); using the saved copy");
             return NullIfEmpty(saved?.Lyrics);
         }

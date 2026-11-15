@@ -16,7 +16,6 @@
         <conv:IconKeyToGeometryConverter x:Key="IconKeyToGeometry" />
         <conv:HexColorToBrushConverter x:Key="HexColorToBrush" />
         <conv:BoolToHorizontalAlignmentConverter x:Key="BoolToAlignment" />
-        <conv:BoolToThicknessConverter x:Key="BoolToThickness" />
         <conv:CountLabelConverter x:Key="CountLabel" />
     </UserControl.Resources>
 

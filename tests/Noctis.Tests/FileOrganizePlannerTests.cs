@@ -50,6 +50,21 @@ public class FileOrganizePlannerTests
     }
 
     [Fact]
+    public void CopyAlreadyRenamedByAnEarlierRun_IsSkipped_NotMovedOntoItself()
+    {
+        // After a first run: "01 Hello.mp3" and its duplicate "01 Hello (2).mp3" both exist.
+        var first = Path.Combine(Root, "Adele", "25", "01 Hello.mp3");
+        var copy = Path.Combine(Root, "Adele", "25", "01 Hello (2).mp3");
+        var onDisk = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { first, copy };
+
+        var moves = Plan(new[] { T("Adele", "25", 1, "Hello", first), T("Adele", "25", 1, "Hello", copy) },
+            onDisk.Contains);
+
+        Assert.All(moves, m => Assert.Equal(OrganizeAction.Skip, m.Action));
+        Assert.Equal(copy, moves[1].TargetPath);
+    }
+
+    [Fact]
     public void AlreadyAtTarget_IsSkipped()
     {
         var target = Path.Combine(Root, "Adele", "25", "01 Hello.mp3");

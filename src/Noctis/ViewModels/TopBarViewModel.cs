@@ -38,7 +38,7 @@ public partial class TopBarViewModel : ViewModelBase
     public static string TabTitleKey(string tabName) => tabName switch
     {
         "Home" => "Nav.Home", "Songs" => "Nav.Songs", "Albums" => "Nav.Albums", "Artists" => "Nav.Artists",
-        "Folders" => "Nav.Folders", "Playlists" => "Nav.Playlists", "Favorites" => "Nav.Favorites",
+        "Folders" => "Nav.Folders", "Genres" => "Nav.Genres", "Playlists" => "Nav.Playlists", "Favorites" => "Nav.Favorites",
         "Visualizer" => "Nav.Visualizer", "Lyrics Studio" => "Nav.LyricsStudio", "Settings" => "Nav.Settings", "Server" => "Nav.Server", "Audio CD" => "Nav.AudioCd",
         "Statistics" => "Tab.Statistics", "Queue" => "Tab.Queue", "Lyrics" => "Tab.Lyrics",
         "Playlist" => "Tab.Playlist", "Library" => "Tab.Library",
@@ -61,6 +61,7 @@ public partial class TopBarViewModel : ViewModelBase
         OnPropertyChanged(nameof(ReleaseTypeFilterDisplay));
         OnPropertyChanged(nameof(QualityFilterDisplay));
         OnPropertyChanged(nameof(LyricsSearchTip));
+        OnPropertyChanged(nameof(ArtistSmallFilterDetail));
     }
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSearchActionAvailable))]
@@ -274,6 +275,19 @@ public partial class TopBarViewModel : ViewModelBase
         if (wantList != IsArtistListView)
             ToggleArtistViewCommand?.Execute(null);
     }
+
+    // Artists filter (GitHub #233): All Artists / Hide Small Artists, mirrored from Settings.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ArtistSmallFilterDetail))]
+    private int _artistSmallThreshold = 3;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsArtistSmallFilterOff))]
+    private bool _isArtistSmallFilterActive;
+    public bool IsArtistSmallFilterOff => !IsArtistSmallFilterActive;
+    /// <summary>"Fewer than 3 songs": the Hide Small Artists item's second line.</summary>
+    public string ArtistSmallFilterDetail => Loc.Plural("Main.ArtistsFewerThanSongs", ArtistSmallThreshold);
+    /// <summary>"all" or "small"; set by MainWindowViewModel to flip the setting.</summary>
+    [ObservableProperty] private ICommand? _artistSmallFilterCommand;
     [ObservableProperty] private ICommand? _pageCreatePlaylistCommand;
     [ObservableProperty] private ICommand? _pageCreateSmartPlaylistCommand;
     [ObservableProperty] private ICommand? _pageImportPlaylistCommand;
@@ -551,6 +565,12 @@ public partial class TopBarViewModel : ViewModelBase
     /// <summary>Flips the Albums page between grid and carousel (GitHub #164 top-right icon).</summary>
     [ObservableProperty] private ICommand? _albumViewToggleCommand;
     [ObservableProperty] private bool _isAlbumCarouselView;
+    /// <summary>GitHub #213: the View menu's Masonry check and its toggle.</summary>
+    [ObservableProperty] private bool _isAlbumMasonry;
+    [ObservableProperty] private ICommand? _albumMasonryCommand;
+    /// <summary>The View menu's "Wider Spacing" check and its toggle.</summary>
+    [ObservableProperty] private bool _isAlbumWideSpacing;
+    [ObservableProperty] private ICommand? _albumWideSpacingCommand;
 
     // GitHub #164: on the Albums page the top-right view-mode icon switches the page between
     // its grid and the album carousel (every album, like the artist page's toggle) instead of

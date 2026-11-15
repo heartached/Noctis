@@ -55,10 +55,6 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
     public override void Initialize()
     {
-        // First thing after the platform set the dispatcher up: until then every timer due
-        // within ~30 ms spins the main thread at a full core (see DispatcherClock).
-        if (!DispatcherClock.Align(Dispatcher.UIThread))
-            ALog.Warn(LogTag, "Dispatcher clock not aligned: this Avalonia renamed its fields");
         AvaloniaXamlLoader.Load(this);
     }
 
@@ -137,7 +133,11 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         };
         var shell = new ShellViewModel(
             // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
-            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history) { DeviceMusic = AndroidDeviceMusic.Create(context) },
+            new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history)
+            {
+                DeviceMusic = AndroidDeviceMusic.Create(context),
+                SortOffUiThread = true,
+            },
             nowPlaying,
             lyrics)
         {
@@ -206,6 +206,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             activity.MainViewFactory = () =>
             {
                 var view = new ShellView { DataContext = shell };
+                // The first ⋯ after launch built its card in the tap's frame: build it while idle.
+                view.AttachedToVisualTree += (_, _) => view.PrebuildMenuSoon();
                 // Scroll-freeze diagnostic, off unless `adb shell setprop debug.noctis.stalls 1`.
                 if (ReadSystemProperty("debug.noctis.stalls") == "1")
                     view.AttachedToVisualTree += (_, _) =>

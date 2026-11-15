@@ -175,6 +175,8 @@
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve"><value>Vurgu rengini çalan kapaktan al. Hiçbir şey çalmazken seçtiğin vurgu rengi geri gelir.</value><comment>Appearance toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve"><value>Sanatçı ve albüm adlarında vurgu rengi</value><comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment></data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve"><value>Çalma listelerinde, Şarkılar'da ve oynatıcıda sanatçı, albüm ve tür adları vurgu rengini alır. Kapalıyken normal yazı rengiyle gösterilir.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment></data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve"><value>Pencereyi vurgu rengiyle renklendir</value><comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment></data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve"><value>Pencere ve sayfa arka planına vurgu renginden hafif bir ton verir.</value><comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment></data>
   <data name="Playlist.DragCount" xml:space="preserve"><value>{0} şarkı</value><comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>Vurgu Rengi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PickPresetOpenPicker" xml:space="preserve"><value>Bir hazır renk seç veya özel renk için seçiciyi aç.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -285,6 +287,8 @@
   <data name="Settings.Remove" xml:space="preserve"><value>Kaldır</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Tam Ekran Söz Odağı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Geçerli satır ve komşuları dışındaki her satırı karart.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Tam Ekranda Oynatıcı Adasını Gizle</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>Tam ekranda söz sayfası şarkının altında yalnızca ilerleme çubuğunu gösterir. Oynatma klavye kısayollarıyla kontrol edilmeye devam eder.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>En Düşük Satır Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Her söz satırını hafifçe görünür tut; böylece herhangi bir satıra tıklayıp oraya atlayabilirsin. %0 geçerli satırdan uzak satırları gizler.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Bölünmüş Kelimeleri Birleştir</value><comment>Text in SettingsView.axaml</comment></data>
@@ -873,6 +877,8 @@
   <data name="Lyrics.Solid" xml:space="preserve"><value>Düz</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Gradient" xml:space="preserve"><value>Gradyan</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Söz Ara</value><comment>Text in LyricsView.axaml</comment></data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve"><value>Söz Ekle</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve"><value>Sözleri Düzenle</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve"><value>Sözler Aranıyor</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.WrittenBy" xml:space="preserve"><value>Söz Yazarı: </value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.Follow" xml:space="preserve"><value>Takip et</value><comment>Text in LyricsView.axaml</comment></data>
@@ -1241,6 +1247,7 @@
   <data name="PlaybackBar.LyricsDisplay" xml:space="preserve"><value>Söz Görünümü</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Synced" xml:space="preserve"><value>Senkronize</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Plain" xml:space="preserve"><value>Düz</value><comment>Header in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve"><value>Şarkı Sözlerini Gizle</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve"><value>Arka Plan Rengi</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve"><value>Sözleri paylaş</value><comment>Header in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.QueueTip" xml:space="preserve"><value>Kuyruk</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
@@ -2396,12 +2403,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>İndirilenleri Kaldır</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} çalma listesi|{0} çalma listesi</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>Vurgu rengi 17 renk sunuyor; Kapağa Uydur çalan kapağı takip ediyor.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Çalan ekranında uyku zamanlayıcısı; şarkı menüsünde Bir Ay Ertele ve Şarkıyı Gizle.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>+ ile çalma listesi oluşturup kendi kapağını verin; kapaklar bilgisayarınızla eşitlenir.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Şarkı menüsünde Mevcuttan Önce Ekle; çalınan şarkılar kuyrukta kalabilir.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>Telefonunuzdaki bir şarkı ile bilgisayarınızdaki aynı şarkı tek kez görünür.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>Daha akıcı kaydırma, daha hızlı sayfalar ve yatay modda kapağın yanında şarkı sözleri.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>Çalma listesinin içinden Şarkı Ekle: + simgesine dokun ve kitaplığından şarkı seç.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>Şarkı sözleri ekranına uyar ve akıcı şekilde kayar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Bilgisayarındaki şarkılar Son Eklenenler'de görünür.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Bir şarkıyı kuyruğun üst veya alt kenarına sürükle, liste onunla birlikte kaysın.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Daha hızlı açılış, kitaplık yüklenirken donma yok ve daha akıcı menüler.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>İlerleme çubukları tüm yüksekliklerinde tepki verir ve yatay mod ekrana sığar.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Paketle gelen ALAC kod çözücü; değiştirilmemiş FFmpeg 6.0 kaynağından, GPL ve özgür olmayan bölümler olmadan derlenmiştir: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Çalma, medya oturumu ve kod çözücünün JNI sarmalayıcısı.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Kullanıcı arayüzü çatısı.</value></data>
@@ -2522,6 +2529,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>Tümünü Seç</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>Seçimi Kaldır</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>Bitti</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>Şarkı Ekle</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Kitaplığında ara</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Çalma Listesi İçe Aktar</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1} şarkıdan {0} tanesi içe aktarıldı</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} çalma listesi içe aktarıldı|{0} çalma listesi içe aktarıldı</value></data>
@@ -2559,6 +2568,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>Dosya okunamadı: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} boş.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} içe aktarıldı</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>yapıştırılan sözler</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} düz şarkı sözü olarak içe aktarıldı (zaman damgası bulunamadı).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>Arama hizmeti kullanılamıyor.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>Başlık ve sanatçı gerekli.</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -2612,7 +2622,6 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>Kitaplığın için şarkı sözü bul ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0} için şarkı sözü getir</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis’in bu şarkılar için kaydettiği sözleri siler (.lrc dosyaları ve önbellekteki sözler). Kendi oluşturduğun söz dosyalarına dokunulmaz.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>Şarkı sözlerini çevrimiçi bulur (önce kelime senkronlu) ve şarkılarının yanına kaydeder. Kendi söz dosyaların asla değiştirilmez.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>Henüz bir şey kaldırılmadı.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>Hazır.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>Gizle</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -2641,6 +2650,17 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} şarkının yalnızca düz sözleri var. Lyrics Studio bunları bu bilgisayarda konuşma modeliyle zamanlayabilir: şarkı başına bir dakika veya daha uzun sürebilir (ekran kartıyla daha hızlı) ve her birini kaydedilmeden önce kontrol edersin.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>İlk {0} tanesi aynı anda açılır.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} albüm|{0:N0} albüm</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>Tüm Sanatçılar</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>Küçük Sanatçıları Gizle</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>{0:N0} şarkıdan az|{0:N0} şarkıdan az</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>Filtre tüm sanatçıları gizliyor</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Filtre menüsünden Tüm Sanatçılar’ı seçin veya bir ad arayın</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Küçük sanatçıları gizle</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Yalnızca birkaç şarkısı olan sanatçıları Sanatçılar sayfasından çıkarır. Arama ve şarkılarla albümlerdeki sanatçı bağlantıları onları yine bulur. Sanatçının ana sanatçı olduğu şarkılar sayılır; her adın altındaki sayının aynısı.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Şundan az şarkısı olan sanatçıları gizle</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Kenar çubuğunu üzerine gelene kadar gizle</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Kenar çubuğunu tamamen gizler, sayfalar tam genişliği kullanır. Göstermek için işaretçiyi pencerenin sol kenarına götürün.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} parça|{0:N0} parça</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} öğe|{0:N0} öğe</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} sa {1} dk</value><comment>Short duration (sidebar playlist row)</comment></data>

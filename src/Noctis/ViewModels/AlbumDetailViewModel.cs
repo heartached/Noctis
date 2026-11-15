@@ -123,7 +123,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private string _albumDescriptionEditorText = string.Empty;
 
     /// <summary>Whether all tracks in the album are favorited (for metadata row heart).</summary>
-    public bool IsAlbumFavorited => Album?.IsAllTracksFavorite ?? false;
+    /// <summary>Every song the page lists is a favourite (linked-in songs included).</summary>
+    public bool IsAlbumFavorited => Album is { } a && a.EditionTracks.Count > 0 && a.EditionTracks.All(t => t.IsFavorite);
 
     public bool HasAlbumDescription => !string.IsNullOrWhiteSpace(AlbumDescription);
 
@@ -208,6 +209,18 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Whether the album has multiple credited artists.</summary>
     public bool HasMultipleArtists => ArtistTokens.Length > 1;
 
+    /// <summary>The header line's genres, one link each (GitHub #220): a click opens that genre.
+    /// Same genres <see cref="Album.GenreDisplay"/> showed as plain text ("Rock · Pop").</summary>
+    public ArtistTokenItem[] GenreTokens { get; private set; } = Array.Empty<ArtistTokenItem>();
+    public bool HasGenreTokens => GenreTokens.Length > 0;
+
+    internal static ArtistTokenItem[] BuildGenreTokens(Album album)
+    {
+        if (album.GenreDisplay.Length == 0) return Array.Empty<ArtistTokenItem>();
+        var genres = Track.SplitGenres(album.Genre);
+        return genres.Select((g, i) => new ArtistTokenItem(g, i == genres.Length - 1, " · ")).ToArray();
+    }
+
     /// <summary>Exposes playlists for the Add to Playlist submenu.</summary>
     public ObservableCollection<Playlist> Playlists => _sidebar.Playlists;
 
@@ -218,6 +231,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     public event EventHandler<Track>? ViewAlbumRequested;
 
     private Action<string>? _viewArtistAction;
+    private Action<string>? _openGenreAction;
     private Action<Track>? _searchLyricsAction;
     private Action<string, System.Collections.Generic.IEnumerable<Album>>? _openMoreByArtistAction;
 
@@ -229,6 +243,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     /// <summary>Sets the action to navigate to an artist's discography.</summary>
     public void SetViewArtistAction(Action<string> action) => _viewArtistAction = action;
+
+    /// <summary>Sets the action to open a genre (GitHub #220).</summary>
+    public void SetOpenGenreAction(Action<string> action) => _openGenreAction = action;
 
     /// <summary>Sets the action to search lyrics for a track.</summary>
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
@@ -250,9 +267,11 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
         // One link per credited name, separators as the album artist line shows them
         ArtistTokens = ArtistTokenItem.FromCredit(album.ArtistDisplay);
+        GenreTokens = BuildGenreTokens(album);
 
-        // Load tracks (single Reset event instead of N Add events)
-        Tracks.ReplaceAll(album.Tracks);
+        // Load tracks (single Reset event instead of N Add events). The edition's list: its own
+        // files plus any songs linked in from another album (AlbumLinks).
+        Tracks.ReplaceAll(album.EditionTracks);
         BuildDiscGroups();
         AnimatedCoverPath = ResolveAlbumAnimatedCover();
 
@@ -345,6 +364,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         ArtistTokens = ArtistTokenItem.FromCredit(value.ArtistDisplay);
         OnPropertyChanged(nameof(ArtistTokens));
         OnPropertyChanged(nameof(HasMultipleArtists));
+        GenreTokens = BuildGenreTokens(value);
+        OnPropertyChanged(nameof(GenreTokens));
+        OnPropertyChanged(nameof(HasGenreTokens));
         OnPropertyChanged(nameof(MoreByArtistTitle));
         BuildRelatedSections();
     }
@@ -424,7 +446,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
 
     /// <summary>Resolves this album's animated cover from its first track (sidecar or managed cache).</summary>
     private string? ResolveAlbumAnimatedCover()
-        => Tracks.Count > 0 ? _animatedCovers.Resolve(Tracks[0]) : null;
+        => Album.Tracks.Count > 0 ? _animatedCovers.Resolve(Album.Tracks[0]) : null;
 
     private void RefreshFromLibrary()
     {
@@ -435,7 +457,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // Find the new album by looking for one that contains any of our tracks.
         if (updatedAlbum == null)
         {
-            var trackIds = Tracks.Select(t => t.Id).ToHashSet();
+            // The album's own files: a linked-in song still belongs to its own album.
+            var trackIds = Album.Tracks.Select(t => t.Id).ToHashSet();
             updatedAlbum = _library.Albums
                 .FirstOrDefault(a => a.Tracks.Any(t => trackIds.Contains(t.Id)));
         }
@@ -463,9 +486,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         // bindings), and the unconditional Reset tore down every row on each scan publish,
         // analysis pass or save elsewhere: the row under the pointer flickered and an open
         // track menu closed with its owner row (the Home / artist-page fix, 09-13/09-14).
-        if (!IsShownTrackList(updatedAlbum.Tracks))
+        if (!IsShownTrackList(updatedAlbum.EditionTracks))
         {
-            Tracks.ReplaceAll(updatedAlbum.Tracks);
+            Tracks.ReplaceAll(updatedAlbum.EditionTracks);
             BuildDiscGroups();
         }
         AnimatedCoverPath = ResolveAlbumAnimatedCover();
@@ -828,6 +851,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (!string.IsNullOrWhiteSpace(genre))
+            _openGenreAction?.Invoke(genre);
+    }
+
+    [RelayCommand]
     private void GoBack()
     {
         IsAlbumDescriptionOpen = false;
@@ -955,9 +985,13 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private Task SendToFolder(Track track) => MetadataHelper.OpenSendToFolderDialog(TakeSelectionOr(track));
 
+    /// <summary>GitHub #239: the song (or the Ctrl-selection it is in) → Move to Album.</summary>
+    [RelayCommand]
+    private Task MoveToAlbum(Track track) => MetadataHelper.OpenMoveToAlbumDialog(TakeSelectionOr(track));
+
     /// <summary>Whole album → folder / Lyrics Studio (header menu).</summary>
     [RelayCommand]
-    private Task SendAlbumToFolder() => Tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenSendToFolderDialog(Tracks.ToList());
+    private Task SendAlbumToFolder() => Album.Tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenSendToFolderDialog(Album.Tracks.ToList());
 
     [RelayCommand]
     private Task OpenAlbumInLyricsStudio() => Tracks.Count == 0 ? Task.CompletedTask : MetadataHelper.OpenLyricsStudio(Tracks.ToList());
@@ -1011,8 +1045,10 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task OpenAlbumMetadata()
     {
-        if (Tracks.Count == 0) return;
-        await MetadataHelper.OpenMetadataWindow(Tracks[0], albumScoped: true);
+        // Album-wide edits, conversions, scans and removals act on the album's own files only;
+        // songs linked in from another album (AlbumLinks) stay that album's.
+        if (Album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenMetadataWindow(Album.Tracks[0], albumScoped: true);
     }
 
     [RelayCommand]
@@ -1034,22 +1070,22 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task ConvertAlbum()
     {
-        if (Tracks.Count == 0) return;
-        await MetadataHelper.OpenAudioConverterDialog(Tracks.ToList());
+        if (Album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenAudioConverterDialog(Album.Tracks.ToList());
     }
 
     [RelayCommand]
     private async Task ScanAlbumReplayGain()
     {
-        if (Tracks.Count == 0) return;
-        await MetadataHelper.OpenReplayGainScannerDialog(Tracks.ToList());
+        if (Album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenReplayGainScannerDialog(Album.Tracks.ToList());
     }
 
     [RelayCommand]
     private async Task BatchEditAlbum()
     {
-        if (Tracks.Count == 0) return;
-        await MetadataHelper.OpenBatchMetadataWindow(Tracks.ToList());
+        if (Album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenBatchMetadataWindow(Album.Tracks.ToList());
     }
 
     [RelayCommand]
@@ -1072,7 +1108,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (Tracks.Count == 0) return;
 
-        var newState = !Album.IsAllTracksFavorite;
+        var newState = !IsAlbumFavorited;
         foreach (var track in Tracks)
             track.IsFavorite = newState;
 
@@ -1113,13 +1149,31 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private async Task RemoveAlbumFromLibrary()
     {
-        if (Tracks.Count == 0) return;
-        var tracks = Tracks.ToList();
+        if (Album.Tracks.Count == 0) return;
+        var tracks = Album.Tracks.ToList();
         if (!await Helpers.LibraryRemovalHelper.RemoveWithPromptAsync(_library, tracks))
             return;
         Tracks.Clear();
         BackRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    // ----- Link Tracks From (Discord 11-11: a deluxe edition lists the original's songs) -----
+
+    /// <summary>The album artist's other albums this one could list the songs of (the header
+    /// menu's Link Tracks From submenu, filled when the menu opens).</summary>
+    public IReadOnlyList<Album> LinkCandidates => AlbumLinks.Candidates(Album, _library.GetAlbumsByArtist(Album.Artist));
+
+    /// <summary>The albums whose songs this one lists too (Unlink Tracks From).</summary>
+    public IReadOnlyList<Album> LinkedSourceAlbums => Album.LinkedAlbumIds
+        .Select(_library.GetAlbumById).OfType<Album>().ToList();
+
+    [RelayCommand]
+    private Task LinkTracksFrom(Album? source)
+        => source == null ? Task.CompletedTask : _library.LinkAlbumTracksAsync(Album.Id, source.Id);
+
+    [RelayCommand]
+    private Task UnlinkTracksFrom(Album? source)
+        => source == null ? Task.CompletedTask : _library.UnlinkAlbumTracksAsync(Album.Id, source.Id);
 
     [RelayCommand]
     private void ShowInExplorer(Track track)
@@ -1140,8 +1194,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ShowAlbumInExplorer()
     {
-        if (Tracks.Count == 0) return;
-        var track = Tracks[0];
+        if (Album.Tracks.Count == 0) return;
+        var track = Album.Tracks[0];
         if (!File.Exists(track.FilePath)) return;
         Helpers.PlatformHelper.ShowInFileManager(track.FilePath);
     }
@@ -1154,8 +1208,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void ViewCurrentAlbum()
     {
-        if (Tracks.Count == 0) return;
-        ViewAlbumRequested?.Invoke(this, Tracks[0]);
+        if (Album.Tracks.Count == 0) return;
+        ViewAlbumRequested?.Invoke(this, Album.Tracks[0]);
     }
 
     // ----- Related album commands (Other Versions / More By Artist context menu) -----
@@ -1165,7 +1219,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(InAlbumOrder(album.Tracks), 0);
+        _player.ReplaceQueueAndPlay(InAlbumOrder(album.EditionTracks), 0);
     }
 
     /// <summary>Related tile hover button: Pause/resume when this album is the loaded one,
@@ -1182,7 +1236,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void ShuffleRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(InAlbumOrder(album.Tracks));
+        _player.PlayShuffled(InAlbumOrder(album.EditionTracks));
     }
 
     [RelayCommand]
@@ -1190,21 +1244,21 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     {
         if (album == null || album.Tracks.Count == 0) return;
         // AddNextRange keeps album order when the batch goes in up front.
-        _player.AddNextRange(InAlbumOrder(album.Tracks), album.Name);
+        _player.AddNextRange(InAlbumOrder(album.EditionTracks), album.Name);
     }
 
     [RelayCommand]
     private void AddRelatedAlbumToQueue(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.AddRangeToQueue(InAlbumOrder(album.Tracks), album.Name);
+        _player.AddRangeToQueue(InAlbumOrder(album.EditionTracks), album.Name);
     }
 
     [RelayCommand]
     private async Task AddRelatedAlbumToNewPlaylist(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        await _sidebar.CreatePlaylistWithTracksAsync(InAlbumOrder(album.Tracks));
+        await _sidebar.CreatePlaylistWithTracksAsync(InAlbumOrder(album.EditionTracks));
     }
 
     [RelayCommand]
@@ -1213,7 +1267,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (parameters == null || parameters.Length != 2) return;
         if (parameters[0] is not Album album || parameters[1] is not Playlist playlist) return;
         if (album.Tracks.Count == 0) return;
-        await _sidebar.AddTracksToPlaylist(playlist.Id, InAlbumOrder(album.Tracks));
+        await _sidebar.AddTracksToPlaylist(playlist.Id, InAlbumOrder(album.EditionTracks));
     }
 
     [RelayCommand]

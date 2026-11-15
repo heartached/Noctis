@@ -37,7 +37,7 @@ public class ResetEverythingTests : IDisposable
     /// <summary>Written again, empty or with defaults, as a fresh install's first run writes them.</summary>
     private static readonly string[] RewrittenFiles =
     {
-        "settings.json", "library.json", "playlists.json", "queue.json",
+        "settings.json", "computers.json", "library.json", "playlists.json", "queue.json",
         "library.db", "library.db-wal", "library.db-shm",
     };
 
@@ -46,7 +46,7 @@ public class ResetEverythingTests : IDisposable
         "indexes.json", "crash.log", "crashlog-20261101-120000.log", "play_history.recent.json",
         "wrap_archive.json", "favorite_artists.json", "phone_handoff.json", "queue-position.json",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json", "mp3_decoder_fallback.txt",
-        "musixmatch_token", "replaygain-backfill.progress", "label-backfill.progress",
+        "musixmatch_token", "computers.json", "replaygain-backfill.progress", "label-backfill.progress",
         "genre-backfill.progress", "library.json.corrupt-20261101-120000", "settings.json.bak",
         "artwork/album.jpg", "artwork/artists/a.jpg", "artwork/similar/s.jpg", "animated_covers/a.mp4",
         "playlist_covers/p.jpg", "cache/artwork_thumbs/t.png", "cache/waveforms/w.bin",
@@ -134,6 +134,37 @@ public class ResetEverythingTests : IDisposable
         // Folders services wrote into without re-creating are back, empty.
         foreach (var dir in new[] { "artwork/artists", "artwork/similar", "artist_info", "animated_covers", "lyrics_cache", "cache" })
             Assert.True(Directory.Exists(Path.Combine(_root, dir)), dir);
+    }
+
+    /// <summary>
+    /// The library reads the hidden folders and linked albums once at load. The reset wrote
+    /// none to settings.json, but the library kept hiding / linking the old ones after the next
+    /// scan, and its next hide wrote the old list back into the file.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task LibraryClear_ForgetsTheHiddenFoldersAndAlbumLinks_ItReadAtLoad()
+    {
+        Directory.CreateDirectory(_root);
+        var persistence = new PersistenceService(_root);
+        var old = Path.Combine(_root, "Music", "Old");
+        await persistence.SaveSettingsAsync(new AppSettings
+        {
+            HiddenLibraryFolders = new() { old },
+            AlbumLinks = new() { new AlbumLink { AlbumId = Guid.NewGuid(), SourceAlbumId = Guid.NewGuid() } },
+        });
+        var library = new LibraryService(new MetadataService(), persistence,
+            new SqliteLibraryIndexService(persistence), new AuditTrailService(persistence));
+        await library.LoadAsync();
+        Assert.Single(library.HiddenFolders);
+        Assert.Single(library.AlbumLinks);
+
+        await library.ClearAsync();
+        await persistence.SaveSettingsAsync(new AppSettings()); // the reset's default settings
+        await library.SetFolderHiddenAsync(Path.Combine(_root, "Music", "New"), hidden: true);
+
+        Assert.Empty(library.AlbumLinks);
+        Assert.Equal(new[] { Path.Combine(_root, "Music", "New") }, library.HiddenFolders);
+        Assert.Equal(new[] { Path.Combine(_root, "Music", "New") }, (await persistence.LoadSettingsAsync()).HiddenLibraryFolders);
     }
 
     [Fact]

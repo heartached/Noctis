@@ -84,6 +84,9 @@ public class TopBarCornerOrderTests
     private static (Window Window, StackPanel Corner) Mount(Action<TopBarViewModel> setup, string? label = null)
     {
         AddToPlaylistDialogTests.EnsureAppStyles();
+        // As App does at startup: icon buttons take their accessible name from the tooltip.
+        // Without this the "named" assertion only passed when another class ran it first.
+        Noctis.Helpers.AccessibleNames.Install();
         var main = new MainWindow();
         var corner = main.FindControl<StackPanel>("CornerActions")!;
         ((Panel)corner.Parent!).Children.Remove(corner);
@@ -143,7 +146,7 @@ public class TopBarCornerOrderTests
     [InlineData("Songs", "Filter|Sort|View|Pill:Shuffle|CoverFlow")]
     // GitHub #164: Albums wears the grid / album carousel toggle in the Cover Flow icon's place.
     [InlineData("Albums", "Filter|Sort|View|AlbumCarousel")]
-    [InlineData("Artists", "Sort|View|CoverFlow")]
+    [InlineData("Artists", "Filter|Sort|View|CoverFlow")]
     [InlineData("Folders", "Folder|Sort|Shuffle|Pill:Play|CoverFlow")]
     [InlineData("Favorites", "Shuffle|Pill:Play|CoverFlow")]
     [InlineData("Playlists", "Sort|Pill:New|CoverFlow")]

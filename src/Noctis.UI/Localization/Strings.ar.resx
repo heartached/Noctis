@@ -575,6 +575,14 @@
     <value>تظهر أسماء الفنانين والألبومات والأنواع في قوائم التشغيل والأغاني والمشغّل بلون التمييز. عند الإيقاف تظهر بلون النص العادي.</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve">
+    <value>تلوين النافذة بلون التمييز</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment>
+  </data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve">
+    <value>يمنح خلفية النافذة والصفحات لمسة خفيفة من لون التمييز.</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
+  </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} أغانٍ</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
@@ -1013,6 +1021,14 @@
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
     <value>تغمر كل خط باستثناء الخط الحالي وجيرانه.</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>إخفاء جزيرة التشغيل في وضع ملء الشاشة</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>في وضع ملء الشاشة تُبقي صفحة الكلمات شريط التقدم فقط أسفل الأغنية. يظل بإمكانك التحكم في التشغيل باختصارات لوحة المفاتيح.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -3144,6 +3160,14 @@
     <value>البحث عن الكلمات</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>إضافة كلمات</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>تعديل الكلمات</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>جارٍ البحث عن الكلمات</value>
     <comment>Text in LyricsView.axaml</comment>
@@ -4520,6 +4544,10 @@
   </data>
   <data name="PlaybackBar.Plain" xml:space="preserve">
     <value>عادية</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>إخفاء الكلمات</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
@@ -7312,12 +7340,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>إزالة التنزيلات</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} قائمة تشغيل|{0} قائمة تشغيل|{0} قائمتا تشغيل|{0} قوائم تشغيل|{0} قائمة تشغيل|{0} قائمة تشغيل</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>لون التمييز فيه 17 لونًا، و«مطابقة الغلاف» يتبع غلاف الأغنية الجارية.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>مؤقت نوم في شاشة التشغيل الحالي؛ و«تأجيل لمدة شهر» و«إخفاء الأغنية» في قائمة الأغنية.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>أنشئ قائمة تشغيل بزر + وامنحها غلافك الخاص؛ تتم مزامنة الأغلفة مع حاسوبك.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>«إضافة قبل الحالية» في قائمة الأغنية، ويمكن أن تبقى الأغاني المُشغّلة في قائمة الانتظار.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>الأغنية الموجودة على هاتفك ونفس الأغنية من حاسوبك تظهران مرة واحدة.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>تمرير أكثر سلاسة وصفحات أسرع، وكلمات الأغاني بجانب الغلاف في الوضع الأفقي.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>إضافة أغانٍ داخل قائمة التشغيل: اضغط + واختر أغاني من مكتبتك.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>كلمات الأغاني تتلاءم مع شاشتك وتتمرر بسلاسة.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>تظهر الأغاني من حاسوبك في المضافة مؤخرًا.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>اسحب أغنية إلى أعلى قائمة الانتظار أو أسفلها وستتمرر القائمة معها.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>تشغيل أسرع دون تجمّد أثناء تحميل مكتبتك، وقوائم أكثر سلاسة.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>تستجيب أشرطة التقدم على كامل ارتفاعها، ويتسع الوضع الأفقي للشاشة.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>مفكّك ترميز ALAC المضمّن، مبني من مصدر FFmpeg 6.0 دون تعديل ودون أجزاء GPL أو غير حرة: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>التشغيل وجلسة الوسائط وغلاف JNI لمفكّك الترميز.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>إطار عمل واجهة المستخدم.</value></data>
@@ -7438,6 +7466,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>تحديد الكل</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>إلغاء تحديد الكل</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>تم</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>إضافة أغانٍ</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>ابحث في مكتبتك</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>استيراد قائمة تشغيل</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>تم استيراد {0} من {1} أغنية</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمتي تشغيل|تم استيراد {0} قوائم تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل</value></data>
@@ -7475,6 +7505,7 @@
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>تعذّرت قراءة الملف: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} فارغ.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>تم استيراد {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>الكلمات الملصقة</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>تم استيراد {0} ككلمات عادية (لا توجد طوابع زمنية).</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>خدمة البحث غير متاحة.</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>العنوان والفنان مطلوبان.</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -7528,7 +7559,6 @@
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>البحث عن كلمات لمكتبتك ({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>جلب الكلمات لـ {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>يحذف الكلمات التي حفظها Noctis لهذه الأغاني (ملفات ‎.lrc الخاصة به والكلمات المخزنة مؤقتًا). لا تُمس ملفات الكلمات التي أنشأتها بنفسك.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>يبحث عن الكلمات عبر الإنترنت، المتزامنة كلمةً بكلمة أولًا، ويحفظها بجوار أغانيك. لا تُستبدل ملفات الكلمات الخاصة بك أبدًا.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>لم تتم إزالة أي شيء بعد.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>جاهز.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>إخفاء</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -7557,6 +7587,17 @@
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} أغانٍ لها كلمات عادية فقط. يمكن لـ Lyrics Studio توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>تُفتح أول {0} في المرة الواحدة.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} ألبوم|{0:N0} ألبوم|{0:N0} ألبومان|{0:N0} ألبومات|{0:N0} ألبومًا|{0:N0} ألبوم</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>كل الفنانين</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>إخفاء الفنانين الصغار</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>أقل من {0:N0} أغنية</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>الفلتر يخفي كل الفنانين</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>اختر «كل الفنانين» من قائمة الفلتر، أو ابحث عن اسم</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>إخفاء الفنانين الصغار</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>يستبعد الفنانين الذين لديهم أغانٍ قليلة من صفحة الفنانين. يظل البحث وروابط الفنان في الأغاني والألبومات يعثر عليهم. تُحسب الأغاني التي يتصدرها الفنان، وهو الرقم نفسه الظاهر تحت كل اسم.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>إخفاء الفنانين الذين لديهم أقل من</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>إخفاء الشريط الجانبي حتى التمرير</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>يخفي الشريط الجانبي تمامًا لتستخدم الصفحات العرض الكامل. حرّك المؤشر إلى الحافة اليسرى للنافذة لإظهاره.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} مقطع|{0:N0} مقطع|{0:N0} مقطعان|{0:N0} مقاطع|{0:N0} مقطعًا|{0:N0} مقطع</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} عنصر|{0:N0} عنصر|{0:N0} عنصران|{0:N0} عناصر|{0:N0} عنصرًا|{0:N0} عنصر</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} س {1} د</value><comment>Short duration (sidebar playlist row)</comment></data>

@@ -156,7 +156,7 @@ public class SidebarCustomization199Tests : IDisposable
         var vm = CreateSettings();
         await vm.LoadAsync();
         Assert.Equal(SidebarViewModel.DefaultPageOrder, vm.SidebarPageOrderKeys);
-        Assert.Empty(vm.SidebarHiddenPageKeys);
+        Assert.Equal(new[] { "genres" }, vm.SidebarHiddenPageKeys); // hidden by default (owner 11-14)
         Assert.Equal("home", vm.GetDefaultPageKey());
         // Unavailable optional pages are not offered as a start page; Settings never is.
         Assert.DoesNotContain(vm.StartPageOptions, o => o.Key is "settings" or "server" or "cd" or "inbox");
@@ -175,7 +175,7 @@ public class SidebarCustomization199Tests : IDisposable
         Assert.Equal("albums", vm.GetDefaultPageKey());
 
         vm.SidebarPages.First(p => p.Key == "lyricsstudio").IsShown = false;
-        Assert.Equal(new[] { "lyricsstudio" }, vm.SidebarHiddenPageKeys);
+        Assert.Equal(new[] { "genres", "lyricsstudio" }, vm.SidebarHiddenPageKeys.OrderBy(k => k));
         Assert.DoesNotContain(vm.StartPageOptions, o => o.Key == "lyricsstudio");
         Assert.True(layoutEvents >= 3);
 
@@ -185,13 +185,13 @@ public class SidebarCustomization199Tests : IDisposable
         await vm.SaveAsync();
         var saved = await new PersistenceService(_root).LoadSettingsAsync();
         Assert.Equal("albums", saved.SidebarPageOrder[0]);
-        Assert.Equal(new[] { "lyricsstudio" }, saved.SidebarHiddenPages);
+        Assert.Equal(new[] { "genres", "lyricsstudio" }, saved.SidebarHiddenPages.OrderBy(k => k));
         Assert.Equal("albums", saved.StartPage);
 
         var reloaded = CreateSettings();
         await reloaded.LoadAsync();
         Assert.Equal(vm.SidebarPageOrderKeys, reloaded.SidebarPageOrderKeys);
-        Assert.Equal(new[] { "lyricsstudio" }, reloaded.SidebarHiddenPageKeys);
+        Assert.Equal(new[] { "genres", "lyricsstudio" }, reloaded.SidebarHiddenPageKeys.OrderBy(k => k));
         Assert.Equal("albums", reloaded.GetDefaultPageKey());
 
         // Hiding the start page falls back to Home.
@@ -201,8 +201,26 @@ public class SidebarCustomization199Tests : IDisposable
 
         reloaded.ResetSettingsToDefaults(new AppSettings());
         Assert.Equal(SidebarViewModel.DefaultPageOrder, reloaded.SidebarPageOrderKeys);
-        Assert.Empty(reloaded.SidebarHiddenPageKeys);
+        Assert.Equal(new[] { "genres" }, reloaded.SidebarHiddenPageKeys);
         Assert.Equal("home", reloaded.StartPage);
+    }
+
+    // Owner 11-14: Genres is off by default. It is hidden once (new profile, profile from before
+    // 1.7.0, Reset); switching it back on in Settings › General › Pages sticks.
+    [AvaloniaFact]
+    public async Task Settings_GenresPageIsHiddenOnce_AndTurningItOnSurvivesReload()
+    {
+        await new PersistenceService(_root).SaveSettingsAsync(new AppSettings()); // a 1.6.9 profile: nothing hidden
+        var vm = CreateSettings();
+        await vm.LoadAsync();
+        Assert.False(vm.SidebarPages.First(p => p.Key == "genres").IsShown);
+
+        vm.SidebarPages.First(p => p.Key == "genres").IsShown = true;
+        await vm.SaveAsync();
+
+        var reloaded = CreateSettings();
+        await reloaded.LoadAsync();
+        Assert.True(reloaded.SidebarPages.First(p => p.Key == "genres").IsShown);
     }
 
     [AvaloniaFact]

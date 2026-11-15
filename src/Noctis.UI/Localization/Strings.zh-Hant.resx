@@ -575,6 +575,14 @@
     <value>播放清單、「歌曲」和播放器中的演出者、專輯和類型名稱使用強調色。關閉後使用一般文字顏色。</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
+  <data name="Settings.TintWindowWithAccent" xml:space="preserve">
+    <value>以強調色為視窗著色</value>
+    <comment>Appearance toggle in SettingsView.axaml (GitHub #240)</comment>
+  </data>
+  <data name="Settings.TintWindowWithAccentHint" xml:space="preserve">
+    <value>為視窗和頁面背景加上一抹淡淡的強調色。</value>
+    <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
+  </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} 首歌曲</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
@@ -1013,6 +1021,14 @@
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
     <value>除了目前的一條線及其鄰國外，每條線都變暗。</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
+    <value>全螢幕時隱藏播放島</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
+    <value>全螢幕時歌詞頁在歌曲下方只保留進度列。仍可用鍵盤快速鍵控制播放。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -3144,6 +3160,14 @@
     <value>搜尋歌詞</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>新增歌詞</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>編輯歌詞</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>正在搜尋歌詞</value>
     <comment>Text in LyricsView.axaml</comment>
@@ -3564,7 +3588,7 @@
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecIdentification" xml:space="preserve">
-    <value>1. 身份識別</value>
+    <value>識別</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecContent" xml:space="preserve">
@@ -4520,6 +4544,10 @@
   </data>
   <data name="PlaybackBar.Plain" xml:space="preserve">
     <value>純文字</value>
+    <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
+  <data name="PlaybackBar.HideLyrics" xml:space="preserve">
+    <value>隱藏歌詞</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.BackgroundColor" xml:space="preserve">
@@ -7312,12 +7340,12 @@
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>移除下載項目</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} 首歌曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} 個播放清單</value></data>
-  <data name="Mobile.WhatsNew.Accent" xml:space="preserve"><value>強調色有 17 種，「配合封面」會跟隨正在播放的封面。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>正在播放頁面有睡眠定時器；歌曲選單中有「暫停推薦一個月」和「隱藏歌曲」。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Playlists" xml:space="preserve"><value>用 + 新增播放清單並設定自己的封面；封面會與電腦同步。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>歌曲選單中有「加到目前歌曲之前」，已播放的歌曲可以留在佇列中。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.OneSong" xml:space="preserve"><value>手機上的歌曲和電腦上的同一首歌只顯示一次。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Smoother" xml:space="preserve"><value>捲動更流暢，頁面更快，橫向時歌詞顯示在封面旁邊。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>在播放清單中「加入歌曲」：點一下 + 並從資料庫挑選歌曲。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>歌詞會配合你的螢幕，捲動流暢。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>來自電腦的歌曲會顯示在「最近加入」中。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>將歌曲拖到待播清單的頂端或底端邊緣，清單會隨之捲動。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>啟動更快，載入資料庫時不再卡頓，選單也更流暢。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>進度列在整個高度內都能回應，橫向模式也能完整顯示。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>內建的 ALAC 解碼器，以未經修改的 FFmpeg 6.0 原始碼建構，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>播放、媒體工作階段以及解碼器的 JNI 包裝層。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>使用者介面框架。</value></data>
@@ -7438,6 +7466,8 @@
   <data name="Mobile.Select.All" xml:space="preserve"><value>全選</value></data>
   <data name="Mobile.Select.DeselectAll" xml:space="preserve"><value>取消全選</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>完成</value></data>
+  <data name="Mobile.AddSongs" xml:space="preserve"><value>加入歌曲</value></data>
+  <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>搜尋你的資料庫</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>匯入播放列表</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>已匯入 {0}/{1} 首歌曲</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>已匯入 {0} 個播放列表</value></data>
@@ -7475,6 +7505,7 @@
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>無法讀取檔案：{0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} 是空的。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsImported" xml:space="preserve"><value>已匯入 {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.PastedLyrics" xml:space="preserve"><value>貼上的歌詞</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
   <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>已將 {0} 匯入為一般歌詞（找不到時間戳記）。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>搜尋服務無法使用。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>需要標題和演出者。</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -7528,7 +7559,6 @@
   <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>為資料庫尋找歌詞（{0}）</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>取得 {0} 的歌詞</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>刪除 Noctis 為這些歌曲儲存的歌詞（其 .lrc 檔案和快取的歌詞）。你自己製作的歌詞檔案不受影響。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.SubtitleFetch" xml:space="preserve"><value>在線上尋找歌詞（優先逐字同步），並儲存在歌曲旁邊。你自己的歌詞檔案永遠不會被取代。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.NothingRemovedYet" xml:space="preserve"><value>尚未移除任何內容。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Ready" xml:space="preserve"><value>就緒。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Hide" xml:space="preserve"><value>隱藏</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
@@ -7557,6 +7587,17 @@
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>有 {0:N0} 首歌曲只有一般歌詞。Lyrics Studio 可以在這台電腦上用語音模型為其計時：每首歌可能需要一分鐘或更久（有顯示卡時更快），儲存前你會逐首檢查。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>一次開啟前 {0} 首。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 首歌曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Albums" xml:space="preserve"><value>{0:N0} 張專輯</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Main.AllArtists" xml:space="preserve"><value>所有藝人</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
+  <data name="Main.HideSmallArtists" xml:space="preserve"><value>隱藏小眾藝人</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>少於 {0:N0} 首歌曲</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>篩選隱藏了所有藝人</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
+  <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>在篩選選單中選擇「所有藝人」，或搜尋名稱</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
+  <data name="Settings.HideSmallArtists" xml:space="preserve"><value>隱藏小眾藝人</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>在藝人頁面中隱藏歌曲很少的藝人。搜尋以及歌曲和專輯上的藝人連結仍能找到他們。依該藝人擔任主藝人的歌曲計數，與每個名字下顯示的數字相同。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>隱藏歌曲少於以下數量的藝人</value><comment>Label before the song-count picker ("3 songs")</comment></data>
+  <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>懸停前隱藏側邊欄</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>完全隱藏側邊欄，讓頁面使用全部寬度。將指標移到視窗左邊緣即可滑出。</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} 首曲目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} 個項目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} 小時 {1} 分鐘</value><comment>Short duration (sidebar playlist row)</comment></data>

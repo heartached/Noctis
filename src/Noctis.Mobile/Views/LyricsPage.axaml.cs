@@ -27,8 +27,14 @@ public partial class LyricsPage : UserControl
     private const double MaxCascadeLagStepPx = 16;
 
     /// <summary>After the user's last touch on the lyrics, how long they stay free to read
-    /// before the page glides back to the sung line (Apple Music waits a few seconds).</summary>
-    internal static TimeSpan BrowseResumeDelay { get; set; } = TimeSpan.FromSeconds(3.5);
+    /// before the page glides back to the sung line. Beta (11-11): 3.5 s, restarted by every
+    /// pixel a fling moved for up to 2.5 s after the finger lifted, made the wait up to 6 s;
+    /// Apple Music comes back about 2 s after the scroll settles.</summary>
+    internal static TimeSpan BrowseResumeDelay { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>A fling's movement restarts that wait only this long after the finger lifts:
+    /// its long slow tail keeps the list browsing but no longer pushes the return back.</summary>
+    internal static TimeSpan FlingExtendWindow { get; set; } = TimeSpan.FromMilliseconds(500);
 
     /// <summary>How long the transport stays up after a touch while the song plays.</summary>
     internal static TimeSpan ControlsHideDelay { get; set; } = TimeSpan.FromSeconds(4);
@@ -36,6 +42,8 @@ public partial class LyricsPage : UserControl
     private ShellViewModel? _shell;
     private LyricsPageViewModel? _lyrics;
     private bool _frameLoopRunning;
+    /// <summary>A ⋯ menu or sheet covers the page: the lines hold still and draw from a cached bitmap.</summary>
+    private bool _heldForMenu;
 
     private bool _gliding;
     private double _glideFrom;
@@ -82,6 +90,12 @@ public partial class LyricsPage : UserControl
             ApplyOrientation(e.NewSize);
             UpdateFades();
         };
+        // The lyric text follows the column's width (LyricsPageViewModel.AutoBaseFontSize).
+        LyricsScroll.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == BoundsProperty && _shell is { } shell && LyricsScroll.Bounds.Width > 0)
+                shell.Lyrics.ViewWidth = LyricsScroll.Bounds.Width;
+        };
 
         SeekBar.ScrubStarted += (_, _) => _shell?.Player.BeginSeek();
         SeekBar.ScrubCompleted += OnSeekCompleted;
@@ -97,7 +111,11 @@ public partial class LyricsPage : UserControl
             _lyrics.PropertyChanged -= OnLyricsChanged;
             _lyrics.Lines.CollectionChanged -= OnLinesChanged;
         }
-        if (_shell != null) _shell.Player.PropertyChanged -= OnPlayerChanged;
+        if (_shell != null)
+        {
+            _shell.Player.PropertyChanged -= OnPlayerChanged;
+            _shell.PropertyChanged -= OnShellChanged;
+        }
         _shell = DataContext as ShellViewModel;
         _lyrics = _shell?.Lyrics;
         if (_lyrics != null)
@@ -105,13 +123,20 @@ public partial class LyricsPage : UserControl
             _lyrics.PropertyChanged += OnLyricsChanged;
             _lyrics.Lines.CollectionChanged += OnLinesChanged;
         }
-        if (_shell != null) _shell.Player.PropertyChanged += OnPlayerChanged;
+        if (_shell != null)
+        {
+            _shell.Player.PropertyChanged += OnPlayerChanged;
+            _shell.PropertyChanged += OnShellChanged;
+        }
+        UpdateMenuHold();
+        if (_lyrics != null && LyricsScroll.Bounds.Width > 0) _lyrics.ViewWidth = LyricsScroll.Bounds.Width;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty) return;
+        UpdateMenuHold();
         if (!IsVisible)
         {
             EndBrowse(scrollBack: false);
@@ -137,7 +162,7 @@ public partial class LyricsPage : UserControl
     {
         if (e.PropertyName == nameof(LyricsPageViewModel.WantsFrames))
             EnsureFrameLoop();
-        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible)
+        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible && !_heldForMenu)
         {
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             ScrollToLine(_lyrics!.ScrollLineIndex, animate: true);
@@ -146,6 +171,41 @@ public partial class LyricsPage : UserControl
         else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && IsVisible)
             ShowControls();   // (re)starts the hide timer once there is something to read
     }
+
+    private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ShellViewModel.IsMenuOpen) or nameof(ShellViewModel.IsSheetOpen)) UpdateMenuHold();
+    }
+
+    /// <summary>
+    /// S23 at 120 Hz (11-14): the ⋯ menu popped smoothly over the Songs list but stuttered over the
+    /// lyrics (24-40 frames over 25 ms per open and close): its dim and glass repaint everything
+    /// under them on every frame of the pop, and here that is a column of lines each drawn through
+    /// its own depth blur. While a menu or sheet covers the page the lines hold still (no frames,
+    /// no glide) and the lyric column is drawn once into a bitmap at the screen's scale, which the
+    /// pop then reuses. On close the cache goes and the page catches up to the sung line.
+    /// </summary>
+    private void UpdateMenuHold()
+    {
+        var hold = IsVisible && _shell is { } shell && (shell.IsMenuOpen || shell.IsSheetOpen);
+        if (hold == _heldForMenu) return;
+        _heldForMenu = hold;
+        if (hold)
+        {
+            StopGlide();
+            var scale = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+            LyricsScroll.CacheMode = new BitmapCache { RenderAtScale = scale };
+            return;
+        }
+        LyricsScroll.CacheMode = null;
+        if (!IsVisible) return;
+        _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
+        EnsureFrameLoop();
+        ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: true);
+    }
+
+    /// <summary>Held under a menu (tests read it).</summary>
+    internal bool IsHeldForMenu => _heldForMenu;
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -316,24 +376,38 @@ public partial class LyricsPage : UserControl
     private bool _fingerDown;
     private double _fingerUpMs = double.NegativeInfinity;
 
-    private void OnScrollPointerPressed(object? sender, PointerPressedEventArgs e) => _fingerDown = true;
+    private void OnScrollPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _fingerDown = true;
+        if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();   // a touch while reading holds the lines
+    }
 
     private void OnScrollPointerReleased(object? sender, PointerEventArgs e)
     {
         if (!_fingerDown) return;
         _fingerDown = false;
         _fingerUpMs = LyricsPageViewModel.NowMs();
+        // The wait counts from the lift (the last touch), not from the drag's last movement.
+        if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();
     }
 
     /// <summary>The user took the lyrics: the glide stops, every line sharpens (the view model's
-    /// browse ramp) and the page waits <see cref="BrowseResumeDelay"/> after the last movement
-    /// before following the song again. Internal for tests.</summary>
+    /// browse ramp) and the page waits <see cref="BrowseResumeDelay"/> after the last touch
+    /// before following the song again. Movement under the finger, or a fling within
+    /// <see cref="FlingExtendWindow"/> of the lift, restarts the wait; a fling's later tail
+    /// does not. Internal for tests.</summary>
     internal void BeginBrowse()
     {
         if (_lyrics == null) return;
         StopGlide();
         _lastAppliedY = LyricsScroll.Offset.Y;
         _lyrics.IsBrowsing = true;
+        var touching = _fingerDown || LyricsPageViewModel.NowMs() - _fingerUpMs < FlingExtendWindow.TotalMilliseconds;
+        if (touching || !_browseTimer.IsEnabled) RestartBrowseTimer();
+    }
+
+    private void RestartBrowseTimer()
+    {
         _browseTimer.Stop();
         _browseTimer.Interval = BrowseResumeDelay;
         _browseTimer.Start();
@@ -349,7 +423,7 @@ public partial class LyricsPage : UserControl
 
     // ── Frames ──
 
-    private bool KeepsFrames => IsVisible && (_gliding || _lyrics?.WantsFrames == true);
+    private bool KeepsFrames => IsVisible && !_heldForMenu && (_gliding || _lyrics?.WantsFrames == true);
 
     private void EnsureFrameLoop()
     {
@@ -397,9 +471,13 @@ public partial class LyricsPage : UserControl
 
         if (container.TranslatePoint(new Point(0, 0), LyricsList) is not { } origin) return;
         // Coordinates relative to the list exclude its margin; the scroll extent includes it.
+        var top = origin.Y + LyricsList.Margin.Top;
         var target = LyricsScrollAnchor.ComputeAnchorOffset(
-            origin.Y + LyricsList.Margin.Top, container.Bounds.Height,
-            LyricsScroll.Viewport.Height, LyricsScroll.Extent.Height, AnchorRatio);
+            top, container.Bounds.Height, LyricsScroll.Viewport.Height, LyricsScroll.Extent.Height, AnchorRatio);
+        // Beta (11-09): sideways on a 360 dp phone the viewport is ~230 dp, and centring a
+        // wrapped sung line on the anchor put its first row under the top fade's solid wash.
+        // The line's top stays below the fade (portrait's taller viewport seldom needs it).
+        target = Math.Max(0, Math.Min(target, top - TopFade.Bounds.Height));
 
         StopGlide();
         if (!animate || Math.Abs(target - LyricsScroll.Offset.Y) < 2)

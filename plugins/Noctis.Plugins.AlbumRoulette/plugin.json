@@ -1,9 +1,9 @@
 {
   "id": "dev.noctis.plugins.albumroulette",
   "name": "Album Roulette",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Noctis",
-  "description": "Spin a reel of your albums and let it pick what to play.",
+  "description": "Spin a reel of albums or songs and let it pick for you.",
   "type": "dotnet",
   "entry": "Noctis.Plugins.AlbumRoulette.dll",
   "apiVersion": "1.5",

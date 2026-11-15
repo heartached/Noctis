@@ -247,68 +247,6 @@
             <Setter Property="Foreground" Value="{DynamicResource IslandForegroundSecondary}" />
         </Style>
 
-        <!-- Compact vertical volume slider -->
-        <Style Selector="Slider.volume-vertical">
-            <Setter Property="Orientation" Value="Vertical"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="22"/>
-            <Setter Property="Height" Value="48"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ Track">
-            <Setter Property="Width" Value="4"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ RepeatButton">
-            <Setter Property="Background" Value="Transparent"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ RepeatButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="Width" Value="4"/>
-            <Setter Property="CornerRadius" Value="2"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ RepeatButton#PART_IncreaseButton /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderUnfilled}"/>
-            <Setter Property="Width" Value="4"/>
-            <Setter Property="CornerRadius" Value="2"/>
-            <Setter Property="Opacity" Value="0.6"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ Thumb">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Width" Value="10"/>
-            <Setter Property="Height" Value="10"/>
-            <Setter Property="Opacity" Value="1.0"/>
-            <Setter Property="Transitions">
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15">
-                        <TransformOperationsTransition.Easing>
-                            <CubicEaseOut/>
-                        </TransformOperationsTransition.Easing>
-                    </TransformOperationsTransition>
-                </Transitions>
-            </Setter>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical /template/ Thumb /template/ Border">
-            <Setter Property="Background" Value="{DynamicResource IslandSliderFilled}"/>
-            <Setter Property="CornerRadius" Value="5"/>
-            <Setter Property="BoxShadow" Value="0 1 3 0 #40000000"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical:pointerover /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.15)"/>
-        </Style>
-
-        <Style Selector="Slider.volume-vertical:pressed /template/ Thumb">
-            <Setter Property="RenderTransform" Value="scale(1.05)"/>
-        </Style>
-
         <!-- Horizontal volume slider (pill-shaped) -->
         <Style Selector="Slider.volume-horizontal">
             <Setter Property="Orientation" Value="Horizontal"/>
@@ -690,6 +628,20 @@
                         <controls:TransportGlyph Kind="PlayPause" Width="20" Height="20"
                                                  Foreground="{DynamicResource IslandIconFill}"
                                                  IsPlaying="{Binding State, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static m:PlaybackState.Playing}}" />
+                    </Button>
+
+                    <!-- Stop (island extra, Discord): halts playback, back to the song's start, and
+                         lets go of the audio device (Exclusive Mode). Optionally only while
+                         Exclusive Mode is on. -->
+                    <Button x:Name="StopButton"
+                            Classes="pill-btn transport-btn tx"
+                            Command="{Binding StopPlaybackCommand}"
+                            ToolTip.Tip="{loc:T PlaybackBar.StopTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.StopTip}"
+                            IsVisible="{Binding IslandStopButtonVisible}"
+                            Width="34" Height="34">
+                        <controls:TransportGlyph Kind="Stop" Width="18" Height="18"
+                                                 Foreground="{DynamicResource IslandIconFill}" />
                     </Button>
 
                     <!-- Forward button -->
@@ -1312,6 +1264,27 @@
                                             IsFavorite="{Binding CurrentTrack.IsFavorite, FallbackValue=False}" />
                     </Button>
 
+                    <!-- Discord "Chapter Button in Player Island": the "…" menu's Chapters list one
+                         click away for audiobooks. Opt-in (Settings → Player → Player island
+                         buttons), on screen only while the track has chapters, budgeted with the
+                         extras; rows filled per open (OnChaptersMenuOpening), with the hidden first
+                         row the quick playlist menu needs too. -->
+                    <Button x:Name="ChaptersButton"
+                            Classes="secondary-btn"
+                            IsVisible="{Binding IslandChaptersButtonVisible}"
+                            ToolTip.Tip="{loc:T PlaybackBar.Chapters}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.Chapters}"
+                            Width="34" Height="34">
+                        <controls:LineIcon Width="18" Height="18" Data="{StaticResource MenuLineChapters}" Foreground="{DynamicResource IslandIconFill}" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="Top"
+                                        PlacementConstraintAdjustment="FlipY"
+                                        helpers:MenuOpenAnimation.EnableFlyoutClose="True">
+                                <Separator IsVisible="False" />
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+
                     <!-- GitHub #186: Quick Add to Playlist and Move to Trash, each opt-in (Settings →
                          Player → Player island buttons) and budgeted with the extras above. The quick
                          playlist menu is a MenuFlyout (overlay-hosted and frosted by GlassMenus like
@@ -1425,6 +1398,13 @@
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <!-- GitHub #239: the playing song into another album, or a new one. -->
+                                <MenuItem Header="{loc:T MoveToAlbum.Menu}"
+                                          Command="{Binding MoveCurrentTrackToAlbumCommand}">
+                                    <MenuItem.Icon>
+                                        <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineAlbum}"/>
+                                    </MenuItem.Icon>
+                                </MenuItem>
                                 <MenuItem Header="{loc:T Tab.Lyrics}">
                                     <MenuItem.Icon>
                                         <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineLyrics}"/>
@@ -1433,6 +1413,17 @@
                                               Command="{Binding SearchCurrentTrackLyricsCommand}">
                                         <MenuItem.Icon>
                                             <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- GitHub #212: type or paste the song's lyrics (plain or LRC), or fix
+                                         them: Edit Info opened on its lyrics. "Add Lyrics" while the page
+                                         shows none. Lyrics page only. -->
+                                    <MenuItem x:Name="EditLyricsMenuItem"
+                                              Header="{Binding EditLyricsHeader}"
+                                              Command="{Binding EditCurrentTrackLyricsCommand}"
+                                              IsVisible="{Binding CanEditLyrics}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineEdit}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                     <!-- Lyrics page (GitHub #115): save the lyrics next to the song under its
@@ -1627,6 +1618,16 @@
                                               Command="{Binding SetLyricsPlainCommand}">
                                         <MenuItem.Icon>
                                             <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding IsLyricsPlainActive}"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
+                                    <!-- Discord (f7uh): the centred player look with the lyrics hidden, lyrics
+                                         or not (LyricsView.ApplyNoLyricsCentered). Remembered. -->
+                                    <Separator />
+                                    <MenuItem x:Name="HideLyricsMenuItem"
+                                              Header="{loc:T PlaybackBar.HideLyrics}"
+                                              Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.ToggleLyricsPageHideLyricsCommand}">
+                                        <MenuItem.Icon>
+                                            <controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding LyricsPageHideLyrics}"/>
                                         </MenuItem.Icon>
                                     </MenuItem>
                                 </MenuItem>

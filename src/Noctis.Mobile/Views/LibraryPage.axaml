@@ -141,10 +141,12 @@
         <Style Selector="Panel.lib-row.editing Grid.row-body">
             <Setter Property="Margin" Value="62,0,20,0" />
         </Style>
+        <!-- Apple's Library list size: the glyph at 1:1 (about 21 dp drawn). It was 30 dp on a
+             24 slot (-3 margins), which read heavy next to the 18 dp label; the slot is the same,
+             so the label and the hairline keep their place. -->
         <Style Selector="PathIcon.row-icon">
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Margin" Value="-3" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
         </Style>

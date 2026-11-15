@@ -65,6 +65,17 @@ public class MetadataService : IMetadataService
         ".dsf", ".dff"
     };
 
+    /// <summary>
+    /// The copy a tag write is made on before it is renamed over the song
+    /// (<see cref="SaveTagsAtomicallyOrThrow"/>): ".noctis-&lt;guid&gt;.mp3" beside it. It has an
+    /// audio extension, so the folder watcher imported it as a new song (the lyrics and
+    /// ReplayGain auto runs had to filter it back out) and read its tags and picture while
+    /// TagLib was still rewriting it (GitHub #224). It is never a library file.
+    /// </summary>
+    public static bool IsOwnTempFile(string? path)
+        => !string.IsNullOrEmpty(path)
+           && Path.GetFileName(path).StartsWith(".noctis-", StringComparison.OrdinalIgnoreCase);
+
     public Track? ReadTrackMetadata(string filePath) => ReadTrackMetadata(filePath, out _);
 
     /// <summary>
@@ -664,11 +675,69 @@ public class MetadataService : IMetadataService
     public bool WriteTrackMetadata(Track track, string targetFilePath, string? titleOverride = null)
         => WriteTrackMetadataCore(track, targetFilePath, titleOverride, genreEdited: false);
 
-    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited)
+    /// <inheritdoc />
+    public bool WriteTrackMetadata(Track track, AlbumIdentityTags albumIdentity)
+        => WriteTrackMetadataCore(track, track.FilePath, null, genreEdited: false, albumIdentity);
+
+    /// <inheritdoc />
+    public AlbumIdentityTags? ReadAlbumIdentity(string filePath)
+    {
+        try
+        {
+            using var file = TagLib.File.Create(filePath);
+            var tag = file.Tag;
+            return new AlbumIdentityTags(
+                NullIfBlank(tag.AlbumSort),
+                tag.AlbumArtistsSort is { Length: > 0 } sorts ? sorts : null,
+                NullIfBlank(tag.MusicBrainzReleaseId),
+                NullIfBlank(tag.MusicBrainzReleaseGroupId),
+                NullIfBlank(tag.MusicBrainzReleaseArtistId));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Metadata", $"Album identity read failed for '{filePath}': {ex.Message}");
+            return null;
+        }
+
+        static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
+    }
+
+    private static void WriteAlbumIdentity(TagLib.File file, AlbumIdentityTags identity)
+    {
+        var tag = file.Tag;
+        tag.AlbumSort = identity.AlbumSort;
+        tag.AlbumArtistsSort = identity.AlbumArtistsSort ?? Array.Empty<string>();
+        tag.MusicBrainzReleaseId = identity.MusicBrainzReleaseId;
+        tag.MusicBrainzReleaseGroupId = identity.MusicBrainzReleaseGroupId;
+        if (identity.MusicBrainzReleaseArtistId != null) tag.MusicBrainzReleaseArtistId = identity.MusicBrainzReleaseArtistId;
+        else ClearReleaseArtistId(tag);
+    }
+
+    // TagLib# 2.3.0: XiphComment.MusicBrainzReleaseArtistId = null throws NullReferenceException
+    // (FLAC / Ogg), so the field is removed by name there; other tag types take the null.
+    private static void ClearReleaseArtistId(TagLib.Tag tag)
+    {
+        switch (tag)
+        {
+            case TagLib.Ogg.XiphComment xiph:
+                xiph.RemoveField("MUSICBRAINZ_ALBUMARTISTID");
+                break;
+            case TagLib.CombinedTag combined:
+                foreach (var inner in combined.Tags) ClearReleaseArtistId(inner);
+                break;
+            default:
+                tag.MusicBrainzReleaseArtistId = null;
+                break;
+        }
+    }
+
+    private bool WriteTrackMetadataCore(Track track, string targetFilePath, string? titleOverride, bool genreEdited,
+        AlbumIdentityTags? albumIdentity = null)
     {
         var ok = SaveTagsAtomically(targetFilePath, file =>
         {
             var tag = file.Tag;
+            if (albumIdentity != null) WriteAlbumIdentity(file, albumIdentity);
 
             tag.Title = string.IsNullOrEmpty(titleOverride) ? track.Title : titleOverride;
             tag.Performers = SplitArtistList(track.Artist);
@@ -734,7 +803,10 @@ public class MetadataService : IMetadataService
         // (GitHub #178). Only for the track's own file: a converter writes to a new one.
         if (ok && !string.IsNullOrWhiteSpace(track.AlbumArtist)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
+        {
             track.AlbumArtistFromTag = true;
+            track.AlbumGroupingUnwritten = false; // the file names its album now (GitHub #201)
+        }
         // Likewise the album name: a folder name written above is the file's album tag now.
         if (ok && Track.IsRealAlbumName(track.Album)
             && string.Equals(targetFilePath, track.FilePath, StringComparison.Ordinal))
@@ -1307,32 +1379,6 @@ public class MetadataService : IMetadataService
         }
 
         return (0, 0);
-    }
-
-    private static bool IsLikelyLossyCodec(string codec, string ext)
-    {
-        var codecLower = (codec ?? string.Empty).ToLowerInvariant();
-        if (codecLower.Contains("mp3") || codecLower.Contains("mpeg") ||
-            codecLower.Contains("aac") || codecLower.Contains("vorbis") ||
-            codecLower.Contains("opus") || codecLower.Contains("wma") ||
-            codecLower.Contains("mp4a"))
-            return true;
-
-        // Don't classify .m4a/.mp4 as lossy by extension — these containers
-        // can hold ALAC (lossless). The codec string check above already
-        // catches AAC. Only classify unambiguously lossy extensions.
-        return ext is ".mp3" or ".aac" or ".ogg" or ".opus" or ".wma";
-    }
-
-    private static bool IsLikelyLosslessCodec(string codec, string ext)
-    {
-        var codecLower = (codec ?? string.Empty).ToLowerInvariant();
-        if (codecLower.Contains("flac") || codecLower.Contains("alac") ||
-            codecLower.Contains("lossless") || codecLower.Contains("pcm") ||
-            codecLower.Contains("wavpack") || codecLower.Contains("monkey"))
-            return true;
-
-        return ext is ".flac" or ".alac" or ".wav" or ".aiff" or ".aif" or ".aifc" or ".ape" or ".wv" or ".dsf" or ".dff";
     }
 
     private static int NormalizeBitrate(int bitrate, long fileSize, TimeSpan duration)

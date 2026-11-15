@@ -492,6 +492,9 @@ internal class Program
         // GitHub #177: Home's Last.fm mixes and Discover (read-only account charts, cached 12 h).
         services.AddSingleton(sp => new LastFmTasteService(sp.GetRequiredService<HttpClient>(),
             Path.Combine(AppPaths.DataRoot, "cache", "lastfm_taste.json")));
+        // GitHub #222: Statistics with Last.fm as its source (read-only account charts, cached 1 h).
+        services.AddSingleton(sp => new LastFmStatsService(sp.GetRequiredService<HttpClient>(),
+            Path.Combine(AppPaths.DataRoot, "cache", "lastfm_stats.json")));
         services.AddSingleton<IListenBrainzService, ListenBrainzService>();
         services.AddSingleton<ArtistImageService>();
         services.AddSingleton<ArtistInfoService>();
@@ -507,6 +510,7 @@ internal class Program
         services.AddSingleton<ILrcRedLyricsService>(sp =>
             new LrcRedLyricsService(sp.GetRequiredService<HttpClient>(), LrcRedLyricsService.CreateModelHttpClient()));
         services.AddSingleton<IUnisonLyricsService, UnisonLyricsService>();
+        services.AddSingleton<ILrcMuxLyricsService, LrcMuxLyricsService>();
         services.AddSingleton<IYouTubeMusicLyricsService, YouTubeMusicLyricsService>();
         services.AddSingleton<IPlayHistoryService, PlayHistoryService>();
         services.AddSingleton<PhoneHandoffInbox>();
@@ -592,8 +596,8 @@ internal class Program
                     list.AddRange(Services.Lyrics.OnlineLyricsSource.BuiltIns(
                             sp.GetRequiredService<IMusixmatchService>(), sp.GetRequiredService<IKugouLyricsService>(),
                             sp.GetRequiredService<IYouTubeMusicLyricsService>(), sp.GetRequiredService<ILrcRedLyricsService>(),
-                            sp.GetRequiredService<IUnisonLyricsService>())
-                        .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync)));
+                            sp.GetRequiredService<IUnisonLyricsService>(), sp.GetRequiredService<ILrcMuxLyricsService>())
+                        .Select(x => new Services.Lyrics.LyricsBulkSource(x.Name, x.IsEnabled, x.SearchAsync) { MinInterval = x.MinInterval }));
                     return list;
                 },
                 Path.Combine(sp.GetRequiredService<IPersistenceService>().DataDirectory, "lyrics_bulk_ledger.json")));

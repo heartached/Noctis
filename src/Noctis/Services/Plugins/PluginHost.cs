@@ -419,6 +419,39 @@ internal sealed class PluginLoadContext : AssemblyLoadContext
     }
 }
 
+/// <summary>A plugin's <see cref="ILyricsRenderer"/> (plugin API 1.8) as the lyrics lists use it.</summary>
+public sealed class PluginLyricsRenderer
+{
+    internal PluginLyricsRenderer(PluginHost host, LoadedPlugin plugin, ILyricsRenderer renderer, string name)
+    {
+        Host = host;
+        Plugin = plugin;
+        Renderer = renderer;
+        Name = name;
+    }
+
+    public PluginHost Host { get; }
+    public LoadedPlugin Plugin { get; }
+    public ILyricsRenderer Renderer { get; }
+    public string Name { get; }
+
+    /// <summary>What <see cref="AppSettings.LyricsRenderer"/> stores for it.</summary>
+    public string Key => PluginHost.LyricsRendererKey(Plugin.Id, Name);
+
+    /// <summary>The picker's row: the renderer's name, and its plugin's when they differ.</summary>
+    public string Label
+    {
+        get
+        {
+            var plugin = PluginHost.CleanLyricsRendererName(Plugin.Name);
+            return string.Equals(Name, plugin, StringComparison.OrdinalIgnoreCase) || plugin.Length == 0 ? Name : $"{Name} ({plugin})";
+        }
+    }
+
+    /// <summary>It threw: it is no longer used, whatever Settings says.</summary>
+    public bool Failed { get; internal set; }
+}
+
 /// <summary>A plugin's lyrics provider as the lyrics search sees it: bounded in time, errors contained.</summary>
 public sealed class PluginLyricsSource
 {
@@ -1356,6 +1389,7 @@ public sealed class PluginHost
             parts.AddRange(a.TrackCommands.Select(c => "Menu: " + c.Label));
             parts.AddRange(a.LibraryCommands.Select(c => "Menu: " + c.Label));
             parts.AddRange(a.LyricsEffects.Select(e => "Lyrics motion: " + e.Name));
+            parts.AddRange(a.LyricsRenderers.Select(r => "Lyrics renderer: " + r.Name));
         }
         plugin.Extensions = string.Join(" · ", parts);
     }
@@ -1478,6 +1512,132 @@ public sealed class PluginHost
         Dispatcher.UIThread.Post(Stop); // never mid-frame
     }
 
+    // ── Lyrics renderers (API 1.8) ──
+
+    private readonly List<PluginLyricsRenderer> _lyricsRenderers = new();
+
+    /// <summary>Lyrics renderers of running plugins, oldest first (UI thread).</summary>
+    public IReadOnlyList<PluginLyricsRenderer> LyricsRenderers => _lyricsRenderers;
+
+    /// <summary>A renderer came or went (UI thread): the Settings picker rebuilds its list.</summary>
+    public event EventHandler? LyricsRenderersChanged;
+
+    /// <summary>The key a renderer is stored under in <see cref="AppSettings.LyricsRenderer"/>.</summary>
+    public static string LyricsRendererKey(string pluginId, string name) => pluginId + "/" + name;
+
+    /// <summary>The longest renderer name Noctis keeps (as plugin.json's "name").</summary>
+    public const int MaxLyricsRendererNameLength = 60;
+
+    /// <summary>
+    /// A renderer's name as the picker shows it and the key stores it: line breaks, tabs and other
+    /// control characters become one space, invisible format characters (bidi overrides, zero-width
+    /// joiners) go, and it is cut to <see cref="MaxLyricsRendererNameLength"/>. "" when nothing is left.
+    /// </summary>
+    internal static string CleanLyricsRendererName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        var sb = new System.Text.StringBuilder(Math.Min(raw.Length, MaxLyricsRendererNameLength));
+        var space = false;
+        foreach (var c in raw)
+        {
+            var category = char.GetUnicodeCategory(c);
+            if (category == System.Globalization.UnicodeCategory.Format) continue;
+            if (char.IsWhiteSpace(c) || char.IsControl(c)
+                || category is System.Globalization.UnicodeCategory.LineSeparator or System.Globalization.UnicodeCategory.ParagraphSeparator)
+            {
+                space = sb.Length > 0;
+                continue;
+            }
+            if (space) sb.Append(' ');
+            space = false;
+            sb.Append(c);
+            if (sb.Length >= MaxLyricsRendererNameLength) break;
+        }
+        if (sb.Length > MaxLyricsRendererNameLength) sb.Length = MaxLyricsRendererNameLength;
+        // Never end on half a surrogate pair.
+        if (sb.Length > 0 && char.IsHighSurrogate(sb[^1])) sb.Length--;
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Whether <paramref name="key"/> can be a renderer's key: a plugin id (letters, digits, '.', '-',
+    /// '_'; at most 100), '/', and a name as <see cref="CleanLyricsRendererName"/> leaves it. Anything
+    /// else in the settings file is not a choice Noctis made, and is dropped.
+    /// </summary>
+    public static bool IsValidLyricsRendererKey(string? key)
+    {
+        if (string.IsNullOrEmpty(key) || key.Length > 101 + MaxLyricsRendererNameLength) return false;
+        var slash = key.IndexOf('/');
+        if (slash is <= 0 or > 100 || slash == key.Length - 1) return false;
+        for (var i = 0; i < slash; i++)
+            if (!(char.IsAsciiLetterOrDigit(key[i]) || key[i] is '.' or '-' or '_')) return false;
+        var name = key[(slash + 1)..];
+        return string.Equals(CleanLyricsRendererName(name), name, StringComparison.Ordinal);
+    }
+
+    /// <summary>The key as stored: itself when valid, else "" (Noctis's own lines).</summary>
+    public static string NormalizeLyricsRendererKey(string? key) => IsValidLyricsRendererKey(key) ? key! : "";
+
+    /// <summary>The stored choice ("" = Noctis's own), whether or not its plugin runs now.</summary>
+    public string SelectedLyricsRenderer => _settings().LyricsRenderer ?? "";
+
+    /// <summary>Stores the user's choice and puts it to use (UI thread). Only Settings calls
+    /// this: nothing switches the renderer on its own.</summary>
+    public void SelectLyricsRenderer(string? key)
+    {
+        _settings().LyricsRenderer = NormalizeLyricsRendererKey(key);
+        RefreshLyricsRenderer();
+    }
+
+    internal void AddLyricsRenderer(PluginLyricsRenderer renderer)
+    {
+        if (_lyricsRenderers.Count == 0) Controls.PluginLyricLines.RendererFailed += OnLyricsRendererFailed;
+        _lyricsRenderers.Add(renderer);
+        RefreshLyricsRenderer();
+        LyricsRenderersChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    internal void RemoveLyricsRenderer(PluginLyricsRenderer renderer)
+    {
+        if (!_lyricsRenderers.Remove(renderer)) return;
+        if (_lyricsRenderers.Count == 0) Controls.PluginLyricLines.RendererFailed -= OnLyricsRendererFailed;
+        RefreshLyricsRenderer();
+        LyricsRenderersChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Puts the chosen renderer in the app-wide slot when its plugin runs and it has not
+    /// failed, else empties it (Noctis's own lines).</summary>
+    internal void RefreshLyricsRenderer()
+    {
+        var key = SelectedLyricsRenderer;
+        PluginLyricsRenderer? current = null;
+        if (key.Length > 0)
+            for (var i = _lyricsRenderers.Count - 1; i >= 0 && current is null; i--)
+                if (!_lyricsRenderers[i].Failed && string.Equals(_lyricsRenderers[i].Key, key, StringComparison.OrdinalIgnoreCase))
+                    current = _lyricsRenderers[i];
+        // Only touch the app-wide slot when it is ours (or empty): another host (tests) may own it.
+        var slot = Controls.PluginLyricLines.Current;
+        if (slot is null || slot.Host == this)
+            Controls.PluginLyricLines.Set(current);
+    }
+
+    /// <summary>A renderer threw: its lines stop drawing at once, and right after the frame Noctis's
+    /// own lines come back, the plugin is stopped (Failed, with the reason on its card) and a notice
+    /// says so. The choice stays stored.</summary>
+    private void OnLyricsRendererFailed(PluginLyricsRenderer renderer, Exception ex)
+    {
+        if (!_lyricsRenderers.Contains(renderer) || renderer.Failed) return;
+        renderer.Failed = true; // no new line is built with it from here on
+        void Stop()
+        {
+            // Swapping the lists' templates re-dirties visuals: never during a layout or render pass.
+            RemoveLyricsRenderer(renderer);
+            RaiseNotice(renderer.Plugin, Loc.T("Plugins.LyricsRendererFailed"));
+            Fault(renderer.Plugin, $"Lyrics renderer: {ex.GetType().Name}: {ex.Message}");
+        }
+        Dispatcher.UIThread.Post(Stop); // never mid-layout or mid-frame
+    }
+
     // ── Settings declared in plugin.json ──
 
     private Dictionary<string, string>? StoredValues(string id, bool create)
@@ -1489,6 +1649,18 @@ public sealed class PluginHost
         var fresh = new Dictionary<string, string>();
         all[id] = fresh;
         return fresh;
+    }
+
+    /// <summary>
+    /// Settings › Reset: every plugin's settings back to its plugin.json defaults, live (each
+    /// plugin hears of the keys that changed), and no stored values left, as on a fresh install.
+    /// </summary>
+    public void ResetSettingValues()
+    {
+        foreach (var plugin in Plugins.ToList())
+            foreach (var item in plugin.SettingItems.ToList())
+                item.ResetToDefault();
+        _settings().PluginSettingValues?.Clear();
     }
 
     private void OnSettingChanged(LoadedPlugin plugin, PluginSettingItem item)
@@ -1798,11 +1970,13 @@ public sealed class PluginHost
                 _libraryCommands.Clear();
                 _scrobbled.Clear();
             }
-            // The plugin's lyrics effects go with it (Noctis's own motion comes back).
+            // The plugin's lyrics effects and renderers go with it (Noctis's own motion and lines come back).
             void DropEffects()
             {
                 foreach (var e in _effects) _owner.RemoveWordEffect(e);
                 _effects.Clear();
+                foreach (var r in _renderers) _owner.RemoveLyricsRenderer(r);
+                _renderers.Clear();
             }
             if (Dispatcher.UIThread.CheckAccess()) DropEffects();
             else Dispatcher.UIThread.Post(DropEffects);
@@ -1837,6 +2011,45 @@ public sealed class PluginHost
                 {
                     if (!_effects.Remove(entry)) return;
                     _owner.RemoveWordEffect(entry);
+                    _owner.UpdateExtensions(_plugin);
+                }
+                if (Dispatcher.UIThread.CheckAccess()) Drop();
+                else Dispatcher.UIThread.Post(Drop);
+            });
+        }
+
+        // ── Lyrics renderers (API 1.8) ──
+
+        private readonly List<PluginLyricsRenderer> _renderers = new();
+
+        internal IReadOnlyList<PluginLyricsRenderer> LyricsRenderers => _renderers;
+
+        public IDisposable RegisterLyricsRenderer(ILyricsRenderer renderer)
+        {
+            ArgumentNullException.ThrowIfNull(renderer);
+            if (_disposed) return Registration.None;
+            string name;
+            // Cleaned and bounded: it is shown in Settings and stored as part of the user's choice.
+            try { name = CleanLyricsRendererName(renderer.Name); }
+            catch { name = ""; }
+            if (name.Length == 0) name = CleanLyricsRendererName(_plugin.Name);
+            if (name.Length == 0) name = _plugin.Id;
+            var entry = new PluginLyricsRenderer(_owner, _plugin, renderer, name);
+            void Add()
+            {
+                if (_disposed) return;
+                _renderers.Add(entry);
+                _owner.AddLyricsRenderer(entry);
+                _owner.UpdateExtensions(_plugin);
+            }
+            if (Dispatcher.UIThread.CheckAccess()) Add();
+            else Dispatcher.UIThread.Post(Add);
+            return new Registration(() =>
+            {
+                void Drop()
+                {
+                    if (!_renderers.Remove(entry)) return;
+                    _owner.RemoveLyricsRenderer(entry);
                     _owner.UpdateExtensions(_plugin);
                 }
                 if (Dispatcher.UIThread.CheckAccess()) Drop();

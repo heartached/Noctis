@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Noctis.Plugins.AlbumRoulette.Roulette;
@@ -8,6 +9,10 @@ public interface IRouletteHost
 {
     /// <summary>Every library track (called off the UI thread).</summary>
     IReadOnlyList<TrackInfo> LoadTracks();
+
+    /// <summary>The lyric lines Noctis already has for a track, offline (called off the UI
+    /// thread); empty when it has none or this Noctis cannot say.</summary>
+    IReadOnlyList<string> LyricLines(string trackId);
 
     /// <summary>Replaces the queue with these tracks and plays.</summary>
     void PlayTracks(IReadOnlyList<string> trackIds);
@@ -49,6 +54,28 @@ public sealed class PluginRouletteHost : IRouletteHost, IDisposable
     private void OnSettings(object? sender, string key) => SettingsChanged?.Invoke(this, EventArgs.Empty);
 
     public IReadOnlyList<TrackInfo> LoadTracks() => _host.Library.GetAll();
+
+    private volatile bool _noLyricLines;
+
+    /// <summary>API 1.7 (Noctis 1.6.9+, this plugin's minAppVersion). On a host without it the
+    /// call fails in <see cref="ReadLyricLines"/> (kept apart so a MissingMethodException is
+    /// thrown at its call, inside the try here) and the Language chip goes by titles only.</summary>
+    public IReadOnlyList<string> LyricLines(string trackId)
+    {
+        if (_noLyricLines) return Array.Empty<string>();
+        try
+        {
+            return ReadLyricLines(trackId);
+        }
+        catch (Exception ex) when (ex is NotSupportedException or MissingMethodException)
+        {
+            _noLyricLines = true;
+            return Array.Empty<string>();
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private IReadOnlyList<string> ReadLyricLines(string trackId) => _host.Library.GetLyricLines(trackId);
     public void PlayTracks(IReadOnlyList<string> trackIds) => _host.Playback.PlayTracks(trackIds);
     public bool ShowAlbum(string albumId) => albumId.Length > 0 && _host.ShowAlbum(albumId);
 

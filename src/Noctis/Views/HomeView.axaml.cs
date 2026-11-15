@@ -18,6 +18,8 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     private EventHandler? _pendingScrollRestore;
 
     private readonly HashSet<Button> _selectedTiles = new();
+    /// <summary>The tile a Shift+click spans from: the last one clicked (GitHub #226).</summary>
+    private Button? _rangeAnchor;
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(MultiSelectHelper.GetSelectedData<Album>(_selectedTiles));
@@ -109,7 +111,31 @@ public partial class HomeView : UserControl, ITrackSelectionSource
         var source = e.Source as Control;
         while (source != null && !(source is Button b && b.Classes.Contains("album-tile")))
             source = source.Parent as Control;
-        if (source is not Button tile) return;
+        if (source is not Button tile)
+        {
+            // GitHub #209: a click beside the tiles clears the selection, as in the queue.
+            if (_selectedTiles.Count > 0 && MultiSelectHelper.IsPlainBackgroundPress(e))
+                ClearSelection();
+            return;
+        }
+
+        // GitHub #226: Shift+click spans from the last clicked album of the same row.
+        if (MultiSelectHelper.IsRangePress(e))
+        {
+            e.Handled = true;
+            var rowTiles = tile.FindAncestorOfType<ItemsControl>()?.GetVisualDescendants().OfType<Button>()
+                .Where(b => b.Classes.Contains("album-tile")).ToList() ?? new List<Button> { tile };
+            var anchor = _rangeAnchor != null && rowTiles.Contains(_rangeAnchor) ? _rangeAnchor : null;
+            if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
+                MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+            _rangeAnchor = MultiSelectHelper.SelectRange(rowTiles, anchor, tile, additive: true, _selectedTiles);
+            foreach (var t in _selectedTiles)
+                MultiSelectHelper.SetSelectedVisual(t, true);
+            Focus();
+            return;
+        }
+        if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
+            _rangeAnchor = tile;
 
         MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
 
@@ -122,19 +148,17 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     {
         if (e.Key == Key.Escape && _selectedTiles.Count > 0)
         {
-            MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
-            if (DataContext is HomeViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
+            ClearSelection();
             e.Handled = true;
-            return;
         }
+        // GitHub #209: no Ctrl+A here. Home mixes albums, songs and mixes, and select-all
+        // only ever caught the two album rows; Ctrl+click still builds a selection.
+    }
 
-        var allTiles = new List<Button>();
-        foreach (var desc in this.GetVisualDescendants())
-        {
-            if (desc is Button b && b.Classes.Contains("album-tile"))
-                allTiles.Add(b);
-        }
-        MultiSelectHelper.HandleAlbumSelectAll(e, allTiles, _selectedTiles);
+    private void ClearSelection()
+    {
+        MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        if (DataContext is HomeViewModel vm) vm.CtrlSelectedAlbums = new List<Album>();
     }
 
     // ── Context menus (shared builders, v2 layout as on the Albums and album pages) ──
@@ -276,7 +300,6 @@ public partial class HomeView : UserControl, ITrackSelectionSource
             removeCommand: vm.RemoveFromLibraryCommand,
             convertCommand: vm.ConvertAlbumCommand,
             scanReplayGainCommand: vm.ScanAlbumReplayGainCommand,
-            searchLyricsCommand: vm.SearchLyricsAlbumCommand,
             snoozeCommand: vm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, vm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, vm.FindLyricsAlbumCommand); // GitHub #195
@@ -318,6 +341,7 @@ public partial class HomeView : UserControl, ITrackSelectionSource
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
+        _rangeAnchor = null;
         if (DataContext is HomeViewModel selVm) selVm.CtrlSelectedAlbums = new List<Album>();
 
         base.OnDetachedFromVisualTree(e);

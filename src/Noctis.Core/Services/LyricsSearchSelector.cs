@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Noctis.Helpers;
 using Noctis.Models;
 
 namespace Noctis.Services;
@@ -74,11 +75,13 @@ public static partial class LyricsSearchSelector
             .Where(r => !r.Instrumental && MatchesTrack(r, artist, title, durationSeconds))
             .ToList();
 
+        // By what the lyrics are, not which fields are filled (GitHub #215): LRCLIB sends a
+        // Lyricsfile with plain-only entries too, and one listed first beat a synced entry.
         if (requireSynced)
-            return validated.FirstOrDefault(r => r.HasSyncedLyrics);
+            return validated.FirstOrDefault(r => FormatRank(r) >= 2);
 
         return validated.FirstOrDefault(r => r.HasWordSyncedLyricsfile)
-            ?? validated.FirstOrDefault(r => r.HasSyncedLyrics || r.HasLyricsfile)
+            ?? validated.FirstOrDefault(r => FormatRank(r) >= 2)
             ?? validated.FirstOrDefault(r => r.HasLyrics);
     }
 
@@ -87,6 +90,8 @@ public static partial class LyricsSearchSelector
     /// instrumental song (or a wrong match pointing at one) with "纯音乐，请欣赏" ("instrumental,
     /// please enjoy"), sometimes under credit lines ("作曲 : …"); shown as lyrics it was the
     /// reporter's junk Chinese line. True when every lyric line is that notice or a credit.
+    /// GitHub #236: LRCGET saves an LRCLIB instrumental as a lyrics file holding only the header
+    /// tag "[au: instrumental]"; that tag is the same answer.
     /// </summary>
     public static bool IsInstrumentalPlaceholder(string? lyrics)
     {
@@ -94,6 +99,7 @@ public static partial class LyricsSearchSelector
         var notice = false;
         foreach (var raw in lyrics.Split('\n'))
         {
+            if (InstrumentalAuthorTag().IsMatch(raw.Trim().TrimStart('﻿'))) { notice = true; continue; }
             var line = TimeTags().Replace(raw, string.Empty).Trim();
             if (line.Length == 0) continue;
             var letters = new string(line.Where(char.IsLetterOrDigit).ToArray());
@@ -108,6 +114,10 @@ public static partial class LyricsSearchSelector
     [GeneratedRegex(@"\[[^\]]*\]|<\d{1,3}:\d{2}(?:[.:]\d{1,3})?>")]
     private static partial Regex TimeTags();
 
+    // LRCGET's instrumental file: "[au: instrumental]" (any case, any spacing).
+    [GeneratedRegex(@"^\[au:\s*instrumental\s*\]$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex InstrumentalAuthorTag();
+
     // "作曲 : Name", "Composer: Name" — a short label, then a colon.
     [GeneratedRegex(@"^[^:：]{1,12}\s*[:：]")]
     private static partial Regex CreditLine();
@@ -118,15 +128,17 @@ public static partial class LyricsSearchSelector
     /// <summary>
     /// How rich a result's lyrics are, for picking between sources: word-synced (a Lyricsfile that
     /// times words, or synced text carrying ELRC word tags) 3, line-synced 2, plain 1, nothing 0.
+    /// Judged by content (GitHub #215): synced text needs line timestamps and a Lyricsfile timed
+    /// lines; LRCLIB's plain-only answers carry an untimed Lyricsfile and are plain.
     /// </summary>
     public static int FormatRank(LrcLibResult? result)
     {
         if (result == null) return 0;
         if (result.HasWordSyncedLyricsfile) return WordSyncedRank;
-        if (result.HasSyncedLyrics)
+        if (result.HasSyncedLyrics && LyricsTextHelper.ContainsTimestamps(result.SyncedLyrics))
             return EnhancedLrcParser.ContainsWordTags(result.SyncedLyrics) ? WordSyncedRank : 2;
         // A Lyricsfile without word timings still times its lines.
-        if (result.HasLyricsfile) return 2;
+        if (result.HasTimedLyricsfile) return 2;
         return result.HasLyrics ? 1 : 0;
     }
 
@@ -141,7 +153,27 @@ public static partial class LyricsSearchSelector
 
         var c = candidate.Trim().Normalize(System.Text.NormalizationForm.FormC);
         var l = local.Trim().Normalize(System.Text.NormalizationForm.FormC);
-        return c.Contains(l, StringComparison.OrdinalIgnoreCase)
-            || l.Contains(c, StringComparison.OrdinalIgnoreCase);
+        if (c.Contains(l, StringComparison.OrdinalIgnoreCase) || l.Contains(c, StringComparison.OrdinalIgnoreCase))
+            return true;
+        // GitHub #232: spacing, punctuation and accents aside — Kugou credits "Gusgus" for a library's
+        // "Gus Gus" (live 11-11), "&" reads as "and".
+        var cf = MetadataSearch.MatchText.Fold(c);
+        var lf = MetadataSearch.MatchText.Fold(l);
+        return cf.Length > 1 && lf.Length > 1 && (cf.Contains(lf, StringComparison.Ordinal) || lf.Contains(cf, StringComparison.Ordinal));
     }
+
+    /// <summary>
+    /// GitHub #232: the first name of a joined credit — "Tim Neuhaus &amp; The Cabinet" → "Tim Neuhaus",
+    /// "A and B" → "A", "A feat. B" → "A"; the name itself when it has no join.
+    /// </summary>
+    public static string PrimaryArtist(string? artist)
+    {
+        if (string.IsNullOrWhiteSpace(artist)) return string.Empty;
+        var m = PrimaryJoin().Match(artist);
+        var head = m.Success ? artist[..m.Index].Trim() : artist.Trim();
+        return head.Length > 0 ? head : artist.Trim();
+    }
+
+    [GeneratedRegex(@"\s+(?:&|and|feat\.?|ft\.|featuring)\s+", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex PrimaryJoin();
 }

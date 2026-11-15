@@ -105,7 +105,7 @@ public sealed class AnimatedArtworkBulkService
     {
         int found = 0, notFound = 0, skipped = 0, failed = 0, before = 0, done = 0;
         var gate = new PoliteGate(RequestInterval, Clock, Delay);
-        var ledger = new BulkRunLedger(_ledgerPath, Clock);
+        var ledger = new BulkRunLedger(_ledgerPath, Clock) { Generation = LookupGeneration };
         try
         {
             foreach (var album in albums)
@@ -194,27 +194,44 @@ public sealed class AnimatedArtworkBulkService
             Year = album.Select(t => t.Year).FirstOrDefault(y => y > 0),
             TrackCount = album.Count,
         };
-        var ranked = await _find(query, ct).ConfigureAwait(false);
-        if (ranked.Count == 0) return AnimatedArtworkLookup.NoCandidates;
-        foreach (var candidate in ranked.Where(r => IsConfident(r.Candidate, title, artist)).Take(CandidatesToOpen))
+        // GitHub #229: the home and US storefronts first; only when none of their editions has a
+        // loop, the other storefronts, whose editions (other ids) may carry the loop.
+        var anyCandidates = false;
+        var opened = new HashSet<long>();
+        foreach (var stage in new[] { query, query with { OtherStorefronts = true } })
         {
-            await gate.WaitTurnAsync(ct).ConfigureAwait(false);
-            var page = await _open(candidate.Candidate, ct).ConfigureAwait(false);
-            // Square loops only: a portrait-only loop would be squashed into the square cover.
-            if (page is null || page.IsTallOnly || page.Variants.Count == 0) continue;
-
-            var variant = PickVariant(page.Variants, preferMax);
-            await gate.WaitTurnAsync(ct).ConfigureAwait(false);
-            if (!await _download(variant, destination, ct).ConfigureAwait(false))
+            if (stage.OtherStorefronts) await gate.WaitTurnAsync(ct).ConfigureAwait(false);
+            var ranked = await _find(stage, ct).ConfigureAwait(false);
+            anyCandidates |= ranked.Count > 0;
+            foreach (var candidate in ranked
+                         .Where(r => IsConfident(r.Candidate, title, artist) && opened.Add(r.Candidate.CollectionId))
+                         .Take(CandidatesToOpen))
             {
-                try { if (File.Exists(destination)) File.Delete(destination); } catch { /* best effort */ }
-                continue;
+                await gate.WaitTurnAsync(ct).ConfigureAwait(false);
+                var page = await _open(candidate.Candidate, ct).ConfigureAwait(false);
+                // Square loops only: a portrait-only loop would be squashed into the square cover.
+                if (page is null || page.IsTallOnly || page.Variants.Count == 0) continue;
+
+                var variant = PickVariant(page.Variants, preferMax);
+                await gate.WaitTurnAsync(ct).ConfigureAwait(false);
+                if (!await _download(variant, destination, ct).ConfigureAwait(false))
+                {
+                    try { if (File.Exists(destination)) File.Delete(destination); } catch { /* best effort */ }
+                    continue;
+                }
+                DebugLog.Write(ITunesArtworkService.LogSource, $"auto: \"{title}\" by {artist} -> \"{page.Title}\" ({variant.Label})");
+                return AnimatedArtworkLookup.Saved;
             }
-            DebugLog.Write(ITunesArtworkService.LogSource, $"auto: \"{title}\" by {artist} -> \"{page.Title}\" ({variant.Label})");
-            return AnimatedArtworkLookup.Saved;
         }
-        return AnimatedArtworkLookup.NoMatch;
+        return anyCandidates ? AnimatedArtworkLookup.NoMatch : AnimatedArtworkLookup.NoCandidates;
     }
+
+    /// <summary>
+    /// The lookup's generation for <see cref="BulkRunLedger.Generation"/>: misses recorded by an
+    /// older lookup count as never checked. 1 = GitHub #229, other storefronts' editions asked
+    /// too; albums the US-only lookup missed get another try.
+    /// </summary>
+    internal const int LookupGeneration = 1;
 
     /// <summary>
     /// The loop to download from a page's tiers (<c>ITunesArtworkService.PickTierVariants</c>:

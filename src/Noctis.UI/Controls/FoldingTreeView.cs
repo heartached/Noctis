@@ -264,9 +264,11 @@ public class FoldingTreeViewItem : TreeViewItem
 }
 
 /// <summary>
-/// Avalonia's tree item peer (12.1) offers selection and scrolling but no ExpandCollapse
-/// pattern, so screen readers and UI Automation can't tell a folder is open or open it
-/// (UIA read 10-09). This one adds it: a folder without subfolders is a leaf.
+/// Avalonia's tree item peer before 12.1.5 offered selection and scrolling but no ExpandCollapse
+/// pattern, so screen readers and UI Automation couldn't tell a folder is open or open it
+/// (UIA read 10-09). This one adds it: a folder without subfolders is a leaf. Since 12.1.5 the
+/// base peer has its own (sealed) ExpandCollapse members; this class re-implements the interface,
+/// so these `new` members still answer UIA and keep the leaf rule and SetCurrentValue below.
 /// </summary>
 public class FoldingTreeViewItemAutomationPeer : TreeViewItemAutomationPeer, IExpandCollapseProvider
 {
@@ -275,13 +277,13 @@ public class FoldingTreeViewItemAutomationPeer : TreeViewItemAutomationPeer, IEx
 
     private TreeViewItem Item => (TreeViewItem)Owner;
 
-    public ExpandCollapseState ExpandCollapseState => State(Item.IsExpanded);
+    public new ExpandCollapseState ExpandCollapseState => State(Item.IsExpanded);
 
-    public bool ShowsMenu => false;
+    public new bool ShowsMenu => false;
 
-    public void Expand() => SetExpanded(true);
+    public new void Expand() => SetExpanded(true);
 
-    public void Collapse() => SetExpanded(false);
+    public new void Collapse() => SetExpanded(false);
 
     /// <summary>SetCurrentValue, not a local value: the Folders page binds IsExpanded two-way
     /// to the folder in a style, which a local value would cut off.</summary>

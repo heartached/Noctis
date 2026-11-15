@@ -127,7 +127,10 @@ public class AlbumGenreDisplayTests
         Dispatcher.UIThread.RunJobs();
 
         var texts = view.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text ?? string.Empty).ToList();
-        Assert.Contains(texts, t => t.StartsWith("Alternative Rock · Alt-Pop · Indie · 2024", StringComparison.Ordinal));
+        // GitHub #220: each genre is its own link now, followed by the year line.
+        foreach (var genre in new[] { "Alternative Rock", "Alt-Pop", "Indie" })
+            Assert.Contains(genre, texts);
+        Assert.Contains(texts, t => t.StartsWith("2024", StringComparison.Ordinal));
         Assert.DoesNotContain(texts, t => t.Contains(ReporterGenre, StringComparison.Ordinal));
         win.Close();
     }

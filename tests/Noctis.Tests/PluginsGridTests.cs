@@ -418,7 +418,6 @@ public class PluginsGridTests : IDisposable
             Assert.True(corner.X >= hero.Bounds.Width - 1 && corner.Y <= 8, $"Install ends at {corner} of a {hero.Bounds.Size} header");
             var more = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageMoreButton");
             Assert.False(more.IsVisible);
-            Assert.False(detail.GetVisualDescendants().OfType<WrapPanel>().Single(w => w.Name == "PluginPageActions").IsVisible);
             Assert.DoesNotContain(detail.GetVisualDescendants().OfType<Button>(), b => b.Name == "PluginPageHomepageButton");
             // Not installed: no switch, no rows, no Remove.
             Assert.False(detail.GetVisualDescendants().OfType<Border>().Single(b => b.Name == "PluginPageSwitchPanel").IsEffectivelyVisible);
@@ -431,6 +430,11 @@ public class PluginsGridTests : IDisposable
             Assert.True(m.Vm.SelectedPluginCard!.IsInstalled);
             Assert.False(install.IsVisible);
             Assert.False(detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageUpdateButton").IsVisible);
+            // Update sits in the corner too, left of "..." (owner 11-12), not under the description.
+            var update = detail.GetVisualDescendants().OfType<Button>().Single(b => b.Name == "PluginPageUpdateButton");
+            var updateCorner = Assert.IsType<StackPanel>(update.Parent);
+            Assert.Equal("PluginPageCorner", updateCorner.Name);
+            Assert.True(updateCorner.Children.IndexOf(update) < updateCorner.Children.IndexOf(more));
             Assert.True(more.IsEffectivelyVisible);
             Assert.Equal("PluginPageCorner", more.FindAncestorOfType<Panel>()!.Name);
             // A plugin's own views ("Open Album Town") sit in that corner too, left of "..." (owner 10-29),

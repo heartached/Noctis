@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,7 +17,8 @@ public enum RouletteMode { Albums, Songs }
 /// Album Roulette's window: the Album Roulette / Song Roulette switch and the filter chips on top,
 /// the stage (a large cover on a soft accent glow, title, artist and year under it), the round
 /// Spin button, then Play, Shuffle and Open album (a song: Play, Play next, Add to queue, Open
-/// album). An empty state offers to clear the filters when nothing matches.
+/// album). An empty state offers to clear the filters when nothing matches. The Language chip
+/// (GitHub #202) goes by the script songs are written in (<see cref="ScriptLanguage"/>).
 /// </summary>
 public sealed class RouletteView : UserControl
 {
@@ -38,6 +40,8 @@ public sealed class RouletteView : UserControl
     private readonly List<(Button Button, TextBlock Label)> _pills = new();
     private readonly Button _genreChip;
     private readonly TextBlock _genreLabel;
+    private readonly Button _languageChip;
+    private readonly TextBlock _languageLabel;
     private readonly Button _decadeChip;
     private readonly TextBlock _decadeLabel;
     private readonly Button _artistChip;
@@ -71,6 +75,12 @@ public sealed class RouletteView : UserControl
     private int _albumsVersion;
     private bool _loaded;
     private bool _spinWhenLoaded;
+    private CancellationTokenSource? _lyricsRead;
+    private bool _readingLyrics;
+
+    /// <summary>The language each song's lyrics are in (track id → language, "" for none or
+    /// Latin letters), kept while Noctis runs so the window reads the lyrics once.</summary>
+    private static readonly ConcurrentDictionary<string, string> LyricsLanguages = new(StringComparer.Ordinal);
 
     public RouletteView(IRouletteHost host, Random? random = null, Func<DateTimeOffset>? clock = null)
     {
@@ -89,8 +99,9 @@ public sealed class RouletteView : UserControl
         };
 
         // ── Chips ──
-        (_genreChip, _genreLabel) = MenuChip("Genre", "Genre", BuildGenreMenu);
-        (_decadeChip, _decadeLabel) = MenuChip("Decade", "Decade", BuildDecadeMenu);
+        (_genreChip, _genreLabel) = MenuChip("Genre", BuildGenreMenu, () => _filter.Genre is not null);
+        (_languageChip, _languageLabel) = MenuChip("Language", BuildLanguageMenu, () => _filter.Language is not null);
+        (_decadeChip, _decadeLabel) = MenuChip("Decade", BuildDecadeMenu, () => _filter.Decade is not null);
         var albums = ToggleChip("Albums", () => _filter.Albums, () => _filter.Albums = !_filter.Albums);
         var eps = ToggleChip("EPs", () => _filter.EPs, () => _filter.EPs = !_filter.EPs);
         var singles = ToggleChip("Singles", () => _filter.Singles, () => _filter.Singles = !_filter.Singles);
@@ -105,7 +116,7 @@ public sealed class RouletteView : UserControl
 
         _kindChips = new Control[] { albums, eps, singles };
         var chipPanel = new WrapPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
-        foreach (var c in new Control[] { _artistChip, _genreChip, _decadeChip, albums, eps, singles, never, stale })
+        foreach (var c in new Control[] { _artistChip, _genreChip, _languageChip, _decadeChip, albums, eps, singles, never, stale })
         {
             c.Margin = new Thickness(3);
             chipPanel.Children.Add(c);
@@ -249,6 +260,7 @@ public sealed class RouletteView : UserControl
     public void Release()
     {
         _host.SettingsChanged -= OnSettingsChanged;
+        _lyricsRead?.Cancel();
         _covers.Dispose();
         Closed?.Invoke(this, EventArgs.Empty);
     }
@@ -290,7 +302,80 @@ public sealed class RouletteView : UserControl
             albums = songs = Array.Empty<RouletteAlbum>();
         }
         // Albums set meanwhile (tests, the preview) win over this read.
-        if (version == _albumsVersion) SetLibrary(albums, songs);
+        if (version != _albumsVersion) return;
+        SetLibrary(albums, songs);
+        LyricsLanguagesRead = ReadLyricsLanguagesAsync();
+    }
+
+    /// <summary>The lyrics pass of the last library read (tests await it).</summary>
+    public Task LyricsLanguagesRead { get; private set; } = Task.CompletedTask;
+
+    /// <summary>
+    /// GitHub #202: a song whose title, album and artist are in Latin letters may still be sung
+    /// in Malayalam or Korean ("Jeevamshamayi"). The lyrics Noctis already has (offline, API 1.7)
+    /// tell those apart: off the UI thread, once per song while Noctis runs. An album in Latin
+    /// letters then takes the language most of its songs are sung in.
+    /// </summary>
+    public async Task ReadLyricsLanguagesAsync()
+    {
+        var songs = _songList;
+        var albums = _albumList;
+        var todo = songs.Where(s => !ScriptLanguage.IsSpecific(s.Language) && s.TrackIds.Count > 0).ToList();
+        if (todo.Count == 0) return;
+        _lyricsRead?.Cancel();
+        var cts = _lyricsRead = new CancellationTokenSource();
+        var token = cts.Token;
+        _readingLyrics = true;
+        Dictionary<string, string> found;
+        try
+        {
+            found = await Task.Run(() =>
+            {
+                var result = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var song in todo)
+                {
+                    if (token.IsCancellationRequested) break;
+                    var id = song.TrackIds[0];
+                    if (LyricsLanguage(id) is { } language) result[id] = language;
+                }
+                return result;
+            }, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _host.Log("could not read lyrics for the Language chip: " + ex.Message);
+            found = new Dictionary<string, string>();
+        }
+        finally
+        {
+            if (ReferenceEquals(_lyricsRead, cts)) _readingLyrics = false;
+        }
+        if (token.IsCancellationRequested || !ReferenceEquals(songs, _songList)) return;
+
+        foreach (var song in todo)
+            if (found.TryGetValue(song.TrackIds[0], out var language)) song.Language = language;
+        var songLanguage = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var song in songs)
+            if (ScriptLanguage.IsSpecific(song.Language)) songLanguage[song.TrackIds[0]] = song.Language!;
+        foreach (var album in albums)
+        {
+            if (ScriptLanguage.IsSpecific(album.Language) || album.TrackIds.Count == 0) continue;
+            var sung = album.TrackIds.Select(id => songLanguage.GetValueOrDefault(id)).Where(l => l is not null)
+                .GroupBy(l => l!).OrderByDescending(g => g.Count()).FirstOrDefault();
+            if (sung is not null && sung.Count() * 2 >= album.TrackIds.Count) album.Language = sung.Key;
+        }
+        if (_filter.Language is not null) ApplyFilters();
+    }
+
+    private string? LyricsLanguage(string trackId)
+    {
+        if (!LyricsLanguages.TryGetValue(trackId, out var language))
+        {
+            var lines = _host.LyricLines(trackId);
+            language = ScriptLanguage.DetectLyrics(lines) ?? "";
+            LyricsLanguages[trackId] = language;
+        }
+        return language.Length > 0 ? language : null;
     }
 
     /// <summary>Puts <paramref name="albums"/> on the reel (tests and the preview call this directly).</summary>
@@ -568,6 +653,20 @@ public sealed class RouletteView : UserControl
         }
     }
 
+    private void BuildLanguageMenu(MenuFlyout menu)
+    {
+        menu.Items.Add(MenuEntry("Any language", _filter.Language is null, () => { _filter.Language = null; ApplyFilters(); }));
+        foreach (var l in RouletteFilter.Languages(_albums))
+        {
+            var language = l;
+            menu.Items.Add(MenuEntry(language, string.Equals(_filter.Language, language, StringComparison.OrdinalIgnoreCase),
+                () => { _filter.Language = language; ApplyFilters(); }));
+        }
+        // Lyrics still being read: more songs may get their language in a moment.
+        if (_readingLyrics)
+            menu.Items.Add(new MenuItem { Header = "Reading lyrics...", IsEnabled = false });
+    }
+
     private void BuildDecadeMenu(MenuFlyout menu)
     {
         menu.Items.Add(MenuEntry("Any decade", _filter.Decade is null, () => { _filter.Decade = null; ApplyFilters(); }));
@@ -588,6 +687,7 @@ public sealed class RouletteView : UserControl
     private void UpdateChips()
     {
         _genreLabel.Text = _filter.Genre ?? "Genre";
+        _languageLabel.Text = _filter.Language ?? "Language";
         _decadeLabel.Text = _filter.Decade is { } d ? RouletteFilter.DecadeName(d) : "Decade";
         _artistChip.IsVisible = _filter.Artist is not null;
         _artistLabel.Text = _filter.Artist is { } a ? a + "  ×" : "";
@@ -630,9 +730,9 @@ public sealed class RouletteView : UserControl
         return b;
     }
 
-    private (Button, TextBlock) MenuChip(string text, string name, Action<MenuFlyout> build)
+    private (Button, TextBlock) MenuChip(string name, Action<MenuFlyout> build, Func<bool> on)
     {
-        var (b, label) = Chip(text, () => { });
+        var (b, label) = Chip(name, () => { });
         var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedLeft };
         menu.Opening += (_, _) =>
         {
@@ -641,7 +741,7 @@ public sealed class RouletteView : UserControl
         };
         b.Flyout = menu;
         AutomationName(b, name);
-        _chips.Add((b, label, () => name == "Genre" ? _filter.Genre is not null : _filter.Decade is not null));
+        _chips.Add((b, label, on));
         return (b, label);
     }
 

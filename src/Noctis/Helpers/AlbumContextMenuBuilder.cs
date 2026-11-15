@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -34,13 +35,18 @@ public sealed class AlbumContextMenuBuilder
     public MenuItem EditDescription { get; private set; } = null!;
     public MenuItem Convert { get; private set; } = null!;
     public MenuItem ScanReplayGain { get; private set; } = null!;
-    public MenuItem SearchLyrics { get; private set; } = null!;
     /// <summary>GitHub #195: every song of the album (or the Ctrl-selection) → the bulk Find Lyrics dialog. Bound by <see cref="BindFindLyrics"/>.</summary>
     public MenuItem FindLyrics { get; private set; } = null!;
     public MenuItem ShowFolder { get; private set; } = null!;
     /// <summary>GitHub #121: the album's songs → Send to Folder (copy or move). Bound by <see cref="BindSendToFolder"/>.</summary>
     public MenuItem SendToFolder { get; private set; } = null!;
     public MenuItem Remove { get; private set; } = null!;
+    /// <summary>GitHub #233: "Carousel Style ▸" Default / Cover / CD Jewel Case / Vinyl / Cassette
+    /// for this album. Bound by <see cref="BindCarouselStyle"/>.</summary>
+    public MenuItem CarouselStyle { get; private set; } = null!;
+    /// <summary>The Carousel Style ▸ rows: [0] Default, then one per <see cref="AlbumCarouselStyle"/>.</summary>
+    public MenuItem[] CarouselStyleRows { get; private set; } = Array.Empty<MenuItem>();
+    private Control? _host;
 
     public ContextMenu Menu { get; private set; } = null!;
 
@@ -65,6 +71,7 @@ public sealed class AlbumContextMenuBuilder
     /// <param name="removeIsDanger">Red Remove row; null = infer from an English "Remove from…" header.</param>
     public ContextMenu Build(string removeHeader, Control resourceHost, bool v2 = false, bool? removeIsDanger = null)
     {
+        _host = resourceHost;
         if (v2)
             return BuildV2(removeHeader, resourceHost,
                 removeIsDanger ?? removeHeader.StartsWith("Remove from", StringComparison.OrdinalIgnoreCase));
@@ -132,10 +139,8 @@ public sealed class AlbumContextMenuBuilder
         ScanReplayGain.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Metadata%20ICON.png");
         items.Add(ScanReplayGain);
 
-        SearchLyrics = new MenuItem { Header = "Search Lyrics", IsVisible = false };
-        SearchLyrics.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
-        items.Add(SearchLyrics);
-
+        // No "Search Lyrics" here (GitHub #208): it searched the album's first song only and opened
+        // the lyrics page over whatever was playing. Find Lyrics… covers every song of the album.
         FindLyrics = new MenuItem { Header = Loc.T("LibraryAlbums.FindLyrics"), IsVisible = false };
         FindLyrics.Icon = TrackContextMenuBuilder.CreatePngIcon("avares://Noctis.UI/Assets/Icons/Lyrics%20ICON.png");
         items.Add(FindLyrics);
@@ -149,6 +154,7 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackgroundClear = new MenuItem { Header = "Use default video", Command = LyricsBackgroundOverrides.ClearForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
+        items.Add(BuildCarouselStyle(resourceHost));
 
         // Don't Scrobble This Album (static command; header and visibility set per Bind).
         DontScrobble = new MenuItem { IsVisible = false };
@@ -175,7 +181,7 @@ public sealed class AlbumContextMenuBuilder
 
     /// <summary>
     /// The v2 layout: [header] [tiles] · [playlist, favorite] · [metadata, description,
-    /// search lyrics, lyrics video ▸] · [folder, tools ▸] · [remove]. Same named items as the
+    /// find lyrics, lyrics video ▸] · [folder, tools ▸] · [remove]. Same named items as the
     /// classic menu, so <see cref="Bind"/> serves both; Play / Shuffle / Play Next / Add to
     /// Queue stay off-menu as the source the tiles copy their command from.
     /// </summary>
@@ -216,8 +222,6 @@ public sealed class AlbumContextMenuBuilder
         items.Add(GroupAlbums);
         EditDescription = MenuV2.Row(host, Loc.T("AlbumDetail.EditDescription"), null, visible: false);
         items.Add(EditDescription);
-        SearchLyrics = MenuV2.Row(host, Loc.T("Lyrics.SearchLyrics"), "MenuLineLyrics", visible: false);
-        items.Add(SearchLyrics);
         FindLyrics = MenuV2.Row(host, Loc.T("LibraryAlbums.FindLyrics"), "MenuLineLyricsBulk", visible: false);
         items.Add(FindLyrics);
         LyricsBackground = MenuV2.Row(host, Loc.T("AlbumDetail.LyricsBackgroundVideo"), "MenuLineVideo");
@@ -226,6 +230,7 @@ public sealed class AlbumContextMenuBuilder
         LyricsBackgroundClear = new MenuItem { Header = Loc.T("AlbumDetail.UseDefaultVideo"), Command = LyricsBackgroundOverrides.ClearForAlbumCommand };
         LyricsBackground.Items.Add(LyricsBackgroundClear);
         items.Add(LyricsBackground);
+        items.Add(BuildCarouselStyle(host));
 
         items.Add(new Separator());
         ShowFolder = MenuV2.Row(host, Loc.T("LibraryAlbums.ShowFolder"), "MenuLineFolder");
@@ -271,7 +276,6 @@ public sealed class AlbumContextMenuBuilder
         ICommand? editDescriptionCommand = null,
         ICommand? convertCommand = null,
         ICommand? scanReplayGainCommand = null,
-        ICommand? searchLyricsCommand = null,
         ICommand? snoozeCommand = null)
     {
         Menu.DataContext = album;
@@ -311,7 +315,6 @@ public sealed class AlbumContextMenuBuilder
         BindOptional(EditDescription, editDescriptionCommand, album);
         BindOptional(Convert, convertCommand, album);
         BindOptional(ScanReplayGain, scanReplayGainCommand, album);
-        BindOptional(SearchLyrics, searchLyricsCommand, album);
         BindOptional(SnoozeForMonth, snoozeCommand, album);
 
         ShowFolder.Command = showInExplorerCommand;
@@ -357,6 +360,47 @@ public sealed class AlbumContextMenuBuilder
     public void BindFindLyrics(Album album, ICommand? findLyricsCommand)
     {
         BindOptional(FindLyrics, findLyricsCommand, album);
+        // GitHub #214: while a hidden Find Lyrics run is pending, this entry brings it back.
+        FindLyrics.Header = ViewModels.MetadataHelper.PendingFindLyricsMenuHeader() ?? Loc.T("LibraryAlbums.FindLyrics");
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
+    }
+
+    private MenuItem BuildCarouselStyle(Control host)
+    {
+        CarouselStyle = MenuV2.Row(host, Loc.T("Menu.CarouselStyle"), "MenuLineAlbum", visible: false);
+        var rows = new List<MenuItem> { new() { Header = Loc.T("Menu.CarouselStyleDefault"), Command = AlbumCarouselStyleOverrides.SetCommand } };
+        foreach (var style in Enum.GetValues<AlbumCarouselStyle>())
+            rows.Add(new MenuItem { Header = Loc.T(StyleKey(style)), Command = AlbumCarouselStyleOverrides.SetCommand });
+        CarouselStyleRows = rows.ToArray();
+        foreach (var row in CarouselStyleRows) CarouselStyle.Items.Add(row);
+        return CarouselStyle;
+    }
+
+    private static string StyleKey(AlbumCarouselStyle style) => style switch
+    {
+        AlbumCarouselStyle.JewelCase => "Main.CarouselJewelCase",
+        AlbumCarouselStyle.Vinyl => "Main.CarouselVinyl",
+        AlbumCarouselStyle.Cassette => "Main.CarouselCassette",
+        _ => "Main.CarouselCover",
+    };
+
+    /// <summary>
+    /// GitHub #233: Carousel Style ▸ for the album, a check on <paramref name="current"/> (null =
+    /// Default, the global style). Hidden when <paramref name="visible"/> is false (the Album
+    /// Carousel built-in feature is off). Call after Bind.
+    /// </summary>
+    public void BindCarouselStyle(Album album, AlbumCarouselStyle? current, bool visible)
+    {
+        CarouselStyle.IsVisible = visible;
+        for (var i = 0; i < CarouselStyleRows.Length; i++)
+        {
+            AlbumCarouselStyle? style = i == 0 ? null : (AlbumCarouselStyle)(i - 1);
+            var row = CarouselStyleRows[i];
+            row.CommandParameter = new AlbumCarouselStyleOverrides.Choice(album, style);
+            var on = style == current;
+            row.Icon = on && _host != null ? MenuV2.LineIcon(_host, "MenuLineCheck") : null;
+            row.Tag = on; // read by tests
+        }
         if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 

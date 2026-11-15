@@ -73,6 +73,12 @@ docker exec -it noctis /app/noctis-server user add alice
 
 Options and client notes are in [docs/SELF-HOSTING.md](docs/SELF-HOSTING.md).
 
+**Windows 7 (community port)**: Noctis itself needs Windows 10 or newer. A community
+member keeps an unofficial Windows 7 port at
+[majordark8139/Noctis](https://github.com/majordark8139/Noctis). It is not built,
+tested or supported by this project, so use it at your own risk and report its
+problems on that repository.
+
 ---
 
 ## Features

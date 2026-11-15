@@ -38,13 +38,27 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// once for the pair rather than once per property.</summary>
     private bool _suspendSortRebuild;
 
-    private const double TileTextHeight = 64;
-
     [ObservableProperty] private bool _isSearchVisible = false;
     [ObservableProperty] private string _searchText = string.Empty;
     [ObservableProperty] private double _tileArtworkSize = 180;
     [ObservableProperty] private string _artistFilterName = string.Empty;
-    public double TileRowHeight => TileArtworkSize + TileTextHeight;
+
+    /// <summary>Caption room under each cover in the row grid's fixed row height (1.6.9): the
+    /// tile's 4px padding top and bottom, the title's 5px top margin, two title lines and the
+    /// subtitle all fit, so a wrapped title never makes its row taller than the others.</summary>
+    internal const double TileTextHeight = 64;
+
+    /// <summary>Settings › Appearance "Wider spacing between albums": GitHub #210's 18px gaps
+    /// with rows sized to their own captions. Off is 1.6.9's close grid.</summary>
+    public bool IsWideAlbumSpacing => _settings.AlbumGridWideSpacing;
+
+    /// <summary>Height of every row-grid row: cover + <see cref="TileTextHeight"/> by default;
+    /// NaN (auto, rows fit their tallest caption) with wide spacing.</summary>
+    public double TileRowHeight => IsWideAlbumSpacing ? double.NaN : TileArtworkSize + TileTextHeight;
+
+    partial void OnTileArtworkSizeChanged(double value) => OnPropertyChanged(nameof(TileRowHeight));
+    /// <summary>The genre a Genres-page click narrowed the grid to (GitHub #220); empty otherwise.</summary>
+    [ObservableProperty] private string _genreFilterName = string.Empty;
 
     /// <summary>Covers per row. Classic five in Automatic mode; otherwise derived from
     /// the view width and the cover-size setting (see <see cref="AlbumGridMetrics"/>).
@@ -70,7 +84,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
 
         var columns = AlbumGridMetrics.ComputeColumns(
             usableWidth, _settings.AlbumTileSizeAuto, _settings.AlbumTileTargetSize);
-        var newSize = AlbumGridMetrics.ComputeTileSize(usableWidth, columns);
+        var newSize = AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
 
         var columnsChanged = columns != GridColumns;
         if (!columnsChanged && Math.Abs(newSize - TileArtworkSize) < 0.5)
@@ -297,12 +311,39 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCarouselView))]
     [NotifyPropertyChangedFor(nameof(IsGridView))]
+    [NotifyPropertyChangedFor(nameof(IsMasonryView))]
+    [NotifyPropertyChangedFor(nameof(IsRowGridView))]
     private string _albumViewMode = "grid";
 
     /// <summary>The carousel shows: picked, and the Album Carousel built-in feature is on (off
     /// shows the grid and keeps the pick for when it returns).</summary>
     public bool IsCarouselView => AlbumViewMode == "carousel" && _settings.AlbumCarouselEnabled;
+
+    /// <summary>The Album Carousel built-in feature is on (the album menu's Carousel Style ▸ shows).</summary>
+    public bool IsCarouselAvailable => _settings.AlbumCarouselEnabled;
     public bool IsGridView => !IsCarouselView;
+
+    /// <summary>GitHub #213: the grid as Masonry (Settings › Albums "Masonry Album Grid" or the
+    /// View menu). An artist page that interleaves its Songs section keeps the row grid: the
+    /// masonry panel lays out album cards only.</summary>
+    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry && !_rowsHaveSections;
+
+    /// <summary>GitHub #218: Settings › Appearance "Album Hover Zoom".</summary>
+    public bool IsHoverZoom => _settings.AlbumHoverZoom;
+
+    /// <summary>The row grid (the ListBox of album rows) is up.</summary>
+    public bool IsRowGridView => IsGridView && !IsMasonryView;
+
+    /// <summary>The current rows carry an artist page's section headers / song rows.</summary>
+    private bool _rowsHaveSections;
+
+    /// <summary>View menu: Masonry on/off (the same setting Settings shows).</summary>
+    [RelayCommand]
+    private void ToggleMasonry() => _settings.AlbumGridMasonry = !_settings.AlbumGridMasonry;
+
+    /// <summary>View menu: Wider spacing between albums on/off (the same setting Settings shows).</summary>
+    [RelayCommand]
+    private void ToggleWideAlbumSpacing() => _settings.AlbumGridWideSpacing = !_settings.AlbumGridWideSpacing;
 
     /// <summary>How the carousel dresses each album (shared with the artist page's carousel).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
@@ -342,6 +383,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
         OnPropertyChanged(nameof(CarouselAlbums));
+        var sections = FilteredAlbumRows.Any(r => r is not AlbumRow);
+        if (sections != _rowsHaveSections)
+        {
+            _rowsHaveSections = sections;
+            OnPropertyChanged(nameof(IsMasonryView));
+            OnPropertyChanged(nameof(IsRowGridView));
+        }
     }
 
     /// <summary>Sets the release-type filter from a dropdown key ("all" clears it).</summary>
@@ -384,10 +432,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     [RelayCommand]
     private void SetQualityFilter(string key) => QualityFilter = key == "all" ? string.Empty : key;
 
-    partial void OnTileArtworkSizeChanged(double value)
-    {
-        OnPropertyChanged(nameof(TileRowHeight));
-    }
     public bool HasActiveFilter => !string.IsNullOrWhiteSpace(_currentFilter) || ReleaseTypeFilter.HasValue || QualityFilter.Length > 0;
 
     /// <summary>A section click skips its ApplyFilter("") when true: re-applying the empty
@@ -399,13 +443,21 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// runs ahead of it by the debounce) and chips. The view resets its scroll only when this
     /// changes, so a library reload or column-count rebuild of the same results keeps its place.
     /// </summary>
-    internal string FilterKey => $"{ArtistFilterName}\n{_currentFilter}\n{ReleaseTypeFilter}\n{QualityFilter}";
+    internal string FilterKey => $"{ArtistFilterName}\n{GenreFilterName}\n{_currentFilter}\n{ReleaseTypeFilter}\n{QualityFilter}";
 
     /// <summary>Whether the view is filtered to a specific artist's discography.</summary>
     public bool IsArtistFiltered => !string.IsNullOrEmpty(ArtistFilterName);
 
-    /// <summary>Dynamic header: artist name when filtered, "Albums" otherwise.</summary>
-    public string HeaderText => IsArtistFiltered ? ArtistFilterName : Loc.T("Nav.Albums");
+    /// <summary>Whether the view shows one genre's albums and songs (GitHub #220).</summary>
+    public bool IsGenreFiltered => !string.IsNullOrEmpty(GenreFilterName);
+
+    /// <summary>An artist or genre page rather than the whole grid: a Back target with its own title.</summary>
+    public bool IsPageFiltered => IsArtistFiltered || IsGenreFiltered;
+
+    /// <summary>Dynamic header: artist or genre name when filtered, "Albums" otherwise.</summary>
+    public string HeaderText => IsArtistFiltered ? ArtistFilterName
+        : IsGenreFiltered ? (GenreRow.IsUnknownKey(GenreFilterName) ? Loc.T("Genres.Unknown") : GenreFilterName)
+        : Loc.T("Nav.Albums");
 
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
@@ -480,6 +532,23 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             {
                 OnPropertyChanged(nameof(IsCarouselView));
                 OnPropertyChanged(nameof(IsGridView));
+                OnPropertyChanged(nameof(IsMasonryView));
+                OnPropertyChanged(nameof(IsRowGridView));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumHoverZoom))
+            {
+                OnPropertyChanged(nameof(IsHoverZoom));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridMasonry))
+            {
+                OnPropertyChanged(nameof(IsMasonryView));
+                OnPropertyChanged(nameof(IsRowGridView));
+            }
+            else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
+            {
+                OnPropertyChanged(nameof(IsWideAlbumSpacing));
+                OnPropertyChanged(nameof(TileRowHeight));
+                Dispatcher.UIThread.Post(() => UpdateGridMetrics(_lastUsableWidth));
             }
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                      or nameof(SettingsViewModel.AlbumTileTargetSize))
@@ -527,7 +596,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         _finishedPlays = new FinishedPlays(player, finished =>
         {
             var ranksByPlays = AlbumSortMode == "mostplayed" ||
-                (IsArtistFiltered && finished.Any(t => ContainsArtistToken(t.Artist, ArtistFilterName)));
+                (IsArtistFiltered && finished.Any(t => ContainsArtistToken(t.Artist, ArtistFilterName))) ||
+                (IsGenreFiltered && finished.Any(t => GenresViewModel.TrackHasGenre(t, GenreFilterName)));
             if (!ranksByPlays) return true;
             if (_isActive) RebuildFilteredRows(onlyIfChanged: true);
             else _isDirty = true;
@@ -577,6 +647,14 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     partial void OnArtistFilterNameChanged(string value)
     {
         OnPropertyChanged(nameof(IsArtistFiltered));
+        OnPropertyChanged(nameof(IsPageFiltered));
+        OnPropertyChanged(nameof(HeaderText));
+    }
+
+    partial void OnGenreFilterNameChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsGenreFiltered));
+        OnPropertyChanged(nameof(IsPageFiltered));
         OnPropertyChanged(nameof(HeaderText));
     }
 
@@ -594,16 +672,27 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // The sync rebuild this replaces froze the UI thread on every navigation/scan
         // event at large library sizes; the grid keeps showing its previous rows for
         // the few frames the fresh list takes to compute in the background.
-        RebuildFilteredRows(refreshFromLibrary: true);
+        // GitHub #225: a library update that leaves the shown albums as they were (a scan or
+        // artwork pass keeps unchanged Album objects) leaves the grid alone, and one that
+        // changes a few replaces only their rows: re-filling every row flickered the grid
+        // and dropped the Ctrl-selection on each scan tick after launch.
+        RebuildFilteredRows(refreshFromLibrary: true, onlyIfChanged: true);
     }
 
     /// <summary>Sets the artist filter for showing a specific artist's discography.</summary>
-    public void SetArtistFilter(string artistName)
+    public void SetArtistFilter(string artistName) => SetPageFilter(artistName, string.Empty);
+
+    /// <summary>Narrows the grid to one genre's albums with its songs above them (GitHub #220):
+    /// the Genres page's drill-down, a Back target like the artist filter.</summary>
+    public void SetGenreFilter(string genre) => SetPageFilter(string.Empty, genre.Trim());
+
+    private void SetPageFilter(string artistName, string genre)
     {
-        if (!IsArtistFiltered && !HasActiveFilter && SavedScrollOffset > 0)
+        if (!IsPageFiltered && !HasActiveFilter && SavedScrollOffset > 0)
             SavedUnfilteredScrollOffset = SavedScrollOffset;
 
         ArtistFilterName = artistName;
+        GenreFilterName = genre;
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
         SearchText = string.Empty;
@@ -623,18 +712,19 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // rows on first paint — otherwise the grid flashes the previous (unfiltered)
         // album list for a frame before the async rebuild's UI post lands.
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst, GenreFilterName);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
-    /// <summary>Clears the artist filter (when navigating back to all albums).</summary>
+    /// <summary>Clears the artist or genre filter (when navigating back to all albums).</summary>
     public void ClearArtistFilter()
     {
         // Mark dirty if any filter was active so Refresh() rebuilds with cleared state
-        if (!string.IsNullOrEmpty(ArtistFilterName) || !string.IsNullOrEmpty(_currentFilter))
+        if (IsPageFiltered || !string.IsNullOrEmpty(_currentFilter))
             _isDirty = true;
 
         ArtistFilterName = string.Empty;
+        GenreFilterName = string.Empty;
         _currentFilter = string.Empty;
         OnPropertyChanged(nameof(HasActiveFilter));
         SearchText = string.Empty;
@@ -668,7 +758,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         OnPropertyChanged(nameof(HasActiveFilter));
 
         Interlocked.Increment(ref _rebuildGeneration);
-        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst);
+        var rows = BuildFilteredRows(_allAlbums, ArtistFilterName, _currentFilter, GridColumns, ReleaseTypeFilter, QualityFilter, AlbumSortMode, AlbumSortAscending, AlbumSortNewestFirst, GenreFilterName);
         FilteredAlbumRows.ReplaceAll(rows);
     }
 
@@ -680,6 +770,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var generation = Interlocked.Increment(ref _rebuildGeneration);
         var albums = _allAlbums;
         var artistFilter = ArtistFilterName;
+        var genreFilter = GenreFilterName;
         var searchFilter = _currentFilter;
         var columns = GridColumns;
         var releaseTypeFilter = ReleaseTypeFilter;
@@ -695,7 +786,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
             if (library != null)
                 albums = library.Albums.ToList();
 
-            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending, newestFirst);
+            var rows = BuildFilteredRows(albums, artistFilter, searchFilter, columns, releaseTypeFilter, qualityFilter, sortMode, sortAscending, newestFirst, genreFilter);
 
             // Only apply if no newer rebuild was requested. A superseded library
             // reload must re-mark dirty: the newer request may have captured the
@@ -710,6 +801,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                     }
                     if (library != null) _allAlbums = albums;
                     if (onlyIfChanged && SameRows(FilteredAlbumRows, rows)) return;
+                    if (onlyIfChanged && ReplaceChangedRows(FilteredAlbumRows, rows)) return;
                     FilteredAlbumRows.ReplaceAll(rows);
                 });
             else if (library != null)
@@ -724,23 +816,44 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (current.Count != next.Count) return false;
         for (var i = 0; i < current.Count; i++)
+            if (!SameRow(current[i], next[i])) return false;
+        return true;
+    }
+
+    private static bool SameRow(object current, object next) => (current, next) switch
+    {
+        (AlbumRow a, AlbumRow b) => a.Albums.SequenceEqual(b.Albums),
+        (ArtistSongsRow a, ArtistSongsRow b) => a.Songs.Select(s => s.Track).SequenceEqual(b.Songs.Select(s => s.Track)),
+        (ArtistSectionHeader a, ArtistSectionHeader b) => a.Title == b.Title,
+        _ => false,
+    };
+
+    /// <summary>
+    /// GitHub #225: when the new rows line up with the shown ones (same count, and at most a
+    /// few of them differ, e.g. covers arriving or one album re-read), swaps in only the
+    /// rows that differ, so the grid keeps every other row's tiles instead of re-creating the
+    /// whole list. False (nothing touched) when a full refill is the better move.
+    /// </summary>
+    private const int MaxRowsReplacedInPlace = 32;
+
+    internal static bool ReplaceChangedRows(BulkObservableCollection<object> current, IList<object> next)
+    {
+        if (current.Count != next.Count || current.Count == 0) return false;
+        var changed = new List<int>();
+        for (var i = 0; i < current.Count; i++)
         {
-            var same = (current[i], next[i]) switch
-            {
-                (AlbumRow a, AlbumRow b) => a.Albums.SequenceEqual(b.Albums),
-                (ArtistSongsRow a, ArtistSongsRow b) => a.Songs.Select(s => s.Track).SequenceEqual(b.Songs.Select(s => s.Track)),
-                (ArtistSectionHeader a, ArtistSectionHeader b) => a.Title == b.Title,
-                _ => false,
-            };
-            if (!same) return false;
+            if (SameRow(current[i], next[i])) continue;
+            changed.Add(i);
+            if (changed.Count > MaxRowsReplacedInPlace) return false;
         }
+        foreach (var i in changed) current[i] = next[i];
         return true;
     }
 
     private List<object> BuildFilteredRows(
         List<Album> allAlbums, string artistFilter, string searchFilter, int columnsPerRow,
         ReleaseType? releaseTypeFilter = null, string qualityFilter = "", string sortMode = "default",
-        bool sortAscending = true, bool newestFirst = false)
+        bool sortAscending = true, bool newestFirst = false, string genreFilter = "")
     {
         var filtered = allAlbums.AsEnumerable();
 
@@ -767,6 +880,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         {
             filtered = filtered.Where(a => ContainsArtistToken(a.Artist, artistFilter));
         }
+
+        // Genre page (GitHub #220): every album with at least one song carrying the genre.
+        var isGenrePage = !string.IsNullOrEmpty(genreFilter);
+        if (isGenrePage)
+            filtered = filtered.Where(a => a.Tracks.Any(t => GenresViewModel.TrackHasGenre(t, genreFilter)));
 
         // Apply search filter on top
         if (!string.IsNullOrWhiteSpace(searchFilter))
@@ -797,10 +915,18 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .ThenBy(a => a.Artist, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
         }
+        else if (isGenrePage)
+        {
+            // A genre spans many artists: grouped by album artist like MusicBee's genre view,
+            // unless the top bar's sort menu picked another order.
+            filtered = sortMode == "default"
+                ? ApplySortMode(filtered, "albumartist", ascending: true)
+                : ApplySortMode(filtered, sortMode, sortAscending, _randomSortSeed, newestFirst);
+        }
 
         // Explicit sort modes replace the default ordering (and the recent-import
-        // float) when no artist/search filter narrows the grid.
-        if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
+        // float) when no artist/search/genre filter narrows the grid.
+        if (sortMode != "default" && string.IsNullOrEmpty(artistFilter) && !isGenrePage && string.IsNullOrWhiteSpace(searchFilter))
         {
             // Benign race: a mid-rebuild seed bump queues its own rebuild and the
             // generation guard discards this one, so a torn read cannot stick.
@@ -819,7 +945,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // anything added in the last 7 days — the placement survives a restart
         // (the previous flag-only check lost the float on every relaunch).
         IEnumerable<Album> ordered;
-        if (string.IsNullOrEmpty(artistFilter) && string.IsNullOrWhiteSpace(searchFilter))
+        if (string.IsNullOrEmpty(artistFilter) && !isGenrePage && string.IsNullOrWhiteSpace(searchFilter))
         {
             var recentCutoff = DateTime.UtcNow - TimeSpan.FromDays(7);
             var materialized = filtered.ToList();
@@ -858,7 +984,11 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         // alone opens to a permanently empty page. Chip filters are album-level, so the
         // section is omitted while one narrows the grid.
         if (!string.IsNullOrEmpty(artistFilter) && !releaseTypeFilter.HasValue && qualityFilter.Length == 0)
-            return ComposeArtistRows(albumRows, allAlbums, artistFilter, searchFilter);
+            return ComposeArtistRows(albumRows, allAlbums, t => ContainsArtistToken(t.Artist, artistFilter), searchFilter);
+
+        // A genre page leads with the genre's most played songs the same way.
+        if (isGenrePage && !releaseTypeFilter.HasValue && qualityFilter.Length == 0)
+            return ComposeArtistRows(albumRows, allAlbums, t => GenresViewModel.TrackHasGenre(t, genreFilter), searchFilter);
 
         return albumRows.Cast<object>().ToList();
     }
@@ -954,15 +1084,16 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// Prepends the artist's ranked Songs section (Home "Most Listened To" pill rows)
     /// to the album grid rows, with section headers when both sections are present.
     /// </summary>
+    /// <param name="belongs">The page's songs: for an artist, the full track credit (tokenised),
+    /// so feature appearances count as "associated with" — but tokens compare exactly, keeping
+    /// near-duplicate artist spellings (e.g. a quoted variant) on their own separate pages;
+    /// for a genre, the songs carrying it.</param>
     private static List<object> ComposeArtistRows(
-        List<AlbumRow> albumRows, List<Album> allAlbums, string artistFilter, string searchFilter)
+        List<AlbumRow> albumRows, List<Album> allAlbums, Func<Track, bool> belongs, string searchFilter)
     {
-        // Match on the full track credit (tokenised), so feature appearances count as
-        // "associated with" — but tokens compare exactly, keeping near-duplicate artist
-        // spellings (e.g. a quoted variant) on their own separate pages.
         IEnumerable<Track> tracks = allAlbums
             .SelectMany(a => a.Tracks)
-            .Where(t => ContainsArtistToken(t.Artist, artistFilter));
+            .Where(belongs);
 
         if (!string.IsNullOrWhiteSpace(searchFilter))
         {
@@ -1116,7 +1247,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.Tracks, 0);
+        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1126,7 +1257,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null) return;
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
-        var ordered = Helpers.AlbumTile.OrderedTracks(album);
+        var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
         _player.ReplaceQueueAndPlay(ordered, 0);
     }
@@ -1135,7 +1266,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.Tracks);
+        _player.PlayShuffled(album.EditionTracks);
     }
 
     /// <summary>Plays all tracks from the current filtered artist view in order.</summary>
@@ -1165,6 +1296,8 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var tracks = new List<Track>();
         var seen = new HashSet<Guid>();
+        // A genre page plays the genre's songs only, not the rest of a mixed album (GitHub #220).
+        var genre = GenreFilterName;
         foreach (var row in FilteredAlbumRows)
         {
             switch (row)
@@ -1177,7 +1310,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 case AlbumRow albumRow:
                     foreach (var album in albumRow.Albums)
                         foreach (var track in album.Tracks ?? new())
-                            if (seen.Add(track.Id))
+                            if ((genre.Length == 0 || GenresViewModel.TrackHasGenre(track, genre)) && seen.Add(track.Id))
                                 tracks.Add(track);
                     break;
             }
@@ -1269,21 +1402,13 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private Action<Track>? _searchLyricsAction;
     public void SetSearchLyricsAction(Action<Track> action) => _searchLyricsAction = action;
 
-    /// <summary>Album tile menu: Search Lyrics for the album's first song (as on Home).</summary>
-    [RelayCommand]
-    private void SearchLyricsAlbum(Album album)
-    {
-        if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _searchLyricsAction?.Invoke(album.Tracks[0]);
-    }
-
     [RelayCommand]
     private void PlayNext(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
         // A copy avoids collection modification issues; AddNextRange keeps album order.
-        _player.AddNextRange(album.Tracks.ToList(), album.Name);
+        _player.AddNextRange(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -1291,7 +1416,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
 
-        _player.AddRangeToQueue(album.Tracks.ToList(), album.Name);
+        _player.AddRangeToQueue(album.EditionTracks.ToList(), album.Name);
     }
 
     [RelayCommand]
@@ -1590,39 +1715,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 return true;
         }
         return false;
-    }
-
-    private static int GetArtistDiscographyRank(Album album, string artistFilter)
-    {
-        if (string.IsNullOrWhiteSpace(artistFilter))
-            return 0;
-
-        if (IsExactArtistCredit(album.Artist, artistFilter))
-            return 0;
-
-        if (album.Tracks.Any(t => IsExactArtistCredit(t.Artist, artistFilter)))
-            return 1;
-
-        if (ContainsArtistToken(album.Artist, artistFilter))
-            return 2;
-
-        return 3;
-    }
-
-    private static bool IsExactArtistCredit(string? artistField, string artistName)
-    {
-        if (string.IsNullOrWhiteSpace(artistField) || string.IsNullOrWhiteSpace(artistName))
-            return false;
-
-        if (artistField.Equals(artistName, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        var fieldTokens = Track.ParseArtistTokens(artistField);
-        var filterTokens = Track.ParseArtistTokens(artistName);
-
-        return fieldTokens.Length > 0
-               && filterTokens.Length > 0
-               && fieldTokens.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(filterTokens);
     }
 
     public void Dispose()

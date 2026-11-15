@@ -58,6 +58,18 @@ public partial class LyricsView : UserControl
     private const double NarrowBreakpoint = 900;
     private const double LyricsTimelineThumbSize = 16;
 
+    // GitHub #211: the island keeps this much room to the column's edges (the window's left
+    // edge on one side, the lyrics on the other), like the 8px the side panels keep.
+    private const double IslandFitMargin = 8;
+    // GitHub #204: the queue drawer (MainWindow QueuePopupPanel) overlays the page at the
+    // right edge: its width plus its 8px right margin.
+    private const double QueueDrawerMargin = 8;
+    // The centred player never gets narrower than this beside the queue: LeftPanel's 2 × 48
+    // padding around the 300px minimum stack, plus a little air. A window too small for
+    // that lets the queue cover the rest rather than squeezing the player off screen.
+    private const double MinCentredWidth = 420;
+    private const double QueueShiftMs = 320;
+
     // ── Flowing-artwork background (issue #22) ──
     // One shared frame-clock animator (same math on the page, the side panel and the
     // mini player). Transforms are driven from code: a XAML KeyFrame animation on
@@ -91,6 +103,8 @@ public partial class LyricsView : UserControl
             LyricsBackdropFill, LyricsBlurBackdrop, LyricsMediaBackdrop, MusicVideoBackdropLayer,
             KawarpLayer, PluginLayerHost);
         AttachedToVisualTree += (_, _) => HookPluginLayers();
+        // Plugin API 1.8: a lyrics renderer chosen in Settings draws these lines (none: untouched).
+        Controls.PluginLyricLines.Attach(LyricsItemsControl, Noctis.Plugins.LyricsSurface.Page, () => DataContext as LyricsViewModel);
         DetachedFromVisualTree += (_, _) => UnhookPluginLayers();
         LyricsTimelineSlider.AddHandler(InputElement.PointerPressedEvent, OnTimelineSeekStart, RoutingStrategies.Tunnel);
         LyricsTimelineSlider.AddHandler(InputElement.PointerMovedEvent, OnTimelineSeekMove, RoutingStrategies.Tunnel);
@@ -180,6 +194,7 @@ public partial class LyricsView : UserControl
             }
             // The state may have moved while this view was cached off screen: open on it.
             ApplyNoLyricsCentered(animate: false);
+            ApplyIslandHidden();
             JumpToActiveLineWhenReady(vm.ScrollLineIndex);
 
             // Start the artwork flow if the artwork background mode is active.
@@ -322,6 +337,21 @@ public partial class LyricsView : UserControl
             ApplyNoLyricsCentered(animate: false);
         }
 
+        _layoutSize = size;
+        // A resize changes how much of the page the queue leaves (GitHub #204); the call
+        // ends in ApplyContentSizing either way.
+        if (!ApplyQueueInset(animate: false))
+            ApplyContentSizing(width, height);
+    }
+
+    /// <summary>The page's last arranged size (UpdateResponsiveLayout), for re-sizing the
+    /// content when the centred layout or the queue changes without a resize.</summary>
+    private Size _layoutSize;
+
+    private void ApplyContentSizing(double width, double height)
+    {
+        if (width <= 0 || height <= 0) return;
+
         // Continuous sizing: derive the cover and lyric sizes from the actual
         // window dimensions instead of assuming a 1080p-class maximized window.
         // The previous fixed 780px cover + 1.1× lyric scale overflowed smaller
@@ -347,6 +377,10 @@ public partial class LyricsView : UserControl
             // plus enough slack that the block never presses against the
             // screen edges in fullscreen.
             var maxByWidth = width / 2 - 90;
+            // Centred beside the open queue (GitHub #204): the panel is the page less the
+            // queue, minus its own 2 × 48 padding.
+            if (_appliedQueueInset > 0)
+                maxByWidth = Math.Min(maxByWidth, width - _appliedQueueInset - 96);
             var maxByHeight = height - 370;
             var cover = Math.Clamp(Math.Min(maxByWidth, maxByHeight), 220, 780);
             AlbumArtBorder.Width = cover;
@@ -372,6 +406,14 @@ public partial class LyricsView : UserControl
         // Inherited by the line/karaoke TextBlocks in the item template.
         var fontScale = Math.Clamp(Math.Min(height / 1000.0, width / 1700.0), 0.55, 1.0);
         LyricsItemsControl.FontSize = Math.Round(46 * fontScale);
+
+        // GitHub #211: the island may be no wider than the column that holds it (the left
+        // half, the whole page in narrow mode, the page beside the queue when centred), or
+        // it ran off the window's left edge and over the lyrics on a 1366px screen.
+        var column = _isNarrowMode ? width
+            : _noLyricsCenterApplied ? width - _appliedQueueInset
+            : width / 2;
+        LyricsPlaybackBar.LyricsPageFitWidth = Math.Max(0, column - 2 * IslandFitMargin);
     }
 
     /// <summary>Aligns the header text block (title/artist/album/metadata) for the
@@ -391,11 +433,18 @@ public partial class LyricsView : UserControl
     // island: PlaybackBarView.ShowLyricsSearch, its states in that button's tooltip). Narrow
     // mode already runs the header full width with the lyrics below it, so it keeps the
     // lyrics column as is.
+    //
+    // The same layout also shows when the user hides the lyrics (Discord, f7uh: island ⋯ ▸
+    // Lyrics Display ▸ Hide Lyrics, LyricsViewModel.IsLyricsHiddenOnPage), lyrics or not. In
+    // narrow mode that fades the lyrics under the header instead. The island's Search Lyrics
+    // stays for songs with none (IsNoLyricsCentered); the ⋯ ▸ Lyrics entries stay either way.
 
     private const int NoLyricsCenterSlideMs = 560;
     private static readonly Avalonia.Animation.Easings.Easing NoLyricsCenterEase = new CubicBezierEase(0.22, 1, 0.36, 1);
     /// <summary>Whether the centred layout is what is applied right now.</summary>
     private bool _noLyricsCenterApplied;
+    /// <summary>Whether the lyrics column is faded out right now (centred, or hidden in narrow mode).</summary>
+    private bool _lyricsColumnHidden;
 
     /// <summary>Applies <see cref="LyricsViewModel.IsNoLyricsCentered"/>. Animated: the left
     /// panel is moved to its new grid slot at once and offset back to where it was drawn,
@@ -406,44 +455,112 @@ public partial class LyricsView : UserControl
     {
         if (LeftPanel is null || RightPanel is null || LyricsPlaybackBar is null) return;
         var lyricsVm = DataContext as LyricsViewModel;
-        var want = !_isNarrowMode && lyricsVm is { IsNoLyricsCentered: true };
-        if (animate && want == _noLyricsCenterApplied) return;
+        var hidden = lyricsVm is { IsLyricsHiddenOnPage: true };
+        var want = !_isNarrowMode && (hidden || lyricsVm is { IsNoLyricsCentered: true });
+        var columnHidden = want || (_isNarrowMode && hidden);
+        // The island's Search Lyrics is for a song with none, not for lyrics the user hid.
+        var islandSearch = want && lyricsVm is { IsNoLyricsCentered: true };
+        if (animate && want == _noLyricsCenterApplied)
+        {
+            // Same layout; the lyrics may still go or come back (narrow mode), and the reason
+            // for centring may have changed (hidden lyrics vs. a song with none).
+            var fade = TimeSpan.FromMilliseconds(NoLyricsCenterSlideMs);
+            if (columnHidden != _lyricsColumnHidden)
+                SetLyricsColumnHidden(columnHidden, VisualRoot != null ? fade : TimeSpan.Zero);
+            LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, islandSearch, VisualRoot != null, fade);
+            return;
+        }
         var changed = want != _noLyricsCenterApplied;
+        var gridWidth = MainLayoutGrid.Bounds.Width;
+        var fromCentre = LeftPanelCentre(gridWidth);
         _noLyricsCenterApplied = want;
+        _appliedQueueInset = QueueInset(gridWidth > 0 ? gridWidth : _layoutSize.Width);
 
         if (!_isNarrowMode)
             Grid.SetColumnSpan(LeftPanel, want ? 2 : 1);
+        LeftPanel.Margin = new Thickness(0, 0, _appliedQueueInset, 0);
 
-        var gridWidth = MainLayoutGrid.Bounds.Width;
         var slide = animate && changed && gridWidth > 0 && VisualRoot != null && !_isNarrowMode;
         var duration = TimeSpan.FromMilliseconds(NoLyricsCenterSlideMs);
 
+        // The panel's centre moves from the left column's middle to the middle of the room
+        // it now has (the page, or the page beside the open queue), or back.
+        GlideLeftPanel(slide ? fromCentre - LeftPanelCentre(gridWidth) : 0, duration);
+
+        var fadeColumn = slide || (animate && VisualRoot != null && columnHidden != _lyricsColumnHidden);
+        SetLyricsColumnHidden(columnHidden, fadeColumn ? duration : TimeSpan.Zero);
+        LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, islandSearch, slide, duration);
+        ApplyContentSizing(_layoutSize.Width, _layoutSize.Height);
+    }
+
+    private void SetLyricsColumnHidden(bool hidden, TimeSpan duration)
+    {
+        _lyricsColumnHidden = hidden;
+        FadeTo(RightPanel, hidden ? 0.0 : 1.0, duration);
+        RightPanel.IsHitTestVisible = !hidden;
+    }
+
+    /// <summary>Where LeftPanel's centre sits across the page in the wide layout applied now.</summary>
+    private double LeftPanelCentre(double gridWidth) =>
+        _noLyricsCenterApplied ? (gridWidth - _appliedQueueInset) / 2 : gridWidth / 4;
+
+    /// <summary>Draws LeftPanel <paramref name="offset"/> px off its slot and glides it home
+    /// (TransformOperationsTransition, so a resize mid-glide still ends in the right place);
+    /// 0 snaps it there.</summary>
+    private void GlideLeftPanel(double offset, TimeSpan duration)
+    {
         LeftPanel.Transitions = null;
-        if (slide)
-        {
-            // The panel's centre moves by a quarter of the page: half a column.
-            var from = want ? -gridWidth / 4 : gridWidth / 4;
-            LeftPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(
-                FormattableString.Invariant($"translate({from:F1}px, 0px)"));
-            LeftPanel.Transitions = new Transitions
-            {
-                new TransformOperationsTransition
-                {
-                    Property = RenderTransformProperty,
-                    Duration = duration,
-                    Easing = NoLyricsCenterEase,
-                },
-            };
-            LeftPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translate(0px, 0px)");
-        }
-        else
+        if (Math.Abs(offset) < 0.5)
         {
             LeftPanel.RenderTransform = null;
+            return;
         }
+        LeftPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse(
+            FormattableString.Invariant($"translate({offset:F1}px, 0px)"));
+        LeftPanel.Transitions = new Transitions
+        {
+            new TransformOperationsTransition
+            {
+                Property = RenderTransformProperty,
+                Duration = duration,
+                Easing = NoLyricsCenterEase,
+            },
+        };
+        LeftPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translate(0px, 0px)");
+    }
 
-        FadeTo(RightPanel, want ? 0.0 : 1.0, slide ? duration : TimeSpan.Zero);
-        RightPanel.IsHitTestVisible = !want;
-        LyricsPlaybackBar.ShowLyricsSearch(lyricsVm, want, slide, duration);
+    // ── GitHub #204: the centred player beside the open queue ──
+    // The queue drawer is a MainWindow overlay over the page's right edge, so the centred
+    // player (both columns) sat under it. While it is open the panel gives up the drawer's
+    // width on the right and centres in what is left; a window too small for that keeps
+    // MinCentredWidth for the player and lets the drawer cover the rest.
+
+    /// <summary>The width the centred LeftPanel leaves free at the right for the queue.</summary>
+    private double _appliedQueueInset;
+
+    private double QueueInset(double gridWidth)
+    {
+        if (!_noLyricsCenterApplied || DataContext is not LyricsViewModel { Player: { IsQueuePopupOpen: true } player })
+            return 0;
+        var drawer = player.QueuePanelWidth + QueueDrawerMargin;
+        return Math.Clamp(gridWidth - MinCentredWidth, 0, drawer);
+    }
+
+    /// <summary>Re-applies <see cref="QueueInset"/> after the queue opened, closed or was
+    /// resized (or the page was): returns whether it changed (and the content was re-sized).</summary>
+    private bool ApplyQueueInset(bool animate)
+    {
+        if (LeftPanel is null) return false;
+        var gridWidth = _layoutSize.Width;
+        var inset = QueueInset(gridWidth);
+        if (Math.Abs(inset - _appliedQueueInset) < 0.5) return false;
+        var fromCentre = LeftPanelCentre(gridWidth);
+        _appliedQueueInset = inset;
+        LeftPanel.Margin = new Thickness(0, 0, inset, 0);
+        var slide = animate && VisualRoot != null && gridWidth > 0;
+        GlideLeftPanel(slide ? fromCentre - LeftPanelCentre(gridWidth) : 0, TimeSpan.FromMilliseconds(QueueShiftMs));
+        ApplyContentSizing(_layoutSize.Width, _layoutSize.Height);
+        return true;
     }
 
     private static void FadeTo(Control control, double opacity, TimeSpan duration)
@@ -499,6 +616,16 @@ public partial class LyricsView : UserControl
         if (DataContext is LyricsViewModel vm)
             SubscribeVm(vm);
         ApplyNoLyricsCentered(animate: false);
+        ApplyIslandHidden();
+    }
+
+    /// <summary>GitHub #211: Hide the Player Island in Full Screen. Only the island goes —
+    /// the progress line above it stays, and playback stays on the keyboard shortcuts
+    /// (MainWindow handles them for the whole window, focus anywhere).</summary>
+    private void ApplyIslandHidden()
+    {
+        if (LyricsPlaybackBar is null) return;
+        LyricsPlaybackBar.IsVisible = DataContext is not LyricsViewModel { IsLyricsIslandHidden: true };
     }
 
     /// <summary>
@@ -514,6 +641,8 @@ public partial class LyricsView : UserControl
         vm.OpenBackgroundColorRequested += OnOpenBackgroundColorRequested;
         vm.LyricsSwapPending += OnLyricsSwapPending;
         vm.LyricsSwapped += OnLyricsSwapped;
+        vm.LyricsWindowMoving += OnLyricsWindowMoving;
+        vm.LyricsWindowMoved += OnLyricsWindowMoved;
         // The Settings toggle for the flowing light lives on the Player VM
         // (same live channel as the marquee flags) — watch it so flipping the
         // switch while this page is open starts/stops the drift immediately.
@@ -529,6 +658,8 @@ public partial class LyricsView : UserControl
         _subscribedVm.OpenBackgroundColorRequested -= OnOpenBackgroundColorRequested;
         _subscribedVm.LyricsSwapPending -= OnLyricsSwapPending;
         _subscribedVm.LyricsSwapped -= OnLyricsSwapped;
+        _subscribedVm.LyricsWindowMoving -= OnLyricsWindowMoving;
+        _subscribedVm.LyricsWindowMoved -= OnLyricsWindowMoved;
         _subscribedVm.Player.PropertyChanged -= OnPlayerPropertyChanged;
         _subscribedVm.Player.Seeked -= OnPlayerSeeked;
         _subscribedVm = null;
@@ -572,6 +703,72 @@ public partial class LyricsView : UserControl
         // in progress and stand down — the jump owns anchoring here.
         _lyricsSwapInProgress = false;
         FadeLyricsHost(1.0, 240);
+    }
+
+    // ── Long transcripts: the VM's window of lines moved (LyricsLineWindow) ──
+    // Lines were dropped at one end and built at the other; the lines on screen must not
+    // move. Noted before the change, put back right after it, in the same UI job.
+
+    private readonly LyricsWindowAnchor _windowAnchor = new();
+    private bool _windowScrollPosted;
+
+    private void OnLyricsWindowMoving(object? sender, EventArgs e)
+    {
+        if (VisualRoot == null || LyricsItemsControl == null || LyricsScrollViewer == null
+            || DataContext is not LyricsViewModel vm) return;
+        CancelScrollAnimation();
+        // The offset settles to the restored value; nothing in between is the user's.
+        _isProgrammaticScroll = true;
+        var index = vm.ScrollLineIndex;
+        var preferred = vm.IsSyncTabSelected && !vm.IsAutoFollowPaused && index >= 0 && index < vm.LyricLines.Count
+            ? vm.LyricLines[index]
+            : null;
+        _windowAnchor.Capture(LyricsItemsControl, LyricsScrollViewer, preferred);
+    }
+
+    private void OnLyricsWindowMoved(object? sender, EventArgs e)
+    {
+        if (!_windowAnchor.IsMoving || LyricsItemsControl == null || LyricsScrollViewer is not { } viewer
+            || DataContext is not LyricsViewModel vm) return;
+        try
+        {
+            var followed = _windowAnchor.Preferred is LyricLine line ? vm.LyricLines.IndexOf(line) : -1;
+            var kept = _windowAnchor.Restore(LyricsItemsControl, viewer, y => ApplyScrollOffset(viewer, y));
+            var index = vm.IsSyncTabSelected ? vm.ScrollLineIndex : -1;
+            // A seek far away: nothing that was on screen is left — jump to the line, laid out already.
+            if (!kept && index >= 0 && !vm.IsAutoFollowPaused && TryComputeAnchorOffset(index) is { } target)
+            {
+                ApplyScrollOffset(viewer, target);
+                followed = index;
+            }
+            _lastScrolledIndex = followed;
+        }
+        finally
+        {
+            _isProgrammaticScroll = false;
+        }
+        // The move came with a line change: glide to the new line as usual.
+        if (vm.IsSyncTabSelected && vm.ScrollLineIndex >= 0 && vm.ScrollLineIndex != _lastScrolledIndex)
+            ScrollToActiveLine(vm.ScrollLineIndex);
+    }
+
+    /// <summary>The reader scrolled near the top or bottom of the window: ask for more lines that way.</summary>
+    private void MaybeScrollLyricsWindow(Vector offset)
+    {
+        if (_windowScrollPosted || _windowAnchor.IsMoving || LyricsScrollViewer is not { } viewer
+            || DataContext is not LyricsViewModel { IsLyricsWindowed: true } vm) return;
+        if (vm.IsSyncTabSelected && !vm.IsAutoFollowPaused) return;
+        var reach = viewer.Viewport.Height * 1.5;
+        var direction = offset.Y < reach && vm.HasLinesAboveWindow ? -1
+            : viewer.Extent.Height - (offset.Y + viewer.Viewport.Height) < reach && vm.HasLinesBelowWindow ? 1
+            : 0;
+        if (direction == 0) return;
+        _windowScrollPosted = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _windowScrollPosted = false;
+            if (DataContext is LyricsViewModel current) current.ScrollLyricsWindow(direction);
+        });
     }
 
     private void FadeLyricsHost(double to, int durationMs)
@@ -619,7 +816,12 @@ public partial class LyricsView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(LyricsViewModel.IsNoLyricsCentered))
+        if (e.PropertyName == nameof(LyricsViewModel.IsLyricsIslandHidden))
+        {
+            ApplyIslandHidden();
+            return;
+        }
+        if (e.PropertyName is nameof(LyricsViewModel.IsNoLyricsCentered) or nameof(LyricsViewModel.IsLyricsHiddenOnPage))
         {
             // Off screen (cached view): snap, the next visit shows the settled layout.
             ApplyNoLyricsCentered(animate: VisualRoot != null && !_isJumpingOnAttach);
@@ -636,6 +838,10 @@ public partial class LyricsView : UserControl
                 // Mid-swap index churn must not start an animated glide — the
                 // OnLyricsSwapped jump anchors the new track while hidden.
                 if (_lyricsSwapInProgress)
+                    return;
+
+                // The window of a long transcript moved: OnLyricsWindowMoved puts the lines back.
+                if (_windowAnchor.IsMoving)
                     return;
 
                 // Plain mode: no active-line tracking — keep the list still.
@@ -789,6 +995,12 @@ public partial class LyricsView : UserControl
         else if (e.PropertyName == nameof(PlayerViewModel.LyricsBackgroundBehindSidebar) &&
                  DataContext is LyricsViewModel bleedVm)
             ApplyBackdropBleed(bleedVm);
+        // GitHub #204: the centred player makes room for the queue drawer, gliding with it
+        // as it opens or closes; a width drag follows the edge directly.
+        else if (e.PropertyName == nameof(PlayerViewModel.IsQueuePopupOpen))
+            ApplyQueueInset(animate: true);
+        else if (e.PropertyName == nameof(PlayerViewModel.QueuePanelWidth))
+            ApplyQueueInset(animate: false);
     }
 
     /// <summary>GitHub #184: the backdrop layers reach under the sidebar rail while the
@@ -1130,6 +1342,7 @@ public partial class LyricsView : UserControl
         if (e.Property != ScrollViewer.OffsetProperty) return;
         if (_isProgrammaticScroll) return;
         if (e.NewValue is not Vector v) return;
+        MaybeScrollLyricsWindow(v);
 
         // Nothing has been scrolled by us yet — this is the first layout pass, not a user
         // gesture. Adopt it as the baseline.

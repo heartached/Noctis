@@ -96,6 +96,74 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         window.Close();
     }
 
+    /// <summary>The first ⋯ after launch built its rows inside the tap's frame (61-75 ms on an S23,
+    /// 11-14). A moment after launch the song menu is built while hidden: nothing shows, nothing
+    /// takes a tap, and the first open rebinds those very rows to the song instead of building them.</summary>
+    [AvaloniaFact]
+    public void TheSongMenu_IsBuiltWhileHidden_SoTheFirstOpenOnlyRebindsIt()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var _ = rig;
+        var menu = MenuOf(view);
+        menu.Prebuild();
+        Assert.False(menu.IsVisible);
+        Assert.False(menu.IsHitTestVisible);
+        var built = MobileFixtures.Named<Button>(menu, "MenuAddToPlaylist");
+
+        var more = MobileFixtures.Named<Button>(view, "NowPlayingMore");
+        Tap(window, more);
+        Pump(30);
+        Assert.True(menu.IsVisible);
+        Assert.True(menu.IsHitTestVisible);
+        Assert.Same(built, MobileFixtures.Named<Button>(menu, "MenuAddToPlaylist"));
+        var sheet = Assert.IsType<ContextSheetViewModel>(menu.FindControl<ContentControl>("MenuContent")!.Content);
+        Assert.Equal("Tone", sheet.Track!.Title);
+        Assert.Equal(1, ScaleOf(menu.FindControl<Panel>("Card")!), 3);
+
+        // Once a menu has opened there is nothing left to build: a late prebuild leaves it alone.
+        rig.Shell.CloseSheet();
+        Pump(30);
+        menu.Prebuild();
+        Assert.Same(sheet, menu.FindControl<ContentControl>("MenuContent")!.Content);
+        window.Close();
+    }
+
+    /// <summary>The glass is lite while the card moves (S23 11-14: the full glass cost frames over
+    /// 25 ms through most of the pop): lite from the open's first frame through the spring, the full
+    /// glass at rest (cross-faded in), lite again as soon as the close starts.</summary>
+    [AvaloniaFact]
+    public void TheGlass_IsLiteWhileTheCardMoves_AndFullAtRest()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var _ = rig;
+        var menu = MenuOf(view);
+        var glass = menu.FindControl<GlassPanel>("Glass")!;
+        Assert.Equal(0, glass.Lite);                                     // the default: full glass
+
+        var more = MobileFixtures.Named<Button>(view, "NowPlayingMore");
+        more.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        more.Command!.Execute(null);
+        Assert.Equal(1, glass.Lite);                                     // the start pose
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var liteDuringSpring = new List<double>();
+        while (clock.Elapsed.TotalMilliseconds < PopMenu.PopOpenMs * 0.8)
+        {
+            Pump(1);
+            liteDuringSpring.Add(glass.Lite);
+        }
+        Assert.All(liteDuringSpring, l => Assert.Equal(1, l));
+        Pump((int)((PopMenu.PopOpenMs + PopMenu.LiteOutMs) / 16) + 20);
+        Assert.Equal(0, glass.Lite, 3);                                  // at rest: the full glass
+        Assert.Equal(1, glass.Fade, 3);
+
+        rig.Shell.CloseSheet();
+        Pump((int)(PopMenu.LiteInMs / 16) + 4);
+        Assert.True(glass.Lite > 0.99 || !menu.IsVisible, $"lite {glass.Lite} while closing");
+        Pump(30);
+        Assert.False(menu.IsVisible);
+        window.Close();
+    }
+
     /// <summary>The phone's pop (tester 11-04): the card starts at <see cref="PopMenu.PopScale"/>
     /// with its frost and the dim faded out, holds that pose until it has been drawn, then springs
     /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost and the dim
@@ -949,5 +1017,34 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         output.WriteLine($"light glass: {darkest:0.000} over black");
         Assert.True(PageTint.ContrastRatio(Brush(light, "MenuGlassText"), Gray(darkest)) >= 4.5);
         Assert.True(PageTint.ContrastRatio(Composite(Brush(light, "MenuGlassSecondaryText"), Gray(darkest)), Gray(darkest)) >= 4.5);
+    }
+
+    /// <summary>
+    /// S23 (11-14): the ⋯ over the lyrics cost 72-110 ms of the tap's frame on every open. The
+    /// card keeps its rows between opens, but the Rate row got a new list of stars each time and
+    /// built its five star buttons again. Now a reopen only rebinds: same star buttons, and a
+    /// small fraction of the first open's allocation.
+    /// </summary>
+    [AvaloniaFact]
+    public void Reopening_KeepsTheRows_IncludingTheStars()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var __ = rig;
+        Button FirstStar() => MenuOf(view).GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("np-star"));
+
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        Pump(2);
+        var star = FirstStar();
+        rig.Shell.CloseSheet();
+        Pump(15);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        rig.Shell.OpenNowPlayingMenuCommand.Execute(null);
+        var reopen = GC.GetAllocatedBytesForCurrentThread() - before;
+        Pump(2);
+        output.WriteLine($"reopen: {reopen / 1024} KB");
+        Assert.Same(star, FirstStar());
+        Assert.InRange(reopen, 0, 200 * 1024);   // was ~875 KB: the star buttons built again
+        window.Close();
     }
 }

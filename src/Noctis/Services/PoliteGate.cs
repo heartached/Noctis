@@ -8,7 +8,10 @@ namespace Noctis.Services;
 /// 429/503) everything waits out a back-off that doubles each time (from
 /// <see cref="FirstBackoff"/> up to <see cref="MaxBackoff"/>) and resets on the next good
 /// answer. After <see cref="GiveUpAfter"/> busy answers in a row the source is left alone for
-/// the rest of the run. One gate is shared by every worker of a run.
+/// the rest of the run. One gate is shared by every worker of a run. GitHub #228: a busy answer
+/// also widens the spacing for the rest of the run (doubling, up to <see cref="MaxInterval"/>), so
+/// a source that has a per-minute limit is not tripped again at the same pace; a Retry-After the
+/// source sent is waited out in full.
 /// </summary>
 public sealed class PoliteGate
 {
@@ -19,10 +22,12 @@ public sealed class PoliteGate
     private DateTime _next = DateTime.MinValue;
     private TimeSpan _backoff = TimeSpan.Zero;
     private int _busyInARow;
+    private TimeSpan _interval;
 
     public PoliteGate(TimeSpan minInterval, Func<DateTime>? now = null, Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
         MinInterval = minInterval;
+        _interval = minInterval;
         _now = now ?? (() => DateTime.UtcNow);
         _delay = delay ?? Task.Delay;
     }
@@ -31,6 +36,8 @@ public sealed class PoliteGate
     public TimeSpan FirstBackoff { get; init; } = TimeSpan.FromSeconds(15);
     public TimeSpan MaxBackoff { get; init; } = TimeSpan.FromMinutes(4);
     public int GiveUpAfter { get; init; } = 4;
+    /// <summary>The widest the spacing grows to after busy answers.</summary>
+    public TimeSpan MaxInterval { get; init; } = TimeSpan.FromSeconds(5);
 
     /// <summary>The source said busy <see cref="GiveUpAfter"/> times in a row: skip it for this run.</summary>
     public bool GaveUp => Volatile.Read(ref _busyInARow) >= GiveUpAfter;
@@ -50,7 +57,7 @@ public sealed class PoliteGate
                     wait = _next - _now();
                     if (wait <= TimeSpan.Zero)
                     {
-                        _next = _now() + MinInterval;
+                        _next = _now() + _interval;
                         return;
                     }
                 }
@@ -63,15 +70,36 @@ public sealed class PoliteGate
         }
     }
 
-    /// <summary>The source answered busy: back off before anyone asks it again.</summary>
-    public void ReportBusy()
+    /// <summary>The source answered busy: back off before anyone asks it again — at least
+    /// <paramref name="retryAfter"/> when it said how long. A wait longer than <see cref="MaxBackoff"/>
+    /// leaves the source alone for now (<see cref="GaveUp"/>) rather than holding every song up.</summary>
+    public void ReportBusy(TimeSpan? retryAfter = null)
     {
         lock (_lock)
         {
             _busyInARow++;
             _backoff = _backoff == TimeSpan.Zero ? FirstBackoff : TimeSpan.FromTicks(Math.Min(_backoff.Ticks * 2, MaxBackoff.Ticks));
-            var until = _now() + _backoff;
+            var wait = retryAfter is { } asked && asked > _backoff ? asked : _backoff;
+            if (wait > MaxBackoff) _busyInARow = Math.Max(_busyInARow, GiveUpAfter);
+            var until = _now() + wait;
             if (until > _next) _next = until;
+            if (_interval < MaxInterval)
+                _interval = TimeSpan.FromTicks(Math.Min(Math.Max(_interval.Ticks, 1) * 2, MaxInterval.Ticks));
+        }
+    }
+
+    /// <summary>
+    /// A later pass over the songs the source was busy for (GitHub #228): a source left alone is
+    /// asked again, unless the wait it asked for is still longer than <see cref="MaxBackoff"/>. The
+    /// widened spacing stays.
+    /// </summary>
+    public void Reset()
+    {
+        lock (_lock)
+        {
+            if (_next - _now() > MaxBackoff) return;
+            _busyInARow = 0;
+            _backoff = TimeSpan.Zero;
         }
     }
 
@@ -87,6 +115,9 @@ public sealed class PoliteGate
 
     /// <summary>The back-off the next busy answer would start from (tests).</summary>
     internal TimeSpan CurrentBackoff { get { lock (_lock) return _backoff; } }
+
+    /// <summary>The spacing in force now (tests).</summary>
+    internal TimeSpan CurrentInterval { get { lock (_lock) return _interval; } }
 }
 
 /// <summary>
@@ -97,7 +128,9 @@ public sealed class PoliteGate
 /// </summary>
 public sealed class BulkRunLedger
 {
-    public sealed record Entry(DateTime CheckedUtc, int Rank);
+    /// <param name="Generation">The lookup logic that made the check (<see cref="BulkRunLedger.Generation"/>);
+    /// 0 in files written before it existed.</param>
+    public sealed record Entry(DateTime CheckedUtc, int Rank, int Generation = 0);
 
     private readonly string? _path;
     private readonly Func<DateTime> _now;
@@ -108,6 +141,10 @@ public sealed class BulkRunLedger
 
     /// <summary>How long an entry counts (<see cref="MaxAge"/> unless set).</summary>
     public TimeSpan EntryLifetime { get; init; } = MaxAge;
+
+    /// <summary>The current lookup's generation: entries an older lookup recorded do not count, so
+    /// what it missed is asked again once the lookup improves (GitHub #229). Stamped on new entries.</summary>
+    public int Generation { get; init; }
 
     /// <param name="path">The JSON file; null keeps it in memory only.</param>
     public BulkRunLedger(string? path, Func<DateTime>? now = null)
@@ -136,32 +173,45 @@ public sealed class BulkRunLedger
     public bool CheckedRecently(Guid id, int currentRank)
     {
         lock (_gate)
-            return _entries.TryGetValue(id, out var e) && _now() - e.CheckedUtc < EntryLifetime && e.Rank <= currentRank;
+            return _entries.TryGetValue(id, out var e) && e.Generation >= Generation
+                   && _now() - e.CheckedUtc < EntryLifetime && e.Rank <= currentRank;
     }
 
     public void Record(Guid id, int rank)
     {
-        lock (_gate) _entries[id] = new Entry(_now(), rank);
+        lock (_gate) _entries[id] = new Entry(_now(), rank, Generation);
     }
 
     public int Count { get { lock (_gate) return _entries.Count; } }
 
-    /// <summary>Writes the ledger (atomically, through a temp file); stale entries are dropped.</summary>
+    // Ledgers of one file in this process save one at a time.
+    private static readonly object FileLock = new();
+
+    /// <summary>Writes the ledger (atomically, through a temp file); stale entries are dropped. What
+    /// another ledger of the same file saved meanwhile is kept (the newer check of a song wins):
+    /// two runs at once (the background lookup and Find Lyrics) each overwrote the other's entries.</summary>
     public void Save()
     {
         if (_path is null) return;
         try
         {
-            string json;
-            lock (_gate)
+            lock (FileLock)
             {
-                var cutoff = _now() - EntryLifetime;
-                json = JsonSerializer.Serialize(_entries.Where(kv => kv.Value.CheckedUtc >= cutoff).ToDictionary(kv => kv.Key, kv => kv.Value));
+                var onDisk = Load(_path);
+                string json;
+                lock (_gate)
+                {
+                    foreach (var (id, entry) in onDisk)
+                        if (!_entries.TryGetValue(id, out var mine) || entry.CheckedUtc > mine.CheckedUtc)
+                            _entries[id] = entry;
+                    var cutoff = _now() - EntryLifetime;
+                    json = JsonSerializer.Serialize(_entries.Where(kv => kv.Value.CheckedUtc >= cutoff).ToDictionary(kv => kv.Key, kv => kv.Value));
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+                var tmp = _path + ".tmp";
+                File.WriteAllText(tmp, json);
+                File.Move(tmp, _path, overwrite: true);
             }
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            var tmp = _path + ".tmp";
-            File.WriteAllText(tmp, json);
-            File.Move(tmp, _path, overwrite: true);
         }
         catch (Exception ex)
         {

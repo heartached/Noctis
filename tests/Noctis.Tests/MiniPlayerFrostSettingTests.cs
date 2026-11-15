@@ -25,8 +25,15 @@ public class MiniPlayerFrostSettingTests : IDisposable
     private readonly string _root =
         Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
 
+    // The frost follows Windows' Transparency effects (off, DWM paints the blur solid); this
+    // machine's setting must not decide the tests. Tests that need it off set it themselves.
+    private readonly Func<bool> _effects = TrayMenuFrost.TransparencyEffectsOn;
+
+    public MiniPlayerFrostSettingTests() => TrayMenuFrost.TransparencyEffectsOn = () => true;
+
     public void Dispose()
     {
+        TrayMenuFrost.TransparencyEffectsOn = _effects;
         try { Directory.Delete(_root, true); } catch { }
     }
 
@@ -534,4 +541,84 @@ public class MiniPlayerFrostSettingTests : IDisposable
             trayNoEffects.Close();
         }
     }
+
+    private static void EnsureIcons()
+    {
+        var app = Application.Current!;
+        if (!app.Resources.TryGetResource("SearchIcon", null, out _))
+            app.Resources.MergedDictionaries.Add(new ResourceInclude((Uri?)null)
+            {
+                Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml"),
+            });
+    }
+
+    private MiniPlayerViewModel MakeMiniViewModel()
+    {
+        var library = new FakeLibraryService();
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), library, new TestPersistenceService(), new FakeAnimatedCoverService());
+        var lyrics = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(), new TestPersistenceService(), library);
+        var settings = new SettingsViewModel(new TestPersistenceService(), library, new NoOpPlayHistoryService());
+        return new MiniPlayerViewModel(player, lyrics, settings, library);
+    }
+
+    /// <summary>Discord (BEAGLE, "borders of miniplayer shown as opaque grey"): the card was
+    /// rounded on the assumption that the window is see-through. When the platform grants no
+    /// transparency (ActualTransparencyLevel None: no compositor Avalonia can use, e.g. an
+    /// XWayland session our own probe calls composited, or macOS dropping a level) Avalonia
+    /// paints TransparencyBackgroundFallback behind the window, so the rounded card sat on an
+    /// opaque square of another colour. What the platform GRANTED now decides: none = the
+    /// square card on one opaque colour, transparency back = the rounded card again.</summary>
+    [AvaloniaFact]
+    public async Task NoTransparencyGranted_SquaresTheCardOnOneOpaqueColour_AndBack()
+    {
+        EnsureIcons();
+        var win = new MiniPlayerWindow { DataContext = MakeMiniViewModel(), Width = 340, Height = 432 };
+        win.Show();
+        Dispatcher.UIThread.RunJobs();
+        try
+        {
+            var root = win.FindControl<Border>("RootBorder")!;
+            var panel = win.FindControl<Panel>("RootPanel")!;
+            // Headless grants Transparent: the rounded card on a see-through window.
+            Assert.Equal(WindowTransparencyLevel.Transparent, win.ActualTransparencyLevel);
+            Assert.Equal(28, root.CornerRadius.TopLeft);
+            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)win.Background!).Color);
+
+            win.ApplyGrantedTransparency(WindowTransparencyLevel.None);
+            await Task.Delay(20);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(0, root.CornerRadius.TopLeft);
+            var bg = Assert.IsAssignableFrom<ISolidColorBrush>(win.Background).Color;
+            Assert.Equal(255, bg.A);
+            // Whatever Avalonia paints behind the window is that same colour, not the theme's.
+            Assert.Equal(bg, Assert.IsAssignableFrom<ISolidColorBrush>(win.TransparencyBackgroundFallback).Color);
+            Assert.Equal(0, ((RectangleGeometry)panel.Clip!).RadiusX);
+            // The hint is left as asked, so a compositor that starts later can still grant it.
+            Assert.Same(MiniPlayerWindow.TransparencyLevels(false), win.TransparencyLevelHint);
+
+            win.ApplyGrantedTransparency(WindowTransparencyLevel.Transparent);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(28, root.CornerRadius.TopLeft);
+            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)win.Background!).Color);
+            Assert.Equal(26.5, ((RectangleGeometry)panel.Clip!).RadiusX);
+        }
+        finally
+        {
+            win.Close();
+        }
+    }
+
+    /// <summary>Windows › Personalization › Colors › Transparency effects OFF: DWM paints the
+    /// blur-behind as a solid colour (TrayMenuFrost.TransparencyEffectsOn, the tray menu's
+    /// black corners), so "Frosted background" would put the card on a solid slab. Plain
+    /// per-pixel transparency is not part of that switch, so the window stays see-through.</summary>
+    [Theory]
+    [InlineData(true, true, true, true)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, false, true, false)]
+    [InlineData(false, true, true, false)]
+    public void Frost_NeedsWindowsTheSettingAndTransparencyEffects(bool windows, bool setting, bool effects, bool expected)
+        => Assert.Equal(expected, MiniPlayerWindow.WantsFrost(windows, setting, effects));
 }

@@ -154,6 +154,101 @@ public class LyricsBackgroundColorDialogTests : IDisposable
     }
 
     /// <summary>
+    /// Settings › Reset wrote the default background to settings.json, but the lyrics page read
+    /// its background once at start, so a chosen colour stayed until the next launch.
+    /// </summary>
+    [AvaloniaFact]
+    public void SettingsReset_PutsTheBackgroundBackToTheArtwork_Live()
+    {
+        var (vm, _, _) = MakeViewModel();
+        vm.SelectColorModeSolidCommand.Execute(null);
+        vm.SetBackgroundColorCommand.Execute("#1A1A2E");
+        Assert.True(vm.IsColorModeSolid);
+        Assert.Equal("#1A1A2E", vm.ActiveSwatchKey);
+
+        vm.ResetBackgroundToDefault();
+
+        var (fresh, _, _) = MakeViewModel();
+        Pump(50);
+        Assert.Equal((fresh.IsColorModeArtwork, fresh.IsColorModeSolid, fresh.IsColorModeGradient, fresh.ActiveSwatchKey),
+            (vm.IsColorModeArtwork, vm.IsColorModeSolid, vm.IsColorModeGradient, vm.ActiveSwatchKey));
+        Assert.True(vm.IsColorModeArtwork);
+    }
+
+    /// <summary>
+    /// settings.json on disk (a real PersistenceService and its gate), telling the test when the
+    /// lyrics page has read the file or asked for a gated update.
+    /// </summary>
+    private sealed class WatchedSettings : TestPersistenceService, IPersistenceService
+    {
+        private readonly PersistenceService _real;
+        public WatchedSettings(PersistenceService real) => _real = real;
+        public bool Armed;
+        public readonly TaskCompletionSource Reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override async Task<AppSettings> LoadSettingsAsync()
+        {
+            var settings = await _real.LoadSettingsAsync();
+            if (Armed) Reached.TrySetResult();
+            return settings;
+        }
+        public override Task SaveSettingsAsync(AppSettings settings) => _real.SaveSettingsAsync(settings);
+        public Task UpdateSettingsAsync(Action<AppSettings> change)
+        {
+            if (Armed) Reached.TrySetResult();
+            return _real.UpdateSettingsAsync(change);
+        }
+    }
+
+    /// <summary>
+    /// The lyrics page saved its background as load, change, save, with only the save inside the
+    /// settings.json gate. A save from elsewhere that landed between its load and its save (a
+    /// Settings toggle, Reset's defaults) was then undone by the stale copy written after it:
+    /// here the cleared music folders came back.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("color")]
+    [InlineData("gradient")]
+    public async Task BackgroundSave_DoesNotUndoASaveFromElsewhere(string which)
+    {
+        var real = new PersistenceService(System.IO.Path.Combine(_dir, "data-" + which));
+        await real.SaveSettingsAsync(new AppSettings { MusicFolders = new List<string> { @"D:\Music" } });
+        var settings = new WatchedSettings(real);
+        var player = new PlayerViewModel(
+            new FakeAudioPlayer(), new FakeLibraryService(),
+            new TestPersistenceService(), new FakeAnimatedCoverService());
+        var vm = new LyricsViewModel(
+            player, new StubLrcLib(), new StubNetEase(), new StubMetadata(),
+            settings, new FakeLibraryService());
+        Pump(50); // the constructor's own read of the saved background
+
+        // Another writer holds the file (as a Settings save or Reset's defaults would) ...
+        var holding = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var release = new ManualResetEventSlim();
+        var other = Task.Run(() => real.UpdateSettingsAsync(s =>
+        {
+            holding.TrySetResult();
+            release.Wait(TimeSpan.FromSeconds(10));
+            s.MusicFolders = new List<string>();
+        }));
+        await holding.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        // ... while the lyrics page saves a background.
+        settings.Armed = true;
+        var lyrics = which == "color"
+            ? vm.SetBackgroundColorCommand.ExecuteAsync("#1A1A2E")
+            : vm.SelectColorModeGradientCommand.ExecuteAsync(null);
+        await settings.Reached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        release.Set();
+        await other.WaitAsync(TimeSpan.FromSeconds(10));
+        await lyrics.WaitAsync(TimeSpan.FromSeconds(10));
+
+        var saved = await real.LoadSettingsAsync();
+        Assert.Empty(saved.MusicFolders);
+        if (which == "color") Assert.Equal("#1A1A2E", saved.LyricsBackgroundColorHex);
+        else Assert.True(saved.LyricsBackgroundGradient && !saved.LyricsShowArtworkBackground);
+    }
+
+    /// <summary>
     /// Every option the old strip had (three modes; Auto plus 32 named colours; 30 named
     /// gradients) is in the pop-up, in a grid with names on hover, Auto first in both grids.
     /// The mode is a segmented pill, and only the chosen mode's grid shows.
