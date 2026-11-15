@@ -96,6 +96,38 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         window.Close();
     }
 
+    /// <summary>The first ⋯ after launch built its rows inside the tap's frame (61-75 ms on an S23,
+    /// 11-14). A moment after launch the song menu is built while hidden: nothing shows, nothing
+    /// takes a tap, and the first open rebinds those very rows to the song instead of building them.</summary>
+    [AvaloniaFact]
+    public void TheSongMenu_IsBuiltWhileHidden_SoTheFirstOpenOnlyRebindsIt()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var _ = rig;
+        var menu = MenuOf(view);
+        menu.Prebuild();
+        Assert.False(menu.IsVisible);
+        Assert.False(menu.IsHitTestVisible);
+        var built = MobileFixtures.Named<Button>(menu, "MenuAddToPlaylist");
+
+        var more = MobileFixtures.Named<Button>(view, "NowPlayingMore");
+        Tap(window, more);
+        Pump(30);
+        Assert.True(menu.IsVisible);
+        Assert.True(menu.IsHitTestVisible);
+        Assert.Same(built, MobileFixtures.Named<Button>(menu, "MenuAddToPlaylist"));
+        var sheet = Assert.IsType<ContextSheetViewModel>(menu.FindControl<ContentControl>("MenuContent")!.Content);
+        Assert.Equal("Tone", sheet.Track!.Title);
+        Assert.Equal(1, ScaleOf(menu.FindControl<Panel>("Card")!), 3);
+
+        // Once a menu has opened there is nothing left to build: a late prebuild leaves it alone.
+        rig.Shell.CloseSheet();
+        Pump(30);
+        menu.Prebuild();
+        Assert.Same(sheet, menu.FindControl<ContentControl>("MenuContent")!.Content);
+        window.Close();
+    }
+
     /// <summary>The phone's pop (tester 11-04): the card starts at <see cref="PopMenu.PopScale"/>
     /// with its frost and the dim faded out, holds that pose until it has been drawn, then springs
     /// out of the ⋯ button (most of the way at once, a hair past, settled), the frost and the dim
