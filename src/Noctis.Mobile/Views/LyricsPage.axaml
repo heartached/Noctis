@@ -310,14 +310,17 @@
                  with distance instead, so the edges are already soft. -->
             <ScrollViewer Grid.Row="3" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                           IsVisible="{Binding Lyrics.HasLyrics}">
-                <ItemsControl Name="LyricsList" ItemsSource="{Binding Lyrics.Lines}" FontSize="{Binding Lyrics.LineFontSize}"
+                <!-- Rows are built once and handed the next line (RowItemsControl): each line
+                     change scrolled a line in, and Avalonia's own path built its row from
+                     scratch, ~330 KB for a plain line and ~1 MB for a word-timed one. -->
+                <views:RowItemsControl Name="LyricsList" ItemsSource="{Binding Lyrics.Lines}" FontSize="{Binding Lyrics.LineFontSize}"
                               ClipToBounds="False">
-                    <ItemsControl.ItemsPanel>
+                    <views:RowItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel />
                         </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
+                    </views:RowItemsControl.ItemsPanel>
+                    <views:RowItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="m:LyricLine">
                             <Button Classes="lyric-line" Classes.active="{Binding IsActive}"
                                     Background="Transparent" BorderThickness="0" Padding="0" Margin="0,14"
@@ -401,8 +404,8 @@
                                 </StackPanel>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </views:RowItemsControl.ItemTemplate>
+                </views:RowItemsControl>
             </ScrollViewer>
 
             <!-- The soft top edge: the wash itself, repainted over the lines and clearing
