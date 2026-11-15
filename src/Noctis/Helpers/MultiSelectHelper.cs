@@ -137,8 +137,8 @@ public static class MultiSelectHelper
     public static List<T> ItemsOf<T>(ItemsControl list) where T : class =>
         list.ItemsSource is System.Collections.IEnumerable items ? items.OfType<T>().ToList() : new List<T>();
 
-    /// <summary>The ListBox's realized rows.</summary>
-    public static IEnumerable<ListBoxItem> RealizedRows(Control list) => list.GetVisualDescendants().OfType<ListBoxItem>();
+    /// <summary>The ListBox's realized rows (rows a RetainingVirtualizingStackPanel parked are hidden and skipped).</summary>
+    public static IEnumerable<ListBoxItem> RealizedRows(Control list) => list.GetVisualDescendants().OfType<ListBoxItem>().Where(r => r.IsVisible);
 
     /// <summary>
     /// Handles Ctrl+Click on an album-tile Button.
