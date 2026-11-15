@@ -194,6 +194,9 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
     {
         if (e.Container is ListBoxItem item)
         {
+            // A row parked by the list's RetainingVirtualizingStackPanel is prepared again
+            // without being cleared: subscribe once.
+            item.ContextRequested -= OnTrackItemContextRequested;
             item.ContextRequested += OnTrackItemContextRequested;
             // Re-apply ctrl-selected visual based on the data set so recycled
             // containers reflect the right state after a scroll.
