@@ -714,6 +714,10 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 {
                     if (SettingChangeRepaintsUnderSheet(e.PropertyName))
                         _settingsScrim?.RefreshSoon();
+                    // A page switch: the live blur holds still through the new page's glide
+                    // (and the heavy first layout of a page not visited yet), as for a scroll.
+                    if (e.PropertyName == nameof(SettingsViewModel.SelectedSettingsTab))
+                        _settingsScrim?.Hold(SettingsView.PageEnterDuration);
                 };
                 vm.Settings.PropertyChanged += _settingsBackdropRefreshHandler;
 
@@ -750,7 +754,11 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 _settingsOverlay = this.FindControl<Border>("SettingsOverlay");
                 _settingsScrim = this.FindControl<Controls.BlurredBackdrop>("SettingsScrim");
                 if (_settingsScrim != null)
+                {
                     _settingsScrim.Target = this.FindControl<Panel>("AppContentLayer");
+                    // Scrolling the sheet holds the live blur still (owner 11-14: choppy).
+                    if (_settingsOverlay != null) _settingsScrim.HoldWhileScrolling(_settingsOverlay);
+                }
                 _settingsGlass = this.FindControl<Controls.GlassPanel>("SettingsGlass");
                 _settingsCard = this.FindControl<Border>("SettingsCard");
                 _queuePopupPanel = this.FindControl<Border>("QueuePopupPanel");
