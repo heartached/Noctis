@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using SkiaSharp;
 
 namespace Noctis.Controls;
@@ -370,6 +371,7 @@ public static class GlassLens
     {
         var effect = Lens(out _);
         if (effect is null) return false;
+        Interlocked.Increment(ref LensPasses);
         // Only the panel's own pixels are ever sampled (the lens looks inward), so the frost
         // pass covers just the panel, not the 3σ ring the blur reads.
         var region = SKRectI.Intersect(GlassBlur.RoundOut(frame.Bounds), at);
@@ -386,7 +388,10 @@ public static class GlassLens
         // The spill's wide blur of the same pixels; without one the lens reads the content in its place.
         SKImage? wide = null;
         if (frame.Spill > 0 && frame.SpillSigma > 0.5f)
+        {
             wide = Frost(source, at, region, frame.SpillSigma, context);
+            Interlocked.Increment(ref SpillPasses);
+        }
         try
         {
             var image = frosted ?? source;
@@ -433,6 +438,40 @@ public static class GlassLens
             frosted?.Dispose();
             wide?.Dispose();
         }
+    }
+
+    /// <summary>Passes drawn since launch: the lens shader, the spill's wide blur and the lite frost
+    /// (<see cref="GlassPanel.Lite"/>). Counted for tests; a lite-only frame runs neither of the first two.</summary>
+    internal static int LensPasses, SpillPasses, LitePasses;
+
+    /// <summary>
+    /// The lite frost's colour (<see cref="GlassPanel.Lite"/>): the lens's saturation, then each channel
+    /// through <see cref="Tone"/> of its grey (exact for greys, close for colours), so the plain blur
+    /// sits in the glass's luminance range and the cross-fade into the full glass shows no step.
+    /// </summary>
+    internal static SKColorFilter LiteFilter(in GlassLensFrame f)
+    {
+        var table = new byte[256];
+        var alpha = new byte[256];
+        for (var i = 0; i < 256; i++)
+        {
+            alpha[i] = (byte)i;
+            var c = i / 255f;
+            table[i] = (byte)Math.Round(Tone(c, c, c, Math.Clamp(f.ToneMin, 0, 1), Math.Clamp(f.ToneMax, 0, 1),
+                Math.Max(f.ToneCurve, 0.01f), Math.Clamp(f.ToneLift, 0, 1)).R * 255);
+        }
+        var s = f.Saturation;
+        if (Math.Abs(s - 1) < 1e-6) return SKColorFilter.CreateTable(alpha, table, table, table);
+        const float lr = 0.2126f, lg = 0.7152f, lb = 0.0722f;
+        using var tone = SKColorFilter.CreateTable(alpha, table, table, table);
+        using var saturate = SKColorFilter.CreateColorMatrix(new[]
+        {
+            lr * (1 - s) + s, lg * (1 - s), lb * (1 - s), 0, 0,
+            lr * (1 - s), lg * (1 - s) + s, lb * (1 - s), 0, 0,
+            lr * (1 - s), lg * (1 - s), lb * (1 - s) + s, 0, 0,
+            0, 0, 0, 1, 0,
+        });
+        return SKColorFilter.CreateCompose(tone, saturate);
     }
 
     /// <summary>The backdrop blurred, cut to <paramref name="region"/> (device px). On the GPU
