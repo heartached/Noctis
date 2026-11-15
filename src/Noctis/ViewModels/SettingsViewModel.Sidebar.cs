@@ -144,6 +144,7 @@ public partial class SettingsViewModel
     private void LoadSidebarLayout(AppSettings settings)
     {
         var hidden = new HashSet<string>(settings.SidebarHiddenPages ?? new());
+        if (!settings.SidebarGenresDefaultApplied) hidden.Add("genres");
         SidebarPages.Clear();
         foreach (var key in SidebarViewModel.MergePageOrder(settings.SidebarPageOrder))
         {
@@ -168,6 +169,7 @@ public partial class SettingsViewModel
         var order = SidebarPageOrderKeys;
         _settings.SidebarPageOrder = order.SequenceEqual(SidebarViewModel.DefaultPageOrder) ? new() : order.ToList();
         _settings.SidebarHiddenPages = SidebarHiddenPageKeys.ToList();
+        _settings.SidebarGenresDefaultApplied = true;
         _settings.StartPage = StartPage;
     }
 
