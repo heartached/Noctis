@@ -50,6 +50,11 @@ public partial class SettingsView : UserControl
         };
         SettingsSearchBox.KeyDown += OnSearchBoxKeyDown;
         DataContextChanged += OnSettingsDataContextChanged;
+        // The rail pill follows its row when the rows move or resize (no slide then).
+        RailHost.LayoutUpdated += (_, _) =>
+        {
+            if (!_railPillSlidePending) PlaceRailPill(animate: false);
+        };
 
         // Output Device picker: re-enumerate the endpoints as the dropdown opens, so a
         // just-plugged DAC (or a default-device change) shows up without leaving Settings.
@@ -379,7 +384,7 @@ public partial class SettingsView : UserControl
         if (_searchIndex is not null) return _searchIndex;
         // The index reads every card's text and visibility, which needs each page bound.
         foreach (var (tab, _) in TabPanels)
-            RealizeTabPage(tab, animate: false);
+            RealizeTabPage(tab);
         var panels = new List<(string Tab, Control Panel)>();
         foreach (var (tab, name) in TabPanels)
         {
@@ -420,32 +425,187 @@ public partial class SettingsView : UserControl
         }
     }
 
-    /// <summary>
-    /// Puts <paramref name="tab"/>'s page back in its original slot. With
-    /// <paramref name="animate"/> it enters from the tab-page hidden state (faded, 6 px
-    /// down) so the first visit glides in like every later one.
-    /// </summary>
-    private void RealizeTabPage(string tab, bool animate)
+    /// <summary>Puts <paramref name="tab"/>'s page back in its original slot.</summary>
+    private void RealizeTabPage(string tab)
     {
         if (_tabHost is null || !_deferredTabPages.Remove(tab, out var page)) return;
 
         var order = _tabHostOrder.IndexOf(page);
         var index = _tabHost.Children.Count(c => _tabHostOrder.IndexOf(c) < order);
-        if (animate)
-        {
-            page.Opacity = 0;
-            page.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("translateY(6px)");
-        }
         _tabHost.Children.Insert(index, page);
-        if (animate)
+    }
+
+    // ── Page switch motion (owner 11-14: "clean and smooth" through the categories) ──
+
+    // The outgoing page goes at once (the pages share one StackPanel: two visible would stack,
+    // and keeping the old one drawing would double the cost of the heaviest frame); the
+    // incoming one fades in from a few px below (a page further down the rail) or above (one
+    // further up). The glide
+    // starts after the page's first layout pass (Loaded priority): a page's first visit styles
+    // and lays out hundreds of controls, and a transition started with the click had most of
+    // its 200 ms used up before the first frame showed, which read as a plain swap.
+    internal const double PageEnterOffset = 10;
+    internal static readonly TimeSpan PageEnterDuration = TimeSpan.FromMilliseconds(200);
+    internal static readonly TimeSpan RailPillDuration = TimeSpan.FromMilliseconds(220);
+    // PluginPageEase's curve: a quick start that settles softly, no overshoot.
+    private static readonly Avalonia.Animation.Easings.Easing MotionEase = new CubicBezierEase(0.2, 0.9, 0.3, 1);
+
+    private string? _shownTab;
+    private Control? _enteringPage;
+    private int _pageMotionGeneration;
+
+    /// <summary>The app's reduce-motion switch (inherited); on, every switch here is instant.</summary>
+    private bool MotionOff => Noctis.Controls.TransportGlyph.GetReduceMotion(this);
+
+    private Control? TabPageFor(string? tab)
+    {
+        foreach (var (key, name) in TabPanels)
+            if (key == tab) return this.FindControl<Control>(name);
+        return null;
+    }
+
+    private static Avalonia.Media.Transformation.TransformOperations Translate(double x, double y)
+    {
+        var builder = Avalonia.Media.Transformation.TransformOperations.CreateBuilder(1);
+        builder.AppendTranslate(x, y);
+        return builder.Build();
+    }
+
+    /// <summary>A page at rest: fully opaque, no offset, nothing running.</summary>
+    private static void SettlePage(Control page)
+    {
+        // Transitions first: dropping them ends a running glide on its local (end) value.
+        page.ClearValue(TransitionsProperty);
+        page.ClearValue(OpacityProperty);
+        page.ClearValue(RenderTransformProperty);
+    }
+
+    /// <summary>
+    /// Brings <paramref name="tab"/>'s page on (realizing it on its first visit). With
+    /// <paramref name="animate"/> it glides in; a switch during a glide settles the page that was
+    /// coming in at once and starts the new one from its own start, so nothing is left half faded.
+    /// </summary>
+    private void ShowTabPage(string tab, bool animate)
+    {
+        var previous = _shownTab;
+        _shownTab = tab;
+        RealizeTabPage(tab);
+        var page = TabPageFor(tab);
+        var generation = ++_pageMotionGeneration;
+
+        if (_enteringPage is { } entering && !ReferenceEquals(entering, page)) SettlePage(entering);
+        _enteringPage = null;
+        if (TabPageFor(previous) is { } left && !ReferenceEquals(left, page)) SettlePage(left);
+        if (page is null) return;
+
+        var vm = _trackedViewModel;
+        if (!animate || previous is null || previous == tab || vm is null || MotionOff || !IsEffectivelyVisible)
         {
-            // Released once the tab-page style (and its transitions) is on the page.
-            Dispatcher.UIThread.Post(() =>
-            {
-                page.ClearValue(OpacityProperty);
-                page.ClearValue(RenderTransformProperty);
-            }, DispatcherPriority.Loaded);
+            SettlePage(page);
+            return;
         }
+
+        var keys = vm.Sections.Select(s => s.Key).ToList();
+        var direction = keys.IndexOf(tab) >= keys.IndexOf(previous) ? 1 : -1;
+        page.Transitions = null; // the start state goes on instantly
+        page.Opacity = 0;
+        page.RenderTransform = Translate(0, direction * PageEnterOffset);
+        _enteringPage = page;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (generation != _pageMotionGeneration) return; // another switch took over
+            page.Transitions = new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition { Property = OpacityProperty, Duration = PageEnterDuration, Easing = MotionEase },
+                new Avalonia.Animation.TransformOperationsTransition { Property = RenderTransformProperty, Duration = PageEnterDuration, Easing = MotionEase },
+            };
+            page.Opacity = 1;
+            page.RenderTransform = Translate(0, 0);
+        }, DispatcherPriority.Loaded);
+    }
+
+    // ── Rail selection pill ──
+
+    private readonly List<Button> _railRows = new();
+    private Rect _railPillRect;
+    private bool _railPillSlidePending;
+
+    /// <summary>
+    /// A switch: the pill slides once the new page has been laid out, in step with the page's
+    /// glide (started with the click, a first visit's layout pass ate most of the slide). The
+    /// rows don't move on a switch, so layout passes in between leave the pill where it is.
+    /// </summary>
+    private void SlideRailPill()
+    {
+        if (MotionOff || !IsEffectivelyVisible)
+        {
+            PlaceRailPill(animate: false);
+            return;
+        }
+        if (_railPillSlidePending) return; // one slide per frame, to the row selected by then
+        _railPillSlidePending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _railPillSlidePending = false;
+            PlaceRailPill(animate: true);
+        }, DispatcherPriority.Loaded);
+    }
+
+    private Button? ActiveRailRow()
+    {
+        if (_railRows.Count == 0 || _railRows.Any(r => TopLevel.GetTopLevel(r) is null))
+        {
+            _railRows.Clear();
+            _railRows.AddRange(RailHost.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("rail-item")));
+        }
+        return _railRows.FirstOrDefault(r => r.DataContext is SettingsSection { IsSelected: true });
+    }
+
+    /// <summary>
+    /// Puts the accent pill under the selected rail row. On a switch (<paramref name="animate"/>)
+    /// it slides there; when the rows themselves move or resize (window size, Interface Size) it
+    /// follows at once.
+    /// </summary>
+    private void PlaceRailPill(bool animate)
+    {
+        var pill = RailSelectionPill;
+        var row = ActiveRailRow();
+        if (row is null || !row.IsEffectivelyVisible || row.Bounds.Width <= 0
+            || row.TranslatePoint(default, RailHost) is not { } origin)
+        {
+            if (_railPillRect != default) pill.Opacity = 0;
+            _railPillRect = default;
+            return;
+        }
+
+        var rect = new Rect(origin, row.Bounds.Size);
+        if (rect == _railPillRect) return;
+        var slide = animate && _railPillRect != default && !MotionOff && IsEffectivelyVisible;
+        if (rect.Size != _railPillRect.Size)
+        {
+            pill.Width = rect.Width;
+            pill.Height = rect.Height;
+        }
+        // One Transitions instance for the pill's life: a second switch mid-slide then turns it
+        // from where it is (a fresh instance would restart it from the old target).
+        var transitions = _railPillTransitions ??= new Avalonia.Animation.Transitions
+        {
+            new Avalonia.Animation.TransformOperationsTransition { Property = RenderTransformProperty, Duration = RailPillDuration, Easing = MotionEase },
+        };
+        pill.Transitions = slide ? transitions : null; // null also ends a running slide
+        pill.RenderTransform = Translate(rect.X, rect.Y);
+        pill.Transitions = transitions; // re-arming never animates
+        pill.Opacity = 1;
+        _railPillRect = rect;
+    }
+
+    private Avalonia.Animation.Transitions? _railPillTransitions;
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == Noctis.Controls.TransportGlyph.ReduceMotionProperty)
+            Classes.Set("motion-off", MotionOff);
     }
 
     /// <summary>Focus the rail's search box (Ctrl+F while the modal is open).</summary>
@@ -666,7 +826,8 @@ public partial class SettingsView : UserControl
         if (_trackedViewModel != null)
         {
             _trackedViewModel.PropertyChanged += OnSettingsViewModelPropertyChanged;
-            RealizeTabPage(_trackedViewModel.SelectedSettingsTab, animate: false);
+            ShowTabPage(_trackedViewModel.SelectedSettingsTab, animate: false);
+            PlaceRailPill(animate: false);
         }
     }
 
@@ -679,7 +840,10 @@ public partial class SettingsView : UserControl
             case nameof(SettingsViewModel.MediaFoldersScrollRequest):
             case nameof(SettingsViewModel.SelectedSettingsTab):
                 if (_trackedViewModel is { } selected)
-                    RealizeTabPage(selected.SelectedSettingsTab, animate: true);
+                {
+                    ShowTabPage(selected.SelectedSettingsTab, animate: true);
+                    SlideRailPill();
+                }
                 ScrollToTop();
                 Dispatcher.UIThread.Post(LogStyleProbe, DispatcherPriority.Background);
                 break;
