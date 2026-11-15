@@ -165,6 +165,18 @@ public class GlassPanel : Decorator
     public static readonly StyledProperty<double> BackdropShadeProperty =
         AvaloniaProperty.Register<GlassPanel, double>(nameof(BackdropShade));
 
+    /// <summary>
+    /// 0..1: how much of the frost is the lite frost instead of the full glass, for a panel in motion
+    /// (the phone menus' pop: PopMenu). At 1 the lens's expensive passes are skipped (no spill blur,
+    /// no lens shader) and the backdrop is one blur through a colour table that follows the lens's
+    /// tone range, saturation and lift (<see cref="GlassLens.LiteFilter"/>); in between the two are
+    /// cross-faded from one snapshot. On an S23 the full glass cost frames over 25 ms through most of
+    /// the 340 ms pop (11-14). 0 (default): the full glass only, exactly as before; the desktop never
+    /// sets it. Only matters with a lens (<see cref="HasLens"/>): the plain frost is already one blur.
+    /// </summary>
+    public static readonly StyledProperty<double> LiteProperty =
+        AvaloniaProperty.Register<GlassPanel, double>(nameof(Lite));
+
     /// <summary>Shadows cast outside the panel, as on a <see cref="Border"/>; none by default.</summary>
     public static readonly StyledProperty<BoxShadows> BoxShadowProperty =
         Border.BoxShadowProperty.AddOwner<GlassPanel>();
@@ -176,7 +188,8 @@ public class GlassPanel : Decorator
             EdgeBrushProperty, EdgeThicknessProperty, FadeProperty,
             RefractionProperty, RefractionAmountProperty, DispersionProperty, MagnificationProperty,
             SaturationProperty, SpecularProperty, BoxShadowProperty, BackdropMinLuminanceProperty, BackdropMaxLuminanceProperty,
-            SpecularStyleProperty, BackdropToneCurveProperty, BackdropLiftProperty, BackdropSpillProperty, BackdropShadeProperty);
+            SpecularStyleProperty, BackdropToneCurveProperty, BackdropLiftProperty, BackdropSpillProperty, BackdropShadeProperty,
+            LiteProperty);
         AffectsArrange<GlassPanel>(BlurRadiusProperty);
     }
 
@@ -194,6 +207,7 @@ public class GlassPanel : Decorator
     public double BackdropSpill { get => GetValue(BackdropSpillProperty); set => SetValue(BackdropSpillProperty, value); }
     public double BackdropShade { get => GetValue(BackdropShadeProperty); set => SetValue(BackdropShadeProperty, value); }
     public BoxShadows BoxShadow { get => GetValue(BoxShadowProperty); set => SetValue(BoxShadowProperty, value); }
+    public double Lite { get => GetValue(LiteProperty); set => SetValue(LiteProperty, value); }
 
     /// <summary>Any lens setting is on: the backdrop is drawn through <see cref="GlassLens"/>.</summary>
     internal bool HasLens =>
@@ -393,7 +407,7 @@ public class GlassPanel : Decorator
         // The fade is folded into every layer here rather than applied as Opacity: see Fade.
         if (NeedsBackdrop)
             context.Custom(new GlassBackdropOp(rect, CornerRadius, BlurRadius, fade,
-                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings(), RepaintFootprint(rect)));
+                _backdrop ??= new GlassBackdropCache(RequestFullRepaint), LensSettings(), RepaintFootprint(rect), Math.Clamp(Lite, 0, 1)));
 
         var (tint, opacity) = ResolveTint();
         opacity *= fade;
@@ -457,9 +471,25 @@ public static class GlassBlur
     /// <summary>The plain blur, or the lens over it when <paramref name="lens"/> is set and the
     /// shader runs here (the blur alone otherwise).</summary>
     internal static void DrawFrosted(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha,
-        GlassLensFrame? lens, GRRecordingContext? context)
+        GlassLensFrame? lens, GRRecordingContext? context, float lite = 0)
     {
-        if (lens is { } frame && GlassLens.Draw(canvas, source, at, clip, sigma, alpha, frame, context)) return;
+        if (lens is { } frame && lite > 0)
+        {
+            // The lite frost under the full glass's share (GlassPanel.Lite), both read from this one
+            // snapshot. Each replaces what it covers by its alpha (ClearForFrost), so the lite one at
+            // a*l / (1 - a*(1 - l)) and the full one over it at a*(1 - l) leave
+            // beneath*(1 - a) + lite*a*l + full*a*(1 - l): a straight cross-fade.
+            lite = Math.Min(lite, 1f);
+            var full = alpha * (1 - lite);
+            using (var filter = GlassLens.LiteFilter(frame))
+                DrawBlurred(canvas, source, at, clip, sigma, full < 1 ? alpha * lite / (1 - full) : 0, filter);
+            Interlocked.Increment(ref GlassLens.LitePasses);
+            if (full <= 0) return;
+            if (GlassLens.Draw(canvas, source, at, clip, sigma, full, frame, context)) return;
+            DrawBlurred(canvas, source, at, clip, sigma, full);
+            return;
+        }
+        if (lens is { } f && GlassLens.Draw(canvas, source, at, clip, sigma, alpha, f, context)) return;
         DrawBlurred(canvas, source, at, clip, sigma, alpha);
     }
 
@@ -513,7 +543,8 @@ public static class GlassBlur
 
     /// <summary>Draws <paramref name="source"/>, whose pixels sit at device rect
     /// <paramref name="at"/>, through the blur, clipped to the device path <paramref name="clip"/>.</summary>
-    internal static void DrawBlurred(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha)
+    internal static void DrawBlurred(SKCanvas canvas, SKImage source, SKRectI at, SKPath clip, float sigma, float alpha,
+        SKColorFilter? colorFilter = null)
     {
         canvas.Save();
         canvas.SetMatrix(SKMatrix.Identity);
@@ -526,6 +557,7 @@ public static class GlassBlur
             FilterQuality = SKFilterQuality.Low,
             Color = new SKColor(255, 255, 255, AlphaByte(alpha)),
             BlendMode = SKBlendMode.Plus,
+            ColorFilter = colorFilter,
         };
         ClearForFrost(canvas, dst, alpha);
         canvas.DrawImage(source, SKRect.Create(source.Width, source.Height), dst, paint);
@@ -665,7 +697,7 @@ internal sealed class GlassBackdropCache
     /// which the full repaint this already asks for covers.
     /// </summary>
     public bool Draw(SKCanvas canvas, SKSurface surface, SKPath clip, float sigma, float alpha, bool wholePanelRepainted,
-        GlassLensFrame? lens = null)
+        GlassLensFrame? lens = null, float lite = 0)
     {
         DrainRetired();
         sigma = GlassBlur.ClampSigma(sigma);
@@ -705,7 +737,7 @@ internal sealed class GlassBackdropCache
         try
         {
             if (!fresh.IsEmpty && alpha > 0f)
-                GlassBlur.DrawFrosted(canvas, composed ?? source, at, clip, sigma, alpha, lens, surface.Context);
+                GlassBlur.DrawFrosted(canvas, composed ?? source, at, clip, sigma, alpha, lens, surface.Context, lite);
         }
         finally { composed?.Dispose(); }
         return true;
@@ -861,11 +893,13 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
     private readonly GlassBackdropCache? _cache;
     private readonly GlassLensSettings? _lens;
     private readonly Rect _footprint;
+    private readonly double _lite;
     private bool _drawn;
 
     public GlassBackdropOp(Rect bounds, CornerRadius corners, double blurRadius, double fade = 1, GlassBackdropCache? cache = null,
-        GlassLensSettings? lens = null, Rect? footprint = null)
+        GlassLensSettings? lens = null, Rect? footprint = null, double lite = 0)
     {
+        _lite = lite;
         Bounds = bounds;
         _corners = corners;
         _blurRadius = blurRadius;
@@ -879,7 +913,7 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
     public bool HitTest(Point p) => false;
     public bool Equals(ICustomDrawOperation? other) =>
         other is GlassBackdropOp o && o.Bounds == Bounds && o._corners == _corners && o._blurRadius == _blurRadius && o._fade == _fade
-        && ReferenceEquals(o._cache, _cache) && o._lens == _lens && o._footprint == _footprint;
+        && ReferenceEquals(o._cache, _cache) && o._lens == _lens && o._footprint == _footprint && o._lite == _lite;
     public void Dispose() { }
 
     public void Render(ImmediateDrawingContext context)
@@ -933,7 +967,7 @@ internal sealed class GlassBackdropOp : ICustomDrawOperation
         // this op's first draw leaves no stale frost of the panel anywhere.
         var first = !_drawn;
         _drawn = true;
-        _cache.Draw(canvas, surface, path, sigma, (float)_fade, wholePanelRepainted: first, lens);
+        _cache.Draw(canvas, surface, path, sigma, (float)_fade, wholePanelRepainted: first, lens, (float)_lite);
     }
 
     /// <summary>The lens in device px under <paramref name="m"/>; null without one, or when the

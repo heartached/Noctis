@@ -52,6 +52,8 @@ public class MenuGlassGpuCostProbe
                      ("+ glass + spill", Parts.Shadow | Parts.Glass | Parts.Spill),
                      ("+ rim/tint/sheen", Parts.Shadow | Parts.Glass | Parts.Spill | Parts.Rim),
                      ("full (+ rows)", Parts.All),
+                     ("lite glass", Parts.Shadow | Parts.Glass | Parts.Spill | Parts.Lite),
+                     ("lite full (+ rows)", Parts.All | Parts.Lite),
                  })
         {
             foreach (var rest in new[] { false, true })
@@ -66,7 +68,7 @@ public class MenuGlassGpuCostProbe
     }
 
     [Flags]
-    private enum Parts { None = 0, Shadow = 1, Glass = 2, Spill = 4, Rim = 8, Rows = 16, All = 31, NoBlur = 32 }
+    private enum Parts { None = 0, Shadow = 1, Glass = 2, Spill = 4, Rim = 8, Rows = 16, All = 31, NoBlur = 32, Lite = 64 }
 
     /// <summary>Eleven pops (or as many frames at rest, the lyrics sweeping under the card); the
     /// first is warm-up. Returns ms per frame: CPU (to flush) and CPU+GPU (to finish), and the worst.</summary>
@@ -167,7 +169,7 @@ public class MenuGlassGpuCostProbe
             GlassLens.TryMapToDevice(m, Card, new GlassCornerRadii(Corner, Corner, Corner, Corner), out var device, out var radii, out _);
             var spill = (parts & Parts.Spill) != 0 ? 0.58f : 0f;
             var lens = new GlassLensFrame(device, radii, 14 * s, 10 * s, 0, 1, 1.2f, 0.22f, 0.41f, 2.5f, 1, spill, Math.Max(9 * 4, 16) * s, 0.16f);
-            cache.Draw(canvas, surface, path, (parts & Parts.NoBlur) != 0 ? 0 : 9 * s, fade, whole, lens);
+            cache.Draw(canvas, surface, path, (parts & Parts.NoBlur) != 0 ? 0 : 9 * s, fade, whole, lens, (parts & Parts.Lite) != 0 ? 1 : 0);
         }
         if ((parts & Parts.Rim) != 0)
         {
