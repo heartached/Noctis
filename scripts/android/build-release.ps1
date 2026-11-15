@@ -118,13 +118,16 @@ try {
     # rebuild after a -UseDebugKey run leaves the debug-signed bundle in place (observed:
     # "Skipping target _Sign because all output files are up-to-date").
     Remove-Item $signedAab -ErrorAction SilentlyContinue
-    # The incremental build keeps obj's generated AndroidManifest.xml when only
-    # ApplicationVersion / ApplicationDisplayVersion change, so a bundle built after a test build
-    # still carried "1.0.0 beta 4 (test)" (11-15). Drop the app's own generated manifests so the
-    # version asked for is the version written (the lp\*\jl ones belong to the extracted libraries).
-    $objDir = Join-Path (Split-Path $project) 'obj\Release\net10.0-android'
-    foreach ($rel in 'AndroidManifest.xml', 'android\AndroidManifest.xml', 'android\manifest\AndroidManifest.xml') {
-        Remove-Item (Join-Path $objDir $rel) -Force -ErrorAction SilentlyContinue
+    # An upload build starts clean. Incremental builds kept a cached AndroidManifest.xml when only
+    # the version changed (a bundle built after a test build carried "1.0.0 beta 4 (test)"), and
+    # deleting just those manifests dropped 453 library resources from the bundle (11-15). Wiping
+    # obj\Release and bin\Release gives the complete bundle beta 3 was. Debug-key runs stay incremental.
+    if (-not $UseDebugKey) {
+        $projectDir = Split-Path $project
+        foreach ($dir in 'obj\Release', 'bin\Release') {
+            $path = Join-Path $projectDir $dir
+            if (Test-Path $path) { Remove-Item $path -Recurse -Force }
+        }
     }
 
     $buildArgs = @(
