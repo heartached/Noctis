@@ -245,6 +245,29 @@ public class MobileLyricsPromotionTests
         }
     }
 
+    /// <summary>The lyrics' dither layer draws exactly what Now Playing's dither brush draws.</summary>
+    [AvaloniaFact]
+    public void TheLyricsDither_MatchesTheBrush()
+    {
+        if (!HeadlessTestApp.RealRendering)
+            Assert.Skip("needs real Skia rendering (NOCTIS_TEST_SKIA=1)");
+        byte[] Capture(Control content)
+        {
+            var window = new Window { Width = 200, Height = 150, Background = Avalonia.Media.Brushes.Black, Content = content };
+            window.Show();
+            var frame = window.CaptureRenderedFrame()!;
+            using var fb = frame.Lock();
+            var pixels = new byte[fb.RowBytes * 150];
+            System.Runtime.InteropServices.Marshal.Copy(fb.Address, pixels, 0, pixels.Length);
+            window.Close();
+            return pixels;
+        }
+        var brush = Capture(new Border { Background = NowPlayingPage.Dither });
+        var layer = Capture(new DitherLayer());
+        Assert.Contains(brush, b => b != 0 && b != 255);
+        Assert.Equal(brush, layer);
+    }
+
     // ── Diagnostics ──
 
     /// <summary>Diagnostics, one case per process (a window left from an earlier case skews the
