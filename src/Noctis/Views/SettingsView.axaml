@@ -6757,11 +6757,17 @@
                             </Button>
                         </StackPanel>
                     </Grid>
+                    <StackPanel>
+                    <StackPanel>
+                    <StackPanel>
+                    <StackPanel>
+                    <StackPanel>
                     <SelectableTextBlock Text="{Binding DataFolderPath}"
                                          FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
 
                     <!-- Copying -->
-                    <StackPanel Spacing="6" IsVisible="{Binding IsDataFolderCopying}">
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderCopying}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Spacing="6">
                         <TextBlock Text="{Binding DataFolderCopyText}" FontSize="12" Opacity="0.7"/>
                         <Grid ColumnDefinitions="*,Auto">
                             <ProgressBar Grid.Column="0" Minimum="0" Maximum="100"
@@ -6775,41 +6781,48 @@
                             </Button>
                         </Grid>
                     </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
 
                     <!-- The picked folder already holds Noctis data -->
-                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderUseExistingVisible}" Lift="6">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="{loc:T Settings.DataFolderExistingTitle}"
-                                       FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding DataFolderUseExistingDetail}"
-                                       FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Button Classes="pill-action"
-                                        AutomationProperties.Name="{loc:T Settings.Cancel}"
-                                        Command="{Binding CancelUseExistingDataFolderCommand}"
-                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
-                                    <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
-                                </Button>
-                                <Button Classes="pill-action"
-                                        AutomationProperties.Name="{loc:T Settings.DataFolderUseThis}"
-                                        Command="{Binding ConfirmUseExistingDataFolderCommand}"
-                                        Padding="14,8" CornerRadius="999" Cursor="Hand">
-                                    <TextBlock Text="{loc:T Settings.DataFolderUseThis}" FontSize="13" FontWeight="SemiBold"/>
-                                </Button>
-                            </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderUseExistingVisible}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Spacing="8">
+                        <TextBlock Text="{loc:T Settings.DataFolderExistingTitle}"
+                                   FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding DataFolderUseExistingDetail}"
+                                   FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="pill-action"
+                                    AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                    Command="{Binding CancelUseExistingDataFolderCommand}"
+                                    Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.Cancel}" FontSize="13"/>
+                            </Button>
+                            <Button Classes="pill-action"
+                                    AutomationProperties.Name="{loc:T Settings.DataFolderUseThis}"
+                                    Command="{Binding ConfirmUseExistingDataFolderCommand}"
+                                    Padding="14,8" CornerRadius="999" Cursor="Hand">
+                                <TextBlock Text="{loc:T Settings.DataFolderUseThis}" FontSize="13" FontWeight="SemiBold"/>
+                            </Button>
                         </StackPanel>
+                    </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
 
-                    <TextBlock Text="{Binding DataFolderStatus}"
-                               IsVisible="{Binding IsDataFolderInfoVisible}"
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderInfoVisible}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding DataFolderStatus}"
                                FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
-                    <TextBlock Text="{Binding DataFolderStatus}"
-                               IsVisible="{Binding IsDataFolderErrorVisible}"
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderErrorVisible}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,10,0,0" Text="{Binding DataFolderStatus}"
                                FontSize="12" Foreground="#E74856" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
 
                     <!-- A change waits for a restart -->
-                    <StackPanel Orientation="Horizontal" Spacing="8"
-                                IsVisible="{Binding IsDataFolderRestartNeeded}">
+                    <controls:CollapsibleContent IsOpen="{Binding IsDataFolderRestartNeeded}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="8">
                         <Button Classes="pill-action"
                                 AutomationProperties.Name="{loc:T Settings.Cancel}"
                                 Command="{Binding CancelDataFolderChangeCommand}"
@@ -6823,6 +6836,8 @@
                             <TextBlock Text="{loc:T Settings.DataFolderRestartNow}" FontSize="13" FontWeight="SemiBold"/>
                         </Button>
                     </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
@@ -6830,6 +6845,7 @@
 
                     <!-- Reset Settings -->
                     <StackPanel Spacing="12">
+                        <StackPanel>
                         <Grid ColumnDefinitions="*,Auto">
                             <StackPanel Grid.Column="0">
                                 <StackPanel Spacing="2">
@@ -6851,8 +6867,8 @@
                                            VerticalAlignment="Center"/>
                             </Button>
                         </Grid>
-                        <controls:CollapsibleContent IsOpen="{Binding IsResetConfirmVisible}" Lift="6">
-                        <StackPanel Spacing="8">
+                        <controls:CollapsibleContent IsOpen="{Binding IsResetConfirmVisible}" Lift="10" Motion="Glide">
+                        <StackPanel Margin="0,12,0,0" Spacing="8">
                             <TextBlock Text="{loc:T Settings.AreYouSureAction}"
                                        FontSize="13" Foreground="#E74856"/>
                             <TextBlock Text="{Binding ResetConfirmDetail}"
@@ -6875,6 +6891,7 @@
                             </StackPanel>
                         </StackPanel>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
@@ -6967,6 +6984,7 @@
             <Border Classes="setting-row">
                 <StackPanel Spacing="10">
                     <!-- Toggle -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.DeveloperMode}" FontSize="15" FontWeight="SemiBold"/>
@@ -6979,8 +6997,8 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
-                    <controls:CollapsibleContent IsOpen="{Binding DeveloperMode}" Lift="6">
-                    <StackPanel Spacing="10">
+                    <controls:CollapsibleContent IsOpen="{Binding DeveloperMode}" Lift="10" Motion="Glide">
+                    <StackPanel Margin="0,10,0,0" Spacing="10">
 
                         <!-- ── Version manager ── -->
                         <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,0">
@@ -7101,12 +7119,15 @@
                         </Button>
 
                         <!-- Download status / progress -->
-                        <StackPanel x:Name="DevDownloadPanel" Spacing="10">
+                        <StackPanel>
+                        <!-- Spacing-free so each line's gap folds with it (the bar's 10px rides on its margin). -->
+                        <StackPanel x:Name="DevDownloadPanel">
+                            <controls:CollapsibleContent IsOpen="{Binding DevStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                             <TextBlock Text="{Binding DevStatusText}"
-                                       FontSize="12" Opacity="0.7"
-                                       IsVisible="{Binding DevStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
-                            <StackPanel Orientation="Horizontal" Spacing="12"
-                                        IsVisible="{Binding IsDevDownloading}">
+                                       FontSize="12" Opacity="0.7"/>
+                            </controls:CollapsibleContent>
+                            <controls:CollapsibleContent IsOpen="{Binding IsDevDownloading}" Lift="10" Motion="Glide">
+                            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,10,0,0">
                                 <ProgressBar Minimum="0" Maximum="100"
                                              Value="{Binding DevDownloadProgress}"
                                              Height="4" CornerRadius="2"
@@ -7118,15 +7139,18 @@
                                     <TextBlock Text="{loc:T Settings.Cancel}" FontSize="12"/>
                                 </Button>
                             </StackPanel>
+                            </controls:CollapsibleContent>
                         </StackPanel>
 
                         <!-- ── Debug logs ── -->
+                        <controls:CollapsibleContent IsOpen="{Binding PreservedCrashBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
                         <TextBlock Text="{Binding PreservedCrashBanner}"
                                    FontSize="12" FontWeight="SemiBold"
                                    Foreground="#E5A34D"
                                    TextWrapping="Wrap"
-                                   Margin="0,10,0,0"
-                                   IsVisible="{Binding PreservedCrashBanner, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                   Margin="0,20,0,0"/>
+                        </controls:CollapsibleContent>
+                        </StackPanel>
                         <TextBlock Text="{loc:T Settings.SessionLogTroubleshootingShare}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"
                                    Margin="0,10,0,0"/>
@@ -7161,6 +7185,7 @@
 
                     </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             </StackPanel>
