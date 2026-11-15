@@ -157,4 +157,33 @@ public class MarqueeLoopTests : IDisposable
         }
         finally { win.Close(); }
     }
+
+    /// <summary>A scrolling title waits out its 7 s rest on a DispatcherTimer, which the dispatcher
+    /// roots along with its callback. Taken off screen (a closed mini player window), the control
+    /// and everything above it stayed alive until that rest ran out: the timer is stopped now.</summary>
+    [AvaloniaFact]
+    public void OffScreenMarquee_IsNotHeldByItsRestTimer()
+    {
+        var weak = MountAndDetach();
+        for (var i = 0; i < 3; i++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+        Assert.False(weak.IsAlive);
+    }
+
+    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+    private static WeakReference MountAndDetach()
+    {
+        var (win, m) = Mount("I Forgot That You Exist (Taylor's Version)", 160);
+        Assert.NotNull(Field<object?>(m, "_lapTimer")); // resting before its first lap
+        ((Border)win.Content!).Child = null;
+        win.Close();
+        Dispatcher.UIThread.RunJobs();
+        return new WeakReference(m);
+    }
 }
