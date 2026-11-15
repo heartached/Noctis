@@ -371,12 +371,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     //                           triggered by MediaPlayer.VolumeChanged → ViewModel → setter.
     //   _pendingVolumeTarget:   the most-recent target requested while throttled
     //                           (-1 = none pending).
-    //   _lastVolumeWriteTicks:  Stopwatch ticks of the last successful write.
     //   _volumeTrailingCts:     cancellation for the scheduled trailing write.
     //   _lastWrittenVolume:     deadband baseline (last value handed to the player).
     private int _applyingVolume;
     private volatile int _pendingVolumeTarget = -1;
-    private long _lastVolumeWriteTicks;
     private int _lastWrittenVolume = -1;
     private CancellationTokenSource? _volumeTrailingCts;
     private readonly object _volumeWriteLock = new();
@@ -1097,7 +1095,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _pendingVolumeTarget = -1;
                 SetPlayerVolumeGuarded(_player, target);
                 _lastWrittenVolume = target;
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
             return;
         }
@@ -1292,7 +1289,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     _pendingVolumeTarget = -1;
                     SetPlayerVolumeGuarded(_player, pending);
                     _lastWrittenVolume = pending;
-                    _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
                 }
             });
         }
@@ -3943,7 +3939,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _volumeTrailingCts = null;
                 _pendingVolumeTarget = -1;
                 _lastWrittenVolume = finalVolume;
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             _transitionInFlight = false;
@@ -4129,7 +4124,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             lock (_volumeWriteLock)
             {
                 _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             // Re-assert in case the session resolved late, then tear down the outgoing.
@@ -4279,7 +4273,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             lock (_volumeWriteLock)
             {
                 _lastWrittenVolume = ApplyReplayGainScalar(ApplyVolumeCurve(Math.Clamp(_userVolume + _volumeAdjust, 0, 100)));
-                _lastVolumeWriteTicks = Stopwatch.GetTimestamp();
             }
 
             ScheduleSessionVolumeReassert(sessionId);

@@ -457,9 +457,6 @@ public partial class LibraryArtistsViewModel : ViewModelBase, ISearchable, IDisp
         });
     }
 
-    private static List<ArtistRow> BuildRows(List<Artist> allArtists, string query)
-        => BuildRows(allArtists, query, "name", ascending: true);
-
     /// <summary>
     /// Pure ordering logic (static for unit tests). Under a search the match rank stays
     /// first and the chosen sort only breaks ties inside a rank, so relevance is intact.

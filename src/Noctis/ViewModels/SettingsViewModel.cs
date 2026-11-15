@@ -8152,8 +8152,6 @@ public partial class SettingsViewModel : ViewModelBase
         _dirSizeCache = new(StringComparer.OrdinalIgnoreCase);
     private static readonly TimeSpan _dirSizeCacheTtl = TimeSpan.FromSeconds(5);
 
-    private static long GetDirectorySize(string path) => GetDirectorySize(path, forceRefresh: false);
-
     private static long GetDirectorySize(string path, bool forceRefresh)
     {
         try

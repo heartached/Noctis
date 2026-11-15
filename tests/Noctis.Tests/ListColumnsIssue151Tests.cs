@@ -478,9 +478,6 @@ public class ListColumnsIssue151Tests : IDisposable
 
     // ── ReplayGain column ─────────────────────────────────────────────────
 
-    private static List<string?> VisibleTexts(Control row) =>
-        row.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
-
     private static void WaitForOrder(LibrarySongsViewModel vm, Window win, Func<IReadOnlyList<Track>, bool> done)
     {
         var deadline = DateTime.UtcNow.AddSeconds(30);

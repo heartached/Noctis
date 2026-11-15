@@ -409,9 +409,6 @@ public partial class SettingsViewModel
     [ObservableProperty] private bool _lyricsStudioUseGpu;
     /// <summary>Skip songs that already carry the format being written.</summary>
     [ObservableProperty] private bool _lyricsStudioSkipAlreadyTimed = true;
-    [ObservableProperty] private string _lyricsStudioStats = string.Empty;
-    /// <summary>Per-format song counts for the Lyrics Studio card, empty until the count finishes.</summary>
-    [ObservableProperty] private IReadOnlyList<LyricsStudioCount> _lyricsStudioCounts = Array.Empty<LyricsStudioCount>();
 
     partial void OnLyricsStudioModelChanged(WhisperModelInfo value)
     {
@@ -490,42 +487,6 @@ public partial class SettingsViewModel
         LyricsStudioUseGpu = prefs.UseGpu;
     }
 
-    private CancellationTokenSource? _lyricsStatsCts;
-
-    /// <summary>
-    /// Counts the library's lyric formats off the UI thread. The count touches disk for
-    /// every local track (sidecar listing + stored lyrics), which froze the window for
-    /// seconds on large libraries when it ran inline on tab open. Re-opening the tab
-    /// cancels a pass still running.
-    /// </summary>
-    private void RefreshLyricsStudioStats()
-    {
-        _lyricsStatsCts?.Cancel();
-        var local = _library.Tracks.Where(t => t.SourceType == SourceType.Local).ToList();
-        if (local.Count == 0) { LyricsStudioStats = string.Empty; LyricsStudioCounts = Array.Empty<LyricsStudioCount>(); return; }
-
-        var cts = _lyricsStatsCts = new CancellationTokenSource();
-        var ct = cts.Token;
-        LyricsStudioStats = $"Counting lyrics across {local.Count} songs…";
-        _ = Task.Run(() =>
-        {
-            IReadOnlyList<LyricsStudioCount> counts;
-            try { counts = BuildLyricsStudioCounts(ExistingLyricsLoader.DetectFormats(local, ct)); }
-            catch (OperationCanceledException) { return; }
-            catch (Exception ex)
-            {
-                DebugLogger.Warn(DebugLogger.Category.Lyrics, "LyricsStudio.StatsFailed", ex.Message);
-                counts = Array.Empty<LyricsStudioCount>();
-            }
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (ct.IsCancellationRequested) return;
-                LyricsStudioCounts = counts;
-                LyricsStudioStats = string.Empty;
-            });
-        }, ct);
-    }
-
     /// <summary>The four format buckets the Lyrics Studio card shows as small stat tiles.</summary>
     internal static IReadOnlyList<LyricsStudioCount> BuildLyricsStudioCounts(IReadOnlyList<LyricsFormat> formats)
     {
@@ -547,22 +508,6 @@ public partial class SettingsViewModel
             new LyricsStudioCount(plain, Localization.Loc.T("LyricsStudioSettings.CountPlain"), ""),
             new LyricsStudioCount(none, Localization.Loc.T("LyricsStudioSettings.CountNone"), ""),
         };
-    }
-
-    internal static string FormatLyricsStudioStats(IReadOnlyList<LyricsFormat> formats)
-    {
-        int elrc = 0, lrc = 0, plain = 0, none = 0;
-        foreach (var f in formats)
-        {
-            switch (f)
-            {
-                case LyricsFormat.Elrc: elrc++; break;
-                case LyricsFormat.Lrc: lrc++; break;
-                case LyricsFormat.Plain: plain++; break;
-                default: none++; break;
-            }
-        }
-        return $"{elrc} with word timings (ELRC) · {lrc} with line timings (LRC) · {plain} plain only · {none} without lyrics";
     }
 
     /// <summary>Opens Lyrics Studio with the songs that lack the chosen format — ELRC when word timings are on, any timed LRC when off (first 40, so a run stays reviewable).</summary>

@@ -7,30 +7,6 @@
              Focusable="True"
              MinHeight="58">
 
-    <UserControl.Styles>
-        <Style Selector="Button.release-chip">
-            <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
-            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
-            <Setter Property="CornerRadius" Value="999"/>
-            <Setter Property="Padding" Value="14,6"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-        <Style Selector="Button.release-chip:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}"/>
-        </Style>
-        <Style Selector="Button.release-chip.active">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
-        <Style Selector="Button.release-chip.active /template/ ContentPresenter">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}"/>
-            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}"/>
-        </Style>
-    </UserControl.Styles>
-
     <Border Padding="12,8"
             BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
             BorderThickness="0">

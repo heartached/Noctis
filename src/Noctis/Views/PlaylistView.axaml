@@ -14,8 +14,6 @@
     <UserControl.Resources>
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
         <conv:HexColorToBrushConverter x:Key="HexColorConverter" />
-        <conv:DateAddedDisplayConverter x:Key="DateAddedDisplay" />
-        <conv:RecentlyAddedConverter x:Key="RecentAdded" />
         <conv:PlaylistAddedConverter x:Key="PlaylistAdded" />
         <conv:BadgeBrushConverter x:Key="BadgeBrush" />
     </UserControl.Resources>
