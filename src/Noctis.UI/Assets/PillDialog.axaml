@@ -67,8 +67,12 @@
                          opacity layer (the GPU backend does not fade a GlassPanel's draw with
                          an ancestor's opacity), so PillDialogHost moves it with the card and
                          fades its Fade. Off, it is hidden and the fill below paints the card
-                         exactly as before. -->
+                         exactly as before.
+                         BeneathRepaintsWhole: all that lies beneath it is PART_BackdropLayer, which
+                         fills the host, so any change there repaints the whole card; a list
+                         scrolling inside the card then never costs a second, full-card frame. -->
                     <controls:GlassPanel x:Name="PART_CardGlass"
+                                         BeneathRepaintsWhole="True"
                                          UseAppGlass="False"
                                          IsGlassActive="False"
                                          IsVisible="False"
