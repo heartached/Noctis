@@ -55,6 +55,18 @@ public partial class PopMenu : UserControl
     internal static readonly Avalonia.Animation.Easings.Easing PopCloseEase = new CubicBezierEase(0.2, 0, 0, 1);
     internal static readonly Avalonia.Animation.Easings.Easing PopCloseFadeEase = new CubicBezierEase(0.4, 0, 1, 1);
 
+    // The glass is lite while it moves (GlassPanel.Lite: one blur, no spill, no lens; on an S23 the
+    // full glass cost frames over 25 ms through most of the pop, 11-14): lite from the first frame
+    // of the open, cross-fading into the full glass once the spring has run (LiteOutMs), and back to
+    // lite as the close starts (LiteInMs, quick: the card is still at full strength then).
+    internal const double LiteOutMs = 140;
+    internal const double LiteInMs = 90;
+
+    // Bumped by every pose change of a glass: a deferred cross-fade of an older run sees it changed.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<GlassPanel, System.Runtime.CompilerServices.StrongBox<int>> LiteRuns = new();
+
+    private static int NextLiteRun(GlassPanel glass) => ++LiteRuns.GetOrCreateValue(glass).Value;
+
     /// <summary>The card's width for an item's menu, and for the Library's three rows.</summary>
     internal const double ItemWidth = 250, LibraryWidth = 250;
     /// <summary>The card keeps this far from the screen's sides and the bottom chrome, and
@@ -262,7 +274,9 @@ public partial class PopMenu : UserControl
     internal static void PopFrom(Control card, GlassPanel glass, Control body, RelativePoint origin, PopPose pose, Control? scrim = null)
     {
         PopDone(card, glass, body, scrim);
+        NextLiteRun(glass);
         glass.Fade = 0;
+        glass.Lite = 1;
         body.Opacity = 0;
         if (scrim != null) scrim.Opacity = 0;
         card.RenderTransform = pose.Transform();
@@ -288,6 +302,15 @@ public partial class PopMenu : UserControl
         body.Opacity = 1;
         if (scrim != null) scrim.Opacity = 1;
         card.RenderTransform = PopPose.Rest.Transform();
+
+        // At rest: into the full glass.
+        var run = NextLiteRun(glass);
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (LiteRuns.TryGetValue(glass, out var now) && now.Value != run) return;
+            glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.LiteProperty, Duration = TimeSpan.FromMilliseconds(LiteOutMs) } };
+            glass.Lite = 0;
+        }, TimeSpan.FromMilliseconds(PopOpenMs));
     }
 
     /// <summary>The pop reversed, quicker (<see cref="PopCloseMs"/>): back to
@@ -296,7 +319,12 @@ public partial class PopMenu : UserControl
     internal static void PopOut(Control card, GlassPanel glass, Control body, PopPose pose, Control? scrim = null)
     {
         var duration = TimeSpan.FromMilliseconds(PopCloseMs);
-        glass.Transitions = new Transitions { new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseFadeEase } };
+        NextLiteRun(glass);
+        glass.Transitions = new Transitions
+        {
+            new DoubleTransition { Property = GlassPanel.FadeProperty, Duration = duration, Easing = PopCloseFadeEase },
+            new DoubleTransition { Property = GlassPanel.LiteProperty, Duration = TimeSpan.FromMilliseconds(LiteInMs) },
+        };
         body.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
         if (scrim != null)
             scrim.Transitions = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = duration, Easing = PopCloseFadeEase } };
@@ -305,6 +333,7 @@ public partial class PopMenu : UserControl
             new TransformOperationsTransition { Property = RenderTransformProperty, Duration = duration, Easing = PopCloseEase },
         };
         glass.Fade = 0;
+        glass.Lite = 1;
         body.Opacity = 0;
         if (scrim != null) scrim.Opacity = 0;
         card.RenderTransform = pose.Transform();
