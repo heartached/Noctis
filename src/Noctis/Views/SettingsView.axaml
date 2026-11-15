@@ -5082,14 +5082,16 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.SongTransitions}" FontSize="15" FontWeight="SemiBold"/>
+                            <StackPanel>
                             <TextBlock Text="{loc:T Settings.SongsBlendSmoothlyInto}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioEnabled}" Lift="6">
-                                <TextBlock Text="{loc:T Settings.UnavailableWhileExclusiveMode}"
-                                           FontSize="12" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentColorBrush}"
-                                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+                            <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioEnabled}" Lift="10" Motion="Glide">
+                            <TextBlock Text="{loc:T Settings.UnavailableWhileExclusiveMode}"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       TextWrapping="Wrap" Margin="0,6,0,0"/>
                             </controls:CollapsibleContent>
+                            </StackPanel>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.SongTransitions}"
@@ -5195,6 +5197,7 @@
             <!-- GitHub #73: the level fades out before a pause lands and back in after a resume. -->
             <Border Classes="setting-row">
                 <StackPanel Spacing="6">
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.PlayPauseFade}" FontSize="15" FontWeight="SemiBold"/>
@@ -5206,24 +5209,25 @@
                                               IsChecked="{Binding PlayPauseFadeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <controls:CollapsibleContent IsOpen="{Binding PlayPauseFadeEnabled}" Lift="10">
-                        <StackPanel Classes="sub-setting" Spacing="6" Margin="2,10,0,0">
-                            <TextBlock Text="{loc:T Settings.FadeDuration}" FontSize="13" FontWeight="SemiBold"/>
-                            <Grid ColumnDefinitions="*,Auto">
-                                <controls:SmoothSlider Grid.Column="0"
-                                        AutomationProperties.Name="{loc:T Settings.FadeDuration}"
-                                        Classes="accent-slider" Step="50"
-                                        Minimum="100" Maximum="2000"
-                                        SteppedValue="{Binding PlayPauseFadeMs, Mode=TwoWay}"
-                                        VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding PlayPauseFadeMs, StringFormat='{}{0:0} ms'}"
-                                           FontSize="12" Opacity="0.7"
-                                           VerticalAlignment="Center"
-                                           MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
-                            </Grid>
-                        </StackPanel>
+                    <controls:CollapsibleContent IsOpen="{Binding PlayPauseFadeEnabled}" Lift="10" Motion="Glide">
+                    <StackPanel Classes="sub-setting" Spacing="6" Margin="2,16,0,0">
+                        <TextBlock Text="{loc:T Settings.FadeDuration}" FontSize="13" FontWeight="SemiBold"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:SmoothSlider Grid.Column="0"
+                                    AutomationProperties.Name="{loc:T Settings.FadeDuration}"
+                                    Classes="accent-slider" Step="50"
+                                    Minimum="100" Maximum="2000"
+                                    SteppedValue="{Binding PlayPauseFadeMs, Mode=TwoWay}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding PlayPauseFadeMs, StringFormat='{}{0:0} ms'}"
+                                       FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <!-- GitHub #101: how much of a song has to be heard before it counts as played. -->
@@ -5312,6 +5316,7 @@
             <StackPanel>
             <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <StackPanel Spacing="8">
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.OutputDevice}" FontSize="15" FontWeight="SemiBold"/>
@@ -5329,22 +5334,25 @@
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </Grid>
-                    <controls:CollapsibleContent IsOpen="{Binding OutputDeviceMissing}" Lift="6">
-                        <TextBlock Text="{loc:T Settings.OutputDeviceMissingHint}"
-                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+                    <controls:CollapsibleContent IsOpen="{Binding OutputDeviceMissing}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,8,0,0" Text="{loc:T Settings.OutputDeviceMissingHint}"
+                               FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row" IsVisible="{Binding IsExclusiveAudioSupported}">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.ExclusiveMode}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.BitPerfectOutputBypasses}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6">
-                            <TextBlock Text="{Binding ExclusiveAudioStatus}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding ExclusiveAudioStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{Binding ExclusiveAudioStatus}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.ExclusiveMode}"
@@ -5358,12 +5366,14 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.MultichannelOutput}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.MultichannelOutputDesc}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <controls:CollapsibleContent IsOpen="{Binding MultichannelOutputNeedsRestart}" Lift="6">
-                            <TextBlock Text="{loc:T Settings.MultichannelOutputRestart}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding MultichannelOutputNeedsRestart}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{loc:T Settings.MultichannelOutputRestart}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.MultichannelOutput}"
@@ -5410,12 +5420,14 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2">
                         <TextBlock Text="{loc:T Settings.HeadphoneSurround}" FontSize="15" FontWeight="SemiBold"/>
+                        <StackPanel>
                         <TextBlock Text="{loc:T Settings.HeadphoneSurroundDesc}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                        <controls:CollapsibleContent IsOpen="{Binding HeadphoneSurroundNeedsRestart}" Lift="6">
-                            <TextBlock Text="{loc:T Settings.HeadphoneSurroundRestart}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        <controls:CollapsibleContent IsOpen="{Binding HeadphoneSurroundNeedsRestart}" Lift="10" Motion="Glide">
+                        <TextBlock Text="{loc:T Settings.HeadphoneSurroundRestart}"
+                                   FontSize="12" Opacity="0.8" TextWrapping="Wrap" Margin="0,6,0,0"/>
                         </controls:CollapsibleContent>
+                        </StackPanel>
                     </StackPanel>
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.HeadphoneSurround}"
@@ -5438,6 +5450,7 @@
                                               IsChecked="{Binding MonoAudio}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <StackPanel>
                     <StackPanel Spacing="6" IsEnabled="{Binding IsChannelMixEnabled}">
                         <TextBlock Text="{loc:T Settings.Balance}" FontSize="15" FontWeight="SemiBold"/>
                         <TextBlock Text="{loc:T Settings.BalanceDesc}"
@@ -5456,12 +5469,13 @@
                                        MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
                         </Grid>
                     </StackPanel>
-                    <controls:CollapsibleContent IsOpen="{Binding ChannelMixNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="6">
-                        <TextBlock Text="{Binding ChannelMixNote}"
-                                   FontSize="12" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentColorBrush}"
-                                   TextWrapping="Wrap"/>
+                    <controls:CollapsibleContent IsOpen="{Binding ChannelMixNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,14,0,0" Text="{Binding ChannelMixNote}"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="{DynamicResource AccentColorBrush}"
+                               TextWrapping="Wrap"/>
                     </controls:CollapsibleContent>
+                    </StackPanel>
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
