@@ -1157,6 +1157,22 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         catch { }
     }
 
+    /// <summary>
+    /// Settings › Reset: the background back to a fresh install's (the artwork, Auto colours).
+    /// The reset wrote the defaults to settings.json, but this view-model read them once at
+    /// start, so a chosen colour stayed on the lyrics page until the next launch.
+    /// </summary>
+    public void ResetBackgroundToDefault()
+    {
+        IsColorModeArtwork = true;
+        IsColorModeSolid = false;
+        IsColorModeGradient = false;
+        _selectedColorHex = null;
+        ActiveSwatchKey = "";
+        ResetForegroundsToDefault();
+        UpdateAdaptiveBackground(_player.AlbumArt);
+    }
+
     private async Task LoadSavedBackgroundColorAsync()
     {
         try
