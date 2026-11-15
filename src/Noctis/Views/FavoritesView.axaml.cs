@@ -107,6 +107,15 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     /// <summary>Re-apply the ctrl-selected visual as tiles are (re)realized on scroll.</summary>
     private void OnAlbumTileLoaded(object? sender, RoutedEventArgs e)
     {
+        if (sender is not Button tile) return;
+        MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
+        // A grid row re-used for other favorites (TileRow) re-binds its tiles instead of loading them.
+        tile.DataContextChanged -= OnAlbumTileRebound;
+        tile.DataContextChanged += OnAlbumTileRebound;
+    }
+
+    private void OnAlbumTileRebound(object? sender, EventArgs e)
+    {
         if (sender is Button tile)
             MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
     }
