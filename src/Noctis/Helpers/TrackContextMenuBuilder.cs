@@ -31,13 +31,6 @@ public sealed record VersionSwitchRequest(Track From, Track To);
 /// </summary>
 public sealed class TrackContextMenuBuilder
 {
-    private static IBrush ResolveAccentBrush()
-    {
-        if (Application.Current?.Resources.TryGetResource("AccentColorBrush", null, out var brush) == true && brush is IBrush b)
-            return b;
-        return new SolidColorBrush(Color.Parse("#E74856"));
-    }
-
     // ── Named menu item references ──
     public MenuItem Play { get; private set; } = null!;
     public MenuItem Shuffle { get; private set; } = null!;

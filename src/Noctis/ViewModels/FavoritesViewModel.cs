@@ -17,7 +17,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 {
     private readonly PlayerViewModel _player;
     private readonly ILibraryService _library;
-    private readonly IPersistenceService _persistence;
     private readonly SidebarViewModel _sidebar;
     private readonly SettingsViewModel _settings;
 
@@ -68,7 +67,6 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         _player = player;
         _library = library;
-        _persistence = persistence;
         _sidebar = sidebar;
         _settings = settings;
 

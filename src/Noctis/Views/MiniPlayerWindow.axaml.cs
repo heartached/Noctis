@@ -38,11 +38,6 @@ public partial class MiniPlayerWindow : Window
     private static readonly IBrush OpaqueFallbackBrush =
         new Avalonia.Media.Immutable.ImmutableSolidColorBrush(Color.Parse("#FF141418"));
 
-    // Matches the slowest drawer transition (0.18s) so it stays mapped long enough
-    // for the fade-out + slide to finish before IsVisible flips to false.
-    private static readonly TimeSpan DrawerExitDuration = TimeSpan.FromMilliseconds(200);
-    private Avalonia.Threading.DispatcherTimer? _drawerHideTimer;
-
     // Debounce for the viewport-derived lyric font size (see LyricsScroll.SizeChanged).
     private Avalonia.Threading.DispatcherTimer? _lyricsFontTimer;
     private double _pendingLyricsFontSize = 21;
@@ -1345,7 +1340,6 @@ public partial class MiniPlayerWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        _drawerHideTimer?.Stop();
         _lyricsChaseRunning = false;
         _lyricsFontTimer?.Stop();
         _pillSpinner?.Stop();
@@ -1912,8 +1906,6 @@ public partial class MiniPlayerWindow : Window
     /// </summary>
     private void SnapDrawerClosed()
     {
-        _drawerHideTimer?.Stop();
-        _drawerHideTimer = null;
         _drawerAnim = null;
         var hadHeight = _drawerHeight;
         _drawerHeight = 0;
@@ -1952,9 +1944,6 @@ public partial class MiniPlayerWindow : Window
 
         // Row streaming (StreamingFill) waits for the slide to land — see IsDrawerAnimating.
         if (Vm != null) Vm.IsDrawerAnimating = true;
-
-        _drawerHideTimer?.Stop();
-        _drawerHideTimer = null;
 
         if (open)
         {

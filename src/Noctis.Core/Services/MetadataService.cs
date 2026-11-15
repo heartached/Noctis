@@ -1381,32 +1381,6 @@ public class MetadataService : IMetadataService
         return (0, 0);
     }
 
-    private static bool IsLikelyLossyCodec(string codec, string ext)
-    {
-        var codecLower = (codec ?? string.Empty).ToLowerInvariant();
-        if (codecLower.Contains("mp3") || codecLower.Contains("mpeg") ||
-            codecLower.Contains("aac") || codecLower.Contains("vorbis") ||
-            codecLower.Contains("opus") || codecLower.Contains("wma") ||
-            codecLower.Contains("mp4a"))
-            return true;
-
-        // Don't classify .m4a/.mp4 as lossy by extension — these containers
-        // can hold ALAC (lossless). The codec string check above already
-        // catches AAC. Only classify unambiguously lossy extensions.
-        return ext is ".mp3" or ".aac" or ".ogg" or ".opus" or ".wma";
-    }
-
-    private static bool IsLikelyLosslessCodec(string codec, string ext)
-    {
-        var codecLower = (codec ?? string.Empty).ToLowerInvariant();
-        if (codecLower.Contains("flac") || codecLower.Contains("alac") ||
-            codecLower.Contains("lossless") || codecLower.Contains("pcm") ||
-            codecLower.Contains("wavpack") || codecLower.Contains("monkey"))
-            return true;
-
-        return ext is ".flac" or ".alac" or ".wav" or ".aiff" or ".aif" or ".aifc" or ".ape" or ".wv" or ".dsf" or ".dff";
-    }
-
     private static int NormalizeBitrate(int bitrate, long fileSize, TimeSpan duration)
     {
         if (bitrate > 0)

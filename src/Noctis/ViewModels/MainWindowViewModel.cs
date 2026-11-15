@@ -2104,13 +2104,6 @@ public partial class MainWindowViewModel : ViewModelBase
         };
     }
 
-    private bool IsAlbumsRootSnapshot()
-    {
-        return (ReferenceEquals(CurrentView, _albumsVm) || ReferenceEquals(CurrentView, _coverFlowVm))
-               && !_albumsVm.IsPageFiltered
-               && string.IsNullOrWhiteSpace(TopBar.SearchText);
-    }
-
     private Action CaptureRestoreState(ViewModelBase view)
     {
         if (ReferenceEquals(view, _coverFlowVm))

@@ -1615,22 +1615,6 @@ public partial class MetadataViewModel : ViewModelBase
             : normalized;
     }
 
-    private static byte[]? SelectPreferredArtworkData(byte[]? cachedData, byte[]? extractedData)
-    {
-        var hasCached = cachedData != null && cachedData.Length > 0;
-        var hasExtracted = extractedData != null && extractedData.Length > 0;
-
-        if (!hasCached && !hasExtracted)
-            return null;
-        if (!hasCached)
-            return extractedData;
-        if (!hasExtracted)
-            return cachedData;
-
-        // Use payload size as a quality proxy when dimensions aren't available.
-        return extractedData!.Length > cachedData!.Length ? extractedData : cachedData;
-    }
-
     [RelayCommand]
     private async Task AddArtwork(Avalonia.Visual visual)
     {

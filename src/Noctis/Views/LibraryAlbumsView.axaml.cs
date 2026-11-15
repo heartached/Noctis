@@ -218,14 +218,6 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
     }
 
-    /// <summary>Returns the list of ctrl-selected albums, or a single-item list with the given album if none are selected.</summary>
-    private List<Album> GetSelectedAlbumsOr(Album? fallback)
-    {
-        if (_selectedAlbums.Count > 0) return _selectedAlbums.ToList();
-        if (fallback != null) return new List<Album> { fallback };
-        return new List<Album>();
-    }
-
     // ── Artist page Songs section: shared track context menu (same pattern as HomeView) ──
 
     private TrackContextMenuBuilder? _trackMenuBuilder;
