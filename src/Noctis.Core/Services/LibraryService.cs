@@ -1305,12 +1305,16 @@ public class LibraryService : ILibraryService
 
         // Clear exclusions for files being explicitly re-imported
         var settings = await _persistence.LoadSettingsAsync();
-        var excludedSet = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
-        if (excludedSet.Overlaps(files))
+        if (new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer).Overlaps(files))
         {
-            excludedSet.ExceptWith(files);
-            settings.ExcludedFilePaths = excludedSet.ToList();
-            await _persistence.SaveSettingsAsync(settings);
+            // Gated load-change-save: a save landing between the load above and this one was
+            // undone by the stale copy.
+            await _persistence.UpdateSettingsAsync(s =>
+            {
+                var excludedSet = new HashSet<string>(s.ExcludedFilePaths, PathComparison.Comparer);
+                excludedSet.ExceptWith(files);
+                s.ExcludedFilePaths = excludedSet.ToList();
+            });
         }
 
         var trackById = _tracks.ToDictionary(t => t.Id);
@@ -1974,37 +1978,6 @@ public class LibraryService : ILibraryService
     /// </summary>
     private async Task ExcludeFilePathsAndCleanFoldersAsync(IEnumerable<string> removedPaths)
     {
-        var settings = await _persistence.LoadSettingsAsync();
-
-        // Add to exclusion list
-        var excluded = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
-        foreach (var path in removedPaths)
-        {
-            if (!string.IsNullOrWhiteSpace(path))
-                excluded.Add(path);
-        }
-
-        // Prune stale exclusions. Nothing ever cleaned this list, so removing a large
-        // folder left tens of thousands of absolute paths in settings.json permanently —
-        // re-read and re-hashed on every scan and every subsequent removal. An entry is
-        // only meaningful while its file exists and still sits under a configured root;
-        // otherwise a plain rescan would never have re-imported it anyway.
-        var configuredRoots = settings.MusicFolders
-            .Select(TryNormalizePath)
-            .Where(p => !string.IsNullOrWhiteSpace(p))
-            .Select(p => p!)
-            .ToArray();
-
-        static bool UnderAnyRoot(string path, string[] roots)
-        {
-            var normalized = TryNormalizePath(path);
-            return normalized != null && roots.Any(r => IsUnderRoot(normalized, r));
-        }
-
-        settings.ExcludedFilePaths = excluded
-            .Where(p => UnderAnyRoot(p, configuredRoots) && File.Exists(p))
-            .ToList();
-
         // Auto-remove folder locations that have zero remaining library tracks.
         // Normalize each remaining track path exactly once instead of calling
         // Path.GetFullPath per track per folder — that was 300k syscall-backed
@@ -2016,28 +1989,64 @@ public class LibraryService : ILibraryService
             .Select(p => p!)
             .ToArray();
 
-        var removedFolders = settings.MusicFolders.RemoveAll(folder =>
+        // Gated load-change-save: the exclusion pruning checks every excluded file on disk, and
+        // a save landing between a plain load and save (a Settings toggle, Reset's defaults) was
+        // undone by the stale copy.
+        var removedFolders = 0;
+        List<string> folders = new();
+        await _persistence.UpdateSettingsAsync(settings =>
         {
-            if (string.IsNullOrWhiteSpace(folder)) return true;
-            var normalized = TryNormalizePath(folder);
-            if (string.IsNullOrWhiteSpace(normalized)) return true;
+            // Add to exclusion list
+            var excluded = new HashSet<string>(settings.ExcludedFilePaths, PathComparison.Comparer);
+            foreach (var path in removedPaths)
+            {
+                if (!string.IsNullOrWhiteSpace(path))
+                    excluded.Add(path);
+            }
 
-            // Only drop a root the user configured if it is genuinely gone from disk.
-            // Removing the last tracks under a still-present folder used to silently
-            // delete it from Settings and stop the watcher for it, with no message.
-            if (Directory.Exists(normalized)) return false;
+            // Prune stale exclusions. Nothing ever cleaned this list, so removing a large
+            // folder left tens of thousands of absolute paths in settings.json permanently —
+            // re-read and re-hashed on every scan and every subsequent removal. An entry is
+            // only meaningful while its file exists and still sits under a configured root;
+            // otherwise a plain rescan would never have re-imported it anyway.
+            var configuredRoots = settings.MusicFolders
+                .Select(TryNormalizePath)
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p!)
+                .ToArray();
 
-            return !normalizedRemaining.Any(fp => IsUnderRoot(fp, normalized!));
+            static bool UnderAnyRoot(string path, string[] roots)
+            {
+                var normalized = TryNormalizePath(path);
+                return normalized != null && roots.Any(r => IsUnderRoot(normalized, r));
+            }
+
+            settings.ExcludedFilePaths = excluded
+                .Where(p => UnderAnyRoot(p, configuredRoots) && File.Exists(p))
+                .ToList();
+
+            removedFolders = settings.MusicFolders.RemoveAll(folder =>
+            {
+                if (string.IsNullOrWhiteSpace(folder)) return true;
+                var normalized = TryNormalizePath(folder);
+                if (string.IsNullOrWhiteSpace(normalized)) return true;
+
+                // Only drop a root the user configured if it is genuinely gone from disk.
+                // Removing the last tracks under a still-present folder used to silently
+                // delete it from Settings and stop the watcher for it, with no message.
+                if (Directory.Exists(normalized)) return false;
+
+                return !normalizedRemaining.Any(fp => IsUnderRoot(fp, normalized!));
+            });
+            folders = settings.MusicFolders.ToList();
         });
-
-        await _persistence.SaveSettingsAsync(settings);
 
         // This is the only place the library rewrites the user's folder list. Announcing
         // it directly means Settings no longer has to re-read and re-parse settings.json
         // (plus a DPAPI unprotect) on every LibraryUpdated — an event that also fires on
         // every scan, drop-import, removal and metadata write.
         if (removedFolders > 0)
-            MusicFoldersChanged?.Invoke(this, settings.MusicFolders.ToList());
+            MusicFoldersChanged?.Invoke(this, folders);
     }
 
     /// <summary>
