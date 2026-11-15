@@ -28,6 +28,7 @@ namespace Noctis.Tests;
 /// frame), a flick (600 px a frame) and jumps through its main scroller: UI-thread ms per frame
 /// (jobs + render tick, which runs layout headless), UI-thread bytes allocated per frame, and
 /// controls loaded per frame (new, not recycled, containers and their templates).
+/// NOCTIS_PERF_ROWS=1 also prints the visible rows and the first row's layout (to compare two builds).
 /// Explicit only: NOCTIS_PERF_HARNESS=1; NOCTIS_PERF_PAGES=songs,albums,... picks pages;
 /// NOCTIS_PERF_OUT/NOCTIS_PERF_TAG append "tag\tline" for comparing runs.
 ///   Noctis.Tests.exe -method "Noctis.Tests.PageScrollBench.Pages_OpenAndScroll"
@@ -299,6 +300,18 @@ public class PageScrollBench
         for (var y = 0.0; y <= max && flick.Count < 40; y += 600) flick.Add(y);
         var jump = Enumerable.Range(0, 30).Select(i => max * ((i * 7919) % 30) / 30.0).ToList();
         Log($"{name}: scroller extent {scroller.Extent.Height:0} viewport {scroller.Viewport.Height:0}");
+        if (Environment.GetEnvironmentVariable("NOCTIS_PERF_ROWS") == "1")
+            Log($"{name}: visible rows " + string.Join(", ", scroller.GetVisualDescendants().OfType<ListBoxItem>()
+                .Where(i => i.IsVisible).Select(i => $"{i.Bounds.Top:0}+{i.Bounds.Height:0}")));
+        if (Environment.GetEnvironmentVariable("NOCTIS_PERF_ROWS") == "1"
+            && scroller.GetVisualDescendants().OfType<ListBoxItem>().FirstOrDefault(i => i.IsVisible) is { } first)
+        {
+            Log($"{name}: first row chain " + string.Join(" > ", first.GetVisualDescendants().Take(12)
+                .Select(v => $"{v.GetType().Name}[{v.Bounds.Width:0.#}x{v.Bounds.Height:0.#}]")));
+            if (first.GetVisualDescendants().OfType<StackPanel>().FirstOrDefault(p => p.Classes.Contains("tile-text")) is { } text)
+                Log($"{name}: first tile text [{string.Join(" ", text.Classes)}] " + string.Join(" | ", text.GetVisualDescendants()
+                    .Where(v => v.IsVisible).Select(v => $"{v.GetType().Name}{(v is StyledElement se && se.Classes.Count > 0 ? "." + string.Join(".", se.Classes) : "")}@{v.Bounds.Y:0.#}[{v.Bounds.Width:0.#}x{v.Bounds.Height:0.#}]")));
+        }
         foreach (var (kind, offsets) in new[] { ("glide", glide), ("glide2", glide), ("flick", flick), ("jump", jump) })
         {
             if (RunFrames(kind, scroller, offsets) is not { } f) continue;

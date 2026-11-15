@@ -135,6 +135,15 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         tile.PointerExited -= OnTileHoverExited;
         tile.PointerEntered += OnTileHoverEntered;
         tile.PointerExited += OnTileHoverExited;
+        // A grid row re-used for other albums (TileRow) re-binds its tiles instead of loading them.
+        tile.DataContextChanged -= OnAlbumTileRebound;
+        tile.DataContextChanged += OnAlbumTileRebound;
+    }
+
+    private void OnAlbumTileRebound(object? sender, EventArgs e)
+    {
+        if (sender is Button tile)
+            MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
     }
 
     // ── Album Hover Zoom (GitHub #218) ──
