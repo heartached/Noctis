@@ -898,7 +898,6 @@
                         IsVisible="{Binding IsWindowTinted}"
                         IsHitTestVisible="False" />
                 <ContentControl x:Name="PageHost"
-                                Content="{Binding CurrentView}"
                                 Classes="page-host"
                                 RenderTransformOrigin="50%,50%">
                     <ContentControl.Transitions>
@@ -910,6 +909,8 @@
                             </DoubleTransition>
                         </Transitions>
                     </ContentControl.Transitions>
+                    <!-- Cached sections stay styled while another page shows (PageDeck, 11-15). -->
+                    <controls:PageDeck Page="{Binding CurrentView}" />
                 </ContentControl>
 
                 <!-- Lyrics side panel overlays content so opening it does not resize album grids.

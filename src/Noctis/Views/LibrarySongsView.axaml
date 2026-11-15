@@ -461,59 +461,97 @@
                                        VerticalAlignment="Center" />
                         </Border>
 
-                        <!-- Optional columns: BPM / Bitrate / Sample rate -->
-                        <Border controls:ColumnsPanel.Column="Bpm">
-                            <TextBlock Text="{Binding Bpm}"
-                                       FontSize="12" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       IsVisible="{Binding !!Bpm}" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="Bitrate">
-                            <TextBlock Text="{Binding BitrateFormatted}"
-                                       FontSize="12" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="SampleRate">
-                            <TextBlock Text="{Binding SampleRateFormatted}"
-                                       FontSize="12" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <!-- Optional columns (hidden by default): a LazyCell builds its content only
+                             once its column is shown (11-15: 18 of a row's 51 controls). -->
+                        <!-- BPM / Bitrate / Sample rate -->
+                        <controls:LazyCell controls:ColumnsPanel.Column="Bpm">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding Bpm}"
+                                               FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               IsVisible="{Binding !!Bpm}" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="Bitrate">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding BitrateFormatted}"
+                                               FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="SampleRate">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding SampleRateFormatted}"
+                                               FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
 
                         <!-- GitHub #151: Year / Album Artist / Composer / Format / Date Added. -->
-                        <Border controls:ColumnsPanel.Column="Year">
-                            <TextBlock Text="{Binding Year}"
-                                       FontSize="12" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       IsVisible="{Binding !!Year}" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="AlbumArtist">
-                            <TextBlock Text="{Binding AlbumArtist}"
-                                       FontSize="12" Opacity="0.5"
-                                       TextTrimming="CharacterEllipsis"
-                                       HorizontalAlignment="Left" VerticalAlignment="Center" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="Composer">
-                            <TextBlock Text="{Binding Composer}"
-                                       FontSize="12" Opacity="0.5"
-                                       TextTrimming="CharacterEllipsis"
-                                       HorizontalAlignment="Left" VerticalAlignment="Center" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="Format">
-                            <TextBlock Text="{Binding CodecShortName}"
-                                       FontSize="12" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="DateAdded">
-                            <TextBlock Text="{Binding DateAddedFormatted}"
-                                       FontSize="12" Opacity="0.5"
-                                       TextTrimming="CharacterEllipsis"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <Border controls:ColumnsPanel.Column="ReplayGain">
-                            <TextBlock Text="{Binding ReplayGainFormatted}"
-                                       FontSize="12" Opacity="0.5"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <controls:LazyCell controls:ColumnsPanel.Column="Year">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding Year}"
+                                               FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               IsVisible="{Binding !!Year}" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="AlbumArtist">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding AlbumArtist}"
+                                               FontSize="12" Opacity="0.5"
+                                               TextTrimming="CharacterEllipsis"
+                                               HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="Composer">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding Composer}"
+                                               FontSize="12" Opacity="0.5"
+                                               TextTrimming="CharacterEllipsis"
+                                               HorizontalAlignment="Left" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="Format">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding CodecShortName}"
+                                               FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="DateAdded">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding DateAddedFormatted}"
+                                               FontSize="12" Opacity="0.5"
+                                               TextTrimming="CharacterEllipsis"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
+                        <controls:LazyCell controls:ColumnsPanel.Column="ReplayGain">
+                            <controls:LazyCell.CellTemplate>
+                                <DataTemplate x:DataType="m:Track">
+                                    <TextBlock Text="{Binding ReplayGainFormatted}"
+                                               FontSize="12" Opacity="0.5"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </DataTemplate>
+                            </controls:LazyCell.CellTemplate>
+                        </controls:LazyCell>
 
                         <!-- 3-dots menu button -->
                         <Button controls:ColumnsPanel.Column="More"

@@ -117,6 +117,26 @@ public class PageScrollBench
             if (cover != null) persistence.SaveArtwork(albumId, cover);
         }
         foreach (var t in tracks) if (t.IsFavorite) t.FavoritedAt = now.AddDays(-rnd.Next(400));
+        // Folders page: the first 3000 songs were added on their own from one folder (GitHub #108
+        // shows such a folder as a root without a scan).
+        var bigFolder = Path.Combine(root, "Big Folder");
+        for (var i = 0; i < Math.Min(3000, tracks.Count); i++)
+        {
+            tracks[i].FilePath = Path.Combine(bigFolder, $"{i:00000} {Path.GetFileName(tracks[i].FilePath)}");
+            tracks[i].AddedIndividually = true;
+        }
+        // Inbox page: 2000 more songs waiting in the Inbox (not in the library views).
+        var inboxCount = Math.Min(2000, trackCount / 5);
+        for (var i = 0; i < inboxCount; i++)
+            tracks.Add(new Track
+            {
+                Title = $"New Song {i:0000}", Artist = $"New Artist {i % 40}", AlbumArtist = $"New Artist {i % 40}",
+                Album = $"New Album {i / 10}", AlbumId = Track.ComputeAlbumId($"New Artist {i % 40}", $"New Album {i / 10}"),
+                TrackNumber = i % 10 + 1, Year = 2026, Genre = Genres[i % Genres.Length], Duration = TimeSpan.FromSeconds(200),
+                FilePath = Path.Combine(root, "Downloads", $"{i:0000}.flac"), DateAdded = now.AddDays(-(i % 5)),
+                IsInInbox = true, Bitrate = 1000, SampleRate = 44100, Codec = "FLAC",
+            });
+        persistence.SaveSettingsAsync(new AppSettings { InboxEnabled = true }).GetAwaiter().GetResult();
         persistence.SaveLibraryAsync(tracks).GetAwaiter().GetResult();
 
         var playlists = new List<Playlist>();
@@ -124,7 +144,7 @@ public class PageScrollBench
         {
             var size = p == 0 ? Math.Min(3000, tracks.Count) : 10 + rnd.Next(150);
             var pl = new Playlist { Name = p == 0 ? "Big Mix" : $"Playlist {p}" };
-            foreach (var t in tracks.OrderBy(_ => rnd.Next()).Take(size)) pl.TrackIds.Add(t.Id);
+            foreach (var t in tracks.Where(t => !t.IsInInbox).OrderBy(_ => rnd.Next()).Take(size)) pl.TrackIds.Add(t.Id);
             playlists.Add(pl);
         }
         persistence.SavePlaylistsAsync(playlists).GetAwaiter().GetResult();
@@ -204,10 +224,13 @@ public class PageScrollBench
 
     /// <summary>Navigate, then pump until the page's tree stops changing for 300 ms; returns the
     /// time to its last change (tree walks excluded) and the visual count.</summary>
+    private static long _settleBytes;
+
     private static (double Ms, int Visuals, int Loaded) Settle(Window window, Func<object?> page, Action navigate)
     {
         var walk = TimeSpan.Zero;
         var loaded0 = _loaded;
+        var bytes0 = GC.GetAllocatedBytesForCurrentThread();
         var sw = Stopwatch.StartNew();
         navigate();
         Pump();
@@ -233,6 +256,7 @@ public class PageScrollBench
                 stableSince = sw.Elapsed;
             }
         }
+        _settleBytes = GC.GetAllocatedBytesForCurrentThread() - bytes0;
         return ((last - walk).TotalMilliseconds, count, _loaded - loaded0);
     }
 
@@ -366,6 +390,8 @@ public class PageScrollBench
         Log($"library: {tracks.Count} tracks, {tracks.Select(t => t.AlbumId).Distinct().Count()} albums, " +
             $"{tracks.Select(t => t.AlbumArtist).Distinct().Count()} album artists, covers={covers} ({gen.ElapsedMilliseconds} ms to write)");
 
+        // NOCTIS_PERF_KEEP=0: pages leave the tree on every switch (PageDeck before 11-15).
+        Noctis.Controls.PageDeck.KeepSections = Environment.GetEnvironmentVariable("NOCTIS_PERF_KEEP") != "0";
         LoadAppAsTheApp();
         Control.LoadedEvent.AddClassHandler(typeof(Control), CountLoaded, handledEventsToo: true);
         var provider = BuildAppServices();
@@ -374,7 +400,8 @@ public class PageScrollBench
         var window = new MainWindow(vm) { Width = 1600, Height = 1000 };
         window.Show();
         var library = provider.GetRequiredService<ILibraryService>();
-        PumpUntil(() => library.Tracks.Count == tracks.Count && vm.CurrentView != null);
+        var libraryCount = tracks.Count(t => !t.IsInInbox);
+        PumpUntil(() => library.Tracks.Count == libraryCount && vm.CurrentView != null);
         // Let startup settle (plugins, background index work posting back).
         for (var i = 0; i < 100; i++) { Pump(); Thread.Sleep(10); }
         Log($"loaded: {library.Tracks.Count} tracks, {library.Albums.Count} albums, {library.Artists.Count} artists; start page {vm.CurrentView?.GetType().Name}");
@@ -399,6 +426,12 @@ public class PageScrollBench
             ("favorites", () => Go("favorites")),
             ("statistics", () => Go("statistics")),
             ("inbox", () => Go("inbox")),
+            ("folders", () =>
+            {
+                Go("folders");
+                var folders = (LibraryFoldersViewModel)vm.CurrentView!;
+                folders.SelectedNode ??= folders.RootNodes.FirstOrDefault(n => n.FullPath.EndsWith("Big Folder", StringComparison.OrdinalIgnoreCase));
+            }),
             ("album", () => vm.OpenAlbumDetail(album)),
             ("artist", () => vm.OpenArtistByName(bigArtist.Name)),
         };
@@ -409,12 +442,36 @@ public class PageScrollBench
                 Go("queue");
                 Settle(window, () => vm.CurrentView, () => { });
                 var first = Settle(window, () => vm.CurrentView, open);
+                var firstKb = _settleBytes / 1024;
                 Go("queue");
                 Settle(window, () => vm.CurrentView, () => { });
                 var second = Settle(window, () => vm.CurrentView, open);
+                var secondKb = _settleBytes / 1024;
+                // A third visit, timed alone: navigate, then one pass of jobs + layout + render.
+                Go("queue");
+                Settle(window, () => vm.CurrentView, () => { });
+                var b3 = GC.GetAllocatedBytesForCurrentThread();
+                var sw3 = Stopwatch.StartNew();
+                open();
+                Pump();
+                var third = sw3.Elapsed.TotalMilliseconds;
+                var thirdKb = (GC.GetAllocatedBytesForCurrentThread() - b3) / 1024;
+                Settle(window, () => vm.CurrentView, () => { });
+                Log($"{name}: switch-to {third:0.0} ms {thirdKb} KB (first visit {firstKb} KB, second {secondKb} KB)");
                 Log($"{name}: open {first.Ms:0} ms ({first.Loaded} loaded), again {second.Ms:0} ms ({second.Loaded} loaded), {second.Visuals} visuals [{vm.CurrentView?.GetType().Name}]" +
                     (name == "artist" ? $" ({bigArtist.Name}, {bigArtist.AlbumCount} albums)" : ""));
                 ScrollPage(name, PageRoot(window, vm.CurrentView));
+            }
+
+            // What the hidden kept pages cost: their controls (logical, none of them in the visual
+            // tree) and the managed heap after every page was visited.
+            if (window.GetVisualDescendants().OfType<Noctis.Controls.PageDeck>().FirstOrDefault() is { } deck)
+            {
+                var hidden = deck.KeptViews.Where(v => !ReferenceEquals(v, deck.ShownView)).ToList();
+                var logical = hidden.Sum(v => Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(v).Count());
+                var visual = hidden.Sum(v => v.GetVisualDescendants().Count(d => d.IsAttachedToVisualTree()));
+                Log($"deck: {deck.KeptViews.Count} kept ({hidden.Count} hidden: {string.Join(", ", hidden.Select(v => v.GetType().Name))}), " +
+                    $"{logical} logical controls in hidden pages, {visual} of them in the visual tree; managed heap {GC.GetTotalMemory(true) / (1024 * 1024)} MB");
             }
 
             // Artists as a list (the top bar's view toggle).
@@ -463,6 +520,7 @@ public class PageScrollBench
         {
             window.Close();
             Pump();
+            Noctis.Controls.PageDeck.KeepSections = true;
         }
     }
 }
