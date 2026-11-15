@@ -439,7 +439,10 @@ public static class GlassLens
     /// the scratch target comes from Skia's texture cache, like the cache's compose pass.</summary>
     private static SKImage? Frost(SKImage source, SKRectI at, SKRectI region, float sigma, GRRecordingContext? context)
     {
-        var info = new SKImageInfo(region.Width, region.Height, source.ColorType, source.AlphaType, source.ColorSpace);
+        // Sized to the grid, so a panel scaling every frame keeps getting the cache's last texture
+        // back (GlassBlur.Grid); the extra edge holds more of the blur and is never sampled.
+        var size = GlassBlur.GridSize(region.Width, region.Height);
+        var info = new SKImageInfo(size.Width, size.Height, source.ColorType, source.AlphaType, source.ColorSpace);
         using var surface = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
         if (surface is null) return null;
         var c = surface.Canvas;
