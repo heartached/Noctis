@@ -350,6 +350,166 @@ public class CollapsibleContentTests
     }
 
     /// <summary>
+    /// Root-cause lock for "it stops the animation on close and just instant closes". A
+    /// toggle that lands while the previous transition is still running makes Avalonia drop
+    /// that transition BEFORE starting the new one, so for one synchronous notification the
+    /// reveal reads as the new base value (0 on a close). The control took that flash as
+    /// "fully shut" and turned IsVisible off at the START of the close, so the body vanished
+    /// while the transition went on folding an invisible panel. Every case below must keep the
+    /// body visible for as long as the reveal is above zero, and the height must move
+    /// continuously, never jump.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(CollapsibleMotion.Glide, 8)]   // open nearly landed (the glide's long tail is still running)
+    [InlineData(CollapsibleMotion.Glide, 3)]   // quick on-off, mid-open
+    [InlineData(CollapsibleMotion.Glide, 40)]  // open fully finished
+    [InlineData(CollapsibleMotion.Fold, 4)]
+    public void Close_FoldsFromWhereverTheOpenGot_WithoutSnappingShut(CollapsibleMotion motion, int openFrames)
+    {
+        var (host, frames) = StartShut(motion);
+
+        host.IsOpen = true;
+        PumpRecord(host, frames, openFrames);
+        var heightAtClose = host.Bounds.Height;
+
+        host.IsOpen = false;
+        AssertVisibleWhileRevealed(host, "right after the close toggle");
+        var closeStart = frames.Count;
+        PumpRecord(host, frames, 36);
+
+        var close = frames.Skip(closeStart).ToList();
+        // It folds: several distinct intermediate heights between where it was and nothing.
+        var intermediate = close.Count(f => f.Visible && f.Height > 1 && f.Height < heightAtClose - 1);
+        Assert.True(intermediate >= 3,
+            $"close passed through {intermediate} intermediate heights (from {heightAtClose:F0}px): {Describe(close)}");
+        AssertContinuous(close, heightAtClose);
+        Assert.Equal(0, host.Reveal, 2);
+        Assert.False(host.IsVisible);
+    }
+
+    /// <summary>Re-opening mid-close must resume from the current height, not flash to full.</summary>
+    [AvaloniaFact]
+    public void Reopen_MidClose_ResumesFromTheCurrentHeight()
+    {
+        var (host, frames) = StartShut(CollapsibleMotion.Glide);
+        host.IsOpen = true;
+        PumpRecord(host, frames, 40);
+        host.IsOpen = false;
+        PumpRecord(host, frames, 5);
+        var revealMidClose = host.Reveal;
+        Assert.InRange(revealMidClose, 0.05, 0.95);
+
+        host.IsOpen = true;
+        // The teardown flash would be the new base value, 1.0, at full opacity.
+        Assert.True(host.Reveal < 0.99, $"reopen jumped the reveal to {host.Reveal:F3}");
+        var reopenStart = frames.Count;
+        PumpRecord(host, frames, 40);
+
+        AssertContinuous(frames.Skip(reopenStart).ToList(), frames[reopenStart - 1].Height);
+        Assert.Equal(1, host.Reveal, 2);
+        Assert.True(host.IsVisible);
+    }
+
+    /// <summary>Several flips in a row, then a close: never invisible while revealed, ends shut.</summary>
+    [AvaloniaFact]
+    public void RapidFlips_NeverHideARevealedBody_AndEndShut()
+    {
+        var (host, frames) = StartShut(CollapsibleMotion.Glide);
+        foreach (var open in new[] { true, false, true, false, true, false })
+        {
+            host.IsOpen = open;
+            AssertVisibleWhileRevealed(host, $"right after IsOpen={open}");
+            PumpRecord(host, frames, 2);
+        }
+        PumpRecord(host, frames, 36);
+        Assert.Equal(0, host.Reveal, 2);
+        Assert.False(host.IsVisible);
+    }
+
+    /// <summary>
+    /// The body can change size while it folds (a Settings block with its own toggles). The
+    /// close still has to fold the new height down and end shut.
+    /// </summary>
+    [AvaloniaFact]
+    public void Close_StillFolds_WhenTheBodyResizesMidway()
+    {
+        var (host, frames) = StartShut(CollapsibleMotion.Glide);
+        host.IsOpen = true;
+        PumpRecord(host, frames, 6);
+        host.IsOpen = false;
+        PumpRecord(host, frames, 3);
+        ((Border)host.Child!).Height = ChildHeight + 80;
+        var resized = frames.Count;
+        PumpRecord(host, frames, 36);
+
+        var rest = frames.Skip(resized).ToList();
+        Assert.True(rest.Count(f => f.Visible && f.Height > 1) >= 2, Describe(rest));
+        Assert.All(rest, f => Assert.True(f.Height <= (ChildHeight + 80) * f.Reveal + 1.5, Describe(rest)));
+        Assert.False(host.IsVisible);
+    }
+
+    private readonly record struct Frame(double Reveal, double Height, bool Visible, bool IsOpen);
+
+    private static (CollapsibleContent host, List<Frame> frames) StartShut(CollapsibleMotion motion)
+    {
+        // Shut before it is shown, like a Settings toggle that starts off.
+        var host = new CollapsibleContent
+        {
+            Motion = motion,
+            Lift = 10,
+            IsOpen = false,
+            Child = new Border { Width = ChildWidth, Height = ChildHeight }
+        };
+        var panel = new StackPanel();
+        panel.Children.Add(new Border { Height = 40 });
+        panel.Children.Add(host);
+        new Window { Width = 400, Height = 600, Content = panel }.Show();
+        Pump(6);
+        Assert.False(host.IsVisible);
+        return (host, new List<Frame>());
+    }
+
+    private static void PumpRecord(CollapsibleContent host, List<Frame> frames, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+            var height = host.IsVisible ? host.Bounds.Height : 0;
+            frames.Add(new Frame(host.Reveal, height, host.IsVisible, host.IsOpen));
+            AssertVisibleWhileRevealed(host, $"frame {frames.Count}");
+            Thread.Sleep(16);
+        }
+    }
+
+    private static void AssertVisibleWhileRevealed(CollapsibleContent host, string when)
+    {
+        if (host.Reveal > 0.001)
+            Assert.True(host.IsVisible,
+                $"{when}: body hidden while still {host.Reveal:P0} revealed — the close snapped shut instead of folding");
+    }
+
+    /// <summary>
+    /// No frame-to-frame step bigger than the steepest the curves produce at ~16ms frames
+    /// (the glide close's ease-in-out peaks near 1.6x linear speed: about 30% of the travel
+    /// per 30ms frame on a loaded test runner). A snap is a 100% step.
+    /// </summary>
+    private static void AssertContinuous(List<Frame> frames, double startHeight)
+    {
+        var previous = startHeight;
+        foreach (var f in frames)
+        {
+            Assert.True(Math.Abs(f.Height - previous) <= ChildHeight * 0.45 + 1,
+                $"height jumped {previous:F0} -> {f.Height:F0}: {Describe(frames)}");
+            previous = f.Height;
+        }
+    }
+
+    private static string Describe(IEnumerable<Frame> frames) =>
+        string.Join(" ", frames.Select(f => $"{f.Reveal:F2}/{f.Height:F0}{(f.Visible ? "" : "x")}"));
+
+    /// <summary>
     /// Transitions run off the wall clock, so ticks have to be spaced in real time or
     /// the animation sits at its start value forever.
     /// </summary>
