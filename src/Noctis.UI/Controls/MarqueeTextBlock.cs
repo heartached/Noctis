@@ -233,6 +233,8 @@ public class MarqueeTextBlock : UserControl
     private long _lastFrameTimestamp;
     private int _lapGeneration;
     private double _overflow;
+    private double _textWidth;
+    private double _viewportWidth;
     private double _offset;
     /// <summary>One lap: text width plus the loop gap, where the copy sits exactly where
     /// the original started.</summary>
@@ -474,6 +476,8 @@ public class MarqueeTextBlock : UserControl
         var textWidth = MeasureTextWidth();
         if (textWidth <= 0) return;
 
+        _textWidth = textWidth;
+        _viewportWidth = viewportWidth;
         _overflow = Math.Max(0, textWidth - viewportWidth);
 
         if (_overflow <= OverflowThreshold || !IsScrollEnabled)
