@@ -8505,13 +8505,23 @@ public partial class SettingsViewModel : ViewModelBase
         // playlists.json, and playlists are hand-authored content that no rescan brings
         // back. Name what actually gets destroyed, with the real playlist count.
         await RefreshPlaylistCountAsync();
-        ResetConfirmDetail = TotalPlaylists switch
-        {
-            0 => "This clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork, and restores every setting to its default.",
-            1 => "This permanently deletes 1 playlist, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default.",
-            _ => $"This permanently deletes all {TotalPlaylists} playlists, and clears your library, queue, listening history and stats, ratings and favorites, playlist covers, cached lyrics and artwork. Every setting returns to its default."
-        };
+        ResetConfirmDetail = BuildResetConfirmDetail(TotalPlaylists);
         IsResetConfirmVisible = true;
+    }
+
+    /// <summary>
+    /// The reset confirm's text: the playlists it deletes, what it clears and what it keeps
+    /// (<see cref="ResetKeptSettings"/>, plus the plugins, the phone pairing and the data folder
+    /// location, which live outside settings.json). Internal for tests.
+    /// </summary>
+    internal static string BuildResetConfirmDetail(int playlists)
+    {
+        var parts = new List<string>(3);
+        if (playlists == 1) parts.Add(Loc.T("Settings.ResetConfirmOnePlaylist"));
+        else if (playlists > 1) parts.Add(Loc.T("Settings.ResetConfirmPlaylists", playlists));
+        parts.Add(Loc.T("Settings.ResetConfirmClears"));
+        parts.Add(Loc.T("Settings.ResetConfirmKeeps"));
+        return string.Join(" ", parts);
     }
 
     /// <summary>Spelled-out consequences shown above the reset confirm buttons.</summary>

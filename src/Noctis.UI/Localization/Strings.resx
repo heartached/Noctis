@@ -4088,6 +4088,10 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.ScanError" xml:space="preserve"><value>Scan error: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.IndexRebuildError" xml:space="preserve"><value>Index rebuild error: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ResetDone" xml:space="preserve"><value>All settings and data have been reset.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetConfirmOnePlaylist" xml:space="preserve"><value>Your playlist is deleted for good.</value><comment>Reset confirm, one playlist</comment></data>
+  <data name="Settings.ResetConfirmPlaylists" xml:space="preserve"><value>All {0} playlists are deleted for good.</value><comment>Reset confirm; {0} playlist count (2 or more)</comment></data>
+  <data name="Settings.ResetConfirmClears" xml:space="preserve"><value>Reset clears your library, music folders, queue, listening history and stats, ratings and favorites, sign-ins, and cached lyrics and artwork. Every setting goes back to its default.</value><comment>Reset confirm</comment></data>
+  <data name="Settings.ResetConfirmKeeps" xml:space="preserve"><value>Kept: installed plugins with their permissions, phone pairing, window positions, volume and the data folder location.</value><comment>Reset confirm</comment></data>
   <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>Artwork cache cleared.</value><comment>Settings status line</comment></data>
   <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>Failed to clear cache: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.NoFolderSelected" xml:space="preserve"><value>No folder selected</value><comment>Settings status line</comment></data>

@@ -161,6 +161,33 @@ public class LocalizationTests
     }
 
     /// <summary>
+    /// Settings › Reset's confirm text was built from English literals in SettingsViewModel, so it
+    /// stayed English in every language. It comes from the strings now: the playlists it deletes,
+    /// what it clears and what it keeps.
+    /// </summary>
+    [AvaloniaFact]
+    public void ResetConfirmDetail_ComesFromTheStrings()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            var none = Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(0);
+            Assert.Equal(Loc.T("Settings.ResetConfirmClears") + " " + Loc.T("Settings.ResetConfirmKeeps"), none);
+            Assert.DoesNotContain("playlist", none, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("music folders", none);
+            Assert.Contains("sign-ins", none);
+            Assert.StartsWith(Loc.T("Settings.ResetConfirmOnePlaylist") + " ", Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(1));
+            Assert.StartsWith("All 7 playlists are deleted for good. ", Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(7));
+
+            Loc.Instance.SetCulture("ru");
+            var ru = Noctis.ViewModels.SettingsViewModel.BuildResetConfirmDetail(7);
+            Assert.StartsWith("Все плейлисты (7) будут удалены навсегда. ", ru);
+            Assert.DoesNotMatch("[A-Za-z]{4,}", ru);
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>
     /// Translations that ship complete (Russian, GitHub #128) must carry every English key and
     /// nothing else, with the same {0} / {1:N0} placeholders per key: a dropped placeholder loses
     /// a value on screen and an extra one makes string.Format throw.

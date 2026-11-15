@@ -4079,6 +4079,10 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.ScanError" xml:space="preserve"><value>Fehler beim Durchsuchen: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.IndexRebuildError" xml:space="preserve"><value>Fehler beim Neuaufbau des Index: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ResetDone" xml:space="preserve"><value>Alle Einstellungen und Daten wurden zurückgesetzt.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetConfirmOnePlaylist" xml:space="preserve"><value>Deine Playlist wird endgültig gelöscht.</value><comment>Reset confirm, one playlist</comment></data>
+  <data name="Settings.ResetConfirmPlaylists" xml:space="preserve"><value>Alle {0} Playlists werden endgültig gelöscht.</value><comment>Reset confirm; {0} playlist count (2 or more)</comment></data>
+  <data name="Settings.ResetConfirmClears" xml:space="preserve"><value>Das Zurücksetzen leert deine Bibliothek, Musikordner, Warteschlange, Hörverlauf und Statistiken, Bewertungen und Favoriten, Anmeldungen sowie zwischengespeicherte Songtexte und Cover. Alle Einstellungen kehren zu ihren Standardwerten zurück.</value><comment>Reset confirm</comment></data>
+  <data name="Settings.ResetConfirmKeeps" xml:space="preserve"><value>Behalten werden: installierte Plugins mit ihren Berechtigungen, die Kopplung mit Handys, Fensterpositionen, Lautstärke und der Ort des Datenordners.</value><comment>Reset confirm</comment></data>
   <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>Artwork-Cache geleert.</value><comment>Settings status line</comment></data>
   <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>Cache konnte nicht geleert werden: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.NoFolderSelected" xml:space="preserve"><value>Kein Ordner ausgewählt</value><comment>Settings status line</comment></data>
