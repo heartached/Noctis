@@ -1717,39 +1717,6 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         return false;
     }
 
-    private static int GetArtistDiscographyRank(Album album, string artistFilter)
-    {
-        if (string.IsNullOrWhiteSpace(artistFilter))
-            return 0;
-
-        if (IsExactArtistCredit(album.Artist, artistFilter))
-            return 0;
-
-        if (album.Tracks.Any(t => IsExactArtistCredit(t.Artist, artistFilter)))
-            return 1;
-
-        if (ContainsArtistToken(album.Artist, artistFilter))
-            return 2;
-
-        return 3;
-    }
-
-    private static bool IsExactArtistCredit(string? artistField, string artistName)
-    {
-        if (string.IsNullOrWhiteSpace(artistField) || string.IsNullOrWhiteSpace(artistName))
-            return false;
-
-        if (artistField.Equals(artistName, StringComparison.OrdinalIgnoreCase))
-            return true;
-
-        var fieldTokens = Track.ParseArtistTokens(artistField);
-        var filterTokens = Track.ParseArtistTokens(artistName);
-
-        return fieldTokens.Length > 0
-               && filterTokens.Length > 0
-               && fieldTokens.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(filterTokens);
-    }
-
     public void Dispose()
     {
         _settings.PropertyChanged -= _settingsPropertyChangedHandler;

@@ -5,7 +5,6 @@ namespace Noctis.Services;
 
 public class ArtistImageService
 {
-    private readonly HttpClient _http;
     /// <summary>The Deezer lookup itself (name matching, impostor ranking, the download),
     /// shared with the phone; this service keeps the cache, sidecars and sweeps.</summary>
     private readonly DeezerArtistPhotos _deezer;
@@ -27,7 +26,6 @@ public class ArtistImageService
 
     public ArtistImageService(HttpClient http, IPersistenceService persistence, ILibraryService? library = null)
     {
-        _http = http;
         _deezer = new DeezerArtistPhotos(http);
         _library = library;
         _artistArtworkDir = Path.Combine(persistence.DataDirectory, "artwork", "artists");
