@@ -117,6 +117,26 @@ public class PageScrollBench
             if (cover != null) persistence.SaveArtwork(albumId, cover);
         }
         foreach (var t in tracks) if (t.IsFavorite) t.FavoritedAt = now.AddDays(-rnd.Next(400));
+        // Folders page: the first 3000 songs were added on their own from one folder (GitHub #108
+        // shows such a folder as a root without a scan).
+        var bigFolder = Path.Combine(root, "Big Folder");
+        for (var i = 0; i < Math.Min(3000, tracks.Count); i++)
+        {
+            tracks[i].FilePath = Path.Combine(bigFolder, $"{i:00000} {Path.GetFileName(tracks[i].FilePath)}");
+            tracks[i].AddedIndividually = true;
+        }
+        // Inbox page: 2000 more songs waiting in the Inbox (not in the library views).
+        var inboxCount = Math.Min(2000, trackCount / 5);
+        for (var i = 0; i < inboxCount; i++)
+            tracks.Add(new Track
+            {
+                Title = $"New Song {i:0000}", Artist = $"New Artist {i % 40}", AlbumArtist = $"New Artist {i % 40}",
+                Album = $"New Album {i / 10}", AlbumId = Track.ComputeAlbumId($"New Artist {i % 40}", $"New Album {i / 10}"),
+                TrackNumber = i % 10 + 1, Year = 2026, Genre = Genres[i % Genres.Length], Duration = TimeSpan.FromSeconds(200),
+                FilePath = Path.Combine(root, "Downloads", $"{i:0000}.flac"), DateAdded = now.AddDays(-(i % 5)),
+                IsInInbox = true, Bitrate = 1000, SampleRate = 44100, Codec = "FLAC",
+            });
+        persistence.SaveSettingsAsync(new AppSettings { InboxEnabled = true }).GetAwaiter().GetResult();
         persistence.SaveLibraryAsync(tracks).GetAwaiter().GetResult();
 
         var playlists = new List<Playlist>();
@@ -124,7 +144,7 @@ public class PageScrollBench
         {
             var size = p == 0 ? Math.Min(3000, tracks.Count) : 10 + rnd.Next(150);
             var pl = new Playlist { Name = p == 0 ? "Big Mix" : $"Playlist {p}" };
-            foreach (var t in tracks.OrderBy(_ => rnd.Next()).Take(size)) pl.TrackIds.Add(t.Id);
+            foreach (var t in tracks.Where(t => !t.IsInInbox).OrderBy(_ => rnd.Next()).Take(size)) pl.TrackIds.Add(t.Id);
             playlists.Add(pl);
         }
         persistence.SavePlaylistsAsync(playlists).GetAwaiter().GetResult();
@@ -374,7 +394,8 @@ public class PageScrollBench
         var window = new MainWindow(vm) { Width = 1600, Height = 1000 };
         window.Show();
         var library = provider.GetRequiredService<ILibraryService>();
-        PumpUntil(() => library.Tracks.Count == tracks.Count && vm.CurrentView != null);
+        var libraryCount = tracks.Count(t => !t.IsInInbox);
+        PumpUntil(() => library.Tracks.Count == libraryCount && vm.CurrentView != null);
         // Let startup settle (plugins, background index work posting back).
         for (var i = 0; i < 100; i++) { Pump(); Thread.Sleep(10); }
         Log($"loaded: {library.Tracks.Count} tracks, {library.Albums.Count} albums, {library.Artists.Count} artists; start page {vm.CurrentView?.GetType().Name}");
@@ -399,6 +420,12 @@ public class PageScrollBench
             ("favorites", () => Go("favorites")),
             ("statistics", () => Go("statistics")),
             ("inbox", () => Go("inbox")),
+            ("folders", () =>
+            {
+                Go("folders");
+                var folders = (LibraryFoldersViewModel)vm.CurrentView!;
+                folders.SelectedNode ??= folders.RootNodes.FirstOrDefault(n => n.FullPath.EndsWith("Big Folder", StringComparison.OrdinalIgnoreCase));
+            }),
             ("album", () => vm.OpenAlbumDetail(album)),
             ("artist", () => vm.OpenArtistByName(bigArtist.Name)),
         };

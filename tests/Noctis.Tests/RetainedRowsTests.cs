@@ -359,4 +359,91 @@ public class RetainedRowsTests
         Assert.True(tiles.Count <= 7 * 8, $"{tiles.Count} portraits built for 60 rows");
         window.Close();
     }
+
+    /// <summary>Checks every realized row of a song list shows its own song and selection mark,
+    /// and that rows were re-bound rather than rebuilt while scrolling through it.</summary>
+    private static void ScrollAndCheckSongRows(ListBox list, IReadOnlyList<Track> items, int selectedIndex)
+    {
+        Assert.IsType<RetainingVirtualizingStackPanel>(list.ItemsPanelRoot);
+        list.Selection.Select(selectedIndex);
+        Pump();
+        var sv = list.FindDescendantOfType<ScrollViewer>()!;
+        var roots = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        var containers = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        foreach (var y in new[] { 0.0, 900, 935, 4000, 12000, 600, 0 })
+        {
+            sv.Offset = new Vector(0, y);
+            Pump();
+            foreach (var row in list.GetRealizedContainers()!)
+            {
+                var item = Assert.IsType<ListBoxItem>(row);
+                var index = list.IndexFromContainer(row);
+                Assert.Same(items[index], item.Content);
+                Assert.Same(items[index], item.Presenter?.Child?.DataContext);
+                Assert.Equal(index == selectedIndex, item.IsSelected);
+            }
+            foreach (var row in list.GetVisualDescendants().OfType<ListBoxItem>())
+            {
+                containers.Add(row);
+                if (row.Presenter?.Child is { } child) roots.Add(child);
+            }
+        }
+        Assert.Equal(new[] { selectedIndex }, list.Selection.SelectedIndexes.ToArray());
+        Assert.Equal(containers.Count, roots.Count);
+    }
+
+    private static Track Song(int i, string folder) => new()
+    {
+        Id = Guid.NewGuid(), Title = $"Song {i:0000}", Artist = $"Artist {i % 23}", AlbumArtist = $"Artist {i % 23}",
+        Album = $"Album {i / 10}", TrackNumber = i % 10 + 1, Duration = TimeSpan.FromMinutes(3),
+        FilePath = TestPaths.Primary(folder, $"{i:0000}.flac"), DateAdded = DateTime.UtcNow.AddDays(-(i % 7)),
+    };
+
+    [AvaloniaFact]
+    public async Task Inbox_ScrolledRows_AreReused_AndShowTheirOwnSong()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 800; i++)
+        {
+            var t = Song(i, "inbox");
+            t.IsInInbox = true;
+            lib.InboxList.Add(t);
+        }
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new InboxViewModel(lib, player, new SidebarViewModel(persistence, lib)) { IsActive = true };
+        var view = new InboxView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        await PumpUntil(() => vm.Tracks.Count == 800);
+        ScrollAndCheckSongRows(view.FindControl<ListBox>("TrackList")!, vm.Tracks, 7);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Folders_ScrolledRows_AreReused_AndShowTheirOwnSong()
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 800; i++)
+        {
+            var t = Song(i, "folder");
+            t.AddedIndividually = true; // a folder of songs added on their own is a root (GitHub #108)
+            lib.TrackList.Add(t);
+        }
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new LibraryFoldersViewModel(lib, player, persistence, new SidebarViewModel(persistence, lib));
+        var view = new LibraryFoldersView { DataContext = vm };
+        var window = new Window { Width = 1400, Height = 900, Content = view };
+        window.Show();
+        vm.IsActive = true;
+        vm.Refresh();
+        await PumpUntil(() => vm.RootNodes.Count > 0);
+        vm.SelectedNode = vm.RootNodes[0];
+        await PumpUntil(() => vm.SelectedFolderTracks.Count == 800);
+        ScrollAndCheckSongRows(view.FindControl<ListBox>("TrackList")!, vm.SelectedFolderTracks, 11);
+        window.Close();
+    }
 }
