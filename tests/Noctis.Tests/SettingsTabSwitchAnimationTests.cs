@@ -87,6 +87,14 @@ public class SettingsTabSwitchAnimationTests : IDisposable
     [AvaloniaFact]
     public async Task TabSwitch_Cost()
     {
+        var keep = SettingsView.WarmUpEnabled;
+        SettingsView.WarmUpEnabled = false; // cold first visits (the warm-up has its own test)
+        try { await TabSwitchCostCore(); }
+        finally { SettingsView.WarmUpEnabled = keep; }
+    }
+
+    private async Task TabSwitchCostCore()
+    {
         var tabs = SettingsView.TabPanels.Select(t => t.Tab).Where(t => t != SettingsViewModel.TabGeneral).ToList();
         var (_, coldVm, coldWindow) = await OpenAsync();
         foreach (var tab in tabs) { coldVm.SelectedSettingsTab = tab; Pump(10); }
