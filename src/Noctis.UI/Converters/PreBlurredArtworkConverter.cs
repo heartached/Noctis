@@ -81,9 +81,16 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
             });
             if (tuned.Result is null || tuned.Blur != blur || tuned.Saturation != saturation)
             {
+                var previous = tuned.Result;
                 tuned.Result = ToBitmap(Tune(tuned.Small, tuned.Width, tuned.Height, blur, saturation), tuned.Width, tuned.Height);
                 tuned.Blur = blur;
                 tuned.Saturation = saturation;
+                // The copy for the old knob values was left to the finalizer: one native bitmap per
+                // step of a Blur/Saturation slider drag. The lyrics page, the lyrics panel and the
+                // mini player share it and each re-converts on the same knob change, so it is freed
+                // once those synchronous updates have run, not here.
+                if (previous != null)
+                    Avalonia.Threading.Dispatcher.UIThread.Post(previous.Dispose, Avalonia.Threading.DispatcherPriority.Background);
             }
             return tuned.Result;
         }
