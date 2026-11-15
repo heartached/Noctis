@@ -165,7 +165,8 @@ public class MobileLyricsAllocationTests
     /// <summary>
     /// A word-timed line sweeping (no line change in the window): only the moving words' brush
     /// stops, their float and the bindings that drive them. Measured 29 KB a frame before the
-    /// sweep stopped redrawing every word every frame (11-14).
+    /// sweep stopped redrawing every word every frame, 11 KB after that and the held-note glow
+    /// being built under held notes only (11-14).
     /// </summary>
     [AvaloniaFact]
     public async Task WordSweep_AllocatesLittlePerFrame()
@@ -175,7 +176,7 @@ public class MobileLyricsAllocationTests
         Assert.InRange(cost.BytesPerFrame, 0, WordSweepBudget);
     }
 
-    internal const long WordSweepBudget = 16 * 1024;
+    internal const long WordSweepBudget = 14 * 1024;
 
     /// <summary>Plain synced lines between line changes: nothing moves, nothing allocates.</summary>
     [AvaloniaFact]
@@ -184,5 +185,37 @@ public class MobileLyricsAllocationTests
         var cost = await Measure(".lrc", Lrc(gap: 20), 4);
         _o.WriteLine(cost.ToString());
         Assert.InRange(cost.BytesPerFrame, 0, 6 * 1024);
+    }
+
+    /// <summary>The held-note glow (a second, blurred word) is built under held notes only: on
+    /// every other word it was hidden yet took each frame's progress and float.</summary>
+    [AvaloniaFact]
+    public async Task HeldNoteGlow_IsBuiltUnderHeldNotesOnly()
+    {
+        var (shell, _, view, win) = Mount(".ttml", Ttml(gap: 3, count: 5));
+        try
+        {
+            var track = new Track { Id = Guid.NewGuid(), Title = "Song", Artist = "T", FilePath = "content://x/1", Duration = TimeSpan.FromSeconds(90) };
+            shell.Player.PlayTracks(new[] { track }, 0);
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+            shell.OpenNowPlayingCommand.Execute(null);
+            shell.ToggleLyricsCommand.Execute(null);
+            win.UpdateLayout();
+            Pump();
+            var page = view.GetVisualDescendants().OfType<LyricsPage>().Single();
+            var words = page.GetVisualDescendants().OfType<Noctis.Controls.KaraokeWordText>().ToList();
+            var sweeps = words.Where(w => w.Classes.Contains("word-sweep")).ToList();
+            var glows = words.Where(w => w.Classes.Contains("word-glow")).ToList();
+            var held = sweeps.Count(w => w.DataContext is WordTiming { IsEmphasis: true });
+            Assert.True(held > 0, "the test lines end on a held note");
+            Assert.True(sweeps.Count > held);
+            Assert.Equal(held, glows.Count);
+            Assert.All(glows, g => Assert.True(g.DataContext is WordTiming { IsEmphasis: true } && g.IsEffectivelyVisible));
+        }
+        finally
+        {
+            win.Close();
+        }
     }
 }
