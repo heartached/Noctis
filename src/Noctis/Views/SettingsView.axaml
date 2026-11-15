@@ -8643,8 +8643,7 @@
             <!-- Search (both sections) and the small actions: Install from file, the plugins folder
                  (its path in the tooltip), refresh (the folder and the list). On a narrow pane the
                  actions drop under the search box (SettingsView.axaml.cs LayoutPluginsHeader). -->
-            <StackPanel>
-            <Grid x:Name="PluginsHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,0,0,4">
+            <Grid x:Name="PluginsHeader" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="0,0,0,4">
                 <TextBox x:Name="PluginSearchBox" Grid.Column="0" Classes="settings-search plugin-search"
                          Watermark="{loc:T Plugins.Search}"
                          AutomationProperties.Name="{loc:T Plugins.Search}"
@@ -8689,17 +8688,18 @@
                         </Panel>
                     </Button>
                 </WrapPanel>
+                <!-- After a refresh: a check and "Refreshed · 8 plugins", gone again after a few
+                     seconds. Its own header row, so the glide folds its gap with it (as a sibling in
+                     the page's Spacing it would snap by that spacing at the end of the close). -->
+                <controls:CollapsibleContent Grid.Row="2" Grid.ColumnSpan="2" IsOpen="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="14,10,0,4">
+                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="11" Height="11"
+                              Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
+                               VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+                </controls:CollapsibleContent>
             </Grid>
-            <!-- After a refresh: a check and "Refreshed · 8 plugins", gone again after a few seconds. -->
-            <controls:CollapsibleContent IsOpen="{Binding PluginsStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
-            <StackPanel Orientation="Horizontal" Spacing="6" Margin="14,6,0,4">
-                <PathIcon Data="{StaticResource CheckmarkIcon}" Width="11" Height="11"
-                          Foreground="{DynamicResource AccentColorBrush}" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding PluginsStatus}" FontSize="12" FontWeight="SemiBold" Opacity="0.75"
-                           VerticalAlignment="Center" TextWrapping="Wrap"/>
-            </StackPanel>
-            </controls:CollapsibleContent>
-            </StackPanel>
 
             <!-- Built-in Features (Discord, Mistery 11-02): parts of Noctis behind one switch each, like
                  plugins that ship on. A row is the feature's own setting where one existed (Discord,
