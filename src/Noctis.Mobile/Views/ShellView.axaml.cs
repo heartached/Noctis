@@ -19,6 +19,12 @@ public partial class ShellView : UserControl
 {
     private IInsetsManager? _insets;
 
+    /// <summary>Builds the song menu's card while hidden a moment from now (<see cref="PopMenu.Prebuild"/>),
+    /// so the first ⋯ after launch only rebinds it. The Android head calls it once the shell is on
+    /// screen; tests that time frames never see it.</summary>
+    public void PrebuildMenuSoon() =>
+        DispatcherTimer.RunOnce(Menu.Prebuild, TimeSpan.FromMilliseconds(PopMenu.PrebuildDelayMs));
+
     public ShellView()
     {
         ScrollBarFade.Install();
