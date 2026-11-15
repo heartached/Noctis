@@ -4088,6 +4088,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ScanError" xml:space="preserve"><value>Ошибка сканирования: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.IndexRebuildError" xml:space="preserve"><value>Ошибка перестроения индекса: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ResetDone" xml:space="preserve"><value>Все настройки и данные сброшены.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ResetConfirmOnePlaylist" xml:space="preserve"><value>Ваш плейлист будет удалён навсегда.</value><comment>Reset confirm, one playlist</comment></data>
+  <data name="Settings.ResetConfirmPlaylists" xml:space="preserve"><value>Все плейлисты ({0}) будут удалены навсегда.</value><comment>Reset confirm; {0} playlist count (2 or more)</comment></data>
+  <data name="Settings.ResetConfirmClears" xml:space="preserve"><value>Сброс очищает медиатеку, папки с музыкой, очередь, историю прослушиваний и статистику, оценки и избранное, входы в аккаунты, кэш текстов песен и обложек. Все настройки возвращаются к значениям по умолчанию.</value><comment>Reset confirm</comment></data>
+  <data name="Settings.ResetConfirmKeeps" xml:space="preserve"><value>Сохраняются: установленные плагины с их разрешениями, привязка телефонов, положение окон, громкость и расположение папки данных.</value><comment>Reset confirm</comment></data>
   <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>Кэш обложек очищен.</value><comment>Settings status line</comment></data>
   <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>Не удалось очистить кэш: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.NoFolderSelected" xml:space="preserve"><value>Папка не выбрана</value><comment>Settings status line</comment></data>
