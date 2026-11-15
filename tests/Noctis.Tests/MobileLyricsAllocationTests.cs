@@ -223,13 +223,15 @@ public class MobileLyricsAllocationTests
     /// A line change scrolls a line in. Its row used to be built from scratch (button, texts,
     /// word layers, styles, bindings: ~330 KB for a plain line and ~1 MB for a word-timed one
     /// in an optimized build); rows are now kept and handed the next line (RowItemsControl).
-    /// A row handed a new line shows that line's dimming and blur at once, not faded from the
-    /// line it showed before.
+    /// A word-timed row keeps its word cells too (WordItemsControl). A row handed a new line
+    /// shows that line's dimming and blur at once, not faded from the line it showed before.
     /// </summary>
-    [AvaloniaFact]
-    public async Task RowsScrollingIn_AreReused_AndShowTheirLinesLookAtOnce()
+    [AvaloniaTheory]
+    [InlineData(".lrc", 200)]
+    [InlineData(".ttml", 300)]
+    public async Task RowsScrollingIn_AreReused_AndShowTheirLinesLookAtOnce(string ext, int budgetKb)
     {
-        var (shell, player, view, win) = Mount(".lrc", Lrc(gap: 1.5));
+        var (shell, player, view, win) = Mount(ext, ext == ".lrc" ? Lrc(gap: 1.5) : Ttml(gap: 1.5, count: 5));
         try
         {
             var track = new Track { Id = Guid.NewGuid(), Title = "Song", Artist = "T", FilePath = "content://x/1", Duration = TimeSpan.FromSeconds(90) };
@@ -270,7 +272,8 @@ public class MobileLyricsAllocationTests
             _o.WriteLine($"rows scrolled in: {rows}, {built / Math.Max(1, rows) / 1024} KB a row");
             Assert.True(rows >= 3);
             Assert.True(shell.Lyrics.Lines.Select(l => l.LineOpacity).Distinct().Count() > 2, "the lines are dimmed by distance");
-            Assert.InRange(built / rows, 0, 200 * 1024);   // was ~400 KB a plain row (Debug), built from scratch
+            // Debug build, built from scratch: ~420 KB a plain row, ~1.2 MB a word-timed one.
+            Assert.InRange(built / rows, 0, budgetKb * 1024);
         }
         finally
         {
