@@ -41,8 +41,11 @@ namespace Noctis.Views;
 /// </summary>
 public partial class SettingsView
 {
-    /// <summary>Tests switch it off where the warm-up would change what they measure.</summary>
-    internal static bool WarmUpEnabled = true;
+    /// <summary>Tests switch it off where the warm-up would change what they measure.
+    /// Off on Linux: warming every page allocates ~150 MB and brings a couple of full
+    /// collections, the kind of stall that cut PipeWire playback out (#139). Pages build on
+    /// their first visit there, as before.</summary>
+    internal static bool WarmUpEnabled = !OperatingSystem.IsLinux();
 
     /// <summary>Quiet time after Settings opens (its entrance and blur settle first).</summary>
     internal static readonly TimeSpan WarmUpStartDelay = TimeSpan.FromMilliseconds(600);
