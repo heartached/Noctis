@@ -7753,9 +7753,10 @@
                                     </StackPanel>
                                 </StackPanel>
                             </Grid>
-                            <!-- Enabled but the server threw on start -->
+                            <!-- Enabled but the server threw on start. No top gap: it replaces the QR row
+                                 above (never shown with it), so there is nothing to space it from. -->
                             <controls:CollapsibleContent IsOpen="{Binding WebRemoteStartFailed}" Lift="10" Motion="Glide">
-                            <TextBlock Margin="0,8,0,0" Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding WebRemoteUrl}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                             </controls:CollapsibleContent>
                             </StackPanel>
                         </StackPanel>
