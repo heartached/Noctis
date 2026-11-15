@@ -25,24 +25,29 @@ public partial class NowPlayingPage : UserControl
     /// </summary>
     internal static IBrush Dither => _dither ??= MakeDither();
 
+    /// <summary>The tile's pixels, BGRA premultiplied, row after row (DitherLayer draws the same tile).</summary>
+    internal static byte[] DitherPixels()
+    {
+        var rng = new Random(0x5EED);   // fixed: the tile is the same every launch
+        var pixels = new byte[DitherSize * DitherSize * 4];
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            var a = (byte)rng.Next(DitherAmplitude + 1);
+            var white = rng.Next(2) == 0;
+            pixels[i] = pixels[i + 1] = pixels[i + 2] = white ? a : (byte)0;   // premultiplied
+            pixels[i + 3] = a;
+        }
+        return pixels;
+    }
+
     private static IBrush MakeDither()
     {
         var bitmap = new WriteableBitmap(new PixelSize(DitherSize, DitherSize), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
-        var rng = new Random(0x5EED);   // fixed: the tile is the same every launch
-        var row = new byte[DitherSize * 4];
+        var pixels = DitherPixels();
         using (var fb = bitmap.Lock())
         {
             for (var y = 0; y < DitherSize; y++)
-            {
-                for (var x = 0; x < DitherSize; x++)
-                {
-                    var a = (byte)rng.Next(DitherAmplitude + 1);
-                    var white = rng.Next(2) == 0;
-                    row[x * 4] = row[x * 4 + 1] = row[x * 4 + 2] = white ? a : (byte)0;   // premultiplied
-                    row[x * 4 + 3] = a;
-                }
-                System.Runtime.InteropServices.Marshal.Copy(row, 0, fb.Address + y * fb.RowBytes, row.Length);
-            }
+                System.Runtime.InteropServices.Marshal.Copy(pixels, y * DitherSize * 4, fb.Address + y * fb.RowBytes, DitherSize * 4);
         }
         return new ImageBrush(bitmap)
         {
