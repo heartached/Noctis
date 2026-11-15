@@ -381,14 +381,37 @@ public class GlassBackdropCacheTests
         }
     }
 
+    /// <summary>A pop's frames scale the panel a few device pixels at a time: every copy the frost
+    /// makes keeps its size across most of them, so the GPU's texture cache hands the last one back
+    /// instead of the phone allocating four new textures a frame (menu pop jank, 11-14).</summary>
+    [Fact]
+    public void ThePopsCopies_KeepTheirSize_FrameToFrame()
+    {
+        var sizes = new HashSet<(int, int)>();
+        for (var i = 0; i <= 40; i++)
+        {
+            var scale = 0.85f + 0.15f * i / 40;
+            var panel = new SKRect(980 - 700 * scale, 2160 - 1210 * scale, 980, 2160);   // grows out of its corner
+            var source = GlassBlur.SourceRect(panel, 25);
+            sizes.Add((source.Width, source.Height));
+            Assert.True(source.Contains(GlassBlur.RoundOut(SKRect.Inflate(panel, 75, 75))));
+            var copy = GlassBlur.GridSize((int)Math.Ceiling(panel.Width), (int)Math.Ceiling(panel.Height));
+            Assert.Equal(0, copy.Width % GlassBlur.Grid);
+        }
+        Assert.True(sizes.Count <= 10, $"{sizes.Count} snapshot sizes over 41 frames");
+    }
+
     [Fact]
     public void Draw_CopiesOnlyTheRegionItReads()
     {
         // The frost used to snapshot the whole window surface for every panel, every frame.
         using var s = NewSurface();
+        // Panel + 3σ (24) each side, (16, 6, 224, 134), grown out to the 32 px grid so a panel
+        // scaling every frame keeps the same copy size (GlassBlur.Grid).
+        Assert.Equal(new SKRectI(0, 0, 224, 160), GlassBlur.SourceRect(Panel, Sigma));
         using var img = GlassBlur.Snapshot(s, GlassBlur.SourceRect(Panel, Sigma), out var at);
         Assert.NotNull(img);
-        Assert.Equal(new SKRectI(16, 6, 224, 134), at); // panel + 3σ (24) each side
+        Assert.Equal(new SKRectI(0, 0, 224, H), at);   // clipped to the surface
         Assert.Equal(at.Width, img!.Width);
 
         // Clipped to the surface at its edges.

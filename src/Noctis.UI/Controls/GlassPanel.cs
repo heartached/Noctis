@@ -473,8 +473,26 @@ public static class GlassBlur
     internal static SKRectI SourceRect(SKRect deviceRect, float sigma)
     {
         var bleed = (float)Math.Ceiling(sigma * 3);
-        return RoundOut(SKRect.Inflate(deviceRect, bleed, bleed));
+        return ToGrid(RoundOut(SKRect.Inflate(deviceRect, bleed, bleed)));
     }
+
+    /// <summary>
+    /// The device-pixel grid the backdrop copies are sized to (<see cref="ToGrid"/>, <see cref="GridSize"/>).
+    /// A panel that scales or moves every frame (a menu's pop) asked the GPU for a texture of a new
+    /// exact size on every frame for each copy (the snapshot, the clean copy, the frost and the
+    /// spill), none of which Skia's texture cache could hand back; on the grid the size stays put
+    /// for most frames and the cache reuses the last one.
+    /// </summary>
+    internal const int Grid = 32;
+
+    /// <summary><paramref name="r"/> grown out to the <see cref="Grid"/>.</summary>
+    internal static SKRectI ToGrid(SKRectI r) => new(
+        FloorTo(r.Left), FloorTo(r.Top), -FloorTo(-r.Right), -FloorTo(-r.Bottom));
+
+    /// <summary>A copy's size rounded up to the <see cref="Grid"/>.</summary>
+    internal static SKSizeI GridSize(int width, int height) => new(-FloorTo(-width), -FloorTo(-height));
+
+    private static int FloorTo(int v) => (int)Math.Floor(v / (double)Grid) * Grid;
 
     internal static SKRectI RoundOut(SKRect r) => new(
         (int)Math.Floor(r.Left), (int)Math.Floor(r.Top), (int)Math.Ceiling(r.Right), (int)Math.Ceiling(r.Bottom));
@@ -576,6 +594,7 @@ internal sealed class GlassBackdropCache
     private SKSurface? _clean;
     private IntPtr _context;
     private SKRectI _rect;
+    private SKSizeI _cleanSize;
     private bool _suspect, _repaintQueued, _released;
 
     /// <param name="requestFullRepaint">Asks for the whole panel to be repainted next frame;
@@ -725,17 +744,24 @@ internal sealed class GlassBackdropCache
         var contextHandle = context?.Handle ?? IntPtr.Zero;
         if (_clean == null || _rect != panel || _context != contextHandle)
         {
-            FreeClean(onRenderThread: true);
             _captured.SetEmpty();
             // Remade outside a whole-panel repaint: frost from before may sit outside the copy.
             _suspect = true;
-            if (!panel.IsEmpty)
+            // Sized to the grid (GlassBlur.Grid), and kept while the panel still fits it: a panel
+            // scaling every frame (a menu's pop) no longer makes a new GPU texture every frame.
+            var size = GlassBlur.GridSize(panel.Width, panel.Height);
+            if (_clean == null || _context != contextHandle || _cleanSize != size)
             {
-                var info = new SKImageInfo(panel.Width, panel.Height, source.ColorType, source.AlphaType, source.ColorSpace);
-                _clean = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
-                _rect = panel;
-                _context = contextHandle;
+                FreeClean(onRenderThread: true);
+                if (!panel.IsEmpty)
+                {
+                    var info = new SKImageInfo(size.Width, size.Height, source.ColorType, source.AlphaType, source.ColorSpace);
+                    _clean = context != null ? SKSurface.Create(context, false, info) : SKSurface.Create(info);
+                    _cleanSize = size;
+                    _context = contextHandle;
+                }
             }
+            if (!panel.IsEmpty) _rect = panel;
         }
         if (wholePanelRepainted)
         {
