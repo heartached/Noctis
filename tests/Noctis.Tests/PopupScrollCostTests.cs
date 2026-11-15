@@ -36,9 +36,10 @@ namespace Noctis.Tests;
 ///     after 0.47 Mpx / 1 frame (raster and GPU).
 ///   Real Settings sheet over the app with something animating in it (the empty library's
 ///   spinner standing in for lyrics, a playing title or the progress bar):
-///     Liquid Glass off (live blur): 10.1 Mpx per notch, and 2.52 Mpx EVERY idle frame — Avalonia
-///       dirties the whole effect node for any change under a BlurEffect, so the whole window is
-///       re-rendered and re-blurred for as long as anything moves (not changed here).
+///     Liquid Glass off (live blur): 10.1 Mpx and 172 ms per notch, and 2.52 Mpx EVERY idle frame —
+///       Avalonia dirties the whole effect node for any change under a BlurEffect, so the whole
+///       window is re-rendered and re-blurred for as long as anything moves. Held while scrolling
+///       (BlurredBackdrop.Hold): 0.49 Mpx and 27 ms per notch, app layer not drawn at all.
 ///     Liquid Glass on, GPU: before 4.38 Mpx per notch and 0.97 Mpx every idle frame (the whole
 ///       frosted card for as long as anything moves under the opaque scrim); after 0.50 / 0.00.
 ///   Synthetic card over a 48-tile page (Harness_ScrollOverEachBackdrop): the page behind the
