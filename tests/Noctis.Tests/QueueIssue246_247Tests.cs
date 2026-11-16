@@ -167,8 +167,8 @@ public class QueueIssue246_247Tests
 
             var row = list.GetVisualDescendants().OfType<ListBoxItem>().First();
             var lead = row.GetVisualDescendants().OfType<TextBlock>().First(t => t.Classes.Contains("one-line-explicit-title"));
-            var line = (Grid)lead.Parent!;
-            var tail = line.Children.OfType<TextBlock>().Single(t => Grid.GetColumn(t) == 1);
+            var line = (Noctis.Controls.LeadTailPanel)lead.Parent!;
+            var tail = line.Children.OfType<TextBlock>().Last();
             // No MainWindowViewModel here, so the layout binding falls back to title only:
             // put the line the issue shows in by hand.
             lead.Text = "Fade Into You Remix (Lobsterdust Edit) [Extended Club Version]";
@@ -188,6 +188,15 @@ public class QueueIssue246_247Tests
             Assert.False(lead.TextLayout.TextLines[0].HasCollapsed);
             Assert.Equal(lead.Bounds.Right, tail.Bounds.Left, 1);
             Assert.True(tail.Bounds.Width > 20);
+
+            // A long extra field (an album name): it may not push the lead out or run past the row.
+            lead.Text = "Taylor Swift";
+            tail.Text = " · reputation (Big Machine Radio Release Special) [Deluxe Anniversary Edition]";
+            Pump(window);
+            Assert.True(lead.Bounds.Width > 40, $"the lead was squeezed to {lead.Bounds.Width}");
+            Assert.True(tail.Bounds.Right <= text.Bounds.Width + 0.5,
+                $"the long tail ends at {tail.Bounds.Right}, past the text column ({text.Bounds.Width})");
+            Assert.True(tail.TextLayout.TextLines[0].HasCollapsed, "the long tail is not trimmed");
         }
         finally
         {

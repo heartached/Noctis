@@ -1255,7 +1255,7 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <!-- GitHub #247: the lead field trims, the extra one (" · 4:12") stays. -->
-                                        <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
+                                        <controls:LeadTailPanel HorizontalAlignment="Left">
                                             <TextBlock Grid.Column="0"
                                                        Classes="one-line-explicit-title"
                                                        FontSize="13"
@@ -1271,6 +1271,7 @@
                                                 </TextBlock.Text>
                                             </TextBlock>
                                             <TextBlock Grid.Column="1"
+                                                       TextTrimming="CharacterEllipsis"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1294,10 +1295,10 @@
                                                            FontSize="8"
                                                            Opacity="0.9" />
                                             </Border>
-                                        </Grid>
+                                        </controls:LeadTailPanel>
                                         <!-- GitHub #147: line 2 is a link while it is the artist,
                                              plain text for any other field, gone for None. -->
-                                        <Grid ColumnDefinitions="*,Auto"
+                                        <controls:LeadTailPanel
                                               HorizontalAlignment="Left"
                                               Margin="0,2,0,0"
                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}">
@@ -1326,6 +1327,7 @@
                                                 </Border>
                                             </Button>
                                             <TextBlock Grid.Column="1"
+                                                       TextTrimming="CharacterEllipsis"
                                                        FontSize="11"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1340,8 +1342,8 @@
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
-                                        </Grid>
-                                        <Grid ColumnDefinitions="*,Auto"
+                                        </controls:LeadTailPanel>
+                                        <controls:LeadTailPanel
                                               HorizontalAlignment="Left"
                                               Margin="2,2,3,0"
                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
@@ -1360,6 +1362,7 @@
                                                 </TextBlock.Text>
                                             </TextBlock>
                                             <TextBlock Grid.Column="1"
+                                                       TextTrimming="CharacterEllipsis"
                                                        FontSize="11"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1373,7 +1376,7 @@
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
-                                        </Grid>
+                                        </controls:LeadTailPanel>
                                     </StackPanel>
                                     <TextBlock Grid.Column="2"
                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsRight, FallbackValue=True}"
@@ -1556,7 +1559,7 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                                                 <!-- GitHub #247: a line is its lead field, which trims, and
                                                      the extra field (" · 4:12"), which always shows after it. -->
-                                                <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
+                                                <controls:LeadTailPanel HorizontalAlignment="Left">
                                                     <TextBlock Grid.Column="0"
                                                                Classes="one-line-explicit-title queue-fg"
                                                                FontSize="13"
@@ -1571,6 +1574,7 @@
                                                         </TextBlock.Text>
                                                     </TextBlock>
                                                     <TextBlock Grid.Column="1"
+                                                               TextTrimming="CharacterEllipsis"
                                                                Classes="queue-fg"
                                                                FontSize="13"
                                                                FontWeight="SemiBold"
@@ -1594,10 +1598,10 @@
                                                                    FontSize="8"
                                                                    Opacity="0.9" />
                                                     </Border>
-                                                </Grid>
+                                                </controls:LeadTailPanel>
                                                 <!-- GitHub #147: line 2 is a link while it is the artist,
                                                      plain text for any other field, gone for None. -->
-                                                <Grid ColumnDefinitions="*,Auto"
+                                                <controls:LeadTailPanel
                                                       HorizontalAlignment="Left"
                                                       Margin="0,2,0,0"
                                                       IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}">
@@ -1626,6 +1630,7 @@
                                                         </Border>
                                                     </Button>
                                                     <TextBlock Grid.Column="1"
+                                                               TextTrimming="CharacterEllipsis"
                                                                Classes="queue-fg"
                                                                FontSize="11"
                                                                FontWeight="SemiBold"
@@ -1640,8 +1645,8 @@
                                                             </MultiBinding>
                                                         </TextBlock.Text>
                                                     </TextBlock>
-                                                </Grid>
-                                                <Grid ColumnDefinitions="*,Auto"
+                                                </controls:LeadTailPanel>
+                                                <controls:LeadTailPanel
                                                       HorizontalAlignment="Left"
                                                       Margin="2,2,3,0"
                                                       IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
@@ -1660,6 +1665,7 @@
                                                         </TextBlock.Text>
                                                     </TextBlock>
                                                     <TextBlock Grid.Column="1"
+                                                               TextTrimming="CharacterEllipsis"
                                                                Classes="queue-fg"
                                                                FontSize="11"
                                                                FontWeight="SemiBold"
@@ -1673,7 +1679,7 @@
                                                             </MultiBinding>
                                                         </TextBlock.Text>
                                                     </TextBlock>
-                                                </Grid>
+                                                </controls:LeadTailPanel>
                                             </StackPanel>
                                             <!-- Queue position (stamped from code-behind; virtualization
                                                  recycles rows, so there is no per-item index to bind).
@@ -1816,7 +1822,7 @@
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
                                         <!-- GitHub #247: the lead field trims, the extra one (" · 4:12") stays. -->
-                                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                        <controls:LeadTailPanel HorizontalAlignment="Left">
                                             <TextBlock FontSize="13"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1831,6 +1837,7 @@
                                                 </TextBlock.Text>
                                             </TextBlock>
                                             <TextBlock Grid.Column="1"
+                                                       TextTrimming="CharacterEllipsis"
                                                        FontSize="13"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1843,8 +1850,8 @@
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
-                                        </Grid>
-                                        <Grid ColumnDefinitions="*,Auto"
+                                        </controls:LeadTailPanel>
+                                        <controls:LeadTailPanel
                                               HorizontalAlignment="Left"
                                               Margin="0,2,0,0"
                                               IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.HasLine2, FallbackValue=True}">
@@ -1863,6 +1870,7 @@
                                                 </TextBlock.Text>
                                             </TextBlock>
                                             <TextBlock Grid.Column="1"
+                                                       TextTrimming="CharacterEllipsis"
                                                        FontSize="11"
                                                        FontWeight="Bold"
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
@@ -1876,7 +1884,7 @@
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
-                                        </Grid>
+                                        </controls:LeadTailPanel>
                                     </StackPanel>
                                     <!-- GitHub #246: how many rows the card carries (a multi-selection
                                          drag); shown and filled by StartQueueDrag. -->
