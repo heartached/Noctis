@@ -40,6 +40,10 @@
     <value>フォルダー</value>
     <comment>Sidebar</comment>
   </data>
+  <data name="Nav.Genres" xml:space="preserve">
+    <value>ジャンル</value>
+    <comment>Sidebar</comment>
+  </data>
   <data name="Nav.Playlists" xml:space="preserve">
     <value>プレイリスト</value>
     <comment>Sidebar</comment>
@@ -73,7 +77,7 @@
     <value>言語</value>
   </data>
   <data name="Settings.Language.Description" xml:space="preserve">
-    <value>メニューとラベル。翻訳はコミュニティによって行われます。</value>
+    <value>翻訳はコミュニティによって行われています</value>
   </data>
   <data name="Settings.Language.System" xml:space="preserve">
     <value>システムの言語</value>
@@ -87,7 +91,7 @@
     <value>何か再生すると動きが見られます。</value>
   </data>
   <data name="Visualizer.NowPlaying" xml:space="preserve">
-    <value>今プレイ中</value>
+    <value>再生中</value>
     <comment>Text in VisualizerView.axaml</comment>
   </data>
   <data name="Visualizer.Style.Bars" xml:space="preserve">
@@ -129,6 +133,22 @@
   </data>
   <data name="Import.MissingHeader" xml:space="preserve">
     <value>見つからないトラック (ライブラリにありません)</value>
+  </data>
+  <data name="Import.LinkWatermark" xml:space="preserve">
+    <value>Deezer / TIDAL リンクを貼り付ける</value>
+  </data>
+  <data name="Import.DropTitle" xml:space="preserve">
+    <value>ここにプレイリストファイルをドラックしてください</value>
+  </data>
+  <data name="Import.Formats" xml:space="preserve">
+    <value>CSV / JSON / M3U</value>
+  </data>
+  <data name="Import.CreatePlaylist" xml:space="preserve">
+    <value>プレイリストを作る</value>
+  </data>
+  <data name="Import.StatusAdded" xml:space="preserve">
+    <value>{0} 曲追加済み</value>
+    <comment>{0} = songs added by hand from the library</comment>
   </data>
   <data name="Common.Close" xml:space="preserve">
     <value>閉じる</value>
@@ -384,6 +404,10 @@
     <value>キャンセル</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.AutoInstallUpdates" xml:space="preserve">
+    <value>自動でアップデートする</value>
+    <comment>Text in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.ShowRecentReleasesOnly" xml:space="preserve">
     <value>最近のリリースを見る</value>
     <comment>Advanced: collapses the release history</comment>
@@ -402,6 +426,10 @@
   </data>
   <data name="AlbumDetail.LyricsBackgroundVideo" xml:space="preserve">
     <value>歌詞の背景ビデオ</value>
+    <comment>Album page menu</comment>
+  </data>
+  <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
+    <value>動画ファイルを選択</value>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
@@ -425,7 +453,7 @@
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.DiscordCaption" xml:space="preserve">
-    <value>Get help &amp; updates</value>
+    <value>ヘルプ &amp; アップデート</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.WebsiteCaption" xml:space="preserve">
@@ -521,11 +549,11 @@
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Ink" xml:space="preserve">
-    <value>インクの色</value>
+    <value>インク</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Smoke" xml:space="preserve">
-    <value>Smoke</value>
+    <value>スモーク</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Edit" xml:space="preserve">
@@ -547,6 +575,10 @@
   <data name="Settings.AccentFollowsArtwork" xml:space="preserve">
     <value>アルバムアートにアクセントを追従させる</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
+  </data>
+  <data name="Playlist.DragCount" xml:space="preserve">
+    <value>{0} 曲</value>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>アクセントカラー</value>
@@ -889,7 +921,7 @@
     <comment>Picker: no default clip</comment>
   </data>
   <data name="LyricsBackground.ChooseVideo" xml:space="preserve">
-    <value>動画を選択</value>
+    <value>動画ファイルを選択</value>
     <comment>Picker: pick a file</comment>
   </data>
   <data name="LyricsBackground.Remove" xml:space="preserve">
@@ -1738,6 +1770,10 @@
     <value>プレイリストはまだありません。上で作成してください。</value>
     <comment>Text in AddToPlaylistDialog.axaml</comment>
   </data>
+  <data name="AddToPlaylist.Description" xml:space="preserve">
+    <value>概要</value>
+    <comment>Field label in the create pane of AddToPlaylistDialog.axaml</comment>
+  </data>
   <!-- AlbumDescriptionDialog.axaml (auto-migrated) -->
   <data name="AlbumDescription.AlbumDescription" xml:space="preserve">
     <value>アルバムの説明</value>
@@ -1774,6 +1810,18 @@
   <data name="AlbumDescription.EditDescriptionTip" xml:space="preserve">
     <value>説明を編集</value>
     <comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment>
+  </data>
+  <data name="AlbumDescription.CloseTip" xml:space="preserve">
+    <value>閉じる</value>
+    <comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment>
+  </data>
+  <data name="AlbumDescription.EmptyClickToAdd" xml:space="preserve">
+    <value>まだ概要がありません。ここをクリックして追加できます。</value>
+    <comment>Text in AlbumDescriptionDialog.axaml</comment>
+  </data>
+  <data name="AlbumDetail.AddDescription" xml:space="preserve">
+    <value>概要を追加する</value>
+    <comment>Text in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDescription.Cancel" xml:space="preserve">
     <value>キャンセル</value>
@@ -1833,7 +1881,7 @@
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.EditDescription" xml:space="preserve">
-    <value>説明を更新</value>
+    <value>概要を更新</value>
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.ConvertAlbum" xml:space="preserve">
@@ -2232,6 +2280,14 @@
     <value>説明 (任意)</value>
     <comment>Watermark in CreatePlaylistDialog.axaml</comment>
   </data>
+  <data name="CreatePlaylist.Description" xml:space="preserve">
+    <value>概要</value>
+    <comment>Field label in CreatePlaylistDialog.axaml</comment>
+  </data>
+  <data name="CreatePlaylist.Optional" xml:space="preserve">
+    <value>任意</value>
+    <comment>Watermark of the description field in CreatePlaylistDialog.axaml</comment>
+  </data>
   <!-- CreateSmartPlaylistDialog.axaml (auto-migrated) -->
   <data name="CreateSmartPlaylist.CreateSmartPlaylist" xml:space="preserve">
     <value>スマートプレイリストを作成</value>
@@ -2284,6 +2340,18 @@
   <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
     <value>トラック、並び順</value>
     <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
+  </data>
+  <data name="CreateSmartPlaylist.Description" xml:space="preserve">
+    <value>概要</value>
+    <comment>Field label in CreateSmartPlaylistDialog.axaml</comment>
+  </data>
+  <data name="CreateSmartPlaylist.AddDescription" xml:space="preserve">
+    <value>概要を追加する</value>
+    <comment>Button that reveals the optional description field in CreateSmartPlaylistDialog.axaml</comment>
+  </data>
+  <data name="CreateSmartPlaylist.Optional" xml:space="preserve">
+    <value>任意</value>
+    <comment>Watermark of the description field in CreateSmartPlaylistDialog.axaml</comment>
   </data>
   <!-- DuplicateFinderDialog.axaml (auto-migrated) -->
   <data name="DuplicateFinder.FindDuplicates" xml:space="preserve">
@@ -2954,9 +3022,49 @@
     <value>歌詞を検索</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
+  <data name="Lyrics.AddLyrics" xml:space="preserve">
+    <value>歌詞を追加する</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.EditLyrics" xml:space="preserve">
+    <value>歌詞を編集する</value>
+    <comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment>
+  </data>
+  <data name="Lyrics.MarkedNoLyrics" xml:space="preserve">
+    <value>歌詞なしとしてマークする</value>
+    <comment>LyricsView.axaml / LyricsPanelView.axaml: the song is marked as having no lyrics (GitHub #162)</comment>
+  </data>
   <data name="Lyrics.SearchingLyrics" xml:space="preserve">
     <value>歌詞を検索中</value>
     <comment>Text in LyricsView.axaml</comment>
+  </data>
+  <data name="LyricsSearch.Title" xml:space="preserve">
+    <value>歌詞を検索する</value>
+    <comment>LyricsSearchDialog.axaml title</comment>
+  </data>
+  <data name="LyricsSearch.Auto" xml:space="preserve">
+    <value>自動 （合致度が高いもの）</value>
+    <comment>First source-picker entry (LyricsSearchViewModel)</comment>
+  </data>
+  <data name="LyricsSearch.ArtistWatermark" xml:space="preserve">
+    <value>アーティスト</value>
+    <comment>Placeholder in LyricsSearchDialog.axaml</comment>
+  </data>
+  <data name="LyricsSearch.TitleWatermark" xml:space="preserve">
+    <value>タイトル</value>
+    <comment>Placeholder in LyricsSearchDialog.axaml</comment>
+  </data>
+  <data name="LyricsSearch.Search" xml:space="preserve">
+    <value>検索</value>
+    <comment>Button in LyricsSearchDialog.axaml</comment>
+  </data>
+  <data name="LyricsSearch.Use" xml:space="preserve">
+    <value>この歌詞を使用する</value>
+    <comment>Primary button in LyricsSearchDialog.axaml</comment>
+  </data>
+  <data name="LyricsSearch.MarkNoLyrics" xml:space="preserve">
+    <value>歌詞はありません</value>
+    <comment>LyricsSearchDialog.axaml footer: mark the song as having no lyrics</comment>
   </data>
   <data name="Lyrics.WrittenBy" xml:space="preserve">
     <value>作詞: </value>
@@ -4277,6 +4385,10 @@
     <value>歌詞を削除</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.MarkNoLyrics" xml:space="preserve">
+    <value>歌詞なしとしてマークする</value>
+    <comment>Header in PlaybackBarView.axaml (Lyrics submenu)</comment>
+  </data>
   <data name="PlaybackBar.ShowFolder" xml:space="preserve">
     <value>フォルダーを表示</value>
     <comment>Header in PlaybackBarView.axaml</comment>
@@ -4312,6 +4424,10 @@
   <data name="PlaybackBar.ShareLyrics" xml:space="preserve">
     <value>歌詞を共有</value>
     <comment>Header in PlaybackBarView.axaml</comment>
+  </data>
+  <data name="PlaybackBar.SaveLyricsTtml" xml:space="preserve">
+    <value>TTML形式で歌詞を保存</value>
+    <comment>Item under Save Lyrics to File in PlaybackBarView.axaml: saves time-synced lyrics as a .ttml file (Apple Music style, keeps word timings). File format name, usually not translated</comment>
   </data>
   <data name="PlaybackBar.QueueTip" xml:space="preserve">
     <value>キュー</value>
@@ -4363,6 +4479,26 @@
     <comment>Content in PlaylistDescriptionDialog.axaml</comment>
   </data>
   <!-- Album + playlist description pop-ups (10-08 pill redesign) -->
+  <data name="DescriptionDialog.Label" xml:space="preserve">
+    <value>概要</value>
+    <comment>Label above the description editor</comment>
+  </data>
+  <data name="DescriptionDialog.AlbumPlaceholder" xml:space="preserve">
+    <value>このアルバムの概要をここに記入してください</value>
+    <comment>Placeholder in the empty album description editor</comment>
+  </data>
+  <data name="DescriptionDialog.PlaylistPlaceholder" xml:space="preserve">
+    <value>このプレイリストの概要をここに記入してください</value>
+    <comment>Placeholder in the empty playlist description editor</comment>
+  </data>
+  <data name="DescriptionDialog.Clear" xml:space="preserve">
+    <value>削除する</value>
+    <comment>Footer text action: empties the editor</comment>
+  </data>
+  <data name="DescriptionDialog.Empty" xml:space="preserve">
+    <value>説明がありません</value>
+    <comment>Footer count when the editor is empty</comment>
+  </data>
   <!-- PlaylistView.axaml (auto-migrated) -->
   <data name="Playlist.RenamePlaylistTip" xml:space="preserve">
     <value>プレイリスト名を変更</value>
@@ -5382,6 +5518,10 @@
     <value>閉じる</value>
     <comment>Secondary button</comment>
   </data>
+  <data name="SendToFolder.Lyrics" xml:space="preserve">
+    <value>歌詞を含む</value>
+    <comment>Option in SendToFolderDialog.axaml</comment>
+  </data>
   <data name="BulkLyrics.Title" xml:space="preserve">
     <value>歌詞</value>
     <comment>Dialog title (window)</comment>
@@ -5804,7 +5944,7 @@
     <comment>Time pill tooltip</comment>
   </data>
   <data name="Settings.Desc.General" xml:space="preserve">
-    <value>言語、起動、およびウィンドウとサイドバーの動作。</value>
+    <value>言語や起動時、ウィンドウとサイドバーの動作についての設定</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Appearance" xml:space="preserve">
@@ -6120,5 +6260,29 @@
     <comment>Settings rail</comment>
   </data>
   <!-- Phone app (Noctis.Mobile): keys prefixed Mobile. Plural values hold their forms separated by |, see Loc.Plural. -->
+  <data name="Picker.SelectMusicFolder" xml:space="preserve">
+    <value>フォルダを選択してください</value>
+    <comment>File picker dialog title</comment>
+  </data>
   <!-- LyricShareDialog Lyrics Page -->
+  <data name="Menu.OtherVersions" xml:space="preserve">
+    <value>他のバージョン</value>
+    <comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment>
+  </data>
+  <data name="Menu.OriginalVersion" xml:space="preserve">
+    <value>オリジナル</value>
+    <comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment>
+  </data>
+  <data name="Search.LyricsOff" xml:space="preserve">
+    <value>歌詞を検索しない</value>
+    <comment>Search box lyrics button menu: search titles, artists, albums only</comment>
+  </data>
+  <data name="Search.LyricsInclude" xml:space="preserve">
+    <value>歌詞を含む</value>
+    <comment>Search box lyrics button menu: also find songs whose lyrics contain the words</comment>
+  </data>
+  <data name="Search.LyricsOnly" xml:space="preserve">
+    <value>歌詞のみ</value>
+    <comment>Search box lyrics button menu: find songs by their lyrics only</comment>
+  </data>
 </root>
