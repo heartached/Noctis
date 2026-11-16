@@ -88,7 +88,7 @@ public static class AlbumLinks
                 changed = true;
                 continue;
             }
-            result.Add(new AlbumLink { AlbumId = albumId, SourceAlbumId = sourceId });
+            result.Add(new AlbumLink { AlbumId = albumId, SourceAlbumId = sourceId, ExtensionData = link.ExtensionData });
         }
         return changed ? result : null;
 
