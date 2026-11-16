@@ -66,9 +66,26 @@ public sealed record QueueRowLayout(
     public bool ShowsRight => Right != QueueRowSide.None;
 
     /// <summary>Text of line 1 or 2 for <paramref name="track"/>; the empty parts drop out.</summary>
-    public string LineText(Track track, int line) => line == 1
-        ? Join(Format(track, Line1), Format(track, Line1Extra))
-        : Join(Format(track, Line2), Format(track, Line2Extra));
+    public string LineText(Track track, int line)
+    {
+        var (lead, tail) = LineParts(track, line);
+        return lead + tail;
+    }
+
+    /// <summary>
+    /// Line 1 or 2 in two parts (GitHub #247): the lead field, which the row trims with an
+    /// ellipsis, and the extra field with its separator (" · 4:12"), which always shows after
+    /// it. Empty parts drop out as in <see cref="LineText"/>: with a blank lead the extra field
+    /// leads, and a blank extra leaves the tail empty.
+    /// </summary>
+    public (string Lead, string Tail) LineParts(Track track, int line)
+    {
+        var first = Format(track, line == 1 ? Line1 : Line2) ?? string.Empty;
+        var extra = Format(track, line == 1 ? Line1Extra : Line2Extra) ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(extra)) return (first, string.Empty);
+        if (string.IsNullOrWhiteSpace(first)) return (extra, string.Empty);
+        return (first, Separator + extra);
+    }
 
     /// <summary>The value one field shows for <paramref name="track"/>; empty when the tag is blank.</summary>
     public static string Format(Track track, QueueRowField field) => field switch
@@ -84,13 +101,6 @@ public sealed record QueueRowLayout(
         QueueRowField.Format => track.CodecShortName,
         _ => string.Empty,
     };
-
-    private static string Join(string first, string extra)
-    {
-        if (string.IsNullOrWhiteSpace(extra)) return first ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(first)) return extra;
-        return first + Separator + extra;
-    }
 
     /// <summary>The stored field; anything unknown is <paramref name="fallback"/>.</summary>
     public static QueueRowField ParseField(string? value, QueueRowField fallback) =>

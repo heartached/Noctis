@@ -1254,7 +1254,8 @@
                                                               Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
-                                        <Grid ColumnDefinitions="Auto,Auto">
+                                        <!-- GitHub #247: the lead field trims, the extra one (" · 4:12") stays. -->
+                                        <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
                                             <TextBlock Grid.Column="0"
                                                        Classes="one-line-explicit-title"
                                                        FontSize="13"
@@ -1262,14 +1263,27 @@
                                                        Foreground="{DynamicResource AccentForegroundBrush}"
                                                        MaxWidth="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueTitleMaxWidth, FallbackValue=165}">
                                                 <TextBlock.Text>
-                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1Lead}">
                                                         <Binding />
                                                         <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
                                                         <Binding Path="ArtistDisplay" />
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>
-                                            <Border Grid.Column="1"
+                                            <TextBlock Grid.Column="1"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1Tail}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <Border Grid.Column="2"
                                                     Classes="explicit-badge compact"
                                                     Margin="4,0,0,0"
                                                     IsVisible="{Binding IsExplicit}"
@@ -1283,48 +1297,83 @@
                                         </Grid>
                                         <!-- GitHub #147: line 2 is a link while it is the artist,
                                              plain text for any other field, gone for None. -->
-                                        <Button Classes="queue-link"
-                                                AutomationProperties.Name="{Binding ArtistDisplay}"
-                                                HorizontalAlignment="Left"
-                                                Margin="0,2,0,0"
-                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}"
-                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
-                                                CommandParameter="{Binding}">
-                                            <Border Classes="artist-text-hover"
-                                                    CornerRadius="2"
-                                                    Padding="2,0,3,0">
-                                                <TextBlock FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Foreground="{DynamicResource AccentForegroundBrush}"
-                                                           Opacity="0.75"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxLines="1">
-                                                    <TextBlock.Text>
-                                                        <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
-                                                            <Binding />
-                                                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
-                                                            <Binding Path="ArtistDisplay" />
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
-                                            </Border>
-                                        </Button>
-                                        <TextBlock FontSize="11"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AccentForegroundBrush}"
-                                                   Opacity="0.75"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1"
-                                                   Margin="2,2,3,0"
-                                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
-                                            <TextBlock.Text>
-                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
-                                                    <Binding Path="ArtistDisplay" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                        <Grid ColumnDefinitions="*,Auto"
+                                              HorizontalAlignment="Left"
+                                              Margin="0,2,0,0"
+                                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}">
+                                            <Button Classes="queue-link"
+                                                    AutomationProperties.Name="{Binding ArtistDisplay}"
+                                                    HorizontalAlignment="Left"
+                                                    Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Border Classes="artist-text-hover"
+                                                        CornerRadius="2"
+                                                        Padding="2,0,3,0">
+                                                    <TextBlock FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource AccentForegroundBrush}"
+                                                               Opacity="0.75"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               MaxLines="1">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Lead}">
+                                                                <Binding />
+                                                                <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </Border>
+                                            </Button>
+                                            <TextBlock Grid.Column="1"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       Opacity="0.75"
+                                                       MaxLines="1"
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Tail}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,Auto"
+                                              HorizontalAlignment="Left"
+                                              Margin="2,2,3,0"
+                                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
+                                            <TextBlock FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       Opacity="0.75"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Lead}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="1"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       Opacity="0.75"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Tail}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
                                     </StackPanel>
                                     <TextBlock Grid.Column="2"
                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.ShowsRight, FallbackValue=True}"
@@ -1508,21 +1557,36 @@
                                             </Border>
                                             <!-- Title + Artist -->
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
-                                                <Grid ColumnDefinitions="Auto,Auto">
+                                                <!-- GitHub #247: a line is its lead field, which trims, and
+                                                     the extra field (" · 4:12"), which always shows after it. -->
+                                                <Grid ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left">
                                                     <TextBlock Grid.Column="0"
                                                                Classes="one-line-explicit-title queue-fg"
                                                                FontSize="13"
                                                                FontWeight="SemiBold"
                                                                MaxWidth="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueTitleMaxWidth, FallbackValue=165}">
                                                         <TextBlock.Text>
-                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1Lead}">
                                                                 <Binding />
                                                                 <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
                                                                 <Binding Path="ArtistDisplay" />
                                                             </MultiBinding>
                                                         </TextBlock.Text>
                                                     </TextBlock>
-                                                    <Border Grid.Column="1"
+                                                    <TextBlock Grid.Column="1"
+                                                               Classes="queue-fg"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               MaxLines="1">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1Tail}">
+                                                                <Binding />
+                                                                <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                    <Border Grid.Column="2"
                                                             Classes="explicit-badge compact"
                                                             Margin="4,0,0,0"
                                                             IsVisible="{Binding IsExplicit}"
@@ -1536,48 +1600,83 @@
                                                 </Grid>
                                                 <!-- GitHub #147: line 2 is a link while it is the artist,
                                                      plain text for any other field, gone for None. -->
-                                                <Button Classes="queue-link"
-                                                        AutomationProperties.Name="{Binding ArtistDisplay}"
-                                                        HorizontalAlignment="Left"
-                                                        Margin="0,2,0,0"
-                                                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}"
-                                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
-                                                        CommandParameter="{Binding}">
-                                                    <Border Classes="artist-text-hover"
-                                                            CornerRadius="2"
-                                                            Padding="2,0,3,0">
-                                                        <TextBlock Classes="queue-fg"
-                                                                   FontSize="11"
-                                                                   FontWeight="SemiBold"
-                                                                   Opacity="0.55"
-                                                                   TextTrimming="CharacterEllipsis"
-                                                                   MaxLines="1">
-                                                            <TextBlock.Text>
-                                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
-                                                                    <Binding />
-                                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
-                                                                    <Binding Path="ArtistDisplay" />
-                                                                </MultiBinding>
-                                                            </TextBlock.Text>
-                                                        </TextBlock>
-                                                    </Border>
-                                                </Button>
-                                                <TextBlock Classes="queue-fg"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           Opacity="0.55"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxLines="1"
-                                                           Margin="2,2,3,0"
-                                                           IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
-                                                    <TextBlock.Text>
-                                                        <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
-                                                            <Binding />
-                                                            <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
-                                                            <Binding Path="ArtistDisplay" />
-                                                        </MultiBinding>
-                                                    </TextBlock.Text>
-                                                </TextBlock>
+                                                <Grid ColumnDefinitions="*,Auto"
+                                                      HorizontalAlignment="Left"
+                                                      Margin="0,2,0,0"
+                                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsArtistLink, FallbackValue=True}">
+                                                    <Button Classes="queue-link"
+                                                            AutomationProperties.Name="{Binding ArtistDisplay}"
+                                                            HorizontalAlignment="Left"
+                                                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.ViewArtistCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <Border Classes="artist-text-hover"
+                                                                CornerRadius="2"
+                                                                Padding="2,0,3,0">
+                                                            <TextBlock Classes="queue-fg"
+                                                                       FontSize="11"
+                                                                       FontWeight="SemiBold"
+                                                                       Opacity="0.55"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       MaxLines="1">
+                                                                <TextBlock.Text>
+                                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Lead}">
+                                                                        <Binding />
+                                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                        <Binding Path="ArtistDisplay" />
+                                                                    </MultiBinding>
+                                                                </TextBlock.Text>
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </Button>
+                                                    <TextBlock Grid.Column="1"
+                                                               Classes="queue-fg"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Opacity="0.55"
+                                                               MaxLines="1"
+                                                               VerticalAlignment="Center">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Tail}">
+                                                                <Binding />
+                                                                <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </Grid>
+                                                <Grid ColumnDefinitions="*,Auto"
+                                                      HorizontalAlignment="Left"
+                                                      Margin="2,2,3,0"
+                                                      IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.Line2IsPlain, FallbackValue=False}">
+                                                    <TextBlock Classes="queue-fg"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Opacity="0.55"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               MaxLines="1">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Lead}">
+                                                                <Binding />
+                                                                <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                    <TextBlock Grid.Column="1"
+                                                               Classes="queue-fg"
+                                                               FontSize="11"
+                                                               FontWeight="SemiBold"
+                                                               Opacity="0.55"
+                                                               MaxLines="1">
+                                                        <TextBlock.Text>
+                                                            <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Tail}">
+                                                                <Binding />
+                                                                <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                                <Binding Path="ArtistDisplay" />
+                                                            </MultiBinding>
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </Grid>
                                             </StackPanel>
                                             <!-- Queue position (stamped from code-behind; virtualization
                                                  recycles rows, so there is no per-item index to bind).
@@ -1719,35 +1818,68 @@
                                                               Stretch="UniformToFill" />
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0">
-                                        <TextBlock FontSize="13"
-                                                    FontWeight="SemiBold"
-                                                    Foreground="{DynamicResource AccentForegroundBrush}"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1">
-                                            <TextBlock.Text>
-                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
-                                                    <Binding Path="ArtistDisplay" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                        <TextBlock FontSize="11"
-                                                    FontWeight="Bold"
-                                                    Foreground="{DynamicResource AccentForegroundBrush}"
-                                                   Opacity="0.7"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1"
-                                                   Margin="0,2,0,0"
-                                                   IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.HasLine2, FallbackValue=True}">
-                                            <TextBlock.Text>
-                                                <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2}">
-                                                    <Binding />
-                                                    <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
-                                                    <Binding Path="ArtistDisplay" />
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
+                                        <!-- GitHub #247: the lead field trims, the extra one (" · 4:12") stays. -->
+                                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Left">
+                                            <TextBlock FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1Lead}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="1"
+                                                       FontSize="13"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line1Tail}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="*,Auto"
+                                              HorizontalAlignment="Left"
+                                              Margin="0,2,0,0"
+                                              IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout.HasLine2, FallbackValue=True}">
+                                            <TextBlock FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       Opacity="0.7"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Lead}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                            <TextBlock Grid.Column="1"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}"
+                                                       Opacity="0.7"
+                                                       MaxLines="1">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static helpers:QueueRowConverters.Line2Tail}">
+                                                        <Binding />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Player.QueueRowLayout" />
+                                                        <Binding Path="ArtistDisplay" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
+                                        </Grid>
                                     </StackPanel>
                                 </Grid>
                             </Border>
