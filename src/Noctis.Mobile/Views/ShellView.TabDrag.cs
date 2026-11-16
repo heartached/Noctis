@@ -39,14 +39,13 @@ public partial class ShellView
 
     /// <summary>The tab under <paramref name="x"/> (dp across a bar <paramref name="barWidth"/> wide).</summary>
     internal static int TabAt(double barWidth, double x)
-        => Math.Clamp((int)Math.Floor(x / Math.Max(1, barWidth / TabCount)), 0, TabCount - 1);
+        => Math.Clamp((int)Math.Floor((x - TabEdge) / Math.Max(1, TabWidth(barWidth))), 0, TabCount - 1);
 
     /// <summary>Where the pill starts while dragged: centred under the finger, but never past the
-    /// first or last tab's place, at the width of the tab under the finger.</summary>
+    /// first or last tab's place.</summary>
     internal static double DraggedPillX(double barWidth, double x)
     {
-        var tab = barWidth / TabCount;
-        var centre = Math.Clamp(x, tab / 2, barWidth - tab / 2);
+        var centre = Math.Clamp(x, TabCentre(barWidth, 0), TabCentre(barWidth, TabCount - 1));
         return centre - SelectionPillWidth(barWidth, TabAt(barWidth, x)) / 2;
     }
 
