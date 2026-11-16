@@ -2770,6 +2770,7 @@ Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="LyricsStudio.Subtitle" xml:space="preserve"><value>Times lyrics to the recording. Paste lyrics for songs that have none.</value><comment>Dialog subtitle</comment></data>
   <data name="LyricsStudio.Model" xml:space="preserve"><value>Model</value><comment>Footer label</comment></data>
   <data name="LyricsStudio.Language" xml:space="preserve"><value>Language</value><comment>Footer label</comment></data>
+  <data name="LyricsStudio.LanguageAuto" xml:space="preserve"><value>Detect automatically</value><comment>First entry of the Language picker in the Settings popover</comment></data>
   <data name="LyricsStudio.WordTimings" xml:space="preserve"><value>Word timings</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimed" xml:space="preserve"><value>Skip songs already in this format</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimedTip" xml:space="preserve"><value>Word timings (ELRC) and line timings (LRC) are different formats. Songs that only have line timings are still processed.</value><comment>Footer checkbox tooltip</comment></data>
