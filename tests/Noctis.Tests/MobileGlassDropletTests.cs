@@ -98,31 +98,87 @@ public class MobileGlassDropletTests
         Assert.False(pill.HasLens);
         var bar = view.FindControl<Panel>("ChromeHost")!.Bounds.Width;
         var target = ShellView.SelectionPillX(bar, 2);
-        Assert.Equal(2 * bar / 5 - 2, target, 1);     // a little wider than its tab, centred on it
+        Assert.Equal(ShellView.TabEdge + 2 * ShellView.TabWidth(bar) - 2, target, 1);     // a little wider than its tab, centred on it
         PumpUntil(() => Math.Abs((host.RenderTransform?.Value.M31 ?? 0) - target) < 0.5);
         Assert.Equal(target, host.RenderTransform!.Value.M31, 1);
         window.Close();
     }
 
-    /// <summary>Apple's selected-tab capsule overhangs its tab a little but stays inside the bar's
-    /// rounded ends on the first and last tab - and is centred on its tab on every one (beta 2:
-    /// the end tabs' capsule was clamped 6 dp off its icon and label).</summary>
+    /// <summary>Apple's selected-tab capsule overhangs its tab a little, is one size on every tab,
+    /// stays inside the bar's rounded ends on the first and last tab, and is centred on its tab on
+    /// every one (beta 2: the end tabs' capsule was clamped 6 dp off its icon and label; beta 4:
+    /// it was narrower there instead, "the size changes on first and last sections").</summary>
     [Fact]
-    public void TheSelectedTabCapsule_StaysInsideTheBarsEnds_CentredOnEveryTab()
+    public void TheSelectedTabCapsule_IsOneSize_InsideTheBarsEnds_CentredOnEveryTab()
     {
         const double bar = 380;
-        var tab = bar / 5;
-        for (var i = 1; i <= 3; i++)
-        {
-            Assert.Equal(tab + 4, ShellView.SelectionPillWidth(bar, i), 3);
-            Assert.Equal(i * tab - 2, ShellView.SelectionPillX(bar, i), 3);
-        }
-        Assert.Equal(4, ShellView.SelectionPillX(bar, 0));
-        Assert.Equal(bar - ShellView.SelectionPillWidth(bar, 4) - 4, ShellView.SelectionPillX(bar, 4), 3);
+        var tab = ShellView.TabWidth(bar);
+        Assert.Equal((bar - 2 * ShellView.TabEdge) / 5, tab, 3);
         for (var i = 0; i < 5; i++)
         {
+            Assert.Equal(tab + 4, ShellView.SelectionPillWidth(bar, i), 3);
             var centre = ShellView.SelectionPillX(bar, i) + ShellView.SelectionPillWidth(bar, i) / 2;
-            Assert.Equal((i + 0.5) * tab, centre, 3);
+            Assert.Equal(ShellView.TabEdge + (i + 0.5) * tab, centre, 3);
+        }
+        Assert.Equal(4, ShellView.SelectionPillX(bar, 0), 3);
+        Assert.Equal(bar - ShellView.SelectionPillWidth(bar, 4) - 4, ShellView.SelectionPillX(bar, 4), 3);
+    }
+
+    /// <summary>Laid out at real phone widths: the capsule is the same width and height on all five
+    /// tabs, centred on the tab button (icon and label), 4 dp inside the bar's ends on the first and
+    /// last tab, and the French labels ("Bibliothèque", "Recherche") are not cut.</summary>
+    [AvaloniaTheory]
+    [InlineData(360)]
+    [InlineData(393)]
+    [InlineData(412)]
+    public void TheSelectedTabCapsule_IsOneSize_AndCentredOnItsTab_AtPhoneWidths(double screen)
+    {
+        Noctis.Localization.Loc.Instance.SetCulture("fr");
+        try
+        {
+            using var rig = MobileFixtures.MakeRig();
+            var window = MobileFixtures.Mount(rig.Shell, out var view, width: screen);
+            var row = view.FindControl<Panel>("TabRow")!;
+            var pill = view.FindControl<GlassDroplet>("SelectionPill")!;
+            var host = view.FindControl<Panel>("SelectionPillHost")!;
+            string[] names = { "HomeTab", "FavoritesTab", "PlaylistsTab", "LibraryTab", "SearchTab" };
+            MobileTab[] tabs = { MobileTab.Home, MobileTab.Favorites, MobileTab.Playlists, MobileTab.Library, MobileTab.Search };
+            var sizes = new System.Collections.Generic.List<Size>();
+            for (var i = 0; i < 5; i++)
+            {
+                rig.Shell.SelectTabCommand.Execute(tabs[i]);
+                PumpUntil(() => pill.Lift == 0 && Math.Abs((host.RenderTransform?.Value.M31 ?? 0) - ShellView.SelectionPillX(row.Bounds.Width, i)) < 0.1
+                                && Math.Abs(pill.Width - ShellView.SelectionPillWidth(row.Bounds.Width, i)) < 0.1);
+                window.UpdateLayout();
+                var bar = row.Bounds.Width;
+                var left = host.RenderTransform!.Value.M31;
+                sizes.Add(new Size(pill.Width, pill.Height));
+
+                var button = view.FindControl<Button>(names[i])!;
+                var buttonCentre = button.TranslatePoint(new Point(button.Bounds.Width / 2, 0), row)!.Value.X;
+                // Within layout rounding: the grid snaps its columns to whole pixels, up to one at
+                // the headless window's scale of 1 (under half a dp at a phone's 2.6x and up).
+                Assert.True(Math.Abs(buttonCentre - (left + pill.Width / 2)) <= 1.01, $"tab {i} at {screen}: tab centre {buttonCentre}, capsule centre {left + pill.Width / 2}");
+                Assert.True(left >= 4 - 0.01 && left + pill.Width <= bar - 4 + 0.01, $"tab {i} at {screen}: {left}..{left + pill.Width} in {bar}");
+
+                // The label fits whole (FitWidth shrinks it, no smaller than 0.75, before it would
+                // trim). Only with real fonts (NOCTIS_TEST_SKIA=1): the headless stub font draws
+                // every glyph a full em wide.
+                if (HeadlessTestApp.RealRendering)
+                {
+                    var fit = button.GetVisualDescendants().OfType<FitWidth>().Single();
+                    var label = (TextBlock)fit.Child!;
+                    label.Measure(Size.Infinity);
+                    Assert.True(label.DesiredSize.Width * fit.Scale <= fit.Bounds.Width + 0.5,
+                        $"'{label.Text}' at {screen}: {label.DesiredSize.Width} × {fit.Scale} in {fit.Bounds.Width}");
+                }
+            }
+            Assert.All(sizes, s => Assert.Equal(sizes[0], s));
+            window.Close();
+        }
+        finally
+        {
+            Noctis.Localization.Loc.Instance.SetCulture("en");
         }
     }
 
