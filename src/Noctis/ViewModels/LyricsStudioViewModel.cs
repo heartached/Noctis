@@ -14,7 +14,8 @@ public sealed record LyricsStudioPrefs(string Model, string Language, bool WordT
 
 public sealed record SpeechLanguageOption(string Code, string Name)
 {
-    public override string ToString() => Name;
+    /// <summary>"auto" is UI text, read from the strings each time the picker draws (Discord: it stayed English in a French UI).</summary>
+    public override string ToString() => Code == "auto" ? Noctis.Localization.Loc.T("LyricsStudio.LanguageAuto") : Name;
 }
 
 /// <summary>

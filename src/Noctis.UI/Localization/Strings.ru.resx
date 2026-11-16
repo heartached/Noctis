@@ -2770,6 +2770,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsStudio.Subtitle" xml:space="preserve"><value>Синхронизирует текст с записью. Для песен без текста вставьте его сами.</value><comment>Dialog subtitle</comment></data>
   <data name="LyricsStudio.Model" xml:space="preserve"><value>Модель</value><comment>Footer label</comment></data>
   <data name="LyricsStudio.Language" xml:space="preserve"><value>Язык</value><comment>Footer label</comment></data>
+  <data name="LyricsStudio.LanguageAuto" xml:space="preserve"><value>Определять автоматически</value><comment>First entry of the Language picker in the Settings popover</comment></data>
   <data name="LyricsStudio.WordTimings" xml:space="preserve"><value>Тайминг по словам</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimed" xml:space="preserve"><value>Пропускать песни, у которых уже есть этот формат</value><comment>Footer checkbox</comment></data>
   <data name="LyricsStudio.SkipAlreadyTimedTip" xml:space="preserve"><value>Тайминг по словам (ELRC) и по строкам (LRC) — разные форматы. Песни только с таймингом по строкам всё равно обрабатываются.</value><comment>Footer checkbox tooltip</comment></data>

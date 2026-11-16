@@ -5901,6 +5901,38 @@
     <value>Langue</value>
     <comment>Footer label</comment>
   </data>
+  <data name="LyricsStudio.LanguageAuto" xml:space="preserve">
+    <value>Détecter automatiquement</value>
+    <comment>First entry of the Language picker in the Settings popover</comment>
+  </data>
+  <data name="LyricsStudio.Settings" xml:space="preserve">
+    <value>Paramètres</value>
+    <comment>Toolbar popover: language, run options</comment>
+  </data>
+  <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve">
+    <value>Enregistrer aussi en TTML</value>
+    <comment>Toggle title</comment>
+  </data>
+  <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve">
+    <value>Écrit aussi un fichier .ttml à côté de la chanson, pour les lecteurs qui lisent le TTML mais pas les timings de mots ELRC.</value>
+    <comment>Toggle help</comment>
+  </data>
+  <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve">
+    <value>Lullaby écoute chaque chanson et écrit les paroles lui-même, même quand la chanson a déjà des paroles. Les voix chantées sont souvent mal transcrites : chaque transcription s'ouvre dans la zone des paroles pour que vous la corrigiez avant l'alignement.</value>
+    <comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment>
+  </data>
+  <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve">
+    <value>Les paroles simples sont d'abord récupérées sur LRCLIB, le modèle n'a plus qu'à les synchroniser. Désactivé, ou si rien n'est trouvé, la chanson attend que vous colliez ses paroles.</value>
+    <comment>Footer checkbox tooltip</comment>
+  </data>
+  <data name="LyricsStudio.UseGpu" xml:space="preserve">
+    <value>Utiliser la carte graphique (GPU) · Expérimental</value>
+    <comment>Footer checkbox (only in builds with the Vulkan runtime)</comment>
+  </data>
+  <data name="LyricsStudio.UseGpuTip" xml:space="preserve">
+    <value>Exécute le modèle vocal sur la carte graphique via Vulkan, environ 5 fois plus vite que le processeur sur un GPU récent. Si la carte ne peut pas le faire, le Studio reste sur le CPU. Le choix prend effet au prochain démarrage de Noctis si une exécution a utilisé le CPU.</value>
+    <comment>Footer checkbox tooltip</comment>
+  </data>
   <data name="LyricsStudio.WordTimings" xml:space="preserve">
     <value>Horodatages des mots</value>
     <comment>Footer checkbox</comment>
