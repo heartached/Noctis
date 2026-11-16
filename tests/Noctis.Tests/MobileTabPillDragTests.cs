@@ -35,8 +35,9 @@ public class MobileTabPillDragTests
     {
         const double bar = 380;
         Assert.Equal(0, ShellView.TabAt(bar, -20));
-        Assert.Equal(0, ShellView.TabAt(bar, 75));
-        Assert.Equal(1, ShellView.TabAt(bar, 77));
+        var firstEnd = ShellView.TabEdge + ShellView.TabWidth(bar);   // tabs sit TabEdge inside the bar's ends
+        Assert.Equal(0, ShellView.TabAt(bar, firstEnd - 1));
+        Assert.Equal(1, ShellView.TabAt(bar, firstEnd + 1));
         Assert.Equal(4, ShellView.TabAt(bar, 500));
         // Mid-bar the pill is centred under the finger; at the ends it stops at the end tab's place.
         var x = ShellView.DraggedPillX(bar, 190);

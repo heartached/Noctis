@@ -144,6 +144,11 @@ public partial class ShellView : UserControl
     /// this far inside the pill's ends.</summary>
     private const double PillInset = 4, PillOverhang = 2;
 
+    /// <summary>The tabs sit this far inside the bar's ends, so the first and last tab's capsule
+    /// (as wide as every other one) still stands <see cref="PillInset"/> inside the rounded end,
+    /// concentric with it, and centred on its tab.</summary>
+    internal const double TabEdge = PillInset + PillOverhang;
+
     /// <summary>The tabs across the expanded bar: Home, Favorites, Playlists, Library, Search.</summary>
     internal const int TabCount = 5;
     private static readonly TimeSpan Morph = TimeSpan.FromMilliseconds(380);
@@ -250,7 +255,7 @@ public partial class ShellView : UserControl
         SelectionPill.Transitions = new Transitions
         {
             new DoubleTransition { Property = GlassDroplet.LiftProperty, Duration = LiftTime, Easing = new CubicBezierEase(0.25, 0.1, 0.25, 1) },
-            // The end tabs' capsule is a little narrower: it eases to it as it slides.
+            // One width on every tab; eases only when the bar itself is resized.
             new DoubleTransition { Property = WidthProperty, Duration = Slide, Easing = new CubicBezierEase(0.25, 0.1, 0.25, 1) },
         };
     }
@@ -287,22 +292,21 @@ public partial class ShellView : UserControl
         _settleTimer.Start();
     }
 
-    /// <summary>The selected tab's capsule: a little wider than its tab, but on the first and
-    /// last tab only as wide as fits <see cref="PillInset"/> inside the bar's rounded end while
-    /// still centred on the tab. Beta 2: one width everywhere was clamped against the end and
-    /// sat 6 dp off its tab's icon and label there (testers: "the button is not centred").</summary>
-    internal static double SelectionPillWidth(double barWidth, int index)
-    {
-        var tab = barWidth / TabCount;
-        var centre = (index + 0.5) * tab;
-        var room = Math.Min(centre, barWidth - centre) - PillInset;
-        return Math.Max(0, Math.Min(tab + 2 * PillOverhang, 2 * room));
-    }
+    /// <summary>One tab's width: the bar less <see cref="TabEdge"/> at each end, in five.</summary>
+    internal static double TabWidth(double barWidth) => Math.Max(0, barWidth - 2 * TabEdge) / TabCount;
 
-    /// <summary>Where the selected tab's capsule starts: centred on its tab (<see
-    /// cref="SelectionPillWidth"/> keeps it inside the bar's ends).</summary>
+    /// <summary>Where a tab's icon and label are centred across the bar.</summary>
+    internal static double TabCentre(double barWidth, int index) => TabEdge + (index + 0.5) * TabWidth(barWidth);
+
+    /// <summary>The selected tab's capsule: a little wider than its tab, the same on every tab.
+    /// Beta 2 clamped one width against the bar's end (6 dp off its tab); beta 4 narrowed the
+    /// end tabs' capsule instead (testers: "the size changes on first and last sections"). The
+    /// tabs now sit <see cref="TabEdge"/> inside the ends, so the full capsule fits there.</summary>
+    internal static double SelectionPillWidth(double barWidth, int index) => TabWidth(barWidth) + 2 * PillOverhang;
+
+    /// <summary>Where the selected tab's capsule starts: centred on its tab.</summary>
     internal static double SelectionPillX(double barWidth, int index)
-        => (index + 0.5) * (barWidth / TabCount) - SelectionPillWidth(barWidth, index) / 2;
+        => TabCentre(barWidth, index) - SelectionPillWidth(barWidth, index) / 2;
 
     /// <summary>A tab's column in the bar (TabBar in the XAML).</summary>
     internal static int TabIndex(MobileTab tab) => tab switch
@@ -342,6 +346,7 @@ public partial class ShellView : UserControl
         TabCapsule.Width = folded ? Bubble : width;
         TabCapsule.Height = folded ? Bubble : TabHeight;
         TabRow.Width = width;
+        TabBar.Margin = new Thickness(TabEdge, 0);
         TabRow.Opacity = folded ? 0 : 1;
         TabRow.IsHitTestVisible = !folded;
         CollapsedTabButton.Width = Bubble;
