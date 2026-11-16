@@ -27,7 +27,8 @@ namespace Noctis.Controls;
 /// subtitle is one line). The line count comes from a TextLayout in the tile's own title font
 /// and width, and the two heights are learned from realized tiles. A realized card whose
 /// measured height still differs (an explicit badge or heart changed the wrap) replaces its
-/// estimate and the stack is re-placed, which is O(n) over plain arrays.
+/// estimate and the stack is re-placed, which is O(n) over plain arrays: each title's line
+/// count is laid out once and kept (GitHub #241).
 /// </summary>
 public sealed class MasonryAlbumPanel : Panel
 {
@@ -66,6 +67,7 @@ public sealed class MasonryAlbumPanel : Panel
     private bool[] _measured = Array.Empty<bool>();
     private int[] _column = Array.Empty<int>();
     private double[] _top = Array.Empty<double>();
+    private byte[] _lines = Array.Empty<byte>(); // title line count per card; 0 = not laid out yet
     private double _total;
     private double _width;
     private int _columns = 1;
@@ -81,6 +83,7 @@ public sealed class MasonryAlbumPanel : Panel
     private double _oneLine = double.NaN, _twoLine = double.NaN;
     private Typeface? _titleFace;
     private double _titleSize = 13, _titleWidth = double.NaN;
+    private bool _titleWidthExact;
 
     public MasonryAlbumPanel()
     {
@@ -135,6 +138,7 @@ public sealed class MasonryAlbumPanel : Panel
         {
             // New widths re-wrap titles: forget the learned heights.
             _oneLine = _twoLine = _titleWidth = double.NaN;
+            _titleWidthExact = false;
             _dirty = true;
             InvalidateMeasure();
         }
@@ -163,9 +167,9 @@ public sealed class MasonryAlbumPanel : Panel
     private double CellWidth => _width / _columns;
 
     /// <summary>Card height before it is ever realized.</summary>
-    private double Estimate(Album album)
+    private double Estimate(int index)
     {
-        var lines = TitleLines(album.Name);
+        var lines = TitleLines(index);
         if (lines <= 1 && !double.IsNaN(_oneLine)) return _oneLine;
         if (lines >= 2 && !double.IsNaN(_twoLine)) return _twoLine;
         if (!double.IsNaN(_oneLine)) return _oneLine + (lines - 1) * 17;
@@ -174,12 +178,19 @@ public sealed class MasonryAlbumPanel : Panel
         return ArtworkSize + 18 + 5 + lines * 17 + 1 + 16;
     }
 
-    private int TitleLines(string? title)
+    /// <summary>Title line count of card <paramref name="index"/>, laid out once per title
+    /// font and width (GitHub #241: re-laying out every title whenever a realized card
+    /// corrected its estimate cost ~2000 TextLayouts, hundreds of ms, per scroll step).</summary>
+    private int TitleLines(int index)
     {
+        if (_lines[index] != 0) return _lines[index];
+        var title = _items[index].Name;
         if (_titleFace is not { } face || double.IsNaN(_titleWidth) || string.IsNullOrEmpty(title)) return 1;
         using var layout = new TextLayout(title, face, _titleSize, null, TextAlignment.Left,
             TextWrapping.Wrap, TextTrimming.CharacterEllipsis, maxWidth: _titleWidth, maxLines: 2);
-        return Math.Clamp(layout.TextLines.Count, 1, 2);
+        var lines = (byte)Math.Clamp(layout.TextLines.Count, 1, 2);
+        _lines[index] = lines;
+        return lines;
     }
 
     private void Replace()
@@ -191,10 +202,13 @@ public sealed class MasonryAlbumPanel : Panel
             _measured = new bool[n];
             _column = new int[n];
             _top = new double[n];
+            _lines = new byte[n];
         }
+        // New albums or a new width: titles wrap afresh.
+        Array.Clear(_lines);
         for (var i = 0; i < n; i++)
         {
-            _heights[i] = Estimate(_items[i]) + Spacing;
+            _heights[i] = Estimate(i) + Spacing;
             _measured[i] = false;
         }
         Place();
@@ -212,6 +226,7 @@ public sealed class MasonryAlbumPanel : Panel
             _width = width;
             _columns = columns;
             _dirty = true;
+            _titleWidthExact = false; // a wider cell re-wraps titles: re-learn from the next plain card
         }
         if (_dirty) Replace();
         if (_width <= 0 || _items.Count == 0)
@@ -245,10 +260,11 @@ public sealed class MasonryAlbumPanel : Panel
                     c.IsVisible = true;
                     _realized[i] = c;
                     ElementPrepared?.Invoke(this, c);
+                    InvalidateRebound(c);
                 }
                 c.Measure(new Size(CellWidth, double.PositiveInfinity));
                 var tileHeight = c.DesiredSize.Height;
-                Learn(c, _items[i], tileHeight);
+                Learn(c, i, tileHeight);
                 var h = tileHeight + Spacing;
                 _measured[i] = true;
                 if (Math.Abs(h - _heights[i]) > 0.5)
@@ -261,7 +277,7 @@ public sealed class MasonryAlbumPanel : Panel
             // Real heights moved cards below them: re-place and re-check the band. Unmeasured
             // cards take the freshly learned heights too.
             for (var i = 0; i < _items.Count; i++)
-                if (!_measured[i]) _heights[i] = Estimate(_items[i]) + Spacing;
+                if (!_measured[i]) _heights[i] = Estimate(i) + Spacing;
             Place();
         }
 
@@ -270,9 +286,29 @@ public sealed class MasonryAlbumPanel : Panel
         return new Size(_width, _total);
     }
 
-    private void Learn(Control tile, Album album, double height)
+    /// <summary>
+    /// A pooled tile re-bound to another album: its title's new text invalidates only the
+    /// TextBlock, while the tile and the panels between stay measure-valid, so measuring the
+    /// tile returned the previous album's height and the real one landed a layout pass later,
+    /// re-placing the stack once more (GitHub #241). Invalidate the chain up to the tile.
+    /// </summary>
+    private static void InvalidateRebound(Control tile)
     {
-        if (_titleFace == null || double.IsNaN(_titleWidth))
+        foreach (var v in tile.GetVisualDescendants())
+        {
+            if (v is not Layoutable { IsMeasureValid: false }) continue;
+            for (var p = v.GetVisualParent(); p is Layoutable l; p = p.GetVisualParent())
+            {
+                l.InvalidateMeasure();
+                if (ReferenceEquals(l, tile)) break;
+            }
+        }
+    }
+
+    private void Learn(Control tile, int index, double height)
+    {
+        var album = _items[index];
+        if (_titleFace == null || double.IsNaN(_titleWidth) || (!_titleWidthExact && !album.HasFavoriteTrack))
         {
             foreach (var v in tile.GetVisualDescendants())
             {
@@ -280,7 +316,19 @@ public sealed class MasonryAlbumPanel : Panel
                 {
                     _titleFace = new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight);
                     _titleSize = tb.FontSize;
-                    if (tb.DesiredSize.Width > 0) _titleWidth = Math.Max(1, tb.DesiredSize.Width - tb.Margin.Left - tb.Margin.Right);
+                    // The width the title wraps at is the one it was measured in (a favorite's
+                    // heart narrows it), not its desired width: that is the first title's own
+                    // length, which made longer titles estimate two lines and every realized
+                    // card correct the stack (GitHub #241).
+                    if (!album.HasFavoriteTrack
+                        && LayoutInformation.GetPreviousMeasureConstraint(tb) is { Width: > 0 } box
+                        && double.IsFinite(box.Width))
+                    {
+                        var width = Math.Max(1, box.Width - tb.Margin.Left - tb.Margin.Right - tb.Padding.Left - tb.Padding.Right);
+                        if (Math.Abs(width - _titleWidth) > 0.01 || double.IsNaN(_titleWidth)) Array.Clear(_lines);
+                        _titleWidth = width;
+                        _titleWidthExact = true;
+                    }
                     break;
                 }
             }
@@ -288,7 +336,7 @@ public sealed class MasonryAlbumPanel : Panel
         }
         // Favorite hearts and explicit badges narrow the title: learn only from plain cards.
         if (album.HasFavoriteTrack || album.IsExplicit) return;
-        if (TitleLines(album.Name) <= 1) { if (double.IsNaN(_oneLine)) _oneLine = height; }
+        if (TitleLines(index) <= 1) { if (double.IsNaN(_oneLine)) _oneLine = height; }
         else if (double.IsNaN(_twoLine)) _twoLine = height;
     }
 
