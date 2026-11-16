@@ -62,6 +62,15 @@ public sealed class AlbumCarousel : Panel
     public static readonly StyledProperty<bool> FocusOnShowProperty =
         AvaloniaProperty.Register<AlbumCarousel, bool>(nameof(FocusOnShow), true);
 
+    /// <summary>GitHub #244: the row runs on to the window's left and right edges (under the
+    /// sidebar rail and past the page's margins) instead of stopping at the strip's own
+    /// bounds. Layout is unchanged: the row stays centred on the strip. Only where the
+    /// carousel fills a page (the Albums page); a scrolling page (the artist page) must
+    /// keep its clips.</summary>
+    public static readonly StyledProperty<bool> BleedToWindowEdgesProperty =
+        AvaloniaProperty.Register<AlbumCarousel, bool>(nameof(BleedToWindowEdges));
+
+    public bool BleedToWindowEdges { get => GetValue(BleedToWindowEdgesProperty); set => SetValue(BleedToWindowEdgesProperty, value); }
     public bool FocusOnShow { get => GetValue(FocusOnShowProperty); set => SetValue(FocusOnShowProperty, value); }
     public IEnumerable? Albums { get => GetValue(AlbumsProperty); set => SetValue(AlbumsProperty, value); }
     public AlbumCarouselStyle CaseStyle { get => GetValue(CaseStyleProperty); set => SetValue(CaseStyleProperty, value); }
@@ -96,6 +105,9 @@ public sealed class AlbumCarousel : Panel
     private readonly HashSet<string> _glowPending = new(StringComparer.OrdinalIgnoreCase);
     private readonly Stack<AlbumCarouselCard> _pool = new();
     private readonly Canvas _cardLayer = new() { ClipToBounds = false };
+    private readonly BackdropBleed _bleed;
+    private double _reachLeft;
+    private double _reachRight;
     private readonly StackPanel _caption;
     private readonly TextBlock _title;
     private readonly Border _explicit;
@@ -139,6 +151,9 @@ public sealed class AlbumCarousel : Panel
         });
         Focusable = true;
         ClipToBounds = true;
+        // GitHub #244: measures the strip's distance to the window's edges and lifts the page
+        // hosts' clips while BleedToWindowEdges is on; ApplyReach draws that far.
+        _bleed = new BackdropBleed(this) { Changed = ApplyReach };
         Background = Brushes.Transparent; // wheel / drag anywhere on the strip
         Avalonia.Automation.AutomationProperties.SetName(this, Loc.T("AlbumCarousel.Name"));
 
@@ -323,10 +338,42 @@ public sealed class AlbumCarousel : Panel
                 if (i >= 0 && i != _target) SnapTo(i);
             }
         }
-        else if (change.Property == IsVisibleProperty && IsVisible)
+        else if (change.Property == IsVisibleProperty)
         {
-            FocusSoon();
+            UpdateBleed();
+            if (IsVisible) FocusSoon();
         }
+        else if (change.Property == BleedToWindowEdgesProperty)
+        {
+            UpdateBleed();
+        }
+    }
+
+    // ── Reach to the window edges (GitHub #244) ───────────────────────────────
+
+    /// <summary>The extra width drawn left / right of the strip right now (0 when off).</summary>
+    internal double ReachLeft => _reachLeft;
+    internal double ReachRight => _reachRight;
+
+    /// <summary>Hidden (grid view), the page's clips stay as they are.</summary>
+    private void UpdateBleed() => _bleed.Enabled = BleedToWindowEdges && IsVisible;
+
+    /// <summary>Clips the strip to its own height but to the window's width, so the side
+    /// albums run on under the sidebar and to the right edge alike (the hosts' clips are lifted
+    /// by the bleed). Off, the strip clips to its bounds as before.</summary>
+    private void ApplyReach()
+    {
+        var left = _bleed.Enabled ? _bleed.AppliedLeft : 0;
+        var right = left > 0 ? _bleed.AppliedRight : 0;
+        if (left > 0)
+            Clip = new RectangleGeometry(new Rect(-left, 0, Bounds.Width + left + right, Bounds.Height));
+        else
+            ClearValue(ClipProperty);
+        if (left == _reachLeft && right == _reachRight) return;
+        _reachLeft = left;
+        _reachRight = right;
+        // More of the row shows: build the cards that now land on screen.
+        InvalidateArrange();
     }
 
     private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => ReloadItems();
@@ -413,7 +460,9 @@ public sealed class AlbumCarousel : Panel
         var byWidth = finalSize.Width * 0.38 / factor.Width;
         var cover = Math.Clamp(Math.Min(byHeight, byWidth), 90, 460);
         if (Math.Abs(cover - _coverSize) > 0.5) _coverSize = cover;
-        _sides = AlbumCarouselGeometry.VisibleSides(finalSize.Width, factor.Width * _coverSize);
+        // Reaching to the window edges (#244), the row shows as far as the farther edge.
+        var reach = Math.Max(_reachLeft, _reachRight);
+        _sides = AlbumCarouselGeometry.VisibleSides(finalSize.Width + 2 * reach, factor.Width * _coverSize);
 
         _cardLayer.Arrange(new Rect(0, 0, finalSize.Width, cardArea));
         _glow.Arrange(new Rect(0, 0, finalSize.Width, cardArea));
@@ -884,12 +933,16 @@ public sealed class AlbumCarousel : Panel
         AlbumCarouselStyleOverrides.Changed += OnStylePrefsChanged;
         OnStylePrefsChanged(null, EventArgs.Empty);
         if (IsVisible) FocusSoon();
+        _bleed.Attach();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         AlbumCarouselStyleOverrides.Changed -= OnStylePrefsChanged;
+        _bleed.Detach();
+        ClearValue(ClipProperty);
+        _reachLeft = _reachRight = 0;
     }
 
     /// <summary>An album's own style or the glow switch changed (or the carousel came on
