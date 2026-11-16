@@ -136,7 +136,9 @@ public class MobileHomeTabTests
         {
             var tab = view.FindControl<Button>(name)!;
             var label = tab.GetVisualDescendants().OfType<TextBlock>().Single();
-            Assert.Equal(bar / 5, tab.Bounds.Width, 1);
+            // The tab grid sits 6 dp inside each end of the bar, so a fifth of it is no longer a whole pixel:
+            // the grid rounds each column to the pixel grid.
+            Assert.InRange(tab.Bounds.Width, bar / 5 - 1, bar / 5 + 1);
             using var font = new SKFont(inter, (float)label.FontSize);
             var width = font.MeasureText(label.Text);
             Assert.True(width <= tab.Bounds.Width - 12, $"{name}: \"{label.Text}\" is {width:0.#} dp in a {tab.Bounds.Width:0.#} dp tab");
