@@ -4806,6 +4806,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
         _player.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _player.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
+        _player.LyricsPageTintsWindow = AlbumPageTintWholeWindow && AlbumPageTintEnabled;
         _player.LyricsSaveTarget = LyricsSaveTarget;
         _player.LyricsAutoDownload = LyricsAutoDownload;
         _player.LyricsPreferredType = LyricsPreferredType;
@@ -6161,6 +6162,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumPageTintEnabledChanged(bool value)
     {
         // No Apply* step: AlbumDetailViewModel subscribes to this VM's PropertyChanged.
+        if (_player != null) _player.LyricsPageTintsWindow = AlbumPageTintWholeWindow && AlbumPageTintEnabled;
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -6180,6 +6182,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumPageTintWholeWindowChanged(bool value)
     {
         // MainWindowViewModel watches this VM and shows or hides the window tint.
+        if (_player != null) _player.LyricsPageTintsWindow = AlbumPageTintWholeWindow && AlbumPageTintEnabled;
         if (_settingsLoaded) _ = SaveAsync();
     }
 
