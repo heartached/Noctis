@@ -119,6 +119,12 @@
         <Style Selector="StackPanel.on-tint Button.album-header-action /template/ ContentPresenter#PART_ContentPresenter">
             <Setter Property="BoxShadow" Value="0 2 6 0 #40000000" />
         </Style>
+        <!-- The shadow is drawn by the template's presenter, inside the Button, and an Avalonia 12
+             TemplatedControl clips to its bounds by default: the shadow was cut along the pill's
+             box, a hard edge under it and blocky corners (Discord 11-16). -->
+        <Style Selector="StackPanel.on-tint Button.album-header-action">
+            <Setter Property="ClipToBounds" Value="False" />
+        </Style>
         <Style Selector="PathIcon.album-dots">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
         </Style>
