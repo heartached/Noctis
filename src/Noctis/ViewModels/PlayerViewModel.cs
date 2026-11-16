@@ -636,6 +636,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// <summary>GitHub #184: the lyrics page's background reaches under the sidebar rail.
     /// Driven by Settings; display-only (LyricsView extends its backdrop layers).</summary>
     [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
+    /// <summary>Album Page Colour + Tint Whole Window are on, so the window around the
+    /// sidebar takes the lyrics page's look (#142): LyricsView then reaches its backdrop
+    /// under the sidebar as #184 does, instead of a flat average of it (Discord 11-16).
+    /// Driven by Settings; display-only.</summary>
+    [ObservableProperty] private bool _lyricsPageTintsWindow;
     /// <summary>Whether the lyrics show TTML translations / romanization / background vocals
     /// under each line (issue #78). Driven by Settings; display-only, no re-parse.</summary>
     [ObservableProperty] private bool _lyricsShowTranslations = true;
