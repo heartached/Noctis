@@ -151,18 +151,22 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     // the size the user already chose for the grid. The view feeds its usable width.
     [ObservableProperty] private double _albumTileSize = 220;
     private double _lastAlbumUsableWidth;
+    private double _lastAlbumLayoutScale = 1;
 
     /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
     public bool IsWideAlbumSpacing => _settings?.AlbumGridWideSpacing ?? false;
 
-    public void UpdateAlbumTileSize(double usableWidth)
+    /// <summary>Sizes the covers so <c>columns</c> tiles fit the row's measured width at the
+    /// view's layout scale (the rows wrap, so rounding must never push the last one down, #242).</summary>
+    public void UpdateAlbumTileSize(double usableWidth, double layoutScale = 1)
     {
         if (!double.IsFinite(usableWidth) || usableWidth <= 0) return;
         _lastAlbumUsableWidth = usableWidth;
+        _lastAlbumLayoutScale = layoutScale;
         var auto = _settings?.AlbumTileSizeAuto ?? true;
         var target = _settings?.AlbumTileTargetSize ?? 220;
         var columns = AlbumGridMetrics.ComputeColumns(usableWidth, auto, target);
-        var size = AlbumGridMetrics.ComputeTileSize(usableWidth, columns, IsWideAlbumSpacing);
+        var size = AlbumGridMetrics.ComputeWrappedTileSize(usableWidth, columns, IsWideAlbumSpacing, layoutScale);
         if (Math.Abs(size - AlbumTileSize) >= 0.5) AlbumTileSize = size;
     }
 
@@ -370,11 +374,11 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     UpdateEmptyLibraryState();
                 }
                 else if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto) or nameof(SettingsViewModel.AlbumTileTargetSize))
-                    UpdateAlbumTileSize(_lastAlbumUsableWidth);
+                    UpdateAlbumTileSize(_lastAlbumUsableWidth, _lastAlbumLayoutScale);
                 else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
                 {
                     OnPropertyChanged(nameof(IsWideAlbumSpacing));
-                    UpdateAlbumTileSize(_lastAlbumUsableWidth);
+                    UpdateAlbumTileSize(_lastAlbumUsableWidth, _lastAlbumLayoutScale);
                 }
                 else if (e.PropertyName == nameof(SettingsViewModel.IsScanning))
                     UpdateEmptyLibraryState();

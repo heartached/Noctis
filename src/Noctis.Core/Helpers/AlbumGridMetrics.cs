@@ -58,4 +58,28 @@ public static class AlbumGridMetrics
     /// </summary>
     public static double ComputeTileSize(double usableWidth, int columns, bool wideSpacing = false)
         => Math.Max(80, usableWidth / columns - (wideSpacing ? TileChrome : ClassicTileChrome));
+
+    /// <summary>One side of a tile's horizontal chrome: margin + padding (3 + 6 with wide
+    /// spacing, 0 + 4 by default; twice these make <see cref="TileChrome"/> / <see cref="ClassicTileChrome"/>).</summary>
+    private const double TileMarginSide = 3, TilePaddingSide = 6;
+    private const double ClassicTileMarginSide = 0, ClassicTilePaddingSide = 4;
+
+    /// <summary>
+    /// Artwork edge for a row that WRAPS its tiles (Home's album rows, a WrapPanel) rather than
+    /// splitting the width evenly (the Albums grid's UniformGrid). Layout rounding snaps each
+    /// side's margin and padding to whole device pixels and rounds each tile up, so at 125%
+    /// the wide chrome is 19.2px, not 18, and five tiles from <see cref="ComputeTileSize"/>
+    /// overflow the row and the fifth wraps (GitHub #242). This budgets the chrome as rounded
+    /// up at <paramref name="layoutScale"/> plus one device pixel per tile, so
+    /// <paramref name="columns"/> tiles always fit <paramref name="rowWidth"/>.
+    /// </summary>
+    public static double ComputeWrappedTileSize(double rowWidth, int columns, bool wideSpacing, double layoutScale)
+    {
+        var scale = double.IsFinite(layoutScale) && layoutScale > 0 ? layoutScale : 1;
+        double Up(double v) => Math.Ceiling(v * scale) / scale;
+        var chrome = wideSpacing
+            ? 2 * (Up(TileMarginSide) + Up(TilePaddingSide))
+            : 2 * (Up(ClassicTileMarginSide) + Up(ClassicTilePaddingSide));
+        return Math.Max(80, rowWidth / columns - 1 / scale - chrome);
+    }
 }

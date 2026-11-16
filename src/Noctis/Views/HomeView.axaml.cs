@@ -101,10 +101,12 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     /// Albums row covers follow the Albums-page tile size for the row's own width. The
     /// row measures itself rather than the page: the page width minus margins ignored the
     /// scroll viewer's bar, so five tiles came out a few pixels too wide and the fifth
-    /// wrapped (09-13). The 2px slack absorbs layout rounding.
+    /// wrapped (09-13). The layout scale lets the maths budget for layout rounding, which a
+    /// flat 2px slack did not cover at 125% with wide spacing (GitHub #242).
     /// </summary>
     private void OnAlbumsRowSizeChanged(object? sender, SizeChangedEventArgs e)
-        => (DataContext as HomeViewModel)?.UpdateAlbumTileSize(e.NewSize.Width - 2);
+        => (DataContext as HomeViewModel)?.UpdateAlbumTileSize(e.NewSize.Width,
+            Avalonia.Layout.LayoutHelper.GetLayoutScale((Avalonia.Layout.Layoutable)sender!));
 
     private void OnTilePointerPressed(object? sender, PointerPressedEventArgs e)
     {
