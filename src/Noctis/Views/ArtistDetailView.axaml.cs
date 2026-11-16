@@ -166,7 +166,7 @@ public partial class ArtistDetailView : UserControl
 
         // Tiles at the size Home and the Albums grid use (AlbumGridMetrics: five across in
         // Auto, else the cover-size setting) over the section width (margins 32+32, 2px
-        // slack for layout rounding, as Home's row does).
+        // slack for layout rounding; the grid is a UniformGrid, so it never wraps).
         var usable = width - 64 - 2;
         var columns = AlbumGridMetrics.ComputeColumns(usable, vm.AlbumTileSizeAuto, vm.AlbumTileTargetSize);
         var newSize = AlbumGridMetrics.ComputeTileSize(usable, columns, vm.IsWideAlbumSpacing);

@@ -60,4 +60,42 @@ public class AlbumGridMetricsTests
     [Fact]
     public void ComputeTileSize_NeverBelowLegibilityFloor()
         => Assert.Equal(80, AlbumGridMetrics.ComputeTileSize(300, 20));
+
+    // A Home album tile as layout rounding sizes it: the cover rounded up to a device pixel,
+    // each side's margin and padding snapped to whole device pixels (either midpoint rule).
+    private static double RoundedTileWidth(double cover, bool wide, double scale, MidpointRounding mode)
+    {
+        double Snap(double v) => Math.Round(v * scale, mode) / scale;
+        var (margin, padding) = wide ? (3.0, 6.0) : (0.0, 4.0);
+        return Math.Ceiling(cover * scale) / scale + 2 * (Snap(margin) + Snap(padding));
+    }
+
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    [InlineData(1.75)]
+    [InlineData(2.0)]
+    public void ComputeWrappedTileSize_FiveRoundedTilesAlwaysFitTheRow(double scale)
+    {
+        foreach (var wide in new[] { false, true })
+        foreach (var mode in new[] { MidpointRounding.ToEven, MidpointRounding.AwayFromZero })
+        for (var row = 700.0; row <= 2600; row += 0.8)
+        {
+            var cover = AlbumGridMetrics.ComputeWrappedTileSize(row, 5, wide, scale);
+            var five = 5 * RoundedTileWidth(cover, wide, scale, mode);
+            Assert.True(five <= row + 1e-9, $"scale {scale} wide {wide} row {row}: {five}");
+        }
+    }
+
+    [Fact]
+    public void ComputeTileSize_At125Percent_WideSpacing_OverflowsAWrappedRow()
+    {
+        // GitHub #242's cause: the even-split maths (and Home's old 2px slack) ignore that
+        // 125% snaps the 3px margin to 3.2 and the 6px padding to 6.4, so five wide tiles
+        // need ~6px more than the row has and the fifth wraps.
+        const double row = 1200;
+        var cover = AlbumGridMetrics.ComputeTileSize(row - 2, 5, wideSpacing: true);
+        Assert.True(5 * RoundedTileWidth(cover, true, 1.25, MidpointRounding.ToEven) > row);
+    }
 }
