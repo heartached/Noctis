@@ -1508,9 +1508,6 @@
                                                 CornerRadius="10"
                                                 Tag="{Binding}"
                                                 PointerPressed="OnQueueItemPointerPressed"
-                                                PointerMoved="OnQueueItemPointerMoved"
-                                                PointerReleased="OnQueueItemPointerReleased"
-                                                PointerCaptureLost="OnQueueItemPointerCaptureLost"
                                                 ContextRequested="OnQueueRowContextRequested">
                                             <Border.ContextMenu>
                                                 <ContextMenu>
@@ -1881,6 +1878,23 @@
                                             </TextBlock>
                                         </Grid>
                                     </StackPanel>
+                                    <!-- GitHub #246: how many rows the card carries (a multi-selection
+                                         drag); shown and filled by StartQueueDrag. -->
+                                    <Border x:Name="QueueDragCount"
+                                            Grid.Column="2"
+                                            IsVisible="False"
+                                            MinWidth="22"
+                                            Height="22"
+                                            Padding="7,0"
+                                            CornerRadius="11"
+                                            VerticalAlignment="Center"
+                                            Background="{DynamicResource AccentForegroundBrush}">
+                                        <TextBlock FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource AccentColorBrush}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
                                 </Grid>
                             </Border>
 

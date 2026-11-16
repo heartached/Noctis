@@ -71,6 +71,15 @@ public sealed class LiquidReorder
     /// its open playlists); all their slots stay empty. Back to 1 when the drag ends.</summary>
     public int SourceCount { get; set; } = 1;
 
+    /// <summary>
+    /// GitHub #246: the rows of a multi-selection dragged together, ascending, any spacing
+    /// (null otherwise). While set they are all lifted out (hidden), <see cref="TargetIndex"/>
+    /// is where the first of them lands once they are, and the other rows close the holes and
+    /// open one gap the block's size there, so no slot inside the block is offered as a drop.
+    /// Back to null when the drag ends.
+    /// </summary>
+    public IReadOnlyList<int>? SourceRows { get; set; }
+
     /// <summary>Queue index the dragged row (the first of a block) would take if dropped now, or -1.</summary>
     public int TargetIndex { get; set; } = -1;
 
@@ -156,6 +165,60 @@ public sealed class LiquidReorder
     }
 
     /// <summary>
+    /// Gap offset for the row at <paramref name="index"/> while the rows <paramref name="rows"/>
+    /// (ascending, any spacing) are lifted out and would land as one block starting at
+    /// <paramref name="landAt"/> (an index in the list without them): the row slides to the
+    /// slot the move gives it. The lifted rows themselves stay put (they are hidden).
+    /// </summary>
+    public static double BlockGapOffset(int index, IReadOnlyList<int> rows, int landAt, double pitch)
+    {
+        if (landAt < 0 || rows.Count == 0) return 0;
+        var below = CountBelow(rows, index);
+        if (below < rows.Count && rows[below] == index) return 0;
+        var left = index - below;               // its index once the block is lifted out
+        var final = left >= landAt ? left + rows.Count : left;
+        return (final - index) * pitch;
+    }
+
+    /// <summary>
+    /// The insertion index in the CURRENT rows (the MoveQueueRows / MoveBlockInQueue contract)
+    /// that lands the block <paramref name="rows"/> (ascending) at <paramref name="landAt"/>:
+    /// the current index of the row that is <paramref name="landAt"/>-th once the block is out.
+    /// </summary>
+    public static int InsertIndexFor(IReadOnlyList<int> rows, int landAt)
+    {
+        var insert = Math.Max(0, landAt);
+        foreach (var row in rows)
+        {
+            if (row <= insert) insert++;
+            else break;
+        }
+        return insert;
+    }
+
+    /// <summary>How many of <paramref name="rows"/> (ascending) are below <paramref name="index"/>.</summary>
+    private static int CountBelow(IReadOnlyList<int> rows, int index)
+    {
+        int lo = 0, hi = rows.Count;
+        while (lo < hi)
+        {
+            var mid = (lo + hi) >> 1;
+            if (rows[mid] < index) lo = mid + 1; else hi = mid;
+        }
+        return lo;
+    }
+
+    private bool IsLifted(int index)
+    {
+        if (SourceRows is { } rows)
+        {
+            var below = CountBelow(rows, index);
+            return below < rows.Count && rows[below] == index;
+        }
+        return index >= SourceIndex && index < SourceIndex + SourceCount;
+    }
+
+    /// <summary>
     /// The row index whose ORIGINAL slot (layout Bounds, before any gap offset) is
     /// nearest <paramref name="probeY"/>, a point in <paramref name="probeSpace"/>
     /// coordinates. <paramref name="slotOf"/> maps a row container to the part that
@@ -237,8 +300,10 @@ public sealed class LiquidReorder
             live.Add(item);
             var index = _list.IndexFromContainer(item);
             // Recycled containers are re-evaluated every frame, so the hole follows the row.
-            item.Opacity = IsBusy && index >= SourceIndex && index < SourceIndex + SourceCount ? 0 : 1;
-            var goal = IsBusy ? GapOffset(index, SourceIndex, TargetIndex, Pitch, SourceCount) : 0;
+            item.Opacity = IsBusy && index >= 0 && IsLifted(index) ? 0 : 1;
+            var goal = !IsBusy ? 0
+                : SourceRows is { } block ? BlockGapOffset(index, block, TargetIndex, Pitch)
+                : GapOffset(index, SourceIndex, TargetIndex, Pitch, SourceCount);
             _rowOffsets.TryGetValue(item, out var current);
             var next = current + (goal - current) * rowStep;
             if (Math.Abs(goal - next) < 0.3) next = goal; else moving = true;
@@ -285,6 +350,7 @@ public sealed class LiquidReorder
         _rowOffsets.Clear();
         SourceIndex = TargetIndex = -1;
         SourceCount = 1;
+        SourceRows = null;
     }
 
     private void HideCard()
