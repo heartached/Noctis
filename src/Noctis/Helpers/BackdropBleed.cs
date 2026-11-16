@@ -50,6 +50,13 @@ internal sealed class BackdropBleed
     /// <summary>The counter-translate applied right now (minus the ancestors' slide).</summary>
     public double AppliedShift { get; private set; }
 
+    /// <summary>While the stretch is on: how far the origin's right edge sits from the right
+    /// edge of the window's (scaled) content, in the origin's coordinates; 0 otherwise.</summary>
+    public double AppliedRight { get; private set; }
+
+    /// <summary>Runs after every re-measure (a host that draws its own reach, GitHub #244).</summary>
+    public Action? Changed { get; set; }
+
     public bool Enabled
     {
         get => _enabled;
@@ -115,6 +122,26 @@ internal sealed class BackdropBleed
         if (left > 0) LiftClips();
         else RestoreClips();
 
+        AppliedRight = left > 0 ? RightOf(_origin, left) : 0;
+        try { UpdateLayers(left, shift); }
+        finally { Changed?.Invoke(); }
+    }
+
+    /// <summary>The window content's width (the root <see cref="Measure"/> stops at) minus
+    /// <paramref name="origin"/>'s left offset and width; never negative.</summary>
+    private static double RightOf(Visual origin, double left)
+    {
+        Visual root = origin;
+        for (Visual? v = origin; v != null && v is not TopLevel; v = v.GetVisualParent())
+        {
+            root = v;
+            if (v.GetVisualParent() is LayoutTransformControl) break;
+        }
+        return Math.Max(0, root.Bounds.Width - left - origin.Bounds.Width);
+    }
+
+    private void UpdateLayers(double left, double shift)
+    {
         if (left == AppliedLeft && shift == AppliedShift) return;
         AppliedLeft = left;
         AppliedShift = left > 0 ? shift : 0;
