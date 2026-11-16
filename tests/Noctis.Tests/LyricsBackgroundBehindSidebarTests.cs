@@ -263,6 +263,50 @@ public class LyricsBackgroundBehindSidebarTests : IDisposable
         finally { page.Window.Close(); }
     }
 
+    /// <summary>Discord 11-16: with Tint Whole Window on, the window around the sidebar showed a
+    /// flat average of the blurred cover. That option now reaches the backdrop itself there
+    /// too, with Background Behind the Sidebar off; both off stays as before.</summary>
+    [AvaloniaFact]
+    public void WholeWindowTint_ReachesTheBackdropUnderTheRail_WithTheSettingOff()
+    {
+        var page = Mount(on: false);
+        try
+        {
+            Assert.Equal(76, LeftIn(Backdrop(page.View), page.Window), 1);
+
+            page.Player.LyricsPageTintsWindow = true;
+            Pump();
+            Assert.Equal(0, LeftIn(Backdrop(page.View), page.Window), 1);
+            Assert.True(page.View.FindControl<Border>("LyricsBackdropFill")!.IsVisible);
+
+            page.Player.LyricsPageTintsWindow = false;
+            Pump();
+            Assert.Equal(76, LeftIn(Backdrop(page.View), page.Window), 1);
+            Assert.False(page.View.FindControl<Border>("LyricsBackdropFill")!.IsVisible);
+        }
+        finally { page.Window.Close(); }
+    }
+
+    [AvaloniaFact]
+    public async Task WholeWindowTint_ReachesThePlayer_OnlyWithAlbumPageColour()
+    {
+        var vm = CreateSettings();
+        await vm.LoadAsync();
+        var player = CreatePlayer();
+        vm.SetPlayer(player);
+        Assert.False(player.LyricsPageTintsWindow);
+
+        vm.AlbumPageTintEnabled = true;
+        vm.AlbumPageTintWholeWindow = true;
+        Assert.True(player.LyricsPageTintsWindow);
+        // Tint Whole Window sits under Album Page Colour: without it nothing is tinted.
+        vm.AlbumPageTintEnabled = false;
+        Assert.False(player.LyricsPageTintsWindow);
+        vm.AlbumPageTintEnabled = true;
+        vm.AlbumPageTintWholeWindow = false;
+        Assert.False(player.LyricsPageTintsWindow);
+    }
+
     /// <summary>The live report (#184): laid out at x=0 but never drawn there, because the
     /// page's hosts (LyricsView, the page ContentControl) are templated controls that clip to
     /// their bounds. The clips come off only while the stretch is on, and come back after.</summary>
