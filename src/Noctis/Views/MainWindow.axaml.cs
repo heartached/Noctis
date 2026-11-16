@@ -1567,6 +1567,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             return;
         }
 
+        // GitHub #243: the window really closes and the app exits after it. Start the exit pause
+        // (with the user's fade) now: the window teardown and App's shutdown handler (background
+        // work stops, saves) all run before the shutdown save's own pause and took seconds.
+        if (!e.Cancel && DataContext is MainWindowViewModel closingVm)
+            closingVm.SilencePlaybackForExit();
+
         CaptureWindowPlacement();
     }
 

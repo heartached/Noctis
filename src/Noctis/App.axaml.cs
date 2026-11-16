@@ -250,35 +250,14 @@ public partial class App : Application
                 if (shutdownSaveDone) return;
                 shutdownSaveDone = true;
                 e.Cancel = true;
-                // Await the backfill's unwind: TryWriteTags is a synchronous TagLib
-                // rewrite of a whole audio file, and exiting mid-Save() truncates it.
-                //
-                // Every step is deadline-bounded. Avalonia's Win32 backend raises this
-                // from WM_QUERYENDSESSION and reports a cancelled event back to Windows
-                // as a shutdown veto, and ShutdownRequestedEventArgs (11.3.18) exposes no
-                // way to tell an OS session-end from a normal quit. Unbounded, a slow save
-                // left the user staring at "This app is preventing you from shutting
-                // down" — or Windows force-terminated us and cut off the very save the
-                // cancel exists to protect. Bounded, the veto lasts at most a few seconds
-                // and we always exit under our own power.
-                try
-                {
-                    await Task.WhenAll(
+                await RunShutdownSequenceAsync(
+                    mainVm.SilencePlaybackForExit,
+                    () => Task.WhenAll(
                         analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)),
                         autoReplayGain.StopAsync(TimeSpan.FromSeconds(3)),
-                        autoLyrics.StopAsync(TimeSpan.FromSeconds(3)));
-                }
-                catch { }
-                try { await mainVm.ShutdownAsync().WaitAsync(ShutdownSaveDeadline); }
-                catch (TimeoutException)
-                {
-                    DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave",
-                        $"did not finish within {ShutdownSaveDeadline.TotalSeconds:0}s — exiting anyway");
-                }
-                catch (Exception ex)
-                {
-                    DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave", ex.Message);
-                }
+                        autoLyrics.StopAsync(TimeSpan.FromSeconds(3))),
+                    mainVm.ShutdownAsync,
+                    ShutdownSaveDeadline);
                 // The provider is never disposed: stop the feed thread and its ffmpeg child here.
                 sideFeed.Dispose();
                 desktop.Shutdown();
@@ -290,6 +269,45 @@ public partial class App : Application
 
     /// <summary>How long the shutdown save may hold the exit before we quit regardless.</summary>
     private static readonly TimeSpan ShutdownSaveDeadline = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// The exit steps, in order. GitHub #243: the music is silenced first (the pause with the
+    /// user's fade), then the background work stops and the state is saved. The pause used to
+    /// sit at the top of the save, after the background stops, which may each wait up to 3 s,
+    /// so the song played on for seconds after the window had closed. Internal for tests.
+    ///
+    /// Await the backfill's unwind (<paramref name="stopBackgroundWork"/>): TryWriteTags is a
+    /// synchronous TagLib rewrite of a whole audio file, and exiting mid-Save() truncates it.
+    ///
+    /// Every step is deadline-bounded. Avalonia's Win32 backend raises ShutdownRequested from
+    /// WM_QUERYENDSESSION and reports a cancelled event back to Windows as a shutdown veto, and
+    /// ShutdownRequestedEventArgs (11.3.18) exposes no way to tell an OS session-end from a
+    /// normal quit. Unbounded, a slow save left the user staring at "This app is preventing you
+    /// from shutting down", or Windows force-terminated us and cut off the very save the cancel
+    /// exists to protect. Bounded, the veto lasts at most a few seconds and we always exit under
+    /// our own power.
+    /// </summary>
+    internal static async Task RunShutdownSequenceAsync(
+        Action silencePlayback, Func<Task> stopBackgroundWork, Func<Task> saveState, TimeSpan saveDeadline)
+    {
+        try { silencePlayback(); }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "ShutdownPause", ex.Message);
+        }
+        try { await stopBackgroundWork(); }
+        catch { }
+        try { await saveState().WaitAsync(saveDeadline); }
+        catch (TimeoutException)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave",
+                $"did not finish within {saveDeadline.TotalSeconds:0}s — exiting anyway");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave", ex.Message);
+        }
+    }
 
     // Names used for persistence and for picking the runtime overlay.
     public const string ThemeGray = "Gray";
