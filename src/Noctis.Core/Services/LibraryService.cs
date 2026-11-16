@@ -2801,7 +2801,7 @@ public class LibraryService : ILibraryService
     {
         try
         {
-            var copy = links.Select(l => new AlbumLink { AlbumId = l.AlbumId, SourceAlbumId = l.SourceAlbumId }).ToList();
+            var copy = links.Select(l => new AlbumLink { AlbumId = l.AlbumId, SourceAlbumId = l.SourceAlbumId, ExtensionData = l.ExtensionData }).ToList();
             await _persistence.UpdateSettingsAsync(s => s.AlbumLinks = copy).ConfigureAwait(false);
         }
         catch (Exception ex)
