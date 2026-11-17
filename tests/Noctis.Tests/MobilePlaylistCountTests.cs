@@ -65,6 +65,29 @@ public class MobilePlaylistCountTests
         Assert.Contains("2 songs", rig.Shell.Search.Playlists.Single().Subtitle);
     }
 
+    /// <summary>A song listed twice shows twice on the page and counts twice on the row: duplicates
+    /// cannot make the row say more than the page (only ids the phone cannot find can).</summary>
+    [Fact]
+    public void DuplicateSongs_CountTheSameOnTheRowAndThePage()
+    {
+        var a = MobileFixtures.Song("Alpha");
+        var twice = new Playlist { Name = "Twice", TrackIds = { a.Id, a.Id } };
+        using var rig = MobileFixtures.MakeRig(new[] { a }, null, async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MusicFolders.Add("content://tree/music");
+            await p.SaveSettingsAsync(s);
+            await p.SavePlaylistsAsync(new() { twice });
+        });
+        rig.Shell.OpenPlaylistsCommand.Execute(null);
+        var row = Assert.IsType<PlaylistListPageViewModel>(rig.Shell.CurrentPage).Rows.Single();
+        rig.Shell.OpenPlaylistCommand.Execute(row.Playlist);
+        var page = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+
+        Assert.Equal(2, page.Songs.Count);
+        Assert.Equal(page.CountText, row.Subtitle);
+    }
+
     /// <summary>A song the playlist names arriving on the phone later (the next catalog sync) moves
     /// the row's count up with it, not only the page's.</summary>
     [Fact]
