@@ -169,6 +169,53 @@ public partial class App : Application
         {
             Noctis.Services.StartupTrace.Mark("avalonia-initialized");
 
+            // The main window's view models need the audio player that Program.Main is still
+            // building when libvlc rebuilds its plugins cache (first start after an update):
+            // show a small starting window instead of nothing, and build the main window once
+            // the player is ready. See AudioWarmupGate.
+            if (Noctis.Helpers.AudioWarmupGate.ShouldShowStartingWindow(AudioWarmup, StartMinimizedAtLogin, Noctis.Helpers.AudioWarmupGate.Grace))
+            {
+                Noctis.Services.StartupTrace.Mark("starting-window-shown");
+                var starting = new StartingWindow();
+                desktop.MainWindow = starting;
+                Noctis.Helpers.AudioWarmupGate.RunWhenWarm(AudioWarmup!,
+                    action => Avalonia.Threading.Dispatcher.UIThread.Post(action),
+                    () =>
+                    {
+                        var main = BuildMainWindow(desktop);
+                        main.Show();
+                        starting.CloseForMainWindow();
+                    },
+                    ex =>
+                    {
+                        // Program.Main rethrows it after the lifetime ends: the same
+                        // "failed to start" message as a resolve that throws right here.
+                        StartupFailure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex);
+                        starting.CloseForMainWindow();
+                        desktop.Shutdown(1);
+                    });
+            }
+            else
+            {
+                BuildMainWindow(desktop);
+            }
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>The audio player warm-up Program.Main starts before Avalonia; null in tests.</summary>
+    public static Task? AudioWarmup { get; set; }
+
+    /// <summary>A main window build that failed after the starting window showed; Program.Main
+    /// rethrows it once the lifetime has ended.</summary>
+    public static System.Runtime.ExceptionServices.ExceptionDispatchInfo? StartupFailure { get; private set; }
+
+    /// <summary>Builds the view-model graph and the main window and makes it the lifetime's
+    /// main window. Blocks until the audio player exists (the graph needs it).</summary>
+    private MainWindow BuildMainWindow(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        {
             // This resolve builds the entire object graph, IAudioPlayer included — so it
             // blocks on the same singleton lock the Program.Main warm task is holding
             // while libvlc loads. The gap between the two marks is how much of that load
@@ -262,9 +309,8 @@ public partial class App : Application
                 sideFeed.Dispose();
                 desktop.Shutdown();
             };
+            return mainWindow;
         }
-
-        base.OnFrameworkInitializationCompleted();
     }
 
     /// <summary>How long the shutdown save may hold the exit before we quit regardless.</summary>
