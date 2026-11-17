@@ -1535,7 +1535,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
                 .Where(a => a.Tracks is { Count: > 0 }).ToList();
         if (albums.Count < 2)
         {
-            await ShowGroupNotice(new Views.ConfirmationRequest(Loc.T("GroupAlbums.SelectHint"), Loc.T("GroupAlbums.Title"), InfoOnly: true));
+            // On macOS Ctrl-click is a right-click; ⌘-click adds to the selection there.
+            var hint = Loc.T(OperatingSystem.IsMacOS() ? "GroupAlbums.SelectHintMac" : "GroupAlbums.SelectHint");
+            await ShowGroupNotice(new Views.ConfirmationRequest(hint, Loc.T("GroupAlbums.Title"), InfoOnly: true));
             return;
         }
 
