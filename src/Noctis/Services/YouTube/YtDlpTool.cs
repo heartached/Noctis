@@ -104,17 +104,30 @@ public sealed class YtDlpTool
 
     private static string? FindOnPath(string exe)
     {
-        var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        foreach (var dir in SearchDirs())
         {
             try
             {
-                var candidate = Path.Combine(dir.Trim(), exe);
+                var candidate = Path.Combine(dir, exe);
                 if (File.Exists(candidate)) return candidate;
             }
             catch { }
         }
         return null;
+    }
+
+    /// <summary>
+    /// PATH, then on macOS the Homebrew/MacPorts folders (the ones the ffmpeg lookup uses):
+    /// Noctis opened from Finder or the Dock gets launchd's minimal PATH, so a Homebrew
+    /// yt-dlp, deno or node was invisible there.
+    /// </summary>
+    private static IEnumerable<string> SearchDirs()
+    {
+        var dirs = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(d => d.Trim()).Where(d => d.Length > 0);
+        if (OperatingSystem.IsMacOS()) dirs = dirs.Concat(AudioConverterService.MacPackageManagerBinDirs);
+        return dirs.Distinct(StringComparer.Ordinal);
     }
 
     /// <summary>Downloads the latest release asset into the tools folder (replacing an older copy).</summary>
@@ -458,6 +471,8 @@ public sealed class YtDlpTool
             StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+        // yt-dlp finds deno/node on its own PATH: give it the folders the runtime was found in.
+        if (OperatingSystem.IsMacOS()) psi.Environment["PATH"] = string.Join(Path.PathSeparator, SearchDirs());
 
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("yt-dlp could not be started");
         using var reg = ct.Register(() => { try { if (!p.HasExited) p.Kill(true); } catch { } });
