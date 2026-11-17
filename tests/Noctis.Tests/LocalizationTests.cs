@@ -105,6 +105,19 @@ public class LocalizationTests
     }
 
     /// <summary>
+    /// {loc:T …, MacKeys=True} on macOS: Ctrl shortcuts read as ⌘ in every language, German's
+    /// "Strg" included (it stayed "Suchen (Strg+F)").
+    /// </summary>
+    [Theory]
+    [InlineData("Search (Ctrl+F)", "Search (⌘F)")]
+    [InlineData("Save (Ctrl+Enter)", "Save (⌘↩)")]
+    [InlineData("Suchen (Strg+F)", "Suchen (⌘F)")]
+    [InlineData("Speichern (Strg+Enter)", "Speichern (⌘↩)")]
+    [InlineData("Поиск (Ctrl+F)", "Поиск (⌘F)")]
+    public void MacKeys_WriteCtrlAndStrgAsCommand(string text, string expected)
+        => Assert.Equal(expected, TExtension.ToMacKeys(text));
+
+    /// <summary>
     /// GenerateResource dedupes names case-insensitively ("Duplicate resource name … ignored"),
     /// so a key that differs from another only by case is silently dropped from the compiled
     /// resources and renders as its raw key (Settings.Username next to Settings.USERNAME did).
