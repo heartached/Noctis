@@ -1116,6 +1116,38 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(1, Phone(_t1).PlayCount);
     }
 
+    /// <summary>
+    /// The phone counts its own plays (NowPlayingViewModel.CountPlay, for Home's Most Played and
+    /// Sort by Most Played). Shared (Share with Computer on), the computer counts the same play and
+    /// sends it back: the sync keeps the larger count, so it is one play, not two. Not shared, the
+    /// phone keeps its own; the computer's higher count still wins.
+    /// </summary>
+    [Fact]
+    public async Task APhoneCountedPlay_IsNotCountedTwice_ByTheSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var before = Phone(_t1).PlayCount;
+
+        Phone(_t1).PlayCount++;                                  // counted on the phone
+        svc.RecordPlay(Phone(_t1), DateTime.UtcNow.AddMinutes(-1));   // and shared
+        var shared = await svc.SyncNowAsync(ct);
+        Assert.Equal(1, shared.PlaysSent);
+        Assert.Equal(before + 1, _t1.PlayCount);                 // the computer counted it
+        Assert.Equal(before + 1, Phone(_t1).PlayCount);          // one play, not two
+
+        Phone(_t1).PlayCount++;                                  // Share with Computer off: not sent
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(before + 2, Phone(_t1).PlayCount);
+
+        _t1.PlayCount = before + 9;                              // played more on the computer
+        _t1.LastPlayed = DateTime.UtcNow;
+        _sync.RecordTrackStates(new[] { _t1 });
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(before + 9, Phone(_t1).PlayCount);
+    }
+
     [Fact]
     public async Task StartedPlays_WaitForTheirVerdict_AndOnlyThroughComputerCountedOnesAreForwarded_Once()
     {

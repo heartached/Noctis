@@ -800,8 +800,33 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         var track = _unrecordedPlay!;
         _unrecordedPlay = null;
         _listenTrack = track;
+        CountPlay(track);
         _history?.RecordPlay(track);
         PlayRecorded?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// A counted play, the computer's bookkeeping (PlayerViewModel.CountPlay): one more play and
+    /// Last Played, on the library's own song too (the queue can hold an older copy). Before this
+    /// the phone's plays reached only its play log, so Sort by Most Played / Recently Played and
+    /// Home's Most Played saw none of them without a computer. A desktop song's play also goes to
+    /// the computer (Share with Computer), which counts it there; the sync then keeps the larger
+    /// count (counts only grow), so it is never counted twice.
+    /// </summary>
+    private void CountPlay(Track track)
+    {
+        var now = DateTime.UtcNow;
+        var current = _library.GetTrackById(track.Id) ?? track;
+        if (current.PlayCount < int.MaxValue) current.PlayCount++;
+        current.LastPlayed = now;
+        if (!ReferenceEquals(current, track))
+        {
+            track.PlayCount = current.PlayCount;
+            track.LastPlayed = now;
+        }
+        _ = _library.SaveTrackUserStateAsync(new[] { current }).ContinueWith(
+            t => DebugLog.Write("Library", $"Play count save failed: {t.Exception?.GetBaseException().Message}"),
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 
     private void OnPlayerDuration(object? sender, TimeSpan duration) => _marshal(() =>
