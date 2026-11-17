@@ -44,12 +44,16 @@ public static class ShortcutKeyFormatter
         if (m.HasFlag(KeyModifiers.Alt)) parts.Add(isMac ? "⌥" : "Alt");
         if (m.HasFlag(KeyModifiers.Shift)) parts.Add(isMac ? "⇧" : "Shift");
         if (m.HasFlag(KeyModifiers.Meta)) parts.Add(isMac ? "⌘" : "Win");
-        parts.Add(KeyName(gesture.Key));
+        parts.Add(KeyName(gesture.Key, isMac));
         return parts;
     }
 
-    public static string KeyName(Key key) => key switch
+    public static string KeyName(Key key, bool isMac = false) => key switch
     {
+        // The Mac keyboard labels these "delete", "delete ⌦" and "return"; its menus show them as symbols.
+        Key.Back when isMac => "⌫",
+        Key.Delete when isMac => "⌦",
+        Key.Return when isMac => "↩",
         Key.Left => "←",
         Key.Right => "→",
         Key.Up => "↑",
