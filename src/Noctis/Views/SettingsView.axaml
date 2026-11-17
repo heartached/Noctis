@@ -5299,7 +5299,8 @@
             </Border>
             <!-- Accessibility: Mono Audio and Balance, applied in the output's sample stage
                  (ChannelMixProvider). Bypassed in bit-perfect Exclusive Mode. -->
-            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}">
+            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}"
+                    Classes.first="{Binding !IsExclusiveAudioSupported}">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding IsChannelMixEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -5340,7 +5341,10 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
-            <Border Classes="setting-row">
+            <!-- The Output card's first row where every row above is gated off (macOS: no
+                 output device, exclusive, upmix, surround or channel mix there). The rows
+                 above it are Windows-only except Mono/Balance, which Linux also shows. -->
+            <Border Classes="setting-row" Classes.first="{Binding !IsChannelMixSupported}">
                 <StackPanel Spacing="10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
