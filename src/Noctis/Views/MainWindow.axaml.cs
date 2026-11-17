@@ -985,6 +985,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     }
                 };
                 vm.PropertyChanged += _mainVmPropertyChangedHandler;
+                // GitHub #252: the handler above is wired only after InitializeAsync, so a click
+                // on Settings while the library was still loading set the flag with nobody
+                // listening. The sheet never showed, and since the flag stayed true no later
+                // click or Ctrl+, changed it again: Settings was dead until a restart. Catch up.
+                if (vm.IsSettingsModalOpen)
+                    _mainVmPropertyChangedHandler(vm, new System.ComponentModel.PropertyChangedEventArgs(nameof(MainWindowViewModel.IsSettingsModalOpen)));
 
                 // Sidebar hover expand/collapse
                 if (_sidebarWrapper != null)
