@@ -337,6 +337,12 @@ public sealed partial class LibraryViewModel : ObservableObject
         HasCustomCover(playlist) ? playlist.CoverArtPath
             : playlist.TrackIds.Select(_library.GetTrackById).FirstOrDefault(t => !string.IsNullOrEmpty(t?.AlbumArtworkPath))?.AlbumArtworkPath;
 
+    /// <summary>A playlist's song count as its page shows it: the songs the phone has. A playlist
+    /// synced from the computer can name songs that are not here (not in the phone's catalog,
+    /// hidden on the phone); counting its ids said more songs than the page lists.</summary>
+    public int PlaylistSongCount(Playlist playlist) =>
+        playlist.TrackIds.Count(id => _library.GetTrackById(id) != null);
+
     public static bool HasCustomCover(Playlist playlist) =>
         !string.IsNullOrEmpty(playlist.CoverArtPath) && File.Exists(playlist.CoverArtPath);
 
@@ -1045,7 +1051,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         foreach (var artist in pinnedArtistList) AskPinnedArtistPhoto(artist.Name);
         var pinned = _pinnedAlbumIds.Select(_library.GetAlbumById).OfType<Album>().Select(RailItem.ForAlbum)
             .Concat(pinnedArtists)
-            .Concat(_playlists.Where(p => p.IsPinned).Select(p => RailItem.ForPlaylist(p, PlaylistArtwork(p))))
+            .Concat(_playlists.Where(p => p.IsPinned).Select(p => RailItem.ForPlaylist(p, PlaylistArtwork(p), PlaylistSongCount(p))))
             .Concat(_pinnedTrackIds.Select(_library.GetTrackById).OfType<Track>().Select(RailItem.ForTrack))
             .ToList();
         MobileLibrary.ReplaceIfChanged(PinnedRail, pinned);

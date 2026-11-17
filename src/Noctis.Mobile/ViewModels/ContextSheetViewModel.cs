@@ -43,9 +43,13 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         new(shell, artist.Name, Loc.T("Mobile.Artist"), shell.ArtistPhotos?.CachedPhoto(artist.Name) ?? artworkPath,
             MobileLibrary.SongsBy(shell.Library.Service, artist.Name)) { Artist = artist };
 
-    public static ContextSheetViewModel ForPlaylist(ShellViewModel shell, Playlist playlist) =>
-        new(shell, playlist.Name, Loc.Plural("Mobile.Count.Songs", playlist.TrackIds.Count),
-            shell.Library.PlaylistArtwork(playlist), shell.ResolvePlaylist(playlist).ToList()) { Playlist = playlist };
+    /// <summary>A playlist's sheet: its count is the songs it acts on (those the phone has), as its page says.</summary>
+    public static ContextSheetViewModel ForPlaylist(ShellViewModel shell, Playlist playlist)
+    {
+        var tracks = shell.ResolvePlaylist(playlist).ToList();
+        return new(shell, playlist.Name, Loc.Plural("Mobile.Count.Songs", tracks.Count),
+            shell.Library.PlaylistArtwork(playlist), tracks) { Playlist = playlist };
+    }
 
     public string Title { get; }
     public string Subtitle { get; }
