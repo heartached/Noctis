@@ -243,7 +243,7 @@ public sealed class YouTubeImporter : IYouTubeImporter
 
 /// <summary>
 /// Finds ffmpeg the way Noctis does when no custom path is set: next to the app (the installer
-/// bundles it there), then PATH. The plugin runs inside the Noctis process, so
+/// bundles it there), then PATH and, on macOS, Homebrew/MacPorts. The plugin runs inside the Noctis process, so
 /// <see cref="AppContext.BaseDirectory"/> is the app's folder.
 /// </summary>
 public static class FfmpegLocator
@@ -257,15 +257,7 @@ public static class FfmpegLocator
             if (File.Exists(bundled)) return bundled;
         }
         catch { }
-        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? string.Empty).Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            try
-            {
-                var candidate = Path.Combine(dir.Trim(), exe);
-                if (File.Exists(candidate)) return candidate;
-            }
-            catch { /* invalid PATH segment */ }
-        }
-        return null;
+        // PATH, then on macOS Homebrew/MacPorts (a Finder-launched app's PATH has neither).
+        return ToolLocator.Find(exe);
     }
 }
