@@ -2128,23 +2128,23 @@
                     </StackPanel>
                     <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
                     <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray, MacVariant=True}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.StartMinimizedTray}"
+                                              AutomationProperties.Name="{loc:T Settings.StartMinimizedTray, MacVariant=True}"
                                               IsChecked="{Binding StartMinimizedToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.MinimizeTray}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.MinimizeTray, MacVariant=True}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.MinimizeTray}"
+                                              AutomationProperties.Name="{loc:T Settings.MinimizeTray, MacVariant=True}"
                                               IsChecked="{Binding MinimizeToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.CloseTray}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.CloseTray, MacVariant=True}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.CloseTray}"
+                                              AutomationProperties.Name="{loc:T Settings.CloseTray, MacVariant=True}"
                                               IsChecked="{Binding CloseToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
@@ -2338,7 +2338,7 @@
                 <StackPanel Spacing="10">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Settings.OpenFile}" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.RightClickSongOpen}"
+                        <TextBlock Text="{loc:T Settings.RightClickSongOpen, MacVariant=True}"
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
@@ -2646,7 +2646,7 @@
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Settings.AppIcon}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.AppIconDesc}"
+                        <TextBlock Text="{loc:T Settings.AppIconDesc, MacVariant=True}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <ItemsControl x:Name="AppIconList" ItemsSource="{Binding AppIconOptions}">
@@ -3491,7 +3491,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.TrashButton}" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Settings.TrashButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.TrashButtonHint, MacVariant=True}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.TrashButton}"
@@ -3533,7 +3533,7 @@
                                     Cursor="Hand"/>
                         </Grid>
                         <controls:CollapsibleContent IsOpen="{Binding ShowTrashFolderMissingHint}" Lift="10" Motion="Glide">
-                        <TextBlock Margin="0,6,0,0" Text="{loc:T Settings.TrashFolderMissing}"
+                        <TextBlock Margin="0,6,0,0" Text="{loc:T Settings.TrashFolderMissing, MacVariant=True}"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                         </controls:CollapsibleContent>
                         </StackPanel>
@@ -4864,7 +4864,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.KeyboardShortcuts}" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Settings.ClickKeyChangePress}"
+                            <TextBlock Text="{loc:T Settings.ClickKeyChangePress, MacVariant=True}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Button Grid.Column="1"

@@ -132,7 +132,7 @@ public partial class SettingsViewModel : ViewModelBase
     public string SelectedTabTitle => Loc.T(TabLabelKey(SelectedSettingsTab));
 
     /// <summary>One line under the page title. Resx key: Settings.Desc.&lt;tab without spaces/ampersand&gt;.</summary>
-    public string SelectedTabDescription => Loc.T("Settings.Desc." + TabResxSuffix(SelectedSettingsTab));
+    public string SelectedTabDescription => Loc.Platform("Settings.Desc." + TabResxSuffix(SelectedSettingsTab));
 
     /// <summary>Text in the rail's search box. The view applies it to the card index.</summary>
     [ObservableProperty] private string _searchQuery = string.Empty;

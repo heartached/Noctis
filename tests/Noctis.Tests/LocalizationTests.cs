@@ -161,6 +161,32 @@ public class LocalizationTests
         Assert.Equal(shipped, Loc.KnownCultures.OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList());
     }
 
+    /// <summary>
+    /// Settings said "tray" and "Recycle Bin" on macOS. Loc.Platform reads the key's Mac wording
+    /// there; a language without that wording keeps its own text rather than switching to English.
+    /// </summary>
+    [AvaloniaFact]
+    public void Platform_UsesTheMacWording_OnlyOnMacAndOnlyWhereTheLanguageHasIt()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Minimize to tray", Loc.Platform("Settings.MinimizeTray", isMac: false));
+            Assert.Equal("Minimize to the menu bar", Loc.Platform("Settings.MinimizeTray", isMac: true));
+            // No Mac wording for this key: the key itself.
+            Assert.Equal(Loc.T("Nav.Home"), Loc.Platform("Nav.Home", isMac: true));
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Сворачивать в строку меню", Loc.Platform("Settings.MinimizeTray", isMac: true));
+
+            // Spanish has "tray" translated but no Mac wording yet: stays Spanish.
+            Loc.Instance.SetCulture("es");
+            Assert.Equal(Loc.T("Settings.MinimizeTray"), Loc.Platform("Settings.MinimizeTray", isMac: true));
+            Assert.NotEqual(Loc.English("Settings.MinimizeTray"), Loc.Platform("Settings.MinimizeTray", isMac: true));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
     [AvaloniaFact]
     public void Russian_LoadsFromItsSatelliteAssembly()
     {

@@ -123,8 +123,11 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.ControlHowNoctisStarts" xml:space="preserve"><value>Wie Noctis startet und was Minimieren und Schließen tun.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OpenNoctisWhenComputer" xml:space="preserve"><value>Noctis beim Hochfahren öffnen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StartMinimizedTray" xml:space="preserve"><value>Minimiert im Infobereich starten</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>Ausgeblendet in der Menüleiste starten</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
   <data name="Settings.MinimizeTray" xml:space="preserve"><value>In den Infobereich minimieren</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>In die Menüleiste minimieren</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
   <data name="Settings.CloseTray" xml:space="preserve"><value>In den Infobereich schließen</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>In die Menüleiste schließen</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
   <data name="Settings.RestoreLastPlayedTrack" xml:space="preserve"><value>Zuletzt gespielten Titel wiederherstellen</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ReopenLastTrackPlaybar" xml:space="preserve"><value>Mit dem zuletzt gehörten Titel geladen und pausiert öffnen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TextAnimation" xml:space="preserve"><value>Textanimation</value><comment>Text in SettingsView.axaml</comment></data>
@@ -340,6 +343,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Keine</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>In den Papierkorb</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Fügt eine Schaltfläche hinzu, die den laufenden Song in den Papierkorb-Ordner unten oder den Papierkorb verschiebt.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>Fügt eine Schaltfläche hinzu, die den laufenden Song in den Papierkorb-Ordner unten oder den Papierkorb verschiebt.</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Kapitel</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Öffnet die Kapitelliste. Nur sichtbar, während ein Hörbuch mit Kapiteln läuft.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopButton" xml:space="preserve"><value>Stopp-Schaltfläche</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
@@ -350,6 +354,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Hier landen die Songs, damit du sie später durchsehen kannst. Wähle einen Ordner außerhalb deiner Musikordner, sonst fügt der nächste Scan sie wieder hinzu.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Nicht gesetzt: der Papierkorb</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
   <data name="Settings.TrashFolderMissing" xml:space="preserve"><value>Dieser Ordner ist gerade nicht da, darum kommen Songs in den Papierkorb, bis er wieder da ist.</value><comment>Shown when the Trash folder set is not on disk (SettingsView.axaml)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>Dieser Ordner ist gerade nicht da, darum kommen Songs in den Papierkorb, bis er wieder da ist.</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
   <data name="Settings.ArtworkClick" xml:space="preserve"><value>Klick auf das Cover</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>Was ein Klick auf das Cover des Songs in der Player-Insel öffnet.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Mini-Player</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
@@ -570,6 +575,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.Browse" xml:space="preserve"><value>Durchsuchen</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.OpenFile" xml:space="preserve"><value>Datei öffnen mit</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve"><value>Klicke mit rechts auf einen Song, um seine Datei in diesem Programm zu öffnen. Leer fragt jedes Mal.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>Klicke mit rechts auf einen Song, um seine Datei in dieser App zu öffnen. Leer blendet den Menüeintrag aus.</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
   <data name="Settings.NotSet" xml:space="preserve"><value>(nicht gesetzt)</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Lautstärke aus ReplayGain-Tags anpassen. Titel per Rechtsklick scannen.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -730,6 +736,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Cache leeren</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Tastenkürzel</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Klicke eine Taste zum Ändern. Esc bricht ab, Rücktaste löst die Belegung. Medientasten gehen immer.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>Klicke eine Taste zum Ändern. Esc bricht ab, Löschtaste löst die Belegung. Medientasten gehen immer.</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
   <data name="Settings.ResetAll" xml:space="preserve"><value>Alle zurücksetzen</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ResetDefaultTip" xml:space="preserve"><value>Auf Standard zurücksetzen</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LIBRARYOVERVIEW" xml:space="preserve"><value>BIBLIOTHEKSÜBERSICHT</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2953,6 +2960,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.Desc.Player" xml:space="preserve"><value>Player-Insel, Mini-Player, Cover Flow und Now-Playing-Artwork.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Lyrics" xml:space="preserve"><value>Songtextseite, Online-Songtextquellen und Songtext-Studio.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Shortcuts" xml:space="preserve"><value>Klicke eine Taste zum Ändern. Esc bricht ab, Rücktaste löst die Belegung.</value><comment>Settings page description</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Klicke eine Taste zum Ändern. Esc bricht ab, Löschtaste löst die Belegung.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.Desc.Audio" xml:space="preserve"><value>Wiedergabe, Ausgabe, Analyse und Equalizer.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Library" xml:space="preserve"><value>Medienordner, Scannen, wie Künstler und Alben organisiert sind, und Bibliothekstools.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Advanced" xml:space="preserve"><value>Speicher, Hilfsprogramme, Updates und Zurücksetzen.</value><comment>Settings page description</comment></data>
@@ -3203,6 +3211,7 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Gespielte Songs anzeigen</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
   <data name="Settings.AppIcon" xml:space="preserve"><value>App-Symbol</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
   <data name="Settings.AppIconDesc" xml:space="preserve"><value>Ändert das Symbol in Titelleiste, Taskleiste und Tray sofort. Desktop-Verknüpfung und .exe behalten das klassische Symbol.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Ändert das Symbol in der Menüleiste sofort. Das Dock behält das klassische Symbol.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Klassisch</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Light" xml:space="preserve"><value>Hell</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Dunkel</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
