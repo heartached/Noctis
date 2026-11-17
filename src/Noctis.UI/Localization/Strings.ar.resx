@@ -7045,6 +7045,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>هذا الأسبوع</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>لم يتم تشغيل شيء بعد</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>عرض الكل</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>كل الموسيقى</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>على هذا الهاتف</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>من الكمبيوتر</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>مصدر الموسيقى</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>السجل</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>الاحتفاظ بالسجل</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>احتساب التشغيل بعد</value></data>

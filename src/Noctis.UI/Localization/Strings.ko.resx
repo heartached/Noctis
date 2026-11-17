@@ -7045,6 +7045,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>이번 주</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>아직 재생한 항목 없음</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>모두 보기</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>모든 음악</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>이 휴대폰</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>컴퓨터에서</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>음악 소스</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>기록</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>기록 보관 기간</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>재생 인정 기준</value></data>

@@ -7045,6 +7045,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>本周</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>尚未播放任何内容</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>显示全部</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>所有音乐</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>这台手机上</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>来自电脑</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>音乐来源</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>历史记录</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>保留记录</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>计为播放的时长</value></data>

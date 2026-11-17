@@ -3480,6 +3480,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>На этой неделе</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Ещё ничего не прослушано</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>Показать все</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>Вся музыка</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>На этом телефоне</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>С компьютера</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>Источник музыки</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>История</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>Хранить историю</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Засчитывать прослушивание</value></data>

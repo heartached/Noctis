@@ -7045,6 +7045,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>今週</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>まだ再生履歴がありません</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>すべて表示</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>すべての音楽</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>このスマートフォン内</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>コンピュータから</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>音楽のソース</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>履歴</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>履歴の保存期間</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>再生としてカウントするタイミング</value></data>

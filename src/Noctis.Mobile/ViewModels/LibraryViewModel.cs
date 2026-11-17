@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Mobile.Services;
+using Noctis.Mobile.Services.Account;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.Services.Sync;
@@ -65,6 +66,88 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Artist photos for the pinned artists' circles (the shell hands its source over);
     /// null leaves their covers.</summary>
     public IArtistPhotoSource? ArtistPhotos { get; set; }
+
+    /// <summary>The link to the computer (the shell hands it over), which tells the phone's own
+    /// songs from the computer's for <see cref="Source"/>; null on a host without one.</summary>
+    public INoctisAccountService? Account { get; set; }
+
+    /// <summary>The user's choice of which songs the lists show (AppSettings.PhoneLibrarySource).
+    /// In force only while <see cref="CanChooseSource"/>: see <see cref="ActiveSource"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveSource), nameof(IsSourceFiltered))]
+    private LibrarySource _source;
+
+    /// <summary>There are two sources to choose between: signed in to a computer, or its songs are
+    /// still in the library (the computer revoked this phone). Without either every song is the
+    /// phone's own, and the Library's source button is hidden.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ActiveSource), nameof(IsSourceFiltered))]
+    private bool _canChooseSource;
+
+    /// <summary>The source the lists follow: the user's choice, or All while there is no choice.</summary>
+    public LibrarySource ActiveSource => CanChooseSource ? Source : LibrarySource.All;
+
+    /// <summary>The source button lights up while the lists show only one source.</summary>
+    public bool IsSourceFiltered => ActiveSource != LibrarySource.All;
+
+    /// <summary>Whether a song is in the source the lists follow now.</summary>
+    public bool InSource(Track track) => LibrarySources.Includes(Account, track, ActiveSource);
+
+    private bool RecheckSource()
+    {
+        var can = Account is { } account && (account.IsSignedIn || _library.Tracks.Any(account.IsRemote));
+        if (can == CanChooseSource) return false;
+        CanChooseSource = can;
+        return true;
+    }
+
+    /// <summary>Signed in or out: the source button shows or hides, and the lists re-read.</summary>
+    public void NotifyAccountChanged()
+    {
+        if (RecheckSource()) AfterUserEdit();
+    }
+
+    /// <summary>The source menu's pick: the lists re-read at once, and the choice is saved.</summary>
+    public async Task SetSourceAsync(LibrarySource source)
+    {
+        if (source == Source) return;
+        Source = source;
+        AfterUserEdit();
+        await UpdateSettingsAsync(s => s.PhoneLibrarySource = LibrarySources.Key(source), nameof(AppSettings.PhoneLibrarySource));
+    }
+
+    /// <summary>The Songs list: every song, or the source's.</summary>
+    public IEnumerable<Track> SourceSongs() => ActiveSource == LibrarySource.All ? Songs : Songs.Where(InSource);
+
+    /// <summary>The Albums grid: albums with at least one song in the source.</summary>
+    public IEnumerable<Album> SourceAlbums() =>
+        ActiveSource == LibrarySource.All ? _library.Albums : _library.Albums.Where(a => a.Tracks.Any(InSource));
+
+    /// <summary>
+    /// The Artists grid: artists with a song in the source, counted over those songs only (an
+    /// artist with 3 of their 12 songs on the phone reads "3 songs" under On This Phone). Grouped
+    /// the way the library groups them (LibraryService: by <see cref="Track.GroupingArtist"/>).
+    /// </summary>
+    public IEnumerable<Artist> SourceArtists()
+    {
+        if (ActiveSource == LibrarySource.All) return _library.Artists;
+        var buckets = new Dictionary<string, (HashSet<Guid> Tracks, HashSet<Guid> Albums)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var track in _library.Tracks)
+        {
+            if (!InSource(track)) continue;
+            var name = track.GroupingArtist;
+            if (!buckets.TryGetValue(name, out var bucket)) buckets[name] = bucket = (new HashSet<Guid>(), new HashSet<Guid>());
+            bucket.Tracks.Add(track.Id);
+            bucket.Albums.Add(track.AlbumId);
+        }
+        return _library.Artists
+            .Where(a => buckets.ContainsKey(a.Name))
+            .Select(a =>
+            {
+                var bucket = buckets[a.Name];
+                return new Artist { Id = a.Id, Name = a.Name, ImagePath = a.ImagePath, IsFavorite = a.IsFavorite, TrackCount = bucket.Tracks.Count, AlbumCount = bucket.Albums.Count };
+            });
+    }
 
     /// <summary>Pinned artists whose photo was asked for this session: a lookup that found nothing
     /// (or failed) is not repeated on every refresh.</summary>
@@ -311,7 +394,8 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// </summary>
     public IEnumerable<Track> RecentlyAdded()
     {
-        var tracks = _library.Tracks;
+        // Under a source, its songs only (as the rail: its albums by their newest song of the source).
+        var tracks = ActiveSource == LibrarySource.All ? _library.Tracks : _library.Tracks.Where(InSource).ToList();
         var albumNewest = tracks.Where(t => t.AlbumId != Guid.Empty).GroupBy(t => t.AlbumId)
             .ToDictionary(g => g.Key, g => g.Max(t => t.DateAdded));
         DateTime Added(Track t) => t.AlbumId != Guid.Empty ? albumNewest[t.AlbumId] : t.DateAdded;
@@ -621,6 +705,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         _pinnedArtistNames = settings.PinnedArtistNames.ToList();
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
         LibraryRowKeys = settings.PhoneLibraryRows.ToList();
+        Source = LibrarySources.Parse(settings.PhoneLibrarySource);
     }
 
     public async Task InitializeAsync()
@@ -1008,6 +1093,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void AfterSongs()
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        RecheckSource();   // the computer's songs came or went (a sync, a sign-out)
         RefreshRails();
         RefreshRecents();
         Refreshed?.Invoke(this, EventArgs.Empty);
@@ -1051,7 +1137,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         MobileLibrary.ReplaceIfChanged(PinnedRail, pinned);
         HasPinned = PinnedRail.Count > 0;
 
-        var recent = MobileLibrary.RecentlyAddedAlbums(_library, RailSize).Select(RailItem.ForAlbum).ToList();
+        var recent = MobileLibrary.RecentlyAddedAlbums(_library, RailSize, InSource).Select(RailItem.ForAlbum).ToList();
         MobileLibrary.ReplaceIfChanged(RecentlyAddedRail, recent);
         HasRecentlyAdded = RecentlyAddedRail.Count > 0;
     }

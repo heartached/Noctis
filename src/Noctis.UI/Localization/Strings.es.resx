@@ -7047,6 +7047,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>Esta semana</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Aún no has escuchado nada</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>Mostrar todo</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>Toda la música</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>En este teléfono</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>Del equipo</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>Origen de la música</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>Historial</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>Conservar historial</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Contar como escuchada tras</value></data>

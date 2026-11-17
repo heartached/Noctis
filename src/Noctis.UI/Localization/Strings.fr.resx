@@ -7079,6 +7079,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>Cette semaine</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Aucune écoute pour l’instant</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>Tout afficher</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>Toute la musique</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>Sur ce téléphone</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>De l’ordinateur</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>Source de la musique</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>Historique</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>Conserver l’historique</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Compter une écoute après</value></data>

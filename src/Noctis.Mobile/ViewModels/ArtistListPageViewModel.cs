@@ -133,7 +133,7 @@ public sealed partial class ArtistListPageViewModel : MobilePage
     {
         var library = Shell.Library.Service;
         var artwork = MobileLibrary.ArtistArtwork(library);
-        _all = library.Artists
+        _all = Shell.Library.SourceArtists()
             .Select(a => (Item: Photos.Fill(new ArtistListItem(a, artwork.GetValueOrDefault(a.Name))), Letter: ArtistIndex.LetterOf(a.Name),
                 Key: SearchText.Normalize(a.Name)))
             .OrderBy(x => ArtistIndex.OrderOf(x.Letter))
