@@ -7434,6 +7434,16 @@
   <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>تمت المزامنة أمس</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>تمت المزامنة قبل {0} يوم|تمت المزامنة قبل {0} يوم|تمت المزامنة قبل {0} يومين|تمت المزامنة قبل {0} أيام|تمت المزامنة قبل {0} يومًا|تمت المزامنة قبل {0} يوم</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>تمت المزامنة في {0}</value></data>
+  <data name="Mobile.Remote.Title" xml:space="preserve"><value>التحكم عن بُعد</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
+  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>تشغيل وإيقاف مؤقت وتخطٍّ على {0}</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>جارٍ الاتصال بـ {0}…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>تعذّر الوصول إلى {0}</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>لا يسمح {0} إلا لحسابه الرئيسي بالتحكم في التشغيل. سجّل الدخول على هذا الهاتف بذلك الحساب.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>إصدار Noctis على {0} قديم جدًا للتحكم عن بُعد. حدّثه ثم حاول مرة أخرى.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>لا يُشغَّل شيء على {0}</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>التالي على {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>و{0} أخرى</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
+  <data name="Mobile.Remote.Retry" xml:space="preserve"><value>إعادة المحاولة</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>النظام</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>فقد Noctis إذن الوصول إلى مجلد هذه الأغنية. أضف المجلد مرة أخرى من الإعدادات ← المكتبة.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>لا يستطيع هذا الهاتف فك ترميز {0}، لذا تم تخطي الأغنية.</value></data>

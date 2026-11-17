@@ -101,6 +101,9 @@ public enum NoctisErrorKind
     /// <summary>QR sign-in: the code is not (or no longer) valid — expired, already used, or
     /// replaced by a newer one. The server does not say which.</summary>
     PairingExpired,
+    /// <summary>The remote: the computer has no player to control (the headless server), or this
+    /// phone is signed in to an account other than its main one.</summary>
+    RemoteNotAllowed,
 }
 
 public sealed class NoctisServerException(NoctisErrorKind kind, string message, Exception? inner = null)
@@ -205,6 +208,21 @@ public interface INoctisAccountService
     /// Subsonic savePlayQueue call). Throws when the computer is unreachable or too old to know it;
     /// does nothing signed out.</summary>
     Task SavePlayQueueAsync(PlayQueueShare share, CancellationToken ct = default) => Task.CompletedTask;
+
+    // ── The computer's own player (Account › Remote) ──
+
+    /// <summary>What the computer's player is doing; with <paramref name="withQueue"/>, its Up Next
+    /// too. Throws <see cref="NoctisServerException"/> (Unreachable, Outdated, RemoteNotAllowed…).</summary>
+    Task<ComputerPlayback> GetComputerPlaybackAsync(bool withQueue, CancellationToken ct = default) =>
+        Task.FromException<ComputerPlayback>(new NoctisServerException(NoctisErrorKind.Outdated, "No remote."));
+
+    /// <summary>Runs one press of the remote on the computer and returns its player after it.</summary>
+    Task<ComputerPlayback> ControlComputerAsync(ComputerCommand command, bool withQueue, CancellationToken ct = default) =>
+        Task.FromException<ComputerPlayback>(new NoctisServerException(NoctisErrorKind.Outdated, "No remote."));
+
+    /// <summary>A local file of the computer's cover of <paramref name="albumId"/>: the one a sync
+    /// fetched, else fetched now into the same place. Null when the computer has none.</summary>
+    Task<string?> GetComputerCoverAsync(Guid albumId, CancellationToken ct = default) => Task.FromResult<string?>(null);
 
     /// <summary>One of the computer's playlists (synced, not made on the phone).</summary>
     bool IsSyncedPlaylist(Guid playlistId) => false;

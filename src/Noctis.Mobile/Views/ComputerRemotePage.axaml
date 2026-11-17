@@ -1,0 +1,277 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:controls="using:Noctis.Controls"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.ComputerRemotePage"
+             x:DataType="vm:ComputerRemotePageViewModel">
+
+    <!-- Account › Remote: the computer's own player, laid out as Now Playing (cover, title and
+         artist, the timeline, one row of transport glyphs with Shuffle and Repeat at its ends, the
+         volume) on the Account page's grouped cards, then the computer's Up Next. Not reachable,
+         connecting or not allowed: the Account page's hero (a glyph on a card disc, a title, why)
+         with Try Again. Shared look: GroupedStyles.axaml, MobileStyles.axaml (transport press). -->
+
+    <UserControl.Styles>
+        <StyleInclude Source="avares://Noctis.Mobile/Views/GroupedStyles.axaml" />
+
+        <Style Selector="Grid.remote-header TextBlock.sheet-title">
+            <Setter Property="Margin" Value="4,0,0,0" />
+        </Style>
+
+        <!-- The hero, as the Account page's. -->
+        <Style Selector="Border.hero-disc">
+            <Setter Property="Width" Value="84" />
+            <Setter Property="Height" Value="84" />
+            <Setter Property="CornerRadius" Value="42" />
+            <Setter Property="Background" Value="{DynamicResource PhoneCardBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.hero-disc views|GridIcon">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBlock.hero-title">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="8,16,8,0" />
+        </Style>
+        <Style Selector="TextBlock.hero-text">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="24,6,24,0" />
+        </Style>
+        <!-- Try Again: the Account page's primary-action capsule. -->
+        <Style Selector="Button.primary-action">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="26" />
+            <Setter Property="MinHeight" Value="52" />
+            <Setter Property="Padding" Value="16,0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.primary-action:pressed">
+            <Setter Property="Opacity" Value="0.7" />
+        </Style>
+        <Style Selector="Button.primary-action /template/ ContentPresenter#PART_ContentPresenter, Button.primary-action:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.primary-action:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
+        </Style>
+        <Style Selector="Button.primary-action TextBlock">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+        </Style>
+
+        <!-- The player card: Now Playing's proportions on the page's card. -->
+        <Style Selector="TextBlock.np-time">
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="Button.transport">
+            <Setter Property="Width" Value="72" />
+            <Setter Property="Height" Value="64" />
+            <Setter Property="CornerRadius" Value="32" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <!-- Shuffle and Repeat at the transport's ends, Now Playing's np-mode in the page's ink. -->
+        <Style Selector="Button.icon.np-mode">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="44" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        </Style>
+        <Style Selector="Button.icon.np-mode PathIcon">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Button.icon.np-mode Border.np-mode-wash">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Background" Value="{DynamicResource PhoneFillBrush}" />
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <Style Selector="Button.icon.np-mode.on Border.np-mode-wash">
+            <Setter Property="IsVisible" Value="True" />
+        </Style>
+        <Style Selector="Button.icon.np-mode.on PathIcon">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+        </Style>
+        <!-- The cover sits back while the computer is paused (Now Playing's ArtworkFrame). -->
+        <Style Selector="Border#RemoteArtworkFrame">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.45">
+                        <TransformOperationsTransition.Easing>
+                            <views:GlideEase />
+                        </TransformOperationsTransition.Easing>
+                    </TransformOperationsTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border#RemoteArtworkFrame.paused">
+            <Setter Property="RenderTransform" Value="scale(0.86)" />
+        </Style>
+    </UserControl.Styles>
+
+    <Panel Classes="grouped-root">
+        <Border Classes="grouped-backdrop" />
+        <Grid RowDefinitions="Auto,*">
+            <Grid Grid.Row="0" Classes="sheet-header remote-header" ColumnDefinitions="*,Auto">
+                <TextBlock Classes="sheet-title" Text="{Binding Title}" />
+                <Button Grid.Column="1" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="{loc:T Common.Close}"
+                        Command="{Binding Shell.NavigateBackCommand}">
+                    <views:GridIcon Data="{DynamicResource PhClose}" />
+                </Button>
+            </Grid>
+
+            <ScrollViewer Grid.Row="1" Classes="page-scroll" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Classes="grouped-content">
+
+                    <!-- Connecting, not reachable, not allowed, too old, signed out. -->
+                    <StackPanel Name="RemoteMessage" Margin="0,24,0,0" IsVisible="{Binding ShowsMessage}">
+                        <Border Classes="hero-disc">
+                            <views:GridIcon Data="{DynamicResource PhComputer}" />
+                        </Border>
+                        <TextBlock Name="MessageTitleText" Classes="hero-title" Text="{Binding MessageTitle}" />
+                        <TextBlock Name="MessageBodyText" Classes="hero-text" Text="{Binding MessageText}"
+                                   IsVisible="{Binding MessageText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                        <views:IndeterminateBar Height="3" Margin="64,24,64,0" IsActive="{Binding IsConnecting}" IsVisible="{Binding IsConnecting}"
+                                                Track="{DynamicResource PhoneFillBrush}" Fill="{DynamicResource AccentTextExactBrush}" />
+                        <Button Name="RetryButton" Classes="primary-action" Margin="0,28,0,0" IsVisible="{Binding CanRetry}"
+                                Command="{Binding RetryCommand}" AutomationProperties.Name="{loc:T Mobile.Remote.Retry}">
+                            <TextBlock Text="{loc:T Mobile.Remote.Retry}" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Reached, nothing playing there. -->
+                    <StackPanel Name="NothingPlaying" Margin="0,24,0,0" IsVisible="{Binding ShowsNothingPlaying}">
+                        <Border Classes="hero-disc">
+                            <views:GridIcon Data="{DynamicResource PhComputer}" />
+                        </Border>
+                        <TextBlock Classes="hero-title" Text="{Binding NothingPlayingText}" />
+                    </StackPanel>
+
+                    <!-- The computer's song. -->
+                    <Border Name="PlayerCard" Classes="group-card" IsVisible="{Binding ShowsPlayer}">
+                        <StackPanel Margin="20,20,20,12">
+                            <Viewbox Stretch="Uniform" MaxWidth="260" MaxHeight="260" HorizontalAlignment="Center" ClipToBounds="False">
+                                <Border Name="RemoteArtworkFrame" Width="260" Height="260" CornerRadius="10"
+                                        BoxShadow="0 8 22 0 #40000000" Classes.paused="{Binding !IsPlaying}">
+                                    <Border Classes="art" CornerRadius="10">
+                                        <Panel>
+                                            <PathIcon Data="{DynamicResource SongsIcon}" Width="64" Height="64" Opacity="0.4" />
+                                            <controls:CachedImage Name="RemoteArtwork" SourcePath="{Binding ArtworkPath}"
+                                                                  DecodeWidth="640" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                        </Panel>
+                                    </Border>
+                                </Border>
+                            </Viewbox>
+
+                            <TextBlock Name="RemoteTitle" Text="{Binding SongTitle}" FontSize="20" FontWeight="Bold" Margin="0,18,0,0"
+                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+                            <TextBlock Name="RemoteArtist" Text="{Binding Artist}" FontSize="17" Foreground="{DynamicResource PhoneSecondaryTextBrush}"
+                                       TextTrimming="CharacterEllipsis" MaxLines="1" />
+
+                            <!-- Seeks on release only (the code-behind); the times follow the drag. -->
+                            <views:CapsuleSlider Name="RemoteSeekBar" Height="30" Margin="0,10,0,0" Minimum="0" Maximum="{Binding DurationSeconds}"
+                                                 Value="{Binding PositionSeconds, Mode=OneWay}"
+                                                 AutomationProperties.Name="{loc:T Mobile.PlaybackPosition}" />
+                            <Grid ColumnDefinitions="*,*" Margin="0,-4,0,0">
+                                <TextBlock Name="RemoteElapsed" Classes="np-time" Text="{Binding ElapsedText}" HorizontalAlignment="Left" />
+                                <TextBlock Grid.Column="1" Name="RemoteRemaining" Classes="np-time" Text="{Binding RemainingText}" HorizontalAlignment="Right" />
+                            </Grid>
+
+                            <Grid Name="RemoteTransport" ColumnDefinitions="*,Auto,Auto,Auto,*" Margin="0,10">
+                                <Button Grid.Column="0" Name="RemoteShuffle" Classes="icon np-mode" HorizontalAlignment="Left"
+                                        Classes.on="{Binding IsShuffleOn}" Command="{Binding ToggleShuffleCommand}"
+                                        AutomationProperties.Name="{loc:T Mobile.Shuffle}">
+                                    <Panel>
+                                        <Border Classes="np-mode-wash" />
+                                        <PathIcon Data="{DynamicResource PhShuffle}" />
+                                    </Panel>
+                                </Button>
+                                <Button Grid.Column="1" Name="RemotePrevious" Classes="icon transport tx" Command="{Binding PreviousCommand}"
+                                        AutomationProperties.Name="{loc:T Mobile.Previous}">
+                                    <controls:TransportGlyph Kind="Previous" Width="34" Height="34" />
+                                </Button>
+                                <Button Grid.Column="2" Name="RemotePlayPause" Classes="icon transport tx" Command="{Binding TogglePlayPauseCommand}"
+                                        AutomationProperties.Name="{loc:T Mobile.PlayPause}">
+                                    <controls:TransportGlyph Kind="PlayPause" Width="38" Height="38" IsPlaying="{Binding IsPlaying}" />
+                                </Button>
+                                <Button Grid.Column="3" Name="RemoteNext" Classes="icon transport tx" Command="{Binding NextCommand}"
+                                        AutomationProperties.Name="{loc:T Mobile.Next}">
+                                    <controls:TransportGlyph Kind="Next" Width="34" Height="34" />
+                                </Button>
+                                <Button Grid.Column="4" Name="RemoteRepeat" Classes="icon np-mode" HorizontalAlignment="Right"
+                                        Classes.on="{Binding IsRepeatOn}" Command="{Binding CycleRepeatCommand}"
+                                        AutomationProperties.Name="{loc:T Mobile.Repeat}">
+                                    <Panel>
+                                        <Border Classes="np-mode-wash" />
+                                        <PathIcon Data="{DynamicResource PhRepeat}" IsVisible="{Binding !IsRepeatOne}" />
+                                        <PathIcon Data="{DynamicResource PhRepeatOne}" IsVisible="{Binding IsRepeatOne}" />
+                                    </Panel>
+                                </Button>
+                            </Grid>
+
+                            <!-- The computer's own volume (0-100), sent on release. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <PathIcon Data="{DynamicResource PhVolumeLow}" Width="18" Height="18" Opacity="0.6" />
+                                <views:CapsuleSlider Grid.Column="1" Name="RemoteVolume" Height="30" Minimum="0" Maximum="1" Margin="10,0"
+                                                     Value="{Binding VolumeLevel, Mode=OneWay}" AutomationProperties.Name="{loc:T Mobile.Volume}" />
+                                <PathIcon Grid.Column="2" Data="{DynamicResource PhVolumeHigh}" Width="18" Height="18" Opacity="0.6" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- The computer's Up Next: a tap plays that song there. -->
+                    <StackPanel Name="RemoteUpNext" IsVisible="{Binding IsReady}">
+                        <StackPanel IsVisible="{Binding HasUpNext}">
+                            <TextBlock Classes="group-caption" Text="{Binding UpNextTitle}" FontSize="13.5" Margin="16,0,16,7"
+                                       Foreground="{DynamicResource PhoneSecondaryTextBrush}" />
+                            <Border Classes="group-card">
+                                <ItemsControl Name="UpNextRows" ItemsSource="{Binding UpNext}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ComputerQueueRow">
+                                            <Button Classes="row" Command="{Binding $parent[ItemsControl].((vm:ComputerRemotePageViewModel)DataContext).PlayUpNextCommand}"
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
+                                                <StackPanel Margin="16,9" VerticalAlignment="Center">
+                                                    <TextBlock Classes="row-label" Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                    <TextBlock Classes="row-sub" Text="{Binding Artist}" TextTrimming="CharacterEllipsis" MaxLines="1" />
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                            <TextBlock Classes="group-footnote" Text="{Binding UpNextMoreText}" IsVisible="{Binding HasUpNextMore}" />
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Panel>
+</UserControl>

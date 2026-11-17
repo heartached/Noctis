@@ -163,6 +163,9 @@ public sealed partial class AccountPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(SignOutQuestion))]
     private string _computerName = string.Empty;
 
+    /// <summary>The Remote row's grey line: "Play, pause and skip on Studio PC".</summary>
+    [ObservableProperty] private string _remoteHint = string.Empty;
+
     /// <summary>The sign-out card's question: "Sign out of Studio PC?".</summary>
     public string SignOutQuestion => Loc.T("Mobile.Account.SignOutQuestion", ComputerName);
 
@@ -664,6 +667,7 @@ public sealed partial class AccountPageViewModel : MobilePage
             ? account.UserName : string.Empty;
         ServerText = account == null ? string.Empty : Loc.T("Mobile.Account.OnServer", ServerLabel(account));
         ComputerName = account == null ? string.Empty : ServerLabel(account);
+        RemoteHint = account == null ? string.Empty : Loc.T("Mobile.Remote.Hint", ServerLabel(account));
         Initials = InitialsOf(shownName);
         AvatarPath = IsSignedIn ? _account.AvatarPath : null;
         RefreshSyncTime();
