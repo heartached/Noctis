@@ -1642,8 +1642,10 @@
     </Style>
 
     <!-- Album Hover Zoom (GitHub #218, Settings › Appearance, off by default): under a view
-         tagged .hover-zoom (the Albums page) the hovered tile grows to 104% with a soft glow
-         and LibraryAlbumsView tags the tiles around it .hover-neighbor, which step back to 97%.
+         tagged .hover-zoom (the Albums page) the hovered tile grows to 104% with a soft glow;
+         every other tile stays as it is (GitHub #250: the neighbours used to step back to 97%,
+         which read as the whole grid moving). LibraryAlbumsView lifts the hovered tile above
+         its neighbours and anchors it at the grid's edges so it is not clipped there.
          Render transforms and opacity only, so nothing re-lays out; declared after the
          album-tile scale(1) opt-outs above so these win. -->
     <Style Selector="Border.tile-glow">
@@ -1671,9 +1673,6 @@
                 </TransformOperationsTransition>
             </Transitions>
         </Setter>
-    </Style>
-    <Style Selector=".hover-zoom Button.album-tile.hover-neighbor">
-        <Setter Property="RenderTransform" Value="scale(0.97)" />
     </Style>
     <Style Selector=".hover-zoom Button.album-tile:pointerover">
         <Setter Property="RenderTransform" Value="scale(1.04)" />
