@@ -88,6 +88,20 @@
                     </ScrollViewer>
                 </StackPanel>
 
+                <StackPanel Name="MostPlayedSection" Spacing="10" IsVisible="{Binding Library.HasMostPlayed}">
+                    <Button Name="MostPlayedHeader" Classes="row section-header" Command="{Binding OpenMostPlayedCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource ChipSongsIcon}" />
+                            <TextBlock Classes="section" Text="{loc:T Home.MostPlayed}" />
+                            <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                        </StackPanel>
+                    </Button>
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="MostPlayedRail" Margin="20,0" ItemsSource="{Binding Library.MostPlayedRail}"
+                                      ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                    </ScrollViewer>
+                </StackPanel>
+
                 <!-- From Your Last.fm (GitHub #177): mixes of library songs only, from the charts of
                      the Last.fm account connected on this phone. Only while one is and Settings ›
                      Scrobbling › Mixes and Recommendations is on. A tile opens the mix's songs. -->
