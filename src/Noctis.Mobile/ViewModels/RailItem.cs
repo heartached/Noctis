@@ -28,8 +28,9 @@ public sealed record RailItem(RailItemKind Kind, string Title, string Subtitle, 
     /// <summary>Artists show as circles on a rail, everything else as rounded squares.</summary>
     public bool IsArtist => Kind == RailItemKind.Artist;
 
-    public static RailItem ForPlaylist(Playlist playlist, string? artworkPath) =>
-        new(RailItemKind.Playlist, playlist.Name, Loc.Plural("Mobile.Count.Songs", playlist.TrackIds.Count), artworkPath, playlist);
+    /// <param name="songCount">The songs the phone has (<see cref="LibraryViewModel.PlaylistSongCount"/>).</param>
+    public static RailItem ForPlaylist(Playlist playlist, string? artworkPath, int songCount) =>
+        new(RailItemKind.Playlist, playlist.Name, Loc.Plural("Mobile.Count.Songs", songCount), artworkPath, playlist);
 
     /// <summary>
     /// Every library refresh rebuilds the Album, Track and Artist objects (a rescan publishes every

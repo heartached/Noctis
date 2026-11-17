@@ -190,7 +190,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         // every album tile — the typing lag on a broad query.
         MobileLibrary.ReplaceIfChanged(Albums, Shows(SearchScope.Albums) ? results.Albums : Array.Empty<Album>());
         MobileLibrary.ReplaceIfChanged(Playlists, Shows(SearchScope.Playlists)
-            ? results.Playlists.Select(p => new PlaylistResult(p, Shell.Library.PlaylistArtwork(p))).ToList()
+            ? results.Playlists.Select(p => new PlaylistResult(p, Shell.Library.PlaylistArtwork(p), Shell.Library.PlaylistSongCount(p))).ToList()
             : Array.Empty<PlaylistResult>());
 
         Photos.CancelAll();
@@ -296,9 +296,10 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     }
 }
 
-/// <summary>A playlist in the search results: the playlist, its cover, and its song count.</summary>
-public sealed record PlaylistResult(Playlist Playlist, string? ArtworkPath)
+/// <summary>A playlist in the search results: the playlist, its cover, and its song count (the
+/// songs its page lists, <see cref="LibraryViewModel.PlaylistSongCount"/>).</summary>
+public sealed record PlaylistResult(Playlist Playlist, string? ArtworkPath, int SongCount)
 {
     public string Name => Playlist.Name;
-    public string Subtitle => Loc.T("Mobile.Search.PlaylistSubtitle", Loc.Plural("Mobile.Count.Songs", Playlist.TrackIds.Count));
+    public string Subtitle => Loc.T("Mobile.Search.PlaylistSubtitle", Loc.Plural("Mobile.Count.Songs", SongCount));
 }
