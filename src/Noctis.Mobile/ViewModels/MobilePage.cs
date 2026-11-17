@@ -81,10 +81,11 @@ public abstract partial class MobilePage : ObservableObject
     /// row values built in code). Pages with child view models add theirs.</summary>
     public virtual void Relabel() => OnPropertyChanged(string.Empty);
 
-    /// <summary>A page title given as a Strings.resx key ("Mobile.RecentlyAdded", "Nav.Songs") reads
-    /// in the current language, so an open page follows a language switch; any other text (an
-    /// artist's or playlist's name) shows as given.</summary>
+    /// <summary>A page title given as a Strings.resx key ("Mobile.RecentlyAdded", "Nav.Songs",
+    /// "Home.MostPlayed") reads in the current language, so an open page follows a language switch;
+    /// any other text (an artist's or playlist's name) shows as given.</summary>
     protected static string Localized(string titleOrKey) =>
         titleOrKey.StartsWith("Mobile.", StringComparison.Ordinal) || titleOrKey.StartsWith("Nav.", StringComparison.Ordinal)
+            || titleOrKey == "Home.MostPlayed"
             ? Loc.T(titleOrKey) : titleOrKey;
 }

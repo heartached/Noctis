@@ -1022,6 +1022,17 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks, sortKey: "Mobile.OnRepeat"));
 
+    /// <summary>Home › Most Played: every played song, in the list's Most Played sort until the
+    /// user picks another (then that one, as any list's).</summary>
+    [RelayCommand]
+    private void OpenMostPlayed()
+    {
+        var page = new SongListPageViewModel(this, "Home.MostPlayed", Library.MostPlayedTracks, sortKey: "Home.MostPlayed");
+        if (!TryGetListSort<SongSort>("Home.MostPlayed", out _, out _))
+            page.ChooseSort(page.SortChoices.First(c => c.Key is SongSort.MostPlayed));
+        Navigate(page);
+    }
+
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
     /// <summary>An album tile, row or link: the album page.</summary>
@@ -1220,7 +1231,14 @@ public sealed partial class ShellViewModel : ObservableObject
                 Navigate(new SongListPageViewModel(this, mix.TitleKey, () => mix.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>()));
                 break;
             case Track track:
-                // A song plays the rail it sits on: On Repeat, else the pinned songs.
+                // A song plays the rail it sits on: Most Played (its own tile: the same song can sit
+                // on On Repeat too), On Repeat, else the pinned songs.
+                if (Library.MostPlayedRail.FirstOrDefault(i => ReferenceEquals(i, item)) != null)
+                {
+                    var mostPlayed = Library.MostPlayedRail.Select(CurrentPayload).OfType<Track>().ToList();
+                    Player.PlayTracks(mostPlayed, Math.Max(0, mostPlayed.IndexOf(track)), Loc.T("Home.MostPlayed"));
+                    break;
+                }
                 var onRepeat = Library.OnRepeatRail.Select(CurrentPayload).OfType<Track>().ToList();
                 var pinned = Library.PinnedRail.Select(CurrentPayload).OfType<Track>().ToList();
                 if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, Loc.T("Mobile.OnRepeat"));

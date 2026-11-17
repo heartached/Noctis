@@ -337,6 +337,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _hasPinned;
     [ObservableProperty] private bool _hasRecentlyAdded;
     [ObservableProperty] private bool _hasOnRepeat;
+    [ObservableProperty] private bool _hasMostPlayed;
 
     /// <summary>The Shelf as a horizontal rail of covers (true) or a vertical list (false).</summary>
     [ObservableProperty] private bool _isShelfGrid = true;
@@ -380,6 +381,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public BulkObservableCollection<RailItem> PinnedRail { get; } = new();
     public BulkObservableCollection<RailItem> RecentlyAddedRail { get; } = new();
     public BulkObservableCollection<RailItem> OnRepeatRail { get; } = new();
+    public BulkObservableCollection<RailItem> MostPlayedRail { get; } = new();
 
     /// <summary>The Shelf's albums as rail tiles: Library → Recently Played.</summary>
     public BulkObservableCollection<RailItem> RecentlyPlayedRail { get; } = new();
@@ -414,6 +416,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// rescan that re-read the file.</summary>
     public IEnumerable<Track> OnRepeatTracks() =>
         OnRepeatRail.Select(r => r.Payload).OfType<Track>().Select(t => _library.GetTrackById(t.Id) ?? t);
+
+    /// <summary>Home's Most Played shows once this many songs have a counted play (On Repeat's
+    /// rule is three plays of one song; one song played once is not a chart yet).</summary>
+    internal const int MostPlayedMinSongs = 3;
+
+    /// <summary>Most Played's › list: every song with a counted play (Track.PlayCount, the number
+    /// Sort by Most Played uses), the hidden ones left out as everywhere (Tracks).</summary>
+    public IEnumerable<Track> MostPlayedTracks() => _library.Tracks.Where(t => t.PlayCount > 0);
 
     /// <summary>A playlist's cover: its custom cover (set on the phone or synced from the
     /// computer), else the first of its tracks that has one.</summary>
@@ -1169,7 +1179,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Shelf and On Repeat: the play log. Called on every library refresh and by the shell
+    /// Shelf and On Repeat: the play log; Most Played: the play counts. Called on every library refresh and by the shell
     /// whenever a track starts (the play is recorded before CurrentTrack changes).
     /// </summary>
     public void RefreshRecents()
@@ -1187,5 +1197,14 @@ public sealed partial class LibraryViewModel : ObservableObject
             .Select(RailItem.ForTrack).ToList();
         MobileLibrary.ReplaceIfChanged(OnRepeatRail, onRepeat);
         HasOnRepeat = OnRepeatRail.Count > 0;
+
+        // Most Played: the songs of all time by play count, as the computer's Home (most first,
+        // ties by the more recent play).
+        var played = MostPlayedTracks().ToList();
+        var mostPlayed = played.Count < MostPlayedMinSongs ? new List<RailItem>()
+            : played.OrderByDescending(t => t.PlayCount).ThenByDescending(t => t.LastPlayed ?? DateTime.MinValue)
+                .Take(RailSize).Select(RailItem.ForTrack).ToList();
+        MobileLibrary.ReplaceIfChanged(MostPlayedRail, mostPlayed);
+        HasMostPlayed = MostPlayedRail.Count > 0;
     }
 }
