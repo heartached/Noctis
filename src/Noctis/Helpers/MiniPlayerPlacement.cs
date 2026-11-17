@@ -43,6 +43,17 @@ public static class MiniPlayerPlacement
         return new PixelPoint(x, y);
     }
 
+    /// <summary>The DIP size the mini player really opens at: a fixed design's own size
+    /// (<paramref name="designForm"/>, applied in MiniPlayerWindow.Opened), else the stored
+    /// classic size. GitHub #251: the reopen clamp measured the classic size for a design
+    /// too, so a smaller design parked against the right or bottom edge came back pushed
+    /// inward by the difference.</summary>
+    public static (double Width, double Height) OpeningSize(
+        Noctis.ViewModels.MiniPlayerForm? designForm, double classicWidth, double classicHeight)
+        => designForm is { } form
+            ? Noctis.ViewModels.MiniPlayerViewModel.CanonicalSize(form)
+            : (classicWidth, classicHeight);
+
     /// <summary>A DIP size on a screen with <paramref name="scaling"/>, in whole pixels.</summary>
     public static PixelSize ToPixels(double width, double height, double scaling)
     {
