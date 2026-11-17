@@ -74,6 +74,9 @@ public class SpectrumMeterTests
         var bands = new float[Bands];
         Assert.True(meter.TryRead(now(), bands));
         Assert.All(bands, b => Assert.Equal(0f, b));
+        // GitHub #249: Full spectrum's treble tilt must not lift silence off the floor.
+        Assert.True(meter.TryRead(now(), bands, fullSpectrum: true));
+        Assert.All(bands, b => Assert.Equal(0f, b));
     }
 
     [Fact]
@@ -239,20 +242,45 @@ public class SpectrumMeterTests
         return means;
     }
 
-    /// <summary>GitHub #205: Full spectrum weights the bands like a studio analyser (+1.5 dB per
-    /// octave around 1 kHz, see the constant), so pink noise reads level from 20 Hz to 20 kHz. The default look is
-    /// unweighted: pink noise leans to the bass there.</summary>
+    /// <summary>GitHub #205/#249: Full spectrum lifts the treble like a studio analyser (+1.5 dB per
+    /// octave above 1 kHz, see the constant), so pink noise reads the treble level with the mids,
+    /// and never pulls the bass under the mids. The default look is unweighted: pink noise leans
+    /// to the bass there.</summary>
     [Theory]
     [InlineData(48000)]
     [InlineData(96000)]
     public void FullSpectrum_ReadsPinkNoiseLevel(int rate)
     {
         var full = PinkDecadeMeans(rate, fullSpectrum: true);
-        Assert.InRange(full[0] - full[2], -0.06, 0.06);
+        Assert.True(full[0] >= full[1] - 0.02, $"full: bass {full[0]:0.00} under mids {full[1]:0.00}");
         Assert.InRange(full[1] - full[2], -0.06, 0.06);
 
         var plain = PinkDecadeMeans(rate, fullSpectrum: false);
         Assert.True(plain[0] - plain[2] > 0.1, $"default look: bass {plain[0]:0.00} vs treble {plain[2]:0.00}");
+    }
+
+    /// <summary>GitHub #249: Full spectrum shows MORE than the default at both ends, never less.
+    /// The tilt below 1 kHz took 8.5 dB off the 20 Hz band, so a loud 30 Hz tone read lower with
+    /// the option on (0.70) than off (0.73), and the low end looked "exactly as before".</summary>
+    [Theory]
+    [InlineData(30.0, 0.1)]
+    [InlineData(60.0, 0.1)]
+    [InlineData(30.0, 0.003)]
+    [InlineData(12000.0, 0.1)]
+    [InlineData(16000.0, 0.003)]
+    public void FullSpectrum_NeverReadsABandLowerThanTheDefault(double hz, double amplitude)
+    {
+        var (meter, now) = Run(t => (float)(amplitude * Math.Sin(2 * Math.PI * hz * t)), 0.5);
+
+        var plain = new float[Bands];
+        var full = new float[Bands];
+        Assert.True(meter.TryRead(now(), plain));
+        Assert.True(meter.TryRead(now(), full, fullSpectrum: true));
+        for (var b = 0; b < Bands; b++)
+            Assert.True(full[b] >= plain[b], $"band {b}: full {full[b]:0.000} < default {plain[b]:0.000}");
+        // The tone's own band is lifted (or already at the top).
+        var own = BandOf(hz);
+        Assert.True(full[own] > plain[own] || plain[own] >= 1f, $"band {own}: full {full[own]:0.000} vs default {plain[own]:0.000}");
     }
 
     /// <summary>GitHub #205: a quiet top octave (a -66 dBFS 16 kHz component, the level of a

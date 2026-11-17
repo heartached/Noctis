@@ -48,11 +48,13 @@ public sealed class SpectrumMeter
     private const double FloorDb = -60;
     private const double CeilDb = -6;
 
-    /// <summary>Full spectrum (GitHub #205): bands tilted up toward the treble around 1 kHz, as a
+    /// <summary>Full spectrum (GitHub #205): bands above 1 kHz tilted up toward the treble, as a
     /// studio analyser does, over a deeper floor, so a quiet top octave stays on screen. Pink
     /// noise (equal energy per octave, music's long-term balance) falls 3 dB per octave per bin,
     /// but a wide treble band takes the loudest of many bins, which already makes up about half
-    /// of that: 1.5 dB per octave is what reads pink noise level (SpectrumMeterTests).</summary>
+    /// of that: 1.5 dB per octave is what reads pink noise level from 1 to 20 kHz
+    /// (SpectrumMeterTests). Below 1 kHz there is no tilt (GitHub #249): it pulled the lowest
+    /// bands down, so every band reads at least as high as with the option off.</summary>
     public const double FullSpectrumTiltDbPerOctave = 1.5;
     private const double FullSpectrumFloorDb = -80;
     private const double TiltPivotHz = 1000;
@@ -262,8 +264,11 @@ public sealed class SpectrumMeter
                 ? BandPeak(bassRe, bassIm, bassSampleRate, lo, hi)
                 : BandPeak(re, im, sampleRate, lo, hi);
             var db = peak <= 1e-9 ? floorDb : 20 * Math.Log10(peak);
-            if (fullSpectrum)
-                db += FullSpectrumTiltDbPerOctave * Math.Log2(Math.Sqrt(lo * hi) / TiltPivotHz);
+            // Lift only above the pivot: a tilt below it took up to 8.5 dB off the 20 Hz band, so
+            // loud bass read LOWER with Full spectrum on than off (GitHub #249). Silence stays at the
+            // floor: tilting it drew a 0.06-0.09 shelf over empty treble bands.
+            if (fullSpectrum && peak > 1e-9)
+                db += FullSpectrumTiltDbPerOctave * Math.Max(0, Math.Log2(Math.Sqrt(lo * hi) / TiltPivotHz));
             bands[b] = (float)Math.Clamp((db - floorDb) / (CeilDb - floorDb), 0, 1);
         }
     }
