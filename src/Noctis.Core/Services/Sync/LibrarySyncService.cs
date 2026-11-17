@@ -51,6 +51,19 @@ public interface ILibrarySyncService : ITrackStateRecorder
 
     /// <summary>Raised on every push/pull so the Account &amp; Sync tab can refresh its status.</summary>
     event EventHandler? Changed;
+
+    /// <summary>
+    /// Every item in this computer's ledger (tracks and playlists), with playlists brought up to
+    /// date from disk first. What a link to another computer (ComputerLinkService) sends there.
+    /// </summary>
+    Task<IReadOnlyList<SyncItem>> LocalItemsAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// <see cref="PushAsync"/> for items that come from another computer's ledger: the same
+    /// validation, last-writer-wins merge and apply, each item keeping its own device and stamp,
+    /// but no entry in <see cref="Devices"/> (that list is this computer's phones).
+    /// </summary>
+    Task<int> MergeAsync(IReadOnlyList<SyncItem> items, ISyncApplier applier, CancellationToken ct = default);
 }
 
 public sealed class LibrarySyncService : ILibrarySyncService
@@ -80,6 +93,13 @@ public sealed class LibrarySyncService : ILibrarySyncService
 
     public bool IsEnabled => Safe(() => _settings().SyncEnabled, false);
 
+    /// <summary>Also record this computer's own changes while this says so (a link to another
+    /// computer is signed in), with phone sync off. The server's sync endpoints still follow
+    /// <see cref="IsEnabled"/> alone.</summary>
+    public Func<bool>? AlsoRecord { get; set; }
+
+    private bool IsRecording => IsEnabled || Safe(() => AlsoRecord?.Invoke() == true, false);
+
     public string DeviceId
     {
         get
@@ -106,7 +126,7 @@ public sealed class LibrarySyncService : ILibrarySyncService
 
     public void RecordTrackStates(IEnumerable<Track> tracks)
     {
-        if (!IsEnabled) return;
+        if (!IsRecording) return;
         var now = DateTime.UtcNow;
         var device = DeviceId;
         var any = false;
@@ -325,6 +345,35 @@ public sealed class LibrarySyncService : ILibrarySyncService
 
     public async Task<int> PushAsync(string deviceId, string? deviceName, IReadOnlyList<SyncItem> items, ISyncApplier applier, CancellationToken ct = default)
     {
+        var applied = await MergeCoreAsync(deviceId, items, applier, ct).ConfigureAwait(false);
+        Store.TouchDevice(deviceId, deviceName, Store.CurrentSeq);
+        if (applied > 0) DebugLogger.Info(DebugLogger.Category.State, "Sync.Pushed", $"device={deviceId}, applied={applied}/{items.Count}");
+        Changed?.Invoke(this, EventArgs.Empty);
+        return applied;
+    }
+
+    public async Task<int> MergeAsync(IReadOnlyList<SyncItem> items, ISyncApplier applier, CancellationToken ct = default)
+    {
+        var applied = await MergeCoreAsync(DeviceId, items, applier, ct).ConfigureAwait(false);
+        if (applied > 0) DebugLogger.Info(DebugLogger.Category.State, "Sync.Merged", $"applied={applied}/{items.Count}");
+        Changed?.Invoke(this, EventArgs.Empty);
+        return applied;
+    }
+
+    public async Task<IReadOnlyList<SyncItem>> LocalItemsAsync(CancellationToken ct = default)
+    {
+        var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+        return await Task.Run(() =>
+        {
+            lock (_storeGate) RefreshPlaylists(playlists);
+            var items = new List<SyncItem>(Store.All(SyncKinds.Track));
+            items.AddRange(Store.All(SyncKinds.Playlist));
+            return (IReadOnlyList<SyncItem>)items;
+        }, ct).ConfigureAwait(false);
+    }
+
+    private async Task<int> MergeCoreAsync(string deviceId, IReadOnlyList<SyncItem> items, ISyncApplier applier, CancellationToken ct)
+    {
         var applied = 0;
         var now = DateTime.UtcNow;
         foreach (var raw in items)
@@ -354,9 +403,6 @@ public sealed class LibrarySyncService : ILibrarySyncService
                 DebugLogger.Warn(DebugLogger.Category.State, "Sync.ApplyFailed", $"{item.Kind}/{item.Id}: {ex.Message}");
             }
         }
-        Store.TouchDevice(deviceId, deviceName, Store.CurrentSeq);
-        if (applied > 0) DebugLogger.Info(DebugLogger.Category.State, "Sync.Pushed", $"device={deviceId}, applied={applied}/{items.Count}");
-        Changed?.Invoke(this, EventArgs.Empty);
         return applied;
     }
 

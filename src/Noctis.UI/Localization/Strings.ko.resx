@@ -6502,6 +6502,25 @@
     <comment>Phone app card title; its switch turns Noctis Server on/off</comment>
   </data>
   <data name="Phone.Description" xml:space="preserve">
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>다른 컴퓨터</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>다른 컴퓨터와 동기화</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>즐겨찾기, 평점, 재생 횟수, 재생목록을 두 컴퓨터에서 똑같이 유지합니다. 음악 파일은 각자 보관하며, 곡은 제목·아티스트·길이로 맞춥니다.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>다른 컴퓨터에서 '{0}'와 '{1}'을 켜고 {2} › {3}을 여세요. 여기에 그 주소와 계정을 입력하세요.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>다른 컴퓨터에 표시된 주소</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>이메일 또는 사용자 이름</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>비밀번호</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>연결</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>다른 컴퓨터에 이 보안 코드가 표시되는지 확인하세요:</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>로그인</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>{0}와(과) 동기화됨</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>동기화 중…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>지금 동기화</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>로그아웃</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>다른 컴퓨터가 응답하지 않습니다. 같은 네트워크에서 Noctis가 열려 있고 '{0}'이 켜져 있나요?</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>다른 컴퓨터에서 동기화가 꺼져 있습니다. 그 컴퓨터에서 '{0}'을 켜세요.</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>이메일 또는 비밀번호가 올바르지 않습니다.</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>동기화하지 못했습니다: {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>다른 컴퓨터가 이 컴퓨터를 로그아웃했습니다. 계속 동기화하려면 다시 로그인하세요.</value><comment>The other computer removed this one</comment></data>
     <value>이 라이브러리를 휴대폰에서 스트리밍하고 다운로드하세요.</value>
     <comment>Phone app card subtitle</comment>
   </data>

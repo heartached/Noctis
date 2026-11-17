@@ -3093,6 +3093,25 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.Section.PcApps" xml:space="preserve"><value>Apps on this PC</value><comment>Settings section label, Account &amp; Devices tab (Local API)</comment></data>
   <data name="Phone.Title" xml:space="preserve"><value>Noctis on your phone</value><comment>Phone app card title; its switch turns Noctis Server on/off</comment></data>
   <data name="Phone.Description" xml:space="preserve"><value>Stream and download this library on your phone.</value><comment>Phone app card subtitle</comment></data>
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Other computers</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>Sync with another computer</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Favorites, ratings, play counts and playlists stay the same on two computers. Each keeps its own music files; songs are matched by title, artist and length.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>On the other computer, turn on “{0}” and “{1}”, then open {2} › {3}. Type its address and your account here.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>Address shown on the other computer</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>Email or username</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>Password</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>Connect</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>Check that the other computer shows this security code:</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>Sign in</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>Synced with {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>Syncing…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>Sync now</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>Sign out</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>The other computer didn't answer. Is Noctis open there, with “{0}” on, on the same network?</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>Sync is off on the other computer. Turn on “{0}” there.</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>The email or password isn't right.</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>Couldn't sync: {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>The other computer signed this one out. Sign in again to keep syncing.</value><comment>The other computer removed this one</comment></data>
   <data name="Phone.NeedsAccount" xml:space="preserve"><value>Create your account above first.</value><comment>Phone app card, shown when there is no account</comment></data>
   <data name="Phone.CodeHint" xml:space="preserve"><value>Your phone shows this code too. Only sign in if they match.</value><comment>Under the certificate security code in the pairing panel</comment></data>
   <data name="Phone.Synced" xml:space="preserve"><value>Synced {0}</value><comment>Phone list row status; {0} = 'just now', '5 min ago', '3 h ago' or 'on 9 Oct, 14:05'</comment></data>

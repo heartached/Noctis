@@ -7571,6 +7571,99 @@
             </StackPanel>
             </Border>
 
+            <!-- Other computers: this computer signs in to another computer's Noctis (its phone
+                 address and account, the security code compared by eye), then both keep the same
+                 favorites, ratings, play counts and playlists (ComputerLinkService). Signed out:
+                 the steps and three boxes; Connect shows the code; signed in: one line and
+                 Sync now / Sign out. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.OtherComputers}" Margin="0,16,0,8"/>
+            <Border x:Name="ComputerLinkCard" Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row" Classes.parked="{Binding !AccountFeaturesEnabled}" IsEnabled="{Binding AccountFeaturesEnabled}">
+                <StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T PcSync.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T PcSync.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <controls:CollapsibleContent IsOpen="{Binding IsComputerLinkFormVisible}" Lift="10" Motion="Glide">
+                    <StackPanel x:Name="ComputerLinkForm" Spacing="10" MaxWidth="440" HorizontalAlignment="Left" Margin="0,14,0,0">
+                        <TextBlock Text="{Binding ComputerLinkHelp}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                        <TextBox x:Name="ComputerLinkAddressBox" Classes="account-field" Text="{Binding ComputerLinkAddress}"
+                                 AutomationProperties.Name="{loc:T PcSync.Address}" Watermark="{loc:T PcSync.Address}"/>
+                        <TextBox x:Name="ComputerLinkUserBox" Classes="account-field" Text="{Binding ComputerLinkUser}"
+                                 AutomationProperties.Name="{loc:T PcSync.User}" Watermark="{loc:T PcSync.User}"/>
+                        <TextBox x:Name="ComputerLinkPasswordBox" Classes="account-field" Text="{Binding ComputerLinkPassword}" PasswordChar="•"
+                                 AutomationProperties.Name="{loc:T PcSync.Password}" Watermark="{loc:T PcSync.Password}">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding ConnectComputerLinkCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button x:Name="ComputerLinkConnectButton" Classes="accent-btn account-action" HorizontalAlignment="Left"
+                                AutomationProperties.Name="{loc:T PcSync.Connect}" Command="{Binding ConnectComputerLinkCommand}"
+                                IsEnabled="{Binding !IsComputerLinkBusy}"
+                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                            <TextBlock Text="{loc:T PcSync.Connect}" FontWeight="SemiBold"/>
+                        </Button>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
+
+                    <!-- Connect answered: the other computer's code to compare, then Sign in. -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsComputerLinkConfirming}" Lift="10" Motion="Glide">
+                    <StackPanel x:Name="ComputerLinkConfirm" Spacing="10" Margin="0,14,0,0">
+                        <TextBlock Text="{loc:T PcSync.CompareCode}" FontSize="12.5" TextWrapping="Wrap"/>
+                        <Border Classes="pair-value" HorizontalAlignment="Left">
+                            <SelectableTextBlock x:Name="ComputerLinkCodeText" Text="{Binding ComputerLinkCode}" FontSize="14"
+                                                 FontWeight="SemiBold" FontFamily="Consolas,Menlo,monospace" LineHeight="22"/>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="ComputerLinkSignInButton" Classes="accent-btn account-action"
+                                    AutomationProperties.Name="{loc:T PcSync.SignIn}" Command="{Binding ConfirmComputerLinkCommand}"
+                                    IsEnabled="{Binding !IsComputerLinkBusy}"
+                                    Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                <TextBlock Text="{loc:T PcSync.SignIn}" FontWeight="SemiBold"/>
+                            </Button>
+                            <Button Classes="pill-action account-action" AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                    Command="{Binding CancelComputerLinkCommand}">
+                                <TextBlock Text="{loc:T Settings.Cancel}"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
+
+                    <!-- Signed in: with whom and when, Sync now, Sign out. -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsComputerLinked}" Lift="10" Motion="Glide">
+                    <Grid x:Name="ComputerLinkSignedIn" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,0">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                            <Path Data="{StaticResource SyncStatusGlyph}" Width="14" Height="14"
+                                  Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="1.4"
+                                  StrokeLineCap="Round" StrokeJoin="Round" Opacity="0.6" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ComputerLinkStatusText" Text="{Binding ComputerLinkStatus}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="ComputerLinkSyncNowButton" Classes="pill-action account-action"
+                                    AutomationProperties.Name="{loc:T PcSync.SyncNow}" Command="{Binding SyncComputerLinkNowCommand}"
+                                    IsEnabled="{Binding !IsComputerLinkBusy}">
+                                <TextBlock Text="{loc:T PcSync.SyncNow}"/>
+                            </Button>
+                            <Button x:Name="ComputerLinkSignOutButton" Classes="pill-action account-action"
+                                    AutomationProperties.Name="{loc:T PcSync.SignOut}" Command="{Binding SignOutComputerLinkCommand}"
+                                    IsEnabled="{Binding !IsComputerLinkBusy}">
+                                <TextBlock Text="{loc:T PcSync.SignOut}" Foreground="#FF6B6B"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                    </controls:CollapsibleContent>
+
+                    <controls:CollapsibleContent IsOpen="{Binding ComputerLinkError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                        <TextBlock x:Name="ComputerLinkErrorText" Text="{Binding ComputerLinkError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
+
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.RemoteControl}" Margin="0,16,0,8"/>
             <Border x:Name="WebRemoteCard" Classes="setting-card group-card">
             <StackPanel>

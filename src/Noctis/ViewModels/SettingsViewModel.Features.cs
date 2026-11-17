@@ -528,6 +528,7 @@ public partial class SettingsViewModel
         SyncEnabled = AccountFeatures.Enabled && _settings.SyncEnabled;
         _syncTurnedOffByUser = _settings.SyncTurnedOffByUser;
         SyncDeviceName = string.IsNullOrWhiteSpace(_settings.SyncDeviceName) ? Environment.MachineName : _settings.SyncDeviceName;
+        InitComputerLink();
 
         LyricsStudioModel = WhisperModelManager.Info(WhisperModelManager.Parse(_settings.LyricsStudioModel));
         LyricsStudioLanguage = LyricsStudioViewModel.Languages.FirstOrDefault(l => l.Code.Equals(_settings.LyricsStudioLanguage, StringComparison.OrdinalIgnoreCase))

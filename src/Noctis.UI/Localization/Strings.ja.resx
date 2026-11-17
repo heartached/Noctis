@@ -6502,6 +6502,25 @@
     <comment>Phone app card title; its switch turns Noctis Server on/off</comment>
   </data>
   <data name="Phone.Description" xml:space="preserve">
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>他のコンピューター</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>別のコンピューターと同期</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>お気に入り、評価、再生回数、プレイリストを2台のコンピューターで同じに保ちます。音楽ファイルはそれぞれに残り、曲はタイトル・アーティスト・長さで照合されます。</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>もう一方のコンピューターで「{0}」と「{1}」をオンにし、{2} › {3} を開きます。ここにそのアドレスとアカウントを入力してください。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>もう一方のコンピューターに表示されたアドレス</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>メールアドレスまたはユーザー名</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>パスワード</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>接続</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>もう一方のコンピューターにこのセキュリティコードが表示されていることを確認してください:</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>サインイン</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>{0} と同期中</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>同期しています…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>今すぐ同期</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>サインアウト</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>もう一方のコンピューターが応答しません。Noctisが開いていて、「{0}」がオンで、同じネットワークにありますか?</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>もう一方のコンピューターで同期がオフです。そちらで「{0}」をオンにしてください。</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>メールアドレスまたはパスワードが正しくありません。</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>同期できませんでした: {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>もう一方のコンピューターがこのコンピューターをサインアウトしました。同期を続けるにはもう一度サインインしてください。</value><comment>The other computer removed this one</comment></data>
     <value>このライブラリをスマートフォンでストリーミング再生したり、ダウンロードしたりできます。</value>
     <comment>Phone app card subtitle</comment>
   </data>
