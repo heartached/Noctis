@@ -241,6 +241,25 @@ public sealed class Loc : INotifyPropertyChanged
     /// <summary>Raised after <see cref="SetOverlays"/> changed the set of language-pack cultures or strings.</summary>
     public event EventHandler? OverlaysChanged;
 
+    /// <summary>
+    /// <paramref name="key"/>, or on macOS its <c>key + "Mac"</c> wording ("menu bar" for "tray",
+    /// "Trash" for "Recycle Bin") when the app has one. A language that has not translated the
+    /// macOS wording keeps its own text for <paramref name="key"/> instead of falling back to English.
+    /// </summary>
+    public static string Platform(string key) => Platform(key, OperatingSystem.IsMacOS());
+
+    /// <summary><see cref="Platform(string)"/> with the platform given. Internal for tests.</summary>
+    internal static string Platform(string key, bool isMac)
+    {
+        if (!isMac) return T(key);
+        var macKey = key + "Mac";
+        var englishMac = English(macKey);
+        if (englishMac is null) return T(key);
+        var mac = T(macKey);
+        var text = T(key);
+        return mac == englishMac && text != English(key) ? text : mac;
+    }
+
     /// <summary>The English (neutral) string for <paramref name="key"/>, or null when the app has no such key.</summary>
     public static string? English(string key)
     {
