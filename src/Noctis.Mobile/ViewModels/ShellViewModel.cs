@@ -1503,6 +1503,14 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account != null && CurrentPage is not AccountPageViewModel) Navigate(new AccountPageViewModel(this, Account));
     }
 
+    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet.</summary>
+    [RelayCommand]
+    private void OpenComputerRemote()
+    {
+        if (Account is { IsSignedIn: true } && CurrentPage is not ComputerRemotePageViewModel)
+            Navigate(new ComputerRemotePageViewModel(this, Account));
+    }
+
     /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play. Failures
     /// are logged; the Account page shows the running counts.</summary>
     public Task DownloadTracksAsync(IReadOnlyList<Track> tracks) =>

@@ -845,6 +845,10 @@ internal sealed partial class NoctisServerClient : IDisposable
         0 when what == PairSignInMethod => new(NoctisErrorKind.Outdated, "This desktop's Noctis is too old to sign in by QR code. Update it."),
         40 or 41 when signingIn => new(NoctisErrorKind.BadCredentials, "Wrong user name or password."),
         70 when what == "download" => new(NoctisErrorKind.FileMissing, "This song's file is missing on your computer."),
+        // The remote (getNoctisRemote / noctisRemoteControl): a computer from before it answers
+        // "Unknown method" (0); 50 is a computer without a player, or a phone of another account.
+        0 when what is RemoteStateMethod or RemoteControlMethod => new(NoctisErrorKind.Outdated, "This computer's Noctis is too old for the remote. Update it."),
+        50 when what is RemoteStateMethod or RemoteControlMethod => new(NoctisErrorKind.RemoteNotAllowed, "This computer does not let this phone control its player."),
         40 or 41 => new(NoctisErrorKind.SignedOut, "This phone was signed out on the desktop. Sign in again."),
         50 => new(NoctisErrorKind.SyncDisabled, "Sync is turned off on the desktop (Settings → Account & Devices)."),
         _ => new(NoctisErrorKind.Server, $"The server refused the request (error {code})."),

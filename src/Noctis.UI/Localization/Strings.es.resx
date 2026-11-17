@@ -7440,6 +7440,16 @@
   <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>Sincronizado ayer</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>Sincronizado hace {0} día|Sincronizado hace {0} días</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>Sincronizado el {0}</value></data>
+  <data name="Mobile.Remote.Title" xml:space="preserve"><value>Control remoto</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
+  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>Reproduce, pausa y salta en {0}</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>Conectando con {0}…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>No se puede conectar con {0}</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} solo permite que su cuenta principal controle lo que suena. Inicia sesión en este teléfono con esa cuenta.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>Noctis en {0} es demasiado antiguo para el control remoto. Actualízalo e inténtalo de nuevo.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>No se está reproduciendo nada en {0}</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>A continuación en {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>y {0} más</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
+  <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Reintentar</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistema</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis perdió el acceso a la carpeta de esta canción. Vuelve a añadirla en Ajustes → Biblioteca.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Este teléfono no puede decodificar {0}, así que se saltó la canción.</value></data>

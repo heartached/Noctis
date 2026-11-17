@@ -721,6 +721,11 @@ public sealed partial class NoctisServer : IAsyncDisposable
                 DevicesChanged?.Invoke(this, EventArgs.Empty);
                 return new JsonObject();
             }
+            // ── Noctis extension: the phone's remote for this computer's player (NoctisServer.Remote.cs) ──
+            case "getnoctisremote":
+                return await RemoteStateAsync(p, ctx).ConfigureAwait(false);
+            case "noctisremotecontrol":
+                return await RemoteControlAsync(p, ctx).ConfigureAwait(false);
         }
 
         var snap = Playable(await _library.SnapshotAsync().ConfigureAwait(false));

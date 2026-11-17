@@ -2501,6 +2501,16 @@
   <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>Dün eşitlendi</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0} gün önce eşitlendi|{0} gün önce eşitlendi</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>Son eşitleme: {0}</value></data>
+  <data name="Mobile.Remote.Title" xml:space="preserve"><value>Uzaktan Kumanda</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
+  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>{0} üzerinde oynat, duraklat ve atla</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>{0} cihazına bağlanılıyor…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>{0} cihazına ulaşılamıyor</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} yalnızca ana hesabının çalınanı kontrol etmesine izin verir. Bu telefonda o hesapla oturum açın.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>{0} üzerindeki Noctis uzaktan kumanda için çok eski. Güncelleyip tekrar deneyin.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>{0} üzerinde hiçbir şey çalmıyor</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} üzerinde Sıradaki</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>ve {0} tane daha</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
+  <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Tekrar Dene</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistem</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis bu şarkının klasörüne erişimi kaybetti. Klasörü Ayarlar → Kitaplık’tan yeniden ekle.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Bu telefon şu biçimi çözemiyor: {0}. Şarkı atlandı.</value></data>

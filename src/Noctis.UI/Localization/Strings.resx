@@ -3873,6 +3873,16 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>Synced yesterday</value><comment>Sync time</comment></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>Synced {0} day ago|Synced {0} days ago</value><comment>Sync time. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>Synced {0}</value><comment>Sync time. {0} = date ("2 Oct")</comment></data>
+  <data name="Mobile.Remote.Title" xml:space="preserve"><value>Remote</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
+  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>Play, pause and skip on {0}</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>Connecting to {0}…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>Can't reach {0}</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} only lets its main account control what it plays. Sign in on this phone with that account.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>Noctis on {0} is too old for the remote. Update it, then try again.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>Nothing is playing on {0}</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>Up Next on {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>and {0} more</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
+  <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Try Again</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>System</value><comment>Language row value: follow the phone’s language</comment></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis lost access to this song's folder. Add the folder again in Settings → Library.</value><comment>Playback error</comment></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>This phone can't decode {0}, so the song was skipped.</value><comment>Playback error. {0} = a format ("ALAC (Apple Lossless)", "audio/flac") or Mobile.Player.UnknownFormat</comment></data>

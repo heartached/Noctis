@@ -7438,6 +7438,16 @@
   <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>어제 동기화됨</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0}일 전에 동기화됨</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>{0}에 동기화됨</value></data>
+  <data name="Mobile.Remote.Title" xml:space="preserve"><value>리모컨</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
+  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>{0}에서 재생, 일시정지, 건너뛰기</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>{0}에 연결하는 중…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>{0}에 연결할 수 없음</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0}은(는) 기본 계정만 재생을 제어할 수 있습니다. 이 휴대폰에서 해당 계정으로 로그인하세요.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>{0}의 Noctis가 너무 오래되어 리모컨을 사용할 수 없습니다. 업데이트한 후 다시 시도하세요.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>{0}에서 재생 중인 항목이 없음</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0}의 다음 재생</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>외 {0}곡</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
+  <data name="Mobile.Remote.Retry" xml:space="preserve"><value>다시 시도</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>시스템</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis가 이 노래의 폴더에 더 이상 접근할 수 없습니다. 설정 → 라이브러리에서 폴더를 다시 추가하세요.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>이 휴대폰에서 {0}을(를) 디코딩할 수 없어 노래를 건너뛰었습니다.</value></data>

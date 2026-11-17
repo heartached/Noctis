@@ -583,6 +583,21 @@
                                         <TextBlock Grid.Column="2" Classes="row-action" Text="{loc:T Mobile.Account.SyncNow}" IsVisible="{Binding ShowSyncAction}" />
                                     </Grid>
                                 </Button>
+                                <!-- Remote: the computer's own player, driven from here (ComputerRemotePage). -->
+                                <Border Classes="row-separator" Margin="86,0,16,0" IsVisible="{Binding CanUseServer}" />
+                                <Button Name="RemoteButton" Classes="row" Command="{Binding Shell.OpenComputerRemoteCommand}"
+                                        IsVisible="{Binding CanUseServer}" AutomationProperties.Name="{loc:T Mobile.Remote.Title}">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="64" Margin="16,0">
+                                        <Border Classes="computer-badge">
+                                            <views:GridIcon Data="{DynamicResource PhComputer}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,10">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Remote.Title}" />
+                                            <TextBlock Name="RemoteHintLabel" Classes="row-sub" Text="{Binding RemoteHint}" />
+                                        </StackPanel>
+                                        <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                    </Grid>
+                                </Button>
                             </StackPanel>
                         </Border>
 

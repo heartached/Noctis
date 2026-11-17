@@ -7438,6 +7438,16 @@
   <data name="Mobile.Account.SyncedYesterday" xml:space="preserve"><value>昨天同步</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0} 天前同步</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>{0} 同步</value></data>
+  <data name="Mobile.Remote.Title" xml:space="preserve"><value>遥控</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
+  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>在 {0} 上播放、暂停和切歌</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>正在连接 {0}…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>无法连接 {0}</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} 只允许其主账户控制播放。请在此手机上用该账户登录。</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>{0} 上的 Noctis 版本过旧，不支持遥控。请更新后重试。</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>{0} 上没有正在播放的内容</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} 上的待播清单</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>还有 {0} 首</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
+  <data name="Mobile.Remote.Retry" xml:space="preserve"><value>重试</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>跟随系统</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis 已失去这首歌所在文件夹的访问权限。请在“设置”→“资料库”中重新添加该文件夹。</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>这台手机无法解码{0}，因此已跳过这首歌。</value></data>

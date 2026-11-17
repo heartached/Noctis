@@ -204,6 +204,39 @@ public class MobileAccountTests
             }
             finally { IsUploading = false; }
         }
+
+        // ── The computer's player (Account › Remote) ──
+
+        /// <summary>What the computer's player answers; an exception is thrown instead when set.</summary>
+        public ComputerPlayback Playback { get; set; } = new(null, false, 0, 0, 50, false, ComputerRepeat.Off, null, 0);
+        public Exception? PlaybackError { get; set; }
+        /// <summary>Each ask: whether it wanted Up Next.</summary>
+        public List<bool> PlaybackAsks { get; } = new();
+        public List<ComputerCommand> Commands { get; } = new();
+        public Exception? CommandError { get; set; }
+        public List<Guid> CoverAsks { get; } = new();
+        public string? CoverPath { get; set; }
+
+        private ComputerPlayback Answer(bool withQueue) =>
+            withQueue ? Playback with { UpNext = Playback.UpNext ?? Array.Empty<ComputerTrack>() } : Playback with { UpNext = null, UpNextTotal = 0 };
+
+        public Task<ComputerPlayback> GetComputerPlaybackAsync(bool withQueue, CancellationToken ct = default)
+        {
+            PlaybackAsks.Add(withQueue);
+            return PlaybackError != null ? Task.FromException<ComputerPlayback>(PlaybackError) : Task.FromResult(Answer(withQueue));
+        }
+
+        public Task<ComputerPlayback> ControlComputerAsync(ComputerCommand command, bool withQueue, CancellationToken ct = default)
+        {
+            Commands.Add(command);
+            return CommandError != null ? Task.FromException<ComputerPlayback>(CommandError) : Task.FromResult(Answer(withQueue));
+        }
+
+        public Task<string?> GetComputerCoverAsync(Guid albumId, CancellationToken ct = default)
+        {
+            CoverAsks.Add(albumId);
+            return Task.FromResult(CoverPath);
+        }
     }
 
     private static Track RemoteSong(string title)
