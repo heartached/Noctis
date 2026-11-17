@@ -152,7 +152,9 @@ internal class Program
             Noctis.Helpers.UiScale.SetFactor(Noctis.Models.AppSettings.SnapUiScale(
                 PersistenceService.ReadIntSettingAtLaunch(AppPaths.DataRoot,
                     nameof(Noctis.Models.AppSettings.UiScalePercent), 100)) / 100.0);
-            _ = Task.Run(() =>
+            // App waits on this task before it builds the main window (AudioWarmupGate), with a
+            // starting window up meanwhile when it runs long (plugins cache rebuild after an update).
+            App.AudioWarmup = Task.Run(() =>
             {
                 try { provider.GetRequiredService<IAudioPlayer>(); }
                 catch { /* a broken libvlc install surfaces the same error on the UI-thread resolve */ }
@@ -180,6 +182,10 @@ internal class Program
 
             // Launch the Avalonia application
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+
+            // The main window build failed after the starting window showed: report it like
+            // a build that throws inside the lifetime start (the catch below).
+            App.StartupFailure?.Throw();
 
             // Cleanup
             provider.Dispose();
