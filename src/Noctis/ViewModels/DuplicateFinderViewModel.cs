@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
@@ -41,6 +42,21 @@ public partial class DuplicateFinderViewModel : ViewModelBase
     /// owned by the main window, which this modal tool window covers, so the question opened
     /// behind it (#235) and the only way to reach it was to close the tool.</summary>
     public Func<string, Task<bool>> Confirm { get; set; } = Views.ConfirmationDialog.ShowAsync;
+
+    /// <summary>Points the live playlists at the kept copies of deleted duplicates (tests swap
+    /// it). Only copies that really left the library: a file the trash refused stays, and so
+    /// do its playlist places.</summary>
+    internal Func<IReadOnlyDictionary<Guid, Guid>, Task> RepointPlaylists { get; set; } = static keptCopyOf =>
+    {
+        var library = App.Services?.GetService<ILibraryService>();
+        if (library == null || keptCopyOf.Count == 0) return Task.CompletedTask;
+        var present = new HashSet<Guid>(library.AllTracks.Select(t => t.Id));
+        var remap = keptCopyOf.Where(kv => !present.Contains(kv.Key) && present.Contains(kv.Value))
+            .ToDictionary(kv => kv.Key, kv => kv.Value);
+        if (remap.Count == 0) return Task.CompletedTask;
+        return App.Services?.GetService<MainWindowViewModel>()?.Sidebar.ApplyTrackIdRemapAsync(remap)
+               ?? Task.CompletedTask;
+    };
 
     public DuplicateFinderViewModel(IDuplicateFinderService service)
     {
@@ -109,9 +125,20 @@ public partial class DuplicateFinderViewModel : ViewModelBase
         var confirmed = await Confirm(question + "\n\n" + L("DuplicateFinder.ConfirmKeepNote"));
         if (!confirmed) return;
 
+        // Each deleted copy's playlist places go to the copy its group keeps (the suggested
+        // one when it is kept, else the first kept); a group deleted whole hands them nowhere.
+        var keptCopyOf = new Dictionary<Guid, Guid>();
+        foreach (var g in Groups)
+        {
+            var kept = g.Rows.Where(r => !r.Delete).OrderByDescending(r => r.IsSuggestedKeep).FirstOrDefault();
+            if (kept == null) continue;
+            foreach (var r in g.Rows.Where(r => r.Delete)) keptCopyOf[r.TrackId] = kept.TrackId;
+        }
+
         IsBusy = true;
         StatusMessage = L("DuplicateFinder.Deleting", Files(ids.Count));
         var n = await _service.DeleteAsync(ids);
+        await RepointPlaylists(keptCopyOf);
         IsBusy = false;
 
         await ScanAsync();
