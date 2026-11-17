@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Markup.Xaml.Styling;
@@ -17,8 +18,10 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// GitHub #218: Settings › Appearance "Album Hover Zoom" (off by default). With it on, the
-/// album under the pointer in the Albums grid grows a little with a glow and the tiles around
-/// it step back; render transforms only, so no tile moves in layout. With it off, nothing.
+/// album under the pointer in the Albums grid grows a little with a glow; render transforms
+/// only, so no tile moves in layout. With it off, nothing. GitHub #250 / Discord 11-15: the
+/// tiles around it used to step back to 97%, read as the whole grid moving; now no tile but
+/// the hovered one carries any transform.
 /// </summary>
 public class AlbumHoverZoomTests
 {
@@ -50,10 +53,24 @@ public class AlbumHoverZoomTests
 
     private static double Scale(Visual v) => v.RenderTransform is TransformOperations ops ? ops.Value.M11 : v.RenderTransform?.Value.M11 ?? 1;
 
+    /// <summary>No transform, or one within 0.1% of none: a tile just left eases back to 100% on
+    /// a curve whose tail the headless clock leaves a hair above 1 (a stepped-back tile was 97%).</summary>
+    private static bool IsIdentity(Visual v)
+    {
+        if (v.RenderTransform is not { } t) return true;
+        var m = t.Value;
+        return Math.Abs(m.M11 - 1) < 1e-3 && Math.Abs(m.M22 - 1) < 1e-3 && Math.Abs(m.M12) < 1e-6 && Math.Abs(m.M21) < 1e-6
+            && Math.Abs(m.M31) < 0.5 && Math.Abs(m.M32) < 0.5;
+    }
+
+    /// <summary>Indexes of the tiles (other than <paramref name="hovered"/>) carrying a transform.</summary>
+    private static List<int> Transformed(List<Button> tiles, Button? hovered) =>
+        tiles.Where(t => !ReferenceEquals(t, hovered) && !IsIdentity(t)).Select(t => tiles.IndexOf(t)).ToList();
+
     [AvaloniaTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task HoveredAlbum_GrowsAndGlows_NeighboursStepBack_OnlyWhenOn(bool on)
+    public async Task HoveredAlbum_GrowsAndGlows_NoOtherTileMoves_OnlyWhenOn(bool on)
     {
         EnsureAppStyles();
         var lib = new FakeLibraryService();
@@ -78,8 +95,6 @@ public class AlbumHoverZoomTests
         var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
         var cols = vm.GridColumns;
         var hovered = tiles[cols + 2];           // second row, middle
-        var near = tiles[cols + 1];              // left neighbour
-        var far = tiles[3 * cols + 2 < tiles.Count ? 3 * cols + 2 : tiles.Count - 1]; // two rows down
         var bounds = tiles.Select(t => t.Bounds).ToList();
 
         var p = hovered.TranslatePoint(new Point(hovered.Bounds.Width / 2, 40), win)!.Value;
@@ -87,22 +102,19 @@ public class AlbumHoverZoomTests
         await Task.Delay(350); Pump(3);
 
         var glow = hovered.GetVisualDescendants().OfType<Border>().First(b => b.Name == "PART_Glow");
-        _o.WriteLine($"on={on}: hovered scale={Scale(hovered):0.###} glow={glow.Opacity:0.##} near={Scale(near):0.###} ({near.Classes.Contains("hover-neighbor")}) far={Scale(far):0.###}");
+        _o.WriteLine($"on={on}: hovered scale={Scale(hovered):0.###} glow={glow.Opacity:0.##} others transformed=[{string.Join(",", Transformed(tiles, hovered))}]");
         if (on)
         {
             Assert.Equal(1.04, Scale(hovered), 2);
             Assert.Equal(1, glow.Opacity, 2);
-            Assert.True(near.Classes.Contains("hover-neighbor"));
-            Assert.Equal(0.97, Scale(near), 2);
-            Assert.False(far.Classes.Contains("hover-neighbor"));
-            Assert.Equal(1, Scale(far), 2);
         }
         else
         {
             Assert.Equal(1, Scale(hovered), 2);
             Assert.Equal(0, glow.Opacity, 2);
-            Assert.False(near.Classes.Contains("hover-neighbor"));
         }
+        // GitHub #250: no tile but the hovered one is transformed in any way.
+        Assert.Empty(Transformed(tiles, hovered));
         // Render transforms only: nothing moved in layout.
         Assert.Equal(bounds, tiles.Select(t => t.Bounds).ToList());
 
@@ -110,14 +122,14 @@ public class AlbumHoverZoomTests
         win.MouseMove(new Point(5, 1395)); Pump(2);
         await Task.Delay(350); Pump(3);
         Assert.Equal(1, Scale(hovered), 2);
-        Assert.Equal(1, Scale(near), 2);
-        Assert.False(near.Classes.Contains("hover-neighbor"));
+        Assert.Empty(Transformed(tiles, null));
         win.Close();
     }
 
-    /// <summary>Discord 11-15 ("hovering makes the albums next to it smaller"): the step-back is
-    /// #218's render-only 97%. With either spacing, sliding across two tiles moves no layout
-    /// slot, hovers exactly one tile at a time (no flicker while the pointer rests) and a wheel
+    /// <summary>Discord 11-15 ("hovering makes the albums next to it smaller") / GitHub #250: with
+    /// either spacing, sliding across two tiles moves no layout slot and transforms no tile but
+    /// the hovered one (a tile just left may still be easing back from its grow, never below
+    /// 100%), hovers exactly one tile at a time (no flicker while the pointer rests) and a wheel
     /// scroll leaves the zoom on the tile actually under the pointer.</summary>
     [AvaloniaTheory]
     [InlineData(false)]
@@ -158,10 +170,12 @@ public class AlbumHoverZoomTests
             win.MouseMove(new Point(x, y)); Pump(1);
             for (var f = 0; f < 8; f++) { await Task.Delay(16); Pump(1); }
             var h = Hovered();
-            // Wide spacing leaves a 6px gap between tiles: nothing hovered there, nothing steps back.
+            // Wide spacing leaves a 6px gap between tiles: nothing hovered there.
             Assert.True(h.Count <= 1, $"two tiles hovered at {x - x0}");
-            Assert.Equal(h.Count == 1 ? 8 : 0, tiles.Count(t => t.Classes.Contains("hover-neighbor")));
             if (h.Count == 1 && (seen.Count == 0 || seen[^1] != h[0])) seen.Add(h[0]);
+            var others = Transformed(tiles, h.Count == 1 ? tiles[h[0]] : null);
+            Assert.True(others.All(seen.Contains), $"tiles never hovered transformed at {x - x0}: {string.Join(",", others)}");
+            Assert.All(others, i => Assert.True(Scale(tiles[i]) >= 1 - 1e-9, $"tile {i} shrank to {Scale(tiles[i]):0.###}"));
         }
         _o.WriteLine($"wide={wide}: hovered along the sweep {string.Join(" -> ", seen)}");
         Assert.Equal(new[] { vm.GridColumns + 1, vm.GridColumns + 2 }, seen);
@@ -170,6 +184,7 @@ public class AlbumHoverZoomTests
         var rest = Hovered();
         for (var f = 0; f < 30; f++) { await Task.Delay(16); Pump(1); Assert.Equal(rest, Hovered()); }
         Assert.Equal(slots, Slots());
+        Assert.Empty(Transformed(tiles, rest.Count == 1 ? tiles[rest[0]] : null));
 
         // A wheel scroll under a still pointer: the zoom moves to the tile now under it.
         var p = new Point(x0 + 80, y);
@@ -181,7 +196,77 @@ public class AlbumHoverZoomTests
         Assert.NotNull(under);
         var over = Tiles().Where(t => t.IsPointerOver).ToList();
         Assert.Equal(new[] { under }, over);
-        Assert.False(under!.Classes.Contains("hover-neighbor"));
+        // A tile the pointer crossed while the grid scrolled eases back; then only `under` is grown.
+        var all = Tiles();
+        Assert.All(Transformed(all, under), i => Assert.True(Scale(all[i]) >= 1 - 1e-9, $"tile {i} shrank to {Scale(all[i]):0.###}"));
+        for (var f = 0; f < 60 && Transformed(all, under).Count > 0; f++) { await Task.Delay(16); Pump(1); }
+        Assert.Empty(Transformed(all, under));
+        Assert.Equal(1.04, Scale(under!), 2);
+        win.Close();
+    }
+
+    /// <summary>A wide window makes big covers: grown from its centre, a first-row or edge-column
+    /// tile ran past the scroller's viewport and lost ~5px of cover (2400px: top-left cover at
+    /// -4.3,-5.4, right column 4px past the viewport). It now grows away from those edges. And
+    /// the hovered tile is drawn above its neighbours: in the row grid its .hover-zoom ZIndex
+    /// sorted nothing (the Button is its TileRow presenter's only child), so its row and
+    /// presenter are lifted. Holds in the row grid and in Masonry, with either spacing.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task EdgeTiles_GrowInsideTheViewport_AndTheHoveredTileIsOnTop(bool wide, bool masonry)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 60; i++)
+            ((List<Album>)lib.Albums).Add(new Album { Id = Guid.NewGuid(), Name = $"Album {i:00}", Artist = "Artist", Year = 2020, Tracks = new List<Track>() });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumHoverZoom = true;
+        settings.AlbumGridWideSpacing = wide;
+        settings.AlbumGridMasonry = masonry;
+        var vm = new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
+        vm.AlbumSortMode = "title";
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = 2400, Height = 1400, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        List<Button> Tiles() => view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && Tiles().Count < 15) { Pump(1); await Task.Delay(5); }
+        Pump(4);
+        Assert.Equal(masonry, vm.IsMasonryView);
+        var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
+        var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.IsEffectivelyVisible);
+        var cols = vm.GridColumns;
+
+        // Top-left, top-right and a tile in the middle of the second row.
+        foreach (var idx in new[] { 0, cols - 1, cols + 1 })
+        {
+            var t = tiles[idx];
+            var p = t.TranslatePoint(new Point(t.Bounds.Width / 2, 40), win)!.Value;
+            win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
+            Assert.Equal(1.04, Scale(t), 2);
+            Assert.Empty(Transformed(tiles, t));
+
+            var cover = t.GetVisualDescendants().OfType<Border>().First(b => b.ClipToBounds);
+            var tl = cover.TranslatePoint(default, sv)!.Value;
+            var br = cover.TranslatePoint(new Point(cover.Bounds.Width, cover.Bounds.Height), sv)!.Value;
+            _o.WriteLine($"wide={wide} masonry={masonry} tile {idx}: cover ({tl.X:0.#},{tl.Y:0.#})-({br.X:0.#},{br.Y:0.#}) viewport {sv.Viewport.Width:0.#}");
+            Assert.True(tl.X >= -0.01 && tl.Y >= -0.01 && br.X <= sv.Viewport.Width + 0.01, $"tile {idx} cover clipped by the viewport");
+
+            // Drawn above every neighbour: walk up to the scroller, the hovered branch is the
+            // highest ZIndex among its siblings at each panel level.
+            for (Visual v = t; v is not ScrollContentPresenter && v.GetVisualParent() is Visual parent; v = parent)
+            {
+                if (parent is not Panel panel || panel.Children.Count < 2) continue;
+                Assert.True(panel.Children.Where(c => c != v).All(c => c.ZIndex < v.ZIndex),
+                    $"tile {idx}: {v.GetType().Name} not above its siblings in {parent.GetType().Name}");
+            }
+        }
         win.Close();
     }
 }
