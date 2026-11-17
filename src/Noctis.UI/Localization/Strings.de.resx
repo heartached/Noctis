@@ -3471,6 +3471,10 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>Diese Woche</value><comment>Listening History card</comment></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Noch nichts gespielt</value><comment>Listening History, empty</comment></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>Alle anzeigen</value><comment>Button / filter reset</comment></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>Alle Musik</value><comment>Library source menu: every song</comment></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>Auf diesem Smartphone</value><comment>Library source menu: the phone's own songs</comment></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>Vom Computer</value><comment>Library source menu: the signed-in computer's songs</comment></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>Musikquelle</value><comment>Library source button (screen reader) and menu</comment></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>Verlauf</value><comment>Group header</comment></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>Verlauf behalten</value><comment>Setting row and sheet title</comment></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Wiedergabe zählen nach</value><comment>Setting row and sheet title</comment></data>

@@ -155,6 +155,9 @@ public sealed partial class ShellViewModel : ObservableObject
             value.SyncProgress += OnAccountSyncProgress;
             _profileAvatarPath = AccountAvatarPath();
             _downloadedCount = value.DownloadedCount;
+            _signedIn = value.IsSignedIn ? 1 : 0;
+            Library.Account = value;   // the Library's source choice (On This Phone / From Computer)
+            Library.NotifyAccountChanged();
         }
     }
     private readonly INoctisAccountService? _account;
@@ -177,7 +180,13 @@ public sealed partial class ShellViewModel : ObservableObject
         if (_account is not { } account) return;
         var downloaded = account.DownloadedCount;
         if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
+        var signedIn = account.IsSignedIn ? 1 : 0;
+        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn) Marshal(Library.NotifyAccountChanged);
     }
+
+    // Signed in (1) or not, as last seen: the Library's source button shows only signed in (or
+    // while the computer's songs are still listed), and StateChanged fires on every download step.
+    private int _signedIn;
 
     /// <summary>
     /// A sync writes the desktop's playlists straight into playlists.json and sign-out drops them,
@@ -996,7 +1005,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
-    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs"));
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", Library.SourceSongs, sortKey: "Nav.Songs"));
 
     [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { OffersFavouritesFilter = false });
 
@@ -1420,6 +1429,11 @@ public sealed partial class ShellViewModel : ObservableObject
     /// out of Now Playing's timer pill while one runs.</summary>
     [RelayCommand]
     private void ShowSleepTimerMenu() => ShowOptions(OptionsMenuViewModel.ForSleepTimer(this, Player));
+
+    /// <summary>The Library tab's source button: All Music, On This Phone or From Computer on the
+    /// glass menu, for the Songs, Albums, Artists and Recently Added lists.</summary>
+    [RelayCommand]
+    private void ShowLibrarySourceMenu() => ShowOptions(OptionsMenuViewModel.ForLibrarySource(this, Library));
 
     /// <summary>The Library tab's ⋯: Add Folder…, Rescan Library and Settings on the glass menu.</summary>
     [RelayCommand]

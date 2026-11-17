@@ -2108,6 +2108,10 @@
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>Bu Hafta</value></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Henüz Bir Şey Çalınmadı</value></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>Tümünü Göster</value></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>Tüm müzik</value></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>Bu Telefonda</value></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>Bilgisayardan</value></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>Müzik Kaynağı</value></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>Geçmiş</value></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>Geçmişi Sakla</value></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Çalma Sayılma Süresi</value></data>

@@ -54,7 +54,7 @@ public sealed partial class AlbumGridPageViewModel : MobilePage
 
     public void Refresh()
     {
-        _all = Shell.Library.Service.Albums
+        _all = Shell.Library.SourceAlbums()
             .OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
         AlbumCount = _all.Count;

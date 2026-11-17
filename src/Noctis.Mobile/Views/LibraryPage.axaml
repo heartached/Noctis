@@ -259,6 +259,15 @@
             <StackPanel Grid.Column="1" Name="HeaderActions" Orientation="Horizontal" Spacing="10">
                 <controls:GlassPanel Name="LibraryActionsGlass" Classes="header-glass" Width="NaN">
                     <StackPanel Orientation="Horizontal" Margin="4,0">
+                        <!-- Which songs the lists show (All Music, On This Phone, From Computer), on
+                             the glass pop menu; lit, as a list's filter button, while it is not All.
+                             Only with a computer signed in (or its songs still listed). -->
+                        <Button Name="LibrarySourceButton" Classes="glass-round" Classes.on="{Binding Library.IsSourceFiltered}"
+                                Command="{Binding ShowLibrarySourceMenuCommand}"
+                                IsVisible="{Binding Library.CanChooseSource}"
+                                AutomationProperties.Name="{loc:T Mobile.Source.Name}">
+                            <PathIcon Data="{DynamicResource PhFilter}" />
+                        </Button>
                         <Button Name="LibraryEditButton" Classes="glass-round" Command="{Binding LibraryRows.EditCommand}"
                                 IsVisible="{Binding Library.HasMusic}">
                             <PathIcon Data="{DynamicResource PhList}" />

@@ -136,6 +136,10 @@ public class MobileAccountTests
         public void RaiseSyncProgress(NoctisSyncProgress progress) => SyncProgress?.Invoke(this, progress);
 
         public bool IsRemote(Track track) => track.FilePath.StartsWith("noctis-remote://", StringComparison.Ordinal);
+
+        /// <summary>Phone files the sync paired with a desktop song: phone track id -> desktop id.</summary>
+        public Dictionary<Guid, Guid> Links { get; } = new();
+        public Guid? DesktopIdOf(Track track) => IsRemote(track) ? track.Id : Links.TryGetValue(track.Id, out var d) ? d : null;
         public bool IsDownloaded(Track track) => DownloadedIds.Contains(track.Id);
         public long DownloadedBytes => DownloadedIds.Count * 5L * 1024 * 1024;
         public int DownloadedCount => DownloadedIds.Count;

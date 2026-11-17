@@ -28,6 +28,11 @@ public class AppSettings : IJsonOnDeserializing
     /// follow the listed ones in their default order and state.</summary>
     public List<string> PhoneLibraryRows { get; set; } = new();
 
+    /// <summary>Phone: which songs the Library's lists show (Discord #mobile-beta, 11-17): "Phone"
+    /// (the phone's own files), "Computer" (the signed-in computer's songs) or empty for all of
+    /// them. Unknown values read as all.</summary>
+    public string PhoneLibrarySource { get; set; } = "";
+
     /// <summary>Phone: Settings › Music Folders › Find All Music Automatically. The library also
     /// takes every song Android's media index knows (MediaStore), besides the folders.</summary>
     public bool PhoneAllMusic { get; set; }

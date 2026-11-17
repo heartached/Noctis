@@ -59,6 +59,21 @@ public sealed class OptionsMenuViewModel
         return Lined(items);
     }
 
+    /// <summary>The Library's source menu: All Music, On This Phone, From Computer, the one in use
+    /// ticked. Picking one sets it for the Songs, Albums, Artists and Recently Added lists.</summary>
+    public static OptionsMenuViewModel ForLibrarySource(ShellViewModel shell, LibraryViewModel library)
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var (source, key) in new[]
+                 {
+                     (LibrarySource.All, "Mobile.Source.All"),
+                     (LibrarySource.Phone, "Mobile.Source.Phone"),
+                     (LibrarySource.Computer, "Mobile.Source.Computer"),
+                 })
+            items.Add(new OptionsMenuItem(shell, Loc.T(key), library.ActiveSource == source, () => _ = library.SetSourceAsync(source)));
+        return Lined(items);
+    }
+
     /// <summary>
     /// Now Playing's Sleep Timer (the desktop player bar's): 15, 30, 45 minutes, 1 hour and End
     /// of Current Song, the one running ticked; Turn Off Timer after a group break while one is

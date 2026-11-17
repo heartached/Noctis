@@ -3480,6 +3480,10 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.History.ThisWeek" xml:space="preserve"><value>This Week</value><comment>Listening History card</comment></data>
   <data name="Mobile.History.NothingPlayed" xml:space="preserve"><value>Nothing Played Yet</value><comment>Listening History, empty</comment></data>
   <data name="Mobile.ShowAll" xml:space="preserve"><value>Show All</value><comment>Button / filter reset</comment></data>
+  <data name="Mobile.Source.All" xml:space="preserve"><value>All Music</value><comment>Library source menu: every song</comment></data>
+  <data name="Mobile.Source.Phone" xml:space="preserve"><value>On This Phone</value><comment>Library source menu: the phone's own songs</comment></data>
+  <data name="Mobile.Source.Computer" xml:space="preserve"><value>From Computer</value><comment>Library source menu: the signed-in computer's songs</comment></data>
+  <data name="Mobile.Source.Name" xml:space="preserve"><value>Music Source</value><comment>Library source button (screen reader) and menu</comment></data>
   <data name="Mobile.History.Header" xml:space="preserve"><value>History</value><comment>Group header</comment></data>
   <data name="Mobile.History.Keep" xml:space="preserve"><value>Keep History</value><comment>Setting row and sheet title</comment></data>
   <data name="Mobile.History.CountAfter" xml:space="preserve"><value>Count a Play After</value><comment>Setting row and sheet title</comment></data>
