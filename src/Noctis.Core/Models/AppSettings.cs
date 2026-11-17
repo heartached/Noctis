@@ -876,7 +876,7 @@ public class AppSettings : IJsonOnDeserializing
     public bool AlbumGridWideSpacing { get; set; }
 
     /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
-    /// glow and its neighbours step back. Off by default.</summary>
+    /// glow; no other album moves (GitHub #250). Off by default.</summary>
     public bool AlbumHoverZoom { get; set; }
 
     /// <summary>How the large now-playing cover on the Lyrics page is dressed: "Cover"
