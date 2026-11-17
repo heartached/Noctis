@@ -344,18 +344,23 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         var scale = screen?.Scaling ?? 1.0;
 
+        // Placement is judged at the size the window will actually show at: a fixed design
+        // swaps to its own size on Opened (GitHub #251, see OpeningSize).
+        var (openW, openH) = MiniPlayerPlacement.OpeningSize(
+            miniVm.IsStyleLocked ? miniVm.Form : null, width, height);
+
         if (settings.MiniPlayerX is { } savedX && settings.MiniPlayerY is { } savedY
             && double.IsFinite(savedX) && double.IsFinite(savedY))
         {
             var restored = new PixelPoint((int)Math.Round(savedX), (int)Math.Round(savedY));
-            if (IsPositionOnAScreen(restored, width * scale, height * scale))
+            if (IsPositionOnAScreen(restored, openW * scale, openH * scale))
             {
                 // Pull it fully inside the work area of the screen it lands on (#75): a
                 // placement saved half off an edge (or under a taskbar) opens whole.
-                var size = MiniPlayerPlacement.ToPixels(width, height, scale);
+                var size = MiniPlayerPlacement.ToPixels(openW, openH, scale);
                 if (Screens.ScreenFromBounds(new PixelRect(restored, size)) is { } landed)
                     restored = MiniPlayerPlacement.Clamp(restored,
-                        MiniPlayerPlacement.ToPixels(width, height, landed.Scaling), landed.WorkingArea);
+                        MiniPlayerPlacement.ToPixels(openW, openH, landed.Scaling), landed.WorkingArea);
                 mini.Position = restored;
                 return;
             }
@@ -365,7 +370,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
         var area = screen.WorkingArea;
         mini.Position = new PixelPoint(
-            area.X + area.Width - (int)(width * scale) - (int)(24 * scale),
+            area.X + area.Width - (int)(openW * scale) - (int)(24 * scale),
             area.Y + (int)(24 * scale));
     }
 

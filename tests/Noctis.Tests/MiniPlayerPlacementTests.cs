@@ -78,6 +78,97 @@ public class MiniPlayerPlacementTests
         Assert.Equal(new PixelPoint(expectedX, expectedY), p);
     }
 
+    // ── GitHub #251: reopening a design parked in a corner ──────────────────────
+    // A fixed design's window is its own size, but the stored size is the classic card's
+    // (420×188 = the Bar default when Classic was never resized). The reopen clamp used the
+    // classic size, so a design flush with the right/bottom edge came back moved inward.
+
+    private static readonly PixelRect FullHd = new(0, 0, 1920, 1080);
+
+    /// <summary>Top-left of a window of <paramref name="size"/> flush in a corner.</summary>
+    private static PixelPoint Corner(string corner, PixelSize size, PixelRect area) => corner switch
+    {
+        "TL" => new PixelPoint(area.X, area.Y),
+        "TR" => new PixelPoint(area.Right - size.Width, area.Y),
+        "BR" => new PixelPoint(area.Right - size.Width, area.Bottom - size.Height),
+        "BL" => new PixelPoint(area.X, area.Bottom - size.Height),
+        _ => throw new ArgumentOutOfRangeException(nameof(corner)),
+    };
+
+    /// <summary>What reopening did: Clamp with the size MainWindow measured.</summary>
+    private static PixelPoint Reopen(PixelPoint saved, double w, double h, double scaling, PixelRect area)
+        => MiniPlayerPlacement.Clamp(saved, MiniPlayerPlacement.ToPixels(w, h, scaling), area);
+
+    [Theory]
+    // Pill (352×140) with the stored classic 420×188: old code shifted left/up by the
+    // difference in pixels — 68/48 at 100%, 85/60 at 125%, 102/72 at 150%.
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "TL", 0, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "TR", -68, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "BR", -68, -48)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.0, "BL", 0, -48)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "TL", 0, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "TR", -85, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "BR", -85, -60)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.25, "BL", 0, -60)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "TL", 0, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "TR", -102, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "BR", -102, -72)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Pill, 1.5, "BL", 0, -72)]
+    // Sleeve (340×372) is narrower but taller than 420×188: only the right edge moved.
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Sleeve, 1.0, "TR", -80, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Sleeve, 1.0, "BR", -80, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Sleeve, 1.25, "BR", -100, 0)]
+    [InlineData(Noctis.ViewModels.MiniPlayerForm.Sleeve, 1.5, "BR", -120, 0)]
+    public void Design_ReopensExactlyWhereItWasLeft_InEveryCorner(
+        Noctis.ViewModels.MiniPlayerForm design, double scaling, string corner, int oldDx, int oldDy)
+    {
+        var (dw, dh) = Noctis.ViewModels.MiniPlayerViewModel.CanonicalSize(design);
+        var saved = Corner(corner, MiniPlayerPlacement.ToPixels(dw, dh, scaling), FullHd);
+
+        // Before: measured at the classic size.
+        var old = Reopen(saved, 420, 188, scaling, FullHd);
+        Assert.Equal(new PixelPoint(saved.X + oldDx, saved.Y + oldDy), old);
+
+        // Now: measured at the size the design opens at.
+        var (w, h) = MiniPlayerPlacement.OpeningSize(design, 420, 188);
+        Assert.Equal(saved, Reopen(saved, w, h, scaling, FullHd));
+    }
+
+    [Theory]
+    [InlineData(1.0)]
+    [InlineData(1.25)]
+    [InlineData(1.5)]
+    public void Classic_ReopensExactlyWhereItWasLeft_InEveryCorner(double scaling)
+    {
+        foreach (var corner in new[] { "TL", "TR", "BR", "BL" })
+        {
+            var saved = Corner(corner, MiniPlayerPlacement.ToPixels(420, 188, scaling), FullHd);
+            var (w, h) = MiniPlayerPlacement.OpeningSize(null, 420, 188);
+            Assert.Equal(saved, Reopen(saved, w, h, scaling, FullHd));
+        }
+    }
+
+    [Theory]
+    [InlineData("TL")]
+    [InlineData("TR")]
+    [InlineData("BR")]
+    [InlineData("BL")]
+    public void Design_OnAMonitorWithNegativeCoordinates_ReopensWhereItWasLeft(string corner)
+    {
+        var (w, h) = MiniPlayerPlacement.OpeningSize(Noctis.ViewModels.MiniPlayerForm.Pill, 420, 188);
+        var saved = Corner(corner, MiniPlayerPlacement.ToPixels(w, h, 1.25), LeftMonitor);
+        Assert.Equal(saved, Reopen(saved, w, h, 1.25, LeftMonitor));
+    }
+
+    [Fact]
+    public void Design_SavedPartlyOffScreen_IsStillPulledBackInside()
+    {
+        var (w, h) = MiniPlayerPlacement.OpeningSize(Noctis.ViewModels.MiniPlayerForm.Pill, 420, 188);
+        // Half off the bottom-right (e.g. the taskbar moved or the resolution dropped).
+        var p = Reopen(new PixelPoint(1800, 1000), w, h, 1.0, FullHd);
+        Assert.Equal(new PixelPoint(1920 - 352, 1080 - 140), p);
+    }
+
     [Fact]
     public void ToPixels_TreatsAMissingScalingAsOne()
     {
