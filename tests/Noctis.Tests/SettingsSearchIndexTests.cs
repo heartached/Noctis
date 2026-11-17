@@ -118,10 +118,12 @@ public class SettingsSearchIndexTests
             var box = view.FindControl<TextBox>("SettingsSearchBox");
             Assert.NotNull(box);
 
-            box!.Text = "minimize to tray";
+            // macOS says "menu bar" for the tray (Loc.Platform).
+            var minimizeLabel = Noctis.Localization.Loc.Platform("Settings.MinimizeTray");
+            box!.Text = minimizeLabel.ToLowerInvariant();
             var cards = view.GetLogicalDescendants().OfType<Border>()
                 .Where(b => b.Classes.Contains(SettingsSearchIndex.CardClass)).ToList();
-            var trayCard = cards.Single(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "Minimize to tray"));
+            var trayCard = cards.Single(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == minimizeLabel));
             var animCard = cards.Single(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "Text Animation"));
             Assert.DoesNotContain(SettingsSearchIndex.HiddenClass, trayCard.Classes);
             Assert.Contains(SettingsSearchIndex.HiddenClass, animCard.Classes);
