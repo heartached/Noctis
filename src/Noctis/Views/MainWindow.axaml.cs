@@ -432,6 +432,32 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         }, TimeSpan.FromMilliseconds(MacFullScreenExitMs));
     }
 
+    /// <summary>
+    /// macOS only: leaving native fullscreen sometimes leaves the window's render surface at
+    /// the fullscreen size. Avalonia lays the page out at the new window size, but the frame
+    /// is drawn into the old, larger surface and AppKit scales that down into the window, so
+    /// the whole UI sits shrunk (to about 78% on a 1100-wide window) in the top-left corner,
+    /// the rest of the window empty, and clicks land on whatever is under the full-size
+    /// layout instead of what the user sees (GitHub #248 on Linux reads the same: nothing
+    /// responds after F11). It stays that way until the window is resized, so once the exit
+    /// transition is over, resize it by one DIP and back: the native resize brings the surface
+    /// to the window's size. Seen in about one exit in four from ⌃⌘F on an M-series MacBook.
+    /// </summary>
+    private void ResyncMacSurfaceAfterFullScreen()
+    {
+        DispatcherTimer.RunOnce(() =>
+        {
+            // Only a plain window: a zoomed (Maximized) frame would come out of zoom.
+            if (WindowState != WindowState.Normal || !IsVisible) return;
+            var width = double.IsFinite(Width) ? Width : ClientSize.Width;
+            Width = width + 1;
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (WindowState == WindowState.Normal) Width = width;
+            }, DispatcherPriority.Background);
+        }, TimeSpan.FromMilliseconds(MacFullScreenExitMs));
+    }
+
     // Parameterless overload kept for the XAML previewer/designer; the app always
     // passes the view model.
     public MainWindow() : this(null) { }
@@ -1199,6 +1225,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             if (e.Property != WindowStateProperty)
                 return;
             UpdateImmersiveLyricsState();
+            if (OperatingSystem.IsMacOS() && e.OldValue is WindowState.FullScreen)
+                ResyncMacSurfaceAfterFullScreen();
             if (WindowState != WindowState.Minimized)
                 return;
             if (IsTrayUsable
