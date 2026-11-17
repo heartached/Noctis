@@ -2009,6 +2009,8 @@ public partial class SettingsViewModel : ViewModelBase
                     DeviceSignInEnabled = AccountFeatures.Enabled,
                     // A phone asking for a song's lyrics also gets what the lyrics page fetched online.
                     LyricsCacheDirectory = LyricsViewModel.LyricsCacheDir,
+                    // The signed-in phone's remote for this window's player (Account page › Remote).
+                    Remote = _player is { } player ? new PlayerServerRemote(player) : null,
                 };
                 _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
                 _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevicesInBackground);
@@ -3538,6 +3540,8 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _player = player;
         ApplyPlayerSettings();
+        // A server started before the player was handed over gets its remote now.
+        if (_noctisServer is { Remote: null } server) server.Remote = new PlayerServerRemote(player);
     }
 
     /// <summary>Sets the Discord presence service reference.</summary>
