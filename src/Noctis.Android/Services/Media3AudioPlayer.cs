@@ -877,7 +877,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public AUri? ResolveReportedUri(AUri? uri) => uri;
     }
 
-    /// <summary>Java-side listener; every IPlayerListener method has a default body, so only these four are overridden.</summary>
+    /// <summary>Java-side listener; every IPlayerListener method has a default body, so only these are overridden.</summary>
     private sealed class Listener : Java.Lang.Object, IPlayerListener
     {
         private readonly Media3AudioPlayer _owner;
@@ -887,6 +887,15 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public void OnPlayerError(PlaybackException error) => _owner.OnPlayerError(error);
         public void OnTracksChanged(Tracks tracks) => _owner.OnTracksChanged(tracks);
         public void OnIsPlayingChanged(bool isPlaying) => _owner.OnIsPlayingChanged(isPlaying);
+
+        /// <summary>
+        /// Unused, but Java calls it after every batch of player events and the binding wraps
+        /// its argument in a new managed peer each time. A Java peer that dies undisposed makes
+        /// the next minor GC run the Java GC bridge, a full Java collection inside the pause:
+        /// 60-75 ms of every ~80 ms lyrics stall on an S23 (11-17). Disposed here, it never
+        /// reaches the bridge.
+        /// </summary>
+        public void OnEvents(IPlayer? player, PlayerEvents? events) => events?.Dispose();
     }
 
     /// <summary>
@@ -934,25 +943,50 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             return base.IsCommandAvailable(command);
         }
 
+        // The session asks for the commands again and again while a song plays. Every answer
+        // used to be three new Java peers (the wrapped player's commands, a builder, the built
+        // commands) left to die undisposed, and a dead Java peer makes the next minor GC run
+        // the Java GC bridge: a full Java collection inside the pause, 60-75 ms of every ~80 ms
+        // lyrics stall on an S23 (11-17). The wrapped player's commands are kept (Java hands
+        // back the same object, which then maps to this peer instead of a new one) and the
+        // answer is reused while it and the queue's next/previous stay the same.
+        private PlayerCommands? _baseCommands;
+        private PlayerCommands? _answer;
+        private bool? _answerNext, _answerPrevious;
+
         public override PlayerCommands AvailableCommands
         {
             get
             {
                 var commands = base.AvailableCommands;
+                if (!ReferenceEquals(commands, _baseCommands))
+                {
+                    _baseCommands?.Dispose();
+                    _baseCommands = commands;
+                    _answer?.Dispose();
+                    _answer = null;
+                }
                 if (_owner.HasNextInQueue == null && _owner.HasPreviousInQueue == null) return commands;
-                var builder = commands.BuildUpon();
-                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToNext, _owner.HasNextInQueue);
-                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToNextMediaItem, _owner.HasNextInQueue);
-                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToPrevious, _owner.HasPreviousInQueue);
-                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToPreviousMediaItem, _owner.HasPreviousInQueue);
-                return builder.Build();
+                var next = _owner.HasNextInQueue?.Invoke();
+                var previous = _owner.HasPreviousInQueue?.Invoke();
+                if (_answer != null && next == _answerNext && previous == _answerPrevious) return _answer;
+                using var builder = commands.BuildUpon();
+                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToNext, next);
+                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToNextMediaItem, next);
+                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToPrevious, previous);
+                ApplyOverride(builder, BasePlayer.InterfaceConsts.CommandSeekToPreviousMediaItem, previous);
+                _answer?.Dispose();
+                _answer = builder.Build();
+                _answerNext = next;
+                _answerPrevious = previous;
+                return _answer;
             }
         }
 
-        private static void ApplyOverride(PlayerCommands.Builder builder, int command, Func<bool>? predicate)
+        private static void ApplyOverride(PlayerCommands.Builder builder, int command, bool? available)
         {
-            if (predicate == null) return;
-            if (predicate()) builder.Add(command); else builder.Remove(command);
+            if (available is not { } on) return;
+            if (on) builder.Add(command); else builder.Remove(command);
         }
 
         private static bool IsNextCommand(int command) =>

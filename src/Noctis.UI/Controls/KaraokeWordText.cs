@@ -95,8 +95,21 @@ public class KaraokeWordText : TextBlock
     {
         public required TextLayout Layout;
         public required LinearGradientBrush Brush;
+        /// <summary>The same text in one colour, drawn while the edge is not on the piece.</summary>
+        public required TextLayout SolidLayout;
+        public required SolidColorBrush Solid;
+        public bool Uniform;       // both sides of the band are one colour: Solid is drawn
+        public bool DrawnUniform;  // what the last draw used
         public double X;       // left edge inside the word's glyph run
         public double Width;   // advance width
+
+        public TextLayout Current => Uniform ? SolidLayout : Layout;
+
+        public void Dispose()
+        {
+            Layout.Dispose();
+            SolidLayout.Dispose();
+        }
     }
 
     private readonly List<Piece> _pieces = new();
@@ -123,22 +136,24 @@ public class KaraokeWordText : TextBlock
             // Brush stops move here, not in Render: changing a brush while the frame is
             // being recorded would re-dirty the visual it is drawn into. A hidden word (the
             // glow layer of every word that is not a held note) catches up when it shows.
+            var switched = false;
             if (!IsVisible) _stopsStale = true;
-            else if (!_dirty) UpdateStops();
+            else if (!_dirty) switched = UpdateStops();
             // The brushes are composition resources: a moved stop reaches the screen without
             // this word being drawn again. Re-recording it every frame (a new draw list, its
             // resource table and glyph runs, ~2-4 KB a word) was most of the ~4 MB a second
             // the phone's lyrics allocated while a line swept, a GC every second (S23, 11-14).
             // Only what moves the glyphs redraws: a held note's letters (their pose follows
-            // the held-note clock) and an effect's pose (it reads every input).
-            if (IsVisible && (_dirty || Posed
+            // the held-note clock) and an effect's pose (it reads every input), and a piece
+            // the edge enters or leaves (it changes brush, see SetStops).
+            if (IsVisible && (_dirty || switched || Posed
                 || (_perLetter && (p == EmphasisMsProperty || p == HeldDurationMsProperty || p == IsLastInLineProperty))))
                 InvalidateVisual();
         }
         else if (p == IsVisibleProperty && IsVisible && _stopsStale)
         {
             _stopsStale = false;
-            if (!_dirty) UpdateStops();
+            if (!_dirty && UpdateStops()) InvalidateVisual();
         }
         else if (p == LiftProperty)
         {
@@ -168,7 +183,7 @@ public class KaraokeWordText : TextBlock
     {
         base.OnDetachedFromVisualTree(e);
         LyricsWordEffect.Changed -= OnEffectChanged;
-        foreach (var piece in _pieces) piece.Layout.Dispose();
+        foreach (var piece in _pieces) piece.Dispose();
         _pieces.Clear();
         _effect = null;
         _dirty = true;
@@ -190,6 +205,21 @@ public class KaraokeWordText : TextBlock
     /// <summary>Tests: pieces drawn (1 = the word in one piece) and the effect's mode.</summary>
     internal int PieceCount { get { EnsurePieces(); return _pieces.Count; } }
     internal WordDrawMode EffectMode { get { EnsurePieces(); return _effect is null ? WordDrawMode.Native : _mode; } }
+
+    /// <summary>Tests: every piece was last drawn in one colour (no gradient).</summary>
+    internal bool DrawnUniform => _pieces.Count > 0 && _pieces.TrueForAll(p => p.DrawnUniform);
+
+    /// <summary>Tests: draw the gradient even where it is one colour, to compare the two.</summary>
+    internal bool ForceGradient
+    {
+        get => _forceGradient;
+        set
+        {
+            _forceGradient = value;
+            _dirty = true;
+        }
+    }
+    private bool _forceGradient;
 
     private WordPoseInput Input() => new(Progress, HeldDurationMs, Lift, IsEmphasis, IsLastInLine, RightToLeft,
         _letterCount, FontSize, LyricsWordEffect.GetSurface(this));
@@ -260,7 +290,7 @@ public class KaraokeWordText : TextBlock
     {
         if (!_dirty) return;
         _dirty = false;
-        foreach (var piece in _pieces) piece.Layout.Dispose();
+        foreach (var piece in _pieces) piece.Dispose();
         _pieces.Clear();
 
         var sweep = (Text ?? string.Empty).TrimEnd();
@@ -319,10 +349,13 @@ public class KaraokeWordText : TextBlock
             EndPoint = new RelativePoint(Math.Max(1, width), 0, RelativeUnit.Absolute),
             GradientStops = { new GradientStop(Colors.White, 0), new GradientStop(Colors.White, 1) },
         };
+        var solid = new SolidColorBrush(Colors.White);
         return new Piece
         {
             Layout = new TextLayout(text, typeface, FontSize, brush),
             Brush = brush,
+            SolidLayout = new TextLayout(text, typeface, FontSize, solid),
+            Solid = solid,
             X = x,
             Width = Math.Max(1, width),
         };
@@ -358,9 +391,11 @@ public class KaraokeWordText : TextBlock
                * Matrix.CreateTranslation(cx + dx, cy + dy);
     }
 
-    private void UpdateStops()
+    /// <returns>True when a piece changed brush (the edge entered or left it): the word must
+    /// be drawn again.</returns>
+    private bool UpdateStops()
     {
-        if (_pieces.Count == 0 || _glyphWidth <= 0) return;
+        if (_pieces.Count == 0 || _glyphWidth <= 0) return false;
         var (lit, dim) = Colours();
         var (lo, hi) = Band();
         var rtl = RightToLeft;
@@ -370,11 +405,12 @@ public class KaraokeWordText : TextBlock
         var posed = Posed;
         if (!_perLetter && !posed)
         {
-            SetStops(_pieces[0], lo, hi, lit, dim, rtl);
-            return;
+            SetStops(_pieces[0], lo, hi, lit, dim, rtl, _forceGradient);
+            return _pieces[0].Uniform != _pieces[0].DrawnUniform;
         }
 
         var parameters = posed ? default : EmphasisMotion.For(HeldDurationMs, IsLastInLine);
+        var switched = false;
         for (int i = 0; i < _pieces.Count; i++)
         {
             var piece = _pieces[i];
@@ -390,8 +426,10 @@ public class KaraokeWordText : TextBlock
             // The edge stays in word space (AMLL masks the word and its letters move
             // inside the mask): map the band back through this letter's swell and push.
             double ToLocal(double xWord) => (xWord - dx - cx) / s + cx - piece.X;
-            SetStops(piece, ToLocal(lo), ToLocal(hi), lit, dim, rtl);
+            SetStops(piece, ToLocal(lo), ToLocal(hi), lit, dim, rtl, _forceGradient);
+            switched |= piece.Uniform != piece.DrawnUniform;
         }
+        return switched;
     }
 
     // TextBlock.Render (sealed) draws the background and resolves where the text goes
@@ -424,9 +462,9 @@ public class KaraokeWordText : TextBlock
                     if (glowLayer)
                     {
                         using (context.PushOpacity(Math.Clamp(pose.Glow, 0, 1)))
-                            _pieces[i].Layout.Draw(context, default);
+                            Draw(_pieces[i], context);
                     }
-                    else _pieces[i].Layout.Draw(context, default);
+                    else Draw(_pieces[i], context);
                 }
             }
             return;
@@ -439,7 +477,7 @@ public class KaraokeWordText : TextBlock
         using var offset = context.PushTransform(transform);
         if (!_perLetter)
         {
-            _pieces[0].Layout.Draw(context, default);
+            Draw(_pieces[0], context);
             return;
         }
 
@@ -447,8 +485,14 @@ public class KaraokeWordText : TextBlock
         for (int i = 0; i < _pieces.Count; i++)
         {
             using (context.PushTransform(LetterTransform(i, parameters, out _, out _)))
-                _pieces[i].Layout.Draw(context, default);
+                Draw(_pieces[i], context);
         }
+    }
+
+    private static void Draw(Piece piece, DrawingContext context)
+    {
+        piece.DrawnUniform = piece.Uniform;
+        piece.Current.Draw(context, default);
     }
 
     /// <summary>
@@ -477,7 +521,7 @@ public class KaraokeWordText : TextBlock
 
     /// <summary>Points the piece's two stops at the band (piece-local pixels, unclamped):
     /// clamped to the piece, each carrying the colour the band has at that point.</summary>
-    private static void SetStops(Piece piece, double lo, double hi, Color lit, Color dim, bool rightToLeft = false)
+    private static void SetStops(Piece piece, double lo, double hi, Color lit, Color dim, bool rightToLeft = false, bool forceGradient = false)
     {
         var w = piece.Width;
         var o0 = Math.Clamp(lo / w, 0, 1);
@@ -488,6 +532,18 @@ public class KaraokeWordText : TextBlock
         double Lit(double x) => rightToLeft
             ? (hi <= lo ? (x >= hi ? 1 : 0) : Math.Clamp((x - lo) / (hi - lo), 0, 1))
             : KaraokeBand.LitAt(x, lo, hi);
+        // One opaque colour all over (the edge is off this piece: sung, or a line not being
+        // sung): drawn with a solid brush. A gradient brush is a new Skia shader on every frame
+        // the word is drawn, for every word on screen - the largest part of what the phone's
+        // lyrics allocated (headless Skia, 11-17). The stops wait until the edge comes back.
+        // A translucent colour (the unsung ghost) keeps the gradient: Skia draws translucent
+        // solid text with a different glyph gamma, 7% dimmer than the same gradient.
+        piece.Uniform = c0 == c1 && (c0.A is 255 or 0) && !forceGradient;
+        if (piece.Uniform)
+        {
+            if (piece.Solid.Color != c0) piece.Solid.Color = c0;
+            return;
+        }
         var stops = piece.Brush.GradientStops;
         Set(stops[0], o0, c0);
         Set(stops[1], o1, c1);
