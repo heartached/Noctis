@@ -7116,6 +7116,10 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz画面でスクロールがなめらかになりますが電池を多く使います</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass タブ</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>選択中のタブを透明なガラスのままにします</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>タブバー</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>タブを2〜5個選び、≡ をドラッグして並べ替えます。ライブラリは常にバーに残るので、すべてのリストと設定にいつでも移動できます。</value></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>デフォルトに戻す</value></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0}を並べ替え</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>再生済みの曲をキューに表示</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>再生した曲を再生中の曲の上に残します</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>使用済みストレージ</value></data>

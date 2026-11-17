@@ -3551,6 +3551,10 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Smoother scrolling on 120 Hz screens but uses more battery</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass Tab Pill</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>The selected tab stays clear glass</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Tab Bar</value><comment>Settings row and page: which tabs are on the bottom bar</comment></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Choose 2 to 5 tabs and drag ≡ to put them in order. Library always stays on the bar, so every list and Settings stay in reach.</value><comment>Footnote under the Tab Bar list</comment></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Reset to Default</value><comment>Button: put the default tabs back</comment></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Reorder {0}</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Played Songs in Queue</value><comment>Setting switch: Queue page shows played songs</comment></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Songs you've played stay above the current one</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Storage Used</value><comment>Row</comment></data>

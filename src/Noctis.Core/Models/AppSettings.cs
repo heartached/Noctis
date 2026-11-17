@@ -207,6 +207,12 @@ public class AppSettings : IJsonOnDeserializing
     /// clear glass instead of the dark tinted pill. Off by default.</summary>
     public bool MobileGlassTabPill { get; set; }
 
+    /// <summary>Phone, Settings › Tab Bar (beta testers 11-17): the tabs on the bottom bar, in order,
+    /// by name ("Home", "Songs", ...). Empty (the default, and what a settings file without the field
+    /// reads as) = Home, Favorites, Playlists, Library, Search. Names this build does not know are
+    /// skipped; Library is always kept.</summary>
+    public List<string> MobileTabBar { get; set; } = new();
+
     /// <summary>Phone, Settings › Listening › Played Songs in Queue: the Queue page keeps the songs
     /// already played in a History section above the current track (a tap plays one again). Off by
     /// default: played songs leave the Queue page, as they always have.</summary>

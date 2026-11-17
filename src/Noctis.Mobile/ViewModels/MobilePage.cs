@@ -4,9 +4,11 @@ using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
-/// <summary>The tabs of the phone UI, in the bar's order (Apple Music's: Home first, Search last).
-/// Home is the start tab (Back from the others returns to it).</summary>
-public enum MobileTab { Home, Favorites, Playlists, Library, Search }
+/// <summary>The tab roots of the phone UI. The first five are the default bar, in its order (Apple
+/// Music's: Home first, Search last); Songs, Albums and Artists can be put on it under Settings ›
+/// Tab Bar (TabBarTabs). Home is the start tab while it is on the bar (Back from the others returns
+/// to it). The names are the persisted keys (AppSettings.MobileTabBar), so they must not be renamed.</summary>
+public enum MobileTab { Home, Favorites, Playlists, Library, Search, Songs, Albums, Artists }
 
 /// <summary>How the page stack last changed: a page pushed (or presented), the top one popped,
 /// or a jump straight to the root (a tab tap) that no page slides through.</summary>
@@ -53,6 +55,9 @@ public abstract partial class MobilePage : ObservableObject
         MobileTab.Playlists => "Nav.Playlists",
         MobileTab.Library => "Tab.Library",
         MobileTab.Search => "Mobile.Search",
+        MobileTab.Songs => "Nav.Songs",
+        MobileTab.Albums => "Nav.Albums",
+        MobileTab.Artists => "Nav.Artists",
         _ => "Nav.Home",
     });
 

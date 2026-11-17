@@ -7118,6 +7118,10 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Desplazamiento más fluido en pantallas de 120 Hz pero gasta más batería</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Pestaña de Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>La pestaña elegida queda en cristal claro</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Barra de pestañas</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Elige de 2 a 5 pestañas y arrastra ≡ para ordenarlas. Biblioteca siempre se queda en la barra, así todas las listas y los Ajustes siguen a mano.</value></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Restablecer valores predeterminados</value></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Reordenar {0}</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Canciones reproducidas en la cola</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Las canciones que ya sonaron quedan encima de la actual</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Almacenamiento usado</value></data>

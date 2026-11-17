@@ -3542,6 +3542,10 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Flüssigeres Scrollen auf 120-Hz-Displays aber mehr Akkuverbrauch</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Tab-Auswahl aus Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Der gewählte Tab bleibt klares Glas</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Tab-Leiste</value><comment>Settings row and page: which tabs are on the bottom bar</comment></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Wähle 2 bis 5 Tabs und ziehe ≡, um sie zu ordnen. Die Bibliothek bleibt immer in der Leiste, so bleiben jede Liste und die Einstellungen erreichbar.</value><comment>Footnote under the Tab Bar list</comment></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Auf Standard zurücksetzen</value><comment>Button: put the default tabs back</comment></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} verschieben</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Gespielte Titel in der Warteschlange</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Gespielte Titel bleiben über dem aktuellen</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Belegter Speicher</value><comment>Row</comment></data>

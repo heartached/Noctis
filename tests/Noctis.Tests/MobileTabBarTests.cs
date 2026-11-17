@@ -239,7 +239,8 @@ public class MobileTabBarTests : IDisposable
 
         // Apple Music's order: Home first, Search last.
         var names = new[] { "HomeTab", "FavoritesTab", "PlaylistsTab", "LibraryTab", "SearchTab" };
-        Assert.Equal(names.Length, view.FindControl<Grid>("TabBar")!.Children.Count);
+        // The default bar (Settings › Tab Bar can change it): Songs, Albums and Artists stand hidden.
+        Assert.Equal(names, view.FindControl<Grid>("TabBar")!.Children.Where(c => c.IsVisible).Select(c => c.Name));
         var xs = names.Select(n => view.FindControl<Button>(n)!).Select(b => b.TranslatePoint(default, view)!.Value.X).ToArray();
         Assert.Equal(xs.OrderBy(x => x), xs);
         window.Close();

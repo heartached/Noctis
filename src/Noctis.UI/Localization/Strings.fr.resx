@@ -7150,6 +7150,10 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Défilement plus fluide sur les écrans 120 Hz mais plus de batterie</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Onglet en Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>L’onglet choisi reste en verre clair</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Barre d’onglets</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Choisissez de 2 à 5 onglets et faites glisser ≡ pour les ordonner. Bibliothèque reste toujours dans la barre : toutes les listes et les Paramètres restent accessibles.</value></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Rétablir par défaut</value></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Déplacer {0}</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Morceaux écoutés dans la file</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Les morceaux écoutés restent au-dessus de celui en cours</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Stockage utilisé</value></data>

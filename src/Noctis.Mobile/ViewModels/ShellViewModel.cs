@@ -236,7 +236,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsFavoritesSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected),
-        nameof(IsPlaylistsSelected), nameof(IsHomeRootVisible), nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible),
+        nameof(IsPlaylistsSelected), nameof(IsSongsSelected), nameof(IsAlbumsSelected), nameof(IsArtistsSelected), nameof(IsHomeRootVisible), nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible),
         nameof(IsSearchRootVisible), nameof(IsPlaylistsRootVisible))]
     private MobileTab _selectedTab = MobileTab.Home;
 
@@ -385,6 +385,9 @@ public sealed partial class ShellViewModel : ObservableObject
         _lastFm?.Relabel();
         _playlistsRoot?.Relabel();
         _favoritesRoot?.Relabel();
+        _songsRoot?.Relabel();
+        _albumsRoot?.Relabel();
+        _artistsRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
         OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
         OnPropertyChanged(nameof(QueueHistoryToggleText));
@@ -395,6 +398,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
     public bool IsPlaylistsSelected => SelectedTab == MobileTab.Playlists;
+    public bool IsSongsSelected => SelectedTab == MobileTab.Songs;
+    public bool IsAlbumsSelected => SelectedTab == MobileTab.Albums;
+    public bool IsArtistsSelected => SelectedTab == MobileTab.Artists;
 
     public bool HasPage => CurrentPage != null;
     public bool IsHomeRootVisible => IsHomeSelected && !HasPage;
@@ -405,6 +411,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private PlaylistListPageViewModel? _playlistsRoot;
     private SongListPageViewModel? _favoritesRoot;
+    private SongListPageViewModel? _songsRoot;
+    private AlbumGridPageViewModel? _albumsRoot;
+    private ArtistListPageViewModel? _artistsRoot;
 
     /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.
     /// Made on first use; it re-reads on every library refresh.</summary>
@@ -414,6 +423,57 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
         _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false };
+
+    // Songs, Albums and Artists as tab roots (Settings › Tab Bar): each made once its tab is first
+    // on the bar, null before that, so a bar without them builds and refreshes none of them.
+
+    /// <summary>The Songs tab's root: every song, embedded under the tab's title (the Library row's page).</summary>
+    public SongListPageViewModel? SongsRoot => _songsRoot ??= HasTab(MobileTab.Songs)
+        ? new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs") { IsEmbedded = true }
+        : null;
+
+    /// <summary>The Albums tab's root: the album grid, embedded under the tab's title.</summary>
+    public AlbumGridPageViewModel? AlbumsRoot => _albumsRoot ??= HasTab(MobileTab.Albums)
+        ? new AlbumGridPageViewModel(this) { IsEmbedded = true }
+        : null;
+
+    /// <summary>The Artists tab's root: the artist circles, embedded under the tab's title.</summary>
+    public ArtistListPageViewModel? ArtistsRoot => _artistsRoot ??= HasTab(MobileTab.Artists)
+        ? new ArtistListPageViewModel(this) { IsEmbedded = true }
+        : null;
+
+    /// <summary>Settings › Tab Bar: the tabs on the bottom bar, in order (TabBarTabs). Set through
+    /// <see cref="SetBarTabs"/>; the bar, its pill and the roots follow at once.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartTab), nameof(HasSearchTab))]
+    private IReadOnlyList<MobileTab> _barTabs = TabBarTabs.Defaults;
+
+    public bool HasTab(MobileTab tab) => BarTabs.Contains(tab);
+
+    /// <summary>Search is on the bar: the folded bar's round Search button stands only then.</summary>
+    public bool HasSearchTab => HasTab(MobileTab.Search);
+
+    /// <summary>Where Back from another tab returns: Home while it is on the bar, else the first tab.</summary>
+    public MobileTab StartTab => HasTab(MobileTab.Home) ? MobileTab.Home : BarTabs[0];
+
+    /// <summary>Puts <paramref name="tabs"/> on the bar (normalized: TabBarTabs.Normalize) and saves it.</summary>
+    public void SetBarTabs(IEnumerable<MobileTab> tabs)
+    {
+        var next = TabBarTabs.Normalize(tabs);
+        if (next.SequenceEqual(BarTabs)) return;
+        BarTabs = next;
+    }
+
+    partial void OnBarTabsChanged(IReadOnlyList<MobileTab> value)
+    {
+        OnPropertyChanged(nameof(SongsRoot));
+        OnPropertyChanged(nameof(AlbumsRoot));
+        OnPropertyChanged(nameof(ArtistsRoot));
+        // The tab shown left the bar: its root goes, the start tab's comes (the pages pushed over
+        // it, and a sheet such as Settings, stay where they are).
+        if (!value.Contains(SelectedTab)) SelectedTab = StartTab;
+        SavePlayerBarSettings(nameof(BarTabs));
+    }
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -751,6 +811,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
             }
@@ -781,6 +842,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var brightness = NowPlayingBrightness;
         var glassPill = GlassTabPill;
         var queueHistory = ShowQueueHistory;
+        var tabBar = TabBarTabs.Encode(BarTabs);
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -796,6 +858,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileNowPlayingBrightness = brightness;
                     settings.MobileGlassTabPill = glassPill;
                     settings.MobileQueueShowHistory = queueHistory;
+                    settings.MobileTabBar = tabBar;
                 });
             }
             catch (Exception ex)
@@ -934,9 +997,9 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>
     /// Android Back: the topmost thing closes first — a ⋯ menu or its sheet, Queue, Lyrics, Now
     /// Playing, then pushed pages (a page's own inner page first), then the Library rows' Edit
-    /// mode finishes (as Done would), then a non-start tab returns to Home. Returns whether the
-    /// press was consumed; only at the Home root does the activity fall through to the system
-    /// default (finish).
+    /// mode finishes (as Done would), then a non-start tab returns to the start tab (Home, or the
+    /// bar's first tab without it: <see cref="StartTab"/>). Returns whether the press was consumed;
+    /// only at the start tab's root does the activity fall through to the system default (finish).
     /// </summary>
     public bool TryHandleBack()
     {
@@ -949,7 +1012,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (CurrentPage?.TryGoBackWithin() == true) return true;
         if (GoBack()) return true;
         if (_libraryRows is { IsEditing: true } rows) { rows.FinishEditing(); return true; }
-        if (SelectedTab != MobileTab.Home) { SelectedTab = MobileTab.Home; return true; }
+        if (SelectedTab != StartTab) { SelectedTab = StartTab; return true; }
         return false;
     }
 

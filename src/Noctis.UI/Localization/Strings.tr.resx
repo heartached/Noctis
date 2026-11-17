@@ -2179,6 +2179,10 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz ekranlarda daha akıcı kaydırma ama daha fazla pil</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass sekme kapsülü</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Seçili sekme şeffaf cam kalır</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Sekme Çubuğu</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>2 ile 5 arası sekme seçin ve sıralamak için ≡ simgesini sürükleyin. Kitaplık her zaman çubukta kalır, böylece tüm listeler ve Ayarlar elinizin altında olur.</value></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Varsayılana Sıfırla</value></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} öğesini taşı</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Kuyrukta çalınan şarkılar</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Çaldığın şarkılar çalanın üstünde kalır</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Kullanılan Alan</value></data>
