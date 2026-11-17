@@ -295,8 +295,18 @@ public sealed class MobileTheme
             var isLight = variant == ThemeVariant.Light;
             var built = AccentPalette.Build(color, isLight);
             var surfaces = (ResourceDictionary)palette.ThemeDictionaries[variant];
+            Color Surface(string k) => ((ISolidColorBrush)surfaces[k]!).Color;
+            static Color Over(Color under, Color top)
+            {
+                var a = top.A / 255.0;
+                byte Lerp(byte u, byte t) => (byte)Math.Round(u + (t - u) * a);
+                return Color.FromRgb(Lerp(under.R, top.R), Lerp(under.G, top.G), Lerp(under.B, top.B));
+            }
+            // The selected tab's capsule too (the bar's glass over the page, the capsule over that):
+            // the selected tab's glyph and label wear the accent on it (tester 11-17).
             var behind = new[] { "PhoneBackgroundBrush", "PhoneGroupedBackgroundBrush", "PhoneCardBrush" }
-                .Select(k => ((ISolidColorBrush)surfaces[k]!).Color)
+                .Select(Surface)
+                .Append(Over(Over(Surface("PhoneBackgroundBrush"), Surface("PhoneChromeBrush")), Surface("PhoneChromeSelectedBrush")))
                 .ToArray();
             var text = new ResourceDictionary();
             foreach (var key in new[] { "AccentTextBrush", "AccentTextExactBrush" })

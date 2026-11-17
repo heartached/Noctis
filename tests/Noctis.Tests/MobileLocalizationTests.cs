@@ -326,9 +326,10 @@ public class MobileLocalizationTests
                 Assert.True(titleRight <= firstButton + 0.5, $"{tab}: title ends at {titleRight}, the header's buttons start at {firstButton}");
             }
 
-            // The tab bar: each label inside its fifth of the capsule.
+            // The tab bar: each label inside its fifth of the capsule (the tabs on the bar; Songs,
+            // Albums and Artists stand hidden until Settings › Tab Bar puts them there).
             var bar = view.FindControl<Grid>("TabBar")!;
-            foreach (var button in bar.Children.OfType<Button>())
+            foreach (var button in bar.Children.OfType<Button>().Where(b => b.IsVisible))
             {
                 var label = button.GetVisualDescendants().OfType<FitWidth>().Single();
                 var left = label.TranslatePoint(new Point(0, 0), button)!.Value.X;

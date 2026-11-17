@@ -7139,6 +7139,10 @@
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120Hz 화면에서 더 부드러운 스크롤 대신 배터리를 더 씁니다</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass 탭 표시</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>선택한 탭이 투명한 유리로 유지됩니다</value></data>
+  <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>탭 막대</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>탭을 2~5개 고르고 ≡를 끌어 순서를 바꾸세요. 라이브러리는 항상 막대에 남아 있어 모든 목록과 설정에 바로 갈 수 있습니다.</value></data>
+  <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>기본값으로 재설정</value></data>
+  <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} 순서 변경</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>재생한 곡을 대기열에 표시</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>재생한 곡이 현재 곡 위에 남습니다</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>사용 중인 저장 공간</value></data>

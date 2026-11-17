@@ -50,21 +50,30 @@ internal static class TintedGlass
         var light = PageTint.PrefersDarkText(page);
         into["PhoneChromeBrush"] = new SolidColorBrush(Tint(page));
         into["PhoneChromeOutlineBrush"] = new SolidColorBrush(Color.Parse(light ? "#21000000" : "#30FFFFFF"));
-        into["PhoneChromeSelectedBrush"] = new SolidColorBrush(Color.Parse(light ? "#14000000" : "#40000000"));
+        into["PhoneChromeSelectedBrush"] = new SolidColorBrush(Selected(page));
         into["GlassBarMinLuminance"] = light ? 0.25 : 0.0;
         into["GlassBarMaxLuminance"] = light ? 1.0 : 0.45;
     }
 
+    /// <summary>The tab bar's selected capsule on this glass: a shade over the face (translucent black).</summary>
+    public static Color Selected(Color page) => Color.Parse(PageTint.PrefersDarkText(page) ? "#14000000" : "#40000000");
+
+    /// <summary>The selected capsule's colour over the glass's face: what the selected tab's accent
+    /// glyph and label are read against.</summary>
+    public static Color SelectedFace(Color page) => PageTint.Mix(Face(page), Colors.Black, Selected(page).A / 255.0);
+
     /// <summary>The labels on the tinted glass: the text colour the page takes, the page's
     /// secondary text, and <paramref name="accent"/> stepped toward the text until it reads on the
-    /// glass (MobileTheme.Readable's 3:1), for a theme scope's text keys.</summary>
+    /// glass and on the selected tab's capsule (MobileTheme.Readable's 3:1), for a theme scope's
+    /// text keys. The capsule counts: the selected tab wears this accent on it, and over a mid-tone
+    /// cover colour (dark text) the capsule's shade left it dark on dark, 1.9:1 (tester 11-17).</summary>
     public static void ApplyText(IResourceDictionary into, Color page, Color accent)
     {
         var face = Face(page);
         var text = PageTint.PrefersDarkText(face) ? Colors.Black : Colors.White;
         into["PrimaryTextBrush"] = new SolidColorBrush(text);
         into["PhoneSecondaryTextBrush"] = new SolidColorBrush(PageTint.SubtleTextOn(face, text));
-        into["AccentTextExactBrush"] = new SolidColorBrush(MobileTheme.Readable(accent, new[] { face }, text));
+        into["AccentTextExactBrush"] = new SolidColorBrush(MobileTheme.Readable(accent, new[] { face, SelectedFace(page) }, text));
     }
 
     public static readonly string[] TextKeys = { "PrimaryTextBrush", "PhoneSecondaryTextBrush", "AccentTextExactBrush" };

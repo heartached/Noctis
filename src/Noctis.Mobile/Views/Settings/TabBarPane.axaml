@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.TabBarPane"
+             x:DataType="vm:TabBarSettingsViewModel">
+
+    <!-- Settings › Tab Bar, the content of a page pushed inside the Settings sheet (the sheet draws
+         the header and Back): every tab as a switch row with its glyph in the row chip, a ≡ handle at
+         the row's end that drags it into place (the Library rows' Edit drag), then Reset to Default.
+         Shared look: GroupedStyles.axaml and the Settings page's row chip. -->
+
+    <UserControl.Styles>
+        <Style Selector="Border.row-chip PathIcon">
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <!-- The tab bar's own glyphs (the Tag is the tab's name). -->
+        <Style Selector="PathIcon.tab-glyph[Tag=Home]"><Setter Property="Data" Value="{DynamicResource TabHomeFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Favorites]"><Setter Property="Data" Value="{DynamicResource TabFavoritesFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Playlists]"><Setter Property="Data" Value="{DynamicResource TabPlaylistsFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Library]"><Setter Property="Data" Value="{DynamicResource TabLibraryFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Search]"><Setter Property="Data" Value="{DynamicResource TabSearchFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Songs]"><Setter Property="Data" Value="{DynamicResource ChipSongsIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Albums]"><Setter Property="Data" Value="{DynamicResource ChipAlbumsIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Artists]"><Setter Property="Data" Value="{DynamicResource ChipArtistsIcon}" /></Style>
+        <!-- No hairline above the list's first row (the Settings lists'). -->
+        <Style Selector="ItemsControl#TabBarList ContentPresenter:nth-child(1) Border.row-separator">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <!-- A switch that cannot move now (Library; the limits) reads as such. -->
+        <Style Selector="ToggleButton.switch-row:disabled">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <!-- The handle: a 44-wide touch target at the row's end (the Library rows'). -->
+        <Style Selector="Border.row-handle">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+        </Style>
+        <Style Selector="Border.row-handle PathIcon">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Classes="grouped-content">
+        <StackPanel>
+            <Border Name="TabBarCard" Classes="group-card">
+                <ItemsControl Name="TabBarList" ItemsSource="{Binding Choices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:TabBarChoice">
+                            <Panel Background="{DynamicResource PhoneCardBrush}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <ToggleButton Name="TabSwitch" Classes="switch-row" IsChecked="{Binding IsOn}" IsEnabled="{Binding CanToggle}"
+                                                  Padding="16,0,4,0" AutomationProperties.Name="{Binding Title}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><PathIcon Classes="tab-glyph" Tag="{Binding Key}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{Binding Title}" />
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Grid.Column="1" Name="TabHandle" Classes="row-handle" AutomationProperties.Name="{Binding ReorderName}"
+                                            PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
+                                            PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
+                                        <PathIcon Data="{DynamicResource QueueReorderIcon}" />
+                                    </Border>
+                                </Grid>
+                                <Border Classes="row-separator chipped" VerticalAlignment="Top" />
+                            </Panel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.TabBar.Hint}" />
+        </StackPanel>
+        <StackPanel>
+            <Border Classes="group-card">
+                <Button Name="TabBarResetButton" Classes="row accent-row" Command="{Binding ResetCommand}" IsEnabled="{Binding !IsDefault}"
+                        AutomationProperties.Name="{loc:T Mobile.TabBar.Reset}">
+                    <views:SettingRow Classes="setting-row">
+                        <TextBlock Classes="row-label" Text="{loc:T Mobile.TabBar.Reset}" />
+                    </views:SettingRow>
+                </Button>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

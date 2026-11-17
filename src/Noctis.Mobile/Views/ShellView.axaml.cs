@@ -149,7 +149,8 @@ public partial class ShellView : UserControl
     /// concentric with it, and centred on its tab.</summary>
     internal const double TabEdge = PillInset + PillOverhang;
 
-    /// <summary>The tabs across the expanded bar: Home, Favorites, Playlists, Library, Search.</summary>
+    /// <summary>The tabs across the default bar: Home, Favorites, Playlists, Library, Search. Settings ›
+    /// Tab Bar can put two to five there (ShellViewModel.BarTabs); the layout below takes the count.</summary>
     internal const int TabCount = 5;
     private static readonly TimeSpan Morph = TimeSpan.FromMilliseconds(380);
     private static readonly TimeSpan Quick = TimeSpan.FromMilliseconds(200);
@@ -172,7 +173,7 @@ public partial class ShellView : UserControl
         _vm = DataContext as ShellViewModel;
         if (_vm != null) _vm.PropertyChanged += OnShellPropertyChanged;
         if (_vm != null) _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
-        ApplyChromeLayout();
+        ApplyBarTabs();
         SyncPages(animate: false);
         ShowPlayer(animate: false);
         ShowLyrics(animate: false);
@@ -208,6 +209,7 @@ public partial class ShellView : UserControl
         if (e.PropertyName == nameof(ShellViewModel.IsNowPlayingOpen)) ShowPlayer(animate: true);
         if (e.PropertyName == nameof(ShellViewModel.IsLyricsOpen)) ShowLyrics(animate: true);
         if (e.PropertyName == nameof(ShellViewModel.SelectedTab)) FadeInTab();
+        if (e.PropertyName == nameof(ShellViewModel.BarTabs)) ApplyBarTabs();
         if (e.PropertyName is nameof(ShellViewModel.IsTabBarCollapsed) or nameof(ShellViewModel.IsMiniBarVisible)
             or nameof(ShellViewModel.SelectedTab) or nameof(ShellViewModel.SafeArea) or nameof(ShellViewModel.IsSelecting))
             ApplyChromeLayout();
@@ -292,31 +294,64 @@ public partial class ShellView : UserControl
         _settleTimer.Start();
     }
 
-    /// <summary>One tab's width: the bar less <see cref="TabEdge"/> at each end, in five.</summary>
-    internal static double TabWidth(double barWidth) => Math.Max(0, barWidth - 2 * TabEdge) / TabCount;
+    /// <summary>One tab's width: the bar less <see cref="TabEdge"/> at each end, in as many as there are tabs.</summary>
+    internal static double TabWidth(double barWidth, int count = TabCount) => Math.Max(0, barWidth - 2 * TabEdge) / Math.Max(1, count);
 
     /// <summary>Where a tab's icon and label are centred across the bar.</summary>
-    internal static double TabCentre(double barWidth, int index) => TabEdge + (index + 0.5) * TabWidth(barWidth);
+    internal static double TabCentre(double barWidth, int index, int count = TabCount) => TabEdge + (index + 0.5) * TabWidth(barWidth, count);
 
     /// <summary>The selected tab's capsule: a little wider than its tab, the same on every tab.
     /// Beta 2 clamped one width against the bar's end (6 dp off its tab); beta 4 narrowed the
     /// end tabs' capsule instead (testers: "the size changes on first and last sections"). The
     /// tabs now sit <see cref="TabEdge"/> inside the ends, so the full capsule fits there.</summary>
-    internal static double SelectionPillWidth(double barWidth, int index) => TabWidth(barWidth) + 2 * PillOverhang;
+    internal static double SelectionPillWidth(double barWidth, int index, int count = TabCount) => TabWidth(barWidth, count) + 2 * PillOverhang;
 
     /// <summary>Where the selected tab's capsule starts: centred on its tab.</summary>
-    internal static double SelectionPillX(double barWidth, int index)
-        => TabCentre(barWidth, index) - SelectionPillWidth(barWidth, index) / 2;
+    internal static double SelectionPillX(double barWidth, int index, int count = TabCount)
+        => TabCentre(barWidth, index, count) - SelectionPillWidth(barWidth, index, count) / 2;
 
-    /// <summary>A tab's column in the bar (TabBar in the XAML).</summary>
-    internal static int TabIndex(MobileTab tab) => tab switch
+    /// <summary>The tabs on the bar now, in order (the default five before a view model is set).</summary>
+    private IReadOnlyList<MobileTab> BarTabs => _vm?.BarTabs ?? TabBarTabs.Defaults;
+
+    /// <summary>A tab's column in the bar (TabBar in the XAML); the first for a tab not on it.</summary>
+    internal int TabIndex(MobileTab tab) => Math.Max(0, IndexIn(BarTabs, tab));
+
+    private static int IndexIn(IReadOnlyList<MobileTab> tabs, MobileTab tab)
     {
-        MobileTab.Home => 0,
-        MobileTab.Favorites => 1,
-        MobileTab.Playlists => 2,
-        MobileTab.Library => 3,
-        _ => 4,
+        for (var i = 0; i < tabs.Count; i++)
+            if (tabs[i] == tab) return i;
+        return -1;
+    }
+
+    /// <summary>Each tab's button in the bar.</summary>
+    private Button TabButton(MobileTab tab) => tab switch
+    {
+        MobileTab.Home => HomeTab,
+        MobileTab.Favorites => FavoritesTab,
+        MobileTab.Playlists => PlaylistsTab,
+        MobileTab.Library => LibraryTab,
+        MobileTab.Search => SearchTab,
+        MobileTab.Songs => SongsTab,
+        MobileTab.Albums => AlbumsTab,
+        _ => ArtistsTab,
     };
+
+    /// <summary>Settings › Tab Bar, live: one column per tab on the bar, each tab's button in its
+    /// column and the others hidden, then the pill laid out again for the new count.</summary>
+    private void ApplyBarTabs()
+    {
+        var tabs = BarTabs;
+        if (TabBar.ColumnDefinitions.Count != tabs.Count)
+            TabBar.ColumnDefinitions = new ColumnDefinitions(string.Join(",", Enumerable.Repeat("*", tabs.Count)));
+        foreach (var tab in TabBarTabs.All)
+        {
+            var button = TabButton(tab);
+            var index = IndexIn(tabs, tab);
+            button.IsVisible = index >= 0;
+            if (index >= 0) Grid.SetColumn(button, index);
+        }
+        ApplyChromeLayout();
+    }
 
     /// <summary>How tall the expanded chrome stands (mini player + tabs, or tabs alone).</summary>
     internal static double ExpandedChromeHeight(bool miniVisible) => miniVisible ? TabHeight + Gap + MiniHeight : TabHeight;
@@ -356,7 +391,8 @@ public partial class ShellView : UserControl
 
         // Folded on the Search tab the current-tab circle is already Search: the round Search
         // button beside it was a second magnifier. It stands aside and the mini player takes its room.
-        var searchBubble = folded && vm.SelectedTab != MobileTab.Search;
+        // Without Search on the bar (Settings › Tab Bar) there is no round Search button either.
+        var searchBubble = folded && vm.HasSearchTab && vm.SelectedTab != MobileTab.Search;
         SearchBubble.Width = Bubble;
         SearchBubble.Height = Bubble;
         SearchBubble.Fade = searchBubble ? 1 : 0;
@@ -372,10 +408,11 @@ public partial class ShellView : UserControl
         SelectionBar.Margin = miniMargin;
 
         var index = TabIndex(vm.SelectedTab);
-        var pillWidth = SelectionPillWidth(width, index);
+        var count = vm.BarTabs.Count;
+        var pillWidth = SelectionPillWidth(width, index, count);
         SelectionPill.Width = pillWidth;
         SelectionPill.Height = TabHeight - 2 * PillInset;
-        var pillX = TransformOperations.Parse($"translateX({SelectionPillX(width, index).ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");
+        var pillX = TransformOperations.Parse($"translateX({SelectionPillX(width, index, count).ToString(System.Globalization.CultureInfo.InvariantCulture)}px)");
         if (_transitionsOn && index != _pillIndex && _pillIndex >= 0) LiftSelectionPill();
         _pillIndex = index;
         SelectionPillHost.RenderTransform = pillX;

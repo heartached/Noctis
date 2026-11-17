@@ -559,6 +559,16 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Tab Bar: which tabs are on the bottom bar and in what order (Discord #mobile-beta 11-17). -->
+                                    <Button Name="TabBarRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.TabBar}" AutomationProperties.Name="{loc:T Mobile.Settings.TabBar}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.TabBar}" />
+                                            <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Now Playing Artwork: Cover / Vinyl / CD on the glass menu, as Theme. -->
                                     <Button Name="NowPlayingArtworkRow" Classes="row" Command="{Binding ShowNowPlayingArtworkMenuCommand}"
                                             AutomationProperties.Name="{Binding NowPlayingArtworkRowName}">
@@ -965,6 +975,9 @@
                         </Panel>
                         <Panel Name="HistoryHost" IsVisible="{Binding ShowsHistoryPane}">
                             <views:ListeningHistoryPane Name="HistoryPane" DataContext="{Binding History}" />
+                        </Panel>
+                        <Panel Name="TabBarHost" IsVisible="{Binding ShowsTabBarPane}">
+                            <views:TabBarPane Name="TabBarPane" DataContext="{Binding TabBar}" />
                         </Panel>
 
                         <!-- Accent: the colours and Match Artwork, then whether album and artist pages take the cover's colour. -->

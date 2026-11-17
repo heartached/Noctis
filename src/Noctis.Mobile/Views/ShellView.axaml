@@ -152,6 +152,43 @@
                         <ContentControl Grid.Row="1" Name="FavoritesHost" Content="{Binding FavoritesRoot}"
                                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                     </Grid>
+                    <!-- Songs, Albums and Artists as tabs (Settings › Tab Bar): the Library rows' pages,
+                         embedded under the tab's own header as Favorites is. Their roots exist once the
+                         tab has been on the bar (ShellViewModel.SongsRoot); before that the hosts are empty. -->
+                    <Grid Name="SongsRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsSongsSelected}">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Classes="tab-header">
+                            <views:FitWidth Name="SongsTitleFit" VerticalAlignment="Center">
+                                <TextBlock Name="SongsTitle" Classes="title" Text="{loc:T Nav.Songs}" TextTrimming="CharacterEllipsis" />
+                            </views:FitWidth>
+                            <views:ListTools Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" DataContext="{Binding SongsRoot}" />
+                            <views:ProfileButton Grid.Column="2" Name="SongsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                 AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+                        </Grid>
+                        <ContentControl Grid.Row="1" Name="SongsHost" Content="{Binding SongsRoot}"
+                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                    </Grid>
+                    <Grid Name="AlbumsRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsAlbumsSelected}">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Classes="tab-header">
+                            <views:FitWidth Name="AlbumsTitleFit" VerticalAlignment="Center">
+                                <TextBlock Name="AlbumsTitle" Classes="title" Text="{loc:T Nav.Albums}" TextTrimming="CharacterEllipsis" />
+                            </views:FitWidth>
+                            <views:ProfileButton Grid.Column="1" Name="AlbumsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                 AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+                        </Grid>
+                        <ContentControl Grid.Row="1" Name="AlbumsHost" Content="{Binding AlbumsRoot}"
+                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                    </Grid>
+                    <Grid Name="ArtistsRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsArtistsSelected}">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Classes="tab-header">
+                            <views:FitWidth Name="ArtistsTitleFit" VerticalAlignment="Center">
+                                <TextBlock Name="ArtistsTitle" Classes="title" Text="{loc:T Nav.Artists}" TextTrimming="CharacterEllipsis" />
+                            </views:FitWidth>
+                            <views:ProfileButton Grid.Column="1" Name="ArtistsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                 AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+                        </Grid>
+                        <ContentControl Grid.Row="1" Name="ArtistsHost" Content="{Binding ArtistsRoot}"
+                                        HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                    </Grid>
                 </Panel>
                 <!-- Pages pushed over the tab (ShellView.SyncPages). -->
                 <views:PageStack Name="PageHost" PageBackground="{DynamicResource PhoneBackgroundBrush}" />
@@ -189,7 +226,9 @@
                                                         UseAppGlass="False" IsGlassActive="True" BlurRadius="0" EdgeThickness="0" />
                                 </Panel>
                                 <!-- Filled glyphs on every tab, as Apple's: the selected one takes the accent. -->
-                                <!-- Apple Music's order: Home first (the start tab), Search last. -->
+                                <!-- Apple Music's order: Home first (the start tab), Search last. Settings ›
+                                     Tab Bar picks which tabs stand here and in what order: the code-behind
+                                     gives the bar one column per tab and hides the rest (ApplyBarTabs). -->
                                 <Grid Name="TabBar" ColumnDefinitions="*,*,*,*,*">
                                     <Button Grid.Column="0" Name="HomeTab" Classes="tab" Classes.selected="{Binding IsHomeSelected}"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Home}">
@@ -226,6 +265,27 @@
                                             <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Mobile.Search}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
+                                    <Button Name="SongsTab" Classes="tab" Classes.selected="{Binding IsSongsSelected}" IsVisible="False"
+                                            Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Songs}">
+                                        <StackPanel Spacing="2">
+                                            <PathIcon Data="{DynamicResource ChipSongsIcon}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Songs}" /></views:FitWidth>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="AlbumsTab" Classes="tab" Classes.selected="{Binding IsAlbumsSelected}" IsVisible="False"
+                                            Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Albums}">
+                                        <StackPanel Spacing="2">
+                                            <PathIcon Data="{DynamicResource ChipAlbumsIcon}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Albums}" /></views:FitWidth>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Name="ArtistsTab" Classes="tab" Classes.selected="{Binding IsArtistsSelected}" IsVisible="False"
+                                            Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Artists}">
+                                        <StackPanel Spacing="2">
+                                            <PathIcon Data="{DynamicResource ChipArtistsIcon}" />
+                                            <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Artists}" /></views:FitWidth>
+                                        </StackPanel>
+                                    </Button>
                                 </Grid>
                             </Panel>
 
@@ -238,6 +298,9 @@
                                     <PathIcon Data="{DynamicResource TabFavoritesFilledIcon}" IsVisible="{Binding IsFavoritesSelected}" />
                                     <PathIcon Data="{DynamicResource TabPlaylistsFilledIcon}" IsVisible="{Binding IsPlaylistsSelected}" />
                                     <PathIcon Data="{DynamicResource TabSearchFilledIcon}" IsVisible="{Binding IsSearchSelected}" />
+                                    <PathIcon Data="{DynamicResource ChipSongsIcon}" IsVisible="{Binding IsSongsSelected}" />
+                                    <PathIcon Data="{DynamicResource ChipAlbumsIcon}" IsVisible="{Binding IsAlbumsSelected}" />
+                                    <PathIcon Data="{DynamicResource ChipArtistsIcon}" IsVisible="{Binding IsArtistsSelected}" />
                                 </Panel>
                             </Button>
                         </Panel>
