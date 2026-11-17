@@ -26,7 +26,9 @@ public sealed class PageStack : Panel
         AvaloniaProperty.Register<PageStack, IBrush?>(nameof(PageBackground));
 
     /// <summary>Behind each page, so a page sliding over another hides it (the tab pages draw on
-    /// the shell's colour); null for sheets, whose rounded tops show what lies behind.</summary>
+    /// the shell's colour); none behind a page that draws its own backdrop
+    /// (<see cref="MobilePage.DrawsOwnBackdrop"/>: Settings, Account), whose rounded top shows what
+    /// lies behind.</summary>
     public IBrush? PageBackground
     {
         get => GetValue(PageBackgroundProperty);
@@ -238,7 +240,7 @@ public sealed class PageStack : Panel
             VerticalContentAlignment = VerticalAlignment.Stretch,
             ZIndex = z ?? (_z += 2),
         };
-        view.Bind(BackgroundProperty, this.GetObservable(PageBackgroundProperty));
+        if (!page.DrawsOwnBackdrop) view.Bind(BackgroundProperty, this.GetObservable(PageBackgroundProperty));
         _views[page] = view;
         Children.Add(view);
         return view;
