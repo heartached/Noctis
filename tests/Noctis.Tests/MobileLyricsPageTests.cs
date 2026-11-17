@@ -185,7 +185,9 @@ public class MobileLyricsPageTests
 
     /// <summary>S23 11-14: the ⋯ menu stuttered only over the lyrics (every frame of its pop
     /// re-blurred each line under the dim). A menu over the page holds the lines still and draws the
-    /// lyric column from a bitmap at the screen's scale; closing it drops the cache and catches up.</summary>
+    /// lyric column from a bitmap at the screen's scale; once its close pop has run (11-17: released
+    /// at the tap, the first close frames drew every blurred line live under the closing glass)
+    /// the cache goes and the page catches up.</summary>
     [AvaloniaFact]
     public void AMenuOverTheLyrics_HoldsTheLines_InABitmap_UntilItCloses()
     {
@@ -210,8 +212,26 @@ public class MobileLyricsPageTests
 
         shell.CloseSheet();
         Assert.False(shell.IsMenuOpen);
+        Assert.True(page.IsHeldForMenu);                             // under the closing card
+        Assert.NotNull(scroll.CacheMode);
+        var waited = System.Diagnostics.Stopwatch.StartNew();
+        while (page.IsHeldForMenu && waited.ElapsedMilliseconds < 3000)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Thread.Sleep(10);
+        }
         Assert.False(page.IsHeldForMenu);
         Assert.Null(scroll.CacheMode);
+        Assert.InRange(waited.ElapsedMilliseconds, 0, 1000);
+
+        shell.OpenCurrentLinksCommand.Execute(null);                 // a menu that opens again first
+        Assert.True(page.IsHeldForMenu);
+        shell.CloseSheet();
+        shell.OpenCurrentLinksCommand.Execute(null);
+        Thread.Sleep((int)LyricsPage.HoldReleaseDelay.TotalMilliseconds + 100);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.True(page.IsHeldForMenu);
+        Assert.NotNull(scroll.CacheMode);
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
