@@ -80,8 +80,11 @@ internal sealed class ComputerLinkService
     internal const int PushChunkItems = 500;
     internal const long PushChunkBytes = 1024 * 1024;
 
-    /// <summary>How often a signed-in link syncs on its own (also once at start).</summary>
+    /// <summary>How often a signed-in link syncs on its own.</summary>
     public static readonly TimeSpan AutoSyncInterval = TimeSpan.FromMinutes(10);
+
+    /// <summary>The first automatic sync after start waits this long (the library loads first).</summary>
+    public static readonly TimeSpan FirstAutoSyncDelay = TimeSpan.FromMinutes(1);
 
     public ComputerLinkService(ILibraryService library, IPersistenceService persistence, ILibrarySyncService ledger,
         ISyncApplier applier, NoctisHandlerFactory handlers, SecretProtector? protector = null)
@@ -226,12 +229,19 @@ internal sealed class ComputerLinkService
 
     private async Task<ComputerLinkResult> SyncCoreAsync(NoctisServerClient client, ComputerLinkAccount account, CancellationToken ct)
     {
-        // 1. Pair the other computer's songs with this computer's files.
+        // 1. Pair the other computer's songs with this computer's files. A library not loaded yet
+        // (the app just started) or empty pairs nothing and changes nothing: syncing then would
+        // drop every pair and merge them again as new on the next sync.
+        var tracks = _library.Tracks.ToList();
+        if (!tracks.Any(t => t.SourceType == SourceType.Local))
+        {
+            DebugLog.Write("ComputerLink", "no songs in this library (yet): sync skipped");
+            return new ComputerLinkResult(0, 0, 0);
+        }
         var songs = await client.GetAllSongsAsync(null, ct).ConfigureAwait(false);
         var sticky = new Dictionary<Guid, Guid>();
         foreach (var (r, l) in account.Links)
             if (NoctisRemoteIds.TryParseSyncId(r, out var rid) && NoctisRemoteIds.TryParseSyncId(l, out var lid)) sticky[rid] = lid;
-        var tracks = _library.Tracks.ToList();
         var toLocal = NoctisLocalMatcher.Match(songs, tracks, sticky);
         // A song the catalog left out (the other computer is scanning) keeps its pair while this
         // computer still has the file: a partial list proves nothing about it.
@@ -436,8 +446,8 @@ internal sealed class ComputerLinkService
 
     private CancellationTokenSource? _auto;
 
-    /// <summary>Syncs now and every <see cref="AutoSyncInterval"/> while signed in. A failed
-    /// sync (the other computer off, another network) waits for the next turn.</summary>
+    /// <summary>Syncs after <see cref="FirstAutoSyncDelay"/>, then every <see cref="AutoSyncInterval"/>
+    /// while signed in. A failed sync (the other computer off, another network) waits for the next turn.</summary>
     public void StartAutoSync()
     {
         if (_auto is not null) return;
@@ -445,6 +455,8 @@ internal sealed class ComputerLinkService
         _auto = cts;
         _ = Task.Run(async () =>
         {
+            try { await Task.Delay(FirstAutoSyncDelay, cts.Token).ConfigureAwait(false); }
+            catch (OperationCanceledException) { return; }
             using var timer = new PeriodicTimer(AutoSyncInterval);
             do
             {

@@ -3085,6 +3085,25 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.Section.PcApps" xml:space="preserve"><value>Apps auf diesem PC</value><comment>Settings section label, Account &amp; Devices tab (Local API)</comment></data>
   <data name="Phone.Title" xml:space="preserve"><value>Noctis auf deinem Smartphone</value><comment>Phone app card title; its switch turns Noctis Server on/off</comment></data>
   <data name="Phone.Description" xml:space="preserve"><value>Diese Bibliothek auf deinem Smartphone streamen und laden.</value><comment>Phone app card subtitle</comment></data>
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Andere Computer</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>Mit einem anderen Computer synchronisieren</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Favoriten, Bewertungen, Wiedergabezahlen und Playlists bleiben auf zwei Computern gleich. Jeder behält seine eigenen Musikdateien; Songs werden über Titel, Interpret und Länge zugeordnet.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>Schalte auf dem anderen Computer „{0}“ und „{1}“ ein und öffne {2} › {3}. Gib hier seine Adresse und dein Konto ein.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>Adresse vom anderen Computer</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>E-Mail oder Benutzername</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>Passwort</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>Verbinden</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>Prüfe, ob der andere Computer diesen Sicherheitscode zeigt:</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>Anmelden</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>Synchronisiert mit {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>Synchronisiere…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>Jetzt synchronisieren</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>Abmelden</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>Der andere Computer antwortet nicht. Ist Noctis dort geöffnet, „{0}“ eingeschaltet und im selben Netzwerk?</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>Die Synchronisierung ist auf dem anderen Computer aus. Schalte dort „{0}“ ein.</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>E-Mail oder Passwort stimmen nicht.</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>Synchronisierung fehlgeschlagen: {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>Der andere Computer hat diesen abgemeldet. Melde dich erneut an, um weiter zu synchronisieren.</value><comment>The other computer removed this one</comment></data>
   <data name="Phone.NeedsAccount" xml:space="preserve"><value>Lege zuerst oben dein Konto an.</value><comment>Phone app card, shown when there is no account</comment></data>
   <data name="Phone.CodeHint" xml:space="preserve"><value>Dein Smartphone zeigt diesen Code auch. Melde dich nur an, wenn sie übereinstimmen.</value><comment>Under the certificate security code in the pairing panel</comment></data>
   <data name="Phone.Synced" xml:space="preserve"><value>Synchronisiert {0}</value><comment>Phone list row status; {0} = 'just now', '5 min ago', '3 h ago' or 'on 9 Oct, 14:05'</comment></data>

@@ -442,6 +442,64 @@ public class ComputerLinkServiceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ALibraryNotLoadedYet_SyncsNothing_AndKeepsThePairs()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var link = await LinkedAsync();
+        await link.SyncNowAsync(ct);
+        Assert.Single(link.Account!.Links);
+
+        // The app just started: the same data folder, its library not loaded yet.
+        var starting = new LibraryService(new MetadataService(), _b.Persistence, new SqliteLibraryIndexService(_b.Persistence),
+            new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: _b.Ledger);
+        var early = new ComputerLinkService(starting, _b.Persistence, _b.Ledger, _b.Adapter, NoctisHandlers.Sockets, _b.Protector);
+
+        Assert.Equal(new ComputerLinkResult(0, 0, 0), await early.SyncNowAsync(ct));
+        Assert.Single(Link(_b).Account!.Links);
+    }
+
+    // ── The Settings card ────────────────────────────────────────────────
+
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task SettingsCard_ConnectShowsTheCode_SignInSyncs_SignOutReturnsToTheForm()
+    {
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        await _a.EditAsync("One", t => t.IsFavorite = true);
+        var vm = new Noctis.ViewModels.SettingsViewModel(_b.Persistence, new FakeLibraryService(), new NoOpPlayHistory()) { ComputerLink = Link(_b) };
+        Assert.True(vm.IsComputerLinkFormVisible);
+        // The steps name the other computer's switches as its Settings shows them.
+        Assert.Equal("On the other computer, turn on “Noctis on your phone” and “Sync with your phone”, then open Connect a phone › Enter manually. Type its address and your account here.",
+            vm.ComputerLinkHelp);
+
+        vm.ComputerLinkAddress = _url;
+        vm.ComputerLinkUser = "alice";
+        vm.ComputerLinkPassword = "wrong";
+        await vm.ConnectComputerLinkCommand.ExecuteAsync(null);
+        Assert.True(vm.IsComputerLinkConfirming);
+        Assert.False(vm.IsComputerLinkFormVisible);
+        await vm.ConfirmComputerLinkCommand.ExecuteAsync(null);
+        Assert.False(vm.IsComputerLinked);
+        Assert.Equal("The email or password isn't right.", vm.ComputerLinkError);
+
+        vm.ComputerLinkPassword = "correct horse";
+        await vm.ConfirmComputerLinkCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsComputerLinked, vm.ComputerLinkError);
+        Assert.Equal(string.Empty, vm.ComputerLinkError);
+        Assert.Equal(string.Empty, vm.ComputerLinkPassword);              // not kept after sign-in
+        Assert.StartsWith("Synced with ", vm.ComputerLinkStatus);
+        Assert.Contains("Last synced", vm.ComputerLinkStatus);
+        Assert.True(_b.Song("One").IsFavorite);                           // signing in syncs
+
+        await vm.SignOutComputerLinkCommand.ExecuteAsync(null);
+        Assert.False(vm.IsComputerLinked);
+        Assert.True(vm.IsComputerLinkFormVisible);
+    }
+
+    [Fact]
     public void Merge_RulesForAFirstPairing()
     {
         var at1 = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);

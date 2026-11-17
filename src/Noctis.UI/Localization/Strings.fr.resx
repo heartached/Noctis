@@ -6536,6 +6536,25 @@
     <comment>Phone app card title; its switch turns Noctis Server on/off</comment>
   </data>
   <data name="Phone.Description" xml:space="preserve">
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Autres ordinateurs</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>Synchroniser avec un autre ordinateur</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Favoris, notes, nombres d'écoutes et playlists restent identiques sur deux ordinateurs. Chacun garde ses propres fichiers ; les morceaux sont associés par titre, artiste et durée.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>Sur l'autre ordinateur, activez « {0} » et « {1} », puis ouvrez {2} › {3}. Saisissez ici son adresse et votre compte.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>Adresse affichée sur l'autre ordinateur</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>E-mail ou nom d'utilisateur</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>Mot de passe</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>Se connecter</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>Vérifiez que l'autre ordinateur affiche ce code de sécurité :</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>Connexion</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>Synchronisé avec {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>Synchronisation…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>Synchroniser</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>Se déconnecter</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>L'autre ordinateur ne répond pas. Noctis y est-il ouvert, avec « {0} » activé, sur le même réseau ?</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>La synchronisation est désactivée sur l'autre ordinateur. Activez-y « {0} ».</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>L'e-mail ou le mot de passe est incorrect.</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>Synchronisation impossible : {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>L'autre ordinateur a déconnecté celui-ci. Reconnectez-vous pour continuer à synchroniser.</value><comment>The other computer removed this one</comment></data>
     <value>Écoutez et téléchargez cette bibliothèque sur votre téléphone.</value>
     <comment>Phone app card subtitle</comment>
   </data>

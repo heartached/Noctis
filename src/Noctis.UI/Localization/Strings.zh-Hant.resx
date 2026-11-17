@@ -6502,6 +6502,25 @@
     <comment>Phone app card title; its switch turns Noctis Server on/off</comment>
   </data>
   <data name="Phone.Description" xml:space="preserve">
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>其他電腦</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>與另一台電腦同步</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>最愛、評分、播放次數和播放清單在兩台電腦上保持一致。各自保留自己的音樂檔案；歌曲依標題、藝人和長度配對。</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>在另一台電腦上開啟「{0}」和「{1}」，然後開啟 {2} › {3}。在這裡輸入它的位址和你的帳戶。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>另一台電腦上顯示的位址</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>電子郵件或使用者名稱</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>密碼</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>連接</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>請確認另一台電腦顯示的是這個安全碼：</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>登入</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>已與 {0} 同步</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>正在同步…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>立即同步</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>登出</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>另一台電腦沒有回應。它是否開著 Noctis、開啟了「{0}」，並在同一網路中？</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>另一台電腦上的同步已關閉。請在那台電腦上開啟「{0}」。</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>電子郵件或密碼不正確。</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>無法同步：{0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>另一台電腦已將這台電腦登出。請重新登入以繼續同步。</value><comment>The other computer removed this one</comment></data>
     <value>在手機上串流播放和下載這個媒體庫。</value>
     <comment>Phone app card subtitle</comment>
   </data>

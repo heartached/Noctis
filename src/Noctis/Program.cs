@@ -570,6 +570,19 @@ internal class Program
                           ?? new Noctis.Models.AppSettings(),
                     sp.GetRequiredService<IPersistenceService>()));
             services.AddSingleton<Services.Sync.ITrackStateRecorder>(sp => sp.GetRequiredService<Services.Sync.ILibrarySyncService>());
+            // Sync with another computer (Settings › Account & Devices): this computer signs in to
+            // the other one's Noctis Server. What arrives lands as a phone's changes do (UI thread).
+            services.AddSingleton(sp => new Services.Sync.ComputerLinkService(
+                sp.GetRequiredService<ILibraryService>(),
+                sp.GetRequiredService<IPersistenceService>(),
+                sp.GetRequiredService<Services.Sync.ILibrarySyncService>(),
+                new Services.Server.LibraryServerAdapter(
+                    sp.GetRequiredService<ILibraryService>(),
+                    sp.GetRequiredService<IPersistenceService>(),
+                    sp.GetRequiredService<IPlayHistoryService>(),
+                    () => App.Services?.GetService<MainWindowViewModel>()?.Sidebar.LoadPlaylistsAsync() ?? Task.CompletedTask,
+                    marshal: work => Avalonia.Threading.Dispatcher.UIThread.CheckAccess() ? work() : Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(work)),
+                Mobile.Services.Account.NoctisHandlers.Sockets));
         }
 
         // Bulk lyrics (fetch / remove) and Lyrics Studio share one writer so every path

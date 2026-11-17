@@ -6502,6 +6502,25 @@
     <comment>Phone app card title; its switch turns Noctis Server on/off</comment>
   </data>
   <data name="Phone.Description" xml:space="preserve">
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>أجهزة كمبيوتر أخرى</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>المزامنة مع كمبيوتر آخر</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>تبقى المفضلة والتقييمات وعدد مرات التشغيل وقوائم التشغيل متطابقة على جهازي كمبيوتر. يحتفظ كل جهاز بملفات الموسيقى الخاصة به، وتُطابَق الأغاني حسب العنوان والفنان والمدة.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>على الكمبيوتر الآخر، شغّل «{0}» و«{1}»، ثم افتح {2} › {3}. اكتب عنوانه وحسابك هنا.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>العنوان الظاهر على الكمبيوتر الآخر</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>البريد الإلكتروني أو اسم المستخدم</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>كلمة المرور</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>اتصال</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>تحقّق من أن الكمبيوتر الآخر يعرض رمز الأمان هذا:</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>تسجيل الدخول</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>تمت المزامنة مع {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>جارٍ المزامنة…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>مزامنة الآن</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>تسجيل الخروج</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>لم يستجب الكمبيوتر الآخر. هل Noctis مفتوح هناك مع تشغيل «{0}»، وعلى الشبكة نفسها؟</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>المزامنة متوقفة على الكمبيوتر الآخر. شغّل «{0}» هناك.</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>البريد الإلكتروني أو كلمة المرور غير صحيحة.</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>تعذّرت المزامنة: {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>سجّل الكمبيوتر الآخر خروج هذا الكمبيوتر. سجّل الدخول مجددًا لمتابعة المزامنة.</value><comment>The other computer removed this one</comment></data>
     <value>استمع إلى هذه المكتبة ونزّلها على هاتفك.</value>
     <comment>Phone app card subtitle</comment>
   </data>

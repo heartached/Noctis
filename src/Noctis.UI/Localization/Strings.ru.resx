@@ -3093,6 +3093,25 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Section.PcApps" xml:space="preserve"><value>Приложения на этом ПК</value><comment>Settings section label, Account &amp; Devices tab (Local API)</comment></data>
   <data name="Phone.Title" xml:space="preserve"><value>Noctis на телефоне</value><comment>Phone app card title; its switch turns Noctis Server on/off</comment></data>
   <data name="Phone.Description" xml:space="preserve"><value>Слушайте и скачивайте эту медиатеку на телефоне.</value><comment>Phone app card subtitle</comment></data>
+  <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Другие компьютеры</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
+  <data name="PcSync.Title" xml:space="preserve"><value>Синхронизация с другим компьютером</value><comment>Sync with another computer card title</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Избранное, оценки, число прослушиваний и плейлисты одинаковы на двух компьютерах. У каждого свои музыкальные файлы; песни сопоставляются по названию, исполнителю и длительности.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>На другом компьютере включите «{0}» и «{1}», затем откройте {2} › {3}. Введите здесь его адрес и вашу учётную запись.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Address" xml:space="preserve"><value>Адрес с другого компьютера</value><comment>Address box watermark</comment></data>
+  <data name="PcSync.User" xml:space="preserve"><value>Эл. почта или имя пользователя</value><comment>Email or username box watermark</comment></data>
+  <data name="PcSync.Password" xml:space="preserve"><value>Пароль</value><comment>Password box watermark</comment></data>
+  <data name="PcSync.Connect" xml:space="preserve"><value>Подключить</value><comment>Button: look up the other computer and show its security code</comment></data>
+  <data name="PcSync.CompareCode" xml:space="preserve"><value>Проверьте, что другой компьютер показывает этот код безопасности:</value><comment>Shown above the other computer's security code before signing in</comment></data>
+  <data name="PcSync.SignIn" xml:space="preserve"><value>Войти</value><comment>Button: sign in to the other computer</comment></data>
+  <data name="PcSync.SyncedWith" xml:space="preserve"><value>Синхронизировано с {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.Syncing" xml:space="preserve"><value>Синхронизация…</value><comment>While a sync runs</comment></data>
+  <data name="PcSync.SyncNow" xml:space="preserve"><value>Синхронизировать</value><comment>Button</comment></data>
+  <data name="PcSync.SignOut" xml:space="preserve"><value>Выйти</value><comment>Button: stop syncing with the other computer</comment></data>
+  <data name="PcSync.ErrorUnreachable" xml:space="preserve"><value>Другой компьютер не отвечает. Открыт ли там Noctis с включённым «{0}» и в той же сети?</value><comment>Error; {0} = the phone card title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSyncOff" xml:space="preserve"><value>Синхронизация выключена на другом компьютере. Включите там «{0}».</value><comment>Error; {0} = the phone sync switch title (filled from that string)</comment></data>
+  <data name="PcSync.ErrorSignIn" xml:space="preserve"><value>Неверная эл. почта или пароль.</value><comment>Error</comment></data>
+  <data name="PcSync.ErrorOther" xml:space="preserve"><value>Не удалось синхронизировать: {0}</value><comment>Error; {0} = error message</comment></data>
+  <data name="PcSync.SignedOutThere" xml:space="preserve"><value>Другой компьютер отключил этот. Войдите снова, чтобы продолжить синхронизацию.</value><comment>The other computer removed this one</comment></data>
   <data name="Phone.NeedsAccount" xml:space="preserve"><value>Сначала создайте аккаунт выше.</value><comment>Phone app card, shown when there is no account</comment></data>
   <data name="Phone.CodeHint" xml:space="preserve"><value>Телефон покажет такой же код. Входите, только если коды совпадают.</value><comment>Under the certificate security code in the pairing panel</comment></data>
   <data name="Phone.Synced" xml:space="preserve"><value>Синхронизирован {0}</value><comment>Phone list row status; {0} = 'just now', '5 min ago', '3 h ago' or 'on 9 Oct, 14:05'</comment></data>
