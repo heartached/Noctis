@@ -252,6 +252,54 @@ public class MobileMotionTests
         window.Close();
     }
 
+    /// <summary>
+    /// Beta 4 (A55 recording, 11-16): Settings › Listening History › Show All pushed Recently
+    /// Played inside the Settings sheet, whose stack gave its pages no background (the sheet's own
+    /// pages draw theirs), so Home, its large title and covers, and the tab bar showed through the
+    /// list once the push landed. The pushed page covers what lies under the sheet: hiding Home
+    /// changes no pixel.
+    /// </summary>
+    [AvaloniaFact]
+    public void ListeningHistoryShowAll_PushedInsideSettings_CoversHome()
+    {
+        var (rig, window, view) = Open(playing: true);
+        using var _ = rig;
+        rig.Shell.OpenSettingsCommand.Execute(null);
+        Settle(window);
+        var settings = Assert.IsType<SettingsPageViewModel>(rig.Shell.CurrentPage);
+        settings.OpenPaneCommand.Execute(SettingsPane.History);
+        Settle(window);
+        settings.History.ShowAllCommand.Execute(null);
+        Settle(window);
+
+        var list = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
+        var sheet = view.FindControl<PageStack>("SheetHost")!;
+        Assert.Same(list, sheet.Top);
+        Assert.NotNull(sheet.ViewOf(list)!.Background);
+        var home = Find<HomePage>(view)!;
+        Assert.True(home.IsEffectivelyVisible);   // still under the sheet, as in the recording
+
+        // The drawn frames (NOCTIS_TEST_SKIA=1; the stubs draw nothing): with Home and without it.
+        if (HeadlessTestApp.RealRendering)
+        {
+            byte[] Frame(string name)
+            {
+                using var stream = new MemoryStream();
+                window.CaptureRenderedFrame()!.Save(stream);
+                if (Environment.GetEnvironmentVariable("NOCTIS_MOTION_OUT") is { Length: > 0 } dir)
+                    File.WriteAllBytes(Path.Combine(dir, name + ".png"), stream.ToArray());
+                using var bitmap = SkiaSharp.SKBitmap.Decode(stream.ToArray());
+                return bitmap.Bytes;
+            }
+            var withHome = Frame("show_all_in_sheet");
+            home.IsVisible = false;
+            window.UpdateLayout();
+            var withoutHome = Frame("show_all_in_sheet_no_home");
+            Assert.True(withHome.AsSpan().SequenceEqual(withoutHome), "Home shows through the page pushed inside the sheet");
+        }
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void SettingsPane_SlidesOnTheSamePush()
     {

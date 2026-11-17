@@ -69,6 +69,12 @@ public abstract partial class MobilePage : ObservableObject
     /// and that is opened again and again (Settings).</summary>
     public virtual bool KeepsView => false;
 
+    /// <summary>The page's view draws its own backdrop (Settings and Account: the grouped sheet with
+    /// its rounded top), so <see cref="Views.PageStack"/> puts no page colour behind it. Every other
+    /// page draws on the stack's colour, in a sheet too (Listening History's Show All): without it the
+    /// app under the sheet showed through the page.</summary>
+    public virtual bool DrawsOwnBackdrop => false;
+
     public override string ToString() => Title;
 
     /// <summary>The UI language changed: every binding on the page re-reads (titles, counts,

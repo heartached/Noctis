@@ -362,8 +362,10 @@
         <!-- Over the app while a sheet is up: dims it and takes the taps meant for it. -->
         <Border Name="SheetDim" Background="Black" Opacity="0" IsVisible="False" />
 
-        <!-- Sheets (Settings) and the pages pushed inside them (Account), over the tab bar. -->
-        <views:PageStack Name="SheetHost" Margin="{Binding TopSafePadding}" />
+        <!-- Sheets (Settings) and the pages pushed inside them (Account, Listening History's Show
+             All), over the tab bar. A pushed page that draws no backdrop of its own gets the page
+             colour, as in PageHost: the app under the sheet no longer shows through it. -->
+        <views:PageStack Name="SheetHost" Margin="{Binding TopSafePadding}" PageBackground="{DynamicResource PhoneBackgroundBrush}" />
 
         <!-- Always dark (ruling 8), whatever the app theme: the scope makes Fluent's slider
              tracks and theme-brushed icons resolve their dark resources over the dark scrim.

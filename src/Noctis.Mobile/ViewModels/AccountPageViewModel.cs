@@ -53,6 +53,9 @@ public sealed partial class AccountPageViewModel : MobilePage
     public ShellViewModel Shell { get; }
     public override string Title => Loc.T("Mobile.Account.Title");
 
+    /// <summary>The grouped sheet (PageBackdrop) with its rounded top.</summary>
+    public override bool DrawsOwnBackdrop => true;
+
     // ── Signed out: the form ──
 
     [ObservableProperty]
