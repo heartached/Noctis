@@ -31,8 +31,7 @@ public partial class SettingsViewModel
     {
         ApplyPlayerSettings(); // the island button and the artwork click
         // Player › Clicking the artwork: the Mini Player choice leaves / rejoins the list.
-        ArtworkClickOptions = BuildArtworkClickOptions(value);
-        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        RebuildArtworkClickOptions();
         OnPropertyChanged(nameof(ShowArtworkLyricsHint));
         if (_settingsLoaded) _ = SaveAsync();
     }

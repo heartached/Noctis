@@ -316,6 +316,41 @@ public class BuiltInFeaturesTests : IDisposable
         }
     }
 
+    /// <summary>Found by clicking in the app: with the Player page on screen, Mini Player off and
+    /// on again left "Clicking the artwork" on Lyrics Page for good. The picker echoed the
+    /// option it was showing while its list was rebuilt, and that echo was stored over the
+    /// user's Mini Player choice.</summary>
+    [AvaloniaFact]
+    public void MiniPlayerOffAndOnAgain_WithThePlayerPageOnScreen_KeepsTheStoredArtworkChoice()
+    {
+        var vm = Settings();
+        vm.PlaybackBarArtworkClick = "MiniPlayer";
+        // As in the app: the feature is already off when the page first shows its picker.
+        vm.MiniPlayerEnabled = false;
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+        var view = new SettingsView { DataContext = vm };
+        var window = new Window { Width = 920, Height = 720, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
+            Assert.Equal("LyricsPage", vm.SelectedArtworkClickOption?.Value);
+            // The switch lives on another page: the Player page stays loaded behind it.
+            vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+            Dispatcher.UIThread.RunJobs();
+
+            vm.MiniPlayerEnabled = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
+            Assert.Equal("MiniPlayer", vm.SelectedArtworkClickOption?.Value);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     /// <summary>The rest of Mini Player off: the island's Mini player button switch says why
     /// it is greyed, Appearance › Text Animation drops its Mini Player rows (stored values
     /// kept), and Settings search no longer finds the hidden mini player rows and card.</summary>

@@ -1189,6 +1189,21 @@ public partial class SettingsViewModel : ViewModelBase
             .Select(a => new LyricsChoiceOption(a.ToString(), Loc.T($"Settings.ArtworkClick.{a}")))
             .ToList();
 
+    /// <summary>
+    /// Rebuilds the picker's list (the Mini Player feature switched, the language changed) and
+    /// re-reads the selection. While the list is swapped the picker hands back the option it
+    /// was showing, and that is no pick: with the feature just switched back on it was the
+    /// stand-in Lyrics Page, which then replaced the user's stored Mini Player for good.
+    /// </summary>
+    private void RebuildArtworkClickOptions()
+    {
+        _rebuildingArtworkClickOptions = true;
+        try { ArtworkClickOptions = BuildArtworkClickOptions(MiniPlayerEnabled); }
+        finally { _rebuildingArtworkClickOptions = false; }
+        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+    }
+    private bool _rebuildingArtworkClickOptions;
+
     /// <summary>What a click on the island's artwork does now: the stored choice, with Mini
     /// Player read as the lyrics page while that feature is off (the stored choice is kept).</summary>
     private IslandArtworkClick EffectiveArtworkClick =>
@@ -1204,7 +1219,7 @@ public partial class SettingsViewModel : ViewModelBase
         set
         {
             // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
-            if (value is null) return;
+            if (value is null || _rebuildingArtworkClickOptions) return;
             // Echoing the shown option back is no pick: a stored Mini Player shown as the
             // lyrics page (feature off) stays stored for when the feature comes back.
             if (value.Value == EffectiveArtworkClick.ToString()) return;
@@ -1457,8 +1472,7 @@ public partial class SettingsViewModel : ViewModelBase
         RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
-        ArtworkClickOptions = BuildArtworkClickOptions(MiniPlayerEnabled);
-        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        RebuildArtworkClickOptions();
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
         DiscordStatusDisplayOptions = BuildDiscordStatusDisplayOptions();
