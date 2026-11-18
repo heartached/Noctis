@@ -1106,8 +1106,6 @@ public partial class SettingsView : UserControl
         }
     }
 
-    // Double-tapping the lyrics minimum-line-opacity slider restores the fresh-install
-    // value (same affordance as the pre-amp and crossfade sliders).
     // A plugin's number slider: double-tapping restores the plugin.json default, like the
     // Settings sliders above.
     private void OnPluginSliderDoubleTapped(object? sender, TappedEventArgs e)
@@ -1119,6 +1117,8 @@ public partial class SettingsView : UserControl
         }
     }
 
+    // Double-tapping the lyrics minimum-line-opacity slider restores the fresh-install
+    // value (same affordance as the pre-amp and crossfade sliders).
     private void OnLyricsMinLineOpacitySliderDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is SettingsViewModel vm)

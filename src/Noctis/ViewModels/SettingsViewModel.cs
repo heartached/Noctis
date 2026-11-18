@@ -1142,7 +1142,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _albumPageTintWholeWindow;
 
     /// <summary>Persisted name of the now-playing artwork costume ("Cover", "CompactDisc",
-    /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
+    /// "Vinyl", "Cassette"). The Player page picker binds the Is* flags below, the same
     /// shape as the Song Transitions style cards.</summary>
     [ObservableProperty] private string _nowPlayingArtworkStyle = ArtworkMediums.DefaultSetting;
 
@@ -1158,7 +1158,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsArtworkStyleVinyl { get => NowPlayingArtworkMedium == ArtworkMedium.Vinyl; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Vinyl); } }
     public bool IsArtworkStyleCassette { get => NowPlayingArtworkMedium == ArtworkMedium.Cassette; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Cassette); } }
 
-    /// <summary>Mini player design picker (Appearance): the classic resizable card or one
+    /// <summary>Mini player design picker (Player page): the classic resizable card or one
     /// of the fixed community designs. The mini player VM follows this live.</summary>
     [ObservableProperty] private string _miniPlayerStyle = MiniPlayerStyles.DefaultSetting;
 
@@ -1168,7 +1168,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsMiniStylePill { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Pill; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Pill); } }
     public bool IsMiniStyleSleeve { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Sleeve; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Sleeve); } }
 
-    /// <summary>Player Island Buttons (Appearance): the podcast/audiobook extras on the bar.
+    /// <summary>Player Island Buttons (Player page): the podcast/audiobook extras on the bar.
     /// Mirrored onto PlayerViewModel by ApplyPlayerSettings, like the marquee flags.</summary>
     [ObservableProperty] private bool _playbackBarShowSkipButtons;
     [ObservableProperty] private int _playbackBarSkipSeconds = 15;
@@ -1352,7 +1352,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Persisted name of the Cover Flow layout ("Carousel", "Cascade", "Collage").
     /// Two-way with CoverFlowViewModel.Layout via MainWindowViewModel, so the top-bar pill
-    /// segment and the Appearance picker stay in step.</summary>
+    /// segment and the Player page picker stay in step.</summary>
     [ObservableProperty] private string _coverFlowLayout = CoverFlowLayouts.DefaultSetting;
 
     public CoverFlowLayout CoverFlowLayoutMode
@@ -1369,14 +1369,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// automatically; see <see cref="AppSettings.AllowExplicitContent"/>.</summary>
     [ObservableProperty] private bool _allowExplicitContent = true;
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
-    /// <summary>Live spectrum visualizer behind the lyrics page (Appearance tab).</summary>
+    /// <summary>Live spectrum visualizer behind the lyrics page (Lyrics tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerEnabled;
     /// <summary>Visualizer look, stored as a <see cref="VisualizerStyle"/> name; the picker
     /// binds the Is* flags below like the Now Playing Artwork cards.</summary>
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
-    /// <summary>Visualizer bars take the artwork's colour (Appearance tab).</summary>
+    /// <summary>Visualizer bars take the artwork's colour (Lyrics tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
-    /// <summary>GitHub #205: Full spectrum, the analyser-weighted visualizer (Appearance tab).</summary>
+    /// <summary>GitHub #205: Full spectrum, the analyser-weighted visualizer (Lyrics tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
 
     /// <summary>One entry of the Language picker: "" = follow the OS, else a shipped culture.</summary>
@@ -1695,7 +1695,8 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Songs page sort / filter, Albums grid sort ──
     //
     // Persisted view state rather than user-facing Settings toggles: nothing in
-    // SettingsView binds these. They live here because SettingsViewModel owns the
+    // SettingsView binds these, except the Player page's Albums View card (the album
+    // view, carousel case and glow, see IsAlbumViewGrid below). They live here because SettingsViewModel owns the
     // AppSettings round-trip, and the Songs/Albums view models read and write them
     // through it — the same route the column flags already take.
 
@@ -2502,7 +2503,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Opacity of the track box inside the player bar. Mirrors
     /// <see cref="AppSettings.PlaybackBarTrackBoxOpacity"/>.</summary>
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
-    /// <summary>Player island width in DIPs (GitHub #50): the Appearance slider and the
+    /// <summary>Player island width in DIPs (GitHub #50): the Player page slider and the
     /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarDefaultWidth = 536;
@@ -4637,7 +4638,7 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetPlaybackBarWidth(double width)
     {
         _playbackBarWidth = _settings.PlaybackBarWidth = width;
-        // Keep the Appearance slider in step with a grip drag.
+        // Keep the Player page slider in step with a grip drag.
         _syncingPlaybackBarWidth = true;
         try { PlaybackBarIslandWidth = width; }
         finally { _syncingPlaybackBarWidth = false; }
