@@ -6785,7 +6785,8 @@
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
 
-                    <!-- Clear Artwork Cache -->
+                    <!-- Clear Artwork Cache. Spacing-free panel: the status line's gap folds with it. -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
@@ -6808,6 +6809,13 @@
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
+
+                    <!-- What Reset / Clear Cache just did (they reported on the Library page's scan line). -->
+                    <controls:CollapsibleContent IsOpen="{Binding StorageStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Text="{Binding StorageStatusText}" Margin="0,14,0,0"
+                               FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
 
                 </StackPanel>
             </Border>

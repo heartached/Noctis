@@ -8622,7 +8622,7 @@ public partial class SettingsViewModel : ViewModelBase
         ResetSettingsToDefaults(defaultSettings);
         await ClearSavedDataAfterSettingsResetAsync();
 
-        SetScanStatus(Loc.T("Settings.ResetDone"), autoClear: true);
+        SetStorageStatus(Loc.T("Settings.ResetDone"));
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
@@ -9128,12 +9128,37 @@ public partial class SettingsViewModel : ViewModelBase
             });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
-            SetScanStatus(Loc.T("Settings.ArtworkCacheCleared"), autoClear: true);
+            SetStorageStatus(Loc.T("Settings.ArtworkCacheCleared"));
         }
         catch (Exception ex)
         {
-            SetScanStatus(Loc.T("Settings.ClearCacheFailed", ex.Message), autoClear: true);
+            SetStorageStatus(Loc.T("Settings.ClearCacheFailed", ex.Message));
         }
+    }
+
+    /// <summary>Result line under Reset Settings / Clear Cache (Advanced). Both reported on
+    /// the Library page's scan line, a page away, which cleared itself before anyone looked.</summary>
+    [ObservableProperty] private string _storageStatusText = "";
+    private CancellationTokenSource? _storageStatusClearCts;
+
+    private void SetStorageStatus(string text)
+    {
+        StorageStatusText = text;
+        _storageStatusClearCts?.Cancel();
+        _storageStatusClearCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _storageStatusClearCts = cts;
+        _ = ClearStorageStatusAfterDelayAsync(cts.Token);
+    }
+
+    private async Task ClearStorageStatusAfterDelayAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(5000, ct);
+            StorageStatusText = "";
+        }
+        catch (OperationCanceledException) { }
     }
 
     [RelayCommand]
