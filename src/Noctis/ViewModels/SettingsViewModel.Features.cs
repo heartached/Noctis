@@ -374,9 +374,11 @@ public partial class SettingsViewModel
             ServerUsers.ChangePassword(user.Name, ChangePasswordValue);
             ChangePasswordValue = string.Empty;
             IsChangePasswordVisible = false;
+            // The key on show stopped working with the old password: don't leave it to copy.
+            if (IssuedApiKeyUser == user.Name) { IssuedApiKey = string.Empty; IssuedApiKeyUser = string.Empty; }
             RefreshServerUsers();
         }
-        catch (Exception ex) { ServerUserError = ex.Message; }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
     }
 
     /// <summary>Create-your-account button on the Account &amp; Sync tab (first account is the admin).</summary>
