@@ -1855,12 +1855,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Four lines of four-digit groups, exactly as the phone shows it (SecurityCode), so
     /// the two read line by line without a wall of colons.</summary>
     public string NoctisServerFingerprintDisplay => SecurityCode.Format(NoctisServerFingerprint);
-    [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _noctisServerQr;
     [ObservableProperty] private bool _noctisServerStartFailed;
     [ObservableProperty] private string _noctisServerError = string.Empty;
-    [ObservableProperty] private bool _noctisServerClientSeen;
-    [ObservableProperty] private string _noctisServerLastClient = string.Empty;
-    private int _noctisServerClientGeneration;
     [ObservableProperty] private bool _noctisServerUrlCopied;
 
     public ObservableCollection<ServerUser> ServerUsersList { get; } = new();
@@ -1879,8 +1875,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>The panel's close (CollapsibleContent's Glide close, 240 ms) plus a margin.</summary>
     internal static TimeSpan IssuedApiKeyClearDelay { get; set; } = TimeSpan.FromMilliseconds(320);
-
-    public bool HasServerUsers => ServerUsersList.Count > 0;
 
     /// <summary>The key shows as dots until the eye is pressed: it is a password, and Settings
     /// is on screen during calls and screen shares. Each new key starts hidden again.</summary>
@@ -1963,9 +1957,6 @@ public partial class SettingsViewModel : ViewModelBase
                 NoctisServerUrl = string.Empty;
                 NoctisServerStartFailed = false;
                 NoctisServerError = string.Empty;
-                _noctisServerClientGeneration++;
-                NoctisServerClientSeen = false;
-                SetNoctisServerQr(null);
                 return;
             }
 
@@ -2012,7 +2003,6 @@ public partial class SettingsViewModel : ViewModelBase
                     // The signed-in phone's remote for this window's player (Account page › Remote).
                     Remote = _player is { } player ? new PlayerServerRemote(player) : null,
                 };
-                _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
                 _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevicesInBackground);
                 _noctisServer.PairingCodeUsed += (_, _) => Dispatcher.UIThread.Post(OnPairingCodeUsed);
             }
@@ -2037,7 +2027,6 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerUrl = $"https://{ip}:{server.Port}";
             NoctisServerStartFailed = false;
             NoctisServerError = string.Empty;
-            SetNoctisServerQr(QrCodeBitmap.TryRender(NoctisServerUrl));
             // A restart (new port) killed the old code; the panel open shows one for this run.
             RefreshPairingQr();
         }
@@ -2047,7 +2036,6 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerStartFailed = true;
             NoctisServerError = ex.Message;
             NoctisServerUrl = string.Empty;
-            SetNoctisServerQr(null);
             DebugLogger.Error(DebugLogger.Category.Error, "Server", $"start failed: {ex.Message}");
         }
     }
@@ -2066,31 +2054,12 @@ public partial class SettingsViewModel : ViewModelBase
         finally { _noctisServerGate.Release(); }
     }
 
-    private void OnNoctisServerClient(string user)
-    {
-        NoctisServerClientSeen = true;
-        NoctisServerLastClient = user;
-        var generation = ++_noctisServerClientGeneration;
-        _ = Task.Delay(WebRemotePhoneQuietMs).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
-        {
-            if (generation == _noctisServerClientGeneration) NoctisServerClientSeen = false;
-        }));
-    }
-
-    private void SetNoctisServerQr(Avalonia.Media.Imaging.Bitmap? qr)
-    {
-        var old = NoctisServerQr;
-        NoctisServerQr = qr;
-        old?.Dispose();
-    }
-
     private void RefreshServerUsers(bool phonesInBackground = false)
     {
         try
         {
             ServerUsersList.Clear();
             foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
-            OnPropertyChanged(nameof(HasServerUsers));
             RaiseAccountDerivedProperties();
         }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
