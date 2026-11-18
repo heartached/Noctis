@@ -374,9 +374,11 @@ public partial class SettingsViewModel
             ServerUsers.ChangePassword(user.Name, ChangePasswordValue);
             ChangePasswordValue = string.Empty;
             IsChangePasswordVisible = false;
+            // The key on show stopped working with the old password: don't leave it to copy.
+            if (IssuedApiKeyUser == user.Name) { IssuedApiKey = string.Empty; IssuedApiKeyUser = string.Empty; }
             RefreshServerUsers();
         }
-        catch (Exception ex) { ServerUserError = ex.Message; }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
     }
 
     /// <summary>Create-your-account button on the Account &amp; Sync tab (first account is the admin).</summary>
@@ -566,9 +568,22 @@ public partial class SettingsViewModel
     private void OnFeatureTabOpened(string tab)
     {
         SetPhoneDevicesTicker(tab == TabAccountDevices);
+        // Lines built with Loc.T are raised only when their source moves, so a language picked
+        // on General stayed in the old one here until then: re-read them on the way in.
         if (tab == TabAccountDevices)
         {
             RefreshServerUsers(); // also the phone list
+            OnPropertyChanged(nameof(ComputerLinkHelp));
+            RefreshComputerLinkState();
+        }
+        else if (tab == TabIntegrations)
+        {
+            RefreshScrobbleNotes();
+        }
+        else if (tab == TabAbout)
+        {
+            OnPropertyChanged(nameof(CheckForUpdatesButtonText));
+            OnPropertyChanged(nameof(UpdateButtonText));
         }
     }
 }

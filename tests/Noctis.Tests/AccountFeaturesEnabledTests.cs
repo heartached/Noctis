@@ -105,6 +105,30 @@ public class AccountFeaturesEnabledTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task ChangePassword_TakesTheShownApiKeyAway_ItNoLongerWorks()
+    {
+        Assert.SkipUnless(AccountFeatures.Enabled, "account features are parked (AccountFeatures off)");
+        var persistence = new PersistenceService(_root);
+        var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        vm.NewServerUserName = "me@example.com";
+        vm.NewServerUserPassword = "correct horse";
+        vm.CreatePrimaryAccountCommand.Execute(null);
+        vm.RegenerateServerApiKeyCommand.Execute(vm.PrimaryAccount);
+        var key = vm.IssuedApiKey;
+        var users = new ServerUserStore(Path.Combine(persistence.DataDirectory, "server", "users.db"));
+        Assert.NotNull(users.ByApiKey(key));
+
+        vm.ToggleChangePasswordCommand.Execute(null);
+        vm.ChangePasswordValue = "battery staple";
+        vm.ChangePrimaryPasswordCommand.Execute(null);
+
+        Assert.Null(users.ByApiKey(key));         // ServerUserStore.ChangePassword dropped it
+        Assert.False(vm.HasIssuedApiKey);
+        Assert.False(vm.IsIssuedApiKeyOpen);
+    }
+
+    [AvaloniaFact]
     public async Task PasswordEye_TogglesAndClosingChangePasswordHidesItAgain()
     {
         var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());

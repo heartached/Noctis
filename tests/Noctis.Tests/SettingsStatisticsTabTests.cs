@@ -68,6 +68,6 @@ public class SettingsStatisticsTabTests : IDisposable
 
         Assert.Equal("0:00", vm.AvgTrackLength);
         Assert.Equal(0, vm.TotalSongs);
-        Assert.Equal("0%", vm.LosslessPercentageText);
+        Assert.Equal(0, vm.LosslessCount);
     }
 }

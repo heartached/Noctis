@@ -166,6 +166,31 @@ public class LanguageLiveSwitchTests
         finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
     }
 
+    /// <summary>Lines the Connect and About pages build with Loc.T ("Check for Updates", the
+    /// other-computer steps) re-read when the page opens after a switch made on General.</summary>
+    [AvaloniaFact]
+    public async Task PickingRussian_ThenOpeningAboutOrAccount_RelabelsTheirBuiltLines()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "ru");
+            var raised = new System.Collections.Generic.List<string?>();
+            vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+            vm.SelectedSettingsTab = SettingsViewModel.TabAbout;
+            Assert.Contains(nameof(SettingsViewModel.CheckForUpdatesButtonText), raised);
+            Assert.Contains(nameof(SettingsViewModel.UpdateButtonText), raised);
+
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            Assert.Contains(nameof(SettingsViewModel.ComputerLinkHelp), raised);
+        }
+        finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
+    }
+
     [Theory]
     [InlineData("en", "English")]
     [InlineData("es", "Español (Spanish)")]

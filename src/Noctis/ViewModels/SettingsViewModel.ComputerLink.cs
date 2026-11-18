@@ -91,7 +91,8 @@ public partial class SettingsViewModel
             : account.LastSyncUtc is { } at ? Localization.Loc.T("Phone.LastSynced", Ago(at, DateTime.UtcNow))
             : Localization.Loc.T("Phone.NotSyncedYet");
         ComputerLinkStatus = Localization.Loc.T("PcSync.SyncedWith", name) + " · " + when;
-        if (!link.IsSyncing && link.LastError is { } error) ComputerLinkError = ComputerLinkErrorText(error);
+        // The last sync's outcome: a failure stays on the card until a sync works again.
+        if (!link.IsSyncing) ComputerLinkError = link.LastError is { } error ? ComputerLinkErrorText(error) : string.Empty;
     }
 
     [RelayCommand]
