@@ -390,9 +390,43 @@ public partial class SettingsView : UserControl
         foreach (var (tab, name) in TabPanels)
         {
             if (this.FindControl<Control>(name) is { } panel)
+            {
+                RealizeListRows(panel);
                 panels.Add((tab, panel));
+            }
         }
         return _searchIndex = SettingsSearchIndex.Build(panels);
+    }
+
+    /// <summary>
+    /// Rows a list builds from a template (the Shortcuts tab's actions and groups, General's
+    /// sidebar pages) only exist once the list is laid out, and a page never shown is never
+    /// laid out: "Play / Pause" found nothing until the Shortcuts tab had been opened. Builds
+    /// those rows (templates only, no layout) so the index sees their labels.
+    /// </summary>
+    private static void RealizeListRows(Control panel)
+    {
+        var done = new HashSet<ItemsControl>();
+        bool found;
+        do
+        {
+            found = false;
+            // Repeat: a row can hold a list of its own (a shortcut group's rows).
+            foreach (var list in Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(panel).OfType<ItemsControl>().ToList())
+            {
+                // Pickers' entries are choices, not setting labels, and live in a popup.
+                if (list is ComboBox || !done.Add(list)) continue;
+                found = true;
+                list.ApplyTemplate();
+                foreach (var presenter in list.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ItemsPresenter>())
+                    presenter.ApplyTemplate();
+                foreach (var row in list.GetRealizedContainers())
+                {
+                    if (row is Avalonia.Controls.Presenters.ContentPresenter cp) cp.ApplyTemplate();
+                    else if (row is TemplatedControl tc) tc.ApplyTemplate();
+                }
+            }
+        } while (found);
     }
 
     // ── Lazy tab pages (GitHub #139) ──
