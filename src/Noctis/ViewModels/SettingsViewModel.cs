@@ -1450,6 +1450,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
+        RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
         ArtworkClickOptions = BuildArtworkClickOptions();

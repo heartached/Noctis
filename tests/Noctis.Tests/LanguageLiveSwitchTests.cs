@@ -122,6 +122,30 @@ public class LanguageLiveSwitchTests
         finally { Reset(window); try { Directory.Delete(root, true); } catch { } }
     }
 
+    /// <summary>Appearance › Artwork: the cache usage line and the quality picker are built with
+    /// Loc.T, so they stayed in the old language after a switch until the next restart.</summary>
+    [AvaloniaFact]
+    public async Task PickingRussian_RelabelsAnimatedArtworkCacheLine_AndQualityPicker()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            await vm.RefreshAnimatedArtworkCacheUsageAsync();
+            Assert.Contains("used", vm.AnimatedArtworkCacheUsage);
+            var quality = vm.SelectedAnimatedArtworkQualityOption!.Value;
+            var options = vm.AnimatedArtworkQualityOptions;
+
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "ru");
+            _output.WriteLine($"ru: '{vm.AnimatedArtworkCacheUsage}'");
+            Assert.StartsWith("Использовано", vm.AnimatedArtworkCacheUsage);
+            Assert.NotSame(options, vm.AnimatedArtworkQualityOptions);           // rebuilt in the new language
+            Assert.Equal(quality, vm.SelectedAnimatedArtworkQualityOption!.Value); // selection kept
+        }
+        finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
+    }
+
     [Theory]
     [InlineData("en", "English")]
     [InlineData("es", "Español (Spanish)")]
