@@ -499,6 +499,29 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         Assert.True(vm.IsComputerLinkFormVisible);
     }
 
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task SettingsCard_AFailedSync_LeavesTheCard_OnceASyncWorksAgain()
+    {
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var link = await LinkedAsync();
+        var vm = new Noctis.ViewModels.SettingsViewModel(_b.Persistence, new FakeLibraryService(), new NoOpPlayHistory()) { ComputerLink = link };
+
+        _a.Settings.SyncEnabled = false;
+        await vm.SyncComputerLinkNowCommand.ExecuteAsync(null);
+        Assert.NotEqual(string.Empty, vm.ComputerLinkError);
+        Assert.NotNull(link.LastError);
+
+        // The next sync (the automatic one: straight on the service) works again.
+        _a.Settings.SyncEnabled = true;
+        await link.SyncNowAsync(TestContext.Current.CancellationToken);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+        Assert.Null(link.LastError);
+        Assert.Equal(string.Empty, vm.ComputerLinkError);
+        Assert.True(vm.IsComputerLinked);
+    }
+
     [Fact]
     public void Merge_RulesForAFirstPairing()
     {

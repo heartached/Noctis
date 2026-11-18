@@ -185,6 +185,7 @@ internal sealed class ComputerLinkService
             _account = null;
             _loaded = true;
         }
+        LastError = null;
         RaiseStateChanged();
     }
 
@@ -217,7 +218,15 @@ internal sealed class ComputerLinkService
                 throw;
             }
             DebugLog.Write("ComputerLink", $"synced: {result.Paired} songs paired, {result.Received} received, {result.Sent} sent");
+            LastError = null;
             return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Automatic or Sync Now: Settings shows the last one's outcome, so a sync that works
+            // again takes an earlier failure off the card.
+            LastError = ex;
+            throw;
         }
         finally
         {
@@ -463,15 +472,13 @@ internal sealed class ComputerLinkService
                 if (!IsLinked) continue;
                 try { await SyncNowAsync(cts.Token).ConfigureAwait(false); }
                 catch (OperationCanceledException) when (cts.IsCancellationRequested) { return; }
-                catch (Exception ex) { LastError = ex; RaiseStateChanged(); DebugLog.Write("ComputerLink", $"automatic sync failed: {ex.Message}"); continue; }
-                LastError = null;
-                RaiseStateChanged();
+                catch (Exception ex) { DebugLog.Write("ComputerLink", $"automatic sync failed: {ex.Message}"); continue; }
             }
             while (await timer.WaitForNextTickAsync(cts.Token).ConfigureAwait(false));
         }, cts.Token);
     }
 
-    /// <summary>Why the last automatic sync failed; null after one that worked.</summary>
+    /// <summary>Why the last sync (automatic or Sync Now) failed; null after one that worked or a sign-out.</summary>
     public Exception? LastError { get; private set; }
 
     // ── Storage ──────────────────────────────────────────────────────────
