@@ -5019,7 +5019,7 @@
                                         DoubleTapped="OnCrossfadeSliderDoubleTapped"
                                         VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
-                                           Text="{Binding CrossfadeDuration, StringFormat='{}{0:0} seconds'}"
+                                           Text="{Binding CrossfadeDuration, StringFormat='{}{0:0} s'}"
                                            FontSize="12" Opacity="0.7"
                                            VerticalAlignment="Center"
                                            MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
@@ -5299,7 +5299,8 @@
             </Border>
             <!-- Accessibility: Mono Audio and Balance, applied in the output's sample stage
                  (ChannelMixProvider). Bypassed in bit-perfect Exclusive Mode. -->
-            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}">
+            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}"
+                    Classes.first="{Binding !IsExclusiveAudioSupported}">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding IsChannelMixEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -5340,7 +5341,8 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
-            <Border Classes="setting-row">
+            <!-- .first: the rows above are all platform-gated off on macOS (nth-child counts hidden ones). -->
+            <Border Classes="setting-row" Classes.first="{Binding !IsChannelMixSupported}">
                 <StackPanel Spacing="10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -5713,6 +5715,8 @@
                                                    TextTrimming="CharacterEllipsis"/>
                                         <Button Grid.Column="1"
                                                 Content="{loc:T Settings.Text}"
+                                                AutomationProperties.Name="{loc:T Settings.Remove}"
+                                                ToolTip.Tip="{loc:T Settings.Remove}"
                                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveFolderCommand}"
                                                 CommandParameter="{Binding}"
                                                 Background="Transparent"
@@ -5781,74 +5785,6 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.ImportDroppedFiles}"
                                           IsChecked="{Binding ImportDroppedMedia}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <!-- GitHub #74: playlist page furniture, each opt-out. -->
-            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.PlaylistPage}" Margin="0,16,0,8"/>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeaders}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeadersHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistAlbumHeaders}"
-                                          IsChecked="{Binding PlaylistShowAlbumHeaders}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistNewBadge}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
-                                          IsChecked="{Binding PlaylistShowNewBadge}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistSideRail}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistSideRailHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1" x:Name="PlaylistSideRailToggle"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistSideRail}"
-                                          IsChecked="{Binding PlaylistShowSideRail}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumn}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumnHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistAddedColumn}"
-                                          IsChecked="{Binding PlaylistShowAddedColumn}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumn}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumnHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistFavoriteColumn}"
-                                          IsChecked="{Binding PlaylistShowFavoriteColumn}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -5939,6 +5875,79 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.UseEmbeddedArtwork}"
                                           IsChecked="{Binding UseEmbeddedArtwork}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            </StackPanel>
+            </Border>
+
+            <!-- GitHub #74: playlist page furniture, each opt-out. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.PlaylistPage}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeaders}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeadersHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistAlbumHeaders}"
+                                          IsChecked="{Binding PlaylistShowAlbumHeaders}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistNewBadge}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
+                                          IsChecked="{Binding PlaylistShowNewBadge}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistSideRail}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistSideRailHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1" x:Name="PlaylistSideRailToggle"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistSideRail}"
+                                          IsChecked="{Binding PlaylistShowSideRail}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistAddedColumn}"
+                                          IsChecked="{Binding PlaylistShowAddedColumn}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistFavoriteColumn}"
+                                          IsChecked="{Binding PlaylistShowFavoriteColumn}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -6098,7 +6107,8 @@
                                                 Opacity="0.5"
                                                 Cursor="Hand"
                                                 Padding="4,2"
-                                                ToolTip.Tip="{loc:T Settings.RemoveSeparatorTip}"/>
+                                                ToolTip.Tip="{loc:T Settings.RemoveSeparatorTip}"
+                                                AutomationProperties.Name="{loc:T Settings.RemoveSeparatorTip}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -6219,7 +6229,8 @@
                                                 Opacity="0.5"
                                                 Cursor="Hand"
                                                 Padding="4,2"
-                                                ToolTip.Tip="{loc:T Settings.RemoveWordTip}"/>
+                                                ToolTip.Tip="{loc:T Settings.RemoveWordTip}"
+                                                AutomationProperties.Name="{loc:T Settings.RemoveWordTip}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
