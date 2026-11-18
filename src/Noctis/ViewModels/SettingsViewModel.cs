@@ -2990,7 +2990,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lastFmScrobblingEnabled;
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
-    [ObservableProperty] private string _lastFmStatusText = Loc.T("Settings.NotConnected");
+    /// <summary>Why Connect could not start a sign-in (no sign-in page, no browser), under the
+    /// card's title; empty = hidden. The card has no status line otherwise.</summary>
+    [ObservableProperty] private string _lastFmError = "";
     /// <summary>GitHub #177: Home's Last.fm mixes and Discover; see <see cref="AppSettings.LastFmTasteEnabled"/>.</summary>
     [ObservableProperty] private bool _lastFmTasteEnabled = true;
     /// <summary>GitHub #222: the Statistics page's source; see <see cref="AppSettings.StatisticsSource"/>.</summary>
@@ -3003,7 +3005,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
     private bool _isListenBrainzConnected;
-    [ObservableProperty] private string _listenBrainzStatusText = Loc.T("Settings.NotConnected");
     [ObservableProperty] private string _listenBrainzError = "";
     /// <summary>Typed API URL for a self-hosted ListenBrainz-compatible server; blank = official.</summary>
     [ObservableProperty]
@@ -3529,7 +3530,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             if (!IsLastFmConnected || LastFmUsername == name) return;
             LastFmUsername = name;
-            LastFmStatusText = Loc.T("Settings.ConnectedAs", name);
             _ = SaveAsync();
         });
     }
@@ -3975,7 +3975,6 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _lastFm.Configure(_settings.LastFmSessionKey);
                 IsLastFmConnected = true;
-                LastFmStatusText = Loc.T("Settings.ConnectedAs", _settings.LastFmUsername);
             }
 
             // ListenBrainz
@@ -3988,9 +3987,6 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _listenBrainz.Configure(_settings.ListenBrainzToken);
                 IsListenBrainzConnected = !string.IsNullOrEmpty(_settings.ListenBrainzUsername);
-                LastFmStatusText = LastFmStatusText; // no-op, kept for symmetry
-                if (IsListenBrainzConnected)
-                    ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", _settings.ListenBrainzUsername);
             }
             RefreshScrobbleNotes();
 
@@ -7197,11 +7193,11 @@ public partial class SettingsViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _lastFmAuthCts = cts;
 
-        LastFmStatusText = Loc.T("Settings.OpeningBrowser");
+        LastFmError = "";
         var authUrl = await _lastFm.GetAuthUrlAsync();
         if (string.IsNullOrEmpty(authUrl))
         {
-            LastFmStatusText = Loc.T("Settings.LastFmAuthUrlFailed");
+            LastFmError = Loc.T("Settings.LastFmAuthUrlFailed");
             return;
         }
 
@@ -7211,11 +7207,10 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch
         {
-            LastFmStatusText = Loc.T("Settings.OpenBrowserFailed");
+            LastFmError = Loc.T("Settings.OpenBrowserFailed");
             return;
         }
 
-        LastFmStatusText = Loc.T("Settings.WaitingForAuth");
         _ = PollLastFmAuthAsync(cts);
     }
 
@@ -7226,7 +7221,6 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var deadline = DateTime.UtcNow.AddMinutes(2);
-            var failedAttempts = 0;
             while (DateTime.UtcNow < deadline && !token.IsCancellationRequested)
             {
                 var success = await _lastFm.CompleteAuthAsync();
@@ -7235,7 +7229,6 @@ public partial class SettingsViewModel : ViewModelBase
                     IsLastFmConnected = true;
                     LastFmScrobblingEnabled = true;
                     LastFmUsername = _lastFm.Username ?? "";
-                    LastFmStatusText = Loc.T("Settings.ConnectedAs", LastFmUsername);
                     _settings.LastFmSessionKey = _lastFm.GetSessionKey() ?? "";
                     await SaveAsync();
                     // GitHub #197: plays that waited for this sign-in go out now.
@@ -7244,13 +7237,6 @@ public partial class SettingsViewModel : ViewModelBase
                     _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected");
                     return;
                 }
-
-                failedAttempts++;
-
-                // Root cause fix: status was left in "Waiting..." with no early reset path.
-                // Reset to baseline quickly if authorization isn't completed.
-                if (!IsLastFmConnected && failedAttempts >= 2)
-                    LastFmStatusText = Loc.T("Settings.NotConnected");
 
                 try
                 {
@@ -7261,9 +7247,6 @@ public partial class SettingsViewModel : ViewModelBase
                     return;
                 }
             }
-
-            if (!IsLastFmConnected && !token.IsCancellationRequested)
-                LastFmStatusText = Loc.T("Settings.NotConnected");
         }
         finally
         {
@@ -7281,8 +7264,11 @@ public partial class SettingsViewModel : ViewModelBase
         // GitHub #197: signed out on purpose, so plays waiting for Last.fm are no longer owed to it.
         _scrobbleQueue?.Forget(ScrobbleService.LastFm);
         IsLastFmConnected = false;
+        // As ListenBrainz's Log Out: left on, the hidden switch kept Plugins › Built-in Features ›
+        // Scrobbling reading on with no account. Connecting turns it on again.
+        LastFmScrobblingEnabled = false;
         LastFmUsername = "";
-        LastFmStatusText = Loc.T("Settings.NotConnected");
+        LastFmError = "";
         _ = SaveAsync();
         // The account's charts behind Home's Last.fm mixes (GitHub #177) go with it.
         _ = App.Services?.GetService<LastFmTasteService>()?.ClearAsync();
@@ -7319,7 +7305,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(ListenBrainzToken))
         {
             ListenBrainzError = Loc.T("Settings.TokenRequired");
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             return;
         }
 
@@ -7328,14 +7313,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (apiUrl == null)
         {
             ListenBrainzError = Loc.T("Settings.ListenBrainzUrlInvalid");
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             return;
         }
         // Show the URL that is actually used; the official one goes back to blank.
         ListenBrainzApiUrl = apiUrl == ListenBrainzService.DefaultApiUrl ? "" : apiUrl;
 
         ListenBrainzError = "";
-        ListenBrainzStatusText = Loc.T("Settings.Validating");
         _listenBrainz.Configure(ListenBrainzToken);
         _listenBrainz.SetApiUrl(apiUrl);
         var username = await _listenBrainz.ValidateTokenAsync();
@@ -7347,7 +7330,6 @@ public partial class SettingsViewModel : ViewModelBase
             // scrobble. Without this, the now-default-off toggle would leave a freshly
             // connected account silently not scrobbling.
             ListenBrainzScrobblingEnabled = true;
-            ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", username);
             await SaveAsync();
             // GitHub #197: listens that waited for this connection go out now.
             _ = _scrobbleQueue?.FlushAsync(now: true);
@@ -7365,7 +7347,6 @@ public partial class SettingsViewModel : ViewModelBase
                 ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
                 _ => Loc.T("Settings.ListenBrainzTokenOrNetwork"),
             };
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         }
     }
 
@@ -7380,7 +7361,6 @@ public partial class SettingsViewModel : ViewModelBase
         ListenBrainzScrobblingEnabled = false;
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
-        ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         ListenBrainzError = "";
         _ = SaveAsync();
     }
@@ -8988,7 +8968,7 @@ public partial class SettingsViewModel : ViewModelBase
             StatisticsSource = defaultSettings.StatisticsSource;
             ResetPlayCountImportSettings(defaultSettings);
             IsLastFmConnected = false;
-            LastFmStatusText = Loc.T("Settings.NotConnected");
+            LastFmError = "";
             // Without this the session key survived in the service and SyncToSettings
             // re-persisted it (`_settings.LastFmSessionKey = lfm.GetSessionKey()`), so the
             // account stayed connected while the UI read "Not connected".
@@ -9000,7 +8980,6 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzToken = "";
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             ListenBrainzApiUrl = "";
             _listenBrainz?.Logout();
             _listenBrainz?.SetApiUrl(null);

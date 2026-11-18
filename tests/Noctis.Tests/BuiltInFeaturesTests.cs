@@ -171,6 +171,22 @@ public class BuiltInFeaturesTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void Scrobbling_ReadsOff_AfterLastFmLogOut()
+    {
+        var vm = Settings();
+        var row = vm.BuiltInFeatures.Single(r => r.Key == "Scrobbling");
+        vm.IsLastFmConnected = true;
+        vm.LastFmScrobblingEnabled = true;
+        Assert.True(row.IsOn);
+
+        vm.LogoutLastFmCommand.Execute(null);
+
+        Assert.False(vm.LastFmScrobblingEnabled);
+        Assert.False(row.IsOn);
+        Assert.False(row.CanToggle); // no account left to scrobble to
+    }
+
+    [AvaloniaFact]
     public void Card_HidesWhileSearchingPlugins()
     {
         var vm = Settings();

@@ -7967,6 +7967,12 @@
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left" Margin="-2,4,0,0"/>
                             </controls:CollapsibleContent>
+                            <!-- Connect could not start a sign-in (no sign-in page, no browser), red as ListenBrainz's. -->
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                            <TextBlock x:Name="LastFmErrorText" Text="{Binding LastFmError}"
+                                       Foreground="#E74856" FontSize="11" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                            </controls:CollapsibleContent>
                             </StackPanel>
                         </StackPanel>
 
