@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Services.MediaServer;
@@ -78,7 +79,7 @@ public sealed class SubsonicClient : IMediaServerClient
         // Cheap probe so "connected but empty" is called out immediately.
         var albums = await GetAlbumsAsync(connection, 0, 1, ct);
         return albums.Count == 0
-            ? MediaServerConnectResult.Ok("Connected — no albums visible on this server yet.")
+            ? MediaServerConnectResult.Ok(Loc.T("Settings.Server.ConnectedNoAlbums"))
             : MediaServerConnectResult.Ok();
     }
 
@@ -300,7 +301,7 @@ public sealed class SubsonicClient : IMediaServerClient
         {
             using var response = await _http.GetAsync(url, ct);
             if (!response.IsSuccessStatusCode)
-                return new(null, MediaServerError.ServerError, $"Server answered HTTP {(int)response.StatusCode}.", 0, null);
+                return new(null, MediaServerError.ServerError, Loc.T("Settings.Server.Http", (int)response.StatusCode), 0, null);
             json = await HttpSafety.ReadStringBoundedAsync(response.Content, ct: ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -321,7 +322,7 @@ public sealed class SubsonicClient : IMediaServerClient
             if (!doc.RootElement.TryGetProperty("subsonic-response", out var root))
             {
                 doc.Dispose();
-                return new(null, MediaServerError.ServerError, "Unexpected response — is this a Subsonic-compatible server?", 0, null);
+                return new(null, MediaServerError.ServerError, Loc.T("Settings.Server.NotSubsonic"), 0, null);
             }
 
             var serverVersion = GetString(root, "version");
@@ -344,7 +345,7 @@ public sealed class SubsonicClient : IMediaServerClient
         catch (JsonException)
         {
             doc?.Dispose();
-            return new(null, MediaServerError.ServerError, "Unexpected response — is this a Subsonic-compatible server?", 0, null);
+            return new(null, MediaServerError.ServerError, Loc.T("Settings.Server.NotSubsonic"), 0, null);
         }
     }
 
@@ -354,15 +355,15 @@ public sealed class SubsonicClient : IMediaServerClient
         var detail = string.IsNullOrWhiteSpace(serverMessage) ? null : SanitizeServerMessage(serverMessage);
         return code switch
         {
-            10 => (MediaServerError.ServerError, "The server rejected the request as incomplete" + Tail(detail)),
-            20 => (MediaServerError.ServerError, "This server needs a newer version of Noctis" + Tail(detail)),
-            30 => (MediaServerError.ServerError, "This server's Subsonic API is too old for Noctis" + Tail(detail)),
-            40 => (MediaServerError.AuthFailed, "Wrong username or password."),
-            41 => (MediaServerError.AuthFailed, "This server does not allow token login for this user" + Tail(detail)),
-            50 => (MediaServerError.AuthFailed, "This account is not allowed to do that on the server" + Tail(detail)),
-            60 => (MediaServerError.ServerError, "The server's trial period is over" + Tail(detail)),
-            70 => (MediaServerError.ServerError, "Not found on the server" + Tail(detail)),
-            _ => (MediaServerError.ServerError, detail ?? $"Server error (code {code})."),
+            10 => (MediaServerError.ServerError, Loc.T("Settings.Server.Incomplete") + Tail(detail)),
+            20 => (MediaServerError.ServerError, Loc.T("Settings.Server.NeedsNewerNoctis") + Tail(detail)),
+            30 => (MediaServerError.ServerError, Loc.T("Settings.Server.ApiTooOld") + Tail(detail)),
+            40 => (MediaServerError.AuthFailed, Loc.T("Settings.Server.WrongLogin")),
+            41 => (MediaServerError.AuthFailed, Loc.T("Settings.Server.NoTokenLogin") + Tail(detail)),
+            50 => (MediaServerError.AuthFailed, Loc.T("Settings.Server.NotAllowed") + Tail(detail)),
+            60 => (MediaServerError.ServerError, Loc.T("Settings.Server.TrialOver") + Tail(detail)),
+            70 => (MediaServerError.ServerError, Loc.T("Settings.Server.NotFound") + Tail(detail)),
+            _ => (MediaServerError.ServerError, detail ?? Loc.T("Settings.Server.ErrorCode", code)),
         };
 
         static string Tail(string? detail) => detail == null ? "." : $": {detail}";

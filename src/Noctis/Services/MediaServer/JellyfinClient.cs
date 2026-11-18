@@ -3,6 +3,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Services.MediaServer;
@@ -64,9 +65,9 @@ public sealed class JellyfinClient : IMediaServerClient
         }
 
         if (status is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
-            return MediaServerConnectResult.Fail(MediaServerError.AuthFailed, "Wrong username or password.");
+            return MediaServerConnectResult.Fail(MediaServerError.AuthFailed, Loc.T("Settings.Server.WrongLogin"));
         if (status != HttpStatusCode.OK)
-            return MediaServerConnectResult.Fail(MediaServerError.ServerError, $"Server answered HTTP {(int)status}.");
+            return MediaServerConnectResult.Fail(MediaServerError.ServerError, Loc.T("Settings.Server.Http", (int)status));
 
         string? accessToken = null;
         string? userId = null;
@@ -86,7 +87,7 @@ public sealed class JellyfinClient : IMediaServerClient
 
         if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(userId))
             return MediaServerConnectResult.Fail(MediaServerError.ServerError,
-                "Unexpected response — is this a Jellyfin server?");
+                Loc.T("Settings.Server.NotJellyfin"));
 
         // Keep the token + user id; the password is deliberately dropped.
         connection.TokenOrPassword = accessToken;
@@ -96,7 +97,7 @@ public sealed class JellyfinClient : IMediaServerClient
         var probe = await QueryItemsAsync(connection,
             "IncludeItemTypes=Audio&Recursive=true&Limit=1", ct);
         return probe is { TotalCount: 0 }
-            ? MediaServerConnectResult.Ok("Connected — no music found in this Jellyfin library yet.")
+            ? MediaServerConnectResult.Ok(Loc.T("Settings.Server.ConnectedNoMusic"))
             : MediaServerConnectResult.Ok();
     }
 

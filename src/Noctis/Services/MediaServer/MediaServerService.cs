@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net.Http;
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Services.MediaServer;
@@ -93,7 +94,7 @@ public sealed class MediaServerService : IMediaServerService
         };
 
         if (!_clients.TryGetValue(type, out var client))
-            return (MediaServerConnectResult.Fail(MediaServerError.ServerError, "Unsupported server type."), connection);
+            return (MediaServerConnectResult.Fail(MediaServerError.ServerError, Loc.T("Settings.Server.UnsupportedType")), connection);
 
         var result = await client.ConnectAsync(connection, password, ct);
         return (result, connection);
