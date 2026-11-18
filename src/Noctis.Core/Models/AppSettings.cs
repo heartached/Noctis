@@ -73,7 +73,8 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Directory names to ignore while scanning (case-insensitive).</summary>
     public List<string> IgnoredFolderNames { get; set; } = new() { ".git", "node_modules", "$recycle.bin", "system volume information" };
 
-    /// <summary>Current theme: "Gray", "Dark", "MidnightBlack", "Light", or "System".</summary>
+    /// <summary>Current theme: "Gray", "Dark", "Light", "Midnight", "Ink", "Smoke", "Custom:&lt;id&gt;"
+    /// or "Pack:&lt;key&gt;". Older "MidnightBlack" and "System" values are migrated at load.</summary>
     public string Theme { get; set; } = "Gray";
 
     /// <summary>UI language: a culture name shipped in Localization/ ("es") or "" to follow the OS.</summary>
