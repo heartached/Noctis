@@ -316,6 +316,69 @@ public class BuiltInFeaturesTests : IDisposable
         }
     }
 
+    /// <summary>The rest of Mini Player off: the island's Mini player button switch says why
+    /// it is greyed, Appearance › Text Animation drops its Mini Player rows (stored values
+    /// kept), and Settings search no longer finds the hidden mini player rows and card.</summary>
+    [AvaloniaFact]
+    public void MiniPlayerOff_ExplainsTheGreyedButton_HidesItsMarqueeRows_AndSearchSkipsThem()
+    {
+        var vm = Settings();
+        vm.MiniPlayerTitleMarqueeEnabled = true;
+        vm.MiniPlayerAlbumMarqueeEnabled = true;
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+        var view = new SettingsView { DataContext = vm };
+        var window = new Window { Width = 920, Height = 720, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            vm.SelectedSettingsTab = SettingsViewModel.TabAppearance; // realize the page (GitHub #139)
+            Dispatcher.UIThread.RunJobs();
+
+            var buttonHint = view.FindControl<Noctis.Controls.CollapsibleContent>("MiniPlayerButtonFeatureOffHint")!;
+            var marquee = new Control[]
+            {
+                view.FindControl<TextBlock>("MiniPlayerMarqueeHeader")!,
+                view.FindControl<Grid>("MiniPlayerTitleMarqueeRow")!,
+                view.FindControl<Grid>("MiniPlayerArtistMarqueeRow")!,
+            };
+            var panels = new (string, Control)[]
+            {
+                ("Appearance", view.FindControl<StackPanel>("AppearanceTabPanel")!),
+                ("Player", view.FindControl<StackPanel>("PlayerTabPanel")!),
+            };
+            var designTitle = Loc.T("Settings.MiniPlayerDesign");
+            var marqueeHeader = Loc.T("Settings.MINIPLAYER");
+            string MarqueeCardText(Noctis.Helpers.SettingsSearchIndex index) =>
+                index.Entries.Single(e => e.Blocks.Contains((TextBlock)marquee[0])).Text;
+
+            Assert.False(buttonHint.IsOpen);
+            Assert.All(marquee, c => Assert.True(c.IsVisible));
+            var index = Noctis.Helpers.SettingsSearchIndex.Build(panels);
+            Assert.NotEmpty(index.Query(designTitle));
+            Assert.Contains(marqueeHeader, MarqueeCardText(index));
+
+            vm.MiniPlayerEnabled = false;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(buttonHint.IsOpen);
+            Assert.All(marquee, c => Assert.False(c.IsVisible));
+            Assert.True(vm.MiniPlayerTitleMarqueeEnabled && vm.MiniPlayerAlbumMarqueeEnabled);
+            // SettingsSearchIndex: hidden card (IsNaturallyVisible) and hidden rows (Entry.Text).
+            Assert.Empty(index.Query(designTitle));
+            Assert.DoesNotContain(marqueeHeader, MarqueeCardText(index));
+
+            vm.MiniPlayerEnabled = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(buttonHint.IsOpen);
+            Assert.All(marquee, c => Assert.True(c.IsVisible));
+            Assert.NotEmpty(index.Query(designTitle));
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     // ── Playlist rail ──
 
     private (PlaylistViewModel Vm, FakeLibraryService Lib) PlaylistVm(bool showRail)
