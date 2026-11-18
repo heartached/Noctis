@@ -182,14 +182,6 @@ public partial class SettingsViewModel : ViewModelBase
         PlatformHelper.OpenFolder(Plugins.PluginsDirectory);
     }
 
-    [RelayCommand]
-    private void ReloadPlugins()
-    {
-        if (Plugins is null) return;
-        Plugins.LoadAll();
-        ShowPluginsReloaded();
-    }
-
     private void ShowPluginsReloaded()
     {
         if (Plugins is null) return;
@@ -199,11 +191,11 @@ public partial class SettingsViewModel : ViewModelBase
             n == 0 ? Loc.T("Plugins.ReloadedNone") : n == 1 ? Loc.T("Plugins.ReloadedOne") : Loc.T("Plugins.ReloadedMany", n));
     }
 
-    /// <summary>The Plugins header's one refresh button: reads the plugins folder again and fetches
-    /// the list again.</summary>
     /// <summary>True while the refresh button works; the button shows a spinner instead of its icon.</summary>
     [ObservableProperty] private bool _isRefreshingPlugins;
 
+    /// <summary>The Plugins header's one refresh button: reads the plugins folder again and fetches
+    /// the list again.</summary>
     [RelayCommand]
     private async Task RefreshPlugins()
     {
@@ -3144,10 +3136,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _losslessCount;
     [ObservableProperty] private int _lossyCount;
     [ObservableProperty] private int _hiResCount;
-    [ObservableProperty] private double _losslessPercentage;
-    [ObservableProperty] private string _losslessPercentageText = "0%";
-    [ObservableProperty] private string _lossyPercentageText = "0%";
-    [ObservableProperty] private string _hiResPercentageText = "0%";
 
     // ── Storage ──
 
@@ -7931,8 +7919,6 @@ public partial class SettingsViewModel : ViewModelBase
         string TotalFileSize, string TotalListeningTime, string TotalPlays,
         string TimeListened, string AvgTrackLength, int LikedTracks,
         int LosslessCount, int LossyCount, int HiResCount,
-        double LosslessPercentage, string LosslessPercentageText,
-        string LossyPercentageText, string HiResPercentageText,
         List<StatItem> TopArtists, List<StatItem> TopAlbums);
 
     private static LibraryStatsResult ComputeLibraryStats(
@@ -7966,7 +7952,6 @@ public partial class SettingsViewModel : ViewModelBase
         var report = ListeningReportBuilder.Build(events, new PlayEventResolver(tracks), ListeningPeriod.AllTime);
         var (topArtists, topAlbums) = TopPlayed(report);
 
-        var pct = tracks.Count > 0 ? (double)losslessCount / tracks.Count : 0;
         return new LibraryStatsResult(
             TotalSongs: tracks.Count,
             TotalArtists: artistCount,
@@ -7983,10 +7968,6 @@ public partial class SettingsViewModel : ViewModelBase
             LosslessCount: losslessCount,
             LossyCount: tracks.Count - losslessCount,
             HiResCount: hiResCount,
-            LosslessPercentage: pct,
-            LosslessPercentageText: tracks.Count > 0 ? $"{pct * 100:F0}%" : "0%",
-            LossyPercentageText: tracks.Count > 0 ? $"{(1 - pct) * 100:F0}%" : "0%",
-            HiResPercentageText: tracks.Count > 0 ? $"{(double)hiResCount / tracks.Count * 100:F0}%" : "0%",
             TopArtists: topArtists,
             TopAlbums: topAlbums);
     }
@@ -8007,10 +7988,6 @@ public partial class SettingsViewModel : ViewModelBase
         LosslessCount = s.LosslessCount;
         LossyCount = s.LossyCount;
         HiResCount = s.HiResCount;
-        LosslessPercentage = s.LosslessPercentage;
-        LosslessPercentageText = s.LosslessPercentageText;
-        LossyPercentageText = s.LossyPercentageText;
-        HiResPercentageText = s.HiResPercentageText;
         RefreshSnoozedTracks();
         _ = RefreshRemovedTracksAsync();
     }

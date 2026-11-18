@@ -7999,7 +7999,6 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <!-- Status text removed -->
 
                         <!-- Logout button (top-right, when connected) -->
                         <Button Grid.Column="2" Grid.Row="0"
@@ -8792,10 +8791,6 @@
             </StackPanel>
             </StackPanel>
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ABOUT                                               -->
-            <!-- ═══════════════════════════════════════════════════ -->
-
             <StackPanel x:Name="StatisticsTabPanel" Classes="tab-page" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">
 
             <!-- One card, two quiet rows of big numbers; the format mix is a pill strip under the library row. -->
@@ -9216,14 +9211,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Developer -->
-
             </StackPanel>
-
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- APPEARANCE                                          -->
-            <!-- ═══════════════════════════════════════════════════ -->
-
 
         </StackPanel>
     </ScrollViewer>
