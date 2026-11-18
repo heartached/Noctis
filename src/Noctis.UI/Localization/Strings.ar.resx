@@ -6199,14 +6199,6 @@
     <value>لاعب صغير</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>العمل الفني للعب الآن</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>تدفق الغطاء</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>صفحة الكلمات</value>
     <comment>Settings section label</comment>
