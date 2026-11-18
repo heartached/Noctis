@@ -344,6 +344,14 @@ public class BuiltInFeaturesTests : IDisposable
             Dispatcher.UIThread.RunJobs();
             Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
             Assert.Equal("MiniPlayer", vm.SelectedArtworkClickOption?.Value);
+
+            // And the picker itself shows it once the page is back on screen: it kept
+            // showing Lyrics Page while the island already opened the mini player.
+            vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+            Dispatcher.UIThread.RunJobs();
+            var combo = view.FindControl<ComboBox>("ArtworkClickCombo")!;
+            Assert.Equal("MiniPlayer", (combo.SelectedItem as SettingsViewModel.LyricsChoiceOption)?.Value);
+            Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
         }
         finally
         {

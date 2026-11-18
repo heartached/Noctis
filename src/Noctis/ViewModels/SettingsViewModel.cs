@@ -1198,7 +1198,14 @@ public partial class SettingsViewModel : ViewModelBase
     private void RebuildArtworkClickOptions()
     {
         _rebuildingArtworkClickOptions = true;
-        try { ArtworkClickOptions = BuildArtworkClickOptions(MiniPlayerEnabled); }
+        try
+        {
+            ArtworkClickOptions = BuildArtworkClickOptions(MiniPlayerEnabled);
+            // The picker also keeps showing that option, and a selection it was already sent
+            // is not applied a second time: empty it first (the getter reads null while the
+            // list is rebuilt), then send the real one below.
+            OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        }
         finally { _rebuildingArtworkClickOptions = false; }
         OnPropertyChanged(nameof(SelectedArtworkClickOption));
     }
@@ -1213,6 +1220,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         get
         {
+            if (_rebuildingArtworkClickOptions) return null; // see RebuildArtworkClickOptions
             var current = EffectiveArtworkClick.ToString();
             return ArtworkClickOptions.FirstOrDefault(o => o.Value == current);
         }
