@@ -865,6 +865,10 @@ public class AppSettings : IJsonOnDeserializing
     /// lyrics-page compact pill). The window clamps the upper end live, so only a sanity
     /// ceiling is stored.</summary>
     public double PlaybackBarWidth { get; set; } = 536;
+    /// <summary>Bounds of <see cref="PlaybackBarWidth"/>: the grip drag, the Settings slider
+    /// and the load-time clamp all use these.</summary>
+    public const double PlaybackBarMinWidth = 340;
+    public const double PlaybackBarMaxWidth = 4096;
 
     /// <summary>Album cover sizing mode for the Albums/Favorites grids. True (default) keeps
     /// the classic layout — five covers per row, covers scale with the window — so existing
@@ -1604,7 +1608,7 @@ public class AppSettings : IJsonOnDeserializing
             : 220;
         // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
         PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
-            ? Math.Clamp(PlaybackBarWidth, 340, 4096)
+            ? Math.Clamp(PlaybackBarWidth, PlaybackBarMinWidth, PlaybackBarMaxWidth)
             : 536;
         // 1.4.8: the bar grew a favorite heart (+36px) and its default went 590 → 626. A
         // stored 590 is the untouched OLD default, not a choice — move it along so existing

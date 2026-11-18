@@ -535,6 +535,10 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
     /// 626 default mirrors both the settings default and the XAML base width.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = 536;
+    /// <summary>How wide the persistent island can be dragged: its host's width less the edge
+    /// margins (PlaybackBarView.UpdateIslandMaxWidth); 0 until the bar is laid out. Settings ›
+    /// Player sizes its width slider from it.</summary>
+    [ObservableProperty] private double _islandAvailableWidth;
     /// <summary>Queue panel width (GitHub #147). Hydrated from AppSettings.QueuePanelWidth and
     /// set live by the panel's left-edge drag; the panel and its glass frost bind to it.</summary>
     [ObservableProperty]

@@ -368,6 +368,7 @@ public partial class PlaybackBarView : UserControl
 
         if (_observedPlayerViewModel != null)
             _observedPlayerViewModel.PropertyChanged += OnObservedPlayerViewModelPropertyChanged;
+        UpdateIslandMaxWidth(); // hands the drag limit to a view model arriving after attach
 
         // The width depends on the observed view model, so it can only be resolved once
         // the DataContext lands. If that happens after attach the pill would otherwise sit
@@ -1836,6 +1837,7 @@ public partial class PlaybackBarView : UserControl
         var available = _resizeHost.Bounds.Width - IslandEdgeMargin * 2;
         if (available <= 0) return;
         IslandBorder.MaxWidth = Math.Max(IslandMinUserWidth, available);
+        if (_observedPlayerViewModel is { } vm) vm.IslandAvailableWidth = IslandBorder.MaxWidth;
     }
 
     private void UpdateResizeGripVisibility()
