@@ -122,6 +122,26 @@ public class LanguageLiveSwitchTests
         finally { Reset(window); try { Directory.Delete(root, true); } catch { } }
     }
 
+    /// <summary>Settings › Lyrics › Lyrics Renderer: a stored renderer whose plugin is off reads
+    /// "&lt;name&gt; (plugin off)", built with Loc.T; it stayed English after a language switch.</summary>
+    [AvaloniaFact]
+    public async Task PickingGerman_RelabelsALyricsRendererWhosePluginIsOff()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.LyricsRenderer = "dev.test.plugin/Timed Words"; // no plugin host: the choice waits for its plugin
+            Assert.Equal("Timed Words (plugin off)", vm.SelectedLyricsRendererOption!.Label);
+
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "de");
+            Assert.Equal("Timed Words (Plugin aus)", vm.SelectedLyricsRendererOption!.Label);
+            Assert.Equal("dev.test.plugin/Timed Words", vm.SelectedLyricsRendererOption.Key);
+        }
+        finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
+    }
+
     [Theory]
     [InlineData("en", "English")]
     [InlineData("es", "Español (Spanish)")]

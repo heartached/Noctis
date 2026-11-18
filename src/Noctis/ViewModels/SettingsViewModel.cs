@@ -1447,6 +1447,7 @@ public partial class SettingsViewModel : ViewModelBase
         foreach (var group in SectionGroups) group.Relabel();
         RelabelSidebarPages();
         RefreshFlowingStyleOptions();
+        RefreshLyricsRendererOptions(); // "Noctis", "<name> (plugin off)"
         PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
         MissingSongsOptions = BuildMissingSongsOptions();
