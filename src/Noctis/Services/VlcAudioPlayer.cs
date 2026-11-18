@@ -4455,6 +4455,20 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_disposed) return;
                 DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupStart", $"session={sessionId}");
 
+                // An output rebuild (Exclusive Mode switched, device lost) replaced the players
+                // while this waited: the rebuild stopped this one and queued its disposal. It is
+                // no engine slot any more, and EngineSlotOf reads an unknown player as slot 1,
+                // so the steps below would abandon the NEW standby's segment (its staged next
+                // track) and stop a player on its way out. Only the old media is retired.
+                if (!ReferenceEquals(inactivePlayer, _player) && !ReferenceEquals(inactivePlayer, _standbyPlayer))
+                {
+                    try { inactiveMedia?.Dispose(); }
+                    catch (Exception ex) { DebugLogger.Warn(DebugLogger.Category.Playback, "AutoMix.CleanupStep", $"Dispose: {ex.GetType().Name}"); }
+                    DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.CleanupSkippedReplacedPlayer",
+                        $"session={sessionId}, elapsedMs={Environment.TickCount64 - cleanupStart}");
+                    return;
+                }
+
                 // A track shorter than the view model's prepare lead plus this delay has its
                 // successor staged on THIS player before the cleanup runs (PrepareNext reuses
                 // the standby and stops the old input itself). Stopping it here then killed
