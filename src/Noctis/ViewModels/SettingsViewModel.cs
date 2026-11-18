@@ -4777,7 +4777,9 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
         _player.IslandShowChapters = PlaybackBarShowChapters;
         _player.IslandShowStop = PlaybackBarShowStop;
-        _player.IslandStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode;
+        // Exclusive Mode is Windows-only and so is this switch's row: a settings file from a
+        // Windows install must not hide the Stop button for good on macOS / Linux.
+        _player.IslandStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode && IsExclusiveAudioSupported;
         _player.ExclusiveModeEnabled = ExclusiveAudioEnabled;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
