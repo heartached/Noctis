@@ -4116,6 +4116,9 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.FolderMissing" xml:space="preserve"><value>That folder doesn't exist.</value><comment>Settings status line</comment></data>
   <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>Already covered by "{0}".</value><comment>Settings status line</comment></data>
   <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>"{0}" is inside that folder — remove it first.</value><comment>Settings status line</comment></data>
+  <data name="Settings.RemoveFolderTitle" xml:space="preserve"><value>Remove this music folder?</value><comment>Settings › Library: confirm title for a media folder's ✕</comment></data>
+  <data name="Settings.RemoveFolderBody" xml:space="preserve"><value>Your library loses {0} from “{1}”. The files stay where they are.</value><comment>Remove-folder confirm. {0} = song count (Count.Songs), {1} = folder</comment></data>
+  <data name="Settings.RemoveFolderNote" xml:space="preserve"><value>Add the folder again to bring them back. Their play counts, ratings and favorites return the next time Noctis starts.</value><comment>Remove-folder confirm note</comment></data>
   <data name="Settings.ScanningLibrary" xml:space="preserve"><value>Scanning Library</value><comment>Settings status line</comment></data>
   <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>Scanning Library {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
   <data name="Settings.RebuildingIndex" xml:space="preserve"><value>Rebuilding library index</value><comment>Settings status line</comment></data>

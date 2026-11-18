@@ -8272,9 +8272,24 @@ public partial class SettingsViewModel : ViewModelBase
            && (candidate[root.Length] == Path.DirectorySeparatorChar
                || candidate[root.Length] == Path.AltDirectorySeparatorChar);
 
+    /// <summary>The songs the rescan after removing <paramref name="folder"/> takes out of the
+    /// library: those under it, except songs added on their own (a scan keeps those, GitHub #108).</summary>
+    internal static int SongsLeavingWithFolder(IEnumerable<Track> tracks, string folder)
+        => tracks.Count(t => !t.AddedIndividually && LibraryService.PathIsUnder(t.FilePath, folder));
+
     [RelayCommand]
     private async Task RemoveFolder(string folder)
     {
+        // One click on the ✕ used to take the folder's songs out of the library at once.
+        var songs = SongsLeavingWithFolder(_library.AllTracks, folder);
+        var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
+            Loc.T("Settings.RemoveFolderBody", Loc.Plural("Count.Songs", songs), folder),
+            Title: Loc.T("Settings.RemoveFolderTitle"),
+            Note: Loc.T("Settings.RemoveFolderNote"),
+            ConfirmText: Loc.T("Settings.Remove"),
+            Width: 440));
+        if (!answer.Confirmed) return;
+
         MusicFolders.Remove(folder);
         _settings.MusicFolders = MusicFolders.ToList();
         OnPropertyChanged(nameof(MediaFolderDisplay));
