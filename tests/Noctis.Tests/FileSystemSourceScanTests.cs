@@ -241,6 +241,59 @@ public class FileSystemSourceScanTests : IDisposable
         Assert.Equal(new[] { "A1", "B1" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
     }
 
+    /// <summary>
+    /// What Settings › Library's folder ✕ does (SettingsViewModel.RemoveFolder: the folder leaves
+    /// the list, then a rescan of the rest). Its songs leave the library and library.json. The
+    /// user-state journal keeps their rows: adding the folder back gives the same track ids
+    /// (playlists keep pointing at them) but no play counts in that session; they come back on
+    /// the next start, when the journal is laid over the library.
+    /// </summary>
+    [Fact]
+    public async Task RemovedFolder_SongsLeave_ReAddedSameSessionStartAtZero_ComeBackAfterRestart()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var source = new MultiRootSource();
+        foreach (var name in new[] { "A", "B" })
+        {
+            var dir = Path.Combine(_root, "roots", name);
+            Directory.CreateDirectory(dir);
+            WriteMp3(Path.Combine(dir, $"01 - {name}1.mp3"), name + "1", "Tester", "Album " + name);
+            source.Dirs["fake://tree/" + name] = dir;
+        }
+        var (library, persistence) = MakeLibrary(source);
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B" }, ct);
+        var b1 = library.Tracks.Single(t => t.Title == "B1");
+        var b1Id = b1.Id;
+        b1.PlayCount = 9;
+        b1.IsFavorite = true;
+        await library.SaveTrackUserStateAsync(new[] { b1 });
+        await library.SetTracksRatingAsync(new[] { b1 }, 4);
+
+        // Remove B.
+        await library.ScanAsync(new[] { "fake://tree/A" }, ct);
+        Assert.Equal(new[] { "A1" }, library.Tracks.Select(t => t.Title));
+        var saved = await persistence.LoadLibraryAsync();
+        Assert.Equal(new[] { "A1" }, saved!.Select(t => t.Title));
+
+        // Add B back in the same session: same id, but read as a new file.
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B" }, ct);
+        var back = library.Tracks.Single(t => t.Title == "B1");
+        Assert.Equal(b1Id, back.Id);
+        Assert.Equal(0, back.PlayCount);
+        Assert.False(back.IsFavorite);
+        Assert.Equal(0, back.Rating);
+
+        // Next start: the journal row puts its state back.
+        var persistence2 = new PersistenceService(Path.Combine(_root, "data"));
+        var library2 = new LibraryService(new MetadataService(), persistence2,
+            new SqliteLibraryIndexService(persistence2), new NoOpAudit(), fileSystem: source);
+        await library2.LoadAsync();
+        var restored = library2.Tracks.Single(t => t.Id == b1Id);
+        Assert.Equal(9, restored.PlayCount);
+        Assert.True(restored.IsFavorite);
+        Assert.Equal(4, restored.Rating);
+    }
+
     /// <summary>Find All Music (phone): the media index root yields songs by content URI with no
     /// extension in the path ("…/audio/media/7"); the tags are read through the display name's
     /// format. The permission taken away keeps them (with their plays); the option turned off
