@@ -2980,8 +2980,6 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Taskleiste</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Player-Insel</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Mini-Player</value><comment>Settings section label</comment></data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve"><value>Now-Playing-Artwork</value><comment>Settings section label</comment></data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve"><value>Cover Flow</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve"><value>Songtextseite</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OnlineLyrics" xml:space="preserve"><value>Online-Songtexte</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.SavingLyrics" xml:space="preserve"><value>Songtexte speichern</value><comment>Settings section label</comment></data>

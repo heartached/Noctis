@@ -3902,14 +3902,14 @@
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="NowPlayingArtwork"
                                      IsChecked="{Binding IsArtworkStyleCompactDisc, Mode=TwoWay}"
-                                     AutomationProperties.Name="CD"
+                                     AutomationProperties.Name="{loc:T Mobile.NowPlayingArtwork.CD}"
                                      ToolTip.Tip="{loc:T Settings.SpinningCompactDiscTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Ellipse Canvas.Left="2" Canvas.Top="2" Width="24" Height="24"
                                              Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="8"/>
                                 </Canvas>
-                                <TextBlock Text="CD" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Mobile.NowPlayingArtwork.CD}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"

@@ -621,4 +621,24 @@ public class MiniPlayerFrostSettingTests : IDisposable
     [InlineData(false, true, true, false)]
     public void Frost_NeedsWindowsTheSettingAndTransparencyEffects(bool windows, bool setting, bool effects, bool expected)
         => Assert.Equal(expected, MiniPlayerWindow.WantsFrost(windows, setting, effects));
+
+    /// <summary>The "Transparency effects are off" note under the switch was raised only when the
+    /// switch moved, so turning the Windows setting off (or back on) while Noctis ran left the
+    /// Player page showing the old state. Showing the page re-reads it.</summary>
+    [AvaloniaFact]
+    public async Task FrostNote_IsReReadWhenThePlayerPageIsShown()
+    {
+        var vm = CreateSettings();
+        await vm.LoadAsync();
+        vm.MiniPlayerFrostedBackground = true;
+        Assert.False(vm.MiniPlayerFrostUnavailable);
+
+        TrayMenuFrost.TransparencyEffectsOn = () => false;
+        var raised = new List<string?>();
+        vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+
+        Assert.Contains(nameof(SettingsViewModel.MiniPlayerFrostUnavailable), raised);
+        Assert.Equal(OperatingSystem.IsWindows(), vm.MiniPlayerFrostUnavailable);
+    }
 }

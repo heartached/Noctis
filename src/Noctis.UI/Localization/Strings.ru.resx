@@ -2988,8 +2988,6 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Панель задач</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Островок плеера</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Мини-плеер</value><comment>Settings section label</comment></data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve"><value>Обложка в «Сейчас играет»</value><comment>Settings section label</comment></data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve"><value>Cover Flow</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve"><value>Страница текста</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OnlineLyrics" xml:space="preserve"><value>Тексты из интернета</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.SavingLyrics" xml:space="preserve"><value>Сохранение текстов</value><comment>Settings section label</comment></data>

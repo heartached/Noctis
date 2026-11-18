@@ -2988,8 +2988,6 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.Section.Taskbar" xml:space="preserve"><value>Taskbar</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve"><value>Player island</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve"><value>Mini player</value><comment>Settings section label</comment></data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve"><value>Now Playing artwork</value><comment>Settings section label</comment></data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve"><value>Cover Flow</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve"><value>Lyrics page</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OnlineLyrics" xml:space="preserve"><value>Online lyrics</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.SavingLyrics" xml:space="preserve"><value>Saving lyrics</value><comment>Settings section label</comment></data>

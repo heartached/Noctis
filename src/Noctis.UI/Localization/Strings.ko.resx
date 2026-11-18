@@ -6199,14 +6199,6 @@
     <value>미니 플레이어</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>지금 재생 중 아트워크</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>커버 플로우</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>가사 페이지</value>
     <comment>Settings section label</comment>
