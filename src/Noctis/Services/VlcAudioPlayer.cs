@@ -833,67 +833,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         // PulseAudio stream at every track change — a gap on every boundary and a
         // cut-off tail on Bluetooth. The sink renders into one pulse stream instead;
         // no pulse server (or libpulse-simple) falls back the same way.
-        _gaplessEngine = IsGaplessEnginePlatform(OperatingSystem.IsWindows(), OperatingSystem.IsLinux()) &&
-                         _wasapiOut == null &&
-                         Environment.GetEnvironmentVariable("NOCTIS_GAPLESS_ENGINE") != "0";
-        if (_gaplessEngine)
-        {
-            _gaplessSink = GaplessSink.TryCreate(_outputDeviceId, MultichannelOutputActive);
-            if (_gaplessSink == null)
-            {
-                _gaplessEngine = false;
-            }
-            else
-            {
-                _gaplessSink.Rebuilt += OnGaplessSinkRebuilt;
-                _enginePlayers[0] = _player;
-                _enginePlayers[1] = _standbyPlayer;
-                try
-                {
-                    for (var slot = 0; slot < 2; slot++)
-                    {
-                        var s = slot;
-                        _enginePlayCbs[s] = (data, samples, count, pts) => EnginePlay(s, samples, count, pts);
-                        _enginePauseCbs[s] = (data, pts) => EnginePause(s, pts);
-                        _engineResumeCbs[s] = (data, pts) => EngineResume(s, pts);
-                        _engineFlushCbs[s] = (data, pts) => EngineFlush(s);
-                        _engineDrainCbs[s] = data => EngineDrain(s);
-                        _enginePlayers[s].SetAudioCallbacks(
-                            _enginePlayCbs[s]!, _enginePauseCbs[s]!, _engineResumeCbs[s]!,
-                            _engineFlushCbs[s]!, _engineDrainCbs[s]!);
-                        _enginePlayers[s].SetAudioFormat("S16N", (uint)_gaplessSink.SampleRate, (uint)_gaplessSink.Channels);
-                        _enginePlayers[s].Volume = 100;
-                    }
-                    DebugLogger.Info(
-                        DebugLogger.Category.Playback,
-                        "GaplessEngine.Wired",
-                        $"rate={_gaplessSink.SampleRate}, channels={_gaplessSink.Channels}");
-                    // NOCTIS_ENGINE_TAP: also capture what VLC DELIVERS (pre-ring),
-                    // so render-side glitches can be attributed upstream vs ours.
-                    // Raw s16le at sink rate/channels — headerless survives kill.
-                    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP")))
-                    {
-                        try
-                        {
-                            _engineInTap = new FileStream(
-                                Path.Combine(Path.GetTempPath(), "noctis-engine-in-tap.raw"),
-                                FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16);
-                        }
-                        catch { /* diagnostic only */ }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // Delegates deliberately NOT nulled (see the _audioPlayCb note):
-                    // libvlc may already hold thunks. Dropping the sink is enough —
-                    // EnginePlay no-ops when _gaplessSink is null.
-                    DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.WireFailed", ex.Message);
-                    try { _gaplessSink.Dispose(); } catch { }
-                    _gaplessSink = null;
-                    _gaplessEngine = false;
-                }
-            }
-        }
+        WireGaplessEngine();
         // Linux engine: no OS session carries the engine's stream, so the user's level
         // goes to the sink's own output stage — through the same session-volume paths
         // Windows uses (ramp, fades, reasserts), with the players pinned at 100 above.
@@ -930,6 +870,91 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         _positionTimer = new System.Timers.Timer(100);
         _positionTimer.Elapsed += OnPositionTimerElapsed;
         _positionTimer.AutoReset = true;
+    }
+
+    /// <summary>
+    /// Opens the splice engine's sink and wires both players to it. At construction, and again
+    /// when a rebuild returns to shared output (see RebuildOutputModeLocked): Exclusive Mode
+    /// switched on and off once used to leave the engine off until the app restarted, and every
+    /// track change after that went through the two-player handoff (loopback on the device:
+    /// 90 and 122 ms of silence at the seams of one recording cut into three files).
+    /// </summary>
+    private void WireGaplessEngine()
+    {
+        _gaplessEngine = IsGaplessEnginePlatform(OperatingSystem.IsWindows(), OperatingSystem.IsLinux()) &&
+                         _wasapiOut == null &&
+                         Environment.GetEnvironmentVariable("NOCTIS_GAPLESS_ENGINE") != "0";
+        if (!_gaplessEngine)
+            return;
+        _gaplessSink = GaplessSink.TryCreate(_outputDeviceId, MultichannelOutputActive);
+        if (_gaplessSink == null)
+        {
+            _gaplessEngine = false;
+            return;
+        }
+        _gaplessSink.Rebuilt += OnGaplessSinkRebuilt;
+        _enginePlayers[0] = _player;
+        _enginePlayers[1] = _standbyPlayer;
+        // Per-slot state of the players (and the sink) this wiring replaces.
+        _engineStagedPath = null;
+        Interlocked.Exchange(ref _engineWarmReopenSegment, null);
+        for (var slot = 0; slot < 2; slot++)
+        {
+            Volatile.Write(ref _engineSegments[slot], null);
+            _engineRgInput[slot] = null;
+            _engineRgTags[slot] = null;
+            _enginePendingBaseMs[slot] = 0;
+            _engineExpectedPts[slot] = 0;
+            _engineSpread[slot] = default;
+            _enginePauseDate[slot] = 0;
+        }
+        try
+        {
+            for (var slot = 0; slot < 2; slot++)
+            {
+                var s = slot;
+                // Kept across a re-wire: libvlc may still hold the thunks of the players the
+                // rebuild replaced (their disposal is deferred), and a collected delegate
+                // there is a call into freed memory.
+                _enginePlayCbs[s] ??= (data, samples, count, pts) => EnginePlay(s, samples, count, pts);
+                _enginePauseCbs[s] ??= (data, pts) => EnginePause(s, pts);
+                _engineResumeCbs[s] ??= (data, pts) => EngineResume(s, pts);
+                _engineFlushCbs[s] ??= (data, pts) => EngineFlush(s);
+                _engineDrainCbs[s] ??= data => EngineDrain(s);
+                _enginePlayers[s].SetAudioCallbacks(
+                    _enginePlayCbs[s]!, _enginePauseCbs[s]!, _engineResumeCbs[s]!,
+                    _engineFlushCbs[s]!, _engineDrainCbs[s]!);
+                _enginePlayers[s].SetAudioFormat("S16N", (uint)_gaplessSink.SampleRate, (uint)_gaplessSink.Channels);
+                _enginePlayers[s].Volume = 100;
+            }
+            DebugLogger.Info(
+                DebugLogger.Category.Playback,
+                "GaplessEngine.Wired",
+                $"rate={_gaplessSink.SampleRate}, channels={_gaplessSink.Channels}");
+            // NOCTIS_ENGINE_TAP: also capture what VLC DELIVERS (pre-ring),
+            // so render-side glitches can be attributed upstream vs ours.
+            // Raw s16le at sink rate/channels — headerless survives kill.
+            if (_engineInTap == null && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("NOCTIS_ENGINE_TAP")))
+            {
+                try
+                {
+                    _engineInTap = new FileStream(
+                        Path.Combine(Path.GetTempPath(), "noctis-engine-in-tap.raw"),
+                        FileMode.Create, FileAccess.Write, FileShare.Read, 1 << 16);
+                }
+                catch { /* diagnostic only */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Delegates deliberately NOT nulled (see the _audioPlayCb note):
+            // libvlc may already hold thunks. Dropping the sink is enough —
+            // EnginePlay no-ops when _gaplessSink is null.
+            DebugLogger.Warn(DebugLogger.Category.Playback, "GaplessEngine.WireFailed", ex.Message);
+            try { _gaplessSink.Dispose(); } catch { }
+            _gaplessSink = null;
+            _gaplessEngine = false;
+        }
     }
 
     // ── Properties ──────────────────────────────────────────────
@@ -2080,9 +2105,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// </summary>
     private void RebuildOutputModeLocked(bool exclusive, bool resumeTrack = true)
     {
-        // The splice engine's callbacks die with the rebuilt players; disable it
-        // (until app restart) so segment bookkeeping can't run against players
-        // that no longer deliver PCM — that would render silence forever.
+        // The splice engine's callbacks die with the rebuilt players; disable it so
+        // segment bookkeeping can't run against players that no longer deliver PCM —
+        // that would render silence forever. A rebuild to shared output wires it to
+        // the fresh players again below.
         if (_gaplessEngine)
         {
             _gaplessEngine = false;
@@ -2188,6 +2214,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 _exclusiveOut?.Dispose();
                 _exclusiveOut = null;
             }
+            // Shared output again: the engine comes back with it, on the fresh players.
+            WireGaplessEngine();
             ApplyMuteToOwner(); // exclusive sink gone: the engine gate or the player owns mute again
             ApplyPlaybackRateToOwner();
             _keepAlive?.SetSuspended(false);
