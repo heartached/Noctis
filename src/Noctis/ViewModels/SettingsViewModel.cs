@@ -2477,8 +2477,16 @@ public partial class SettingsViewModel : ViewModelBase
     /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarDefaultWidth = 536;
-    public const double PlaybackBarMinWidth = 340;
-    public const double PlaybackBarMaxWidth = 1400;
+    public const double PlaybackBarMinWidth = AppSettings.PlaybackBarMinWidth;
+    public const double PlaybackBarMaxWidth = AppSettings.PlaybackBarMaxWidth;
+
+    /// <summary>The Player page slider's right end: as wide as the grip drag can take the
+    /// island (its host width, <see cref="PlayerViewModel.IslandAvailableWidth"/>), and never
+    /// below the current width, so a wider stored bar reads as itself and touching the slider
+    /// does not cut it down.</summary>
+    public double PlaybackBarIslandSliderMaximum => Math.Max(
+        _player is { IslandAvailableWidth: > 0 } p ? Math.Min(p.IslandAvailableWidth, PlaybackBarMaxWidth) : PlaybackBarMaxWidth,
+        PlaybackBarIslandWidth);
     // True while a grip drag pushes its width into the slider property, so the
     // property handler doesn't turn around and re-persist the same value.
     private bool _syncingPlaybackBarWidth;
@@ -3521,6 +3529,12 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetPlayer(PlayerViewModel player)
     {
         _player = player;
+        // The island's drag limit sizes the Player page width slider.
+        player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.IslandAvailableWidth))
+                OnPropertyChanged(nameof(PlaybackBarIslandSliderMaximum));
+        };
         ApplyPlayerSettings();
         // A server started before the player was handed over gets its remote now.
         if (_noctisServer is { Remote: null } server) server.Remote = new PlayerServerRemote(player);
@@ -4628,6 +4642,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarIslandWidth = clamped;
             return;
         }
+        // Raised here, before the width's own change notice: a slider whose Maximum is
+        // still the old, smaller end would otherwise clamp the new width as it arrives.
+        OnPropertyChanged(nameof(PlaybackBarIslandSliderMaximum));
         if (_suspendSettingPersistence || _syncingPlaybackBarWidth) return;
         _playbackBarWidth = _settings.PlaybackBarWidth = clamped;
         if (_player != null) _player.PlaybackBarIslandWidth = clamped;

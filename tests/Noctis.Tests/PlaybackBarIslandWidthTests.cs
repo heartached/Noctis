@@ -269,4 +269,82 @@ public class PlaybackBarIslandWidthTests
             win.Close();
         }
     }
+
+    private sealed class NoOpPlayHistoryService : Noctis.Services.IPlayHistoryService
+    {
+        public IReadOnlyList<Noctis.Models.PlayHistoryEvent> Events => Array.Empty<Noctis.Models.PlayHistoryEvent>();
+        public Task PreloadAsync() => Task.CompletedTask;
+        public void RecordPlay(Noctis.Models.Track track) { }
+        public void RecordSkip(Noctis.Models.Track track) { }
+        public Task FlushAsync() => Task.CompletedTask;
+    }
+
+    /// <summary>Settings › Player › island width: the slider used to stop at 1400 while the
+    /// grip drag goes as wide as the window, so a wider bar read "1400 px" and touching the
+    /// slider shrank it. The slider now reaches as far as the drag can (the bar's host width)
+    /// and is never below the stored width, which it shows as it is.</summary>
+    [AvaloniaFact]
+    public async Task SettingsSlider_ShowsAWidthPastTheOld1400Cap_AndTouchingItDoesNotShrinkTheBar()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        var bar1 = (Window?)null;
+        var settingsWindow = (Window?)null;
+        try
+        {
+            var persistence = new Noctis.Services.PersistenceService(root);
+            await persistence.SaveSettingsAsync(new Noctis.Models.AppSettings { PlaybackBarWidth = 1800 });
+            var vm = new SettingsViewModel(persistence, new FakeLibraryService(), new NoOpPlayHistoryService());
+            var player = MakePlayer();
+            vm.SetPlayer(player); // wired both ways, as MainWindowViewModel does
+            player.SetSettingsViewModel(vm);
+            await vm.LoadAsync();
+            Assert.Equal(1800, vm.PlaybackBarIslandWidth);
+            Assert.Equal(1800, player.PlaybackBarIslandWidth);
+
+            // The bar in a 2000px window: the drag limit it reports sizes the slider.
+            // The main window's bar (MainWindow.axaml: CompactWhenLyricsPageActive="False").
+            var bar = new PlaybackBarView { DataContext = player, CompactWhenLyricsPageActive = false };
+            bar1 = new Window { Width = 2000, Height = 200, Content = bar };
+            bar1.Show();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(Island(bar).MaxWidth, player.IslandAvailableWidth);
+            Assert.True(player.IslandAvailableWidth > 1900);
+            Assert.Equal(player.IslandAvailableWidth, vm.PlaybackBarIslandSliderMaximum);
+
+            // A grip drag wider than the old cap reaches the Settings value unclamped.
+            player.CommitPlaybackBarWidth(1900);
+            Assert.Equal(1900, vm.PlaybackBarIslandWidth);
+
+            vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+            var view = new SettingsView { DataContext = vm };
+            settingsWindow = new Window { Width = 920, Height = 720, Content = view };
+            settingsWindow.Show();
+            Dispatcher.UIThread.RunJobs();
+            var slider = view.FindControl<Slider>("IslandWidthSlider")!;
+            Assert.Equal(1900, slider.Value);
+            Assert.Equal(vm.PlaybackBarIslandSliderMaximum, slider.Maximum);
+            Assert.Equal(1900, vm.PlaybackBarIslandWidth); // showing it did not clamp it
+
+            // Touching the slider moves the width from where it is, not from 1400.
+            slider.Value = 1880;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(1880, vm.PlaybackBarIslandWidth);
+            Assert.Equal(1880, player.PlaybackBarIslandWidth);
+
+            // A stored width wider than the window (set on a bigger screen) still reads as
+            // itself: the slider's end grows to it instead of cutting it down.
+            player.CommitPlaybackBarWidth(3000);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(3000, vm.PlaybackBarIslandWidth);
+            Assert.Equal(3000, vm.PlaybackBarIslandSliderMaximum);
+            Assert.Equal(3000, slider.Value);
+            Assert.Equal(3000, slider.Maximum);
+        }
+        finally
+        {
+            bar1?.Close();
+            settingsWindow?.Close();
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
 }

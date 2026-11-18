@@ -3751,7 +3751,8 @@
                         <Slider Grid.Column="1"
                                 AutomationProperties.Name="{loc:T Settings.PlayerIslandWidth}"
                                 Classes="accent-slider"
-                                Minimum="340" Maximum="1400"
+                                Minimum="{x:Static vm:SettingsViewModel.PlaybackBarMinWidth}"
+                                Maximum="{Binding PlaybackBarIslandSliderMaximum}"
                                 x:Name="IslandWidthSlider"
                                 Value="{Binding PlaybackBarIslandWidth, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
