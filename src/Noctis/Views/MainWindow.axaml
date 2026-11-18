@@ -2073,7 +2073,7 @@
             BorderBrush="{DynamicResource IslandOutlineBrush}"
             BorderThickness="1.5"
             ZIndex="30">
-        <controls:GlassPanel CornerRadius="999" BlurRadius="14">
+        <controls:GlassPanel CornerRadius="999" BlurRadius="14" EdgeThickness="0">
             <controls:GlassPanel.Background>
                 <SolidColorBrush Color="{DynamicResource IslandBackgroundColor}" Opacity="{Binding Player.IslandBackgroundOpacity}"/>
             </controls:GlassPanel.Background>
