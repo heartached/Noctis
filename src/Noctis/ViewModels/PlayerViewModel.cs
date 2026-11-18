@@ -804,6 +804,10 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private DateTime _autoMixTransitionArmedUntilUtc = DateTime.MinValue;
     private string _lastAutoMixLogKey = string.Empty;
     private Guid _autoMixPreparedTrackId = Guid.Empty;
+    // The next track, while Song Transitions is on and the planner leaves this pair alone
+    // (the next song of the same album, a short track, classical or live recordings): the
+    // pair the gapless advance then takes. Set by TryAdvanceForAutoMix for the tick it ran in.
+    private Guid _autoMixLeftAloneNextId = Guid.Empty;
     private long _queueVersion;
     private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
@@ -4352,6 +4356,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         // Stop-after-current: no early handoff. The stop branch in AdvanceQueueCore only
         // flips State, so an advance before the real end let the track play out and its
         // TrackEnded then started the next one. Let the track end naturally instead.
+        _autoMixLeftAloneNextId = Guid.Empty;
         if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
             StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
@@ -4382,6 +4387,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         if (!plan.IsEnabled)
         {
             _audioPlayer.SetCrossfade(false, 6);
+            _autoMixLeftAloneNextId = nextTrack.Id;
             return false;
         }
 
@@ -4529,8 +4535,13 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
     {
         // StopAfterCurrentTrack: see TryAdvanceForAutoMix — the stop needs the natural end.
+        // Song Transitions on: only a pair the planner left alone this tick. Those pairs used
+        // to get neither a transition nor a staged next track, so the next file opened cold
+        // at the seam: about half a second of silence between the songs of an album, the
+        // very place gapless playback is for (GitHub #254).
+        var transitionsOn = AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off;
         if (!GaplessEnabled ||
-            AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off ||
+            (transitionsOn && _autoMixLeftAloneNextId == Guid.Empty) ||
             StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
             CurrentTrack == null ||
@@ -4551,6 +4562,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return false;
 
         var nextTrack = UpNext[0];
+        if (transitionsOn && _autoMixLeftAloneNextId != nextTrack.Id)
+            return false;
         var remaining = duration - position;
 
         if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
