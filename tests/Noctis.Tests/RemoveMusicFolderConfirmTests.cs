@@ -51,6 +51,7 @@ public class RemoveMusicFolderConfirmTests
             var request = Assert.Single(asked);
             Assert.Equal("Remove this music folder?", request.Title);
             Assert.Equal($"Your library loses 2 songs from “{Music}”. The files stay where they are.", request.Message);
+            Assert.Equal("Add the folder again to bring them back, with their play counts, ratings and favorites.", request.Note);
             Assert.Equal("Remove", request.ConfirmText);
             Assert.Equal(new[] { Music, Other }, vm.MusicFolders);
             Assert.Empty(library.ScanPasses);

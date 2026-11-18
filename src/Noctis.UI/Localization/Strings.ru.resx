@@ -4142,7 +4142,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>«{0}» находится внутри этой папки — сначала удалите её.</value><comment>Settings status line</comment></data>
   <data name="Settings.RemoveFolderTitle" xml:space="preserve"><value>Удалить эту папку с музыкой?</value><comment>Settings › Library: confirm title for a media folder's ✕</comment></data>
   <data name="Settings.RemoveFolderBody" xml:space="preserve"><value>Из медиатеки будут убраны песни из «{1}»: {0}. Файлы останутся на месте.</value><comment>Remove-folder confirm. {0} = song count (Count.Songs), {1} = folder</comment></data>
-  <data name="Settings.RemoveFolderNote" xml:space="preserve"><value>Добавьте папку снова, чтобы вернуть их. Прослушивания, оценки и избранное вернутся при следующем запуске Noctis.</value><comment>Remove-folder confirm note</comment></data>
+  <data name="Settings.RemoveFolderNote" xml:space="preserve"><value>Добавьте папку снова, чтобы вернуть их вместе с прослушиваниями, оценками и избранным.</value><comment>Remove-folder confirm note</comment></data>
   <data name="Settings.ScanningLibrary" xml:space="preserve"><value>Сканирование медиатеки</value><comment>Settings status line</comment></data>
   <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>Сканирование медиатеки {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
   <data name="Settings.RebuildingIndex" xml:space="preserve"><value>Перестроение индекса медиатеки</value><comment>Settings status line</comment></data>
