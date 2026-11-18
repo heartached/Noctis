@@ -4113,6 +4113,30 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Validating" xml:space="preserve"><value>Проверка…</value><comment>Settings status line</comment></data>
   <data name="Settings.EnterServerAddress" xml:space="preserve"><value>Введите адрес сервера.</value><comment>Settings status line</comment></data>
   <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>Введите имя пользователя и пароль.</value><comment>Settings status line</comment></data>
+  <data name="Settings.Server.Connected" xml:space="preserve"><value>Подключено</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.ConnectedNoMusic" xml:space="preserve"><value>Подключено — в этой медиатеке Jellyfin пока нет музыки.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.ConnectedNoAlbums" xml:space="preserve"><value>Подключено — на этом сервере пока не видно альбомов.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.WrongLogin" xml:space="preserve"><value>Неверное имя пользователя или пароль.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Http" xml:space="preserve"><value>Сервер ответил HTTP {0}.</value><comment>Music Server status line. {0} = HTTP status code</comment></data>
+  <data name="Settings.Server.NotJellyfin" xml:space="preserve"><value>Неожиданный ответ — это точно сервер Jellyfin?</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.NotSubsonic" xml:space="preserve"><value>Неожиданный ответ — это точно сервер, совместимый с Subsonic?</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.NameNotFound" xml:space="preserve"><value>Адрес сервера не найден. Проверьте URL (и что этот компьютер может его разрешить).</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Refused" xml:space="preserve"><value>Сервер отклонил подключение. Проверьте порт и что сервер запущен.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.SecureFailed" xml:space="preserve"><value>Не удалось установить защищённое соединение. Возможно, сервер не поддерживает https или его сертификат не является доверенным.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.NoResponse" xml:space="preserve"><value>Сервер не ответил. Проверьте адрес и что сервер запущен.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Unreachable" xml:space="preserve"><value>Не удалось связаться с сервером. Проверьте URL и что сервер запущен.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.EnterUrl" xml:space="preserve"><value>Введите URL сервера.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.InvalidUrl" xml:space="preserve"><value>URL сервера должен быть корректным адресом http(s).</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.PlainHttp" xml:space="preserve"><value>Обычный http разрешён только для локальных/частных серверов. Для удалённых серверов используйте https.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Incomplete" xml:space="preserve"><value>Сервер отклонил запрос как неполный</value><comment>Music Server status line; Subsonic error 10. No final period: the code adds "." or ": server's own message"</comment></data>
+  <data name="Settings.Server.NeedsNewerNoctis" xml:space="preserve"><value>Этому серверу нужна более новая версия Noctis</value><comment>Music Server status line; Subsonic error 20. No final period (added by code)</comment></data>
+  <data name="Settings.Server.ApiTooOld" xml:space="preserve"><value>API Subsonic этого сервера слишком старый для Noctis</value><comment>Music Server status line; Subsonic error 30. No final period (added by code)</comment></data>
+  <data name="Settings.Server.NoTokenLogin" xml:space="preserve"><value>Этот сервер не разрешает вход по токену для этого пользователя</value><comment>Music Server status line; Subsonic error 41. No final period (added by code)</comment></data>
+  <data name="Settings.Server.NotAllowed" xml:space="preserve"><value>Этой учётной записи это действие на сервере запрещено</value><comment>Music Server status line; Subsonic error 50. No final period (added by code)</comment></data>
+  <data name="Settings.Server.TrialOver" xml:space="preserve"><value>Пробный период сервера закончился</value><comment>Music Server status line; Subsonic error 60. No final period (added by code)</comment></data>
+  <data name="Settings.Server.NotFound" xml:space="preserve"><value>Не найдено на сервере</value><comment>Music Server status line; Subsonic error 70. No final period (added by code)</comment></data>
+  <data name="Settings.Server.ErrorCode" xml:space="preserve"><value>Ошибка сервера (код {0}).</value><comment>Music Server status line. {0} = Subsonic error code</comment></data>
+  <data name="Settings.Server.UnsupportedType" xml:space="preserve"><value>Неподдерживаемый тип сервера.</value><comment>Music Server status line</comment></data>
   <data name="Settings.FolderMissing" xml:space="preserve"><value>Такой папки нет.</value><comment>Settings status line</comment></data>
   <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>Уже входит в «{0}».</value><comment>Settings status line</comment></data>
   <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>«{0}» находится внутри этой папки — сначала удалите её.</value><comment>Settings status line</comment></data>

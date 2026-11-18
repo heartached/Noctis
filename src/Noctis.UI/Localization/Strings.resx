@@ -4113,6 +4113,30 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.Validating" xml:space="preserve"><value>Validating...</value><comment>Settings status line</comment></data>
   <data name="Settings.EnterServerAddress" xml:space="preserve"><value>Enter the server address.</value><comment>Settings status line</comment></data>
   <data name="Settings.EnterUsernamePassword" xml:space="preserve"><value>Enter the username and password.</value><comment>Settings status line</comment></data>
+  <data name="Settings.Server.Connected" xml:space="preserve"><value>Connected</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.ConnectedNoMusic" xml:space="preserve"><value>Connected — no music found in this Jellyfin library yet.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.ConnectedNoAlbums" xml:space="preserve"><value>Connected — no albums visible on this server yet.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.WrongLogin" xml:space="preserve"><value>Wrong username or password.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Http" xml:space="preserve"><value>Server answered HTTP {0}.</value><comment>Music Server status line. {0} = HTTP status code</comment></data>
+  <data name="Settings.Server.NotJellyfin" xml:space="preserve"><value>Unexpected response — is this a Jellyfin server?</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.NotSubsonic" xml:space="preserve"><value>Unexpected response — is this a Subsonic-compatible server?</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.NameNotFound" xml:space="preserve"><value>Server address not found. Check the URL (and that this machine can resolve it).</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Refused" xml:space="preserve"><value>The server refused the connection. Check the port and that the server is running.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.SecureFailed" xml:space="preserve"><value>Secure connection failed. The server may not support https, or its certificate isn't trusted.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.NoResponse" xml:space="preserve"><value>The server didn't respond. Check the address and that the server is running.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Unreachable" xml:space="preserve"><value>Couldn't reach the server. Check the URL and that the server is running.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.EnterUrl" xml:space="preserve"><value>Enter the server URL.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.InvalidUrl" xml:space="preserve"><value>The server URL must be a valid http(s) address.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.PlainHttp" xml:space="preserve"><value>Plain http is only allowed for local/private servers. Use https for remote servers.</value><comment>Music Server status line</comment></data>
+  <data name="Settings.Server.Incomplete" xml:space="preserve"><value>The server rejected the request as incomplete</value><comment>Music Server status line; Subsonic error 10. No final period: the code adds "." or ": server's own message"</comment></data>
+  <data name="Settings.Server.NeedsNewerNoctis" xml:space="preserve"><value>This server needs a newer version of Noctis</value><comment>Music Server status line; Subsonic error 20. No final period (added by code)</comment></data>
+  <data name="Settings.Server.ApiTooOld" xml:space="preserve"><value>This server's Subsonic API is too old for Noctis</value><comment>Music Server status line; Subsonic error 30. No final period (added by code)</comment></data>
+  <data name="Settings.Server.NoTokenLogin" xml:space="preserve"><value>This server does not allow token login for this user</value><comment>Music Server status line; Subsonic error 41. No final period (added by code)</comment></data>
+  <data name="Settings.Server.NotAllowed" xml:space="preserve"><value>This account is not allowed to do that on the server</value><comment>Music Server status line; Subsonic error 50. No final period (added by code)</comment></data>
+  <data name="Settings.Server.TrialOver" xml:space="preserve"><value>The server's trial period is over</value><comment>Music Server status line; Subsonic error 60. No final period (added by code)</comment></data>
+  <data name="Settings.Server.NotFound" xml:space="preserve"><value>Not found on the server</value><comment>Music Server status line; Subsonic error 70. No final period (added by code)</comment></data>
+  <data name="Settings.Server.ErrorCode" xml:space="preserve"><value>Server error (code {0}).</value><comment>Music Server status line. {0} = Subsonic error code</comment></data>
+  <data name="Settings.Server.UnsupportedType" xml:space="preserve"><value>Unsupported server type.</value><comment>Music Server status line</comment></data>
   <data name="Settings.FolderMissing" xml:space="preserve"><value>That folder doesn't exist.</value><comment>Settings status line</comment></data>
   <data name="Settings.FolderAlreadyCovered" xml:space="preserve"><value>Already covered by "{0}".</value><comment>Settings status line</comment></data>
   <data name="Settings.FolderContainsExisting" xml:space="preserve"><value>"{0}" is inside that folder — remove it first.</value><comment>Settings status line</comment></data>

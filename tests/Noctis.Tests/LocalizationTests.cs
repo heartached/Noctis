@@ -211,6 +211,37 @@ public class LocalizationTests
     }
 
     /// <summary>
+    /// Settings › Integrations › Music Server: the status line's texts came from English literals in
+    /// the Jellyfin/Subsonic clients. They come from the strings now; a server's own error text
+    /// stays as the server sent it.
+    /// </summary>
+    [AvaloniaFact]
+    public void MusicServerStatusLines_ComeFromTheStrings()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Connected", Noctis.Services.MediaServer.MediaServerConnectResult.Ok().Message);
+            Assert.Equal("Wrong username or password.", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(40, "x").Message);
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Подключено", Noctis.Services.MediaServer.MediaServerConnectResult.Ok().Message);
+            Assert.Equal("Неверное имя пользователя или пароль.", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(40, "x").Message);
+            Assert.Equal("Не найдено на сервере: Album not found", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(70, "Album not found").Message);
+            Assert.Equal("Ошибка сервера (код 99).", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(99, "").Message);
+            Assert.Equal(Loc.T("Settings.Server.NoResponse"),
+                Noctis.Services.MediaServer.MediaServerConnectResult.FromTransportException(new OperationCanceledException()).Message);
+            Assert.Null(Noctis.Services.MediaServer.MediaServerUrl.TryNormalizeBase("http://music.example.com", out _, out var insecure));
+            Assert.Equal(Loc.T("Settings.Server.PlainHttp"), insecure);
+            Assert.DoesNotMatch("[A-Za-z]{4,}", insecure.Replace("http", ""));
+
+            Loc.Instance.SetCulture("de");
+            Assert.Equal("Verbunden", Noctis.Services.MediaServer.MediaServerConnectResult.Ok().Message);
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>
     /// Translations that ship complete (Russian, GitHub #128) must carry every English key and
     /// nothing else, with the same {0} / {1:N0} placeholders per key: a dropped placeholder loses
     /// a value on screen and an extra one makes string.Format throw.

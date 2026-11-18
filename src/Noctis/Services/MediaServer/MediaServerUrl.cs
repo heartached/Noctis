@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
+using Noctis.Localization;
 
 namespace Noctis.Services.MediaServer;
 
@@ -32,7 +33,7 @@ public static class MediaServerUrl
         if (trimmed.Length == 0)
         {
             error = MediaServerError.InvalidUrl;
-            message = "Enter the server URL.";
+            message = Loc.T("Settings.Server.EnterUrl");
             return null;
         }
 
@@ -53,14 +54,14 @@ public static class MediaServerUrl
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             error = MediaServerError.InvalidUrl;
-            message = "The server URL must be a valid http(s) address.";
+            message = Loc.T("Settings.Server.InvalidUrl");
             return null;
         }
 
         if (uri.Scheme == Uri.UriSchemeHttp && !IsPrivateHost(uri))
         {
             error = MediaServerError.InsecureUrl;
-            message = "Plain http is only allowed for local/private servers. Use https for remote servers.";
+            message = Loc.T("Settings.Server.PlainHttp");
             return null;
         }
 
