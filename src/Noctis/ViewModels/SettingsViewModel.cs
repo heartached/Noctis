@@ -534,6 +534,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             RefreshQuickPlaylistOptions();
             OnPropertyChanged(nameof(ShowTrashFolderMissingHint));
+            // Windows' Transparency effects can be switched while Noctis runs; the note under
+            // Frosted Background was only re-read when the switch itself moved.
+            OnPropertyChanged(nameof(MiniPlayerFrostUnavailable));
         }
     }
 
