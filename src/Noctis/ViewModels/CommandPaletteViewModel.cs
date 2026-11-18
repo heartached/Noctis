@@ -140,7 +140,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Action(Loc.T("Palette.ToggleShuffle"), "ShuffleIcon", () => _main.Player.ToggleShuffleCommand.Execute(null));
         Action(Loc.T("Palette.CycleRepeat"), "RepeatAllIcon", () => _main.Player.CycleRepeatCommand.Execute(null));
         Action(Loc.T("Palette.ToggleCrossfade"), "SettingsIcon",
-            () => _main.Settings.CrossfadeEnabled = !_main.Settings.CrossfadeEnabled,
+            () => _main.Settings.ToggleCrossfade(),
             Loc.T("Palette.AudioSetting"));
         Action(Loc.T("Palette.ToggleTransitions"), "SettingsIcon",
             () => _main.Settings.SongTransitionsEnabled = !_main.Settings.SongTransitionsEnabled,

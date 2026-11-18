@@ -741,8 +741,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Audio Playback ──
 
-    // Back-compat mirror only: no UI binds this; SongTransitions* are the source of truth.
-    [ObservableProperty] private bool _crossfadeEnabled;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCrossfade3s))]
     [NotifyPropertyChangedFor(nameof(IsCrossfade6s))]
@@ -2938,6 +2936,16 @@ public partial class SettingsViewModel : ViewModelBase
     /// while it's active. Drives the Song Transitions card's enabled state.</summary>
     public bool CanUseSongTransitions => !ExclusiveAudioEnabled;
 
+    /// <summary>The transitions the player runs: the switch, unless Exclusive Mode greys it
+    /// out. The switch kept its value under the greyed card and still armed early AutoMix /
+    /// crossfade advances that the single exclusive stream cannot fade, and kept the
+    /// gapless pre-roll (which only runs with transitions off) from ever running.</summary>
+    private bool SongTransitionsActive => SongTransitionsEnabled && CanUseSongTransitions;
+
+    /// <summary>Whether a plain crossfade runs now (the player's signal path reads it). Was a
+    /// stored mirror set only at load and reset, so the signal path showed the launch value.</summary>
+    public bool CrossfadeEnabled => SongTransitionsActive && IsCrossfadeStyle;
+
     /// <summary>Grays the Song Transitions card while it's unavailable (exclusive on).</summary>
     public double SongTransitionsOpacity => ExclusiveAudioEnabled ? 0.5 : 1.0;
     /// <summary>Live output-path status from the player ("Exclusive output active: 44.1 kHz / 24-bit",
@@ -3704,7 +3712,6 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistShowNewBadge = _settings.PlaylistShowNewBadge;
             PlaylistShowAddedColumn = _settings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = _settings.PlaylistShowFavoriteColumn;
-            CrossfadeEnabled = _settings.CrossfadeEnabled;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SongTransitionsEnabled = _settings.SongTransitionsEnabled;
             TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
@@ -4712,7 +4719,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
         _audioPlayer?.SetPlayPauseFade(PlayPauseFadeEnabled, (int)Math.Round(PlayPauseFadeMs));
-        _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetCrossfade(SongTransitionsActive && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
         ApplyAutoMixToPlayer();
         _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
         // Before SetExclusiveMode: the exclusive rebuild must open the pinned endpoint.
@@ -4730,7 +4737,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyAutoMixToPlayer()
     {
         if (_player == null) return;
-        _player.AutoMixTransitionMode = MapTransitionMode(SongTransitionsEnabled, TransitionStyle);
+        _player.AutoMixTransitionMode = MapTransitionMode(SongTransitionsActive, TransitionStyle);
         _player.AutoMixStrength = SongTransitionStrength switch
         {
             "Subtle" => Models.AutoMixStrength.Subtle,
@@ -5447,11 +5454,18 @@ public partial class SettingsViewModel : ViewModelBase
         _ = CheckForUpdateSilentAsync();
     }
 
-    partial void OnCrossfadeEnabledChanged(bool value)
+    /// <summary>Command palette › Toggle crossfade: Song Transitions on in the Crossfade style,
+    /// or off when that is what plays. It flipped a mirror property nothing read, so the
+    /// command did nothing.</summary>
+    public void ToggleCrossfade()
     {
-        ApplyAudioSettings();
-        ApplyPlayerSettings();
-        _ = SaveAsync();
+        if (SongTransitionsEnabled && IsCrossfadeStyle)
+        {
+            SongTransitionsEnabled = false;
+            return;
+        }
+        IsCrossfadeStyle = true;
+        SongTransitionsEnabled = true;
     }
 
     partial void OnPlayPauseFadeEnabledChanged(bool value)
@@ -5551,7 +5565,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Slider-driven: only the crossfade length moved. The whole ApplyAudioSettings per drag
         // sample also rebuilt the EQ curve and re-applied it and ReplayGain (10-18).
-        _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetCrossfade(SongTransitionsActive && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
         QueueSettingsSave();
     }
 
@@ -5572,6 +5586,10 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetExclusiveMode(value);
         if (_player != null) _player.ExclusiveModeEnabled = value; // the island's Stop button
+        // Transitions follow (SongTransitionsActive): off while exclusive, back on after.
+        _audioPlayer?.SetCrossfade(CrossfadeEnabled, (int)Math.Round(CrossfadeDuration));
+        ApplyAutoMixToPlayer();
+        _player?.RefreshSignalPath();
         if (!value) ExclusiveAudioStatus = "";
         RefreshChannelMixAvailability();
         _ = SaveAsync();
@@ -8932,7 +8950,6 @@ public partial class SettingsViewModel : ViewModelBase
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
             // Playback
-            CrossfadeEnabled = false;
             CrossfadeDuration = 6;
             SongTransitionsEnabled = false;
             TransitionStyle = "Crossfade";
