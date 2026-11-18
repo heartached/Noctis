@@ -227,6 +227,8 @@ public class LibraryService : ILibraryService
         var freshlyRead = new ConcurrentDictionary<Guid, byte>();
         // Files the library did not know before this scan (TracksAdded, GitHub #148).
         var firstSeen = new ConcurrentBag<Track>();
+        // Their journaled state, read on the first such file (RestoreReturningUserState).
+        var journal = JournalOnFirstUse();
         var fileCount = 0;
         var unchangedCount = 0;
         var changedCount = 0;
@@ -396,6 +398,7 @@ public class LibraryService : ILibraryService
                             // Before the add below: a progressive publish must never show it
                             // in Songs first.
                             track.IsInInbox = IsUnderAnyRoot(filePath, inboxRoots);
+                            RestoreReturningUserState(track, journal);
                             firstSeen.Add(track);
                         }
                         track.ArtworkHash = TrackArtwork.Fingerprint(embeddedArt);
@@ -1336,6 +1339,7 @@ public class LibraryService : ILibraryService
         var imported = new ConcurrentBag<Track>();
         // Files the library did not know before this import (TracksAdded, GitHub #148).
         var firstSeen = new ConcurrentBag<Track>();
+        var journal = JournalOnFirstUse();
         var unchangedKnown = new ConcurrentBag<Track>();
         // Same as the scan's: a file the tag read refused is named, not just left out.
         var skippedNote = new CappedBreadcrumb("Library", "import skipped, unreadable:", cap: 10, isEnabled: () => true);
@@ -1453,6 +1457,7 @@ public class LibraryService : ILibraryService
             {
                 track.SourceType = SourceType.Local;
                 track.IsInInbox = IsUnderAnyRoot(filePath, inboxRoots);
+                RestoreReturningUserState(track, journal);
                 firstSeen.Add(track);
             }
             track.ArtworkHash = TrackArtwork.Fingerprint(embeddedArt);
@@ -2334,18 +2339,8 @@ public class LibraryService : ILibraryService
 
             foreach (var track in _tracks)
             {
-                if (!state.TryGetValue(track.Id, out var s)) continue;
-                track.PlayCount = s.PlayCount;
-                track.LastPlayed = s.LastPlayed;
-                track.Rating = s.Rating;
-                track.IsDisliked = s.IsDisliked;
-                track.SnoozedUntil = s.SnoozedUntil;
-                track.SavedPositionMs = s.SavedPositionMs;
-                track.Badge = s.Badge;
-                track.IsFavorite = s.IsFavorite;
-                // After IsFavorite: its setter stamps/clears FavoritedAt, and the
-                // journaled timestamp must win over a fresh stamp.
-                track.FavoritedAt = s.FavoritedAt;
+                if (state.TryGetValue(track.Id, out var s))
+                    ApplyUserState(track, s);
             }
         }
         catch (Exception ex)
@@ -2357,6 +2352,48 @@ public class LibraryService : ILibraryService
             DebugLog.Write("Library",
                 $"User-state journal unavailable — using library.json values: {ex.Message}");
         }
+    }
+
+    /// <summary>One journal row laid over a track: the load overlay and a returning file share it.</summary>
+    private static void ApplyUserState(Track track, TrackUserState s)
+    {
+        track.PlayCount = s.PlayCount;
+        track.LastPlayed = s.LastPlayed;
+        track.Rating = s.Rating;
+        track.IsDisliked = s.IsDisliked;
+        track.SnoozedUntil = s.SnoozedUntil;
+        track.SavedPositionMs = s.SavedPositionMs;
+        track.Badge = s.Badge;
+        track.IsFavorite = s.IsFavorite;
+        // After IsFavorite: its setter stamps/clears FavoritedAt, and the
+        // journaled timestamp must win over a fresh stamp.
+        track.FavoritedAt = s.FavoritedAt;
+    }
+
+    /// <summary>
+    /// For a scan or import: the journal, read once (one query) the first time the pass meets a
+    /// file the library does not hold, so a pass that finds nothing new never reads it. A file
+    /// that comes back in the same session (a music folder removed and added again, a file the
+    /// folder watcher saw deleted and put back) gets its play counts, rating and favorite back
+    /// right away. Before, it came back empty until the next start, and a play or rating in the
+    /// meantime overwrote its journal row for good. Runs on the pass's worker thread.
+    /// </summary>
+    private Lazy<IReadOnlyDictionary<Guid, TrackUserState>> JournalOnFirstUse() => new(() =>
+    {
+        if (!_userStateJournalHealthy) return new Dictionary<Guid, TrackUserState>();
+        try { return _sqliteIndex.LoadUserStateAsync().GetAwaiter().GetResult(); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Library", $"User-state journal unreadable for returning files: {ex.Message}");
+            return new Dictionary<Guid, TrackUserState>();
+        }
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    /// <summary>Gives a file the library did not hold its journaled state, if it has a row.</summary>
+    private static void RestoreReturningUserState(Track track, Lazy<IReadOnlyDictionary<Guid, TrackUserState>> journal)
+    {
+        if (journal.Value.TryGetValue(track.Id, out var s))
+            ApplyUserState(track, s);
     }
 
     public void NotifyFavoritesChanged() => NotifyFavoritesChanged(null);
