@@ -646,13 +646,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     // ── Appearance ──
-    // Five theme buttons (Gray is the default) plus System (auto-pick Gray vs Light from OS).
-    // Exactly one of these is true at any time so the Settings UI can highlight the active card.
+    // Six theme buttons (Gray is the default). Exactly one of these is true at any time so
+    // the Settings UI can highlight the active card (none while a custom or pack theme is on).
 
     [ObservableProperty] private bool _isGrayTheme = true;
     [ObservableProperty] private bool _isDarkTheme;
     [ObservableProperty] private bool _isLightTheme;
-    [ObservableProperty] private bool _isSystemTheme;
     [ObservableProperty] private bool _isMidnightTheme;
     [ObservableProperty] private bool _isInkTheme;
     [ObservableProperty] private bool _isSmokeTheme;
@@ -1450,6 +1449,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
+        RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
         ArtworkClickOptions = BuildArtworkClickOptions();
@@ -4270,7 +4270,7 @@ public partial class SettingsViewModel : ViewModelBase
         else if (IsMidnightTheme) _settings.Theme = "Midnight";
         else if (IsInkTheme) _settings.Theme = "Ink";
         else if (IsSmokeTheme) _settings.Theme = "Smoke";
-        else _settings.Theme = "System";
+        else _settings.Theme = "Gray";
 
         if (!string.IsNullOrEmpty(ActiveCustomThemeId)) _settings.Theme = "Custom:" + ActiveCustomThemeId;
         else if (!string.IsNullOrEmpty(ActivePackThemeKey)) _settings.Theme = App.PackThemePrefix + ActivePackThemeKey;
@@ -5073,7 +5073,6 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand] private void SetGrayTheme() => ApplyTheme("Gray");
     [RelayCommand] private void SetDarkTheme() => ApplyTheme("Dark");
     [RelayCommand] private void SetLightTheme() => ApplyTheme("Light");
-    [RelayCommand] private void SetSystemTheme() => ApplyTheme("System");
     [RelayCommand] private void SetMidnightTheme() => ApplyTheme("Midnight");
     [RelayCommand] private void SetInkTheme() => ApplyTheme("Ink");
     [RelayCommand] private void SetSmokeTheme() => ApplyTheme("Smoke");
@@ -5300,7 +5299,6 @@ public partial class SettingsViewModel : ViewModelBase
         IsGrayTheme = themeKey == "Gray";
         IsDarkTheme = themeKey == "Dark";
         IsLightTheme = themeKey == "Light";
-        IsSystemTheme = themeKey == "System";
         IsMidnightTheme = themeKey == "Midnight";
         IsInkTheme = themeKey == "Ink";
         IsSmokeTheme = themeKey == "Smoke";
@@ -5308,7 +5306,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (themeKey == "__Custom") return; // custom-theme active: all built-in flags stay false
 
         // Default-safety: if no flag matched, fall back to Gray.
-        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsSystemTheme && !IsMidnightTheme
+        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsMidnightTheme
             && !IsInkTheme && !IsSmokeTheme)
             IsGrayTheme = true;
     }
@@ -5323,10 +5321,7 @@ public partial class SettingsViewModel : ViewModelBase
         BaseMode = def.BaseMode,
     };
 
-    /// <summary>
-    /// Returns the actual theme key to apply now. For "System" this resolves to either
-    /// Gray or Light depending on the OS appearance setting.
-    /// </summary>
+    /// <summary>Returns the theme key to apply now.</summary>
     private string ResolveActiveThemeKey()
     {
         if (!string.IsNullOrEmpty(ActiveCustomThemeId)) return "Custom:" + ActiveCustomThemeId;
@@ -5336,24 +5331,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (IsMidnightTheme) return "Midnight";
         if (IsInkTheme) return "Ink";
         if (IsSmokeTheme) return "Smoke";
-        if (IsSystemTheme) return IsSystemDarkMode() ? "Gray" : "Light";
         return "Gray";
-    }
-
-    private static bool IsSystemDarkMode()
-    {
-        return Helpers.PlatformHelper.IsSystemDarkMode();
-    }
-
-    /// <summary>
-    /// Re-applies the theme after an OS light/dark switch. No-op unless the System
-    /// tile is active, so explicit picks and custom themes are never disturbed.
-    /// Does not save: the persisted value stays "System".
-    /// </summary>
-    public void NotifySystemColorsChanged()
-    {
-        if (!IsSystemTheme || !string.IsNullOrEmpty(ActiveCustomThemeId)) return;
-        ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
     }
 
     // ── Property change handlers ──

@@ -185,6 +185,35 @@ public class SettingsSearchIndexTests
         }
     }
 
+    /// <summary>
+    /// Rows that come from a template (the Shortcuts tab's action rows, General's sidebar
+    /// page rows) are searchable from a cold open, before their page was ever shown.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SettingsView_TemplatedRows_AreSearchable_BeforeTheirPageWasShown()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            var view = new SettingsView { DataContext = vm };
+            var window = new Window { Width = 920, Height = 720, Content = view };
+            window.Show();
+
+            var box = view.FindControl<TextBox>("SettingsSearchBox")!;
+            box.Text = "Play / Pause";
+            Assert.True(vm.Sections.Single(s => s.Key == SettingsViewModel.TabShortcuts).MatchCount >= 1);
+
+            box.Text = "Start page";
+            Assert.True(vm.Sections.Single(s => s.Key == SettingsViewModel.TabGeneral).MatchCount >= 1);
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
     private sealed class NoOpPlayHistory : IPlayHistoryService
     {
         public System.Collections.Generic.IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();

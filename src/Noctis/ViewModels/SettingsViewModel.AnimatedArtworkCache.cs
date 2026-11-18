@@ -44,11 +44,27 @@ public partial class SettingsViewModel
         public override string ToString() => Label;
     }
 
-    public IReadOnlyList<AnimatedArtworkQualityOption> AnimatedArtworkQualityOptions { get; } = new[]
+    public IReadOnlyList<AnimatedArtworkQualityOption> AnimatedArtworkQualityOptions
+    {
+        get => _animatedArtworkQualityOptions;
+        private set => SetProperty(ref _animatedArtworkQualityOptions, value);
+    }
+    private IReadOnlyList<AnimatedArtworkQualityOption> _animatedArtworkQualityOptions = BuildAnimatedArtworkQualityOptions();
+
+    private static IReadOnlyList<AnimatedArtworkQualityOption> BuildAnimatedArtworkQualityOptions() => new[]
     {
         new AnimatedArtworkQualityOption(AnimatedArtworkQualities.P1080, AnimatedArtworkQualities.P1080),
         new AnimatedArtworkQualityOption(AnimatedArtworkQualities.P2160, Loc.T("Settings.AnimArtQuality2160")),
     };
+
+    /// <summary>A language switch: the quality picker and the "312 MB of 1 GB used" line are
+    /// built with Loc.T, so they kept the old language until the next restart / cache change.</summary>
+    private void RelabelAnimatedArtworkStrings()
+    {
+        AnimatedArtworkQualityOptions = BuildAnimatedArtworkQualityOptions();
+        OnPropertyChanged(nameof(SelectedAnimatedArtworkQualityOption));
+        UpdateAnimatedArtworkCacheUsageText();
+    }
 
     public AnimatedArtworkQualityOption? SelectedAnimatedArtworkQualityOption
     {

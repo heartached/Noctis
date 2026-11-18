@@ -180,7 +180,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private System.ComponentModel.PropertyChangedEventHandler? _settingsBackdropRefreshHandler;
     private EventHandler<bool>? _sidebarAlwaysExpandedHandler;
     private System.ComponentModel.PropertyChangedEventHandler? _sidebarAutoHideHandler;
-    private EventHandler<Avalonia.Platform.PlatformColorValues>? _platformColorsChangedHandler;
     private ResourceDictionary? _liquidGlassOverlay;
     private bool _liquidGlassActive;
     private System.ComponentModel.PropertyChangedEventHandler? _playerPropertyChangedHandler;
@@ -749,17 +748,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         _settingsScrim?.RefreshSoon();
                 };
                 vm.Settings.PropertyChanged += _settingsBackdropRefreshHandler;
-
-                // The 'System' theme tile resolved the OS light/dark mode once and
-                // never tracked later switches. The VM no-ops unless System is the
-                // active theme; Post guards against a non-UI-thread raise (SetTheme
-                // touches Application.Resources, which is UI-thread-only).
-                if (this.GetPlatformSettings() is { } platformSettings)
-                {
-                    _platformColorsChangedHandler = (_, _) =>
-                        Dispatcher.UIThread.Post(() => vm.Settings.NotifySystemColorsChanged());
-                    platformSettings.ColorValuesChanged += _platformColorsChangedHandler;
-                }
 
                 // Load settings first so window placement is restored before the
                 // rest of init runs (avoids a visible resize jump on startup).
@@ -1662,9 +1650,6 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             _trayIcon.Dispose();
             _trayIcon = null;
         }
-
-        if (_platformColorsChangedHandler != null && this.GetPlatformSettings() is { } platformSettings)
-            platformSettings.ColorValuesChanged -= _platformColorsChangedHandler;
 
         // Unsubscribe from all event handlers to prevent memory leak
         if (DataContext is MainWindowViewModel vm)
