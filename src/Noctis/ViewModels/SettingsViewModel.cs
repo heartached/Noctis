@@ -1179,24 +1179,35 @@ public partial class SettingsViewModel : ViewModelBase
         get => _artworkClickOptions;
         private set => SetProperty(ref _artworkClickOptions, value);
     }
-    private IReadOnlyList<LyricsChoiceOption> _artworkClickOptions = BuildArtworkClickOptions();
+    private IReadOnlyList<LyricsChoiceOption> _artworkClickOptions = BuildArtworkClickOptions(miniPlayerEnabled: true);
 
-    private static IReadOnlyList<LyricsChoiceOption> BuildArtworkClickOptions() =>
+    /// <summary>The Mini Player choice is left out while the feature is switched off in
+    /// Plugins › Built-in Features.</summary>
+    private static IReadOnlyList<LyricsChoiceOption> BuildArtworkClickOptions(bool miniPlayerEnabled) =>
         Enum.GetValues<IslandArtworkClick>()
+            .Where(a => miniPlayerEnabled || a != IslandArtworkClick.MiniPlayer)
             .Select(a => new LyricsChoiceOption(a.ToString(), Loc.T($"Settings.ArtworkClick.{a}")))
             .ToList();
+
+    /// <summary>What a click on the island's artwork does now: the stored choice, with Mini
+    /// Player read as the lyrics page while that feature is off (the stored choice is kept).</summary>
+    private IslandArtworkClick EffectiveArtworkClick =>
+        IslandArtworkClicks.Parse(PlaybackBarArtworkClick).Effective(MiniPlayerEnabled);
 
     public LyricsChoiceOption? SelectedArtworkClickOption
     {
         get
         {
-            var current = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+            var current = EffectiveArtworkClick.ToString();
             return ArtworkClickOptions.FirstOrDefault(o => o.Value == current);
         }
         set
         {
             // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
             if (value is null) return;
+            // Echoing the shown option back is no pick: a stored Mini Player shown as the
+            // lyrics page (feature off) stays stored for when the feature comes back.
+            if (value.Value == EffectiveArtworkClick.ToString()) return;
             PlaybackBarArtworkClick = value.Value;
         }
     }
@@ -1204,7 +1215,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>The lyrics button is hidden and the artwork doesn't open lyrics either: the
     /// Settings row says where the lyrics page still opens from.</summary>
     public bool ShowArtworkLyricsHint =>
-        !PlaybackBarShowLyrics && !IslandArtworkClicks.Parse(PlaybackBarArtworkClick).OpensLyrics();
+        !PlaybackBarShowLyrics && !EffectiveArtworkClick.OpensLyrics();
 
     /// <summary>GitHub #186: the island's Move to Trash button (off by default).</summary>
     [ObservableProperty] private bool _playbackBarShowTrash;
@@ -1446,7 +1457,7 @@ public partial class SettingsViewModel : ViewModelBase
         RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
-        ArtworkClickOptions = BuildArtworkClickOptions();
+        ArtworkClickOptions = BuildArtworkClickOptions(MiniPlayerEnabled);
         OnPropertyChanged(nameof(SelectedArtworkClickOption));
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
@@ -4732,7 +4743,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowFavorite = PlaybackBarShowFavorite;
         _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
         _player.IslandShowLyricsButton = PlaybackBarShowLyrics;
-        _player.IslandArtworkClick = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+        _player.IslandArtworkClick = EffectiveArtworkClick.ToString();
         _player.IslandShowTrash = PlaybackBarShowTrash;
         _player.IslandTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;

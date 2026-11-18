@@ -36,4 +36,10 @@ public static class IslandArtworkClicks
 
     /// <summary>The click lands on a lyrics page (windowed or full screen).</summary>
     public static bool OpensLyrics(this IslandArtworkClick action) => action != IslandArtworkClick.MiniPlayer;
+
+    /// <summary>What the click does: with the Mini Player switched off (Settings › Plugins ›
+    /// Built-in Features) a stored Mini Player choice, the default, opens the lyrics page,
+    /// the island's lyrics button action, instead of nothing. The stored choice is untouched.</summary>
+    public static IslandArtworkClick Effective(this IslandArtworkClick action, bool miniPlayerEnabled) =>
+        action == IslandArtworkClick.MiniPlayer && !miniPlayerEnabled ? IslandArtworkClick.LyricsPage : action;
 }

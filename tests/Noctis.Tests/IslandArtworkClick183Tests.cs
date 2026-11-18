@@ -208,6 +208,51 @@ public class IslandArtworkClick183Tests : IDisposable
         Assert.Equal(nameof(IslandArtworkClick.LyricsPage), vm.PlaybackBarArtworkClick);
     }
 
+    /// <summary>Mini Player switched off in Plugins › Built-in Features: its choice leaves the
+    /// list and a stored Mini Player click opens the lyrics page (the lyrics button's action)
+    /// instead of nothing. The stored choice is kept, so switching the feature back on
+    /// brings the mini player click back.</summary>
+    [AvaloniaFact]
+    public void MiniPlayerFeatureOff_TheArtworkOpensTheLyricsPage_AndTheStoredChoiceIsKept()
+    {
+        var vm = CreateSettings();
+        var player = MakePlayer();
+        vm.SetPlayer(player);
+        vm.PlaybackBarShowLyrics = false;
+
+        vm.MiniPlayerEnabled = false;
+        Assert.Equal(2, vm.ArtworkClickOptions.Count);
+        Assert.DoesNotContain(vm.ArtworkClickOptions, o => o.Value == nameof(IslandArtworkClick.MiniPlayer));
+        Assert.Equal(nameof(IslandArtworkClick.LyricsPage), vm.SelectedArtworkClickOption!.Value);
+        Assert.Equal(IslandArtworkClick.LyricsPage, player.IslandArtworkClickAction);
+        Assert.Equal("Lyrics", player.IslandArtworkTip);
+        Assert.False(vm.ShowArtworkLyricsHint); // the artwork reaches the lyrics page now
+
+        // The ComboBox echoing the shown option back does not overwrite the stored choice.
+        vm.SelectedArtworkClickOption = vm.ArtworkClickOptions.Single(o => o.Value == nameof(IslandArtworkClick.LyricsPage));
+        Assert.Equal(nameof(IslandArtworkClick.MiniPlayer), vm.PlaybackBarArtworkClick);
+
+        vm.MiniPlayerEnabled = true;
+        Assert.Equal(3, vm.ArtworkClickOptions.Count);
+        Assert.Equal(nameof(IslandArtworkClick.MiniPlayer), vm.SelectedArtworkClickOption!.Value);
+        Assert.Equal(IslandArtworkClick.MiniPlayer, player.IslandArtworkClickAction);
+        Assert.True(vm.ShowArtworkLyricsHint);
+
+        // A real pick while the feature is off is still saved.
+        vm.MiniPlayerEnabled = false;
+        vm.SelectedArtworkClickOption = vm.ArtworkClickOptions.Single(o => o.Value == nameof(IslandArtworkClick.FullScreenLyrics));
+        Assert.Equal(nameof(IslandArtworkClick.FullScreenLyrics), vm.PlaybackBarArtworkClick);
+        Assert.Equal(IslandArtworkClick.FullScreenLyrics, player.IslandArtworkClickAction);
+    }
+
+    [Theory]
+    [InlineData(IslandArtworkClick.MiniPlayer, true, IslandArtworkClick.MiniPlayer)]
+    [InlineData(IslandArtworkClick.MiniPlayer, false, IslandArtworkClick.LyricsPage)]
+    [InlineData(IslandArtworkClick.LyricsPage, false, IslandArtworkClick.LyricsPage)]
+    [InlineData(IslandArtworkClick.FullScreenLyrics, false, IslandArtworkClick.FullScreenLyrics)]
+    public void Effective_SwapsOnlyAnOffMiniPlayer(IslandArtworkClick stored, bool miniPlayerEnabled, IslandArtworkClick expected)
+        => Assert.Equal(expected, stored.Effective(miniPlayerEnabled));
+
     [AvaloniaFact]
     public async Task BothSettings_SurviveSaveAndReload_AndResetRestoresTheDefaults()
     {

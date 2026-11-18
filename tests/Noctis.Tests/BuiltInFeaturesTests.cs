@@ -267,6 +267,55 @@ public class BuiltInFeaturesTests : IDisposable
         Assert.True(albums.IsCarouselView);
     }
 
+    /// <summary>A feature switched off leaves no usable settings behind: Player hides the Mini
+    /// player section (like the Albums View card), Lyrics closes the visualizer's options under
+    /// its greyed switch and says where the feature was turned off.</summary>
+    [AvaloniaFact]
+    public void SettingsPages_HideTheOptionsOfAFeatureThatIsOff()
+    {
+        var vm = Settings();
+        vm.LyricsVisualizerEnabled = true;
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+        var view = new SettingsView { DataContext = vm };
+        var window = new Window { Width = 920, Height = 720, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            // Tab pages are realized on their first visit (GitHub #139): visit Lyrics too.
+            vm.SelectedSettingsTab = SettingsViewModel.TabLyrics;
+            Dispatcher.UIThread.RunJobs();
+            var miniTitle = view.FindControl<TextBlock>("MiniPlayerSectionTitle")!;
+            var miniCard = view.FindControl<Border>("MiniPlayerSectionCard")!;
+            var vizOptions = view.FindControl<Noctis.Controls.CollapsibleContent>("LyricsVisualizerOptions")!;
+            var vizHint = view.FindControl<Noctis.Controls.CollapsibleContent>("LyricsVisualizerFeatureOffHint")!;
+
+            Assert.True(miniTitle.IsVisible && miniCard.IsVisible);
+            Assert.True(vizOptions.IsOpen);
+            Assert.False(vizHint.IsOpen);
+
+            vm.MiniPlayerEnabled = false;
+            vm.VisualizerEnabled = false;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(miniTitle.IsVisible);
+            Assert.False(miniCard.IsVisible);
+            Assert.False(vizOptions.IsOpen);
+            Assert.True(vizHint.IsOpen);
+            Assert.True(vm.LyricsVisualizerEnabled); // the user's own switch is kept
+
+            vm.MiniPlayerEnabled = true;
+            vm.VisualizerEnabled = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(miniTitle.IsVisible && miniCard.IsVisible);
+            Assert.True(vizOptions.IsOpen);
+            Assert.False(vizHint.IsOpen);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     // ── Playlist rail ──
 
     private (PlaylistViewModel Vm, FakeLibraryService Lib) PlaylistVm(bool showRail)

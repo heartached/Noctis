@@ -3327,6 +3327,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.PlayCountImport.Synced" xml:space="preserve"><value>Synced. {0} new plays · {1} songs updated</value><comment>Background play count sync summary; {0} = new plays read since the last sync, {1} = songs changed</comment></data>
   <data name="Features.Section" xml:space="preserve"><value>Built-in Features</value><comment>Plugins page: section title above the switches for features that ship with Noctis</comment></data>
   <data name="Features.SectionLine" xml:space="preserve"><value>Built into Noctis. Switch off any you don't need.</value><comment>Plugins page: line under the Built-in Features title</comment></data>
+  <data name="Features.TurnedOffHint" xml:space="preserve"><value>Turned off in Plugins › Built-in Features.</value><comment>Settings: line under a setting whose feature is switched off in Plugins › Built-in Features</comment></data>
   <data name="Features.MiniPlayer.Title" xml:space="preserve"><value>Mini Player</value><comment>Settings › Plugins › Built-in Features</comment></data>
   <data name="Features.MiniPlayer.Line" xml:space="preserve"><value>The small always-on-top player: its button, the artwork click and the shortcut.</value><comment>Settings › Plugins › Built-in Features</comment></data>
   <data name="Features.AnimatedArtwork.Title" xml:space="preserve"><value>Animated Artwork</value><comment>Settings › Plugins › Built-in Features</comment></data>

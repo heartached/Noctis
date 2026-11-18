@@ -29,7 +29,11 @@ public partial class SettingsViewModel
 
     partial void OnMiniPlayerEnabledChanged(bool value)
     {
-        ApplyPlayerSettings(); // the island button
+        ApplyPlayerSettings(); // the island button and the artwork click
+        // Player › Clicking the artwork: the Mini Player choice leaves / rejoins the list.
+        ArtworkClickOptions = BuildArtworkClickOptions(value);
+        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        OnPropertyChanged(nameof(ShowArtworkLyricsHint));
         if (_settingsLoaded) _ = SaveAsync();
     }
 
