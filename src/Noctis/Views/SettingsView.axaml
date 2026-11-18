@@ -3015,10 +3015,12 @@
                                               IsChecked="{Binding MiniPlayerTitleMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- The mini player's second line is the artist (MiniPlayerWindow: ArtistDisplay
+                         with IsForAlbum), so this switch is labelled for what it moves. -->
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongAlbumTitles}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongArtistNames}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.AnimateLongAlbumTitles}"
+                                              AutomationProperties.Name="{loc:T Settings.AnimateLongArtistNames}"
                                               IsChecked="{Binding MiniPlayerAlbumMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>

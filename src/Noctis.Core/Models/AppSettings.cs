@@ -1137,7 +1137,8 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether long track titles in the mini player should scroll.</summary>
     public bool MiniPlayerTitleMarqueeEnabled { get; set; } = true;
 
-    /// <summary>Whether long album titles in the mini player should scroll.</summary>
+    /// <summary>Whether the long artist line in the mini player should scroll (the name says
+    /// album; the mini player shows the artist there, and the key stays for saved settings).</summary>
     public bool MiniPlayerAlbumMarqueeEnabled { get; set; } = true;
 
     // ── Equalizer settings ──
