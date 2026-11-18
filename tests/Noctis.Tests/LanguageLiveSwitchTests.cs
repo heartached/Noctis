@@ -177,16 +177,22 @@ public class LanguageLiveSwitchTests
             var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
             await vm.LoadAsync();
             vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            var englishCheck = vm.CheckForUpdatesButtonText;
+            var englishHelp = vm.ComputerLinkHelp;
             vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "ru");
             var raised = new System.Collections.Generic.List<string?>();
             vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
 
+            // The views only re-read a line when its change is raised, so both are checked:
+            // the page tells them, and what they then read is no longer the English text.
             vm.SelectedSettingsTab = SettingsViewModel.TabAbout;
             Assert.Contains(nameof(SettingsViewModel.CheckForUpdatesButtonText), raised);
             Assert.Contains(nameof(SettingsViewModel.UpdateButtonText), raised);
+            Assert.NotEqual(englishCheck, vm.CheckForUpdatesButtonText);
 
             vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
             Assert.Contains(nameof(SettingsViewModel.ComputerLinkHelp), raised);
+            Assert.NotEqual(englishHelp, vm.ComputerLinkHelp);
         }
         finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
     }
