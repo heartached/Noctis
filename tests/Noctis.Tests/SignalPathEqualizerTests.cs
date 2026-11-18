@@ -27,7 +27,6 @@ public class SignalPathEqualizerTests
             SelectedEqPresetName = "Flat",
             ReplayGainMode = "Off",
             SoundCheckEnabled = false,
-            CrossfadeEnabled = false,
         };
         player.SetSettingsViewModel(settings);
 

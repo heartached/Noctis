@@ -339,6 +339,7 @@ public class SettingsResetTests : IDisposable
         {
             nameof(SettingsViewModel.ProfileAvatarDirectory), nameof(SettingsViewModel.LocalApiDiscoveryPath),
             nameof(SettingsViewModel.ScanStatusText), nameof(SettingsViewModel.DevLogText),
+            nameof(SettingsViewModel.StorageStatusText),
         }).ToArray()));
         Assert.Empty(DifferingLiveState(player, freshPlayer));
         Assert.Equal(fvm.SidebarPageOrderKeys, vm.SidebarPageOrderKeys);
