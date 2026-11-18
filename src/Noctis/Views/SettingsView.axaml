@@ -4410,14 +4410,9 @@
                     </controls:CollapsibleContent>
                     <!-- Artwork colour, Full spectrum and the style picker are ONE glide under the switch
                          (owner 11-14). The row's panel is spacing-free so the 12px gap folds with the body.
-                         Closed while the feature is off: the options would change nothing. -->
-                    <controls:CollapsibleContent x:Name="LyricsVisualizerOptions" Lift="10" Motion="Glide">
-                    <controls:CollapsibleContent.IsOpen>
-                        <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="LyricsVisualizerEnabled"/>
-                            <Binding Path="VisualizerEnabled"/>
-                        </MultiBinding>
-                    </controls:CollapsibleContent.IsOpen>
+                         The outer glide closes them while the feature is off: they would change nothing. -->
+                    <controls:CollapsibleContent x:Name="LyricsVisualizerOptions" IsOpen="{Binding VisualizerEnabled}" Lift="10" Motion="Glide">
+                    <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
                     <StackPanel Margin="0,12,0,0">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -4488,6 +4483,7 @@
                         </RadioButton>
                     </Grid>
                     </StackPanel>
+                    </controls:CollapsibleContent>
                     </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
