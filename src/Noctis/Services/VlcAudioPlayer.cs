@@ -6821,7 +6821,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     {
         try
         {
-            var dir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            // NOCTIS_VLC_LOG_DIR: a second copy (a dev build next to the installed app) cannot
+            // share the Desktop file, which the first one holds open for writing.
+            var dir = Environment.GetEnvironmentVariable("NOCTIS_VLC_LOG_DIR");
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                dir = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
                 dir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var path = Path.Combine(dir, "noctis_vlc_diag.log");
