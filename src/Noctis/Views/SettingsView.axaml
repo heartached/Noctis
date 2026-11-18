@@ -2707,6 +2707,7 @@
                                                 Background="Transparent" BorderThickness="0" Padding="0"
                                                 Margin="0,0,4,4" Cursor="Hand"
                                                 ToolTip.Tip="{Binding Name}"
+                                                AutomationProperties.Name="{Binding Name}"
                                                 Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyAccentPresetCommand}"
                                                 CommandParameter="{Binding}">
                                             <Panel Width="44" Height="44">
@@ -4910,6 +4911,7 @@
                                                             CornerRadius="999"
                                                             Cursor="Hand"
                                                             ToolTip.Tip="{loc:T Settings.ResetDefaultTip}"
+                                                            AutomationProperties.Name="{loc:T Settings.ResetDefaultTip}"
                                                             IsVisible="{Binding !IsDefault}"
                                                             Command="{Binding ResetCommand}">
                                                         <!-- Stroked like the Plugins refresh button: an open arc in a
