@@ -304,6 +304,32 @@ public class MobileNowPlayingBlurTests : IDisposable
         Assert.True(cover.HasImage);
         Assert.False(MobileFixtures.Named<Image>(lyrics, "Backdrop").IsVisible);
         Assert.True(MobileFixtures.Named<Border>(lyrics, "LyricsShade").IsVisible);
+
+        // The soft edges under the header and behind the transport repaint the blurred cover as
+        // the page draws it: with the wash hidden they painted the plain page colour, a dark
+        // band with a hard edge across the screen at the header's foot (S23, 11-19). The top
+        // band shows with lyrics only; this rig has none, so it is shown by hand.
+        MobileFixtures.Named<WashFade>(lyrics, "TopFade").IsVisible = true;
+        Settle(window, lyrics);
+        foreach (var name in new[] { "TopFade", "BottomFade" })
+        {
+            var band = MobileFixtures.Named<WashFade>(lyrics, name);
+            var brush = Assert.IsType<Avalonia.Media.ImageBrush>(band.WashBrush);
+            Assert.Same(cover.Current, brush.Source);
+            Assert.Equal(Avalonia.Media.Stretch.UniformToFill, brush.Stretch);
+        }
+
+        // A new Blur re-blurs: the bands follow the new bitmap.
+        rig.Shell.NowPlayingBlur = 20;
+        Settle(window, lyrics);
+        Assert.Same(cover.Current, ((Avalonia.Media.ImageBrush)MobileFixtures.Named<WashFade>(lyrics, "TopFade").WashBrush!).Source);
+
+        // Back to the wash: the bands repaint the wash again, stretched as it is.
+        rig.Shell.NowPlayingBackground = NowPlayingBackgroundStyle.Wash;
+        Settle(window, lyrics);
+        var wash = Assert.IsType<Avalonia.Media.ImageBrush>(MobileFixtures.Named<WashFade>(lyrics, "TopFade").WashBrush);
+        Assert.Same(MobileFixtures.Named<Image>(lyrics, "Backdrop").Source, wash.Source);
+        Assert.Equal(Avalonia.Media.Stretch.Fill, wash.Stretch);
         window.Close();
     }
 

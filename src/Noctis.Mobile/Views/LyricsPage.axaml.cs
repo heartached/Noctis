@@ -85,6 +85,7 @@ public partial class LyricsPage : UserControl
         LyricsScroll.AddHandler(PointerPressedEvent, OnScrollPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         LyricsScroll.AddHandler(PointerReleasedEvent, OnScrollPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         Backdrop.PropertyChanged += (_, e) => { if (e.Property == Image.SourceProperty) UpdateFades(); };
+        BlurCover.ImageChanged += (_, _) => UpdateFades();
         TopFade.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) UpdateFades(); };
         BottomFade.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) UpdateFades(); };
         SizeChanged += (_, e) =>
@@ -307,11 +308,16 @@ public partial class LyricsPage : UserControl
     {
         var page = Bounds.Size;
         if (page.Width <= 0 || page.Height <= 0) return;
-        var art = Backdrop.IsVisible ? Backdrop.Source as IImageBrushSource : null;
+        // Blurred Cover: the bands repaint its bitmap as BlurredCoverBackdrop draws it (cropped
+        // to fill). They used to fall back to the plain page colour once the wash was hidden: a
+        // dark band under the header with a hard edge on the blurred cover above it (S23, 11-19).
+        var blurred = BlurCover.HasImage ? BlurCover.Current : null;
+        var art = blurred ?? (Backdrop.IsVisible ? Backdrop.Source as IImageBrushSource : null);
+        var stretch = blurred != null ? Stretch.UniformToFill : Stretch.Fill;
         foreach (var band in new[] { TopFade, BottomFade })
         {
             if (band.TranslatePoint(new Point(0, 0), this) is not { } at) continue;
-            band.Update(art, (Background as ISolidColorBrush)?.Color ?? Colors.Black, Shade, new Rect(at, band.Bounds.Size), page);
+            band.Update(art, stretch, (Background as ISolidColorBrush)?.Color ?? Colors.Black, Shade, new Rect(at, band.Bounds.Size), page);
         }
     }
 
