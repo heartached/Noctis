@@ -89,7 +89,7 @@
     <value>何か再生すると動きが見られます。</value>
   </data>
   <data name="Visualizer.NowPlaying" xml:space="preserve">
-    <value>今プレイ中</value>
+    <value>再生中</value>
     <comment>Text in VisualizerView.axaml</comment>
   </data>
   <data name="Visualizer.Style.Bars" xml:space="preserve">
@@ -106,7 +106,7 @@
     <value>プレイリストを読み込む</value>
   </data>
   <data name="Import.Subtitle" xml:space="preserve">
-    <value>ファイルまたはDeezer/TIDALリンクからプレイリストを持参します。</value>
+    <value>ファイル、または Deezer や TIDAL のリンクから読み込みます。</value>
   </data>
   <data name="Import.ChooseFile" xml:space="preserve">
     <value>ファイルを選択…</value>
@@ -115,7 +115,7 @@
     <value>または .csv / .json / .m3u ファイルをこのウィンドウのどこにでもドロップしてください</value>
   </data>
   <data name="Import.LinkLabel" xml:space="preserve">
-    <value>またはプレイリストリンクを貼り付けます (DeezerとTIDAL直接インポート)</value>
+    <value>またはプレイリストのリンクを貼り付けます (Deezer と TIDAL は直接読み込めます)</value>
   </data>
   <data name="Import.LinkButton" xml:space="preserve">
     <value>リンクを読み込む</value>
@@ -191,7 +191,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>歌詞</value>
   </data>
   <data name="TopBar.CoverFlow" xml:space="preserve">
-    <value>カバーフロー</value>
+    <value>Cover Flow</value>
   </data>
   <data name="TopBar.CoverCollage" xml:space="preserve">
     <value>カバーコラージュ</value>
@@ -225,7 +225,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>WindowsにNoctisを追加する 再生されるフォーマットのリストとデフォルトのアプリを開きます。</value>
+    <value>再生できる形式について、「プログラムから開く」と「既定のアプリ」に Noctis を表示します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Register" xml:space="preserve">
@@ -241,7 +241,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ControlHowNoctisStarts" xml:space="preserve">
-    <value>Noctisがどのように開始され、最小限に抑えて閉じるか。</value>
+    <value>Noctis の起動方法と、最小化・閉じる操作時の動作。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OpenNoctisWhenComputer" xml:space="preserve">
@@ -289,7 +289,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.COVERFLOW" xml:space="preserve">
-    <value>カバーフロー</value>
+    <value>Cover Flow</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimateLongAlbumTitles" xml:space="preserve">
@@ -339,7 +339,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve">
-    <value>リリースごとに1つのタイル。 &quot;Other Versions&quot; の下に他のエディションが表示されます。</value>
+    <value>リリースごとに1つのタイルを表示します。他のエディションは「他のバージョン」に表示されます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumGrouping" xml:space="preserve"><value>タグのないアルバムをまとめる</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
@@ -363,7 +363,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TurnFeatXTrack" xml:space="preserve">
-    <value>タイトルの &quot;&quot; をアーティストクレジットに変換します。</value>
+    <value>タイトル内の「(feat. X)」をアーティストのクレジットに変換します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowArtistsAsTagged" xml:space="preserve"><value>アーティストをタグの表記どおりに表示</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
@@ -373,7 +373,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.WhichTagArtistsSection" xml:space="preserve">
-    <value>アルバムアーティストはコンパイルを一緒に保持し、トラックごとの機能を無視します。</value>
+    <value>アルバムアーティストではコンピレーションがまとまり、曲ごとのフィーチャリングは無視されます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FirstCreditedArtistEachTip" xml:space="preserve">
@@ -405,7 +405,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>1つのアーティストタグを複数のタグに分割するテキスト。 &quot;Simon &amp; Garfunkel&quot; 全体のような名前を保持するには1つを削除してください。</value>
+    <value>1つのアーティストタグを複数に分割します。「Simon &amp; Garfunkel」のような名前をそのまま残すには、区切り文字を1つ削除してください。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -470,11 +470,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Advanced: collapses the release history</comment>
   </data>
   <data name="Settings.LyricsBackgroundPerSongHint" xml:space="preserve">
-    <value>曲またはアルバムを右クリックして、独自のビデオを作成します。</value>
+    <value>曲またはアルバムを右クリックすると、専用のビデオを設定できます。</value>
     <comment>Appearance: under Lyrics Background Video</comment>
   </data>
   <data name="Settings.PauseVideoWithPlayback" xml:space="preserve">
-    <value>再生時にビデオを一時停止</value>
+    <value>再生に合わせてビデオを一時停止</value>
     <comment>Appearance toggle title</comment>
   </data>
   <data name="Settings.PauseVideoWithPlaybackDesc" xml:space="preserve">
@@ -486,7 +486,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.ChooseAlbumVideo" xml:space="preserve">
-    <value>Choose video for this album</value>
+    <value>このアルバムのビデオを選択</value>
     <comment>Album page menu</comment>
   </data>
   <data name="AlbumDetail.UseDefaultVideo" xml:space="preserve">
@@ -510,7 +510,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.DiscordCaption" xml:space="preserve">
-    <value>Get help &amp; updates</value>
+    <value>ヘルプと最新情報</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.WebsiteCaption" xml:space="preserve">
@@ -522,7 +522,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OfferBetaBuildsUpdater" xml:space="preserve">
-    <value>ベータ版のアップデータを提供します。</value>
+    <value>アップデーターでベータ版を案内します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.YoursTrulyHeartached" xml:space="preserve">
@@ -538,7 +538,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DownloadInstallAnyRelease" xml:space="preserve">
-    <value>GitHub から任意のリリースをインストールします。インストールはアプリを閉じます。</value>
+    <value>GitHub から任意のリリースをインストールします。インストール時にアプリは終了します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoReleasesFound" xml:space="preserve">
@@ -609,11 +609,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Ink" xml:space="preserve">
-    <value>インクの色</value>
+    <value>インク</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Smoke" xml:space="preserve">
-    <value>Smoke</value>
+    <value>スモーク</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Edit" xml:space="preserve">
@@ -637,7 +637,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>表紙のアクセントを変更します。何も再生していないときに選択したアクセントが戻ります。</value>
+    <value>再生中のカバーからアクセントカラーを取ります。</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve">
@@ -645,7 +645,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>プレイリスト、「曲」、プレーヤーのアーティスト名・アルバム名・ジャンル名をアクセントカラーで表示します。オフにすると通常の文字色になります。</value>
+    <value>アーティスト名・アルバム名・ジャンル名をアクセントカラーで表示します。</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.TintWindowWithAccent" xml:space="preserve">
@@ -673,7 +673,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LiquidGlass" xml:space="preserve">
-    <value>リキッドグラス</value>
+    <value>Liquid Glass</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BETA" xml:space="preserve">
@@ -681,7 +681,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>半透明のぼやけたガラス面で、ウィンドウ、サイドバー、設定および再生バーをフロストします。</value>
+    <value>ウィンドウ、サイドバー、設定、プレイヤーをすりガラス風にします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -711,7 +711,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowCoverAppearsLyrics" xml:space="preserve">
-    <value>歌詞ページのカバーの表示方法 再生中にディスクが回転します。</value>
+    <value>歌詞ページでのカバーの表示方法。ディスクは再生中に回転します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumCoverAsTip" xml:space="preserve">
@@ -745,11 +745,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve">
-    <value>カバーフローのレイアウト</value>
+    <value>Cover Flow のレイアウト</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve">
-    <value>カバーフローページでキューのカバーを並べる方法です。</value>
+    <value>Cover Flow ページでキューのカバーを並べる方法です。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumsView" xml:space="preserve"><value>アルバムの表示</value><comment>Settings › Player card title</comment></data>
@@ -788,7 +788,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowMiniPlayerLooks" xml:space="preserve">
-    <value>クラシックは、そのサイズに従います. ピルとスリーブは固定デザインです.</value>
+    <value>クラシックはサイズに合わせて変わります。ピルとスリーブは固定デザインです。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResizableGlassCardIconTip" xml:space="preserve">
@@ -820,7 +820,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AddExtraControlsPlayer" xml:space="preserve">
-    <value>プレイヤー島の追加ボタン。</value>
+    <value>プレイヤーアイランドの追加ボタン。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SkipBackForward" xml:space="preserve">
@@ -848,7 +848,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.1ButtonOpensSpeed" xml:space="preserve">
-    <value>0.75xから2xまでのスピードメニュー。次回の起動時にリセットします。</value>
+    <value>0.75×から2×までの速度メニュー。次回起動時にリセットされます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SleepTimer" xml:space="preserve">
@@ -856,7 +856,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SleepTimerOneClick" xml:space="preserve">
-    <value>スリープタイマーをワンクリック離れて。</value>
+    <value>ワンクリックでスリープタイマーを設定できます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Shuffle" xml:space="preserve">
@@ -874,19 +874,19 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>波形シークバー</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>シークバーに曲の波形を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
-    <value>トラックボックスの透明度</value>
+    <value>トラックボックスの不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowSolidTrackBox" xml:space="preserve">
-    <value>曲情報の周りのボックスをどのようにしっかりと固定するか。0% で非表示にします。</value>
+    <value>再生バーで曲情報を囲むボックスの濃さ。0% で非表示になります。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RepeatButton" xml:space="preserve">
-    <value>繰り返し</value>
+    <value>リピート</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RepeatButtonNextToForward" xml:space="preserve">
-    <value>次の後の繰り返しボタン: サイクル オフ → すべて → 1 つ。</value>
+    <value>「次へ」の後ろのリピートボタン。オフ → すべて → 1曲 の順に切り替わります。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FavoriteButton" xml:space="preserve">
@@ -894,7 +894,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve">
-    <value>ワンクリックで再生曲をお気に入りに右の心。</value>
+    <value>右側のハートで、再生中の曲をワンクリックでお気に入りにします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>ミニプレイヤー</value><comment>Text in SettingsView.axaml</comment></data>
@@ -932,7 +932,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>Widerはシークバーをより多くの部屋に与えます。島の端をドラッグすることもできます。リセットするにはノブをダブルクリックします。</value>
+    <value>広くするとシークバーが長くなります。リセットするにはノブをダブルクリックします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Narrower" xml:space="preserve">
@@ -948,7 +948,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowHowFarAlong" xml:space="preserve">
-    <value>タスクバーのボタンに曲の進行状況を表示します。</value>
+    <value>タスクバーのボタンに曲の進行状況を表示します。一時停止中は琥珀色になります。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MediaControlsTaskbar" xml:space="preserve">
@@ -987,7 +987,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>ドリフトはビートでカバーとパルスを移動します。Kawapはそれをゆっくりと液体の流れに溶けます。プラグインスタイルもここに登場します。</value>
+    <value>ドリフトはビートに合わせてカバーを動かします。Kawarp はカバーをゆっくり流れる液体のように変えます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -1037,11 +1037,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Lyrics Studio card in LyricsStudioView.axaml</comment>
   </data>
   <data name="Settings.MusicVideosHint" xml:space="preserve">
-    <value>曲の隣にある、または動画フォルダにあるような名前のビデオが、歌詞ページの表紙に置き換えられます。</value>
+    <value>曲と同じ名前のビデオを曲の隣か videos フォルダーに置くと、歌詞ページでカバーの代わりに表示されます。</value>
     <comment>Lyrics Studio card hint</comment>
   </data>
   <data name="Settings.MusicVideoRounded" xml:space="preserve">
-    <value>四捨五入済み</value>
+    <value>角丸</value>
     <comment>Lyrics Studio card toggle</comment>
   </data>
   <data name="Settings.MusicVideoRoundedHint" xml:space="preserve">
@@ -1083,7 +1083,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Picker: the clip every song without its own uses</comment>
   </data>
   <data name="LyricsBackground.NoDefaultVideo" xml:space="preserve">
-    <value>自分のビデオのない曲はぼやけたカバーを示しています。</value>
+    <value>なし。専用のビデオがない曲はぼかしたカバーを表示します。</value>
     <comment>Picker: no default clip</comment>
   </data>
   <data name="LyricsBackground.ChooseVideo" xml:space="preserve">
@@ -1095,11 +1095,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Picker: drop the default clip</comment>
   </data>
   <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>Search songs and albums…</value>
+    <value>曲やアルバムを検索…</value>
     <comment>Picker search box</comment>
   </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
-    <value>彼ら自身のビデオで</value>
+    <value>専用のビデオあり</value>
     <comment>Picker: header over the list when not searching</comment>
   </data>
   <data name="LyricsBackground.PromptTitle" xml:space="preserve">
@@ -1107,7 +1107,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Picker: empty state</comment>
   </data>
   <data name="LyricsBackground.PromptBody" xml:space="preserve">
-    <value>上の検索と任意の曲またはアルバムのビデオを選択します。他のすべてがデフォルトで再生されます。</value>
+    <value>上で検索して、曲やアルバムのビデオを選んでください。それ以外は既定のビデオが再生されます。</value>
     <comment>Picker: empty state body</comment>
   </data>
   <data name="LyricsBackground.UsesDefault" xml:space="preserve">
@@ -1177,7 +1177,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
-    <value>現在のものとその隣のものを除くすべての行を暗くします。</value>
+    <value>現在の行とその前後の行以外をすべて暗くします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
@@ -1189,11 +1189,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
-    <value>最小線の不透明度</value>
+    <value>行の最小不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>すべての歌詞の線がかすかに見えるようにしておくと、どこかの線をクリックしてジャンプすることができます。0% 現在の線から遠く離れた線を隠します。</value>
+    <value>すべての行をうっすら表示したままにして、どの行もクリックできるようにします。0% にすると離れた行は非表示になります。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
@@ -1217,7 +1217,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (プラグインはオフ)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
-    <value>歌詞がない曲ではプレーヤーを中央に表示</value>
+    <value>歌詞がない曲ではプレイヤーを中央に表示</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
@@ -1235,11 +1235,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>バックグラウンドボーカルを表示</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>バックグラウンドボーカルやアドリブを、行の下に小さく表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
-    <value>再生バーの不透明度</value>
+    <value>ガラスの不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>再生バーの背景の濃さを設定します。</value>
+    <value>プレイヤー、キュー、メニューの背景の濃さ。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>背景のぼかし</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
@@ -1254,7 +1254,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve">
-    <value>どのくらいのデスクトップがガラスを通って表示されます。</value>
+    <value>ミニプレイヤーの背景の濃さ。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>すりガラスの背景</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1367,7 +1367,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
-    <value>オフにすると、直接再生しない限り、明示的な曲をスキップします。</value>
+    <value>オフにすると、直接再生した場合を除き、エクスプリシットな曲をスキップします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDevice" xml:space="preserve">
@@ -1486,7 +1486,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.UsedByAudioConverter" xml:space="preserve">
-    <value>コンバーター、スペクトログラム、歌詞スタジオで使用されます。空白の自動検出機能。</value>
+    <value>コンバーター、スペクトログラム、歌詞スタジオで使用されます。空欄にすると自動検出します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AutoDetect" xml:space="preserve">
@@ -1502,7 +1502,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve">
-    <value>曲を右クリックしてこのプログラムでファイルを開きます。空白は毎回尋ねます。</value>
+    <value>曲を右クリックすると、このプログラムでファイルを開けます。空欄にすると毎回確認します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NotSet" xml:space="preserve">
@@ -1514,7 +1514,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>ReplayGain タグから音量を調整します。右クリックでトラックをスキャンします。</value>
+    <value>ReplayGain タグで音量のばらつきを揃えます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1666,7 +1666,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.StreamLibraryFromJellyfin" xml:space="preserve">
-    <value>Jellyfin、Navidrome、Airsonic、Gonicまたは任意のSubsonicサーバーからストリーム。</value>
+    <value>Jellyfin、Navidrome、Airsonic、Gonic などの Subsonic 対応サーバーからストリーミング再生します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TYPE" xml:space="preserve">
@@ -1817,7 +1817,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RenameMoveFilesInto" xml:space="preserve">
-    <value>タグでフォルダにファイルをソートします。</value>
+    <value>タグに従ってファイルをフォルダーに振り分けます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Organize" xml:space="preserve">
@@ -1841,7 +1841,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.IdentifyPoorlyTaggedTracks" xml:space="preserve">
-    <value>タグがないか間違っている問題を修正します。</value>
+    <value>欠けているタグや間違ったタグを修正します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ImportPlaylist" xml:space="preserve">
@@ -1887,7 +1887,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve">
-    <value>スヌーズが切れるまで、シャッフルとラジオから除外されます。</value>
+    <value>スヌーズが切れるまで、シャッフル、ラジオ、ホームのおすすめから除外されます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoSnoozedTracks" xml:space="preserve">
@@ -1903,7 +1903,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RemovedFromLibraryTheir" xml:space="preserve">
-    <value>ライブラリから削除され、ディスクに保存されているファイルが復元されます。</value>
+    <value>ライブラリから削除されましたが、ファイルはディスクに残っています。「復元」で再びライブラリに追加されます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoRemovedTracks" xml:space="preserve">
@@ -1995,7 +1995,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>キーをクリックして変更します。Escキーをキャンセル、Backspaceキーを解除します。メディアキーは常に機能します。</value>
+    <value>キーをクリックして変更します。Esc でキャンセル、Backspace で割り当てを解除します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -2071,7 +2071,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TOPPLAYED" xml:space="preserve">
-    <value>トップ再生</value>
+    <value>よく再生した項目</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TopArtists" xml:space="preserve">
@@ -2496,11 +2496,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   </data>
   <data name="ArtistDetail.HideShowSectionTip" xml:space="preserve"><value>このセクションを表示/非表示</value><comment>ToolTip.Tip on the Overview's Similar Artists header in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.NoSongsMatch" xml:space="preserve">
-    <value>曲が一致しません。</value>
+    <value>一致する曲がありません。</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.AboutTitle" xml:space="preserve">
-    <value>About </value>
+    <value>概要: </value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Links" xml:space="preserve">
@@ -2512,7 +2512,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.GENRE" xml:space="preserve">
-    <value>GENRE</value>
+    <value>ジャンル</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.ReleasesTile" xml:space="preserve">
@@ -2524,15 +2524,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.TotalLengthTile" xml:space="preserve">
-    <value>合計長さ</value>
+    <value>合計時間</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.MostPlayedTile" xml:space="preserve">
-    <value>最も多く再生された</value>
+    <value>最多再生</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.SinceTile" xml:space="preserve">
-    <value>以降のライブラリで</value>
+    <value>ライブラリ追加日</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NotInLibrary" xml:space="preserve">
@@ -2540,11 +2540,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.FansCount" xml:space="preserve">
-    <value>{0} ファン</value>
+    <value>ファン{0}人</value>
     <comment>Hero line under the artist name; {0} = Deezer fan count</comment>
   </data>
   <data name="ArtistDetail.FindingSimilar" xml:space="preserve">
-    <value>Finding similar artists…</value>
+    <value>類似のアーティストを検索中…</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NoSimilar" xml:space="preserve">
@@ -2552,7 +2552,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.LookingUp" xml:space="preserve">
-    <value>Looking up the artist…</value>
+    <value>アーティストを検索中…</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NoBiographyFoundArtist" xml:space="preserve">
@@ -2642,7 +2642,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Content in AudioConverterDialog.axaml</comment>
   </data>
   <data name="AudioConverter.Queue" xml:space="preserve">
-    <value>キューに入れる</value>
+    <value>キュー</value>
     <comment>Text in AudioConverterDialog.axaml</comment>
   </data>
   <data name="AudioConverter.Subtitle" xml:space="preserve"><value>別のオーディオ形式でコピーを作成します。</value><comment>Header line under the title in AudioConverterDialog.axaml</comment></data>
@@ -2841,7 +2841,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Title in DuplicateFinderDialog.axaml</comment>
   </data>
   <data name="DuplicateFinder.GroupedByArtistTitle" xml:space="preserve">
-    <value>同じ曲を何度も繰り返します。最高のコピーを保管してください。</value>
+    <value>同じ曲が複数あります。最も良いものを残してください。</value>
     <comment>Text in DuplicateFinderDialog.axaml</comment>
   </data>
   <data name="DuplicateFinder.Rescan" xml:space="preserve">
@@ -2892,11 +2892,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.SetCoverArt" xml:space="preserve">
-    <value>カバーアートを設定</value>
+    <value>カバーを変更</value>
     <comment>Content in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
-    <value>カバーアートを削除</value>
+    <value>カスタムカバーを削除</value>
     <comment>Content in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.ChooseCover" xml:space="preserve"><value>カバー画像を選択</value><comment>Title of the file picker opened by Change cover</comment></data>
@@ -3020,11 +3020,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>ToolTip.Tip in HomeView.axaml</comment>
   </data>
   <data name="Home.MostPlayed" xml:space="preserve">
-    <value>プレイ回数が多い順</value>
+    <value>よく再生した曲</value>
     <comment>Home chart header</comment>
   </data>
   <data name="Home.LastPlayed" xml:space="preserve">
-    <value>前回プレイした回数</value>
+    <value>最近再生した曲</value>
     <comment>Home chart header</comment>
   </data>
   <data name="Home.Text" xml:space="preserve">
@@ -3083,7 +3083,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Most Listened To row dots button</comment>
   </data>
   <data name="Home.ContinueListening" xml:space="preserve">
-    <value>リッスンを続ける</value>
+    <value>続きを聴く</value>
     <comment>Home hero kicker above the last played track</comment>
   </data>
   <data name="Home.Resume" xml:space="preserve">
@@ -3099,7 +3099,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Home hero secondary button</comment>
   </data>
   <data name="Home.TimeLeft" xml:space="preserve">
-    <value>{0} left</value>
+    <value>残り{0}</value>
     <comment>Home hero: remaining time of the last played track, e.g. "1:06 left"</comment>
   </data>
   <data name="Home.LibraryEmpty" xml:space="preserve"><value>ライブラリは空です</value><comment>Home empty-library state title</comment></data>
@@ -3345,7 +3345,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Content in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.Sample" xml:space="preserve">
-    <value>サンプル</value>
+    <value>サンプルレート</value>
     <comment>Content in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.ExplicitTip" xml:space="preserve">
@@ -3357,7 +3357,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>ToolTip.Tip in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.PlayFromHereTip" xml:space="preserve">
-    <value>ここからプレイ</value>
+    <value>ここから再生</value>
     <comment>ToolTip.Tip in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.OptionsTip" xml:space="preserve">
@@ -3898,7 +3898,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="QuickPlaylist.Nothing" xml:space="preserve"><value>入れる曲がありません。</value></data>
   <data name="QuickPlaylist.Failed" xml:space="preserve"><value>プレイリストを作成できませんでした: {0}</value><comment>{0} = error message</comment></data>
   <data name="Main.ImportPlaylist" xml:space="preserve">
-    <value>プレイリストをインポート</value>
+    <value>プレイリストを読み込む</value>
     <comment>Text in MainWindow.axaml</comment>
   </data>
   <data name="Main.FromM3uM3u8File" xml:space="preserve">
@@ -3950,11 +3950,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.CoverFlowTip" xml:space="preserve">
-    <value>カバーフロー</value>
+    <value>Cover Flow</value>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.CoverFlowLayoutTip" xml:space="preserve">
-    <value>カバーフローのレイアウト</value>
+    <value>Cover Flow のレイアウト</value>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.FilterTip" xml:space="preserve">
@@ -3962,7 +3962,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Top-right corner filter icon tooltip prefix</comment>
   </data>
   <data name="Main.SwitchToCoverFlow" xml:space="preserve">
-    <value>カバーフローに切り替える</value>
+    <value>Cover Flow に切り替える</value>
     <comment>Top-right view-mode icon tooltip</comment>
   </data>
   <data name="Main.SwitchToLibrary" xml:space="preserve">
@@ -4043,7 +4043,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Title in MetadataFinderDialog.axaml</comment>
   </data>
   <data name="MetadataFinder.IdentifyPoorlyTaggedTracks" xml:space="preserve">
-    <value>タグがないか間違っている問題を修正します。適用する前に確認してください。</value>
+    <value>欠けているタグや間違ったタグを修正します。適用する前に確認してください。</value>
     <comment>Text in MetadataFinderDialog.axaml</comment>
   </data>
   <data name="MetadataFinder.IdentifyAll" xml:space="preserve">
@@ -4126,15 +4126,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ChangesOne" xml:space="preserve">
-    <value>1つ変更</value>
+    <value>1件の変更</value>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ChangesMany" xml:space="preserve">
-    <value>{0} の変更</value>
+    <value>{0}件の変更</value>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve">
-    <value>{0} ファイルに適用</value>
+    <value>{0}個のファイルに適用</value>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.MixedHint" xml:space="preserve">
@@ -4158,7 +4158,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecTechnical" xml:space="preserve">
-    <value>Technical</value>
+    <value>技術情報</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecCustomTags" xml:space="preserve">
@@ -4174,7 +4174,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecBehaviour" xml:space="preserve">
-    <value>行動</value>
+    <value>動作</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecSound" xml:space="preserve">
@@ -4194,7 +4194,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ShowInFolder" xml:space="preserve">
-    <value>フォルダに表示</value>
+    <value>フォルダーで表示</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.CopyPath" xml:space="preserve">
@@ -4211,7 +4211,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   </data>
   <data name="Metadata.ArtworkOwnTrack" xml:space="preserve"><value>このトラック独自のカバー</value><comment>Text in MetadataWindow.axaml: the track's embedded cover differs from its album's</comment></data>
   <data name="Metadata.AnimatedArtworkHint" xml:space="preserve">
-    <value>アルバムごと・アルバムページでの再生</value>
+    <value>アルバムごと · アルバムページと再生中画面で再生されます</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Cancel" xml:space="preserve">
@@ -4563,7 +4563,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>ディスクから .txt (プレーン) または .lrc (同期) の歌詞ファイルを読み込みます</value>
+    <value>ディスクから .txt (プレーン) または .lrc、.elrc、.ttml (同期) の歌詞ファイルを読み込みます</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
@@ -4603,7 +4603,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>ディスクから .lrc (同期) または .txt (プレーン) の歌詞ファイルを読み込みます</value>
+    <value>ディスクから .lrc、.elrc、.ttml (同期) または .txt (プレーン) の歌詞ファイルを読み込みます</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5022,7 +5022,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Title in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.RenameMoveFilesInto" xml:space="preserve">
-    <value>タグでフォルダにファイルをソートします。まずプレビューしてください。</value>
+    <value>タグに従ってファイルをフォルダーに振り分けます。</value>
     <comment>Text in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.UndoLast" xml:space="preserve">
@@ -5621,7 +5621,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Content in ReplayGainScannerDialog.axaml</comment>
   </data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve">
-    <value>キューに入れる</value>
+    <value>キュー</value>
     <comment>Text in ReplayGainScannerDialog.axaml</comment>
   </data>
   <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>ファイルを追加</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
@@ -6000,7 +6000,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Overview section title in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.Liked" xml:space="preserve">
-    <value>いいね！</value>
+    <value>お気に入り</value>
     <comment>Library footer fact, lowercase</comment>
   </data>
   <data name="Statistics.AvgLength" xml:space="preserve">
@@ -6264,7 +6264,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.UniqueTracks" xml:space="preserve">
-    <value>ユニークなトラック</value>
+    <value>異なるトラック</value>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.LosslessPlays" xml:space="preserve">
@@ -6511,7 +6511,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>Noctis サーバー</value>
   </data>
   <data name="Server.Description" xml:space="preserve">
-    <value>携帯電話やその他のデバイスがこのライブラリを閲覧して再生できるようにします。HTTPS 経由で Subsonic アプリと Noctis モバイルアプリで動作します。</value>
+    <value>スマートフォンやその他のデバイスからこのライブラリを閲覧・再生できるようにします。HTTPS 経由で、Subsonic 対応アプリと Noctis モバイルアプリで使えます。</value>
   </data>
   <data name="Server.Port" xml:space="preserve">
     <value>ポート</value>
@@ -6569,11 +6569,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TidalDescription" xml:space="preserve">
-    <value>リンクでTIDALプレイリストをインポートするにはサインインしてください。</value>
+    <value>リンクから TIDAL のプレイリストを読み込むにはサインインしてください。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TidalConnected" xml:space="preserve">
-    <value>ログイン — tidal.com リンクを直接インポートします。</value>
+    <value>サインイン済み — tidal.com のリンクを直接読み込めます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FlowingOff" xml:space="preserve">
@@ -6581,7 +6581,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Flowing-background picker row</comment>
   </data>
   <data name="Settings.FlowingDrift" xml:space="preserve">
-    <value>ドリフト（ドリフト）</value>
+    <value>ドリフト</value>
     <comment>Flowing-background picker row (built-in style)</comment>
   </data>
   <data name="Settings.FlowingKawarp" xml:space="preserve">
@@ -6589,7 +6589,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Flowing-background picker row (liquid warp, beat-reactive)</comment>
   </data>
   <data name="Settings.FlowingKawarpCalm" xml:space="preserve">
-    <value>カート（ビートなし）</value>
+    <value>Kawarp (ビートなし)</value>
     <comment>Flowing-background picker row</comment>
   </data>
   <data name="Settings.FlowingDriftCalm" xml:space="preserve"><value>ドリフト (ビートなし)</value><comment>Flowing-background picker row</comment></data>
@@ -6598,7 +6598,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Kawarp slider label</comment>
   </data>
   <data name="Settings.KawarpBlur" xml:space="preserve">
-    <value>Blur</value>
+    <value>ぼかし</value>
     <comment>Kawarp slider label</comment>
   </data>
   <data name="Settings.DriftMovement" xml:space="preserve"><value>動き</value><comment>Drift slider label: how fast the cover drifts (0% holds it still)</comment></data>
@@ -6606,7 +6606,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.DriftBlur" xml:space="preserve"><value>ぼかし</value><comment>Drift slider label</comment></data>
   <!-- 2026-09 feature batch: pitch, click-to-rate, Send to Folder, bulk lyrics, YouTube, Account & Sync, Lyrics Studio, upmix -->
   <data name="PlaybackBar.Pitch" xml:space="preserve">
-    <value>Pitch</value>
+    <value>ピッチ</value>
     <comment>Speed menu → pitch submenu header (island)</comment>
   </data>
   <data name="PlaybackBar.PitchNormal" xml:space="preserve">
@@ -6614,7 +6614,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Pitch submenu: reset to ±0 semitones</comment>
   </data>
   <data name="LibrarySongs.RateTip" xml:space="preserve">
-    <value>Rate (click a star; click the same star to clear)</value>
+    <value>評価 (星をクリック。同じ星をもう一度クリックすると解除)</value>
     <comment>ToolTip on the Songs row stars</comment>
   </data>
   <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>1曲</value><comment>Songs page top bar summary</comment></data>
@@ -6679,11 +6679,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Send to Folder dialog</comment>
   </data>
   <data name="SendTo.DestinationHint" xml:space="preserve">
-    <value>USBドライブ、電話、または任意のフォルダ</value>
+    <value>USB ドライブ、スマートフォン、または任意のフォルダー</value>
     <comment>Destination watermark</comment>
   </data>
   <data name="SendTo.Browse" xml:space="preserve">
-    <value>Browse…</value>
+    <value>参照…</value>
     <comment>Folder picker button</comment>
   </data>
   <data name="SendTo.Organize" xml:space="preserve">
@@ -6691,7 +6691,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Toggle label</comment>
   </data>
   <data name="SendTo.OrganizeHint" xml:space="preserve">
-    <value>ファイルパターンを使用しているアーティストとアルバムフォルダ:</value>
+    <value>ファイル名のパターンに従ったアーティストとアルバムのフォルダー:</value>
     <comment>Toggle help, followed by the pattern</comment>
   </data>
   <data name="SendTo.IncludeLyrics" xml:space="preserve">
@@ -6699,7 +6699,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Toggle label</comment>
   </data>
   <data name="SendTo.IncludeLyricsHint" xml:space="preserve">
-    <value>それぞれの曲の .lrc をコピーします。</value>
+    <value>曲に .lrc があれば、一緒にコピーします。</value>
     <comment>Toggle help</comment>
   </data>
   <data name="SendTo.LyricsIncluded" xml:space="preserve">
@@ -6825,19 +6825,19 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Upmix mode hint</comment>
   </data>
   <data name="Upmix.Duplicate" xml:space="preserve">
-    <value>至る所でステレオする</value>
+    <value>全スピーカーでステレオ</value>
     <comment>Upmix mode</comment>
   </data>
   <data name="Upmix.DuplicateHint" xml:space="preserve">
-    <value>すべてのペア、センター、低音が満たされるごとに同じ音楽</value>
+    <value>すべてのペアで同じ音楽を流し、センターと低音も補います</value>
     <comment>Upmix mode hint</comment>
   </data>
   <data name="Upmix.Surround" xml:space="preserve">
-    <value>周辺</value>
+    <value>サラウンド</value>
     <comment>Upmix mode</comment>
   </data>
   <data name="Upmix.SurroundHint" xml:space="preserve">
-    <value>後方への環境、前面に広いステージ</value>
+    <value>リアにアンビエンス、フロントに広い音場</value>
     <comment>Upmix mode hint</comment>
   </data>
   <data name="Upmix.Note" xml:space="preserve">
@@ -6864,7 +6864,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Integrations → Noctis Server card footer</comment>
   </data>
   <data name="Server.OpenAccountSync" xml:space="preserve">
-    <value>アカウントを開いて同期</value>
+    <value>「アカウントと同期」を開く</value>
     <comment>Integrations → Noctis Server card button</comment>
   </data>
   <data name="AccountSync.YourAccount" xml:space="preserve">
@@ -6913,15 +6913,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Change password button</comment>
   </data>
   <data name="AccountSync.Remove" xml:space="preserve">
-    <value>ログアウト</value>
+    <value>サインアウト</value>
     <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
-    <value>携帯電話で、NoctisまたはSubsonicアプリを開き、コードをスキャンしたり、アドレスを入力してサインインします。</value>
+    <value>スマートフォンで Noctis または Subsonic アプリを開き、コードをスキャンするかアドレスを入力してサインインします。</value>
     <comment>Pairing block help</comment>
   </data>
   <data name="AccountSync.ServerOffHelp" xml:space="preserve">
-    <value>デバイスは、このコンピュータ上のNoctisサーバーを介して接続します。それはオフです。</value>
+    <value>デバイスはこのコンピューターの Noctis サーバーを介して接続します。現在オフになっています。</value>
     <comment>Pairing block when the server is off</comment>
   </data>
   <data name="AccountSync.TurnOnServer" xml:space="preserve">
@@ -6949,7 +6949,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>お気に入り、評価、再生回数、このPCのプレイリストがスマートフォンとこのPCで同じになります。スマートフォンで作ったプレイリストはスマートフォンだけに残ります。</value>
+    <value>お気に入り、評価、再生回数、プレイリストがスマートフォンと PC で同じに保たれます。</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">
@@ -6957,11 +6957,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
-    <value>音楽ファイルはその場所に留まります。Noctis Serverをオンにする必要があります。</value>
+    <value>音楽ファイルは元の場所から移動しません。Noctis サーバーをオンにする必要があります。</value>
     <comment>Sync card footnote</comment>
   </data>
   <data name="LyricsStudioSettings.ModelSection" xml:space="preserve">
-    <value>スピーチモード</value>
+    <value>歌詞モデル</value>
     <comment>Lyrics Studio tab section title</comment>
   </data>
   <data name="LyricsStudioSettings.Title" xml:space="preserve">
@@ -6969,7 +6969,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Card title</comment>
   </data>
   <data name="LyricsStudioSettings.Description" xml:space="preserve">
-    <value>このコンピュータ上の単語ごとの歌詞。保存する前に確認します。</value>
+    <value>このコンピューター上で、歌詞に単語ごとのタイミングを付けます。保存する前に確認できます。</value>
     <comment>Card description</comment>
   </data>
   <data name="LyricsStudioSettings.Model" xml:space="preserve">
@@ -6997,29 +6997,29 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Toggle title</comment>
   </data>
   <data name="LyricsStudioSettings.WordTimingsHint" xml:space="preserve">
-    <value>すべての単語の時間。Offは1行に1つずつ保存します。</value>
+    <value>単語ごとにタイミングを付けます。オフにすると1行に1つだけ保存します。</value>
     <comment>Toggle help</comment>
   </data>
   <data name="LyricsStudioSettings.EmbedTags" xml:space="preserve">
-    <value>また、ファイルのタグに歌詞を書く</value>
+    <value>ファイルのタグにも歌詞を書き込む</value>
     <comment>Toggle title</comment>
   </data>
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve">
-    <value>また、オーディオファイル内にプレーンな歌詞を保存します。</value>
+    <value>プレーンな歌詞をオーディオファイル内にも保存します。</value>
     <comment>Toggle help</comment>
   </data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>TTML でも保存</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>TTML は読めても ELRC の単語タイミングは読めないプレイヤー向けに、曲と同じ場所に .ttml ファイルも書き出します。</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve">
-    <value>実行する</value>
+    <value>実行</value>
     <comment>Section title</comment>
   </data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve">
-    <value>選択されたフォーマットが見つからない曲</value>
+    <value>選択した形式の歌詞がない曲</value>
     <comment>Run card title</comment>
   </data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve">
-    <value>上記のフォーマットに欠けている40曲まで。</value>
+    <value>上の形式の歌詞がない曲を最大40曲。</value>
     <comment>Run card help</comment>
   </data>
   <data name="LyricsStudioSettings.Open" xml:space="preserve">
@@ -7039,7 +7039,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Library count tile</comment>
   </data>
   <data name="LyricsStudioSettings.CountNone" xml:space="preserve">
-    <value>歌詞がありません</value>
+    <value>歌詞なし</value>
     <comment>Library count tile</comment>
   </data>
   <data name="LyricsStudioSettings.Installed" xml:space="preserve">
@@ -7069,20 +7069,20 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.SkipAlreadyTimed" xml:space="preserve">
-    <value>このフォーマットで既に曲をスキップ</value>
+    <value>すでにこの形式の曲はスキップ</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.SkipAlreadyTimedTip" xml:space="preserve">
-    <value>ワードタイミング(ELRC)とラインタイミング(LRC)は異なるフォーマットです。ラインタイミングのみのソングはまだ処理されます。</value>
+    <value>単語タイミング (ELRC) と行タイミング (LRC) は別の形式です。行タイミングだけの曲も処理されます。</value>
     <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.TranscribeOnly" xml:space="preserve">
-    <value>耳で書き換える（既存の歌詞は無視）</value>
+    <value>歌詞を使わずに書き起こす · 試験的</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>Lullaby がすべての曲を聴き取り、歌詞がすでにある曲でも自分で歌詞を書き起こします。歌声はよく聞き間違えるため、書き起こしはそれぞれ歌詞欄に開かれ、タイミング合わせの前に修正できます。</value><comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
-    <value>曲がない場合、オンラインで歌詞を検索する</value>
+    <value>歌詞がない曲はオンラインで歌詞を検索</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve"><value>まず LRCLIB から通常の歌詞を取得するので、モデルはタイミングを合わせるだけで済みます。オフの場合や見つからない場合は、歌詞を貼り付けるまでその曲は待機します。</value><comment>Footer checkbox tooltip</comment></data>
@@ -7103,11 +7103,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Footer button</comment>
   </data>
   <data name="LyricsStudio.NeedsFfmpeg" xml:space="preserve">
-    <value>オーディオをデコードするにはffmpegが必要です。 設定でそのパスを設定する › Advanced › ヘルパープログラム.</value>
+    <value>オーディオのデコードには ffmpeg が必要です。設定 › 詳細 › ヘルパープログラムでパスを設定してください。</value>
     <comment>Banner</comment>
   </data>
   <data name="LyricsStudio.Backdrops" xml:space="preserve">
-    <value>背景</value>
+    <value>歌詞ページの背景</value>
     <comment>Header disclosure in LyricsStudioView.axaml</comment>
   </data>
   <data name="LyricsStudio.Options" xml:space="preserve">
@@ -7127,7 +7127,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Header chip in LyricsStudioView.axaml: opens the song/album picker</comment>
   </data>
   <data name="LyricsStudio.ChooseSongsTip" xml:space="preserve">
-    <value>スタジオの曲またはアルバム全体を選択し、単語または行のタイミングを書くかどうか</value>
+    <value>スタジオで処理する曲やアルバム全体を選び、単語と行のどちらのタイミングを書き込むかを決めます</value>
     <comment>Tooltip in LyricsStudioView.axaml</comment>
   </data>
   <data name="LyricsStudioPicker.Title" xml:space="preserve">
@@ -7135,27 +7135,27 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Picker dialog title</comment>
   </data>
   <data name="LyricsStudioPicker.Subtitle" xml:space="preserve">
-    <value>Studioが次にどのような時間、そしてそれが書くフォーマットです。</value>
+    <value>スタジオが次にタイミングを付ける曲と、書き込む形式。</value>
     <comment>Picker dialog subtitle</comment>
   </data>
   <data name="LyricsStudioPicker.Format" xml:space="preserve">
-    <value>書式</value>
+    <value>形式</value>
     <comment>Picker: format card title</comment>
   </data>
   <data name="LyricsStudioPicker.FormatHint" xml:space="preserve">
-    <value>単語のタイミングは単語ごとに移動します(ELRC)。</value>
+    <value>単語タイミングは単語ごと (ELRC)、行タイミングは行ごと (LRC) に動きます。</value>
     <comment>Picker: format card hint</comment>
   </data>
   <data name="LyricsStudioPicker.WordTimings" xml:space="preserve">
-    <value>ワードタイミング・ELRC</value>
+    <value>単語タイミング · ELRC</value>
     <comment>Picker: format chip</comment>
   </data>
   <data name="LyricsStudioPicker.LineTimings" xml:space="preserve">
-    <value>ラインタイミング · LRC</value>
+    <value>行タイミング · LRC</value>
     <comment>Picker: format chip</comment>
   </data>
   <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>Search songs and albums…</value>
+    <value>曲やアルバムを検索…</value>
     <comment>Picker search box</comment>
   </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
@@ -7163,7 +7163,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Picker empty state</comment>
   </data>
   <data name="LyricsStudioPicker.PromptBody" xml:space="preserve">
-    <value>すべての地元の曲はすでにこのフォーマットを持っています。アルバムはその中のすべての曲を追加します。曲のピルはそれが今持っているものを示しています。</value>
+    <value>ローカルの曲はすべてすでにこの形式です。アルバムを選ぶと収録曲がすべて追加されます。曲のピルは現在の形式を示します。</value>
     <comment>Picker empty state (also shown when nothing is missing)</comment>
   </data>
   <data name="LyricsStudioPicker.Add" xml:space="preserve">
@@ -7171,15 +7171,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Picker confirm button</comment>
   </data>
   <data name="LyricsStudioPicker.MissingWord" xml:space="preserve">
-    <value>単語時間なし</value>
+    <value>単語タイミングなし</value>
     <comment>Picker: header over the suggestions when word timings is chosen</comment>
   </data>
   <data name="LyricsStudioPicker.MissingLine" xml:space="preserve">
-    <value>時間をかけずに</value>
+    <value>タイミングなし</value>
     <comment>Picker: header over the suggestions when line timings is chosen</comment>
   </data>
   <data name="LyricsStudioPicker.Scanning" xml:space="preserve">
-    <value>Looking through the library…</value>
+    <value>ライブラリを確認中…</value>
     <comment>Picker: while the suggestions load</comment>
   </data>
   <data name="LyricsStudioPicker.SelectAll" xml:space="preserve">
@@ -7197,7 +7197,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1曲</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0}曲</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>SONGS</value>
+    <value>曲</value>
     <comment>Queue column header</comment>
   </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
@@ -7209,11 +7209,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve">
-    <value>すべての単語</value>
+    <value>全単語にタイミング</value>
     <comment>Review button, shown for line-level lyrics</comment>
   </data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve">
-    <value>これらの行のすべての単語を回します。行レベルのファイルは保持されます。</value>
+    <value>これらの行のすべての単語にタイミングを付けます。行単位のファイルは保持されます。</value>
     <comment>Review button tooltip</comment>
   </data>
   <data name="LyricsStudio.LrcRedSync" xml:space="preserve"><value>lrc.red のモデルで同期</value><comment>Review / lyrics box button, shown when lrc.red has the song only line-synced or plain</comment></data>
@@ -7225,23 +7225,23 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>lrc.red のモデルで単語同期済み · 確認してください</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>lrc.red から · lrc.red のモデルで単語同期</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve">
-    <value>その行を聞くには時間をクリックしてください。テキストを編集してください。ティンテッドラインはもう一度見る必要があります。</value>
+    <value>時間をクリックするとその行を再生します。テキストはその場で編集できます。色付きの行は再確認が必要です。</value>
     <comment>Review pane hint</comment>
   </data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve">
-    <value>すべての行 0.1 s 以前</value>
+    <value>すべての行を0.1秒早める · ショートカット [</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve">
-    <value>すべての行 0.1 s 以降</value>
+    <value>すべての行を0.1秒遅らせる · ショートカット ]</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
-    <value>代わりに変換する</value>
+    <value>代わりに書き起こす · 試験的</value>
     <comment>Review button</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
-    <value>これらの歌詞を無視して歌詞を書き起こしてください</value>
+    <value>これらの歌詞を無視して、歌われている内容を Lullaby に書き起こさせます。歌声はうまく書き起こせないことが多いため、整列の前に単語を修正してください。</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
@@ -7285,7 +7285,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Per-line toggle that opens the word strip</comment>
   </data>
   <data name="LyricsStudio.WordsTip" xml:space="preserve">
-    <value>時間とともにそれぞれの単語を表示します。クリックすると聞こえます。</value>
+    <value>各単語とその時間を表示します。クリックするとその単語を再生します。</value>
     <comment>Word toggle tooltip</comment>
   </data>
   <data name="LyricsStudio.TapWords" xml:space="preserve">
@@ -7293,7 +7293,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Starts tap-to-time for one line</comment>
   </data>
   <data name="LyricsStudio.TapTip" xml:space="preserve">
-    <value>行を再生します。スペースを押すか、各単語をタップします。もう1つタップすると行が終わります。</value>
+    <value>行を再生します。各単語で Space キーを押すか「タップ」を押します。もう一度タップすると行が終わります。</value>
     <comment>Tap button tooltip</comment>
   </data>
   <data name="LyricsStudio.Tap" xml:space="preserve">
@@ -7305,7 +7305,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Tap bar leave button</comment>
   </data>
   <data name="LyricsStudio.PlayFromHere" xml:space="preserve">
-    <value>ここからプレイ</value>
+    <value>ここから再生</value>
     <comment>Time pill tooltip</comment>
   </data>
   <data name="LyricsStudio.NudgeTargetLine" xml:space="preserve"><value>{0}行目 – {1}</value><comment>Nudge bar label: the selected line's start and end</comment></data>
@@ -7405,7 +7405,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Player" xml:space="preserve">
-    <value>プレーヤー島、ミニプレーヤー、カバーフローと今すぐアートワークを再生します。</value>
+    <value>プレイヤーアイランド、ミニプレイヤー、Cover Flow、再生中のアートワーク。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Lyrics" xml:space="preserve">
@@ -7413,11 +7413,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Shortcuts" xml:space="preserve">
-    <value>変更するにはキーをクリックします。Escキーはキャンセルされ、Backspaceはバインドを解除します。</value>
+    <value>キーをクリックして変更します。Esc でキャンセル、Backspace で割り当てを解除します。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Audio" xml:space="preserve">
-    <value>再生、出力、解析、イコライザ。</value>
+    <value>再生、出力、解析、イコライザー。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Library" xml:space="preserve">
@@ -7433,15 +7433,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
-    <value>Discord、scrobbling、TIDAL、音楽サーバー。</value>
+    <value>Discord、スクロブリング、TIDAL、音楽サーバー。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Plugins" xml:space="preserve">
-    <value>インストール済みのプラグイン。</value>
+    <value>Noctis に機能を追加します。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Statistics" xml:space="preserve">
-    <value>あなたのライブラリと一目で聞く。</value>
+    <value>ライブラリと再生の傾向をひと目で確認。</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.About" xml:space="preserve">
@@ -7457,7 +7457,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Sidebar" xml:space="preserve">
-    <value>Sidebar</value>
+    <value>サイドバー</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Files" xml:space="preserve">
@@ -7477,15 +7477,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Artwork" xml:space="preserve">
-    <value>アート</value>
+    <value>アートワーク</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve">
-    <value>重い回転</value>
+    <value>ヘビーローテーション</value>
     <comment>Appearance › Home toggle</comment>
   </data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve">
-    <value>ホームページに「これらの過去2週間を繰り返す」行を表示します。</value>
+    <value>ホームに「この二週間繰り返し聴いている曲」の行を表示します。</value>
     <comment>Appearance › Home toggle description</comment>
   </data>
   <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>最近再生したアルバム</value><comment>Appearance › Home picker</comment></data>
@@ -7499,7 +7499,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve">
-    <value>プレイヤーの島</value>
+    <value>プレイヤーアイランド</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve">
@@ -7558,7 +7558,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Organisation" xml:space="preserve">
-    <value>Organisation</value>
+    <value>整理</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Metadata" xml:space="preserve">
@@ -7586,7 +7586,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Reset" xml:space="preserve">
-    <value>Reset</value>
+    <value>リセット</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
@@ -7602,11 +7602,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.NoctisServer" xml:space="preserve">
-    <value>Noctis Server</value>
+    <value>Noctis サーバー</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.WebRemote" xml:space="preserve">
-    <value>ウェブリモート</value>
+    <value>ウェブリモコン</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Discord" xml:space="preserve">
@@ -7614,7 +7614,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Scrobbling" xml:space="preserve">
-    <value>Scrobbling</value>
+    <value>スクロブリング</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.TIDAL" xml:space="preserve">
@@ -7630,11 +7630,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Listening" xml:space="preserve">
-    <value>聴いています</value>
+    <value>リスニング</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.TopPlayed" xml:space="preserve">
-    <value>トップ</value>
+    <value>よく再生した項目</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.CloseTip" xml:space="preserve">
@@ -7650,7 +7650,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Create form watermark</comment>
   </data>
   <data name="Settings.YourListening" xml:space="preserve">
-    <value>聴いています</value>
+    <value>リスニング</value>
     <comment>Statistics card label</comment>
   </data>
   <data name="Settings.RemovePictureTip" xml:space="preserve">
@@ -7668,7 +7668,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>外観</value>
   </data>
   <data name="Settings.Tab.Player" xml:space="preserve">
-    <value>プレーヤー</value>
+    <value>プレイヤー</value>
   </data>
   <data name="Settings.Tab.Lyrics" xml:space="preserve">
     <value>歌詞</value>
@@ -7751,7 +7751,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
   </data>
   <data name="AccountSync.PairQrWarning" xml:space="preserve">
-    <value>このコードをスキャンした人は誰でもあなたのアカウントにサインインできます。自分のスマートフォンにだけ見せてください。1 回だけ使え、2 分ごとに変わります。</value>
+    <value>このコードをスキャンした人は誰でもあなたのアカウントにサインインできます。自分のスマートフォンにだけ見せてください。</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
@@ -8121,7 +8121,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.ToggleMiniPlayer" xml:space="preserve">
-    <value>ミニプレーヤー</value>
+    <value>ミニプレイヤー</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve">
@@ -8181,15 +8181,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
   </data>
   <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
-    <value>{0} アルバム</value>
+    <value>アルバム{0}枚</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
   </data>
   <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
-    <value>1 アルバム</value>
+    <value>アルバム1枚</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
   </data>
   <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
-    <value>1 ファン</value>
+    <value>ファン1人</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
   </data>
   <data name="ArtistInfoSearch.Current" xml:space="preserve">
@@ -8383,8 +8383,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Account.ManualStep1" xml:space="preserve"><value>コンピュータで「スマートフォンを接続」をクリックし、「手動で入力」をクリックします</value></data>
   <data name="Mobile.Account.ManualStep2" xml:space="preserve"><value>表示されたアドレス、メールアドレス、パスワードを入力します</value></data>
   <data name="Mobile.Account.ManualStep3" xml:space="preserve"><value>セキュリティコードが一致することを確認します</value></data>
-  <data name="Mobile.Account.ServerAddress" xml:space="preserve"><value>サーバアドレス</value></data>
-  <data name="Mobile.Account.EmailOrUsername" xml:space="preserve"><value>メールアドレスまたはユーザ名</value></data>
+  <data name="Mobile.Account.ServerAddress" xml:space="preserve"><value>サーバーアドレス</value></data>
+  <data name="Mobile.Account.EmailOrUsername" xml:space="preserve"><value>メールアドレスまたはユーザー名</value></data>
   <data name="Mobile.Account.Password" xml:space="preserve"><value>パスワード</value></data>
   <data name="Mobile.Account.Required" xml:space="preserve"><value>必須</value></data>
   <data name="Mobile.Account.ShowPassword" xml:space="preserve"><value>パスワードを表示</value></data>
@@ -8509,7 +8509,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Settings.Background" xml:space="preserve"><value>背景</value></data>
   <data name="Mobile.Settings.Theme" xml:space="preserve"><value>テーマ</value></data>
   <data name="Mobile.Settings.Accent" xml:space="preserve"><value>アクセントカラー</value></data>
-  <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>プレーヤーバー</value></data>
+  <data name="Mobile.Settings.PlayerBar" xml:space="preserve"><value>プレイヤーバー</value></data>
   <data name="Mobile.Settings.NowPlayingArtwork" xml:space="preserve"><value>再生中のアートワーク</value></data>
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>ジャケット</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>レコード</value></data>
@@ -8698,11 +8698,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Scrobbling.ApproveDetail" xml:space="preserve"><value>Last.fmにサインインして「Allow」をタップし、ここに戻って「完了」をタップしてください。</value></data>
   <data name="Mobile.Scrobbling.LastFmNotApproved" xml:space="preserve"><value>Last.fmでの承認がまだ確認できません。ブラウザでNoctisを承認してから、もう一度お試しください。</value></data>
   <data name="Mobile.Scrobbling.ConnectListenBrainz" xml:space="preserve"><value>ListenBrainzに接続</value></data>
-  <data name="Mobile.Scrobbling.TokenDetail" xml:space="preserve"><value>listenbrainz.org/profile にあるユーザトークンを貼り付けてください。</value></data>
+  <data name="Mobile.Scrobbling.TokenDetail" xml:space="preserve"><value>listenbrainz.org/profile にあるユーザートークンを貼り付けてください。</value></data>
   <data name="Mobile.Scrobbling.Connect" xml:space="preserve"><value>接続</value></data>
   <data name="Mobile.Scrobbling.ListenBrainzUnreachable" xml:space="preserve"><value>ListenBrainzに接続できませんでした。もう一度お試しください。</value></data>
   <data name="Mobile.Scrobbling.TokenRejected" xml:space="preserve"><value>ListenBrainzがそのトークンを受け付けませんでした。</value></data>
-  <data name="Mobile.Scrobbling.UserToken" xml:space="preserve"><value>ユーザトークン</value></data>
+  <data name="Mobile.Scrobbling.UserToken" xml:space="preserve"><value>ユーザートークン</value></data>
   <data name="Mobile.Scrobbling.SetUpDetail" xml:space="preserve"><value>コンピュータのNoctisでLast.fmとListenBrainzを接続してください。ここでサインインする場合は「このスマートフォンから」を選択してください。</value></data>
   <data name="Mobile.Scrobbling.DisconnectQuestion" xml:space="preserve"><value>{0}との接続を解除しますか？</value></data>
   <data name="Mobile.Scrobbling.DisconnectDetail" xml:space="preserve"><value>送信待ちの再生は破棄されます。サイト上のスクロブルはそのまま残ります。</value></data>
@@ -8754,7 +8754,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>ミッドナイト</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>システム、{0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>デバイスに合わせる</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>ライトモードではライトでダークモードでは{0}</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>ライトモードではライト、ダークモードでは{0}</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>ライトとダーク</value></data>
   <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>カラーテーマはアプリ全体に色をつけます</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>テーマに合わせる</value></data>
@@ -8794,7 +8794,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>再生バーは高さ全体でタップに反応し、横向きでも画面に収まります。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>再生、メディアセッション、デコーダのJNIラッパー。</value></data>
-  <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザインターフェイスのフレームワーク。</value></data>
+  <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザーインターフェイスのフレームワーク。</value></data>
   <data name="Mobile.License.Inter" xml:space="preserve"><value>書体（Avalonia.Fonts.Inter経由）。</value></data>
   <data name="Mobile.License.Mvvm" xml:space="preserve"><value>ビューモデルの基盤。</value></data>
   <data name="Mobile.License.TagLib" xml:space="preserve"><value>曲のタグとジャケットを読み取ります。</value></data>
@@ -8815,7 +8815,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Account.StopSending" xml:space="preserve"><value>送信を停止</value></data>
   <data name="Mobile.Account.SendSongs" xml:space="preserve"><value>スマートフォンの曲をコンピュータに送信</value></data>
   <data name="Mobile.Account.SendTile" xml:space="preserve"><value>コンピュータに送信</value></data>
-  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>メールアドレスまたはユーザ名とパスワードを入力してください。</value></data>
+  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>メールアドレスまたはユーザー名とパスワードを入力してください。</value></data>
   <data name="Mobile.Account.Connecting" xml:space="preserve"><value>コンピュータに接続中…</value></data>
   <data name="Mobile.Account.SigningIn" xml:space="preserve"><value>サインイン中…</value></data>
   <data name="Mobile.Account.ScannerUnavailable" xml:space="preserve"><value>このスマートフォンではスキャナの準備ができていません。1分ほど待ってからもう一度試すか、下のコンピュータのアドレスでサインインしてください。</value></data>
@@ -8844,7 +8844,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>コンピュータに接続できません。コンピュータでNoctisが開いていること、「スマートフォンでNoctisを使う」がオンになっていること、両方が同じWi-Fiに接続されていることを確認してください。</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>コンピュータのセキュリティコードが変更されました。新しいコードを信頼するには、サインアウトしてから再度サインインしてください。</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>サインイン中にコンピュータのセキュリティコードが変更されました。コードを確認して、もう一度お試しください。</value></data>
-  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>メールアドレス、ユーザ名、またはパスワードが正しくありません。</value></data>
+  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>メールアドレス、ユーザー名、またはパスワードが正しくありません。</value></data>
   <data name="Mobile.Account.Error.LockedOut" xml:space="preserve"><value>サインインの失敗が多すぎます。数分待ってから、もう一度お試しください。</value></data>
   <data name="Mobile.Account.Error.SyncDisabled" xml:space="preserve"><value>コンピュータで同期がオフになっています。設定の「アカウントとデバイス」で「スマートフォンと同期」をオンにしてください。</value></data>
   <data name="Mobile.Account.Error.SignedOut" xml:space="preserve"><value>コンピュータがこのスマートフォンをサインアウトしました。再度サインインしてください。</value></data>
@@ -8902,7 +8902,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.MoreFor" xml:space="preserve"><value>{0}のその他のオプション</value></data>
   <data name="Mobile.Folders.RemoveName" xml:space="preserve"><value>{0}を削除</value></data>
   <data name="Mobile.Settings.AccentFootnote" xml:space="preserve"><value>{0}でボタンとハイライトに色をつけます</value></data>
-  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>再生中のジャケットの色を使い無い時は{0}</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
+  <data name="Mobile.Settings.AccentArtworkFootnote" xml:space="preserve"><value>再生中のジャケットの色を使い、ない時は{0}を使います</value><comment>Accent page footnote under Match Artwork. {0} = the chosen accent colour worn when nothing plays</comment></data>
   <data name="Mobile.Settings.StorageUsedName" xml:space="preserve"><value>使用済みストレージ、{0}</value></data>
   <data name="Mobile.Settings.SongRows" xml:space="preserve"><value>曲の行に表示</value></data>
   <data name="Mobile.Settings.SongRows.Off" xml:space="preserve"><value>オフ</value></data>
@@ -8936,7 +8936,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>「{0}」を読み込めませんでした</value></data>
   <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>プレイリストを開く</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>すべての音楽を自動で検索</value></data>
-  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>スマホとSDカードの全曲を追加します歌詞ファイルは下のフォルダからのみ読み込みます</value></data>
+  <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>スマホとSDカードの全曲を追加します。歌詞ファイルは下のフォルダからのみ読み込みます</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>すべての音楽</value></data>
   <data name="Mobile.Folders.AllMusicDenied" xml:space="preserve"><value>Noctisにこのスマートフォンの音楽を読み取る許可がありません。オンにするには、Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
   <data name="Mobile.Folders.AllMusicLost" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。曲はリストに残りますが、Noctisの設定で「音楽とオーディオ」を許可するまで再生できません。</value></data>
@@ -8945,9 +8945,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Notice.FindAllMusic" xml:space="preserve"><value>すべての音楽を検索</value></data>
   <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>このスマートフォンのすべての曲を検索するか、音楽が保存されているフォルダを選んでください。Noctisはその場所のまま読み込み、何もアップロードしません。</value></data>
   <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctisはこのスマートフォンの音楽を読み取れなくなりました。Noctisの設定で「音楽とオーディオ」を許可してください。</value></data>
-  <data name="Main.DropPreparingImport" xml:space="preserve"><value>インポートを準備中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropPreparingImport" xml:space="preserve"><value>読み込みを準備中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropScanningFolders" xml:space="preserve"><value>ドロップしたフォルダーをスキャン中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
-  <data name="Main.DropImportingFiles" xml:space="preserve"><value>ファイルをインポート中 {0}/{1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropImportingFiles" xml:space="preserve"><value>ファイルを読み込み中 {0}/{1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>ライブラリを更新中…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedOne" xml:space="preserve"><value>1 個のファイルを {0} に移動しました</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedMany" xml:space="preserve"><value>{0} 個のファイルを {1} に移動しました</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
@@ -8960,9 +8960,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Lyrics.NoLyricsFound" xml:space="preserve"><value>歌詞が見つかりません。</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
   <data name="Metadata.LyricsReadFailed" xml:space="preserve"><value>ファイルを読み込めませんでした: {0}</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFileEmpty" xml:space="preserve"><value>{0} は空です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
-  <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} をインポートしました</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImported" xml:space="preserve"><value>{0} を読み込みました</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.PastedLyrics" xml:space="preserve"><value>貼り付けた歌詞</value><comment>Metadata window › Lyrics tab status line: fills {0} of Metadata.LyricsImported after LRC was pasted into the Plain Lyrics box (GitHub #212)</comment></data>
-  <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} を通常の歌詞としてインポートしました（タイムスタンプなし）。</value><comment>Metadata window › Lyrics tab status line</comment></data>
+  <data name="Metadata.LyricsImportedPlain" xml:space="preserve"><value>{0} を通常の歌詞として読み込みました（タイムスタンプなし）。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsSearchUnavailable" xml:space="preserve"><value>検索サービスを利用できません。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsTitleArtistRequired" xml:space="preserve"><value>タイトルとアーティストが必要です。</value><comment>Metadata window › Lyrics tab status line</comment></data>
   <data name="Metadata.LyricsFound" xml:space="preserve"><value>歌詞が見つかりました</value><comment>Metadata window › Lyrics tab status line</comment></data>
@@ -8981,7 +8981,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Picker.SelectArtwork" xml:space="preserve"><value>アートワークを選択</value><comment>File picker dialog title</comment></data>
   <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>アニメーションアートワークを選択</value><comment>File picker dialog title</comment></data>
   <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>アニメーションアートワークをダウンロード</value><comment>File picker dialog title</comment></data>
-  <data name="Picker.ImportLyrics" xml:space="preserve"><value>歌詞をインポート</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.ImportLyrics" xml:space="preserve"><value>歌詞を読み込む</value><comment>File picker dialog title</comment></data>
   <data name="Picker.DownloadCoverArt" xml:space="preserve"><value>カバーアートをダウンロード</value><comment>File picker dialog title</comment></data>
   <data name="Picker.LocateFfmpeg" xml:space="preserve"><value>ffmpeg を指定</value><comment>File picker dialog title</comment></data>
   <data name="Picker.ChooseProgram" xml:space="preserve"><value>プログラムを選択</value><comment>File picker dialog title</comment></data>
@@ -9053,8 +9053,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="BulkLyrics.WaitingForSources" xml:space="preserve"><value>混雑中のソースを待っています… 再問い合わせ残り {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>混雑中のソースに再度問い合わせ中… 残り {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>処理するものはありません</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>1 曲は通常の歌詞のみです。Lyrics Studio はこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} 曲は通常の歌詞のみです。Lyrics Studio はこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>1 曲は通常の歌詞のみです。歌詞スタジオはこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} 曲は通常の歌詞のみです。歌詞スタジオはこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>最初の {0} 曲を一度に開きます。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} 枚のアルバム</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
@@ -9197,7 +9197,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Palette.CategoryArtist" xml:space="preserve"><value>アーティスト</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AudioSetting" xml:space="preserve"><value>オーディオ設定</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AppearanceSetting" xml:space="preserve"><value>外観の設定</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>歌詞スタジオ…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>同期歌詞のない曲の歌詞にタイミングを付ける・書き起こす</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyrics" xml:space="preserve"><value>ライブラリの歌詞を探す…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyricsSub" xml:space="preserve"><value>すべての曲の歌詞を検索（単語同期を優先）</value><comment>Command palette (Ctrl+K)</comment></data>
@@ -9210,7 +9210,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>アニメーションカバーの切り替え</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Menu.OpenFileWith" xml:space="preserve"><value>プログラムから開く</value><comment>Song context menu › Tools</comment></data>
   <data name="Menu.OpenIn" xml:space="preserve"><value>{0} で開く</value><comment>Song context menu › Tools</comment></data>
-  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>アルバムは露骨な表現を含む</value><comment>Metadata window</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>エクスプリシットなアルバム</value><comment>Metadata window</comment></data>
   <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} 人のアーティストを選択中</value><comment>Metadata window</comment></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} 曲を選択中</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>「{0}」にタグを書き込めませんでした。別のアプリでファイルが開かれているか、読み取り専用の可能性があります。そちらで閉じるかファイルを確認してから、もう一度お試しください。</value><comment>Metadata window</comment></data>
@@ -9279,23 +9279,23 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>同じ名前のアルバムはほかにありません。アルバムのグリッドで、まとめたいアルバムを Ctrl を押しながらクリックし、そのうちの1つを右クリックしてください。</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Noctis 内ではまとめましたが、一部のファイル ({0}) を保存できませんでした (読み取り専用か、別のアプリで開かれています)。そのファイルが変更されると、次回のスキャンで元のアルバムに戻ります。</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
-  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
-  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
-  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
-  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
-  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
-  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
-  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
-  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
-  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
-  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
-  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
-  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
-  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
-  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
-  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
-  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
-  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>歌詞ページ</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>歌詞ページのように全画面で動く歌詞</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>歌詞ページには同期歌詞が必要です</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0}行 · {1}秒</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>歌詞ページの動画は最大{0}秒です</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>アートワークの色</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>アニメーションカバー</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>カスタム背景</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>画像またはクリップを選択</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>背景を削除</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>読みやすさ</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>歌詞が読みやすいように、背景を暗くして曲の色味に寄せます</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>SNS のセーフゾーン</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Instagram リールや TikTok のボタンとキャプションに歌詞が重ならないようにします</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>背景の画像またはクリップを選択</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>そのファイルを開けませんでした。このコンピューターに保存されているファイルを選んでください。</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>画像と動画</value><comment>File picker file type name</comment></data>
   <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>1か月スヌーズ</value></data>
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>スヌーズを解除</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>1か月スヌーズしました</value></data>
