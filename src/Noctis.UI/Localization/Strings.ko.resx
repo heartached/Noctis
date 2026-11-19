@@ -191,7 +191,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>가사</value>
   </data>
   <data name="TopBar.CoverFlow" xml:space="preserve">
-    <value>커버 플로우</value>
+    <value>Cover Flow</value>
   </data>
   <data name="TopBar.CoverCollage" xml:space="preserve">
     <value>커버 콜라주</value>
@@ -289,7 +289,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.COVERFLOW" xml:space="preserve">
-    <value>커버 플로우</value>
+    <value>Cover Flow</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimateLongAlbumTitles" xml:space="preserve">
@@ -339,7 +339,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowOneTilePer" xml:space="preserve">
-    <value>One tile per release. Other editions appear under &quot;Other Versions&quot;.</value>
+    <value>발매작마다 타일 하나. 다른 에디션은 "다른 버전"에 표시됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumGrouping" xml:space="preserve"><value>태그 없는 앨범 묶기</value><comment>Text in SettingsView.axaml (GitHub #193)</comment></data>
@@ -510,7 +510,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.DiscordCaption" xml:space="preserve">
-    <value>Get help &amp; updates</value>
+    <value>도움말 및 업데이트</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.WebsiteCaption" xml:space="preserve">
@@ -633,11 +633,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtwork" xml:space="preserve">
-    <value>강조색을 앨범 아트에 맞춤</value>
+    <value>강조 색상을 앨범 아트에 맞춤</value>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>재생 중인 커버에서 강조색을 가져옵니다. 재생 중인 곡이 없으면 선택한 강조색으로 돌아갑니다.</value>
+    <value>재생 중인 커버에서 강조 색상을 가져옵니다.</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve">
@@ -645,7 +645,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>재생목록, 노래 페이지, 플레이어의 아티스트, 앨범, 장르 이름을 강조 색상으로 표시합니다. 끄면 일반 글자 색상으로 표시됩니다.</value>
+    <value>아티스트, 앨범, 장르 이름에 강조 색상을 사용합니다.</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.TintWindowWithAccent" xml:space="preserve">
@@ -673,7 +673,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LiquidGlass" xml:space="preserve">
-    <value>리퀴드 글래스</value>
+    <value>Liquid Glass</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BETA" xml:space="preserve">
@@ -745,11 +745,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.CoverFlowLayout" xml:space="preserve">
-    <value>커버 플로우 레이아웃</value>
+    <value>Cover Flow 레이아웃</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowCoverFlowPage" xml:space="preserve">
-    <value>커버 플로우 페이지가 대기열의 커버를 배치하는 방식입니다.</value>
+    <value>Cover Flow 페이지가 대기열의 커버를 배치하는 방식입니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumsView" xml:space="preserve"><value>앨범 보기</value><comment>Settings › Player card title</comment></data>
@@ -932,7 +932,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>넓을수록 탐색 바 공간이 커집니다. 아일랜드 가장자리를 드래그할 수도 있습니다. 손잡이를 더블클릭하면 초기화됩니다.</value>
+    <value>넓을수록 탐색 바 공간이 커집니다. 손잡이를 더블클릭하면 초기화됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Narrower" xml:space="preserve">
@@ -956,7 +956,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MediaControlsTaskbarDesc" xml:space="preserve">
-    <value>작업 표시줄 아이콘에 마우스를 올리면 이전, 재생/일시정지, 다음, 즐겨찾기 버튼을 표시합니다.</value>
+    <value>작업 표시줄 아이콘에 마우스를 올리면 플레이어 버튼을 표시합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AutomaticAlbumCoverSize" xml:space="preserve">
@@ -987,7 +987,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>드리프트는 커버를 움직이며 비트에 맞춰 맥동합니다. Kawarp는 커버를 느린 액체 흐름으로 녹입니다. 플러그인 스타일도 여기에 표시됩니다.</value>
+    <value>드리프트는 비트에 맞춰 커버를 움직입니다. Kawarp는 커버를 느린 액체 흐름으로 바꿉니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -1059,7 +1059,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Lyrics.MusicVideoAudioSide" xml:space="preserve"><value>오디오</value><comment>Lyrics page Audio / Video switch: the normal page (cover and lyrics)</comment></data>
   <data name="Lyrics.MusicVideoVideoSide" xml:space="preserve"><value>비디오</value><comment>Lyrics page Audio / Video switch: the music video full size</comment></data>
   <data name="Settings.LyricsBackgroundVideo" xml:space="preserve">
-    <value>가사 배경 동영상</value>
+    <value>가사 배경 영상</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LoopVideoGIFBehind" xml:space="preserve">
@@ -1095,7 +1095,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Picker: drop the default clip</comment>
   </data>
   <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>Search songs and albums…</value>
+    <value>노래 및 앨범 검색…</value>
     <comment>Picker search box</comment>
   </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
@@ -1209,7 +1209,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve">
-    <value>부른 단어가 살짝 떠오르고 길게 끄는 음이 빛납니다(Apple Music처럼). 끄면 단어 동기화 가사가 움직이지 않습니다.</value>
+    <value>부른 단어가 떠오르고 길게 끄는 음이 빛납니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>가사 렌더러</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1221,7 +1221,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>가사가 없거나 연주곡이면 가사 페이지에서 앨범 아트, 곡 정보, 컨트롤을 가운데로 옮깁니다.</value>
+    <value>곡에 가사가 없으면 아트워크와 컨트롤을 가운데로 옮깁니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>사이드바 뒤까지 배경 표시</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1235,11 +1235,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>백그라운드 보컬 표시</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>백그라운드 보컬과 애드리브를 줄 아래에 작은 글씨로 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
-    <value>재생 바 불투명도</value>
+    <value>유리 불투명도</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>재생 바 배경이 얼마나 진하게 보일지 설정합니다.</value>
+    <value>플레이어, 대기열, 메뉴가 얼마나 불투명하게 보일지 설정합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>배경 흐림</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
@@ -1254,7 +1254,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve">
-    <value>유리 너머로 바탕 화면이 비치는 정도.</value>
+    <value>미니 플레이어 배경이 얼마나 불투명하게 보일지 설정합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>반투명 흐림 배경</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1340,7 +1340,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>대기열에서 재생한 곡을 '지금 재생 중' 위에 표시하고, 대기열이 끝나도 마지막 곡을 불러온 상태로 둡니다.</value>
+    <value>재생한 곡이 대기열에서 지금 재생 중인 곡 위에 남습니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>없는 노래</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1363,11 +1363,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="Settings.ExplicitContent" xml:space="preserve">
-    <value>노골적인 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
-    <value>끄면 직접 재생하지 않는 한 노골적 표현 곡을 건너뜁니다.</value>
+    <value>끄면 직접 재생하지 않는 한 선정적인 곡을 건너뜁니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDevice" xml:space="preserve">
@@ -1375,7 +1375,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDeviceDesc" xml:space="preserve">
-    <value>Noctis가 사운드를 출력하는 위치입니다. 배타 모드는 선택한 장치를 직접 열므로 비트퍼펙트 출력은 Windows 기본값이 아니라 이 설정을 따릅니다.</value>
+    <value>Noctis가 음악을 재생하는 장치입니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDeviceDefault" xml:space="preserve">
@@ -1514,7 +1514,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>ReplayGain 태그로 음량을 조정합니다. 마우스 오른쪽 버튼 메뉴에서 트랙을 스캔하세요.</value>
+    <value>ReplayGain 태그로 음량을 고르게 맞춥니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1542,7 +1542,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>휴대폰 브라우저에서 재생을 제어하세요. 앱은 필요 없습니다. 신뢰할 수 있는 Wi-Fi에서만 사용하세요.</value>
+    <value>휴대폰 브라우저에서 Noctis를 제어합니다. 신뢰할 수 있는 Wi-Fi에서만 사용하세요.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
@@ -1599,7 +1599,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings ▸ Integrations ▸ Discord, SettingsView.axaml</comment>
   </data>
   <data name="Settings.DiscordStatusDisplayHint" xml:space="preserve">
-    <value>멤버 목록의 상태에 Discord가 표시할 내용입니다.</value>
+    <value>멤버 목록에서 Discord가 "듣는 중" 뒤에 표시할 내용입니다.</value>
     <comment>Settings ▸ Integrations ▸ Discord, SettingsView.axaml</comment>
   </data>
   <data name="Settings.DiscordStatusDisplay.Artist" xml:space="preserve">
@@ -1887,7 +1887,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve">
-    <value>숨김이 해제될 때까지 셔플과 라디오에서 제외됩니다.</value>
+    <value>다시 표시될 때까지 셔플, 라디오, 홈 추천에서 제외됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoSnoozedTracks" xml:space="preserve">
@@ -1995,7 +1995,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>키를 클릭해 변경하세요. Esc는 취소, Backspace는 해제합니다. 미디어 키는 항상 작동합니다.</value>
+    <value>키를 클릭해 변경하세요. Esc는 취소, Backspace는 지웁니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -2120,11 +2120,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Content in AddSongsDialog.axaml</comment>
   </data>
   <data name="AddSongs.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in AddSongsDialog.axaml</comment>
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
-    <value>추가됨</value>
+    <value>재생목록에 있음</value>
     <comment>Text in AddSongsDialog.axaml</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
@@ -2234,7 +2234,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in AlbumDescriptionDialog.axaml</comment>
   </data>
   <data name="AlbumDescription.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment>
   </data>
   <data name="AlbumDescription.EditDescriptionTip" xml:space="preserve">
@@ -2260,7 +2260,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.OpenFullAlbumDescriptionTip" xml:space="preserve">
@@ -2402,7 +2402,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.PlayEverythingByArtistTip" xml:space="preserve">
@@ -2414,7 +2414,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.FavoriteArtistTip" xml:space="preserve">
-    <value>즐겨찾는 아티스트</value>
+    <value>아티스트 즐겨찾기</value>
     <comment>ToolTip.Tip in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.OptionsTip" xml:space="preserve">
@@ -2500,7 +2500,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.AboutTitle" xml:space="preserve">
-    <value>소개:</value>
+    <value>소개: </value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Links" xml:space="preserve">
@@ -2721,7 +2721,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in CoverFlowView.axaml</comment>
   </data>
   <data name="CoverFlow.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in CoverFlowView.axaml</comment>
   </data>
   <data name="CoverFlow.NOWPLAYING" xml:space="preserve">
@@ -2892,11 +2892,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.SetCoverArt" xml:space="preserve">
-    <value>커버 아트 설정</value>
+    <value>커버 변경</value>
     <comment>Content in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
-    <value>커버 아트 제거</value>
+    <value>사용자 지정 커버 제거</value>
     <comment>Content in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.ChooseCover" xml:space="preserve"><value>커버 이미지 선택</value><comment>Title of the file picker opened by Change cover</comment></data>
@@ -3032,7 +3032,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in HomeView.axaml</comment>
   </data>
   <data name="Home.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in HomeView.axaml</comment>
   </data>
   <data name="Home.ListenCountTip" xml:space="preserve">
@@ -3117,7 +3117,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in LibraryAlbumsView.axaml</comment>
   </data>
   <data name="LibraryAlbums.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in LibraryAlbumsView.axaml</comment>
   </data>
   <data name="LibraryAlbums.ListenCountTip" xml:space="preserve">
@@ -3232,7 +3232,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Genres.ShowGenreTip" xml:space="preserve"><value>이 장르 보기</value><comment>Tooltip on a genre name on album and artist pages (GitHub #220)</comment></data>
   <!-- LibraryFoldersView.axaml (auto-migrated) -->
   <data name="LibraryFolders.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in LibraryFoldersView.axaml</comment>
   </data>
   <data name="LibraryFolders.HideFromLibrary" xml:space="preserve"><value>라이브러리에서 숨기기</value><comment>Folder context menu in the Folders view (FolderContextMenuBuilder)</comment></data>
@@ -3349,7 +3349,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Content in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.FavoriteTip" xml:space="preserve">
@@ -3562,7 +3562,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   </data>
   <!-- LyricsView.axaml (auto-migrated) -->
   <data name="Lyrics.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in LyricsView.axaml</comment>
   </data>
   <data name="Lyrics.ShowBlurredAlbumArtworkTip" xml:space="preserve">
@@ -3950,11 +3950,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.CoverFlowTip" xml:space="preserve">
-    <value>커버 플로우</value>
+    <value>Cover Flow</value>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.CoverFlowLayoutTip" xml:space="preserve">
-    <value>커버 플로우 레이아웃</value>
+    <value>Cover Flow 레이아웃</value>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.FilterTip" xml:space="preserve">
@@ -3962,7 +3962,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Top-right corner filter icon tooltip prefix</comment>
   </data>
   <data name="Main.SwitchToCoverFlow" xml:space="preserve">
-    <value>커버 플로우로 전환</value>
+    <value>Cover Flow로 전환</value>
     <comment>Top-right view-mode icon tooltip</comment>
   </data>
   <data name="Main.SwitchToLibrary" xml:space="preserve">
@@ -4012,7 +4012,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   </data>
   <data name="Main.ScanReplayGain" xml:space="preserve"><value>ReplayGain 스캔</value><comment>Queue row menu in MainWindow.axaml</comment></data>
   <data name="Main.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in MainWindow.axaml</comment>
   </data>
   <data name="Main.DropFilesImport" xml:space="preserve">
@@ -4098,7 +4098,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.FavoritedTip" xml:space="preserve">
@@ -4265,7 +4265,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.MarksContentAsExplicitTip" xml:space="preserve">
-    <value>콘텐츠를 노골적 콘텐츠로 표시합니다 (iTunes 권고 태그). '노골적인 콘텐츠' 설정이 이 태그로 노래를 건너뜁니다.</value>
+    <value>콘텐츠를 선정적인 콘텐츠로 표시합니다 (iTunes 권고 태그). '선정적인 콘텐츠' 설정이 이 태그로 노래를 건너뜁니다.</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Artist" xml:space="preserve">
@@ -4362,7 +4362,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.PEOPLECREDITS" xml:space="preserve">
-    <value>인물 및 크레딧</value>
+    <value>참여자 및 크레딧</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Conductor" xml:space="preserve">
@@ -4378,7 +4378,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.EncodedBy" xml:space="preserve">
-    <value>인코더 제작자</value>
+    <value>인코딩한 사람</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.IDENTIFICATION" xml:space="preserve">
@@ -4563,7 +4563,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>디스크에서 .txt (일반) 또는 .lrc (싱크) 가사 파일을 불러옵니다</value>
+    <value>디스크에서 .txt (일반) 또는 .lrc, .elrc, .ttml (싱크) 가사 파일을 불러옵니다</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
@@ -4603,7 +4603,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>디스크에서 .lrc (싱크) 또는 .txt (일반) 가사 파일을 불러옵니다</value>
+    <value>디스크에서 .lrc, .elrc, .ttml (싱크) 또는 .txt (일반) 가사 파일을 불러옵니다</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -4862,7 +4862,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="MiniPlayer.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="MiniPlayer.HideLyrics" xml:space="preserve">
@@ -5013,7 +5013,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in MoreByArtistView.axaml</comment>
   </data>
   <data name="MoreByArtist.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in MoreByArtistView.axaml</comment>
   </data>
   <!-- OrganizeFilesDialog.axaml (auto-migrated) -->
@@ -5022,7 +5022,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Title in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.RenameMoveFilesInto" xml:space="preserve">
-    <value>태그별로 파일을 폴더에 정리합니다. 먼저 미리 보세요.</value>
+    <value>태그에 따라 파일을 폴더별로 정리합니다.</value>
     <comment>Text in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.UndoLast" xml:space="preserve">
@@ -5151,7 +5151,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.ViewArtistTip" xml:space="preserve">
@@ -5443,7 +5443,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.AddPlaylistTip" xml:space="preserve">
@@ -5479,7 +5479,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>ToolTip.Tip in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.NEW" xml:space="preserve">
-    <value>새로 만들기</value>
+    <value>신규</value>
     <comment>Text in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.PlaylistEmpty" xml:space="preserve">
@@ -5540,7 +5540,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in QueueView.axaml</comment>
   </data>
   <data name="Queue.ExplicitTip" xml:space="preserve">
-    <value>노골적 콘텐츠</value>
+    <value>선정적인 콘텐츠</value>
     <comment>ToolTip.Tip in QueueView.axaml</comment>
   </data>
   <data name="Queue.NoTrackPlaying" xml:space="preserve">
@@ -6248,7 +6248,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.MinutesListened" xml:space="preserve">
-    <value>감상한 분</value>
+    <value>감상 시간(분)</value>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.TracksPlayed" xml:space="preserve">
@@ -6256,7 +6256,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.DifferentArtists" xml:space="preserve">
-    <value>다양한 아티스트</value>
+    <value>감상한 아티스트</value>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.AlbumsExplored" xml:space="preserve">
@@ -6276,7 +6276,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.TopGenre" xml:space="preserve">
-    <value>최고 장르</value>
+    <value>가장 많이 들은 장르</value>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.TOPARTISTS" xml:space="preserve">
@@ -6598,7 +6598,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Kawarp slider label</comment>
   </data>
   <data name="Settings.KawarpBlur" xml:space="preserve">
-    <value>Blur</value>
+    <value>흐림</value>
     <comment>Kawarp slider label</comment>
   </data>
   <data name="Settings.DriftMovement" xml:space="preserve"><value>움직임</value><comment>Drift slider label: how fast the cover drifts (0% holds it still)</comment></data>
@@ -6849,7 +6849,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve">
-    <value>5.1 및 7.1 파일을 평평한 스테레오 믹스 대신 헤드폰용 공간 음향으로 바꿉니다. 스테레오 곡은 바뀌지 않습니다.</value>
+    <value>5.1 및 7.1 파일을 헤드폰에서 서라운드처럼 들리게 합니다. 스테레오 곡은 바뀌지 않습니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve">
@@ -6929,7 +6929,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Pairing block button</comment>
   </data>
   <data name="AccountSync.SyncSection" xml:space="preserve">
-    <value>SYNC</value>
+    <value>동기화</value>
     <comment>Account &amp; Sync section title</comment>
   </data>
   <data name="AccountSync.OtherAccounts" xml:space="preserve">
@@ -6949,7 +6949,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>즐겨찾기, 평점, 재생 횟수, 이 PC의 재생목록이 휴대폰과 이 PC에서 똑같이 유지됩니다. 휴대폰에서 만든 재생목록은 휴대폰에만 남습니다.</value>
+    <value>즐겨찾기, 평점, 재생 횟수, 재생목록이 휴대폰과 PC에서 똑같이 유지됩니다.</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">
@@ -6961,7 +6961,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Sync card footnote</comment>
   </data>
   <data name="LyricsStudioSettings.ModelSection" xml:space="preserve">
-    <value>음성 모델</value>
+    <value>가사 모델</value>
     <comment>Lyrics Studio tab section title</comment>
   </data>
   <data name="LyricsStudioSettings.Title" xml:space="preserve">
@@ -7077,7 +7077,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.TranscribeOnly" xml:space="preserve">
-    <value>듣고 받아 적기 (기존 가사 무시)</value>
+    <value>가사 대신 받아쓰기 · 실험적</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>Lullaby가 모든 노래를 듣고 가사가 이미 있어도 직접 받아 적습니다. 노래로 부른 보컬은 틀리게 인식되는 경우가 많으므로, 각 받아쓰기 결과는 정렬 전에 수정할 수 있도록 가사 상자에서 열립니다.</value><comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
@@ -7107,7 +7107,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Banner</comment>
   </data>
   <data name="LyricsStudio.Backdrops" xml:space="preserve">
-    <value>배경</value>
+    <value>가사 페이지 배경</value>
     <comment>Header disclosure in LyricsStudioView.axaml</comment>
   </data>
   <data name="LyricsStudio.Options" xml:space="preserve">
@@ -7155,7 +7155,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Picker: format chip</comment>
   </data>
   <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>Search songs and albums…</value>
+    <value>노래 및 앨범 검색…</value>
     <comment>Picker search box</comment>
   </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
@@ -7163,7 +7163,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Picker empty state</comment>
   </data>
   <data name="LyricsStudioPicker.PromptBody" xml:space="preserve">
-    <value>모든 로컬 곡이 이미 이 형식을 갖고 있습니다. 앨범을 추가하면 그 안의 모든 곡이 추가되며, 곡의 알약 표시는 현재 형식을 보여 줍니다.</value>
+    <value>모든 로컬 곡이 이미 이 형식을 갖고 있습니다. 앨범을 추가하면 그 안의 모든 곡이 추가되며, 곡의 배지는 현재 형식을 보여 줍니다.</value>
     <comment>Picker empty state (also shown when nothing is missing)</comment>
   </data>
   <data name="LyricsStudioPicker.Add" xml:space="preserve">
@@ -7197,7 +7197,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>1곡</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>{0}곡</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>SONGS</value>
+    <value>곡</value>
     <comment>Queue column header</comment>
   </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
@@ -7205,7 +7205,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
-    <value>곡을 고르고 시작을 누르세요.</value>
+    <value>목록에서 곡을 고르세요. 가사가 있는 곡은 시작을 누르면 타이밍되고, 가사가 없는 곡은 가사를 붙여넣을 상자가 열립니다.</value>
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve">
@@ -7229,19 +7229,19 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Review pane hint</comment>
   </data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve">
-    <value>모든 줄 0.1초 앞으로</value>
+    <value>모든 줄 0.1초 앞으로 · 단축키 [</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve">
-    <value>모든 줄 0.1초 뒤로</value>
+    <value>모든 줄 0.1초 뒤로 · 단축키 ]</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
-    <value>대신 받아 적기</value>
+    <value>대신 받아쓰기 · 실험적</value>
     <comment>Review button</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
-    <value>이 가사를 무시하고 실제로 불리는 내용을 받아 적습니다</value>
+    <value>이 가사를 무시하고 Lullaby가 불리는 내용을 받아 적게 합니다. 노래 보컬은 받아쓰기 결과가 좋지 않은 경우가 많으므로, 정렬하기 전에 단어를 고치게 됩니다.</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
@@ -7401,11 +7401,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Appearance" xml:space="preserve">
-    <value>테마, 강조색, 유리 효과, 텍스트 애니메이션, 아트워크.</value>
+    <value>테마, 강조 색상, 유리 효과, 텍스트 애니메이션, 아트워크.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Player" xml:space="preserve">
-    <value>플레이어 아일랜드, 미니 플레이어, 커버 플로우, 지금 재생 중 아트워크.</value>
+    <value>플레이어 아일랜드, 미니 플레이어, Cover Flow, 지금 재생 중 아트워크.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Lyrics" xml:space="preserve">
@@ -7437,7 +7437,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Plugins" xml:space="preserve">
-    <value>설치된 플러그인.</value>
+    <value>Noctis에 추가 기능을 더합니다.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Statistics" xml:space="preserve">
@@ -7457,7 +7457,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Sidebar" xml:space="preserve">
-    <value>Sidebar</value>
+    <value>사이드바</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Files" xml:space="preserve">
@@ -7481,11 +7481,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve">
-    <value>자주 듣는 곡</value>
+    <value>요즘 반복 감상</value>
     <comment>Appearance › Home toggle</comment>
   </data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve">
-    <value>홈 페이지에 "지난 2주간 반복 재생" 행을 표시합니다.</value>
+    <value>홈 페이지에 "지난 두 주 동안 반복해서 들은 항목" 행을 표시합니다.</value>
     <comment>Appearance › Home toggle description</comment>
   </data>
   <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>최근 재생한 앨범</value><comment>Appearance › Home picker</comment></data>
@@ -7558,7 +7558,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Organisation" xml:space="preserve">
-    <value>Organisation</value>
+    <value>정리</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Metadata" xml:space="preserve">
@@ -7586,7 +7586,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Reset" xml:space="preserve">
-    <value>Reset</value>
+    <value>초기화</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
@@ -7614,7 +7614,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Scrobbling" xml:space="preserve">
-    <value>Scrobbling</value>
+    <value>스크로블링</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.TIDAL" xml:space="preserve">
@@ -7751,7 +7751,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
   </data>
   <data name="AccountSync.PairQrWarning" xml:space="preserve">
-    <value>이 코드를 스캔하는 사람은 누구나 내 계정에 로그인할 수 있으니 내 휴대폰에만 보여 주세요. 한 번만 사용할 수 있으며 2분마다 바뀝니다.</value>
+    <value>이 코드를 스캔하는 사람은 누구나 내 계정에 로그인할 수 있습니다. 내 휴대폰에만 보여 주세요.</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
@@ -7807,7 +7807,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Connect a phone, QR way, when no code can be shown</comment>
   </data>
   <data name="Phone.AdvancedDesc" xml:space="preserve">
-    <value>이 PC의 이름과 다른 음악 앱의 접근.</value>
+    <value>이 PC의 이름과 다른 음악 앱의 접근 권한.</value>
     <comment>Phone app card, Advanced row subtitle (folded by default)</comment>
   </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
@@ -7819,7 +7819,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Account card list empty state</comment>
   </data>
   <data name="Settings.LocalApiDesc" xml:space="preserve">
-    <value>Stream Deck이나 OBS 같은 이 PC의 앱이 지금 재생 중인 곡을 확인하고 Noctis를 제어할 수 있습니다.</value>
+    <value>Stream Deck이나 OBS 같은 이 PC의 앱이 Noctis를 제어할 수 있게 합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApiAddress" xml:space="preserve"><value>주소</value><comment>Text in SettingsView.axaml</comment></data>
@@ -7829,7 +7829,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.LocalApiRegenerate" xml:space="preserve"><value>토큰 다시 생성</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiRegenerateTip" xml:space="preserve"><value>새 토큰을 만듭니다. 이전 토큰을 쓰는 앱은 작동하지 않게 됩니다.</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiWarning" xml:space="preserve">
-    <value>이 토큰이 있는 앱은 Noctis를 제어하고 라이브러리를 읽을 수 있습니다. 신뢰하는 앱에만 주세요.</value>
+    <value>이 토큰이 있는 앱은 누구나 Noctis를 제어할 수 있습니다. 신뢰하는 앱에만 공유하세요.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApiDiscovery" xml:space="preserve">
@@ -8013,7 +8013,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment>
   </data>
   <data name="LyricsColor.VideoNote" xml:space="preserve">
-    <value>배경 동영상이 켜져 있어 이 배경 위에 표시됩니다.</value>
+    <value>배경 영상이 켜져 있어 이 배경 위에 표시됩니다.</value>
     <comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment>
   </data>
   <data name="Common.Play" xml:space="preserve">
@@ -8033,7 +8033,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Group.Library" xml:space="preserve">
-    <value>보관함</value>
+    <value>라이브러리</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.NotSet" xml:space="preserve">
@@ -8057,11 +8057,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.VolumeUp" xml:space="preserve">
-    <value>볼륨 높이기</value>
+    <value>음량 높이기</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.VolumeDown" xml:space="preserve">
-    <value>볼륨 낮추기</value>
+    <value>음량 낮추기</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.ToggleFavorite" xml:space="preserve">
@@ -8073,7 +8073,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.SearchLibrary" xml:space="preserve">
-    <value>보관함 검색</value>
+    <value>라이브러리 검색</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
   <data name="Shortcuts.Action.CommandPalette" xml:space="preserve">
@@ -8153,7 +8153,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Header in ArtistDetailView.axaml (GitHub #141)</comment>
   </data>
   <data name="ArtistDetail.UseAutomaticArtistInfo" xml:space="preserve">
-    <value>아티스트 정보 자동으로</value>
+    <value>자동 아티스트 정보 사용</value>
     <comment>Header in ArtistDetailView.axaml: forget the manual pick (GitHub #141)</comment>
   </data>
   <data name="ArtistInfoSearch.Title" xml:space="preserve">
@@ -8221,7 +8221,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
   </data>
   <data name="Settings.AppIconDesc" xml:space="preserve">
-    <value>제목 표시줄, 작업 표시줄, 트레이의 아이콘을 바로 바꿉니다. 바탕 화면 바로 가기와 .exe는 클래식 아이콘을 유지합니다.</value>
+    <value>제목 표시줄, 작업 표시줄, 트레이의 아이콘을 바꿉니다. 바탕 화면 바로 가기는 클래식 아이콘을 유지합니다.</value>
     <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
   </data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve">
@@ -8251,7 +8251,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
   <data name="Settings.AppIcon.Midnight" xml:space="preserve">
-    <value>미드나잇</value>
+    <value>미드나이트</value>
     <comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment>
   </data>
   <data name="Settings.AppIcon.Ruby" xml:space="preserve">
@@ -8352,7 +8352,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.DataFolderUseDefault" xml:space="preserve"><value>기본값 사용</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderPickTitle" xml:space="preserve"><value>Noctis 데이터를 저장할 위치 선택</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderExistingTitle" xml:space="preserve"><value>이 폴더에 이미 Noctis 데이터가 있습니다</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
-  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>{0}의 보관함과 설정을 대신 사용할까요? 아무것도 복사되지 않으며 {1}에 있는 현재 데이터는 그대로 남습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
+  <data name="Settings.DataFolderExistingDetail" xml:space="preserve"><value>{0}의 라이브러리와 설정을 대신 사용할까요? 아무것도 복사되지 않으며 {1}에 있는 현재 데이터는 그대로 남습니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderUseThis" xml:space="preserve"><value>이 폴더 사용</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderCopying" xml:space="preserve"><value>데이터 복사 중: {0} / {1}</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
   <data name="Settings.DataFolderRestartToFinish" xml:space="preserve"><value>데이터가 {0}(으)로 복사되었습니다. 이동을 마치려면 Noctis를 다시 시작하세요. 그 후 이전 사본이 삭제됩니다.</value><comment>Settings › Advanced › Data Folder (GitHub #165)</comment></data>
@@ -8381,13 +8381,13 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Account.ScanQrButton" xml:space="preserve"><value>QR 코드 스캔</value></data>
   <data name="Mobile.Account.ManualHeader" xml:space="preserve"><value>직접 입력</value></data>
   <data name="Mobile.Account.ManualStep1" xml:space="preserve"><value>컴퓨터에서 휴대폰 연결을 클릭한 다음 직접 입력을 클릭합니다</value></data>
-  <data name="Mobile.Account.ManualStep2" xml:space="preserve"><value>표시된 주소와 이메일, 암호를 입력합니다</value></data>
+  <data name="Mobile.Account.ManualStep2" xml:space="preserve"><value>표시된 주소와 이메일, 비밀번호를 입력합니다</value></data>
   <data name="Mobile.Account.ManualStep3" xml:space="preserve"><value>보안 코드가 일치하는지 확인합니다</value></data>
   <data name="Mobile.Account.ServerAddress" xml:space="preserve"><value>서버 주소</value></data>
   <data name="Mobile.Account.EmailOrUsername" xml:space="preserve"><value>이메일 또는 사용자 이름</value></data>
-  <data name="Mobile.Account.Password" xml:space="preserve"><value>암호</value></data>
+  <data name="Mobile.Account.Password" xml:space="preserve"><value>비밀번호</value></data>
   <data name="Mobile.Account.Required" xml:space="preserve"><value>필수</value></data>
-  <data name="Mobile.Account.ShowPassword" xml:space="preserve"><value>암호 보기</value></data>
+  <data name="Mobile.Account.ShowPassword" xml:space="preserve"><value>비밀번호 보기</value></data>
   <data name="Mobile.Account.SignIn" xml:space="preserve"><value>로그인</value></data>
   <data name="Mobile.Account.CheckCodeTitle" xml:space="preserve"><value>보안 코드 확인</value></data>
   <data name="Mobile.Account.CheckCodeText" xml:space="preserve"><value>컴퓨터의 휴대폰 연결 아래에 보안 코드가 표시됩니다. 이 코드와 일치할 때만 로그인하세요.</value></data>
@@ -8407,13 +8407,13 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Artists.Find" xml:space="preserve"><value>아티스트에서 찾기</value></data>
   <data name="Mobile.Artists.NoMatch" xml:space="preserve"><value>일치하는 아티스트 없음</value></data>
   <data name="Mobile.Artists.None" xml:space="preserve"><value>아티스트 없음</value></data>
-  <data name="Mobile.Shuffle" xml:space="preserve"><value>임의 재생</value></data>
+  <data name="Mobile.Shuffle" xml:space="preserve"><value>셔플</value></data>
   <data name="Mobile.Favorite" xml:space="preserve"><value>즐겨찾기</value></data>
   <data name="Mobile.Artist.TopSongs" xml:space="preserve"><value>인기곡</value></data>
   <data name="Mobile.Artist.SinglesEps" xml:space="preserve"><value>싱글 및 EP</value></data>
   <data name="Mobile.Artist.AppearsOn" xml:space="preserve"><value>참여 앨범</value></data>
   <data name="Mobile.AddToPlaylist" xml:space="preserve"><value>재생목록에 추가</value></data>
-  <data name="Mobile.NewPlaylist" xml:space="preserve"><value>새로운 재생목록</value></data>
+  <data name="Mobile.NewPlaylist" xml:space="preserve"><value>새 재생목록</value></data>
   <data name="Mobile.Pinned" xml:space="preserve"><value>고정됨</value></data>
   <data name="Mobile.Home.PinnedHint" xml:space="preserve"><value>앨범, 아티스트, 재생목록 또는 노래를 길게 누르고 고정을 선택하면 여기에 표시됩니다.</value></data>
   <data name="Mobile.RecentlyPlayed" xml:space="preserve"><value>최근 재생한 항목</value></data>
@@ -8438,9 +8438,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>아직 재생목록이 없습니다. 노래를 길게 눌러 만들어 보세요.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>일치하는 재생목록 없음</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>재생목록 정렬</value></data>
-  <data name="Mobile.Playlists.New" xml:space="preserve"><value>새로운 재생목록</value></data>
+  <data name="Mobile.Playlists.New" xml:space="preserve"><value>새 재생목록</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>만들기</value></data>
-  <data name="Mobile.PlayNext" xml:space="preserve"><value>다음 재생</value></data>
+  <data name="Mobile.PlayNext" xml:space="preserve"><value>다음에 재생</value></data>
   <data name="Mobile.AddToQueue" xml:space="preserve"><value>대기열에 추가</value></data>
   <data name="Mobile.AddBeforeCurrent" xml:space="preserve"><value>현재 곡 앞에 추가</value></data>
   <data name="Mobile.AddedBeforeCurrent" xml:space="preserve"><value>현재 곡 앞에 추가됨</value></data>
@@ -8541,7 +8541,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Folders.AccessLost" xml:space="preserve"><value>접근 권한이 없어졌습니다. 이 폴더의 노래를 재생하려면 폴더를 다시 추가하세요.</value></data>
   <data name="Mobile.Folders.Unavailable" xml:space="preserve"><value>사용할 수 없습니다. 저장소를 다시 연결한 다음 다시 스캔하세요.</value></data>
   <data name="Mobile.Folders.None" xml:space="preserve"><value>아직 음악 폴더 없음</value></data>
-  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>이 폴더의 음악이 보관함이 됩니다</value></data>
+  <data name="Mobile.Folders.Footnote" xml:space="preserve"><value>이 폴더의 음악이 라이브러리가 됩니다</value></data>
   <data name="Mobile.Folders.Add" xml:space="preserve"><value>폴더 추가</value></data>
   <data name="Mobile.Folders.ScanOnStartup" xml:space="preserve"><value>시작 시 스캔</value></data>
   <data name="Mobile.Folders.ScanOnStartupHint" xml:space="preserve"><value>Noctis를 열 때마다 새 노래를 찾습니다</value></data>
@@ -8754,7 +8754,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Theme.Midnight" xml:space="preserve"><value>미드나이트</value></data>
   <data name="Mobile.Theme.SystemWith" xml:space="preserve"><value>시스템, {0}</value></data>
   <data name="Mobile.Theme.MatchDevice" xml:space="preserve"><value>기기와 동일하게</value></data>
-  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>라이트 모드에서는 라이트 다크 모드에서는 {0}</value></data>
+  <data name="Mobile.Theme.MatchDeviceFootnote" xml:space="preserve"><value>라이트 모드에서는 라이트, 다크 모드에서는 {0}</value></data>
   <data name="Mobile.Theme.LightAndDark" xml:space="preserve"><value>라이트 및 다크</value></data>
   <data name="Mobile.Theme.ColourFootnote" xml:space="preserve"><value>색상 테마가 앱 전체에 색을 입힙니다</value></data>
   <data name="Mobile.Accent.MatchTheme" xml:space="preserve"><value>테마와 동일하게</value></data>
@@ -8786,11 +8786,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>다운로드 제거</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}곡</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>재생목록 {0}개</value></data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>재생목록 안에서 노래 추가: +를 눌러 보관함에서 노래를 고르세요.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>재생목록 안에서 노래 추가: +를 눌러 라이브러리에서 노래를 고르세요.</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>가사가 화면에 맞게 표시되고 부드럽게 스크롤됩니다.</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>컴퓨터의 노래가 최근 추가된 항목에 표시됩니다.</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>노래를 대기열 위나 아래 끝으로 끌면 목록이 함께 스크롤됩니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>더 빨라진 시작, 보관함을 불러오는 동안 멈춤 없음, 더 부드러운 메뉴.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>더 빨라진 시작, 라이브러리를 불러오는 동안 멈춤 없음, 더 부드러운 메뉴.</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>진행 막대가 높이 전체에서 반응하고, 가로 모드가 화면에 맞습니다.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>내장 ALAC 디코더로, GPL 또는 non-free 구성 요소 없이 수정되지 않은 FFmpeg 6.0 소스에서 빌드되었습니다: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>재생, 미디어 세션 및 디코더의 JNI 래퍼.</value></data>
@@ -8802,7 +8802,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.License.Skia" xml:space="preserve"><value>그래픽 렌더링.</value></data>
   <data name="Mobile.License.AndroidX" xml:space="preserve"><value>.NET용 Android 지원 라이브러리.</value></data>
   <data name="Mobile.License.CodeScanner" xml:space="preserve"><value>계정 페이지의 QR 코드 스캔. Google Play 서비스가 카메라를 실행하고 코드의 텍스트만 반환합니다.</value></data>
-  <data name="Mobile.Settings.ExportHint" xml:space="preserve"><value>키와 암호는 제거됨</value></data>
+  <data name="Mobile.Settings.ExportHint" xml:space="preserve"><value>키와 비밀번호는 제거됨</value></data>
   <data name="Mobile.Settings.SignedInAs" xml:space="preserve"><value>{0}(으)로 로그인됨 · {1}</value></data>
   <data name="Mobile.Settings.SyncedWith" xml:space="preserve"><value>{0}와(과) 동기화됨</value></data>
   <data name="Mobile.Settings.SyncPitch" xml:space="preserve"><value>PC의 Noctis와 라이브러리를 동기화하세요</value></data>
@@ -8815,7 +8815,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Account.StopSending" xml:space="preserve"><value>전송 중지</value></data>
   <data name="Mobile.Account.SendSongs" xml:space="preserve"><value>휴대폰 노래를 컴퓨터로 보내기</value></data>
   <data name="Mobile.Account.SendTile" xml:space="preserve"><value>컴퓨터로 보내기</value></data>
-  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>이메일 또는 사용자 이름과 암호를 입력하세요.</value></data>
+  <data name="Mobile.Account.EnterCredentials" xml:space="preserve"><value>이메일 또는 사용자 이름과 비밀번호를 입력하세요.</value></data>
   <data name="Mobile.Account.Connecting" xml:space="preserve"><value>컴퓨터에 연결 중…</value></data>
   <data name="Mobile.Account.SigningIn" xml:space="preserve"><value>로그인 중…</value></data>
   <data name="Mobile.Account.ScannerUnavailable" xml:space="preserve"><value>이 휴대폰에서 스캐너가 아직 준비되지 않았습니다. 잠시 후 다시 시도하거나 아래에서 컴퓨터 주소로 로그인하세요.</value></data>
@@ -8844,7 +8844,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>컴퓨터에 연결할 수 없습니다. 컴퓨터에서 Noctis가 열려 있는지, 휴대폰에서 Noctis 사용이 켜져 있는지, 두 기기가 같은 Wi-Fi에 연결되어 있는지 확인하세요.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>컴퓨터의 보안 코드가 변경되었습니다. 로그아웃한 다음 다시 로그인해 새 코드를 신뢰하세요.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>로그인하는 동안 컴퓨터의 보안 코드가 변경되었습니다. 다시 시도하고 코드를 확인하세요.</value></data>
-  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>이메일, 사용자 이름 또는 암호가 올바르지 않습니다.</value></data>
+  <data name="Mobile.Account.Error.BadCredentials" xml:space="preserve"><value>이메일, 사용자 이름 또는 비밀번호가 올바르지 않습니다.</value></data>
   <data name="Mobile.Account.Error.LockedOut" xml:space="preserve"><value>로그인 실패 횟수가 너무 많습니다. 몇 분 후에 다시 시도하세요.</value></data>
   <data name="Mobile.Account.Error.SyncDisabled" xml:space="preserve"><value>컴퓨터에서 동기화가 꺼져 있습니다. 설정 › 계정 및 기기에서 휴대폰과 동기화를 켜세요.</value></data>
   <data name="Mobile.Account.Error.SignedOut" xml:space="preserve"><value>컴퓨터에서 이 휴대폰을 로그아웃했습니다. 다시 로그인하세요.</value></data>
@@ -8924,17 +8924,17 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Select.Done" xml:space="preserve"><value>완료</value></data>
   <data name="Mobile.AddSongs" xml:space="preserve"><value>노래 추가</value></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>라이브러리 검색</value></data>
-  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>플레이리스트 가져오기</value></data>
+  <data name="Mobile.Import.Playlist" xml:space="preserve"><value>재생목록 가져오기</value></data>
   <data name="Mobile.Import.Result" xml:space="preserve"><value>{1}곡 중 {0}곡을 가져왔습니다</value></data>
-  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>플레이리스트 {0}개를 가져왔습니다</value></data>
-  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>가져온 플레이리스트가 없습니다</value></data>
+  <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>재생목록 {0}개를 가져왔습니다</value></data>
+  <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>가져온 재생목록이 없습니다</value></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>“{0}”의 곡이 이 휴대폰에 없습니다</value></data>
   <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{1}곡 중 {0}곡을 찾았습니다.</value></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>다음 줄은 이 휴대폰의 곡과 일치하지 않습니다:</value></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
-  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}”은(는) M3U 플레이리스트가 아닙니다</value></data>
+  <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}”은(는) M3U 재생목록이 아닙니다</value></data>
   <data name="Mobile.Import.Unreadable" xml:space="preserve"><value>“{0}”을(를) 읽을 수 없습니다</value></data>
-  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>플레이리스트 열기</value></data>
+  <data name="Mobile.Import.OpenPlaylist" xml:space="preserve"><value>재생목록 열기</value></data>
   <data name="Mobile.Folders.AllMusic" xml:space="preserve"><value>모든 음악 자동으로 찾기</value></data>
   <data name="Mobile.Folders.AllMusicHint" xml:space="preserve"><value>휴대폰과 SD 카드의 모든 노래를 추가하지만 가사 파일은 아래 폴더에서만 읽습니다</value></data>
   <data name="Mobile.Folders.AllMusicValue" xml:space="preserve"><value>모든 음악</value></data>
@@ -8946,14 +8946,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Notice.AddMusicTextAll" xml:space="preserve"><value>이 휴대폰의 모든 곡을 찾거나 음악이 있는 폴더를 선택하세요. Noctis는 그 자리에서 읽으며 아무것도 업로드하지 않습니다.</value></data>
   <data name="Mobile.Player.LostMusicAccess" xml:space="preserve"><value>Noctis가 더 이상 이 휴대폰의 음악을 읽을 수 없습니다. Noctis 설정에서 음악 및 오디오를 허용하세요.</value></data>
   <data name="Main.DropPreparingImport" xml:space="preserve"><value>가져오기 준비 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
-  <data name="Main.DropScanningFolders" xml:space="preserve"><value>놓은 폴더 검색 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropScanningFolders" xml:space="preserve"><value>놓은 폴더 스캔 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropImportingFiles" xml:space="preserve"><value>파일 가져오는 중 {0}/{1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
-  <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>보관함 새로 고치는 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>라이브러리 새로 고치는 중…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedOne" xml:space="preserve"><value>파일 1개를 {0}(으)로 이동했습니다</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedMany" xml:space="preserve"><value>파일 {0}개를 {1}(으)로 이동했습니다</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>"{0}"에 서로 다른 앨범 {2}개의 트랙 {1}개가 있습니다.
 
-이 트랙으로 "{0}" 플레이리스트를 만들까요?</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+이 트랙으로 "{0}" 재생목록을 만들까요?</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>가사 제공자가 설정에서 꺼져 있습니다.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
   <data name="Lyrics.Instrumental" xml:space="preserve"><value>이 트랙은 연주곡입니다.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
   <data name="Lyrics.SearchFailedOffline" xml:space="preserve"><value>검색 실패 — 인터넷 연결을 확인하세요.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
@@ -8972,7 +8972,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Sidebar.FolderHint" xml:space="preserve"><value>이름을 입력하면 폴더가 만들어집니다.</value><comment>Sidebar playlist folder prompts</comment></data>
   <data name="Sidebar.MoveToFolderTitle" xml:space="preserve"><value>폴더로 이동</value><comment>Sidebar playlist folder prompts</comment></data>
   <data name="Sidebar.RenameFolderTitle" xml:space="preserve"><value>폴더 이름 변경</value><comment>Sidebar playlist folder prompts</comment></data>
-  <data name="Sidebar.RemoveFolderConfirm" xml:space="preserve"><value>"{0}" 폴더를 제거할까요? 안에 있는 플레이리스트는 유지됩니다.</value><comment>Sidebar playlist folder prompts</comment></data>
+  <data name="Sidebar.RemoveFolderConfirm" xml:space="preserve"><value>"{0}" 폴더를 제거할까요? 안에 있는 재생목록은 유지됩니다.</value><comment>Sidebar playlist folder prompts</comment></data>
   <data name="Playlist.DeleteConfirm" xml:space="preserve"><value>"{0}"을(를) 삭제할까요? 되돌릴 수 없습니다.</value><comment>Delete playlist confirmation</comment></data>
   <data name="Main.StartupFailed" xml:space="preserve"><value>Noctis가 시작을 완료하지 못해 앱의 일부 기능이 작동하지 않을 수 있습니다. 자세한 내용은 디버그 로그에 기록되었습니다.</value><comment>Startup failure notice</comment></data>
   <data name="Picker.ChooseLyricsBackground" xml:space="preserve"><value>가사 배경 선택</value><comment>File picker dialog title</comment></data>
@@ -8994,7 +8994,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Picker.JpegImage" xml:space="preserve"><value>JPEG 이미지</value><comment>File picker file type name</comment></data>
   <data name="Picker.PngImage" xml:space="preserve"><value>PNG 이미지</value><comment>File picker file type name</comment></data>
   <data name="Picker.Lyrics" xml:space="preserve"><value>가사</value><comment>File picker file type name</comment></data>
-  <data name="Picker.M3uPlaylist" xml:space="preserve"><value>M3U 플레이리스트</value><comment>File picker file type name</comment></data>
+  <data name="Picker.M3uPlaylist" xml:space="preserve"><value>M3U 재생목록</value><comment>File picker file type name</comment></data>
   <data name="Picker.Mp4Video" xml:space="preserve"><value>MP4 동영상</value><comment>File picker file type name</comment></data>
   <data name="Picker.PluginZip" xml:space="preserve"><value>Noctis 플러그인(.zip)</value><comment>File picker file type name</comment></data>
   <data name="Picker.VideoOrGif" xml:space="preserve"><value>동영상 또는 GIF</value><comment>File picker file type name</comment></data>
@@ -9005,14 +9005,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="AudioCd.Reading" xml:space="preserve"><value>디스크 읽는 중…</value><comment>Audio CD page</comment></data>
   <data name="AudioCd.NoDisc" xml:space="preserve"><value>드라이브에 오디오 CD가 없습니다.</value><comment>Audio CD page</comment></data>
   <data name="Playlist.SortManual" xml:space="preserve"><value>수동</value><comment>Playlist page sort pill</comment></data>
-  <data name="Home.GoodMorning" xml:space="preserve"><value>좋은 아침이에요</value><comment>Home page greeting</comment></data>
-  <data name="Home.GoodAfternoon" xml:space="preserve"><value>좋은 오후예요</value><comment>Home page greeting</comment></data>
-  <data name="Home.GoodEvening" xml:space="preserve"><value>좋은 저녁이에요</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodMorning" xml:space="preserve"><value>좋은 아침입니다</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodAfternoon" xml:space="preserve"><value>좋은 오후입니다</value><comment>Home page greeting</comment></data>
+  <data name="Home.GoodEvening" xml:space="preserve"><value>좋은 저녁입니다</value><comment>Home page greeting</comment></data>
   <data name="Home.GoodNight" xml:space="preserve"><value>좋은 밤 되세요</value><comment>Home page greeting</comment></data>
   <data name="BulkLyrics.Remove" xml:space="preserve"><value>제거</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.Fetch" xml:space="preserve"><value>가져오기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleRemove" xml:space="preserve"><value>{0}에서 가사 제거</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>보관함의 가사 찾기({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.TitleLibrary" xml:space="preserve"><value>라이브러리의 가사 찾기({0})</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.TitleFetch" xml:space="preserve"><value>{0}의 가사 가져오기</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SubtitleRemove" xml:space="preserve"><value>Noctis가 이 노래에 저장한 가사(.lrc 파일과 캐시된 가사)를 삭제합니다. 직접 만든 가사 파일은 그대로 둡니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.UpgradeLine" xml:space="preserve"><value>줄 싱크 가사도 단어 싱크로 업그레이드</value><comment>Checkbox in the bulk lyrics dialog, shown when word-synced is the preferred type</comment></data>
@@ -9053,8 +9053,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="BulkLyrics.WaitingForSources" xml:space="preserve"><value>사용 중인 소스를 기다리는 중… 다시 요청할 항목 {0}개 남음</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>사용 중인 소스에 다시 요청하는 중… {0}개 남음</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>할 일이 없습니다</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>노래 1곡에 일반 가사만 있습니다. Lyrics Studio가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>노래 {0:N0}곡에 일반 가사만 있습니다. Lyrics Studio가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>노래 1곡에 일반 가사만 있습니다. 가사 스튜디오가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>노래 {0:N0}곡에 일반 가사만 있습니다. 가사 스튜디오가 이 PC에서 음성 모델로 싱크를 맞출 수 있습니다. 곡당 1분 이상 걸릴 수 있으며(그래픽 카드에서는 더 빠름), 저장하기 전에 하나씩 확인합니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>처음 {0}곡이 한 번에 열립니다.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0}곡</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>앨범 {0:N0}개</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
@@ -9064,7 +9064,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>필터 때문에 모든 아티스트가 숨겨져 있습니다</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>필터 메뉴에서 모든 아티스트를 선택하거나 이름을 검색하세요</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>작은 아티스트 숨기기</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>곡이 적은 아티스트를 아티스트 페이지에서 뺍니다. 검색과 곡·앨범의 아티스트 링크로는 계속 찾을 수 있습니다. 각 이름 아래 표시되는 숫자와 같은, 그 아티스트가 주 아티스트인 곡 수로 셉니다.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>곡이 몇 개뿐인 아티스트를 아티스트 페이지에서 숨깁니다. 검색으로는 계속 찾을 수 있습니다.</value><comment>Description under Hide small artists</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>다음보다 곡이 적은 아티스트 숨기기</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>마우스를 올릴 때까지 사이드바 숨기기</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>사이드바를 완전히 숨겨 페이지가 전체 너비를 사용합니다. 포인터를 창의 왼쪽 가장자리로 옮기면 나타납니다.</value><comment>Description under Hide sidebar until hover</comment></data>
@@ -9129,12 +9129,12 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.RemoveFolderTitle" xml:space="preserve"><value>이 음악 폴더를 제거하시겠습니까?</value><comment>Settings › Library: confirm title for a media folder's ✕</comment></data>
   <data name="Settings.RemoveFolderBody" xml:space="preserve"><value>라이브러리에서 “{1}”의 {0}이(가) 빠집니다. 파일은 그대로 남아 있습니다.</value><comment>Remove-folder confirm. {0} = song count (Count.Songs), {1} = folder</comment></data>
   <data name="Settings.RemoveFolderNote" xml:space="preserve"><value>폴더를 다시 추가하면 재생 횟수, 별점, 즐겨찾기와 함께 다시 돌아옵니다.</value><comment>Remove-folder confirm note</comment></data>
-  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>보관함 검색 중</value><comment>Settings status line</comment></data>
-  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>보관함 검색 중 {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
-  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>보관함 색인 다시 만드는 중</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibrary" xml:space="preserve"><value>라이브러리 스캔 중</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanningLibraryCount" xml:space="preserve"><value>라이브러리 스캔 중 {0:N0}</value><comment>Settings status line; must start with Settings.ScanningLibrary</comment></data>
+  <data name="Settings.RebuildingIndex" xml:space="preserve"><value>라이브러리 색인 다시 만드는 중</value><comment>Settings status line</comment></data>
   <data name="Settings.NoTracksFound" xml:space="preserve"><value>트랙을 찾지 못했습니다.</value><comment>Settings status line</comment></data>
-  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>보관함 색인을 만들었습니다.</value><comment>Settings status line</comment></data>
-  <data name="Settings.ScanError" xml:space="preserve"><value>검색 오류: {0}</value><comment>Settings status line</comment></data>
+  <data name="Settings.IndexedLibrary" xml:space="preserve"><value>라이브러리 색인을 만들었습니다.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ScanError" xml:space="preserve"><value>스캔 오류: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.IndexRebuildError" xml:space="preserve"><value>색인 다시 만들기 오류: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.ResetDone" xml:space="preserve"><value>모든 설정과 데이터를 초기화했습니다.</value><comment>Settings status line</comment></data>
   <data name="Settings.ResetConfirmOnePlaylist" xml:space="preserve"><value>재생목록이 영구적으로 삭제됩니다.</value><comment>Reset confirm, one playlist</comment></data>
@@ -9171,7 +9171,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.DownloadingInBackground" xml:space="preserve"><value>{0}을(를) 백그라운드에서 다운로드하는 중입니다.</value><comment>Settings › About update status</comment></data>
   <data name="Settings.UpdateReady" xml:space="preserve"><value>업데이트를 설치할 준비가 되었습니다.</value><comment>Settings › About update status</comment></data>
   <data name="Settings.DownloadCorrupted" xml:space="preserve"><value>다운로드가 손상되었습니다. 다시 시도하세요.</value><comment>Settings › About update status</comment></data>
-  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>업데이트 확인에 실패했습니다.</value><comment>Settings › About update status</comment></data>
+  <data name="Settings.UpdateVerifyFailed" xml:space="preserve"><value>업데이트 검증에 실패했습니다.</value><comment>Settings › About update status</comment></data>
   <data name="Settings.DownloadCancelled" xml:space="preserve"><value>다운로드를 취소했습니다.</value><comment>Settings › About update status</comment></data>
   <data name="Settings.DownloadFailed" xml:space="preserve"><value>다운로드에 실패했습니다. 다시 시도하세요.</value><comment>Settings › About update status</comment></data>
   <data name="Settings.InstallerFailed" xml:space="preserve"><value>설치 프로그램을 시작할 수 없습니다. GitHub에서 직접 다운로드하세요.</value><comment>Settings › About update status</comment></data>
@@ -9197,11 +9197,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Palette.CategoryArtist" xml:space="preserve"><value>아티스트</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AudioSetting" xml:space="preserve"><value>오디오 설정</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AppearanceSetting" xml:space="preserve"><value>모양 설정</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>가사 스튜디오…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>싱크 가사가 없는 노래의 가사 싱크 맞추기 또는 받아쓰기</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.FindLyrics" xml:space="preserve"><value>보관함 가사 찾기…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindLyrics" xml:space="preserve"><value>라이브러리 가사 찾기…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyricsSub" xml:space="preserve"><value>모든 노래의 가사 찾기(단어 싱크 우선)</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>보관함용 움직이는 아트워크 찾기…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>라이브러리용 움직이는 아트워크 찾기…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>Apple Music의 움직이는 커버를 앨범에 추가</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.ToggleShuffle" xml:space="preserve"><value>셔플 켜기/끄기</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.CycleRepeat" xml:space="preserve"><value>반복 모드 전환</value><comment>Command palette (Ctrl+K)</comment></data>
@@ -9210,7 +9210,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>움직이는 커버 켜기/끄기</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Menu.OpenFileWith" xml:space="preserve"><value>연결 프로그램</value><comment>Song context menu › Tools</comment></data>
   <data name="Menu.OpenIn" xml:space="preserve"><value>{0}에서 열기</value><comment>Song context menu › Tools</comment></data>
-  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>앨범이 청소년 유해 콘텐츠임</value><comment>Metadata window</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>선정적인 앨범</value><comment>Metadata window</comment></data>
   <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>아티스트 {0}명 선택됨</value><comment>Metadata window</comment></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>노래 {0}곡 선택됨</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>"{0}"에 태그를 쓸 수 없습니다. 다른 앱에서 파일을 열고 있거나 읽기 전용일 수 있습니다. 그 앱을 닫거나 파일을 확인한 뒤 다시 시도하세요.</value><comment>Metadata window</comment></data>
@@ -9223,7 +9223,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="BulkArtwork.SumNoMatch" xml:space="preserve"><value>명확한 일치 없음 {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.SumHadOne" xml:space="preserve"><value>이미 있음 {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>{0} 시도</value><comment>Lyrics page</comment></data>
-  <data name="Server.NoAlbums" xml:space="preserve"><value>아직 앨범이 없습니다. 이 서버의 음악 보관함이 비어 있거나 연결할 수 없습니다.</value><comment>Server page</comment></data>
+  <data name="Server.NoAlbums" xml:space="preserve"><value>아직 앨범이 없습니다. 이 서버의 음악 라이브러리가 비어 있거나 연결할 수 없습니다.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>서버에서 이 앨범을 불러올 수 없습니다.</value><comment>Server page</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>뮤직비디오 오디오가 재생되는 동안에는 타임스탬프를 찍을 수 없습니다. 뮤직비디오 오디오를 끄고 노래를 다시 시작하세요</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>저장할 내용이 없습니다. 최소 한 줄에 타임스탬프를 찍으세요</value><comment>Sync lyrics (LRC editor) status</comment></data>
@@ -9258,7 +9258,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.LastFm.Loved" xml:space="preserve"><value>Last.fm에서 좋아한 곡</value></data>
   <data name="Mobile.LastFm.TopArtists" xml:space="preserve"><value>가장 많이 듣는 아티스트의 곡</value></data>
   <data name="Mobile.LastFm.Loading" xml:space="preserve"><value>Last.fm 읽는 중…</value></data>
-  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Last.fm에서 듣는 곡이 아직 보관함에 없습니다.</value></data>
+  <data name="Mobile.LastFm.NoMatches" xml:space="preserve"><value>Last.fm에서 듣는 곡이 아직 라이브러리에 없습니다.</value></data>
   <data name="Mobile.LastFm.UserNotFound" xml:space="preserve"><value>Last.fm에서 이 계정을 찾을 수 없습니다.</value></data>
   <data name="Mobile.LastFm.Private" xml:space="preserve"><value>이 Last.fm 계정은 감상 기록을 비공개로 합니다.</value></data>
   <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>Last.fm에 연결할 수 없습니다. 저장된 믹스를 보여 줍니다.</value></data>
@@ -9279,23 +9279,23 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>이 이름의 다른 앨범이 없습니다. 앨범 그리드에서 함께 묶을 앨범을 Ctrl+클릭한 다음, 그중 하나를 마우스 오른쪽 버튼으로 클릭하세요.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Noctis에서는 묶었지만 일부 파일({0}개)을 저장하지 못했습니다(읽기 전용이거나 다른 앱에서 열려 있음). 해당 파일이 변경되면 다음 스캔 때 원래 앨범으로 돌아갑니다.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
-  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
-  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
-  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
-  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
-  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
-  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
-  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
-  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
-  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
-  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
-  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
-  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
-  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
-  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
-  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
-  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
-  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>가사 페이지</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>가사 페이지처럼 움직이는 전체 화면 가사</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>가사 페이지에는 싱크 가사가 필요합니다</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0}줄 · {1}초</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>가사 페이지 동영상은 최대 {0}초입니다</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>아트워크 색상</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>움직이는 커버</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>내 배경</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>이미지 또는 클립 선택</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>배경 제거</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>가독성</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>가사가 잘 읽히도록 배경을 어둡게 하고 곡의 색으로 물들입니다</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>소셜 안전 영역</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>가사가 Instagram 릴스와 TikTok의 버튼 및 캡션에 가리지 않게 합니다</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>배경 이미지 또는 클립 선택</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>파일을 열 수 없습니다. 이 컴퓨터에 저장된 파일을 선택하세요.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>이미지 및 동영상</value><comment>File picker file type name</comment></data>
   <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>한 달 동안 스누즈</value></data>
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>스누즈 해제</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>한 달 동안 스누즈됨</value></data>
@@ -9310,7 +9310,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>곡 숨기기</value></data>
   <data name="Mobile.HiddenNotice" xml:space="preserve"><value>숨겼습니다. 설정 › 라이브러리 › 숨긴 항목에서 다시 표시할 수 있습니다.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>숨긴 항목</value></data>
-  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>숨긴 노래는 휴대폰에 남지만 보관함과 믹스에서는 빠집니다</value></data>
+  <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>숨긴 노래는 휴대폰에 남지만 라이브러리와 믹스에서는 빠집니다</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>숨긴 항목 없음</value></data>
   <data name="Mobile.Hidden.Unhide" xml:space="preserve"><value>표시</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} 표시</value></data>
