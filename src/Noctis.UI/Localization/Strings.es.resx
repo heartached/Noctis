@@ -257,7 +257,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.AccentColor" xml:space="preserve"><value>Color de acento</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PickPresetOpenPicker" xml:space="preserve"><value>Elige un color predefinido o abre el selector para cualquier color personalizado.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CustomColorTip" xml:space="preserve"><value>Color personalizado</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
-  <data name="Settings.LiquidGlass" xml:space="preserve"><value>Cristal líquido</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LiquidGlass" xml:space="preserve"><value>Liquid Glass</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BETA" xml:space="preserve"><value>BETA</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve"><value>Da a la ventana, la barra lateral, los ajustes y el reproductor un aspecto de cristal esmerilado.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve"><value>Portadas animadas</value><comment>Text in SettingsView.axaml</comment></data>
@@ -706,9 +706,9 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve"><value>Ocultas del aleatorio, la radio y las sugerencias de Inicio hasta que termine su aplazamiento.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NoSnoozedTracks" xml:space="preserve"><value>No hay pistas pospuestas.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.UnSnooze" xml:space="preserve"><value>Reactivar</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.RemovedTracks" xml:space="preserve"><value>Pistas eliminadas</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RemovedTracks" xml:space="preserve"><value>Pistas quitadas</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RemovedFromLibraryTheir" xml:space="preserve"><value>Quitadas de la biblioteca; los archivos se conservan en el disco. Restaurar las vuelve a añadir.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.NoRemovedTracks" xml:space="preserve"><value>No hay pistas eliminadas.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NoRemovedTracks" xml:space="preserve"><value>No hay pistas quitadas.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Restore" xml:space="preserve"><value>Restaurar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.STORAGE" xml:space="preserve"><value>ALMACENAMIENTO</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DiskUsage" xml:space="preserve"><value>Uso de disco</value><comment>Text in SettingsView.axaml</comment></data>
@@ -726,7 +726,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.AreYouSureAction" xml:space="preserve"><value>¿Estás seguro? Esta acción no se puede deshacer.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ResetEverything" xml:space="preserve"><value>Restablecer todo</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ClearArtworkCache" xml:space="preserve"><value>Limpiar caché de portadas</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Elimina las portadas en caché. Se reconstruirá en el próximo escaneo.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.DeleteCachedArtworkWill" xml:space="preserve"><value>Elimina las portadas en caché. Se reconstruirán en el próximo escaneo.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.NoteRemovesAllArtwork" xml:space="preserve"><value>Nota: esto elimina todas las portadas de tu biblioteca.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Limpiar caché</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Atajos de teclado</value><comment>Text in SettingsView.axaml</comment></data>
@@ -933,7 +933,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="AudioConverter.EmbedSourceArtwork" xml:space="preserve"><value>Integrar la portada del origen</value><comment>Content in AudioConverterDialog.axaml</comment></data>
   <data name="AudioConverter.OverwriteExistingOutputFiles" xml:space="preserve"><value>Sobrescribir archivos de salida existentes</value><comment>Content in AudioConverterDialog.axaml</comment></data>
   <data name="AudioConverter.AddLibraryShowApp" xml:space="preserve"><value>Añadir a la biblioteca (mostrar en la aplicación)</value><comment>Content in AudioConverterDialog.axaml</comment></data>
-  <data name="AudioConverter.Queue" xml:space="preserve"><value>Poner en cola</value><comment>Text in AudioConverterDialog.axaml</comment></data>
+  <data name="AudioConverter.Queue" xml:space="preserve"><value>Cola</value><comment>Text in AudioConverterDialog.axaml</comment></data>
   <data name="AudioConverter.Subtitle" xml:space="preserve"><value>Crea una copia en otro formato de audio.</value><comment>Header line under the title in AudioConverterDialog.axaml</comment></data>
   <data name="AudioConverter.TitleOne" xml:space="preserve"><value>Convertir 1 pista</value><comment>Title in AudioConverterViewModel, one track</comment></data>
   <data name="AudioConverter.TitleMany" xml:space="preserve"><value>Convertir {0} pistas</value><comment>Title in AudioConverterViewModel; {0} number of tracks</comment></data>
@@ -982,7 +982,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <!-- CommandPaletteDialog.axaml (auto-migrated) -->
   <data name="CommandPalette.CommandPalette" xml:space="preserve"><value>Paleta de comandos</value><comment>Title in CommandPaletteDialog.axaml</comment></data>
   <data name="CommandPalette.SearchSongsAlbumsArtists" xml:space="preserve"><value>Busca canciones, álbumes, artistas, páginas y acciones…</value><comment>Watermark in CommandPaletteDialog.axaml</comment></data>
-  <data name="CommandPalette.NavigateEnterRunEsc" xml:space="preserve"><value>↑↓ navegar · Enter ejecutar · Esc cerrar</value><comment>Text in CommandPaletteDialog.axaml</comment></data>
+  <data name="CommandPalette.NavigateEnterRunEsc" xml:space="preserve"><value>↑↓ navegar · Intro ejecutar · Esc cerrar</value><comment>Text in CommandPaletteDialog.axaml</comment></data>
 
   <!-- ConfirmationDialog.axaml (auto-migrated) -->
   <data name="Confirmation.Confirm" xml:space="preserve"><value>Confirmar</value><comment>Title in ConfirmationDialog.axaml</comment></data>
@@ -1309,7 +1309,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="LyricsColor.Gradients" xml:space="preserve"><value>Degradados</value><comment>Label above the gradient swatches in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.ArtworkTitle" xml:space="preserve"><value>Portada desenfocada</value><comment>Artwork mode heading in LyricsBackgroundColorDialog.axaml</comment></data>
   <data name="LyricsColor.ArtworkHint" xml:space="preserve"><value>Sigue la portada de cada canción. Su movimiento se ajusta en Ajustes, en Letras.</value><comment>Artwork mode text in LyricsBackgroundColorDialog.axaml</comment></data>
-  <data name="LyricsColor.VideoNote" xml:space="preserve"><value>Hay un video de fondo activado y se muestra sobre este fondo.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
+  <data name="LyricsColor.VideoNote" xml:space="preserve"><value>Hay un vídeo de fondo activado y se muestra sobre este fondo.</value><comment>Note in LyricsBackgroundColorDialog.axaml while a lyrics background video plays</comment></data>
   <data name="Lyrics.SearchLyrics" xml:space="preserve"><value>Buscar letras</value><comment>Text in LyricsView.axaml</comment></data>
   <data name="Lyrics.AddLyrics" xml:space="preserve"><value>Añadir letras</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
   <data name="Lyrics.EditLyrics" xml:space="preserve"><value>Editar letras</value><comment>LyricsView.axaml, the ⋯ ▸ Lyrics menu and the Search Lyrics dialog: type or paste the song's lyrics (GitHub #212)</comment></data>
@@ -2072,7 +2072,7 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   <data name="ReplayGainScanner.MeasureEachTrackS" xml:space="preserve"><value>Mide la sonoridad de cada pista (EBU R128) y escribe etiquetas ReplayGain.</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Cancel" xml:space="preserve"><value>Cancelar</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.ComputeAlbumGainGroup" xml:space="preserve"><value>Calcular ganancia de álbum (agrupar por AlbumId)</value><comment>Content in ReplayGainScannerDialog.axaml</comment></data>
-  <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Poner en cola</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
+  <data name="ReplayGainScanner.Queue" xml:space="preserve"><value>Cola</value><comment>Text in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>Añadir archivos</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.Subtitle" xml:space="preserve"><value>Mide la sonoridad y escribe etiquetas ReplayGain.</value><comment>Header line under the title in ReplayGainScannerDialog.axaml</comment></data>
   <data name="ReplayGainScanner.SubtitleTip" xml:space="preserve"><value>Sonoridad EBU R128, escrita como etiquetas ReplayGain 2.0 (referencia de −18 LUFS)</value><comment>Tooltip on the header line in ReplayGainScannerDialog.axaml</comment></data>
@@ -2258,10 +2258,10 @@ Años: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Stats.NoForgottenFavorites" xml:space="preserve"><value>Todas las favoritas se reprodujeron en los últimos 6 meses</value><comment>Forgotten Favorites empty state</comment></data>
   <data name="Stats.NeverPlayed" xml:space="preserve"><value>Nunca reproducida</value><comment>Forgotten Favorites row</comment></data>
   <data name="Stats.LastPlayed" xml:space="preserve"><value>Última reproducción: {0}</value><comment>Forgotten Favorites row; {0} = e.g. 7 months ago</comment></data>
-  <data name="Stats.MonthAgo" xml:space="preserve"><value>Hace 1 mes</value><comment>Age, singular</comment></data>
-  <data name="Stats.MonthsAgo" xml:space="preserve"><value>Hace {0} meses</value><comment>Age, plural</comment></data>
-  <data name="Stats.YearAgo" xml:space="preserve"><value>Hace 1 año</value><comment>Age, singular</comment></data>
-  <data name="Stats.YearsAgo" xml:space="preserve"><value>Hace {0} años</value><comment>Age, plural</comment></data>
+  <data name="Stats.MonthAgo" xml:space="preserve"><value>hace 1 mes</value><comment>Age, singular</comment></data>
+  <data name="Stats.MonthsAgo" xml:space="preserve"><value>hace {0} meses</value><comment>Age, plural</comment></data>
+  <data name="Stats.YearAgo" xml:space="preserve"><value>hace 1 año</value><comment>Age, singular</comment></data>
+  <data name="Stats.YearsAgo" xml:space="preserve"><value>hace {0} años</value><comment>Age, plural</comment></data>
   <data name="Stats.Today" xml:space="preserve"><value>Hoy</value><comment>Play History day heading</comment></data>
   <data name="Stats.Yesterday" xml:space="preserve"><value>Ayer</value><comment>Play History day heading</comment></data>
   <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>Aún no hay historial de escucha</value><comment>Statistics empty state title</comment></data>
