@@ -139,8 +139,10 @@ internal sealed record ContainerGaplessInfo(
     /// first timestamp at 0, so every sample is decoded; LibVLC's timeline is then ahead by
     /// that much until the next page's granule, which it re-dates to without dropping audio.
     /// The engine cuts <see cref="TailSamples"/>, the samples decoded past the last page's
-    /// granule. A stream whose first page itself trims decoded samples (a start offset) is
-    /// left alone. Pure over the stream; internal for tests.
+    /// granule. A stream that does not start at 0 (a start trim, or one copied out of a longer
+    /// stream) has every page re-dated (see RebaseVorbisPages) and the engine drops the start
+    /// trim as <see cref="LeadSamples"/>; a single audio page needs only the end trim. Pure over
+    /// the stream; internal for tests.
     /// </summary>
     internal static bool TryParseOggVorbis(Stream stream, out ContainerGaplessInfo? info,
         int tailWindowBytes = VorbisTailWindowBytes)
@@ -159,9 +161,8 @@ internal sealed record ContainerGaplessInfo(
             if (n == 3) { if (!TryVorbisModes(data, v!)) return false; continue; }
             if (firstPage == null)
             {
-                // The first audio packet, on the page FFmpeg dates it from: not the last page
-                // (FFmpeg skips its first-packet rule there) and with a granule.
-                if (first < 0 || (page.Flags & 0x04) != 0 || page.Granule < 0) return false;
+                // The first audio packet, on a page with a granule.
+                if (first < 0 || page.Granule < 0) return false;
                 firstPage = page;
                 firstAudioOffset = page.Offset;
                 if (!v!.TryBlock(first, out var bs, out var prevFlag)) return false;
@@ -178,26 +179,81 @@ internal sealed record ContainerGaplessInfo(
             if (lastOnPage && page.Offset == firstPage.Offset) break;
         }
         if (firstPage == null || v == null) return false;
-        // Decoded samples the first page's granule leaves out: a start trim, not handled.
-        if (realSum > firstPage.Granule) return false;
+        var tail = VorbisTail(stream, v, firstAudioOffset, tailWindowBytes);
+        if ((firstPage.Flags & 0x04) != 0)
+        {
+            // The only audio page is also the last: FFmpeg skips its first-packet rule there,
+            // dates the first packet 0 and LibVLC decodes it (harness 11-19: head 0.000 ms); only
+            // the padding is left (+1.19 ms).
+            if (tail == 0) return false;
+            info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, 0, tail, []);
+            return true;
+        }
 
+        // Where the first decoded sample sits on the granule timeline: 0 for a stream that
+        // starts at its beginning, below 0 for a start trim (the decoded samples before 0 are
+        // not the track), above 0 for a stream copied out of a longer one.
+        var start = firstPage.Granule - realSum;
         var patches = new List<(long, byte[])>();
-        var raise = ffSum + realSum - firstPage.Granule;
-        if (raise > 0)
+        if (start == 0)
         {
             var page = new byte[firstPage.Length];
             stream.Position = firstPage.Offset;
             if (stream.ReadAtLeast(page, page.Length, throwOnEndOfStream: false) < page.Length) return false;
-            BinaryPrimitives.WriteInt64LittleEndian(page.AsSpan(6), firstPage.Granule + raise);
+            BinaryPrimitives.WriteInt64LittleEndian(page.AsSpan(6), firstPage.Granule + ffSum);
             BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(22), OggCrc(page, crcOffset: 22));
             patches.Add((firstPage.Offset + 6, page[6..14]));
             patches.Add((firstPage.Offset + 22, page[22..26]));
         }
+        else if (RebaseVorbisPages(stream, firstPage, -start, ffSum) is { } rebased)
+        {
+            patches = rebased;
+        }
+        else
+        {
+            return false;
+        }
 
-        var tail = VorbisTail(stream, v, firstAudioOffset, tailWindowBytes);
         if (patches.Count == 0 && tail == 0) return false;
-        info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, 0, tail, patches);
+        info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, Math.Max(0, -start), tail, patches);
         return true;
+    }
+
+    /// <summary>
+    /// The patches that move every page's granule by <paramref name="shift"/> (the first audio
+    /// page by <paramref name="firstExtra"/> more), each page re-signed: a stream that does not
+    /// start at 0 re-dated to start there. LibVLC drops every packet FFmpeg dates below zero and
+    /// primes on the next, so a start-trimmed stream lost the trim plus up to two packets
+    /// (harness 11-19: 1031 samples past a 1500-sample trim), and a stream cut out of a longer
+    /// one lost 803 samples; re-dated, both decode every sample (measured +34.016 ms = the
+    /// 1500-sample trim, and +0.017 ms). Reads every page, so only such streams pay for it.
+    /// A page whose checksum is already wrong is left as it is. Null when a granule would go
+    /// below 0.
+    /// </summary>
+    private static List<(long, byte[])>? RebaseVorbisPages(Stream stream, OggPage firstPage, long shift, long firstExtra)
+    {
+        var patches = new List<(long, byte[])>();
+        var header = new byte[27 + 255];
+        var bytes = Array.Empty<byte>();
+        var pos = firstPage.Offset;
+        while (ReadOggPage(stream, pos, header, out _) is { } page)
+        {
+            if (page.Serial != firstPage.Serial || (page.Flags & 0x02) != 0) break; // another stream chained on
+            pos += page.Length;
+            if (page.Granule < 0) continue; // no packet ends on it
+            if (bytes.Length < page.Length) bytes = new byte[page.Length];
+            var span = bytes.AsSpan(0, page.Length);
+            stream.Position = page.Offset;
+            if (stream.ReadAtLeast(span, span.Length, throwOnEndOfStream: false) < span.Length) break;
+            if (BinaryPrimitives.ReadUInt32LittleEndian(span[22..]) != OggCrc(span, crcOffset: 22)) continue;
+            var granule = page.Granule + shift + (page.Offset == firstPage.Offset ? firstExtra : 0);
+            if (granule < 0) return null;
+            BinaryPrimitives.WriteInt64LittleEndian(span[6..], granule);
+            BinaryPrimitives.WriteUInt32LittleEndian(span[22..], OggCrc(span, crcOffset: 22));
+            // Granule through checksum (serial and sequence number unchanged in between).
+            patches.Add((page.Offset + 6, span[6..26].ToArray()));
+        }
+        return patches;
     }
 
     /// <summary>
@@ -211,7 +267,9 @@ internal sealed record ContainerGaplessInfo(
         var fromFirstPage = from == firstAudioOffset;
         if (!fromFirstPage && !TryFindOggPage(stream, from, out from)) return 0;
         long anchor = 0, decoded = 0;
-        var known = false;
+        // Counted from the stream's first packet, an end-of-stream page that is also the first
+        // audio page counts from 0.
+        var known = fromFirstPage;
         var prev = 0;
         var isFirstPacket = fromFirstPage;
         foreach (var (page, first, _, lastOnPage) in OggPackets(stream, from, keepData: 0))
