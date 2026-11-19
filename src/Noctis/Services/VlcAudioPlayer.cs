@@ -1866,6 +1866,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         try
         {
             if (DsdPcmInput.TryGetFormat(media, out _, out var dsdChannels)) return dsdChannels;
+            if (ContainerTrimInput.TryGetChannels(media, out var trimChannels)) return trimChannels;
             foreach (var t in media.Tracks)
                 if (t.TrackType == TrackType.Audio) return (int)t.Data.Audio.Channels;
         }
@@ -3000,6 +3001,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             try
             {
                 media = (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, normalizedPath))
+                        ?? (isRemote ? null : TryCreateTrimMedia(normalizedPath))
                         ?? new Media(_libVlc, normalizedPath, isRemote ? FromType.FromLocation : FromType.FromPath);
                 if (!isRemote)
                     ApplyReadAhead(media);
@@ -3026,7 +3028,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     media.AddOption(":audio-replay-gain-default=-7.0");
                 }
 
-                var parseTask = DsdPcmInput.IsDsdMedia(media)
+                var parseTask = IsCallbackMedia(media)
                     ? Task.FromResult(MediaParsedStatus.Done) // see DsdPcmInput.IsDsdMedia
                     : media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
                 bool parsed;
@@ -3141,8 +3143,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     // input decodes nothing — VLC 3 source-verified), no volume
                     // dance (the OS session owns the sink's stream).
                     _engineStagedPath = normalizedPath;
-                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath, mp3TailTrimFrames, onAvcodec,
-                        SourceChannelsOf(media));
+                    var (standbyLead, standbyTail) = ContainerTrimFrames(media);
+                    EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath,
+                        mp3TailTrimFrames + standbyTail, onAvcodec, SourceChannelsOf(media), standbyLead);
                     _standbyPlayer.Play(media);
                     if (startPositionMs > 0)
                     {
@@ -3539,6 +3542,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 ? CreateAudioCdMedia(_libVlc, filePath)
                 // DSD: decoded to PCM here, LibVLC 3 has no DSD decoder (see DsdPcmInput).
                 : (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, filePath))
+                  // AAC / Opus encoder trims: served without them, the engine trims (see ContainerGaplessInfo).
+                  ?? (isRemote || fallbackPath != null ? null : TryCreateTrimMedia(filePath))
                   ?? new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
             if (!isCd && !isRemote)
                 ApplyReadAhead(media);
@@ -3555,7 +3560,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // edit landing mid-parse must not abort the track being opened.
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(openCancel);
             cts.CancelAfter(8000);
-            var parseTask = DsdPcmInput.IsDsdMedia(media)
+            var parseTask = IsCallbackMedia(media)
                 ? Task.FromResult(MediaParsedStatus.Done) // see DsdPcmInput.IsDsdMedia
                 : media.Parse(isRemote ? MediaParseOptions.ParseNetwork : MediaParseOptions.ParseLocal, timeout: 8000);
             var clipParseTimedOut = false;
@@ -3596,13 +3601,14 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     ApplyReplayGain(_rgMode, _rgPreampDb);
                 targetVolume = GetTargetVlcVolume();
 
-                media = DsdPcmInput.TryCreateMedia(_libVlc, filePath) ?? new Media(_libVlc, filePath, FromType.FromPath);
+                media = DsdPcmInput.TryCreateMedia(_libVlc, filePath) ?? TryCreateTrimMedia(filePath)
+                    ?? new Media(_libVlc, filePath, FromType.FromPath);
                 ApplyReadAhead(media);
                 if (!_gaplessEngine)
                     media.AddOption(":audio-time-stretch");
                 using var fallbackCts = CancellationTokenSource.CreateLinkedTokenSource(cancel);
                 fallbackCts.CancelAfter(8000);
-                parseTask = DsdPcmInput.IsDsdMedia(media)
+                parseTask = IsCallbackMedia(media)
                     ? Task.FromResult(MediaParsedStatus.Done)
                     : media.Parse(MediaParseOptions.ParseLocal, timeout: 8000);
                 try
@@ -3714,8 +3720,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // EngineBeginSegment stores the base in both the segment and
                 // _enginePendingBaseMs, so an input-open flush re-bases to the
                 // same value the :start-time open actually begins at.
-                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames, onAvcodec,
-                    SourceChannelsOf(_currentMedia));
+                var (leadTrimFrames, containerTailFrames) = ContainerTrimFrames(_currentMedia);
+                EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames + containerTailFrames, onAvcodec,
+                    SourceChannelsOf(_currentMedia), leadTrimFrames);
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
@@ -5200,7 +5207,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <paramref name="path"/> is the input it carries (its ReplayGain level).
     /// </summary>
     private void EngineBeginSegment(MediaPlayer player, long basePositionMs, string path, int tailTrimFrames,
-        bool decodesThroughDamage, int sourceChannels = 0)
+        bool decodesThroughDamage, int sourceChannels = 0, int leadTrimFrames = 0)
     {
         var sink = _gaplessSink;
         if (sink == null) return;
@@ -5212,6 +5219,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             sink.SampleRate, sink.Channels, slot, capacitySeconds: 20, Math.Max(0, basePositionMs));
         seg.Gain = EngineSegmentGain(slot, path);
         seg.TailTrimFrames = tailTrimFrames;
+        seg.LeadTrimFrames = leadTrimFrames;
         seg.DamageAhead = KnownMp3Damage(path);
         seg.DecodesThroughDamage = decodesThroughDamage;
         seg.StereoSource = sink.Channels > 2 && sourceChannels is 1 or 2;
@@ -5263,6 +5271,25 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             $"path={LogName(path)}, demux=avformat, startMs={startMs}, tailTrimFrames={frames}");
         return frames;
     }
+
+    /// <summary>
+    /// An AAC (MP4) or Opus file with encoder trims, served to LibVLC without them so the
+    /// engine can trim them sample-exact (see ContainerGaplessInfo); null for any other file
+    /// and whenever nothing would trim: off the engine, in exclusive mode, or without the
+    /// forced avformat demuxer (the only one measured).
+    /// </summary>
+    private Media? TryCreateTrimMedia(string path) =>
+        _gaplessEngine && _gaplessSink != null && !_exclusiveModeEnabled && _avformatDemux
+            ? ContainerTrimInput.TryCreateMedia(_libVlc, path)
+            : null;
+
+    /// <summary>Media read through callbacks (DSD, trimmed AAC/Opus): LibVLC 3 never pre-parses those.</summary>
+    private static bool IsCallbackMedia(Media media) =>
+        DsdPcmInput.IsDsdMedia(media) || ContainerTrimInput.IsTrimMedia(media);
+
+    /// <summary>The engine's head and tail trims for a trimmed AAC/Opus media (0, 0 for others).</summary>
+    private (int Lead, int Tail) ContainerTrimFrames(Media media) =>
+        _gaplessSink is { } sink ? ContainerTrimInput.TrimFrames(media, sink.SampleRate) : (0, 0);
 
     /// <summary>
     /// A file that wedged LibVLC's mpg123 decoder this session (see DecoderWedgeDetector)
@@ -7280,9 +7307,36 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <summary>Applies the session read-ahead to a local-file media before it is played.</summary>
     private void ApplyReadAhead(Media media)
     {
-        var option = ReadAheadOption(_baseCachingMs, Volatile.Read(ref _adaptiveCachingMs));
+        var adaptiveMs = Volatile.Read(ref _adaptiveCachingMs);
+        if (ContainerTrimInput.IsTrimMedia(media))
+        {
+            if (CallbackReadAheadOption(Math.Max(_baseCachingMs, adaptiveMs)) is { } callbackOption)
+                media.AddOption(callbackOption);
+            return;
+        }
+        var option = ReadAheadOption(_baseCachingMs, adaptiveMs);
         if (option != null)
             media.AddOption(option);
+    }
+
+    // LibVLC 3's imem access (media read through callbacks) reports a fixed 300 ms input
+    // delay (DEFAULT_PTS_DELAY, modules/access/imem-access.c) and ignores --file-caching.
+    private const int CallbackInputDelayMs = 300;
+
+    /// <summary>
+    /// The read-ahead of a file for media read through callbacks: there the input buffers
+    /// only 300 ms, so the decoder ran 0.34 s ahead instead of 1.03 s and a gapless handoff
+    /// (taken 0.5 s before the end) abandoned the outgoing track before its last block
+    /// (harness 11-19: 425 ms cut from a cold-started Opus track). VLC lengthens the input
+    /// delay by a negative subtitle delay (src/input/input.c UpdatePtsDelay: min(audio,
+    /// spu) delay below zero is added to it) without moving the audio, and the players run
+    /// with --no-spu; ":sub-delay" is in 100 ms steps. Measured: "Stream buffering done
+    /// (1020 ms)", the same as a file at 1000 ms. Null when nothing needs adding. Pure.
+    /// </summary>
+    internal static string? CallbackReadAheadOption(int cachingMs)
+    {
+        var extra = cachingMs - CallbackInputDelayMs;
+        return extra > 0 ? FormattableString.Invariant($":sub-delay=-{(extra + 99) / 100}") : null;
     }
 
     private static string BuildLibVlcMissingMessage()
