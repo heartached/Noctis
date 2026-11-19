@@ -57,6 +57,8 @@ public sealed class GaplessTrackSegment
     private int _writeFadeTotal;     // samples of the write-side fade-in in progress (see TrimDamagedTail)
     private int _writeFadeDone;
     private bool _dropLeadingSilence; // see DropLeadingSilence
+    private int _leadTrimFrames;     // see LeadTrimFrames
+    private int _leadTrimSamples;    // what is still to drop of it
 
     // A mid-play Gain change (ReplayGain setting moved) slews over this long per
     // 1.0 of amplitude, so a pre-amp drag never steps the waveform.
@@ -308,6 +310,15 @@ public sealed class GaplessTrackSegment
                     _consumedFrames += skip / Channels;
                     continue;
                 }
+                if (_leadTrimSamples > 0)
+                {
+                    // Encoder priming (see LeadTrimFrames): not part of the track, so not
+                    // counted as consumed either.
+                    var skip = Math.Min(_leadTrimSamples, pcm.Length - offset);
+                    offset += skip;
+                    _leadTrimSamples -= skip;
+                    continue;
+                }
                 while (_count == _ring.Length)
                 {
                     if (_abandoned || _endOfStream)
@@ -380,6 +391,26 @@ public sealed class GaplessTrackSegment
     /// </summary>
     public int TailTrimFrames { get; set; }
 
+    /// <summary>
+    /// Frames at the head of the input that are not part of the track: the encoder priming
+    /// of an AAC or Opus file LibVLC decodes untrimmed (see ContainerGaplessInfo). Dropped
+    /// from the first writes without counting as played, and again after every flush: the
+    /// input's timeline runs this far ahead of the track's, so a seek to T delivers the
+    /// track from T once these frames are gone. Set before the first write; 0 = keep all.
+    /// </summary>
+    public int LeadTrimFrames
+    {
+        get { lock (_gate) return _leadTrimFrames; }
+        set
+        {
+            lock (_gate)
+            {
+                _leadTrimFrames = Math.Max(0, value);
+                _leadTrimSamples = _leadTrimFrames * Channels;
+            }
+        }
+    }
+
     /// <summary>VLC drain callback: no further samples, play out what is buffered.</summary>
     public void MarkEndOfStream()
     {
@@ -421,6 +452,7 @@ public sealed class GaplessTrackSegment
             _consumedFrames = 0;
             _basePositionMs = Math.Max(0, newBasePositionMs);
             _discardSamples = _hadAudio ? Math.Max(0, discardFrames) * Channels : 0;
+            _leadTrimSamples = _leadTrimFrames * Channels;
             _writeFadeTotal = 0; // a damaged-tail fade-in belongs to the audio this flush dropped
             // Re-arm the pre-buffer gate: post-seek delivery ramps exactly like
             // input start, and a once-per-life gate let the first trickle blocks
