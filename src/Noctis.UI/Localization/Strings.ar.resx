@@ -75,7 +75,7 @@
     <value>اللغة</value>
   </data>
   <data name="Settings.Language.Description" xml:space="preserve">
-    <value>القوائم والعلامات. يتم ترجمة من قبل المجتمع.</value>
+    <value>القوائم والتسميات. الترجمات من إعداد المجتمع.</value>
   </data>
   <data name="Settings.Language.System" xml:space="preserve">
     <value>لغة النظام</value>
@@ -89,7 +89,7 @@
     <value>شغّل شيئًا لتراه يتحرك.</value>
   </data>
   <data name="Visualizer.NowPlaying" xml:space="preserve">
-    <value>اللعب الآن</value>
+    <value>قيد التشغيل الآن</value>
     <comment>Text in VisualizerView.axaml</comment>
   </data>
   <data name="Visualizer.Style.Bars" xml:space="preserve">
@@ -106,7 +106,7 @@
     <value>استيراد قائمة تشغيل</value>
   </data>
   <data name="Import.Subtitle" xml:space="preserve">
-    <value>احضر قائمة تشغيل من ملف أو رابط Deezer/TIDAL.</value>
+    <value>من ملف أو من رابط Deezer أو TIDAL.</value>
   </data>
   <data name="Import.ChooseFile" xml:space="preserve">
     <value>اختيار ملف…</value>
@@ -115,7 +115,7 @@
     <value>أو أفلت ملف .csv / .json / .m3u في أي مكان من هذه النافذة</value>
   </data>
   <data name="Import.LinkLabel" xml:space="preserve">
-    <value>أو لصق رابط قائمة التشغيل (استيراد Deezer and TIDAL مباشرة)</value>
+    <value>أو الصق رابط قائمة تشغيل (روابط Deezer وTIDAL تُستورد مباشرة)</value>
   </data>
   <data name="Import.LinkButton" xml:space="preserve">
     <value>استيراد الرابط</value>
@@ -225,7 +225,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AddNoctisWindowsOpen" xml:space="preserve">
-    <value>إضافة نوكتيب إلى قائمة ويندوز مفتوحة مع التطبيقات الافتراضية للصيغ التي تشغلها.</value>
+    <value>يُدرج Noctis ضمن «فتح باستخدام» و«التطبيقات الافتراضية» للصيغ التي يشغّلها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Register" xml:space="preserve">
@@ -241,7 +241,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ControlHowNoctisStarts" xml:space="preserve">
-    <value>كيف تبدأ كرة القدم وما الذي يقلل ويغلق.</value>
+    <value>كيف يبدأ Noctis وما يفعله التصغير والإغلاق.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OpenNoctisWhenComputer" xml:space="preserve">
@@ -265,7 +265,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ReopenLastTrackPlaybar" xml:space="preserve">
-    <value>أعد الفتح مع آخر مسار تم تحميله وإيقافه.</value>
+    <value>يُعاد فتحه مع تحميل آخر مقطع في وضع الإيقاف المؤقت.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TextAnimation" xml:space="preserve">
@@ -273,7 +273,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ControlHowLongText" xml:space="preserve">
-    <value>مرر عناوين طويلة غير مناسبة.</value>
+    <value>يمرّر العناوين الطويلة التي لا تتسع.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.PLAYERBAR" xml:space="preserve">
@@ -363,7 +363,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TurnFeatXTrack" xml:space="preserve">
-    <value>تحويل &quot;(الميزة X)&quot; في العناوين إلى رصيد الفنانين.</value>
+    <value>يحوّل «(feat. X)» في العناوين إلى فنانين مشاركين.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowArtistsAsTagged" xml:space="preserve"><value>عرض الفنانين كما هم مكتوبون في الوسوم</value><comment>Text in SettingsView.axaml (GitHub #187)</comment></data>
@@ -373,7 +373,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.WhichTagArtistsSection" xml:space="preserve">
-    <value>يبقي فنان الألبوم التجميع معًا ويتجاهل ميزات المسار الواحد.</value>
+    <value>يُبقي «فنان الألبوم» الألبومات المجمّعة معًا ويتجاهل الفنانين الضيوف في كل مقطع.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FirstCreditedArtistEachTip" xml:space="preserve">
@@ -405,7 +405,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TextSplitsOneArtist" xml:space="preserve">
-    <value>النص الذي يقسم علامة فنان واحد إلى عدة. قم بإزالة واحدة للإبقاء على أسماء مثل &quot;Simon &amp; Garfunkel&quot; كلها.</value>
+    <value>يقسم وسم الفنان الواحد إلى عدة فنانين. احذف أحدها للإبقاء على أسماء مثل "Simon &amp; Garfunkel" كاملة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Reset" xml:space="preserve">
@@ -506,15 +506,15 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.GitHubCaption" xml:space="preserve">
-    <value>نجم المستودع</value>
+    <value>أضف نجمة للمستودع</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.DiscordCaption" xml:space="preserve">
-    <value>Get help &amp; updates</value>
+    <value>المساعدة والتحديثات</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.About.WebsiteCaption" xml:space="preserve">
-    <value>المستندات والتحميلات</value>
+    <value>التوثيق والتنزيلات</value>
     <comment>About tile caption in SettingsView.axaml</comment>
   </data>
   <data name="Settings.IncludePreReleaseUpdates" xml:space="preserve">
@@ -522,7 +522,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OfferBetaBuildsUpdater" xml:space="preserve">
-    <value>عرض نسخة تجريبية في التحديث.</value>
+    <value>يعرض الإصدارات التجريبية في أداة التحديث.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.YoursTrulyHeartached" xml:space="preserve">
@@ -538,7 +538,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DownloadInstallAnyRelease" xml:space="preserve">
-    <value>تثبيت أي إصدار من GitHub. يتم إغلاق التطبيق.</value>
+    <value>ثبّت أي إصدار من GitHub. التثبيت يغلق التطبيق.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoReleasesFound" xml:space="preserve">
@@ -637,7 +637,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>يأخذ لون التمييز من غلاف المقطع قيد التشغيل. يعود لون التمييز الذي اخترته عندما لا يتم تشغيل أي شيء.</value>
+    <value>يأخذ لون التمييز من غلاف المقطع قيد التشغيل.</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve">
@@ -645,7 +645,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>تظهر أسماء الفنانين والألبومات والأنواع في قوائم التشغيل والأغاني والمشغّل بلون التمييز. عند الإيقاف تظهر بلون النص العادي.</value>
+    <value>تظهر أسماء الفنانين والألبومات والأنواع بلون التمييز.</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.TintWindowWithAccent" xml:space="preserve">
@@ -681,7 +681,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FrostWindowTranslucentBlurred" xml:space="preserve">
-    <value>قم بتدوين النافذة، الشريط الجانبي، الإعدادات وشريط التشغيل مع أسطح زجاجية شفافة وضبابية.</value>
+    <value>يمنح النافذة والشريط الجانبي والإعدادات والمشغّل مظهر الزجاج المصنفر.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnimatedArtwork" xml:space="preserve">
@@ -697,7 +697,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TintEachAlbumS" xml:space="preserve">
-    <value>تلميح كل صفحة ألبوم بلون الغلاف الخاص بها.</value>
+    <value>يلوّن كل صفحة ألبوم بلون غلافه.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumPageTintStrength" xml:space="preserve"><value>شدة التلوين</value><comment>Text in SettingsView.axaml</comment></data>
@@ -711,7 +711,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowCoverAppearsLyrics" xml:space="preserve">
-    <value>كيف يظهر الغلاف على صفحة كلمات. تدور الأقراص أثناء اللعب.</value>
+    <value>كيف يظهر الغلاف في صفحة الكلمات. تدور الأقراص أثناء التشغيل.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumCoverAsTip" xml:space="preserve">
@@ -788,7 +788,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowMiniPlayerLooks" xml:space="preserve">
-    <value>يتابع كلاسيك حجمه. المصنع و الشظايا تصاميم ثابتة.</value>
+    <value>يتبع «كلاسيكي» حجمه. «كبسولة» و«غلاف» تصميمان ثابتان.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResizableGlassCardIconTip" xml:space="preserve">
@@ -820,7 +820,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AddExtraControlsPlayer" xml:space="preserve">
-    <value>أزرار إضافية في جزيرة اللاعب.</value>
+    <value>أزرار إضافية في جزيرة التشغيل.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SkipBackForward" xml:space="preserve">
@@ -848,7 +848,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.1ButtonOpensSpeed" xml:space="preserve">
-    <value>قائمة السرعة من 0.75× إلى 2×. إعادة تعيينها على الإطلاق التالي.</value>
+    <value>قائمة سرعة من 0.75× إلى 2×. تعود إلى الوضع الافتراضي عند فتح التطبيق في المرة التالية.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SleepTimer" xml:space="preserve">
@@ -856,7 +856,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SleepTimerOneClick" xml:space="preserve">
-    <value>مؤقت النوم بنقرة واحدة بعيدة.</value>
+    <value>مؤقت النوم على بُعد نقرة واحدة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Shuffle" xml:space="preserve">
@@ -864,7 +864,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShuffleButtonAfterRepeat" xml:space="preserve">
-    <value>زر خلط بجانب التكرار.</value>
+    <value>زر تشغيل عشوائي بجانب «تكرار».</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>معادل الصوت</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
@@ -874,19 +874,19 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>شريط تقديم بشكل موجي</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>يعرض الشكل الموجي للأغنية في شريط التقديم.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
-    <value>شفافية صندوق المسار</value>
+    <value>عتامة مربع المقطع</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowSolidTrackBox" xml:space="preserve">
-    <value>كم صلابة الصندوق حول معلومات الأغنية في شريط اللاعب هو 0% يخبئها.</value>
+    <value>مدى عتامة المربع المحيط بمعلومات الأغنية في شريط التشغيل. 0% يخفيه.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RepeatButton" xml:space="preserve">
-    <value>كرر</value>
+    <value>تكرار</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RepeatButtonNextToForward" xml:space="preserve">
-    <value>زر التكرار بعد التالي: إيقاف الدورات → الكل → واحد.</value>
+    <value>زر تكرار بعد «التالي»: يتنقل بين إيقاف → الكل → واحد.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FavoriteButton" xml:space="preserve">
@@ -894,7 +894,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FavoriteButtonHeart" xml:space="preserve">
-    <value>قلب على اليمين لتفضيل أغنية اللعب بنقرة واحدة.</value>
+    <value>قلب على اليمين لإضافة الأغنية قيد التشغيل إلى المفضلة بنقرة واحدة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerButton" xml:space="preserve"><value>المشغّل المصغّر</value><comment>Text in SettingsView.axaml</comment></data>
@@ -932,7 +932,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve">
-    <value>أوسع يعطي شريط البحث غرفة أكثر. يمكنك أيضًا سحب حواف الجزيرة. انقر نقرًا مزدوجًا لإعادة الضبط.</value>
+    <value>العرض الأكبر يمنح شريط التقدم مساحة أكبر. انقر نقرًا مزدوجًا على المقبض لإعادة الضبط.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Narrower" xml:space="preserve">
@@ -948,7 +948,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ShowHowFarAlong" xml:space="preserve">
-    <value>إظهار تقدم الأغنية على زر شريط المهام. أيضًا أثناء الإيقاف مؤقتاً.</value>
+    <value>يعرض تقدم الأغنية على زر شريط المهام. باللون الكهرماني أثناء الإيقاف المؤقت.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MediaControlsTaskbar" xml:space="preserve">
@@ -956,7 +956,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MediaControlsTaskbarDesc" xml:space="preserve">
-    <value>إظهار أزرار السابق والتشغيل/الإيقاف المؤقت والتالي والمفضلة عند تمرير المؤشر فوق أيقونة شريط المهام.</value>
+    <value>يعرض أزرار المشغّل عند تمرير المؤشر فوق أيقونة شريط المهام.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AutomaticAlbumCoverSize" xml:space="preserve">
@@ -987,7 +987,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BlurredAlbumArtworkDrifts" xml:space="preserve">
-    <value>يعمل الانجراف على تحريك الغطاء و النبضات مع النبضة. يقوم كاوارب بزرعها في تدفق سائل بطيء. تظهر أنماط الاضافات هنا أيضا.</value>
+    <value>«الانجراف» يحرّك الغلاف مع الإيقاع. Kawarp يحوّله إلى تدفق سائل بطيء.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AudioVisualizer" xml:space="preserve">
@@ -1003,7 +1003,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve">
-    <value>تلميح الحانات بلون الغلاف. قم بطلائها بالبيض.</value>
+    <value>يلوّن الأعمدة بلون الغلاف. عند الإيقاف تصبح بيضاء.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FullSpectrum" xml:space="preserve"><value>الطيف الكامل</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
@@ -1037,11 +1037,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Lyrics Studio card in LyricsStudioView.axaml</comment>
   </data>
   <data name="Settings.MusicVideosHint" xml:space="preserve">
-    <value>الفيديو المسمى مثل الأغنية، بجانبها أو في مجلد فيديو، يحل محل الغلاف في صفحة كلمات.</value>
+    <value>الفيديو الذي يحمل اسم الأغنية، بجانبها أو في مجلد فيديوهات، يحل محل الغلاف في صفحة الكلمات.</value>
     <comment>Lyrics Studio card hint</comment>
   </data>
   <data name="Settings.MusicVideoRounded" xml:space="preserve">
-    <value>دوار</value>
+    <value>مستدير الزوايا</value>
     <comment>Lyrics Studio card toggle</comment>
   </data>
   <data name="Settings.MusicVideoRoundedHint" xml:space="preserve">
@@ -1063,7 +1063,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LoopVideoGIFBehind" xml:space="preserve">
-    <value>فيديو دائري أو GIF خلف كلمات الأغنية.</value>
+    <value>فيديو متكرر أو GIF خلف الكلمات.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Choose" xml:space="preserve">
@@ -1075,7 +1075,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker dialog title</comment>
   </data>
   <data name="LyricsBackground.Subtitle" xml:space="preserve">
-    <value>مقطع افتراضي واحد، أو مقطع فيديو خاص بهم من أجل الأغاني والألبومات.</value>
+    <value>مقطع افتراضي واحد، أو مقطع خاص بكل أغنية أو ألبوم.</value>
     <comment>Picker dialog subtitle</comment>
   </data>
   <data name="LyricsBackground.DefaultVideo" xml:space="preserve">
@@ -1083,7 +1083,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker: the clip every song without its own uses</comment>
   </data>
   <data name="LyricsBackground.NoDefaultVideo" xml:space="preserve">
-    <value>لا شيء. أغاني بدون الفيديو الخاص بها تعرض غلاف غير واضح.</value>
+    <value>لا شيء. الأغاني التي ليس لها فيديو خاص تعرض الغلاف مموّهًا.</value>
     <comment>Picker: no default clip</comment>
   </data>
   <data name="LyricsBackground.ChooseVideo" xml:space="preserve">
@@ -1095,19 +1095,19 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker: drop the default clip</comment>
   </data>
   <data name="LyricsBackground.SearchWatermark" xml:space="preserve">
-    <value>البحث عن الأغاني والبومات…</value>
+    <value>البحث في الأغاني والألبومات…</value>
     <comment>Picker search box</comment>
   </data>
   <data name="LyricsBackground.WithOwnVideo" xml:space="preserve">
-    <value>مع الفيديو الخاص به</value>
+    <value>ذات فيديو خاص</value>
     <comment>Picker: header over the list when not searching</comment>
   </data>
   <data name="LyricsBackground.PromptTitle" xml:space="preserve">
-    <value>لا توجد أغنية أو ألبوم لديها فيديو خاص بها حتى الآن</value>
+    <value>لم يُخصَّص بعد فيديو لأي أغنية أو ألبوم</value>
     <comment>Picker: empty state</comment>
   </data>
   <data name="LyricsBackground.PromptBody" xml:space="preserve">
-    <value>البحث أعلاه واختيار فيديو لأي أغنية أو ألبوم. كل شيء آخر يشغل الافتراضي.</value>
+    <value>ابحث أعلاه واختر فيديو لأي أغنية أو ألبوم. كل ما عدا ذلك يشغّل الفيديو الافتراضي.</value>
     <comment>Picker: empty state body</comment>
   </data>
   <data name="LyricsBackground.UsesDefault" xml:space="preserve">
@@ -1119,11 +1119,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker row status</comment>
   </data>
   <data name="LyricsBackground.FromYouTube" xml:space="preserve">
-    <value>يوتيوب</value>
+    <value>YouTube</value>
     <comment>Button: download the backdrop from a YouTube link</comment>
   </data>
   <data name="LyricsBackground.YouTubeWatermark" xml:space="preserve">
-    <value>لصق رابط يوتيوب</value>
+    <value>الصق رابط YouTube</value>
     <comment>Watermark</comment>
   </data>
   <data name="LyricsBackground.Download" xml:space="preserve">
@@ -1135,7 +1135,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Button: fold the YouTube panel / stop the download</comment>
   </data>
   <data name="LyricsBackground.NeedsYtDlp" xml:space="preserve">
-    <value>التنزيل من يوتيوب يحتاج yt-dlp.</value>
+    <value>التنزيل من YouTube يحتاج إلى yt-dlp.</value>
     <comment>Shown when the tool is missing</comment>
   </data>
   <data name="LyricsBackground.InstallYtDlp" xml:space="preserve">
@@ -1177,7 +1177,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve">
-    <value>تغمر كل خط باستثناء الخط الحالي وجيرانه.</value>
+    <value>يعتّم كل سطر عدا السطر الحالي والأسطر المجاورة له.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve">
@@ -1189,11 +1189,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
-    <value>الحد الأدنى لشفافية الخط</value>
+    <value>الحد الأدنى لعتامة السطر</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>ابق كل خط لغوي مرئي بشكل معجول حتى يمكنك النقر على أي خط للقفز هناك. 0٪ يخفي خطوطا بعيدة عن الخط الحالي.</value>
+    <value>يُبقي كل سطر ظاهرًا بشكل خافت لتتمكن من النقر على أي منها. 0% يخفي الأسطر البعيدة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
@@ -1209,7 +1209,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve">
-    <value>ترتفع الكلمات المغنّاة قليلاً وتتوهج النغمات الممتدة، كما في Apple Music. عند الإيقاف تبقى الكلمات المتزامنة كلمة بكلمة ثابتة.</value>
+    <value>ترتفع الكلمات المغنّاة وتتوهج النغمات الطويلة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>عارض الكلمات</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1221,7 +1221,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>عندما لا توجد كلمات للأغنية أو تكون موسيقى بلا غناء، تنقل صفحة الكلمات الغلاف ومعلومات الأغنية وعناصر التحكم إلى المنتصف.</value>
+    <value>ينقل الغلاف وعناصر التحكم إلى المنتصف عندما لا توجد كلمات للأغنية.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>الخلفية خلف الشريط الجانبي</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1235,11 +1235,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>عرض الغناء الخلفي</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>يعرض الغناء الخلفي والارتجالات في صف أصغر تحت السطر.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
-    <value>عتامة شريط التشغيل</value>
+    <value>عتامة الزجاج</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve">
-    <value>مدى صلابة مظهر خلفية شريط التشغيل.</value>
+    <value>مدى عتامة المشغّل وقائمة الانتظار والقوائم.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>تمويه الخلفية</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
@@ -1254,7 +1254,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HowMuchDesktopShows" xml:space="preserve">
-    <value>كم من حواسيب المكتب تظهر عبر الزجاج.</value>
+    <value>مدى عتامة خلفية المشغّل المصغّر.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MiniPlayerFrostedBackground" xml:space="preserve"><value>خلفية ضبابية</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1269,7 +1269,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.SongsBlendSmoothlyInto" xml:space="preserve">
-    <value>تمزج الأغاني مع بعضها البعض. تلعب الألبومات بدون انتقال.</value>
+    <value>تندمج الأغاني بعضها في بعض. تُشغَّل الألبومات دون انتقالات.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.UnavailableWhileExclusiveMode" xml:space="preserve">
@@ -1332,7 +1332,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve">
-    <value>عند انتهاء قائمة الانتظار، استمر في تشغيل أغاني مماثلة.</value>
+    <value>يستمر في تشغيل أغانٍ مشابهة عند انتهاء قائمة الانتظار.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve">
@@ -1340,7 +1340,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve">
-    <value>اعرض الأغاني التي تم تشغيلها فوق «قيد التشغيل الآن» في قائمة الانتظار، وأبقِ آخر أغنية محمّلة عند انتهاء القائمة.</value>
+    <value>تبقى الأغاني التي شُغّلت في قائمة الانتظار فوق الأغنية قيد التشغيل.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>الأغاني المفقودة</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1367,7 +1367,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AllowExplicitSongsWhen" xml:space="preserve">
-    <value>خارج تخطي الأغاني الصريحة ما لم تقم بتشغيلها مباشرة.</value>
+    <value>عند الإيقاف يتخطى الأغاني الصريحة ما لم تشغّلها مباشرة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDevice" xml:space="preserve">
@@ -1375,7 +1375,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDeviceDesc" xml:space="preserve">
-    <value>حيث يشغّل Noctis الصوت. يفتح الوضع الحصري الجهاز المحدد مباشرة، لذا يتبع إخراج bit-perfect هذا الإعداد بدلاً من الإعداد الافتراضي في Windows.</value>
+    <value>المكان الذي يشغّل فيه Noctis موسيقاك.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.OutputDeviceDefault" xml:space="preserve">
@@ -1395,7 +1395,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Suffix for a disconnected endpoint in the picker</comment>
   </data>
   <data name="Settings.OutputDeviceMissingHint" xml:space="preserve">
-    <value>الجهاز المحدد غير متصل حالياً. سيستخدم التشغيل الجهاز الافتراضي للنظام حتى يعود.</value>
+    <value>هذا الجهاز غير متصل. يستخدم Noctis الجهاز الافتراضي للنظام حتى يعود.</value>
     <comment>Shown under Output Device when the pin is missing</comment>
   </data>
   <data name="Settings.ExclusiveMode" xml:space="preserve">
@@ -1403,7 +1403,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.BitPerfectOutputBypasses" xml:space="preserve">
-    <value>الإخراج المثالي الذي يتجاوز خليط ويندوز. تطبيقات أخرى صامتة والانتقال متوقف.</value>
+    <value>صوت bit-perfect مباشرة إلى جهازك. تصمت التطبيقات الأخرى وتتوقف الانتقالات.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AnalyzeTempoKey" xml:space="preserve">
@@ -1419,7 +1419,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.WriteBPMKeyInto" xml:space="preserve">
-    <value>كتابة BPM والمفتاح في وسوم الملف. هذا يعدل ملفاتك.</value>
+    <value>يحفظ BPM والمقام في الوسوم. هذا يعدّل ملفاتك.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Equalizer" xml:space="preserve">
@@ -1427,7 +1427,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ParametricEQTuneEach" xml:space="preserve">
-    <value>ضبط تردد كل نطاق، وكسب وعرض.</value>
+    <value>اضبط تردد كل نطاق وكسبه وعرضه.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Preamp" xml:space="preserve">
@@ -1486,7 +1486,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.UsedByAudioConverter" xml:space="preserve">
-    <value>يستخدم من قبل المحول و الطيف و استوديو كلمات الاغنية. الكشف التلقائي فارغ.</value>
+    <value>يستخدمه المحوّل والمخطط الطيفي واستوديو الكلمات. اتركه فارغًا للاكتشاف التلقائي.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AutoDetect" xml:space="preserve">
@@ -1502,7 +1502,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve">
-    <value>انقر بالزر الأيمن على أغنية لفتح ملفها في هذا البرنامج. تساؤلات فارغة في كل مرة.</value>
+    <value>انقر بالزر الأيمن على أغنية لفتح ملفها في هذا البرنامج. إذا تُرك فارغًا يُسأل في كل مرة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NotSet" xml:space="preserve">
@@ -1514,7 +1514,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve">
-    <value>ضبط مستوى الصوت من علامات ReplayGain. مسح المسارات عن طريق النقر على اليمين.</value>
+    <value>يوازن ارتفاع الصوت باستخدام وسوم ReplayGain.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Mode" xml:space="preserve">
@@ -1542,7 +1542,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>تحكّم فيما يُشغَّل من متصفح هاتفك. لا حاجة إلى تطبيق. استخدمه فقط على شبكة Wi-Fi تثق بها.</value>
+    <value>تحكّم في Noctis من متصفح هاتفك. استخدمه فقط على شبكة Wi-Fi تثق بها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
@@ -1591,7 +1591,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AddAlbumNameUnder" xml:space="preserve">
-    <value>إظهار اسم الألبوم تحت الفنان على بطاقة ديسكورد الخاصة بك.</value>
+    <value>يعرض اسم الألبوم تحت الفنان على بطاقتك في Discord.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.DiscordStatusDisplay" xml:space="preserve">
@@ -1666,7 +1666,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.StreamLibraryFromJellyfin" xml:space="preserve">
-    <value>بث من Jellyfin, Navidrome, Airsonic, Gonic أو أي خادم سوبسونيك.</value>
+    <value>البث من Jellyfin أو Navidrome أو Airsonic أو Gonic أو أي خادم Subsonic.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TYPE" xml:space="preserve">
@@ -1755,7 +1755,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TagSourcesSearchMetadata" xml:space="preserve">
-    <value>مصادر الوسوم للبيانات الوصفية في البحث، مرتبةً.</value>
+    <value>مصادر الوسوم لـ«البحث عن البيانات الوصفية»، بالترتيب.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Deezer" xml:space="preserve">
@@ -1817,7 +1817,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RenameMoveFilesInto" xml:space="preserve">
-    <value>فرز الملفات إلى مجلدات حسب العلامة.</value>
+    <value>فرز الملفات في مجلدات حسب الوسوم.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Organize" xml:space="preserve">
@@ -1841,7 +1841,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.IdentifyPoorlyTaggedTracks" xml:space="preserve">
-    <value>إصلاح العلامات المفقودة أو الخاطئة.</value>
+    <value>إصلاح الوسوم المفقودة أو الخاطئة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ImportPlaylist" xml:space="preserve">
@@ -1887,7 +1887,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HiddenFromShuffleRadio" xml:space="preserve">
-    <value>مخفية من التشغيل العشوائي والراديو حتى انتهاء تأجيلها.</value>
+    <value>مخفية من التشغيل العشوائي والراديو واقتراحات الرئيسية حتى انتهاء تأجيلها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoSnoozedTracks" xml:space="preserve">
@@ -1903,7 +1903,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.RemovedFromLibraryTheir" xml:space="preserve">
-    <value>تمت إزالتها من المكتبة، الملفات المحفوظة على القرص. الاستعادة تضيفها مرة أخرى.</value>
+    <value>أُزيلت من المكتبة مع إبقاء الملفات على القرص. «استعادة» تعيدها إليها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.NoRemovedTracks" xml:space="preserve">
@@ -1995,7 +1995,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve">
-    <value>انقر فوق مفتاح لتغييره. إلغاء Esc ، إلغاء الارتباطات في الفضاء الخلفي. مفاتيح الوسائط تعمل دائماً.</value>
+    <value>انقر على مفتاح لتغييره. Esc يلغي وBackspace يمسحه.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ResetAll" xml:space="preserve">
@@ -2124,7 +2124,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip.Tip in AddSongsDialog.axaml</comment>
   </data>
   <data name="AddSongs.Added" xml:space="preserve">
-    <value>أضيفت</value>
+    <value>في القائمة</value>
     <comment>Text in AddSongsDialog.axaml</comment>
   </data>
   <data name="AddSongs.NothingLeftAdd" xml:space="preserve">
@@ -2312,7 +2312,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.ScanReplayGain" xml:space="preserve">
-    <value>مسح ReplayGain</value>
+    <value>فحص ReplayGain</value>
     <comment>Header in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDetail.ShowFolder" xml:space="preserve">
@@ -2422,11 +2422,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip.Tip in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.ShufflePopular" xml:space="preserve">
-    <value>خلط أفضل الأغاني</value>
+    <value>تشغيل أفضل الأغاني عشوائيًا</value>
     <comment>Header in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.ShuffleFavorites" xml:space="preserve">
-    <value>خلط المفضلة</value>
+    <value>تشغيل المفضلة عشوائيًا</value>
     <comment>Header in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.ChoosePictureFromFile" xml:space="preserve">
@@ -2454,7 +2454,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Popular" xml:space="preserve">
-    <value>افضل الاغاني</value>
+    <value>أفضل الأغاني</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.Albums" xml:space="preserve">
@@ -2491,12 +2491,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Tab in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.SeeAll" xml:space="preserve">
-    <value>شاهد الكل</value>
+    <value>عرض الكل</value>
     <comment>Content in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.HideShowSectionTip" xml:space="preserve"><value>إخفاء هذا القسم أو إظهاره</value><comment>ToolTip.Tip on the Overview's Similar Artists header in ArtistDetailView.axaml</comment></data>
   <data name="ArtistDetail.NoSongsMatch" xml:space="preserve">
-    <value>لا تطابق الأغنية.</value>
+    <value>لا توجد أغانٍ مطابقة.</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.AboutTitle" xml:space="preserve">
@@ -2512,7 +2512,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.GENRE" xml:space="preserve">
-    <value>جاري</value>
+    <value>النوع</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.ReleasesTile" xml:space="preserve">
@@ -2524,7 +2524,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.TotalLengthTile" xml:space="preserve">
-    <value>إجمالي طول</value>
+    <value>المدة الإجمالية</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.MostPlayedTile" xml:space="preserve">
@@ -2540,11 +2540,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.FansCount" xml:space="preserve">
-    <value>مشجعين {0}</value>
+    <value>المعجبون: {0}</value>
     <comment>Hero line under the artist name; {0} = Deezer fan count</comment>
   </data>
   <data name="ArtistDetail.FindingSimilar" xml:space="preserve">
-    <value>العثور على فنانين مشابهين…</value>
+    <value>جارٍ البحث عن فنانين مشابهين…</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NoSimilar" xml:space="preserve">
@@ -2552,7 +2552,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.LookingUp" xml:space="preserve">
-    <value>النظر إلى الفنان…</value>
+    <value>جارٍ البحث عن الفنان…</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NoBiographyFoundArtist" xml:space="preserve">
@@ -2642,7 +2642,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Content in AudioConverterDialog.axaml</comment>
   </data>
   <data name="AudioConverter.Queue" xml:space="preserve">
-    <value>إضافة إلى قائمة الانتظار</value>
+    <value>قائمة الانتظار</value>
     <comment>Text in AudioConverterDialog.axaml</comment>
   </data>
   <data name="AudioConverter.Subtitle" xml:space="preserve"><value>أنشئ نسخة بتنسيق صوتي آخر.</value><comment>Header line under the title in AudioConverterDialog.axaml</comment></data>
@@ -2841,7 +2841,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Title in DuplicateFinderDialog.axaml</comment>
   </data>
   <data name="DuplicateFinder.GroupedByArtistTitle" xml:space="preserve">
-    <value>نفس الأغنية، أكثر من مرة. حافظ على أفضل نسخة.</value>
+    <value>الأغنية نفسها أكثر من مرة. احتفظ بأفضل نسخة.</value>
     <comment>Text in DuplicateFinderDialog.axaml</comment>
   </data>
   <data name="DuplicateFinder.Rescan" xml:space="preserve">
@@ -2892,11 +2892,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.SetCoverArt" xml:space="preserve">
-    <value>تعيين الغلاف</value>
+    <value>تغيير الغلاف</value>
     <comment>Content in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.RemoveCoverArt" xml:space="preserve">
-    <value>إزالة الغلاف</value>
+    <value>إزالة الغلاف المخصص</value>
     <comment>Content in EditPlaylistDialog.axaml</comment>
   </data>
   <data name="EditPlaylist.ChooseCover" xml:space="preserve"><value>اختر صورة غلاف</value><comment>Title of the file picker opened by Change cover</comment></data>
@@ -2983,7 +2983,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Header in FavoritesView.axaml</comment>
   </data>
   <data name="Favorites.ScanReplayGain" xml:space="preserve">
-    <value>مسح ReplayGain</value>
+    <value>فحص ReplayGain</value>
     <comment>Header in FavoritesView.axaml</comment>
   </data>
   <data name="Favorites.ShowFolder" xml:space="preserve">
@@ -3024,7 +3024,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Home chart header</comment>
   </data>
   <data name="Home.LastPlayed" xml:space="preserve">
-    <value>آخر لاعب</value>
+    <value>آخر ما شُغّل</value>
     <comment>Home chart header</comment>
   </data>
   <data name="Home.Text" xml:space="preserve">
@@ -3075,7 +3075,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in HomeView.axaml</comment>
   </data>
   <data name="Home.Songs" xml:space="preserve">
-    <value>أغاني</value>
+    <value>أغانٍ</value>
     <comment>Recently Played rail card: "2017 | 9 songs"</comment>
   </data>
   <data name="Home.OptionsTip" xml:space="preserve">
@@ -3083,7 +3083,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Most Listened To row dots button</comment>
   </data>
   <data name="Home.ContinueListening" xml:space="preserve">
-    <value>مواصلة الإستماع</value>
+    <value>مواصلة الاستماع</value>
     <comment>Home hero kicker above the last played track</comment>
   </data>
   <data name="Home.Resume" xml:space="preserve">
@@ -3091,7 +3091,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Home hero primary button</comment>
   </data>
   <data name="Home.Pause" xml:space="preserve">
-    <value>إيقاف</value>
+    <value>إيقاف مؤقت</value>
     <comment>Home hero primary button while its track is playing</comment>
   </data>
   <data name="Home.PlayAlbum" xml:space="preserve">
@@ -3165,7 +3165,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Header in LibraryAlbumsView.axaml</comment>
   </data>
   <data name="LibraryAlbums.ScanReplayGain" xml:space="preserve">
-    <value>مسح ReplayGain</value>
+    <value>فحص ReplayGain</value>
     <comment>Header in LibraryAlbumsView.axaml</comment>
   </data>
   <data name="LibraryAlbums.ShowFolder" xml:space="preserve">
@@ -3345,7 +3345,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Content in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.Sample" xml:space="preserve">
-    <value>العينة</value>
+    <value>معدل العينات</value>
     <comment>Content in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.ExplicitTip" xml:space="preserve">
@@ -3357,7 +3357,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip.Tip in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.PlayFromHereTip" xml:space="preserve">
-    <value>العب من هنا</value>
+    <value>التشغيل من هنا</value>
     <comment>ToolTip.Tip in LibrarySongsView.axaml</comment>
   </data>
   <data name="LibrarySongs.OptionsTip" xml:space="preserve">
@@ -3390,7 +3390,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in LrcEditorDialog.axaml</comment>
   </data>
   <data name="LrcEditor.PlayFrom1sBeforeTip" xml:space="preserve">
-    <value>التشغيل من قبل هذا السطر بثانية 1</value>
+    <value>التشغيل من ثانية واحدة قبل هذا السطر</value>
     <comment>ToolTip.Tip in LrcEditorDialog.axaml</comment>
   </data>
   <data name="LrcEditor.Nudge01sEarlierTip" xml:space="preserve">
@@ -3962,7 +3962,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Top-right corner filter icon tooltip prefix</comment>
   </data>
   <data name="Main.SwitchToCoverFlow" xml:space="preserve">
-    <value>التبديل إلى تدفق الغلاف</value>
+    <value>التبديل إلى انسياب الأغلفة</value>
     <comment>Top-right view-mode icon tooltip</comment>
   </data>
   <data name="Main.SwitchToLibrary" xml:space="preserve">
@@ -4043,11 +4043,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Title in MetadataFinderDialog.axaml</comment>
   </data>
   <data name="MetadataFinder.IdentifyPoorlyTaggedTracks" xml:space="preserve">
-    <value>إصلاح العلامات المفقودة أو الخاطئة. مراجعة قبل التطبيق.</value>
+    <value>إصلاح الوسوم المفقودة أو الخاطئة. راجِعها قبل التطبيق.</value>
     <comment>Text in MetadataFinderDialog.axaml</comment>
   </data>
   <data name="MetadataFinder.IdentifyAll" xml:space="preserve">
-    <value>تحديد الكل</value>
+    <value>التعرّف على الكل</value>
     <comment>Content in MetadataFinderDialog.axaml</comment>
   </data>
   <data name="MetadataFinder.Close" xml:space="preserve">
@@ -4130,11 +4130,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ChangesMany" xml:space="preserve">
-    <value>التغييرات {0}</value>
+    <value>عدد التغييرات: {0}</value>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve">
-    <value>ينطبق على ملفات {0}</value>
+    <value>يُطبَّق على الملفات ({0})</value>
     <comment>Footer status in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.MixedHint" xml:space="preserve">
@@ -4146,7 +4146,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecPeople" xml:space="preserve">
-    <value>الأشخاص والائتمانات</value>
+    <value>الأشخاص والأدوار</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecIdentification" xml:space="preserve">
@@ -4162,15 +4162,15 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecCustomTags" xml:space="preserve">
-    <value>علامات مخصصة</value>
+    <value>وسوم مخصصة</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecKind" xml:space="preserve">
-    <value>مميّز</value>
+    <value>الفئة</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecPlayRange" xml:space="preserve">
-    <value>نطاق اللعب</value>
+    <value>نطاق التشغيل</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SecBehaviour" xml:space="preserve">
@@ -4202,7 +4202,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.DoubleClickToReset" xml:space="preserve">
-    <value>انقر نقرا مزدوجا على شريط التمرير لإعادة تعيين</value>
+    <value>انقر نقرًا مزدوجًا على شريط التمرير لإعادة الضبط</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ArtworkSharedByAlbum" xml:space="preserve">
@@ -4211,7 +4211,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="Metadata.ArtworkOwnTrack" xml:space="preserve"><value>غلاف هذا المقطع الخاص به</value><comment>Text in MetadataWindow.axaml: the track's embedded cover differs from its album's</comment></data>
   <data name="Metadata.AnimatedArtworkHint" xml:space="preserve">
-    <value>لكل ألبوم · تشغيل على صفحة الألبوم والتشغيل الآن</value>
+    <value>لكل ألبوم · يُعرض في صفحة الألبوم وفي «قيد التشغيل الآن»</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Cancel" xml:space="preserve">
@@ -4563,7 +4563,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LoadTxtPlainLrcTip" xml:space="preserve">
-    <value>حمّل ملف كلمات .txt (عادي) أو .lrc (متزامن) من القرص</value>
+    <value>حمّل ملف كلمات .txt (عادي) أو .lrc أو .elrc أو .ttml (متزامن) من القرص</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.ShareLyrics" xml:space="preserve">
@@ -4603,7 +4603,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LoadLrcSyncedTxtTip" xml:space="preserve">
-    <value>حمّل ملف كلمات .lrc (متزامن) أو .txt (عادي) من القرص</value>
+    <value>حمّل ملف كلمات .lrc أو .elrc أو .ttml (متزامن) أو .txt (عادي) من القرص</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.SearchLyrics" xml:space="preserve">
@@ -5022,11 +5022,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Title in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.RenameMoveFilesInto" xml:space="preserve">
-    <value>فرز الملفات إلى مجلدات حسب علاماتهم. معاينة أولاً.</value>
+    <value>فرز الملفات في مجلدات حسب وسومها.</value>
     <comment>Text in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.UndoLast" xml:space="preserve">
-    <value>تراجع عن الأخيرة</value>
+    <value>التراجع عن آخر عملية</value>
     <comment>Content in OrganizeFilesDialog.axaml</comment>
   </data>
   <data name="OrganizeFiles.Close" xml:space="preserve">
@@ -5114,7 +5114,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.1Hour" xml:space="preserve">
-    <value>ساعة 1</value>
+    <value>ساعة واحدة</value>
     <comment>Header in PlaybackBarView.axaml</comment>
   </data>
   <data name="PlaybackBar.EndTrack" xml:space="preserve">
@@ -5467,7 +5467,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.Kicker" xml:space="preserve">
-    <value>اللعب</value>
+    <value>قائمة تشغيل</value>
     <comment>Hero kicker in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.PlayFromHereTip" xml:space="preserve">
@@ -5605,7 +5605,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="RemoveFromLibrary.DetailMany" xml:space="preserve"><value>«إبقاء الملفات» يزيلها من Noctis فقط. «نقل إلى {0}» يحذف الملفات أيضًا.</value><comment>{0} = RecycleBin or Trash</comment></data>
   <!-- ReplayGainScannerDialog.axaml (auto-migrated) -->
   <data name="ReplayGainScanner.ScanReplayGain" xml:space="preserve">
-    <value>مسح ReplayGain</value>
+    <value>فحص ReplayGain</value>
     <comment>Title in ReplayGainScannerDialog.axaml</comment>
   </data>
   <data name="ReplayGainScanner.MeasureEachTrackS" xml:space="preserve">
@@ -5621,7 +5621,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Content in ReplayGainScannerDialog.axaml</comment>
   </data>
   <data name="ReplayGainScanner.Queue" xml:space="preserve">
-    <value>إضافة إلى قائمة الانتظار</value>
+    <value>قائمة الانتظار</value>
     <comment>Text in ReplayGainScannerDialog.axaml</comment>
   </data>
   <data name="ReplayGainScanner.AddFiles" xml:space="preserve"><value>إضافة ملفات</value><comment>Button in ReplayGainScannerDialog.axaml</comment></data>
@@ -5656,7 +5656,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in ServerView.axaml</comment>
   </data>
   <data name="Server.ConnectJellyfinSubsonicCompatible" xml:space="preserve">
-    <value>صل خادم Jellyfin أو خادمًا متوافقًا مع Subsonic (Navidrome أو Airsonic أو Gonic…) من الإعدادات ← التكاملات لبث موسيقاه هنا.</value>
+    <value>صِل خادم Jellyfin أو خادمًا متوافقًا مع Subsonic (Navidrome أو Airsonic أو Gonic…) من الإعدادات → التكاملات لبث موسيقاه هنا.</value>
     <comment>Text in ServerView.axaml</comment>
   </data>
   <data name="Server.Loading" xml:space="preserve">
@@ -6000,11 +6000,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Overview section title in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.Liked" xml:space="preserve">
-    <value>أحب</value>
+    <value>مُعجَب بها</value>
     <comment>Library footer fact, lowercase</comment>
   </data>
   <data name="Statistics.AvgLength" xml:space="preserve">
-    <value>متوسط طول</value>
+    <value>متوسط الطول</value>
     <comment>Library footer fact, lowercase</comment>
   </data>
   <data name="Statistics.NoTracksLibrary" xml:space="preserve">
@@ -6511,7 +6511,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>خادم Noctis</value>
   </data>
   <data name="Server.Description" xml:space="preserve">
-    <value>السماح لهاتفك والأجهزة الأخرى بالتصفح وتشغيل هذه المكتبة. يعمل مع أي تطبيق سوبسونيك و تطبيق نوكتيس، عبر HTTPS.</value>
+    <value>يتيح لهاتفك والأجهزة الأخرى تصفح هذه المكتبة وتشغيلها. يعمل مع أي تطبيق Subsonic ومع تطبيق Noctis للهاتف، عبر HTTPS.</value>
   </data>
   <data name="Server.Port" xml:space="preserve">
     <value>المنفذ</value>
@@ -6573,7 +6573,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TidalConnected" xml:space="preserve">
-    <value>تسجيل الدخول - استيراد روابط tidal.com مباشرة.</value>
+    <value>تم تسجيل الدخول — روابط tidal.com تُستورد مباشرة.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FlowingOff" xml:space="preserve">
@@ -6589,16 +6589,16 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Flowing-background picker row (liquid warp, beat-reactive)</comment>
   </data>
   <data name="Settings.FlowingKawarpCalm" xml:space="preserve">
-    <value>كاوارب (بدون ضرب)</value>
+    <value>Kawarp (بلا إيقاع)</value>
     <comment>Flowing-background picker row</comment>
   </data>
   <data name="Settings.FlowingDriftCalm" xml:space="preserve"><value>انجراف (دون إيقاع)</value><comment>Flowing-background picker row</comment></data>
   <data name="Settings.KawarpWarp" xml:space="preserve">
-    <value>قوة الورك</value>
+    <value>شدة التشوه</value>
     <comment>Kawarp slider label</comment>
   </data>
   <data name="Settings.KawarpBlur" xml:space="preserve">
-    <value>Blur</value>
+    <value>التمويه</value>
     <comment>Kawarp slider label</comment>
   </data>
   <data name="Settings.DriftMovement" xml:space="preserve"><value>الحركة</value><comment>Drift slider label: how fast the cover drifts (0% holds it still)</comment></data>
@@ -6606,7 +6606,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.DriftBlur" xml:space="preserve"><value>التمويه</value><comment>Drift slider label</comment></data>
   <!-- 2026-09 feature batch: pitch, click-to-rate, Send to Folder, bulk lyrics, YouTube, Account & Sync, Lyrics Studio, upmix -->
   <data name="PlaybackBar.Pitch" xml:space="preserve">
-    <value>قماش</value>
+    <value>طبقة الصوت</value>
     <comment>Speed menu → pitch submenu header (island)</comment>
   </data>
   <data name="PlaybackBar.PitchNormal" xml:space="preserve">
@@ -6691,7 +6691,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Toggle label</comment>
   </data>
   <data name="SendTo.OrganizeHint" xml:space="preserve">
-    <value>الفنان ومجلدات الألبوم باستخدام نمط الملف الخاص بك:</value>
+    <value>مجلدات للفنانين والألبومات باستخدام نمط الملفات الخاص بك:</value>
     <comment>Toggle help, followed by the pattern</comment>
   </data>
   <data name="SendTo.IncludeLyrics" xml:space="preserve">
@@ -6699,11 +6699,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Toggle label</comment>
   </data>
   <data name="SendTo.IncludeLyricsHint" xml:space="preserve">
-    <value>ينسخ كل أغنية .lrc جنباً إلى جنب عندما يكون هناك واحدة.</value>
+    <value>ينسخ ملف .lrc الخاص بكل أغنية بجانبها عند وجوده.</value>
     <comment>Toggle help</comment>
   </data>
   <data name="SendTo.LyricsIncluded" xml:space="preserve">
-    <value>تم تضمين ملف كلمات الاغنية</value>
+    <value>تم تضمين ملف الكلمات</value>
     <comment>Row tooltip</comment>
   </data>
   <data name="SendTo.Copy" xml:space="preserve">
@@ -6712,7 +6712,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="SendTo.Move" xml:space="preserve"><value>نقل</value><comment>Primary button when "Move instead of copy" is on (GitHub #121)</comment></data>
   <data name="SendTo.Close" xml:space="preserve">
-    <value>أغلق</value>
+    <value>إغلاق</value>
     <comment>Secondary button</comment>
   </data>
   <data name="SendToFolder.TitleOne" xml:space="preserve"><value>إرسال أغنية واحدة</value><comment>Title in SendToFolderViewModel, one song</comment></data>
@@ -6763,7 +6763,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Dialog title (window)</comment>
   </data>
   <data name="BulkLyrics.Close" xml:space="preserve">
-    <value>أغلق</value>
+    <value>إغلاق</value>
     <comment>Secondary button</comment>
   </data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>إعادة البحث للأغاني التي فحصها تشغيل سابق</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
@@ -6809,11 +6809,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="YtDlp.BlockedOutdated" xml:space="preserve"><value>حظر YouTube هذا التنزيل. إصدار yt-dlp لديك ({0}) قديم؛ والإصدار {1} متاح. حدّثه، أو امسح مسار yt-dlp المخصص في «الإعدادات → المكتبة» ليتولى Noctis تحديثه.</value><comment>Download error for a user-provided yt-dlp; {0} = installed, {1} = latest version</comment></data>
   <data name="YtDlp.BlockedUnknown" xml:space="preserve"><value>حظر YouTube هذا التنزيل (إصدار yt-dlp {0}). حاول مرة أخرى لاحقًا، أو جرّب فيديو آخر، أو تحقق من اتصالك/VPN.</value><comment>Download error when the latest version could not be checked; {0} = yt-dlp version</comment></data>
   <data name="Upmix.Title" xml:space="preserve">
-    <value>متعدد القنوات المزيج</value>
+    <value>مزج متعدد القنوات</value>
     <comment>Audio card title</comment>
   </data>
   <data name="Upmix.Description" xml:space="preserve">
-    <value>تشغيل ستيريو من خلال كل متكلم في نظام 5.1 أو 7.1</value>
+    <value>تشغيل الستيريو عبر كل مكبرات الصوت في نظام 5.1 أو 7.1.</value>
     <comment>Audio card description</comment>
   </data>
   <data name="Upmix.Off" xml:space="preserve">
@@ -6829,15 +6829,15 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Upmix mode</comment>
   </data>
   <data name="Upmix.DuplicateHint" xml:space="preserve">
-    <value>نفس الموسيقى على كل زوج و مركز و قس ممتلئ</value>
+    <value>الموسيقى نفسها على كل زوج، مع ملء القناة الوسطى والجهير</value>
     <comment>Upmix mode hint</comment>
   </data>
   <data name="Upmix.Surround" xml:space="preserve">
-    <value>محيطة</value>
+    <value>صوت محيطي</value>
     <comment>Upmix mode</comment>
   </data>
   <data name="Upmix.SurroundHint" xml:space="preserve">
-    <value>امكانية الى الخلف، مرحلة واسعة امام</value>
+    <value>الأجواء إلى الخلف ومسرح صوتي واسع في الأمام</value>
     <comment>Upmix mode hint</comment>
   </data>
   <data name="Upmix.Note" xml:space="preserve">
@@ -6849,7 +6849,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve">
-    <value>يحوّل ملفات 5.1 و7.1 إلى صوت مكاني في السماعات بدلاً من مزيج ستيريو مسطّح. لا تتغير الأغاني الستيريو.</value>
+    <value>يجعل ملفات 5.1 و7.1 تبدو كصوت محيطي في السماعات. لا تتغير الأغاني الستيريو.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve">
@@ -6884,7 +6884,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Create form watermark</comment>
   </data>
   <data name="AccountSync.Password" xml:space="preserve">
-    <value>كلمة المرور (8+ حرف)</value>
+    <value>كلمة المرور (8 أحرف أو أكثر)</value>
     <comment>Create form watermark</comment>
   </data>
   <data name="AccountSync.Create" xml:space="preserve">
@@ -6905,7 +6905,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Account card button</comment>
   </data>
   <data name="AccountSync.NewPassword" xml:space="preserve">
-    <value>كلمة المرور الجديدة (8+ حرف)</value>
+    <value>كلمة المرور الجديدة (8 أحرف أو أكثر)</value>
     <comment>Change password watermark</comment>
   </data>
   <data name="AccountSync.Save" xml:space="preserve">
@@ -6917,11 +6917,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Account card button</comment>
   </data>
   <data name="AccountSync.PairHelp" xml:space="preserve">
-    <value>على هاتفك، افتح Noctis أو أي تطبيق Subsonic ، ومسح الكود أو اكتب العنوان، وتسجيل الدخول.</value>
+    <value>على هاتفك، افتح Noctis أو أي تطبيق Subsonic، وامسح الرمز أو اكتب العنوان، ثم سجّل الدخول.</value>
     <comment>Pairing block help</comment>
   </data>
   <data name="AccountSync.ServerOffHelp" xml:space="preserve">
-    <value>الأجهزة متصلة من خلال خادم Noctis على هذا الكمبيوتر. تم إيقاف تشغيلها.</value>
+    <value>تتصل الأجهزة عبر خادم Noctis على هذا الكمبيوتر. وهو متوقف حاليًا.</value>
     <comment>Pairing block when the server is off</comment>
   </data>
   <data name="AccountSync.TurnOnServer" xml:space="preserve">
@@ -6941,7 +6941,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Other accounts card title</comment>
   </data>
   <data name="AccountSync.OtherHelp" xml:space="preserve">
-    <value>حسابات إضافية يمكن تسجيل الدخول من أجهزتهم الخاصة.</value>
+    <value>حسابات إضافية يمكنها تسجيل الدخول من أجهزتها الخاصة.</value>
     <comment>Other accounts card help</comment>
   </data>
   <data name="Sync.Title" xml:space="preserve">
@@ -6949,7 +6949,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Sync card title</comment>
   </data>
   <data name="Sync.Description" xml:space="preserve">
-    <value>تبقى المفضلة والتقييمات وعدد مرات التشغيل وقوائم تشغيل هذا الكمبيوتر متطابقة على هاتفك وهذا الكمبيوتر. قوائم التشغيل التي تنشئها على الهاتف تبقى على الهاتف.</value>
+    <value>تبقى المفضلة والتقييمات وعدد مرات التشغيل وقوائم التشغيل متطابقة على هاتفك والكمبيوتر.</value>
     <comment>Sync card description</comment>
   </data>
   <data name="Sync.DeviceName" xml:space="preserve">
@@ -6957,11 +6957,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Sync card row label</comment>
   </data>
   <data name="Sync.WhatSyncs" xml:space="preserve">
-    <value>تبقى ملفات الموسيقى أينما كانت. تحتاج خادم Noctis لتكون قيد التشغيل.</value>
+    <value>تبقى ملفات الموسيقى في مكانها. يتطلب تشغيل خادم Noctis.</value>
     <comment>Sync card footnote</comment>
   </data>
   <data name="LyricsStudioSettings.ModelSection" xml:space="preserve">
-    <value>مشرف خاص</value>
+    <value>نموذج الكلمات</value>
     <comment>Lyrics Studio tab section title</comment>
   </data>
   <data name="LyricsStudioSettings.Title" xml:space="preserve">
@@ -6969,11 +6969,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Card title</comment>
   </data>
   <data name="LyricsStudioSettings.Description" xml:space="preserve">
-    <value>مرات كلمات الأغاني بكلمة على هذا الكمبيوتر. تراجع قبل الحفظ.</value>
+    <value>يوقّت الكلمات كلمةً بكلمة على هذا الكمبيوتر. تراجعها قبل الحفظ.</value>
     <comment>Card description</comment>
   </data>
   <data name="LyricsStudioSettings.Model" xml:space="preserve">
-    <value>الموديل</value>
+    <value>النموذج</value>
     <comment>Row label</comment>
   </data>
   <data name="LyricsStudioSettings.Language" xml:space="preserve">
@@ -6989,41 +6989,41 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Model button</comment>
   </data>
   <data name="LyricsStudioSettings.OutputSection" xml:space="preserve">
-    <value>اغلاق</value>
+    <value>الإخراج</value>
     <comment>Section title</comment>
   </data>
   <data name="LyricsStudioSettings.WordTimings" xml:space="preserve">
-    <value>توقيت الكلمة كلماتية</value>
+    <value>توقيت كلمةً بكلمة</value>
     <comment>Toggle title</comment>
   </data>
   <data name="LyricsStudioSettings.WordTimingsHint" xml:space="preserve">
-    <value>وقت لكل كلمة. لا توفر واحدة لكل سطر.</value>
+    <value>توقيت لكل كلمة. عند الإيقاف يُحفظ توقيت واحد لكل سطر.</value>
     <comment>Toggle help</comment>
   </data>
   <data name="LyricsStudioSettings.EmbedTags" xml:space="preserve">
-    <value>كتابة كلمات الاغاني أيضا في وسوم الملف</value>
+    <value>كتابة الكلمات أيضًا في وسوم الملف</value>
     <comment>Toggle title</comment>
   </data>
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve">
-    <value>أيضًا تخزين كلمات الأغاني العادية داخل ملف الصوت.</value>
+    <value>يخزّن الكلمات العادية أيضًا داخل الملف الصوتي.</value>
     <comment>Toggle help</comment>
   </data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>الحفظ بصيغة TTML أيضًا</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>يكتب أيضًا ملف .ttml بجانب الأغنية، للمشغّلات التي تقرأ TTML لكن لا تقرأ توقيتات الكلمات في ELRC.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve">
-    <value>RUN</value>
+    <value>التنفيذ</value>
     <comment>Section title</comment>
   </data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve">
-    <value>الأغاني مفقودة التنسيق المختار</value>
+    <value>الأغاني التي تفتقر إلى الصيغة المختارة</value>
     <comment>Run card title</comment>
   </data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve">
-    <value>ما يصل إلى 40 أغنية تفتقر إلى التنسيق أعلاه.</value>
+    <value>حتى 40 أغنية تفتقر إلى الصيغة أعلاه.</value>
     <comment>Run card help</comment>
   </data>
   <data name="LyricsStudioSettings.Open" xml:space="preserve">
-    <value>افتح ستوديو الكلمات</value>
+    <value>فتح استوديو الكلمات</value>
     <comment>Run card button</comment>
   </data>
   <data name="LyricsStudioSettings.CountWord" xml:space="preserve">
@@ -7031,7 +7031,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Library count tile</comment>
   </data>
   <data name="LyricsStudioSettings.CountLine" xml:space="preserve">
-    <value>توقيت الخط</value>
+    <value>توقيت الأسطر</value>
     <comment>Library count tile</comment>
   </data>
   <data name="LyricsStudioSettings.CountPlain" xml:space="preserve">
@@ -7056,7 +7056,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="LyricsStudio.Subtitle" xml:space="preserve"><value>يوقّت الكلمات وفق التسجيل. الصق الكلمات للأغاني التي لا تملكها.</value><comment>Dialog subtitle</comment></data>
   <data name="LyricsStudio.Model" xml:space="preserve">
-    <value>الموديل</value>
+    <value>النموذج</value>
     <comment>Footer label</comment>
   </data>
   <data name="LyricsStudio.Language" xml:space="preserve">
@@ -7069,20 +7069,20 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.SkipAlreadyTimed" xml:space="preserve">
-    <value>تخطي الأغاني بالفعل في هذا التنسيق</value>
+    <value>تخطي الأغاني التي لها هذه الصيغة بالفعل</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.SkipAlreadyTimedTip" xml:space="preserve">
-    <value>توقيت الكلمات (ELRC) وتوقيت الأسطر (LRC) صيغ مختلفة. لا يزال يتم معالجة الأغاني التي لها مواعيد سطرية فقط.</value>
+    <value>توقيت الكلمات (ELRC) وتوقيت الأسطر (LRC) صيغتان مختلفتان. الأغاني التي لها توقيت أسطر فقط تتم معالجتها رغم ذلك.</value>
     <comment>Footer checkbox tooltip</comment>
   </data>
   <data name="LyricsStudio.TranscribeOnly" xml:space="preserve">
-    <value>انسخ بواسطة الأذن (تجاهل الكلمات الموجودة)</value>
+    <value>التفريغ الصوتي بدلًا من استخدام الكلمات · تجريبي</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.TranscribeOnlyTip" xml:space="preserve"><value>يستمع Lullaby إلى كل أغنية ويكتب الكلمات بنفسه، حتى إن كانت للأغنية كلمات بالفعل. غالبًا ما يخرج الغناء خاطئًا: يُفتح كل نص مكتوب في مربع الكلمات لتصحّحه قبل محاذاته.</value><comment>Footer checkbox tooltip "Lullaby" is the model's name: keep it untranslated.</comment></data>
   <data name="LyricsStudio.OnlineLyrics" xml:space="preserve">
-    <value>ابحث عن كلمات الاغاني على الانترنت عندما لا تملك الاغنية</value>
+    <value>البحث عن الكلمات عبر الإنترنت عندما لا تكون للأغنية كلمات</value>
     <comment>Footer checkbox</comment>
   </data>
   <data name="LyricsStudio.OnlineLyricsTip" xml:space="preserve"><value>تُجلب الكلمات العادية من LRCLIB أولًا، فلا يبقى على النموذج سوى توقيتها. عند الإيقاف، أو إن لم يُعثر على شيء، تنتظر الأغنية أن تلصق كلماتها.</value><comment>Footer checkbox tooltip</comment></data>
@@ -7091,23 +7091,23 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="LyricsStudio.GpuRestart" xml:space="preserve"><value>أعد تشغيل Noctis للتبديل بين المعالج وبطاقة الرسومات.</value><comment>Note under the GPU checkbox</comment></data>
   <data name="LyricsStudio.GpuActive" xml:space="preserve"><value>يعمل على بطاقة الرسومات.</value><comment>Note under the GPU checkbox</comment></data>
   <data name="LyricsStudio.DownloadModel" xml:space="preserve">
-    <value>نموذج التحميل</value>
+    <value>تنزيل النموذج</value>
     <comment>Footer button</comment>
   </data>
   <data name="LyricsStudio.Start" xml:space="preserve">
-    <value>ابدأ</value>
+    <value>بدء</value>
     <comment>Footer button</comment>
   </data>
   <data name="LyricsStudio.Stop" xml:space="preserve">
-    <value>توقف</value>
+    <value>إيقاف</value>
     <comment>Footer button</comment>
   </data>
   <data name="LyricsStudio.NeedsFfmpeg" xml:space="preserve">
-    <value>ffmpeg مطلوب لفك شفرة الصوت. تعيين مساره في الإعدادات &lt;unk&gt; برامج مساعد متقدمة.</value>
+    <value>ffmpeg مطلوب لفك ترميز الصوت. عيّن مساره في الإعدادات › متقدم › برامج المساعدة.</value>
     <comment>Banner</comment>
   </data>
   <data name="LyricsStudio.Backdrops" xml:space="preserve">
-    <value>الخلفية</value>
+    <value>خلفيات صفحة الكلمات</value>
     <comment>Header disclosure in LyricsStudioView.axaml</comment>
   </data>
   <data name="LyricsStudio.Options" xml:space="preserve">
@@ -7115,35 +7115,35 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Footer dropdown holding the run options</comment>
   </data>
   <data name="LyricsStudio.Loading" xml:space="preserve">
-    <value>جاري التحميل</value>
+    <value>جارٍ التحميل</value>
     <comment>Page scan in progress</comment>
   </data>
   <data name="LyricsStudio.BackdropsTip" xml:space="preserve">
-    <value>تدوير الفيديو خلف كلمات الاغاني، ومقاطع الفيديو الموسيقية في فتحة الغلاف</value>
+    <value>الفيديو المتكرر خلف الكلمات، ومقاطع الفيديو الموسيقية في مكان الغلاف</value>
     <comment>Tooltip in LyricsStudioView.axaml</comment>
   </data>
   <data name="LyricsStudio.ChooseSongs" xml:space="preserve">
-    <value>اختر الأغاني</value>
+    <value>اختيار الأغاني</value>
     <comment>Header chip in LyricsStudioView.axaml: opens the song/album picker</comment>
   </data>
   <data name="LyricsStudio.ChooseSongsTip" xml:space="preserve">
-    <value>اختر أغاني أو ألبومات كاملة للستوديو وما إذا كنت تريد كتابة الكلمات أو مواعيد الخط</value>
+    <value>اختر أغاني أو ألبومات كاملة للاستوديو، وحدّد هل يكتب توقيت الكلمات أم توقيت الأسطر</value>
     <comment>Tooltip in LyricsStudioView.axaml</comment>
   </data>
   <data name="LyricsStudioPicker.Title" xml:space="preserve">
-    <value>اختر أغاني و ألبومات</value>
+    <value>اختيار الأغاني والألبومات</value>
     <comment>Picker dialog title</comment>
   </data>
   <data name="LyricsStudioPicker.Subtitle" xml:space="preserve">
-    <value>ماذا يتكرر الاستوديو في المرة التالية، و الشكل الذي يكتبه.</value>
+    <value>ما سيوقّته الاستوديو تاليًا، والصيغة التي يكتبها.</value>
     <comment>Picker dialog subtitle</comment>
   </data>
   <data name="LyricsStudioPicker.Format" xml:space="preserve">
-    <value>التنسيق</value>
+    <value>الصيغة</value>
     <comment>Picker: format card title</comment>
   </data>
   <data name="LyricsStudioPicker.FormatHint" xml:space="preserve">
-    <value>توقيت الكلمات ينقل كلمة بكلمة (ELRC)؛ توقيت الخط ينقل سطراً بسطر (LRC).</value>
+    <value>توقيت الكلمات يتحرك كلمةً بكلمة (ELRC)؛ وتوقيت الأسطر يتحرك سطرًا بسطر (LRC).</value>
     <comment>Picker: format card hint</comment>
   </data>
   <data name="LyricsStudioPicker.WordTimings" xml:space="preserve">
@@ -7151,11 +7151,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker: format chip</comment>
   </data>
   <data name="LyricsStudioPicker.LineTimings" xml:space="preserve">
-    <value>توقيت الخط · LRC</value>
+    <value>توقيت الأسطر · LRC</value>
     <comment>Picker: format chip</comment>
   </data>
   <data name="LyricsStudioPicker.Search" xml:space="preserve">
-    <value>البحث عن الأغاني والبومات…</value>
+    <value>البحث في الأغاني والألبومات…</value>
     <comment>Picker search box</comment>
   </data>
   <data name="LyricsStudioPicker.PromptTitle" xml:space="preserve">
@@ -7163,7 +7163,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker empty state</comment>
   </data>
   <data name="LyricsStudioPicker.PromptBody" xml:space="preserve">
-    <value>كل أغنية محلية لديها بالفعل هذا التنسيق. الألبوم يضيف كل أغنية فيه؛ الحبوب على الأغنية تظهر ما لديها الآن.</value>
+    <value>كل أغنية محلية لها هذه الصيغة بالفعل. يضيف الألبوم كل أغانيه؛ وتُظهر الشارة على الأغنية ما لديها الآن.</value>
     <comment>Picker empty state (also shown when nothing is missing)</comment>
   </data>
   <data name="LyricsStudioPicker.Add" xml:space="preserve">
@@ -7171,19 +7171,19 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Picker confirm button</comment>
   </data>
   <data name="LyricsStudioPicker.MissingWord" xml:space="preserve">
-    <value>مع الأخبار العالمية</value>
+    <value>بلا توقيت للكلمات</value>
     <comment>Picker: header over the suggestions when word timings is chosen</comment>
   </data>
   <data name="LyricsStudioPicker.MissingLine" xml:space="preserve">
-    <value>مع التصنيفات</value>
+    <value>بلا توقيت</value>
     <comment>Picker: header over the suggestions when line timings is chosen</comment>
   </data>
   <data name="LyricsStudioPicker.Scanning" xml:space="preserve">
-    <value>النظر من خلال المكتبة…</value>
+    <value>جارٍ البحث في المكتبة…</value>
     <comment>Picker: while the suggestions load</comment>
   </data>
   <data name="LyricsStudioPicker.SelectAll" xml:space="preserve">
-    <value>حدد الكل</value>
+    <value>تحديد الكل</value>
     <comment>Picker footer</comment>
   </data>
   <data name="LyricsStudioPicker.DeselectAll" xml:space="preserve">
@@ -7197,7 +7197,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="StudioPicker.OneSong" xml:space="preserve"><value>أغنية واحدة</value><comment>Choose songs: tag on an album row with one local song</comment></data>
   <data name="StudioPicker.SongCount" xml:space="preserve"><value>الأغاني: {0}</value><comment>Choose songs: tag on an album row ({0} = local songs on it)</comment></data>
   <data name="LyricsStudio.Queue" xml:space="preserve">
-    <value>الأصدارات</value>
+    <value>الأغاني</value>
     <comment>Queue column header</comment>
   </data>
   <data name="LyricsStudio.ReviewEmptyTitle" xml:space="preserve">
@@ -7205,15 +7205,15 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.ReviewEmptyBody" xml:space="preserve">
-    <value>اختر أغنية واضغط على Start.</value>
+    <value>اختر أغنية من القائمة. تُوقَّت الأغاني التي لها كلمات عند الضغط على «بدء»؛ والأغاني التي بلا كلمات تفتح مربعًا للصقها.</value>
     <comment>Review pane empty state</comment>
   </data>
   <data name="LyricsStudio.Upgrade" xml:space="preserve">
-    <value>وقت كل كلمة</value>
+    <value>توقيت كل كلمة</value>
     <comment>Review button, shown for line-level lyrics</comment>
   </data>
   <data name="LyricsStudio.UpgradeTip" xml:space="preserve">
-    <value>مرات كل كلمة من هذه الأسطور. يتم الاحتفاظ بملف مستوى الخط.</value>
+    <value>يوقّت كل كلمة في هذه الأسطر. يُحتفظ بملف توقيت الأسطر.</value>
     <comment>Review button tooltip</comment>
   </data>
   <data name="LyricsStudio.LrcRedSync" xml:space="preserve"><value>المزامنة بنموذج lrc.red</value><comment>Review / lyrics box button, shown when lrc.red has the song only line-synced or plain</comment></data>
@@ -7225,23 +7225,23 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>متزامنة كلمةً بكلمة بنموذج lrc.red · راجعها</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>من lrc.red · متزامنة كلمةً بكلمة بنموذجه</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve">
-    <value>انقر فوق وقت لسماع هذا الخط. تحرير النص في الموقع. الخطوط الموصوفة تحتاج إلى نظرة ثانية.</value>
+    <value>انقر على توقيت لسماع ذلك السطر. حرّر النص في مكانه. الأسطر الملوّنة تحتاج إلى مراجعة ثانية.</value>
     <comment>Review pane hint</comment>
   </data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve">
-    <value>جميع الأسطر 0.1 ث قبل ذلك</value>
+    <value>تقديم كل الأسطر 0.1 ث · الاختصار [</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve">
-    <value>جميع الأسطر 0.1 ثانية لاحقاً</value>
+    <value>تأخير كل الأسطر 0.1 ث · الاختصار ]</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.Redo" xml:space="preserve">
-    <value>انسخ بدلاً من ذلك</value>
+    <value>التفريغ الصوتي بدلًا من ذلك · تجريبي</value>
     <comment>Review button</comment>
   </data>
   <data name="LyricsStudio.RedoTip" xml:space="preserve">
-    <value>تجاهل هذه الكلمات ونسخ ما هو غروب الشمس</value>
+    <value>تجاهل هذه الكلمات ودع Lullaby يكتب ما يُغنّى. غالبًا ما يكون تفريغ الغناء ضعيفًا؛ صحّح الكلمات قبل محاذاتها.</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LyricsStudio.Skip" xml:space="preserve">
@@ -7293,7 +7293,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Starts tap-to-time for one line</comment>
   </data>
   <data name="LyricsStudio.TapTip" xml:space="preserve">
-    <value>يلعب الخط. اضغط على المسافة أو اضغط على كل كلمة؛ ونقر مرة أخرى على الخط.</value>
+    <value>يشغّل السطر. اضغط Space أو «انقر» عند كل كلمة؛ نقرة إضافية تُنهي السطر.</value>
     <comment>Tap button tooltip</comment>
   </data>
   <data name="LyricsStudio.Tap" xml:space="preserve">
@@ -7305,7 +7305,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Tap bar leave button</comment>
   </data>
   <data name="LyricsStudio.PlayFromHere" xml:space="preserve">
-    <value>العب من هنا</value>
+    <value>التشغيل من هنا</value>
     <comment>Time pill tooltip</comment>
   </data>
   <data name="LyricsStudio.NudgeTargetLine" xml:space="preserve"><value>السطر {0} – {1}</value><comment>Nudge bar label: the selected line's start and end</comment></data>
@@ -7401,31 +7401,31 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Appearance" xml:space="preserve">
-    <value>الموضوعات واللون والزجاج والرسوم المتحركة للنص والأعمال الفنية.</value>
+    <value>السمات ولون التمييز والزجاج وحركة النص والأغلفة.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Player" xml:space="preserve">
-    <value>جزيرة اللاعب، اللاعب المصغر، التدفق و الآن اللعب الفني.</value>
+    <value>جزيرة التشغيل والمشغّل المصغّر وانسياب الأغلفة وغلاف «قيد التشغيل الآن».</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Lyrics" xml:space="preserve">
-    <value>صفحة الكلمات، مصادر كلمات الاغاني عبر الانترنت، واستوديو الكلمات</value>
+    <value>صفحة الكلمات ومصادر الكلمات عبر الإنترنت واستوديو الكلمات.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Shortcuts" xml:space="preserve">
-    <value>انقر فوق مفتاح لتغييره. إلغاء Esc ، فك الارتباطات في الفضاء الخلفي.</value>
+    <value>انقر على مفتاح لتغييره. Esc يلغي، وBackspace يزيل الاختصار.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Audio" xml:space="preserve">
-    <value>التشغيل والنواتج والتحليل والمُوازن.</value>
+    <value>التشغيل والإخراج والتحليل ومعادل الصوت.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Library" xml:space="preserve">
-    <value>المجلدات الإعلامية، والمسح الضوئي، وكيفية تنظيم الفنانين والألبومات، وأدوات المكتبة.</value>
+    <value>مجلدات الوسائط والفحص وطريقة تنظيم الفنانين والألبومات وأدوات المكتبة.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Advanced" xml:space="preserve">
-    <value>التخزين، برامج المساعد، التحديثات وإعادة الضبط.</value>
+    <value>التخزين وبرامج المساعدة والتحديثات وإعادة الضبط.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.AccountDevices" xml:space="preserve">
@@ -7433,15 +7433,15 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Integrations" xml:space="preserve">
-    <value>خوادم ديسكورد، سكروبلينغ، تيدال والموسيقى.</value>
+    <value>Discord وتسجيل الاستماع وTIDAL وخوادم الموسيقى.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Plugins" xml:space="preserve">
-    <value>الإضافات المثبتة.</value>
+    <value>أضف ميزات إضافية إلى Noctis.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.Statistics" xml:space="preserve">
-    <value>مكتبتك والاستماع للنظرة.</value>
+    <value>مكتبتك واستماعك في لمحة.</value>
     <comment>Settings page description</comment>
   </data>
   <data name="Settings.Desc.About" xml:space="preserve">
@@ -7457,7 +7457,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Sidebar" xml:space="preserve">
-    <value>Sidebar</value>
+    <value>الشريط الجانبي</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Files" xml:space="preserve">
@@ -7469,23 +7469,23 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.TextAnimation" xml:space="preserve">
-    <value>المؤثر الحركي للنص</value>
+    <value>حركة النص</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Home" xml:space="preserve">
-    <value>المنزل</value>
+    <value>الرئيسية</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Artwork" xml:space="preserve">
-    <value>الأعمال الفنية</value>
+    <value>الأغلفة</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.HomeHeavyRotation" xml:space="preserve">
-    <value>دوران ثقيل</value>
+    <value>على التكرار</value>
     <comment>Appearance › Home toggle</comment>
   </data>
   <data name="Settings.HomeHeavyRotationDesc" xml:space="preserve">
-    <value>إظهار الصف "عند تكرار هذه الأسبوعين الماضيين" في الصفحة الرئيسية.</value>
+    <value>يعرض صف «على التكرار خلال الأسبوعين الماضيين» في الصفحة الرئيسية.</value>
     <comment>Appearance › Home toggle description</comment>
   </data>
   <data name="Settings.HomeRecentAlbumsCount" xml:space="preserve"><value>الألبومات المشغّلة مؤخرًا</value><comment>Appearance › Home picker</comment></data>
@@ -7499,11 +7499,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.PlayerIsland" xml:space="preserve">
-    <value>جزيرة اللاعب</value>
+    <value>جزيرة التشغيل</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.MiniPlayer" xml:space="preserve">
-    <value>لاعب صغير</value>
+    <value>المشغّل المصغّر</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
@@ -7511,7 +7511,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.OnlineLyrics" xml:space="preserve">
-    <value>كلمات الاغنية على الانترنت</value>
+    <value>الكلمات عبر الإنترنت</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.SavingLyrics" xml:space="preserve"><value>حفظ الكلمات</value><comment>Settings section label</comment></data>
@@ -7542,7 +7542,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Output" xml:space="preserve">
-    <value>الناتج</value>
+    <value>الإخراج</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Analysis" xml:space="preserve">
@@ -7550,15 +7550,15 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Equalizer" xml:space="preserve">
-    <value>المعادل</value>
+    <value>معادل الصوت</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Folders" xml:space="preserve">
-    <value>المجلدات والمسح</value>
+    <value>المجلدات والفحص</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Organisation" xml:space="preserve">
-    <value>Organisation</value>
+    <value>التنظيم</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Metadata" xml:space="preserve">
@@ -7570,7 +7570,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.HiddenTracks" xml:space="preserve">
-    <value>المسارات المخفية</value>
+    <value>المقاطع المخفية</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Storage" xml:space="preserve">
@@ -7586,7 +7586,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Reset" xml:space="preserve">
-    <value>Reset</value>
+    <value>إعادة الضبط</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
@@ -7602,19 +7602,19 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.NoctisServer" xml:space="preserve">
-    <value>Noctis Server</value>
+    <value>خادم Noctis</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.WebRemote" xml:space="preserve">
-    <value>الويب عن بعد</value>
+    <value>جهاز التحكم عبر الويب</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Discord" xml:space="preserve">
-    <value>ديسكورد</value>
+    <value>Discord</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Scrobbling" xml:space="preserve">
-    <value>Scrobbling</value>
+    <value>تسجيل الاستماع</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.TIDAL" xml:space="preserve">
@@ -7634,7 +7634,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.TopPlayed" xml:space="preserve">
-    <value>أعلى اللعب</value>
+    <value>الأكثر تشغيلًا</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.CloseTip" xml:space="preserve">
@@ -7658,7 +7658,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Profile avatar X tooltip</comment>
   </data>
   <data name="ThemeEditor.Subtitle" xml:space="preserve">
-    <value>اختر ثلاثة ألوان. تحديث المعاينة المباشرة.</value>
+    <value>اختر ثلاثة ألوان. تتحدّث المعاينة مباشرة.</value>
     <comment>Dialog subtitle</comment>
   </data>
   <data name="Settings.Tab.General" xml:space="preserve">
@@ -7751,7 +7751,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
   </data>
   <data name="AccountSync.PairQrWarning" xml:space="preserve">
-    <value>يمكن لأي شخص يمسح هذا الرمز تسجيل الدخول إلى حسابك، لذا اعرضه لهاتفك فقط. يعمل مرة واحدة ويتغير كل دقيقتين.</value>
+    <value>يمكن لأي شخص يمسح هذا الرمز تسجيل الدخول إلى حسابك. لا تعرضه إلا لهاتفك.</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
@@ -7803,7 +7803,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Small link under the QR code: replace it with a new one now</comment>
   </data>
   <data name="Pair.QrUnavailable" xml:space="preserve">
-    <value>لا يمكن عرض رمز QR الآن. أنشئ حسابك أعلاه، أو استخدم الإدخال يدويًا.</value>
+    <value>لا يمكن عرض رمز QR الآن. أنشئ حسابك أو استخدم «الإدخال يدويًا».</value>
     <comment>Connect a phone, QR way, when no code can be shown</comment>
   </data>
   <data name="Phone.AdvancedDesc" xml:space="preserve">
@@ -7819,7 +7819,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Account card list empty state</comment>
   </data>
   <data name="Settings.LocalApiDesc" xml:space="preserve">
-    <value>يتيح للتطبيقات على هذا الكمبيوتر، مثل Stream Deck أو OBS، معرفة ما يُشغَّل الآن والتحكم في Noctis.</value>
+    <value>يتيح للتطبيقات على هذا الكمبيوتر، مثل Stream Deck أو OBS، التحكم في Noctis.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApiAddress" xml:space="preserve"><value>العنوان</value><comment>Text in SettingsView.axaml</comment></data>
@@ -7829,7 +7829,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.LocalApiRegenerate" xml:space="preserve"><value>إنشاء رمز مميز جديد</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiRegenerateTip" xml:space="preserve"><value>ينشئ رمزًا مميزًا جديدًا. تتوقف التطبيقات التي تستخدم الرمز القديم عن العمل.</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LocalApiWarning" xml:space="preserve">
-    <value>أي تطبيق لديه رمز الوصول هذا يمكنه التحكم في Noctis وقراءة مكتبتك. لا تعطه إلا للتطبيقات التي تثق بها.</value>
+    <value>أي تطبيق لديه هذا الرمز يمكنه التحكم في Noctis. لا تشاركه إلا مع التطبيقات التي تثق بها.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApiDiscovery" xml:space="preserve">
@@ -8189,7 +8189,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one album (AlbumsCount otherwise)</comment>
   </data>
   <data name="ArtistInfoSearch.OneFan" xml:space="preserve">
-    <value>مشجع واحد</value>
+    <value>معجب واحد</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml for an account with exactly one fan (ArtistDetail.FansCount otherwise)</comment>
   </data>
   <data name="ArtistInfoSearch.Current" xml:space="preserve">
@@ -8221,7 +8221,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
   </data>
   <data name="Settings.AppIconDesc" xml:space="preserve">
-    <value>تغيّر الأيقونة في شريط العنوان وشريط المهام وعلبة النظام فورًا. يحتفظ اختصار سطح المكتب وملف ‎.exe بالأيقونة الكلاسيكية.</value>
+    <value>يغيّر الأيقونة في شريط العنوان وشريط المهام وعلبة النظام. يحتفظ اختصار سطح المكتب بالأيقونة الكلاسيكية.</value>
     <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
   </data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve">
@@ -8407,7 +8407,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Artists.Find" xml:space="preserve"><value>البحث في الفنانين</value></data>
   <data name="Mobile.Artists.NoMatch" xml:space="preserve"><value>لا يوجد فنانون مطابقون</value></data>
   <data name="Mobile.Artists.None" xml:space="preserve"><value>لا يوجد فنانون</value></data>
-  <data name="Mobile.Shuffle" xml:space="preserve"><value>ترتيب عشوائي</value></data>
+  <data name="Mobile.Shuffle" xml:space="preserve"><value>تشغيل عشوائي</value></data>
   <data name="Mobile.Favorite" xml:space="preserve"><value>مفضلة</value></data>
   <data name="Mobile.Artist.TopSongs" xml:space="preserve"><value>أفضل الأغاني</value></data>
   <data name="Mobile.Artist.SinglesEps" xml:space="preserve"><value>الأغاني المنفردة وأسطوانات EP</value></data>
@@ -8516,11 +8516,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>قرص CD</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
-  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>ألوان أغمق أو أفتح خلف شاشة التشغيل الحالي</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>ألوان أغمق أو أفتح خلف شاشة «قيد التشغيل»</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>مجلدات الموسيقى</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>التنزيلات</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>الاستماع</value></data>
-  <data name="Mobile.Settings.Scrobbling" xml:space="preserve"><value>Scrobbling</value></data>
+  <data name="Mobile.Settings.Scrobbling" xml:space="preserve"><value>تسجيل الاستماع</value></data>
   <data name="Mobile.Settings.ListeningHistory" xml:space="preserve"><value>سجل الاستماع</value></data>
   <data name="Mobile.Settings.PickUpName" xml:space="preserve"><value>المتابعة على الكمبيوتر، تنتقل معك قائمة الانتظار وموضع التشغيل</value></data>
   <data name="Mobile.Settings.PickUp" xml:space="preserve"><value>المتابعة على الكمبيوتر</value></data>
@@ -8556,7 +8556,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>حركة سلسة</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>حتى 120 هرتز</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>تمرير أكثر سلاسة على شاشات 120 هرتز لكنه يستهلك بطارية أكثر</value></data>
-  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>علامة تبويب Liquid Glass</value></data>
+  <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>كبسولة التبويب Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>تبقى علامة التبويب المحددة زجاجًا شفافًا</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>شريط علامات التبويب</value></data>
   <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>اختر من 2 إلى 5 علامات تبويب واسحب ≡ لترتيبها. تبقى المكتبة دائمًا في الشريط، فتظل كل القوائم والإعدادات في متناولك.</value></data>
@@ -8574,8 +8574,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>نص أصغر تحت السطر عندما تحتويه كلمات الأغنية</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>حجم النص</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>حجم نص الكلمات</value></data>
-  <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>أدنى شفافية للسطر</value></data>
-  <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>أدنى شفافية للسطر</value></data>
+  <data name="Mobile.Lyrics.MinOpacity" xml:space="preserve"><value>الحد الأدنى لعتامة السطر</value></data>
+  <data name="Mobile.Lyrics.MinOpacityName" xml:space="preserve"><value>الحد الأدنى لعتامة السطر</value></data>
   <data name="Mobile.Lyrics.MinOpacityHint" xml:space="preserve"><value>مدى ظهور الأسطر البعيدة عن السطر الحالي</value></data>
   <data name="Mobile.Lyrics.JoinWords" xml:space="preserve"><value>دمج الكلمات المقسّمة</value></data>
   <data name="Mobile.Lyrics.JoinWordsHint" xml:space="preserve"><value>يُبقي الكلمات كاملة في كلمات TTML</value></data>
@@ -8631,7 +8631,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Player.TooManyErrors" xml:space="preserve"><value>تعذّر تشغيل عدة أغانٍ متتالية، لذا توقف التشغيل.</value></data>
   <data name="Mobile.Player.PlayingFrom" xml:space="preserve"><value>التشغيل من {0}</value></data>
   <data name="Mobile.Player.TrackOf" xml:space="preserve"><value>المقطع {0} من {1}</value></data>
-  <data name="Mobile.Quality.HiResMeaning" xml:space="preserve"><value>أعلى من 24 بت/48 كيلوهرتز: دقة أعلى مما يتسع له القرص المضغوط أو Lossless القياسي.</value></data>
+  <data name="Mobile.Quality.HiResMeaning" xml:space="preserve"><value>أعلى من 24 بت/48 كيلوهرتز: دقة أعلى مما يتسع له القرص المضغوط أو الصوت القياسي دون فقدان.</value></data>
   <data name="Mobile.RenamePlaylist" xml:space="preserve"><value>إعادة تسمية قائمة التشغيل</value></data>
   <data name="Mobile.Save" xml:space="preserve"><value>حفظ</value></data>
   <data name="Mobile.PlaylistName" xml:space="preserve"><value>اسم قائمة التشغيل</value></data>
@@ -8639,7 +8639,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.DeletePlaylistSynced" xml:space="preserve"><value>ستُحذف من الكمبيوتر أيضًا. لا يمكن التراجع عن ذلك.</value></data>
   <data name="Mobile.DeletePlaylistLocal" xml:space="preserve"><value>لا يمكن التراجع عن ذلك. تبقى الأغاني في مكتبتك.</value></data>
   <data name="Mobile.Library.FolderUnavailable" xml:space="preserve"><value>“{0}” غير متاح. أعد توصيله ثم أعد الفحص.</value></data>
-  <data name="Mobile.Library.FoldersUnavailable" xml:space="preserve"><value>{0} مجلد غير متاح. أعد توصيل المجلدات ثم أعد الفحص.|{0} مجلد غير متاح. أعد توصيله ثم أعد الفحص.|{0} مجلدان غير متاحين. أعد توصيلهما ثم أعد الفحص.|{0} مجلدات غير متاحة. أعد توصيلها ثم أعد الفحص.|{0} مجلدًا غير متاح. أعد توصيلها ثم أعد الفحص.|{0} مجلد غير متاح. أعد توصيلها ثم أعد الفحص.</value></data>
+  <data name="Mobile.Library.FoldersUnavailable" xml:space="preserve"><value>{0} مجلد غير متاحة. أعد توصيلها ثم أعد الفحص.|{0} مجلد غير متاح. أعد توصيله ثم أعد الفحص.|{0} مجلدان غير متاحين. أعد توصيلهما ثم أعد الفحص.|{0} مجلدات غير متاحة. أعد توصيلها ثم أعد الفحص.|{0} مجلدًا غير متاحة. أعد توصيلها ثم أعد الفحص.|{0} مجلد غير متاحة. أعد توصيلها ثم أعد الفحص.</value></data>
   <data name="Mobile.Library.AlreadyCovered" xml:space="preserve"><value>مشمول بالفعل ضمن “{0}”.</value></data>
   <data name="Mobile.Library.InsideFolder" xml:space="preserve"><value>“{0}” موجود داخل هذا المجلد. أزله أولًا.</value></data>
   <data name="Mobile.Library.Scanning" xml:space="preserve"><value>جارٍ الفحص…</value></data>
@@ -8774,9 +8774,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.AddFolderToScan" xml:space="preserve"><value>أضف مجلد موسيقى لفحصه.</value></data>
   <data name="Mobile.Settings.ColourAndLine" xml:space="preserve"><value>اللون والخط</value></data>
   <data name="Mobile.Settings.Plain" xml:space="preserve"><value>عادي</value></data>
-  <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>كلاهما</value></data>
-  <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>الترجمات</value></data>
-  <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>الحروف اللاتينية</value></data>
+  <data name="Mobile.Lyrics.BothOn" xml:space="preserve"><value>كلاهما مفعّل</value></data>
+  <data name="Mobile.Lyrics.TranslationsOn" xml:space="preserve"><value>الترجمات مفعّلة</value></data>
+  <data name="Mobile.Lyrics.RomanizationOn" xml:space="preserve"><value>الحروف اللاتينية مفعّلة</value></data>
   <data name="Mobile.Settings.PickUpFootnote" xml:space="preserve"><value>تابع من هذه الأغنية عند فتح Noctis على {0}</value></data>
   <data name="Mobile.Settings.PickUpFootnoteGeneric" xml:space="preserve"><value>تابع من هذه الأغنية عند فتح Noctis على حاسوبك</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>Wi-Fi فقط</value></data>
@@ -8891,7 +8891,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>و{0} أخرى</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>إعادة المحاولة</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>النظام</value></data>
-  <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>فقد Noctis إذن الوصول إلى مجلد هذه الأغنية. أضف المجلد مرة أخرى من الإعدادات ← المكتبة.</value></data>
+  <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>فقد Noctis إذن الوصول إلى مجلد هذه الأغنية. أضف المجلد مرة أخرى من الإعدادات → المكتبة.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>لا يستطيع هذا الهاتف فك ترميز {0}، لذا تم تخطي الأغنية.</value></data>
   <data name="Mobile.Player.UnknownFormat" xml:space="preserve"><value>تنسيق غير معروف</value></data>
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>مقطع غير معروف</value></data>
@@ -8978,9 +8978,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Picker.ChooseLyricsBackground" xml:space="preserve"><value>اختيار خلفية الكلمات</value><comment>File picker dialog title</comment></data>
   <data name="Picker.SaveVideo" xml:space="preserve"><value>حفظ الفيديو</value><comment>File picker dialog title</comment></data>
   <data name="Picker.SelectCoverArt" xml:space="preserve"><value>اختيار صورة الغلاف</value><comment>File picker dialog title</comment></data>
-  <data name="Picker.SelectArtwork" xml:space="preserve"><value>اختيار العمل الفني</value><comment>File picker dialog title</comment></data>
-  <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>اختيار عمل فني متحرك</value><comment>File picker dialog title</comment></data>
-  <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>تنزيل العمل الفني المتحرك</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectArtwork" xml:space="preserve"><value>اختيار الغلاف</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.SelectAnimatedArtwork" xml:space="preserve"><value>اختيار غلاف متحرك</value><comment>File picker dialog title</comment></data>
+  <data name="Picker.DownloadAnimatedArtwork" xml:space="preserve"><value>تنزيل الغلاف المتحرك</value><comment>File picker dialog title</comment></data>
   <data name="Picker.ImportLyrics" xml:space="preserve"><value>استيراد الكلمات</value><comment>File picker dialog title</comment></data>
   <data name="Picker.DownloadCoverArt" xml:space="preserve"><value>تنزيل صورة الغلاف</value><comment>File picker dialog title</comment></data>
   <data name="Picker.LocateFfmpeg" xml:space="preserve"><value>تحديد موقع ffmpeg</value><comment>File picker dialog title</comment></data>
@@ -9053,18 +9053,18 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="BulkLyrics.WaitingForSources" xml:space="preserve"><value>جارٍ انتظار المصادر المشغولة… متبقٍ لإعادة السؤال: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>جارٍ سؤال المصادر المشغولة مجددًا… المتبقي: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>لا شيء لفعله</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>أغنية واحدة لها كلمات عادية فقط. يمكن لـ Lyrics Studio توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} أغانٍ لها كلمات عادية فقط. يمكن لـ Lyrics Studio توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>أغنية واحدة لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} أغانٍ لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الحاسوب بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>تُفتح أول {0} في المرة الواحدة.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} ألبوم|{0:N0} ألبوم|{0:N0} ألبومان|{0:N0} ألبومات|{0:N0} ألبومًا|{0:N0} ألبوم</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Main.AllArtists" xml:space="preserve"><value>كل الفنانين</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
   <data name="Main.HideSmallArtists" xml:space="preserve"><value>إخفاء الفنانين الصغار</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
-  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>أقل من {0:N0} أغنية</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
+  <data name="Main.ArtistsFewerThanSongs" xml:space="preserve"><value>أقل من {0:N0} أغنية|أقل من {0:N0} أغنية|أقل من {0:N0} أغنيتين|أقل من {0:N0} أغانٍ|أقل من {0:N0} أغنية|أقل من {0:N0} أغنية</value><comment>Second line under Hide Small Artists; plural forms (see Loc.Plural), {0} = song count</comment></data>
   <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>الفلتر يخفي كل الفنانين</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>اختر «كل الفنانين» من قائمة الفلتر، أو ابحث عن اسم</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>إخفاء الفنانين الصغار</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>يستبعد الفنانين الذين لديهم أغانٍ قليلة من صفحة الفنانين. يظل البحث وروابط الفنان في الأغاني والألبومات يعثر عليهم. تُحسب الأغاني التي يتصدرها الفنان، وهو الرقم نفسه الظاهر تحت كل اسم.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>يخفي الفنانين الذين لديهم أغانٍ قليلة من صفحة الفنانين. يظل البحث يعثر عليهم.</value><comment>Description under Hide small artists</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>إخفاء الفنانين الذين لديهم أقل من</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>إخفاء الشريط الجانبي حتى التمرير</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>يخفي الشريط الجانبي تمامًا لتستخدم الصفحات العرض الكامل. حرّك المؤشر إلى الحافة اليسرى للنافذة لإظهاره.</value><comment>Description under Hide sidebar until hover</comment></data>
@@ -9082,7 +9082,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.Scrobble.OneWaiting" xml:space="preserve"><value>تشغيل واحد ينتظر الإرسال.</value><comment>Settings › Scrobbling card: one play queued while offline or signed out, sent once the service can be reached</comment></data>
   <data name="Settings.Scrobble.Waiting" xml:space="preserve"><value>تشغيلات تنتظر الإرسال: {0:N0}.</value><comment>Settings › Scrobbling card: plays queued while offline or signed out; {0} is how many</comment></data>
   <data name="Settings.FileTypesRemoved" xml:space="preserve"><value>تمت إزالة Noctis من قائمة "فتح باستخدام".</value><comment>Settings status line</comment></data>
-  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>تم التسجيل. اختر Noctis من الإعدادات ← التطبيقات ← التطبيقات الافتراضية، أو انقر بزر الماوس الأيمن على أغنية ← فتح باستخدام.</value><comment>Settings status line</comment></data>
+  <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>تم التسجيل. اختر Noctis من الإعدادات → التطبيقات → التطبيقات الافتراضية، أو انقر بزر الماوس الأيمن على أغنية → فتح باستخدام.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>تعذّر تحديث أنواع الملفات: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>جارٍ إعادة تجميع الفنانين…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>جارٍ استعادة بيانات الفنانين الأصلية…</value><comment>Settings status line</comment></data>
@@ -9161,7 +9161,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.UpdateHintPortable" xml:space="preserve"><value>نزّل الإصدار الجديد من GitHub.</value><comment>How to update a portable copy</comment></data>
   <data name="Settings.UpdateHintDeb" xml:space="preserve"><value>نزّل ملف .deb الجديد من GitHub وافتحه لتثبيته.</value><comment>How to update a .deb install</comment></data>
   <data name="Settings.ScanAbortedUnreachable" xml:space="preserve"><value>تعذّر الوصول إلى {0} — بقيت المكتبة دون تغيير. تحقق من محرك الأقراص، ثم حدّث.</value><comment>Settings status line; {0} unreachable music folders</comment></data>
-  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>تم مسح ذاكرة الأعمال الفنية المؤقتة.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtworkCacheCleared" xml:space="preserve"><value>تم مسح ذاكرة الأغلفة المؤقتة.</value><comment>Settings status line</comment></data>
   <data name="Settings.ClearCacheFailed" xml:space="preserve"><value>تعذّر مسح الذاكرة المؤقتة: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.NoFolderSelected" xml:space="preserve"><value>لم يتم اختيار مجلد</value><comment>Settings status line</comment></data>
   <data name="Settings.UpdateCheckTimedOut" xml:space="preserve"><value>انتهت مهلة البحث عن التحديثات. حاول لاحقًا.</value><comment>Settings › About update status</comment></data>
@@ -9197,11 +9197,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Palette.CategoryArtist" xml:space="preserve"><value>فنان</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AudioSetting" xml:space="preserve"><value>إعداد الصوت</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AppearanceSetting" xml:space="preserve"><value>إعداد المظهر</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.LyricsStudio" xml:space="preserve"><value>Lyrics Studio…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudio" xml:space="preserve"><value>استوديو الكلمات…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>توقيت أو تفريغ كلمات الأغاني التي لا تحتوي على كلمات متزامنة</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyrics" xml:space="preserve"><value>البحث عن كلمات للمكتبة…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyricsSub" xml:space="preserve"><value>البحث عن كلمات كل أغنية، المتزامنة كلمةً بكلمة أولًا</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>البحث عن أعمال فنية متحركة للمكتبة…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>البحث عن أغلفة متحركة للمكتبة…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>إضافة أغلفة متحركة من Apple Music إلى الألبومات</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.ToggleShuffle" xml:space="preserve"><value>تبديل التشغيل العشوائي</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.CycleRepeat" xml:space="preserve"><value>تبديل وضع التكرار</value><comment>Command palette (Ctrl+K)</comment></data>
@@ -9215,8 +9215,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>تم تحديد {0} أغانٍ</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>تعذّرت كتابة الوسوم في "{0}". ربما يكون الملف مفتوحًا في تطبيق آخر أو للقراءة فقط — أغلقه هناك أو تحقق من الملف ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>تعذّرت كتابة الوسوم في {0} ملفات (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
-  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>البحث عن عمل فني متحرك لألبوم واحد</value><comment>Find animated artwork in bulk dialog</comment></data>
-  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>البحث عن أعمال فنية متحركة لـ {0:N0} ألبومات</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>البحث عن غلاف متحرك لألبوم واحد</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>البحث عن أغلفة متحركة لـ {0:N0} ألبومات</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>لا توجد ألبومات للبحث عنها.</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>جارٍ البحث</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>{0:N0} محفوظة</value><comment>Find animated artwork in bulk dialog</comment></data>
@@ -9279,23 +9279,23 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>لا يوجد ألبوم آخر بهذا الاسم. انقر مع Ctrl على الألبومات التي تنتمي معًا في شبكة الألبومات، ثم انقر بزر الماوس الأيمن على أحدها.</value><comment>Shown when only one album is chosen</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>جُمّعت في Noctis، لكن تعذّر حفظ بعض الملفات ({0}) (للقراءة فقط أو مفتوحة في تطبيق آخر). إذا تغيّر أحد هذه الملفات، فسيعود إلى ألبومه القديم في الفحص التالي.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
-  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>
-  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>Full-screen moving lyrics, like the lyrics page</value></data>
-  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>Lyrics Page needs synced lyrics</value></data>
-  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>{0} lines · {1} s</value><comment>{0} line count; {1} clip length in seconds</comment></data>
-  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>A Lyrics Page video is up to {0} seconds</value><comment>{0} maximum length in seconds</comment></data>
-  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>Artwork color</value><comment>Background option</comment></data>
-  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>Animated cover</value><comment>Background option</comment></data>
-  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>Your background</value><comment>Background option</comment></data>
-  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>Choose image or clip</value></data>
-  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>Remove background</value></data>
-  <data name="LyricShare.Readability" xml:space="preserve"><value>Readability</value><comment>Slider label</comment></data>
-  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>Darkens and tints the background toward the song's colors so the lyrics stay readable</value></data>
-  <data name="LyricShare.SafeZones" xml:space="preserve"><value>Social safe zones</value><comment>Checkbox label</comment></data>
-  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>Keeps the lyrics clear of the Instagram Reels and TikTok buttons and caption</value></data>
-  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>Choose a background image or clip</value><comment>File picker title</comment></data>
-  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>Couldn't open that file. Pick one saved on this computer.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
-  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>Images and videos</value><comment>File picker file type name</comment></data>
+  <data name="LyricShare.LyricsPage" xml:space="preserve"><value>صفحة الكلمات</value><comment>Share style option</comment></data>
+  <data name="LyricShare.LyricsPageTip" xml:space="preserve"><value>كلمات متحركة بملء الشاشة، مثل صفحة الكلمات</value></data>
+  <data name="ShareLyrics.PageNeedsSync" xml:space="preserve"><value>تحتاج «صفحة الكلمات» إلى كلمات متزامنة</value></data>
+  <data name="ShareLyrics.PageRangeSummary" xml:space="preserve"><value>الأسطر: {0} · {1} ث</value><comment>{0} line count; {1} clip length in seconds</comment></data>
+  <data name="ShareLyrics.PageMaxLength" xml:space="preserve"><value>مدة فيديو «صفحة الكلمات» حتى {0} ثانية</value><comment>{0} maximum length in seconds</comment></data>
+  <data name="LyricShare.PageBackgroundArtwork" xml:space="preserve"><value>لون الغلاف</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundAnimated" xml:space="preserve"><value>غلاف متحرك</value><comment>Background option</comment></data>
+  <data name="LyricShare.PageBackgroundCustom" xml:space="preserve"><value>خلفيتك</value><comment>Background option</comment></data>
+  <data name="LyricShare.ChooseBackground" xml:space="preserve"><value>اختيار صورة أو مقطع</value></data>
+  <data name="LyricShare.RemoveBackground" xml:space="preserve"><value>إزالة الخلفية</value></data>
+  <data name="LyricShare.Readability" xml:space="preserve"><value>سهولة القراءة</value><comment>Slider label</comment></data>
+  <data name="LyricShare.ReadabilityTip" xml:space="preserve"><value>يعتّم الخلفية ويلوّنها نحو ألوان الأغنية لتبقى الكلمات مقروءة</value></data>
+  <data name="LyricShare.SafeZones" xml:space="preserve"><value>المناطق الآمنة لمواقع التواصل</value><comment>Checkbox label</comment></data>
+  <data name="LyricShare.SafeZonesTip" xml:space="preserve"><value>يُبعد الكلمات عن أزرار Instagram Reels وTikTok والتعليق النصي</value></data>
+  <data name="Picker.ChooseShareBackground" xml:space="preserve"><value>اختيار صورة أو مقطع للخلفية</value><comment>File picker title</comment></data>
+  <data name="ShareLyrics.BackgroundNotLocal" xml:space="preserve"><value>تعذّر فتح هذا الملف. اختر ملفًا محفوظًا على هذا الكمبيوتر.</value><comment>Lyrics Page background picker: the picked file has no local path (e.g. a cloud entry)</comment></data>
+  <data name="Picker.ImageOrVideo" xml:space="preserve"><value>الصور ومقاطع الفيديو</value><comment>File picker file type name</comment></data>
   <data name="Mobile.SnoozeForMonth" xml:space="preserve"><value>تأجيل لمدة شهر</value></data>
   <data name="Mobile.Unsnooze" xml:space="preserve"><value>إلغاء التأجيل</value></data>
   <data name="Mobile.SnoozedNotice" xml:space="preserve"><value>تم التأجيل لمدة شهر</value></data>
@@ -9305,8 +9305,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.SleepTimer.OneHour" xml:space="preserve"><value>ساعة واحدة</value></data>
   <data name="Mobile.SleepTimer.EndOfSong" xml:space="preserve"><value>نهاية الأغنية الحالية</value></data>
   <data name="Mobile.SleepTimer.TurnOff" xml:space="preserve"><value>إيقاف المؤقت</value></data>
-  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>إيقاف مؤقت بعد {0}</value></data>
-  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>إيقاف مؤقت بعد هذه الأغنية</value></data>
+  <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>يتوقف مؤقتًا بعد {0}</value></data>
+  <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>يتوقف مؤقتًا بعد هذه الأغنية</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>إخفاء الأغنية</value></data>
   <data name="Mobile.HiddenNotice" xml:space="preserve"><value>تم الإخفاء. يمكنك إظهارها من الإعدادات › المكتبة › المخفية.</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>المخفية</value></data>
