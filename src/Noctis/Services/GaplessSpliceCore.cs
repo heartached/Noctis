@@ -717,6 +717,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     {
         lock (_gate)
         {
+            DropAbandonedPendingLocked();
             if (_active == null || _active.Abandoned || _pending.Count == 0)
                 return false;
             // A fade still in flight: its tail is stale now — drop it.
@@ -778,6 +779,20 @@ public sealed class GaplessSpliceProvider : ISampleProvider
             while (_pending.Count > 0)
                 _pending.Dequeue().Abandon();
         }
+    }
+
+    /// <summary>
+    /// Drops queued segments that were abandoned before they ever played: a staged next
+    /// track released by a pause, seek or queue edit (ReleasePreparedNext), which stays
+    /// queued while PrepareNext stages the track again behind it. Dequeued, it read as a
+    /// cut of live audio: the seam into the re-staged track got a declick ramp and a
+    /// fade-in (harness 11-19: +10 ms at the first seam after a pause, every format).
+    /// Callers hold _gate.
+    /// </summary>
+    private void DropAbandonedPendingLocked()
+    {
+        while (_pending.Count > 0 && _pending.Peek().Abandoned)
+            _pending.Dequeue();
     }
 
     public int Read(float[] buffer, int offset, int count)
@@ -845,6 +860,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                         _pendingCutSignal = true;
                     _active = null;
                     _activeAdapted = null;
+                    DropAbandonedPendingLocked();
                     if (_pending.Count > 0)
                     {
                         _active = _pending.Dequeue();
