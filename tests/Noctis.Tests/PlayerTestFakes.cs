@@ -101,6 +101,9 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void SetPlaybackFadeGain(double gain, int rampMs) => FadeGainCalls.Add((gain, rampMs));
     public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
     public bool PreparesRemoteStreams { get; set; }
+    /// <summary>Whether a prepared path counts as staged yet (the real player prepares off-thread).</summary>
+    public bool StagesImmediately { get; set; } = true;
+    public bool IsNextStaged(string filePath) => StagesImmediately && PreparedPaths.Contains(filePath);
     public int CancelledCount { get; private set; }
     public void CancelPreparedNext() => CancelledCount++;
     /// <summary>The last curve pushed by SetAdvancedEqualizer (null until the first call).</summary>

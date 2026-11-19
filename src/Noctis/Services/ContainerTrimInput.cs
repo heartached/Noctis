@@ -58,12 +58,12 @@ internal sealed class ContainerTrimInput : MediaInput
         return channels > 0;
     }
 
-    /// <summary>The decoded rate: the timescale the trims are counted in (Opus always 48 kHz,
-    /// a Vorbis header's rate, an MP4 audio track's media timescale).</summary>
+    /// <summary>The rate the decoder outputs for a trimmed media (true for every one; the rate is
+    /// 0 when the header leaves it open, see <see cref="ContainerGaplessInfo.DecodedRate"/>).</summary>
     public static bool TryGetRate(Media? media, out int rate)
     {
-        rate = media is TrimMedia t ? t.Input.Info.Timescale : 0;
-        return rate > 0;
+        rate = media is TrimMedia t ? t.Input.Info.DecodedRate : 0;
+        return media is TrimMedia;
     }
 
     public override bool Open(out ulong size)
