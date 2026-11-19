@@ -1023,7 +1023,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="CreateSmartPlaylist.AddRule" xml:space="preserve"><value>Añadir regla</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Limit" xml:space="preserve"><value>Limitar a</value><comment>Content in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.LimitCount" xml:space="preserve"><value>Número de pistas</value><comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment></data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>pistas, ordenadas por</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>pista, ordenada por|pistas, ordenadas por</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve"><value>Ordenar por</value><comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment></data>
   <data name="CreateSmartPlaylist.Subtitle" xml:space="preserve"><value>Se llena sola según las reglas que definas</value><comment>One-line purpose under the title in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Name" xml:space="preserve"><value>Nombre</value><comment>Field label in CreateSmartPlaylistDialog.axaml</comment></data>
@@ -4227,7 +4227,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Menu.OpenFileWith" xml:space="preserve"><value>Abrir archivo con</value><comment>Song context menu › Tools</comment></data>
   <data name="Menu.OpenIn" xml:space="preserve"><value>Abrir en {0}</value><comment>Song context menu › Tools</comment></data>
   <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>El álbum es explícito</value><comment>Metadata window</comment></data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} artistas seleccionados</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} artista seleccionado|{0} artistas seleccionados</value><comment>Metadata window</comment></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} canciones seleccionadas</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>No se pudieron escribir las etiquetas en «{0}». Puede que otra app tenga el archivo abierto o que sea de solo lectura: ciérralo allí o revisa el archivo e inténtalo de nuevo.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>No se pudieron escribir las etiquetas en {0} archivos (p. ej., «{1}»). Puede que otra app los tenga abiertos o que sean de solo lectura: ciérralos allí o revisa los archivos e inténtalo de nuevo.</value><comment>Metadata window</comment></data>

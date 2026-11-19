@@ -1023,7 +1023,7 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="CreateSmartPlaylist.AddRule" xml:space="preserve"><value>Ajouter une règle</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Limit" xml:space="preserve"><value>Limiter à</value><comment>Content in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.LimitCount" xml:space="preserve"><value>Nombre de titres</value><comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment></data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>titres, triés par</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>titre, trié par|titres, triés par</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve"><value>Trier par</value><comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment></data>
   <data name="CreateSmartPlaylist.Subtitle" xml:space="preserve"><value>Se remplit seule selon les règles que vous définissez</value><comment>One-line purpose under the title in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Name" xml:space="preserve"><value>Nom</value><comment>Field label in CreateSmartPlaylistDialog.axaml</comment></data>
@@ -4227,7 +4227,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Menu.OpenFileWith" xml:space="preserve"><value>Ouvrir le fichier avec</value><comment>Song context menu › Tools</comment></data>
   <data name="Menu.OpenIn" xml:space="preserve"><value>Ouvrir dans {0}</value><comment>Song context menu › Tools</comment></data>
   <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>L’album est explicite</value><comment>Metadata window</comment></data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} artistes sélectionnés</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>{0} artiste sélectionné|{0} artistes sélectionnés</value><comment>Metadata window</comment></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} titres sélectionnés</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>Impossible d'écrire les tags dans « {0} ». Une autre app a peut-être ouvert le fichier, ou il est en lecture seule — fermez-le ou vérifiez le fichier, puis réessayez.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>Impossible d'écrire les tags dans {0} fichiers (p. ex. « {1} »). Une autre app les a peut-être ouverts, ou ils sont en lecture seule — fermez-les ou vérifiez les fichiers, puis réessayez.</value><comment>Metadata window</comment></data>

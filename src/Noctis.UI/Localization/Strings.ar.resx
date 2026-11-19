@@ -6635,7 +6635,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>استخدام العدد المستورد</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>جارٍ البدء…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>جارٍ قراءة سجل الاستماع… التشغيلات: {0}</value><comment>Play count import progress; {0} = plays read so far</comment></data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>جارٍ قراءة سجل الاستماع… {0} من {1} تشغيل</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>جارٍ قراءة سجل الاستماع… التشغيلات: {0} من {1}</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>جارٍ مطابقة الأغاني في مكتبتك…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>تم. الأغاني المحدّثة: {0} · المطابقة: {1} · غير الموجودة في مكتبتك: {2}</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
   <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>أُلغي الاستيراد. لم يتغير شيء.</value><comment>Play count import status</comment></data>
@@ -8928,11 +8928,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.AddSongs" xml:space="preserve"><value>إضافة أغانٍ</value></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>ابحث في مكتبتك</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>استيراد قائمة تشغيل</value></data>
-  <data name="Mobile.Import.Result" xml:space="preserve"><value>تم استيراد {0} من {1} أغنية</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>الأغاني المستوردة: {0} من {1}</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمتي تشغيل|تم استيراد {0} قوائم تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل</value></data>
   <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>لم تُستورد أي قوائم تشغيل</value></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>لا توجد أي أغنية من «{0}» على هذا الهاتف</value></data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>تم العثور على {0} من {1} أغنية.</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>الأغاني التي عُثر عليها: {0} من {1}.</value></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>هذه الأسطر لم تطابق أي أغنية على هذا الهاتف:</value></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>«{0}» ليست قائمة تشغيل M3U</value></data>

@@ -181,6 +181,53 @@ public class CountStringPluralTests
         finally { Loc.Instance.SetCulture("en"); }
     }
 
+    /// <summary>Spanish and French: the two keys whose count can really be 1 read singular there
+    /// (fr also takes the singular at 0, CLDR). German and Turkish use one word for both.</summary>
+    [AvaloniaFact]
+    public void SpanishAndFrench_SingularAtOne()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("es");
+            Assert.Equal("1 artista seleccionado", Loc.Plural("Metadata.ArtistsSelected", 1));
+            Assert.Equal("2 artistas seleccionados", Loc.Plural("Metadata.ArtistsSelected", 2));
+            Assert.Equal("pista, ordenada por", Loc.Plural("CreateSmartPlaylist.TracksSortedBy", 1));
+            Assert.Equal("pistas, ordenadas por", Loc.Plural("CreateSmartPlaylist.TracksSortedBy", 2));
+
+            Loc.Instance.SetCulture("fr");
+            Assert.Equal("1 artiste sélectionné", Loc.Plural("Metadata.ArtistsSelected", 1));
+            Assert.Equal("2 artistes sélectionnés", Loc.Plural("Metadata.ArtistsSelected", 2));
+            Assert.Equal("titre, trié par", Loc.Plural("CreateSmartPlaylist.TracksSortedBy", 1));
+            Assert.Equal("titres, triés par", Loc.Plural("CreateSmartPlaylist.TracksSortedBy", 2));
+
+            Loc.Instance.SetCulture("de");
+            Assert.Equal("1 Künstler ausgewählt", Loc.Plural("Metadata.ArtistsSelected", 1));
+            Loc.Instance.SetCulture("tr");
+            Assert.Equal("1 sanatçı seçildi", Loc.Plural("Metadata.ArtistsSelected", 1));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>"{0} of {1} songs": the noun follows the total, which can be any number, so Arabic
+    /// (and Russian, already) read the counts as a label: right for 1, 3 or 11 alike.</summary>
+    [AvaloniaFact]
+    public void OfTotalCounts_ReadAsLabels_InArabicAndRussian()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("ar");
+            Assert.Equal("الأغاني المستوردة: 3 من 5", Loc.T("Mobile.Import.Result", 3, 5));
+            Assert.Equal("الأغاني التي عُثر عليها: 1 من 11.", Loc.T("Mobile.Import.SongsFound", 1, 11));
+            Assert.Equal("جارٍ قراءة سجل الاستماع… التشغيلات: 2 من 3", Loc.T("Settings.PlayCountImport.ReadingOf", "2", "3"));
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Импортировано песен: 3 из 21", Loc.T("Mobile.Import.Result", 3, 21));
+            Assert.Equal("Найдено песен: 1 из 2.", Loc.T("Mobile.Import.SongsFound", 1, 2));
+            Assert.Equal("Чтение истории прослушиваний… 2 из 3", Loc.T("Settings.PlayCountImport.ReadingOf", "2", "3"));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
     /// <summary>The smart playlist's limit sentence: "Limit to [1] track, sorted by", the words
     /// following the number box, and re-read on a language switch.</summary>
     [AvaloniaFact]
