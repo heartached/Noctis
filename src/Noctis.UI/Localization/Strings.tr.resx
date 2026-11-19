@@ -2584,7 +2584,7 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>İçe aktarılan sayıyı kullan</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>Başlatılıyor…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Dinleme geçmişi okunuyor… {0} çalma</value><comment>Play count import progress; {0} = plays read so far</comment></data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Dinleme geçmişi okunuyor… {0} / {1} çalma</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Dinleme geçmişi okunuyor… {1} / {0} çalma</value><comment>Play count import progress. Plural forms by {0} = total plays; {1} = plays read</comment></data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>Kitaplığındaki şarkılarla eşleştiriliyor…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>Bitti. {0} şarkı güncellendi · {1} eşleşti · {2} kitaplığında yok</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
   <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>İçe aktarma iptal edildi. Hiçbir şey değiştirilmedi.</value><comment>Play count import status</comment></data>
@@ -3158,6 +3158,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="PcSync.CompareCode" xml:space="preserve"><value>Diğer bilgisayarın bu güvenlik kodunu gösterdiğini kontrol et:</value><comment>Shown above the other computer's security code before signing in</comment></data>
   <data name="PcSync.SignIn" xml:space="preserve"><value>Oturum aç</value><comment>Button: sign in to the other computer</comment></data>
   <data name="PcSync.SyncedWith" xml:space="preserve"><value>{0} ile eşitlendi</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.ConnectedTo" xml:space="preserve"><value>{0} ile bağlı</value><comment>Signed in, before the first sync; {0} = the other computer's name</comment></data>
+  <data name="PcSync.NoSongs" xml:space="preserve"><value>Bu kitaplıkta henüz şarkı yok. Bir müzik klasörü ekle, sonra eşitle.</value><comment>After Sync now (or the automatic sync) when this computer has no songs: nothing can be paired, so nothing synced</comment></data>
   <data name="PcSync.Syncing" xml:space="preserve"><value>Eşitleniyor…</value><comment>While a sync runs</comment></data>
   <data name="PcSync.SyncNow" xml:space="preserve"><value>Şimdi eşitle</value><comment>Button</comment></data>
   <data name="PcSync.SignOut" xml:space="preserve"><value>Oturumu kapat</value><comment>Button: stop syncing with the other computer</comment></data>
@@ -4003,11 +4005,11 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.AddSongs" xml:space="preserve"><value>Şarkı Ekle</value></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Kitaplığında ara</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Çalma Listesi İçe Aktar</value></data>
-  <data name="Mobile.Import.Result" xml:space="preserve"><value>{1} şarkıdan {0} tanesi içe aktarıldı</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>{0} şarkıdan {1} tanesi içe aktarıldı|{0} şarkıdan {1} tanesi içe aktarıldı</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} çalma listesi içe aktarıldı|{0} çalma listesi içe aktarıldı</value></data>
   <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>Hiç çalma listesi içe aktarılmadı</value></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>“{0}” içindeki şarkıların hiçbiri bu telefonda yok</value></data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{1} şarkıdan {0} tanesi bulundu.</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{0} şarkıdan {1} tanesi bulundu.|{0} şarkıdan {1} tanesi bulundu.</value></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>Bu satırlar telefondaki hiçbir şarkıyla eşleşmedi:</value></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}” bir M3U çalma listesi değil</value></data>

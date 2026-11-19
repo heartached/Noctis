@@ -6635,7 +6635,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>استخدام العدد المستورد</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>جارٍ البدء…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>جارٍ قراءة سجل الاستماع… التشغيلات: {0}</value><comment>Play count import progress; {0} = plays read so far</comment></data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>جارٍ قراءة سجل الاستماع… التشغيلات: {0} من {1}</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>جارٍ قراءة سجل الاستماع… التشغيلات: {1} من {0}</value><comment>Play count import progress. Plural forms by {0} = total plays; {1} = plays read</comment></data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>جارٍ مطابقة الأغاني في مكتبتك…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>تم. الأغاني المحدّثة: {0} · المطابقة: {1} · غير الموجودة في مكتبتك: {2}</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
   <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>أُلغي الاستيراد. لم يتغير شيء.</value><comment>Play count import status</comment></data>
@@ -7870,6 +7870,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="PcSync.CompareCode" xml:space="preserve"><value>تحقّق من أن الكمبيوتر الآخر يعرض رمز الأمان هذا:</value><comment>Shown above the other computer's security code before signing in</comment></data>
   <data name="PcSync.SignIn" xml:space="preserve"><value>تسجيل الدخول</value><comment>Button: sign in to the other computer</comment></data>
   <data name="PcSync.SyncedWith" xml:space="preserve"><value>تمت المزامنة مع {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.ConnectedTo" xml:space="preserve"><value>متصل بـ {0}</value><comment>Signed in, before the first sync; {0} = the other computer's name</comment></data>
+  <data name="PcSync.NoSongs" xml:space="preserve"><value>لا توجد أغانٍ في هذه المكتبة بعد. أضف مجلد موسيقى، ثم زامِن.</value><comment>After Sync now (or the automatic sync) when this computer has no songs: nothing can be paired, so nothing synced</comment></data>
   <data name="PcSync.Syncing" xml:space="preserve"><value>جارٍ المزامنة…</value><comment>While a sync runs</comment></data>
   <data name="PcSync.SyncNow" xml:space="preserve"><value>مزامنة الآن</value><comment>Button</comment></data>
   <data name="PcSync.SignOut" xml:space="preserve"><value>تسجيل الخروج</value><comment>Button: stop syncing with the other computer</comment></data>
@@ -8936,11 +8938,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.AddSongs" xml:space="preserve"><value>إضافة أغانٍ</value></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>ابحث في مكتبتك</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>استيراد قائمة تشغيل</value></data>
-  <data name="Mobile.Import.Result" xml:space="preserve"><value>الأغاني المستوردة: {0} من {1}</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>الأغاني المستوردة: {1} من {0}|الأغاني المستوردة: {1} من {0}|الأغاني المستوردة: {1} من {0}|الأغاني المستوردة: {1} من {0}|الأغاني المستوردة: {1} من {0}|الأغاني المستوردة: {1} من {0}</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمتي تشغيل|تم استيراد {0} قوائم تشغيل|تم استيراد {0} قائمة تشغيل|تم استيراد {0} قائمة تشغيل</value></data>
   <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>لم تُستورد أي قوائم تشغيل</value></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>لا توجد أي أغنية من «{0}» على هذا الهاتف</value></data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>الأغاني التي عُثر عليها: {0} من {1}.</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>الأغاني التي عُثر عليها: {1} من {0}.|الأغاني التي عُثر عليها: {1} من {0}.|الأغاني التي عُثر عليها: {1} من {0}.|الأغاني التي عُثر عليها: {1} من {0}.|الأغاني التي عُثر عليها: {1} من {0}.|الأغاني التي عُثر عليها: {1} من {0}.</value></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>هذه الأسطر لم تطابق أي أغنية على هذا الهاتف:</value></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>«{0}» ليست قائمة تشغيل M3U</value></data>

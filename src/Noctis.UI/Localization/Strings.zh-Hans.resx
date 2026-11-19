@@ -6635,7 +6635,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>使用导入的次数</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>正在开始…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>正在读取收听历史… {0} 次播放</value><comment>Play count import progress; {0} = plays read so far</comment></data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>正在读取收听历史… {0}/{1} 次播放</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>正在读取收听历史… {1}/{0} 次播放</value><comment>Play count import progress. Plural forms by {0} = total plays; {1} = plays read</comment></data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>正在匹配资料库中的歌曲…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>完成。已更新 {0} 首歌曲 · 已匹配 {1} 条 · {2} 条不在资料库中</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
   <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>导入已取消。未做任何更改。</value><comment>Play count import status</comment></data>
@@ -7870,6 +7870,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="PcSync.CompareCode" xml:space="preserve"><value>请确认另一台电脑显示的安全码与此相同：</value><comment>Shown above the other computer's security code before signing in</comment></data>
   <data name="PcSync.SignIn" xml:space="preserve"><value>登录</value><comment>Button: sign in to the other computer</comment></data>
   <data name="PcSync.SyncedWith" xml:space="preserve"><value>已与 {0} 同步</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.ConnectedTo" xml:space="preserve"><value>已连接到 {0}</value><comment>Signed in, before the first sync; {0} = the other computer's name</comment></data>
+  <data name="PcSync.NoSongs" xml:space="preserve"><value>此资料库中还没有歌曲。请添加音乐文件夹，然后同步。</value><comment>After Sync now (or the automatic sync) when this computer has no songs: nothing can be paired, so nothing synced</comment></data>
   <data name="PcSync.Syncing" xml:space="preserve"><value>正在同步…</value><comment>While a sync runs</comment></data>
   <data name="PcSync.SyncNow" xml:space="preserve"><value>立即同步</value><comment>Button</comment></data>
   <data name="PcSync.SignOut" xml:space="preserve"><value>退出登录</value><comment>Button: stop syncing with the other computer</comment></data>
@@ -8936,11 +8938,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.AddSongs" xml:space="preserve"><value>添加歌曲</value></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>搜索你的资料库</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>导入播放列表</value></data>
-  <data name="Mobile.Import.Result" xml:space="preserve"><value>已导入 {0}/{1} 首歌曲</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>已导入 {1}/{0} 首歌曲</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>已导入 {0} 个播放列表</value></data>
   <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>未导入任何播放列表</value></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>“{0}”中的歌曲都不在此手机上</value></data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>找到 {0}/{1} 首歌曲。</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>找到 {1}/{0} 首歌曲。</value></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>以下各行未匹配到此手机上的歌曲：</value></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}：{1}</value></data>
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>“{0}”不是 M3U 播放列表</value></data>

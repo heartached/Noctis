@@ -28,8 +28,9 @@ internal sealed record ComputerLinkAccount
     public override string ToString() => $"ComputerLinkAccount {{ ServerUrl = {ServerUrl}, UserName = {UserName} }}";
 }
 
-/// <summary>What one sync did: songs paired with the other computer, items taken from it, items sent to it.</summary>
-internal sealed record ComputerLinkResult(int Paired, int Received, int Sent);
+/// <summary>What one sync did: songs paired with the other computer, items taken from it, items sent to it.
+/// <paramref name="NoLocalSongs"/>: skipped, this computer has no songs (yet) to pair.</summary>
+internal sealed record ComputerLinkResult(int Paired, int Received, int Sent, bool NoLocalSongs = false);
 
 /// <summary>
 /// Sync with another computer: this computer signs in to the other computer's Noctis Server the
@@ -186,6 +187,7 @@ internal sealed class ComputerLinkService
             _loaded = true;
         }
         LastError = null;
+        LastSyncFoundNoSongs = false;
         RaiseStateChanged();
     }
 
@@ -219,6 +221,7 @@ internal sealed class ComputerLinkService
             }
             DebugLog.Write("ComputerLink", $"synced: {result.Paired} songs paired, {result.Received} received, {result.Sent} sent");
             LastError = null;
+            LastSyncFoundNoSongs = result.NoLocalSongs;
             return result;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -226,6 +229,7 @@ internal sealed class ComputerLinkService
             // Automatic or Sync Now: Settings shows the last one's outcome, so a sync that works
             // again takes an earlier failure off the card.
             LastError = ex;
+            LastSyncFoundNoSongs = false;
             throw;
         }
         finally
@@ -245,7 +249,7 @@ internal sealed class ComputerLinkService
         if (!tracks.Any(t => t.SourceType == SourceType.Local))
         {
             DebugLog.Write("ComputerLink", "no songs in this library (yet): sync skipped");
-            return new ComputerLinkResult(0, 0, 0);
+            return new ComputerLinkResult(0, 0, 0, NoLocalSongs: true);
         }
         var songs = await client.GetAllSongsAsync(null, ct).ConfigureAwait(false);
         var sticky = new Dictionary<Guid, Guid>();
@@ -480,6 +484,10 @@ internal sealed class ComputerLinkService
 
     /// <summary>Why the last sync (automatic or Sync Now) failed; null after one that worked or a sign-out.</summary>
     public Exception? LastError { get; private set; }
+
+    /// <summary>The last sync was skipped because this computer has no songs (yet): nothing to pair,
+    /// so nothing was synced. Settings says so instead of a silent "Not synced yet".</summary>
+    public bool LastSyncFoundNoSongs { get; private set; }
 
     // ── Storage ──────────────────────────────────────────────────────────
 

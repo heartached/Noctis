@@ -128,7 +128,7 @@ public sealed partial class ShellViewModel
         if (outcomes.Count == 1)
             title = found == 0
                 ? Loc.T("Mobile.Import.NoneFound", outcomes[0].Name)
-                : Loc.T("Mobile.Import.Result", found, total);
+                : Loc.Plural("Mobile.Import.Result", total, found); // the noun follows the total
         else
             title = created.Count > 0
                 ? Loc.Plural("Mobile.Import.ResultMany", created.Count)
@@ -140,7 +140,7 @@ public sealed partial class ShellViewModel
                 details.Add(outcomes.Count > 1 ? Loc.T("Mobile.Import.UnmatchedIn", o.Name, line) : line);
 
         var messages = new List<string>();
-        if (outcomes.Count > 1 && total > 0) messages.Add(Loc.T("Mobile.Import.SongsFound", found, total));
+        if (outcomes.Count > 1 && total > 0) messages.Add(Loc.Plural("Mobile.Import.SongsFound", total, found));
         if (outcomes.Any(o => o.Unmatched.Count > 0)) messages.Add(Loc.T("Mobile.Import.NotFoundBelow"));
 
         var actions = created.Count == 1

@@ -3103,6 +3103,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="PcSync.CompareCode" xml:space="preserve"><value>Comprueba que el otro ordenador muestra este código de seguridad:</value><comment>Shown above the other computer's security code before signing in</comment></data>
   <data name="PcSync.SignIn" xml:space="preserve"><value>Iniciar sesión</value><comment>Button: sign in to the other computer</comment></data>
   <data name="PcSync.SyncedWith" xml:space="preserve"><value>Sincronizado con {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.ConnectedTo" xml:space="preserve"><value>Conectado a {0}</value><comment>Signed in, before the first sync; {0} = the other computer's name</comment></data>
+  <data name="PcSync.NoSongs" xml:space="preserve"><value>Aún no hay canciones en esta biblioteca. Añade una carpeta de música y sincroniza de nuevo.</value><comment>After Sync now (or the automatic sync) when this computer has no songs: nothing can be paired, so nothing synced</comment></data>
   <data name="PcSync.Syncing" xml:space="preserve"><value>Sincronizando…</value><comment>While a sync runs</comment></data>
   <data name="PcSync.SyncNow" xml:space="preserve"><value>Sincronizar ahora</value><comment>Button</comment></data>
   <data name="PcSync.SignOut" xml:space="preserve"><value>Cerrar sesión</value><comment>Button: stop syncing with the other computer</comment></data>
@@ -3313,8 +3315,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.PlayCountImport.Mode.KeepHigher" xml:space="preserve"><value>Conservar el recuento más alto</value><comment>Play count import mode (default): the higher of Noctis's and the imported count</comment></data>
   <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>Usar el recuento importado</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>Iniciando…</value><comment>Play count import status</comment></data>
-  <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Leyendo el historial de escucha… {0} reproducciones</value><comment>Play count import progress; {0} = plays read so far</comment></data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Leyendo el historial de escucha… {0} de {1} reproducciones</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Leyendo el historial de escucha… {0} reproducción|Leyendo el historial de escucha… {0} reproducciones</value><comment>Play count import progress. Plural forms by {0} = plays read so far</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Leyendo el historial de escucha… {1} de {0} reproducción|Leyendo el historial de escucha… {1} de {0} reproducciones</value><comment>Play count import progress. Plural forms by {0} = total plays; {1} = plays read</comment></data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>Buscando las canciones en tu biblioteca…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>Listo. {0} canciones actualizadas · {1} encontradas · {2} no están en tu biblioteca</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
   <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>Importación cancelada. No se cambió nada.</value><comment>Play count import status</comment></data>
@@ -3949,11 +3951,11 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.AddSongs" xml:space="preserve"><value>Añadir canciones</value><comment>Playlist page: the + button, its menu row and the add sheet's title</comment></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Busca en tu biblioteca</value><comment>Add Songs sheet: search field placeholder</comment></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Importar playlist</value><comment>Playlists page menu: import .m3u/.m3u8 files</comment></data>
-  <data name="Mobile.Import.Result" xml:space="preserve"><value>Importadas {0} de {1} canciones</value><comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>Importada {1} de {0} canción|Importadas {1} de {0} canciones</value><comment>Import result title. Plural forms by {0} = songs in the file (see Mobile.Count.Songs); {1} = songs found on the phone</comment></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>{0} playlist importada|{0} playlists importadas</value><comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>No se importó ninguna playlist</value><comment>Import result title when no file made a playlist</comment></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>Ninguna canción de «{0}» está en este teléfono</value><comment>Import result title. {0} = playlist file name</comment></data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{0} de {1} canciones encontradas.</value><comment>Import result line for several files. {0} found, {1} total</comment></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>{1} de {0} canción encontrada.|{1} de {0} canciones encontradas.</value><comment>Import result line for several files. Plural forms by {0} = songs in the files; {1} = songs found</comment></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>Estas líneas no coinciden con ninguna canción del teléfono:</value><comment>Import result: above the list of playlist lines that matched nothing</comment></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value><comment>One unmatched line when several files were imported. {0} = playlist name, {1} = line</comment></data>
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>«{0}» no es una playlist M3U</value><comment>Import result: a picked file that is not .m3u/.m3u8. {0} = file name</comment></data>

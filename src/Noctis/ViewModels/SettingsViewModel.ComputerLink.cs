@@ -76,7 +76,7 @@ public partial class SettingsViewModel
         RefreshComputerLinkState();
     }
 
-    private void RefreshComputerLinkState()
+    internal void RefreshComputerLinkState()
     {
         var link = ComputerLink;
         var account = link?.Account;
@@ -88,9 +88,12 @@ public partial class SettingsViewModel
         }
         var name = string.IsNullOrWhiteSpace(account.ServerName) ? account.ServerUrl : account.ServerName;
         var when = link.IsSyncing ? Localization.Loc.T("PcSync.Syncing")
+            // The last sync had nothing to pair (no songs here yet): say why instead of "Not synced yet".
+            : link.LastSyncFoundNoSongs ? Localization.Loc.T("PcSync.NoSongs")
             : account.LastSyncUtc is { } at ? Localization.Loc.T("Phone.LastSynced", Ago(at, DateTime.UtcNow))
             : Localization.Loc.T("Phone.NotSyncedYet");
-        ComputerLinkStatus = Localization.Loc.T("PcSync.SyncedWith", name) + " · " + when;
+        // "Synced with" only once a sync has worked; before that, "Connected to".
+        ComputerLinkStatus = Localization.Loc.T(account.LastSyncUtc is null ? "PcSync.ConnectedTo" : "PcSync.SyncedWith", name) + " · " + when;
         // The last sync's outcome: a failure stays on the card until a sync works again.
         if (!link.IsSyncing) ComputerLinkError = link.LastError is { } error ? ComputerLinkErrorText(error) : string.Empty;
     }

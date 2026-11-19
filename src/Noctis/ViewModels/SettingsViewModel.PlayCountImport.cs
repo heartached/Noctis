@@ -233,8 +233,8 @@ public partial class SettingsViewModel
         var mode = PlayCountImportMode;
         // Created here, on the UI thread: reports post back to it.
         var progress = new Progress<PlayCountFetchProgress>(p => SetPlayCountImportStatus(source, p.Total > 0
-            ? Loc.T("Settings.PlayCountImport.ReadingOf", N(Math.Min(p.Listens, p.Total)), N(p.Total))
-            : Loc.T("Settings.PlayCountImport.Reading", N(p.Listens))));
+            ? Loc.Plural("Settings.PlayCountImport.ReadingOf", p.Total, N(Math.Min(p.Listens, p.Total)))
+            : Loc.Plural("Settings.PlayCountImport.Reading", p.Listens)));
         try
         {
             var sync = new PlayCountSync(new PlayCountHistoryFetcher(http));
