@@ -186,6 +186,52 @@ public class ShortcutsSettingsViewModelTests
         }
     }
 
+    /// <summary>Mini Player off (Built-in Features): its row leaves the real Shortcuts tab and
+    /// Settings search, Reset all keeps its binding, and switching it back on returns both.</summary>
+    [AvaloniaFact]
+    public async Task ShortcutsTab_MiniPlayerOff_HidesItsRow_AndSearchSkipsIt_ThenBringsItBack()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        Window? window = null;
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.SelectedSettingsTab = SettingsViewModel.TabShortcuts;
+            vm.ShortcutService.Set(ShortcutAction.ToggleMiniPlayer, new KeyGesture(Key.P, KeyModifiers.Control));
+
+            var view = new SettingsView { DataContext = vm };
+            window = new Window { Width = 900, Height = 1400, Content = view };
+            window.Show();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+
+            var panel = view.FindControl<StackPanel>("ShortcutsTabPanel")!;
+            var index = Noctis.Helpers.SettingsSearchIndex.Build(new[] { ("Shortcuts", (Control)panel) });
+            var label = Noctis.Localization.Loc.T("Shortcuts.Action.ToggleMiniPlayer");
+            int VisibleChips() => view.GetVisualDescendants().OfType<ShortcutKeyChip>().Count(c => c.IsEffectivelyVisible);
+
+            Assert.Equal(ShortcutDefaults.All.Count, VisibleChips());
+            Assert.NotEmpty(index.Query(label));
+
+            vm.MiniPlayerEnabled = false;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(ShortcutDefaults.All.Count - 1, VisibleChips());
+            Assert.Empty(index.Query(label));
+            vm.Shortcuts.ResetAllCommand.Execute(null);
+
+            vm.MiniPlayerEnabled = true;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal(ShortcutDefaults.All.Count, VisibleChips());
+            Assert.NotEmpty(index.Query(label));
+            Assert.Equal(new KeyGesture(Key.P, KeyModifiers.Control), vm.ShortcutService.Get(ShortcutAction.ToggleMiniPlayer));
+        }
+        finally
+        {
+            window?.Close();
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
     private sealed class NoOpPlayHistory : IPlayHistoryService
     {
         public System.Collections.Generic.IReadOnlyList<PlayHistoryEvent> Events => Array.Empty<PlayHistoryEvent>();

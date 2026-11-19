@@ -279,6 +279,128 @@ public class ShortcutServiceTests
         }
     }
 
+    // ── Disabled actions (a Built-in Feature switched off, e.g. the Mini Player) ──
+
+    private static readonly KeyGesture MiniDefault = new(Key.M, KeyModifiers.Control | KeyModifiers.Shift);
+    private static readonly KeyGesture CtrlP = new(Key.P, KeyModifiers.Control);
+
+    private static ShortcutService WithMiniOff()
+    {
+        var s = Win();
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+        return s;
+    }
+
+    [Fact]
+    public void DisabledAction_IsNotMatched_SoTheKeyFallsThrough()
+    {
+        var s = WithMiniOff();
+        Assert.True(s.IsDisabled(ShortcutAction.ToggleMiniPlayer));
+        Assert.Null(s.TryMatch(Press(Key.M, KeyModifiers.Control | KeyModifiers.Shift)));
+        Assert.Null(s.Get(ShortcutAction.ToggleMiniPlayer));
+    }
+
+    [Fact]
+    public void DisabledAction_DoesNotBlockItsChord_ForAnotherAction()
+    {
+        var s = WithMiniOff();
+        Assert.Null(s.FindConflict(MiniDefault, ShortcutAction.ToggleQueue));
+        s.Set(ShortcutAction.ToggleQueue, MiniDefault); // no ShortcutConflictException
+        Assert.Equal(ShortcutAction.ToggleQueue, s.TryMatch(Press(Key.M, KeyModifiers.Control | KeyModifiers.Shift)));
+    }
+
+    [Fact]
+    public void DisabledAction_KeepsItsBinding_AcrossResetAll_AndGetsItBack()
+    {
+        var s = Win();
+        s.Set(ShortcutAction.ToggleMiniPlayer, CtrlP);
+        s.Set(ShortcutAction.NextTrack, new KeyGesture(Key.F8));
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+
+        s.ResetAll();
+        Assert.True(s.IsDefault(ShortcutAction.NextTrack));
+
+        // Stored (and saved) while hidden.
+        var settings = new AppSettings();
+        s.SaveTo(settings);
+        Assert.Equal("Ctrl+P", settings.Shortcuts!["ToggleMiniPlayer"]);
+
+        s.SetDisabled(Array.Empty<ShortcutAction>());
+        Assert.False(s.IsDisabled(ShortcutAction.ToggleMiniPlayer));
+        Assert.Equal(CtrlP, s.Get(ShortcutAction.ToggleMiniPlayer));
+        Assert.Equal(ShortcutAction.ToggleMiniPlayer, s.TryMatch(Press(Key.P, KeyModifiers.Control)));
+    }
+
+    [Fact]
+    public void ComingBack_AfterItsChordWasGivenAway_TheOtherActionKeepsIt_AndItFallsBackToItsFreeDefault()
+    {
+        var s = Win();
+        s.Set(ShortcutAction.ToggleMiniPlayer, CtrlP);
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+        s.Set(ShortcutAction.ToggleQueue, CtrlP);
+
+        s.SetDisabled(Array.Empty<ShortcutAction>());
+        Assert.Equal(CtrlP, s.Get(ShortcutAction.ToggleQueue));
+        Assert.Equal(MiniDefault, s.Get(ShortcutAction.ToggleMiniPlayer));
+        Assert.Equal(ShortcutAction.ToggleQueue, s.TryMatch(Press(Key.P, KeyModifiers.Control)));
+        Assert.Equal(ShortcutAction.ToggleMiniPlayer, s.TryMatch(Press(Key.M, KeyModifiers.Control | KeyModifiers.Shift)));
+    }
+
+    [Fact]
+    public void ComingBack_WhenItsDefaultWasGivenAway_ItComesBackUnbound()
+    {
+        var s = WithMiniOff();
+        s.Set(ShortcutAction.ToggleQueue, MiniDefault);
+
+        s.SetDisabled(Array.Empty<ShortcutAction>());
+        Assert.Equal(MiniDefault, s.Get(ShortcutAction.ToggleQueue));
+        Assert.Null(s.Get(ShortcutAction.ToggleMiniPlayer));
+        Assert.Equal(ShortcutAction.ToggleQueue, s.TryMatch(Press(Key.M, KeyModifiers.Control | KeyModifiers.Shift)));
+    }
+
+    [Fact]
+    public void ComingBack_WhenBothItsChordAndDefaultWereGivenAway_ItComesBackUnbound_NeverTwoOnOneChord()
+    {
+        var s = Win();
+        s.Set(ShortcutAction.ToggleMiniPlayer, CtrlP);
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+        s.Set(ShortcutAction.ToggleQueue, CtrlP);
+        s.Set(ShortcutAction.ToggleLyrics, MiniDefault);
+
+        s.SetDisabled(Array.Empty<ShortcutAction>());
+        Assert.Null(s.Get(ShortcutAction.ToggleMiniPlayer));
+        var bound = new List<KeyGesture>();
+        foreach (var d in ShortcutDefaults.All)
+            if (s.Get(d.Action) is { } g) bound.Add(g);
+        Assert.Equal(bound.Count, new HashSet<KeyGesture>(bound).Count);
+    }
+
+    [Fact]
+    public void HiddenOverride_DoesNotShadowAnotherActionsDefault()
+    {
+        // Mini player bound to Ctrl+U (the queue's default) earlier... impossible while both
+        // are live, so build it from a stored file: the hidden binding must not take Ctrl+U
+        // away from the queue while the mini player is off.
+        var s = Win();
+        s.Load(new AppSettings { Shortcuts = new Dictionary<string, string> { ["ToggleMiniPlayer"] = "Ctrl+U" } });
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+        Assert.Equal(new KeyGesture(Key.U, KeyModifiers.Control), s.Get(ShortcutAction.ToggleQueue));
+        Assert.Equal(ShortcutAction.ToggleQueue, s.TryMatch(Press(Key.U, KeyModifiers.Control)));
+    }
+
+    [Fact]
+    public void SetDisabled_RaisesChanged_OnlyWhenTheSetChanges()
+    {
+        var s = Win();
+        var raised = 0;
+        s.Changed += (_, _) => raised++;
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+        s.SetDisabled(new[] { ShortcutAction.ToggleMiniPlayer });
+        Assert.Equal(1, raised);
+        s.SetDisabled(Array.Empty<ShortcutAction>());
+        Assert.Equal(2, raised);
+    }
+
     [Fact]
     public void Issue131_Keys_MatchTheirActions()
     {

@@ -28,6 +28,8 @@ public sealed class ShortcutService
     private readonly bool _isMac;
     // Present key = user override. A null value means "deliberately unbound".
     private readonly Dictionary<ShortcutAction, KeyGesture?> _overrides = new();
+    // Actions whose feature is switched off: hidden, unmatched, chord free; override kept.
+    private readonly HashSet<ShortcutAction> _disabled = new();
 
     public event EventHandler? Changed;
 
@@ -46,10 +48,11 @@ public sealed class ShortcutService
     /// </summary>
     public KeyGesture? Get(ShortcutAction action)
     {
+        if (_disabled.Contains(action)) return null;
         if (_overrides.TryGetValue(action, out var g)) return g;
         var fallback = ShortcutDefaults.For(action, _isMac);
         foreach (var (other, gesture) in _overrides)
-            if (other != action && fallback.Equals(gesture)) return null;
+            if (other != action && !_disabled.Contains(other) && fallback.Equals(gesture)) return null;
         return fallback;
     }
 
@@ -100,11 +103,43 @@ public sealed class ShortcutService
             Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>True while the action's feature is switched off (see <see cref="SetDisabled"/>).</summary>
+    public bool IsDisabled(ShortcutAction action) => _disabled.Contains(action);
+
+    /// <summary>
+    /// The actions whose feature is switched off (Settings › Plugins › Built-in Features),
+    /// supplied by the settings layer. A disabled action has no effective gesture: it is
+    /// never matched (its key falls through) and its chord is free for another action. The
+    /// stored binding is kept and returns when the action comes back, unless another action
+    /// took that chord meanwhile: then the other action keeps it and the returning one falls
+    /// back to its default, or to unbound when that is taken too.
+    /// </summary>
+    public void SetDisabled(IEnumerable<ShortcutAction> actions)
+    {
+        var next = new HashSet<ShortcutAction>(actions);
+        if (next.SetEquals(_disabled)) return;
+
+        foreach (var action in _disabled)
+        {
+            if (next.Contains(action)) continue;
+            // Checked while it is still disabled, so Get on the others ignores it.
+            if (_overrides.TryGetValue(action, out var stored) && stored is not null
+                && FindConflict(stored, action) is not null)
+                _overrides.Remove(action); // back to the default; Get shadows it if that is taken
+        }
+
+        _disabled.Clear();
+        _disabled.UnionWith(next);
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Resets what Settings › Shortcuts shows: a disabled action's binding is kept.</summary>
     public void ResetAll()
     {
-        if (_overrides.Count == 0) return;
-        _overrides.Clear();
-        Changed?.Invoke(this, EventArgs.Empty);
+        var removed = false;
+        foreach (var action in new List<ShortcutAction>(_overrides.Keys))
+            if (!_disabled.Contains(action)) removed |= _overrides.Remove(action);
+        if (removed) Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>The action whose gesture exactly matches this key event, if any.</summary>
