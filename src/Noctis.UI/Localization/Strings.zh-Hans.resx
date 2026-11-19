@@ -637,7 +637,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Appearance toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentFollowsArtworkHint" xml:space="preserve">
-    <value>根据正在播放的封面改变强调色。没有播放时恢复你选择的强调色。</value>
+    <value>根据正在播放的封面改变强调色。</value>
     <comment>Appearance toggle hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AccentTrackLinks" xml:space="preserve">
@@ -645,7 +645,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Appearance toggle in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentTrackLinksHint" xml:space="preserve">
-    <value>播放列表、“歌曲”和播放器中的艺人、专辑和流派名称使用强调色。关闭后使用普通文字颜色。</value>
+    <value>艺人、专辑和流派名称使用强调色。</value>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #125)</comment>
   </data>
   <data name="Settings.TintWindowWithAccent" xml:space="preserve">
@@ -956,7 +956,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.MediaControlsTaskbarDesc" xml:space="preserve">
-    <value>将鼠标悬停在任务栏图标上时，显示上一首、播放/暂停、下一首和收藏按钮。</value>
+    <value>将鼠标悬停在任务栏图标上时显示播放按钮。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AutomaticAlbumCoverSize" xml:space="preserve">
@@ -1209,7 +1209,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve">
-    <value>已唱的词会轻轻浮起，长音会发光（类似 Apple Music）。关闭后逐字歌词保持静止。</value>
+    <value>已唱的词会浮起，长音会发光。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>歌词渲染器</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1221,7 +1221,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>歌曲没有歌词或为纯音乐时，歌词页会把封面、歌曲信息和控制按钮移到中间。</value>
+    <value>歌曲没有歌词时，将封面和控制按钮移到中间。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>背景延伸到侧边栏后方</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1431,7 +1431,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Preamp" xml:space="preserve">
-    <value>前置放大</value>
+    <value>前置增益</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.EqPreset" xml:space="preserve"><value>均衡器预设</value><comment>Accessible name of the equalizer preset picker in SettingsView.axaml</comment></data>
@@ -1465,7 +1465,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   </data>
   <data name="Settings.EqualizerOnOffTip" xml:space="preserve"><value>开启或关闭均衡器。无论哪种，你的曲线都会保留。</value><comment>Equalizer card master switch tooltip (GitHub #94)</comment></data>
   <data name="Settings.SaveEqPreset" xml:space="preserve"><value>保存</value><comment>Equalizer card: opens the Save preset flyout (GitHub #95)</comment></data>
-  <data name="Settings.SaveEqPresetTip" xml:space="preserve"><value>将当前曲线和前级增益保存为预设</value><comment>Equalizer card Save button tooltip</comment></data>
+  <data name="Settings.SaveEqPresetTip" xml:space="preserve"><value>将当前曲线和前置增益保存为预设</value><comment>Equalizer card Save button tooltip</comment></data>
   <data name="Settings.SaveEqPresetConfirm" xml:space="preserve"><value>保存预设</value><comment>Save button inside the Save preset flyout</comment></data>
   <data name="Settings.EqPresetName" xml:space="preserve"><value>预设名称</value><comment>Save preset flyout label</comment></data>
   <data name="Settings.EqPresetNameWatermark" xml:space="preserve"><value>例如 耳机校正</value><comment>Save preset flyout text box watermark</comment></data>
@@ -1542,7 +1542,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.ControlPlaybackFromPhone" xml:space="preserve">
-    <value>用手机浏览器控制正在播放的内容，无需安装应用。请只在可信的 Wi-Fi 上使用。</value>
+    <value>用手机浏览器控制 Noctis。请只在可信的 Wi-Fi 上使用。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TapEnlargeTip" xml:space="preserve">
@@ -2051,7 +2051,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LISTENING" xml:space="preserve">
-    <value>聆听</value>
+    <value>收听</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TotalPlays" xml:space="preserve">
@@ -2059,7 +2059,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.TimeListened" xml:space="preserve">
-    <value>聆听时长</value>
+    <value>收听时长</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AvgTrackLength" xml:space="preserve">
@@ -2536,7 +2536,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NotInLibrary" xml:space="preserve">
-    <value>不在您的资料库</value>
+    <value>不在你的资料库中</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.FansCount" xml:space="preserve">
@@ -2544,11 +2544,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Hero line under the artist name; {0} = Deezer fan count</comment>
   </data>
   <data name="ArtistDetail.FindingSimilar" xml:space="preserve">
-    <value>寻找类似的艺人…</value>
+    <value>正在查找相似艺人…</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.NoSimilar" xml:space="preserve">
-    <value>未找到类似的艺人。</value>
+    <value>未找到相似艺人。</value>
     <comment>Text in ArtistDetailView.axaml</comment>
   </data>
   <data name="ArtistDetail.LookingUp" xml:space="preserve">
@@ -3003,7 +3003,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in FavoritesView.axaml</comment>
   </data>
   <data name="Favorites.RightClickTracksSelect" xml:space="preserve">
-    <value>右键点击曲目并选择"收藏"</value>
+    <value>右键点击曲目并选择“收藏”</value>
     <comment>Text in FavoritesView.axaml</comment>
   </data>
   <data name="Favorites.NoResults" xml:space="preserve">
@@ -3108,7 +3108,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Home.OpenSettings" xml:space="preserve"><value>打开设置</value><comment>Home empty-library state link to Settings › Library</comment></data>
   <data name="Home.Scanning" xml:space="preserve"><value>正在扫描你的音乐…</value><comment>Home state while the first library scan runs</comment></data>
   <data name="Home.ScanningBody" xml:space="preserve"><value>资料库较大时，这可能需要一分钟。</value><comment>Home state while the first library scan runs, under Home.Scanning</comment></data>
-  <data name="Home.NothingPlayed" xml:space="preserve"><value>开始聆听</value><comment>Home state when the library has songs but nothing has been played</comment></data>
+  <data name="Home.NothingPlayed" xml:space="preserve"><value>开始收听</value><comment>Home state when the library has songs but nothing has been played</comment></data>
   <data name="Home.NothingPlayedBody" xml:space="preserve"><value>随着你收听，你最常播放的歌曲、艺人和专辑会显示在这里。</value><comment>Home state when nothing has been played, under Home.NothingPlayed</comment></data>
   <data name="Home.ShuffleAll" xml:space="preserve"><value>全部随机播放</value><comment>Home nothing-played state button: shuffle the whole library</comment></data>
   <!-- LibraryAlbumsView.axaml (auto-migrated) -->
@@ -3487,7 +3487,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Content in LyricShareDialog.axaml</comment>
   </data>
   <data name="LyricShare.SaveVideoRendersMovingTip" xml:space="preserve">
-    <value>"保存视频"会渲染逐字滚动的歌词</value>
+    <value>“保存视频”会渲染逐字滚动的歌词</value>
     <comment>ToolTip.Tip in LyricShareDialog.axaml</comment>
   </data>
   <data name="LyricShare.CardBackgroundBlurredArtworkTip" xml:space="preserve">
@@ -3553,7 +3553,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in LyricsPanelView.axaml</comment>
   </data>
   <data name="LyricsPanel.WrittenBy" xml:space="preserve">
-    <value>作词: </value>
+    <value>作词：</value>
     <comment>Text in LyricsPanelView.axaml</comment>
   </data>
   <data name="LyricsPanel.CloseLyricsPanelTip" xml:space="preserve">
@@ -3626,7 +3626,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="LyricsSearch.Instrumental" xml:space="preserve"><value>纯音乐</value><comment>Result in LyricsSearchViewModel</comment></data>
   <data name="LyricsSearch.ModelSynced" xml:space="preserve"><value>已由 lrc.red 的模型逐字同步。按“使用歌词”保留。</value><comment>Status in LyricsSearchViewModel after lrc.red's row was word-synced by its model</comment></data>
   <data name="Lyrics.WrittenBy" xml:space="preserve">
-    <value>作词: </value>
+    <value>作词：</value>
     <comment>Text in LyricsView.axaml</comment>
   </data>
   <data name="Lyrics.Follow" xml:space="preserve">
@@ -4265,7 +4265,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.MarksContentAsExplicitTip" xml:space="preserve">
-    <value>将内容标记为儿童不宜（iTunes 提示标签）。"儿童不宜内容"设置会据此跳过歌曲。</value>
+    <value>将内容标记为儿童不宜（iTunes 提示标签）。“儿童不宜内容”设置会据此跳过歌曲。</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Artist" xml:space="preserve">
@@ -4575,7 +4575,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Header in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.LinesCarryPerWordTip" xml:space="preserve">
-    <value>歌词行带有逐字时间标签；切换到"原始"即可查看</value>
+    <value>歌词行带有逐字时间标签；切换到“原始”即可查看</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.WordTiming" xml:space="preserve">
@@ -4611,7 +4611,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Content in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.NoSyncedLyricsYet" xml:space="preserve">
-    <value>还没有同步歌词。用"搜索歌词"来添加。</value>
+    <value>还没有同步歌词。用“搜索歌词”来添加。</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.TimestampLyrics" xml:space="preserve">
@@ -4651,11 +4651,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.NoSyncedLyricsYet2" xml:space="preserve">
-    <value>还没有同步歌词。在"同步歌词"标签页用"搜索歌词"来添加。</value>
+    <value>还没有同步歌词。在“同步歌词”标签页用“搜索歌词”来添加。</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.TypeTimestampMmSsTip" xml:space="preserve">
-    <value>输入时间戳 (mm:ss.xx);留空则清除</value>
+    <value>输入时间戳 (mm:ss.xx)；留空则清除</value>
     <comment>ToolTip.Tip in MetadataWindow.axaml</comment>
   </data>
   <data name="Metadata.Nudge01sEarlierTip" xml:space="preserve">
@@ -4815,7 +4815,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="MetadataSearch.TracksNotInLibrary" xml:space="preserve"><value>+{0} 首不在资料库中</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
   <data name="MetadataSearch.DownloadingCover" xml:space="preserve"><value>正在下载…</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
   <data name="MetadataSearch.CoverFailed" xml:space="preserve"><value>下载失败</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
-  <data name="MetadataSearch.CoverAdds" xml:space="preserve"><value>新增封面</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
+  <data name="MetadataSearch.CoverAdds" xml:space="preserve"><value>添加封面</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
   <data name="MetadataSearch.CoverSharper" xml:space="preserve"><value>更清晰</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
   <data name="MetadataSearch.CoverSmaller" xml:space="preserve"><value>更小</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
   <data name="MetadataSearch.CoverSameSize" xml:space="preserve"><value>尺寸相同</value><comment>Text in MetadataSearchPanel.axaml</comment></data>
@@ -4910,7 +4910,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="MiniPlayer.WrittenBy" xml:space="preserve">
-    <value>作词: </value>
+    <value>作词：</value>
     <comment>Text in MiniPlayerWindow.axaml</comment>
   </data>
   <data name="MiniPlayer.NoLyricsAvailable" xml:space="preserve">
@@ -5372,7 +5372,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Header in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.ChangeDisplayedOrderManualTip" xml:space="preserve">
-    <value>更改显示顺序。"手动"是你保存的播放列表顺序。</value>
+    <value>更改显示顺序。“手动”是你保存的播放列表顺序。</value>
     <comment>ToolTip.Tip in PlaylistView.axaml</comment>
   </data>
   <data name="Playlist.Text" xml:space="preserve">
@@ -5656,7 +5656,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in ServerView.axaml</comment>
   </data>
   <data name="Server.ConnectJellyfinSubsonicCompatible" xml:space="preserve">
-    <value>在设置 → 集成中连接 Jellyfin 或兼容 Subsonic 的服务器 (Navidrome、Airsonic、Gonic…),即可在这里串流它的音乐。</value>
+    <value>在“设置 → 集成”中连接 Jellyfin 或兼容 Subsonic 的服务器（Navidrome、Airsonic、Gonic…），即可在这里串流它的音乐。</value>
     <comment>Text in ServerView.axaml</comment>
   </data>
   <data name="Server.Loading" xml:space="preserve">
@@ -5896,11 +5896,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>分析失败：{0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
   <!-- StatisticsView.axaml (auto-migrated) -->
   <data name="Statistics.ListeningStatistics" xml:space="preserve">
-    <value>聆听统计</value>
+    <value>收听统计</value>
     <comment>Text in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.ListeningRecapTopTracksTip" xml:space="preserve">
-    <value>你的聆听回顾 — 最常听的曲目、艺人和分钟数，还有可分享的卡片</value>
+    <value>你的收听回顾 — 最常听的曲目、艺人和分钟数，还有可分享的卡片</value>
     <comment>ToolTip.Tip in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.NoctisWrap" xml:space="preserve">
@@ -5936,7 +5936,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.ListeningTime" xml:space="preserve">
-    <value>聆听时长</value>
+    <value>收听时长</value>
     <comment>Text in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.AvgTrackLength" xml:space="preserve">
@@ -6012,7 +6012,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.ListeningByHour" xml:space="preserve">
-    <value>按小时统计聆听</value>
+    <value>按小时统计收听</value>
     <comment>Text in StatisticsView.axaml</comment>
   </data>
   <data name="Statistics.MostSkipped" xml:space="preserve">
@@ -6248,7 +6248,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.MinutesListened" xml:space="preserve">
-    <value>聆听分钟数</value>
+    <value>收听分钟数</value>
     <comment>Text in WrapDialog.axaml</comment>
   </data>
   <data name="Wrap.TracksPlayed" xml:space="preserve">
@@ -6428,7 +6428,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Plugins.UpdateConfirm" xml:space="preserve"><value>更新</value></data>
   <data name="Plugins.Installed" xml:space="preserve"><value>已安装 {0} {1}。请在下方开启。</value></data>
   <data name="Plugins.Updated" xml:space="preserve"><value>已将 {0} 更新到 {1}。</value></data>
-  <data name="Plugins.AlreadyInstalled" xml:space="preserve"><value>{0} {1} 已安装；此文件的版本为 {2}，并不更新。</value></data>
+  <data name="Plugins.AlreadyInstalled" xml:space="preserve"><value>{0} {1} 已安装；此文件的版本为 {2}，并不比它新。</value></data>
   <data name="Plugins.InstallFailed" xml:space="preserve"><value>无法安装：{0}</value></data>
   <data name="Plugins.Get.Title" xml:space="preserve"><value>官方插件</value></data>
   <data name="Plugins.Get.Refresh" xml:space="preserve"><value>刷新列表</value></data>
@@ -6768,7 +6768,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   </data>
   <data name="BulkLyrics.Recheck" xml:space="preserve"><value>重新检查之前已检查过的歌曲</value><comment>Checkbox in the bulk lyrics dialog</comment></data>
   <data name="BulkLyrics.ReviewFirst" xml:space="preserve"><value>保存前检查找到的结果</value><comment>Checkbox in the bulk lyrics dialog (GitHub #195)</comment></data>
-  <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>保存所选 ({0})</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
+  <data name="BulkLyrics.SaveSelected" xml:space="preserve"><value>保存所选（{0}）</value><comment>Button after a bulk lyrics review run (GitHub #195)</comment></data>
   <data name="BulkLyrics.ReviewReady" xml:space="preserve"><value>为 {0} 首歌曲找到了更好的歌词。取消勾选不需要的，然后保存。</value><comment>Status after a bulk lyrics review run (GitHub #195)</comment></data>
   <data name="BulkLyrics.KindWord" xml:space="preserve"><value>逐字同步</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
   <data name="BulkLyrics.KindLine" xml:space="preserve"><value>逐行同步</value><comment>Badge on a bulk lyrics review row (GitHub #195)</comment></data>
@@ -6849,7 +6849,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HeadphoneSurroundDesc" xml:space="preserve">
-    <value>将 5.1 和 7.1 文件转换为耳机空间音效，而不是平淡的立体声混音。立体声歌曲不受影响。</value>
+    <value>让 5.1 和 7.1 文件在耳机中听起来像环绕声。立体声歌曲保持不变。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.HeadphoneSurroundRestart" xml:space="preserve">
@@ -6868,15 +6868,15 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Integrations → Noctis Server card button</comment>
   </data>
   <data name="AccountSync.YourAccount" xml:space="preserve">
-    <value>您的账户</value>
+    <value>你的账户</value>
     <comment>Account &amp; Sync section title</comment>
   </data>
   <data name="AccountSync.CreateTitle" xml:space="preserve">
-    <value>创建您的账户</value>
+    <value>创建你的账户</value>
     <comment>No-account state title</comment>
   </data>
   <data name="AccountSync.CreateHelp" xml:space="preserve">
-    <value>您的手机用这个账户登录。密码不会离开这台电脑。</value>
+    <value>你的手机用这个账户登录。密码不会离开这台电脑。</value>
     <comment>No-account state help</comment>
   </data>
   <data name="AccountSync.Name" xml:space="preserve">
@@ -7473,7 +7473,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Home" xml:space="preserve">
-    <value>首页</value>
+    <value>主页</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Artwork" xml:space="preserve">
@@ -7590,7 +7590,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
-    <value>您的账户</value>
+    <value>你的账户</value>
     <comment>Settings section label</comment>
   </data>
   <data name="Settings.Section.Sync" xml:space="preserve">
@@ -7743,7 +7743,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Menu.RateTip" xml:space="preserve"><value>评为 {0} 星（满分 5 星）</value><comment>v2 right-click menu rating star tooltip; {0} = number of stars</comment></data>
   <data name="Menu.ClearRating" xml:space="preserve"><value>清除评分</value><comment>v2 right-click menu rating row clear button tooltip</comment></data>
   <data name="AccountSync.PairPhoneHint" xml:space="preserve">
-    <value>在手机上的 Noctis 应用中，打开“设置”，再进入“账户”。输入这个地址，然后用您的邮箱或用户名和密码登录。</value>
+    <value>在手机上的 Noctis 应用中，打开“设置”，再进入“账户”。输入这个地址，然后用你的邮箱或用户名和密码登录。</value>
     <comment>Pairing block help above the address and fingerprint</comment>
   </data>
   <data name="AccountSync.PairQrCountdown" xml:space="preserve">
@@ -7751,7 +7751,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Under the sign-in QR code; {0} = minutes:seconds until a new code replaces it, e.g. 1:42</comment>
   </data>
   <data name="AccountSync.PairQrWarning" xml:space="preserve">
-    <value>任何扫描此代码的人都能登录你的账户，所以只给你自己的手机看。它只能使用一次，每两分钟更换一次。</value>
+    <value>任何扫描此代码的人都能登录你的账户。只给你自己的手机看。</value>
     <comment>Under the sign-in QR code: who can use it and for how long</comment>
   </data>
   <data name="AccountSync.PairQrName" xml:space="preserve">
@@ -7811,7 +7811,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Phone app card, Advanced row subtitle (folded by default)</comment>
   </data>
   <data name="AccountSync.SignedInDevices" xml:space="preserve">
-    <value>您的手机</value>
+    <value>你的手机</value>
     <comment>Account card list label</comment>
   </data>
   <data name="AccountSync.NoSignedInDevices" xml:space="preserve">
@@ -7819,7 +7819,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Account card list empty state</comment>
   </data>
   <data name="Settings.LocalApiDesc" xml:space="preserve">
-    <value>让这台电脑上的应用（如 Stream Deck 或 OBS）查看正在播放的内容并控制 Noctis。</value>
+    <value>让这台电脑上的应用（如 Stream Deck 或 OBS）控制 Noctis。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LocalApiAddress" xml:space="preserve"><value>地址</value><comment>Text in SettingsView.axaml</comment></data>
@@ -7916,7 +7916,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Phone app card row title (Subsonic apps)</comment>
   </data>
   <data name="Phone.OtherAppsDesc" xml:space="preserve">
-    <value>Symfonium 等 Subsonic 应用可以用您的邮箱和 API 密钥登录。</value>
+    <value>Symfonium 等 Subsonic 应用可以用你的邮箱和 API 密钥登录。</value>
     <comment>Phone app card row text</comment>
   </data>
   <data name="Phone.NewApiKeyTip" xml:space="preserve">
@@ -7932,7 +7932,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Eye button tooltip on the API key</comment>
   </data>
   <data name="AccountSync.ChangePasswordNote" xml:space="preserve">
-    <value>您的手机会退出登录，需要用新密码重新登录。</value>
+    <value>你的手机会退出登录，需要用新密码重新登录。</value>
     <comment>Under the change password box</comment>
   </data>
   <data name="AccountSync.DeleteAccountTip" xml:space="preserve">
@@ -7940,11 +7940,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Tooltip on the account's trash button</comment>
   </data>
   <data name="AccountSync.DeleteTitle" xml:space="preserve">
-    <value>要删除您的账户吗？</value>
+    <value>要删除你的账户吗？</value>
     <comment>Delete account confirmation title</comment>
   </data>
   <data name="AccountSync.DeleteBody" xml:space="preserve">
-    <value>您的手机会退出登录，在您创建新账户之前都无法连接。这台电脑上的音乐和资料库保持不变。</value>
+    <value>你的手机会退出登录，在你创建新账户之前都无法连接。这台电脑上的音乐和资料库保持不变。</value>
     <comment>Delete account confirmation text</comment>
   </data>
   <data name="AccountSync.DeleteConfirm" xml:space="preserve">
@@ -8221,7 +8221,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment>
   </data>
   <data name="Settings.AppIconDesc" xml:space="preserve">
-    <value>立即更改标题栏、任务栏和托盘中的图标。桌面快捷方式和 .exe 仍使用经典图标。</value>
+    <value>更改标题栏、任务栏和托盘中的图标。桌面快捷方式仍使用经典图标。</value>
     <comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment>
   </data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve">
@@ -8552,7 +8552,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Settings.ProgressLine" xml:space="preserve"><value>进度线</value></data>
   <data name="Mobile.Settings.PlayerBarHint" xml:space="preserve"><value>播放时填充播放条或画一条细线</value></data>
   <data name="Mobile.Settings.WifiOnly" xml:space="preserve"><value>仅通过 Wi-Fi 下载</value></data>
-  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>下载会等待 Wi-Fi 但流式播放照常</value></data>
+  <data name="Mobile.Settings.WifiOnlyHint" xml:space="preserve"><value>下载会等待 Wi-Fi，但串流播放照常</value></data>
   <data name="Mobile.Settings.SmoothMotion" xml:space="preserve"><value>流畅动效</value></data>
   <data name="Mobile.Settings.SmoothMotionHint" xml:space="preserve"><value>最高 120 Hz</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz 屏幕上滚动更流畅但更耗电</value></data>
@@ -8566,11 +8566,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>已播放的歌曲保留在当前歌曲上方</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>已用存储空间</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>移除所有下载</value></data>
-  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>它们仍在电脑上并可继续流式播放</value></data>
+  <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>它们仍在电脑上并可继续串流播放</value></data>
   <data name="Mobile.Settings.LicenseFootnote" xml:space="preserve"><value>Noctis 本身采用 MIT 许可</value></data>
   <data name="Mobile.Lyrics.ShowTranslations" xml:space="preserve"><value>显示翻译</value></data>
   <data name="Mobile.Lyrics.ShowRomanization" xml:space="preserve"><value>显示罗马音</value></data>
-  <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>显示背景人声</value></data>
+  <data name="Mobile.Lyrics.ShowBackgroundVocals" xml:space="preserve"><value>显示和声</value></data>
   <data name="Mobile.Lyrics.BackgroundVocalsHint" xml:space="preserve"><value>歌词中有和声时，在该行下方以小字显示</value></data>
   <data name="Mobile.Lyrics.TextSize" xml:space="preserve"><value>文字大小</value></data>
   <data name="Mobile.Lyrics.TextSizeName" xml:space="preserve"><value>歌词文字大小</value></data>
@@ -8675,7 +8675,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Count.Plays" xml:space="preserve"><value>{0} 次播放</value></data>
   <data name="Mobile.Count.Scrobbles" xml:space="preserve"><value>{0} 条播放记录</value></data>
   <data name="Mobile.History.KeepDetail" xml:space="preserve"><value>早于此期限的播放记录将从这台手机上移除。</value></data>
-  <data name="Mobile.History.CountAfterDetail" xml:space="preserve"><value>一首歌需要听多久才算作一次播放。Last.fm Scrobbling 有其自己的规则。</value></data>
+  <data name="Mobile.History.CountAfterDetail" xml:space="preserve"><value>一首歌需要听多久才算作一次播放。Last.fm 记录播放另有规则。</value></data>
   <data name="Mobile.History.ClearQuestion" xml:space="preserve"><value>要清除收听记录吗？</value></data>
   <data name="Mobile.History.ClearDetail" xml:space="preserve"><value>这会移除这台手机上的所有播放记录。已发送到 Last.fm 的记录仍会保留在那里。</value></data>
   <data name="Mobile.Scrobbling.RouteFromPhone" xml:space="preserve"><value>手机会自行统计你的播放记录，并直接发送到 Last.fm 和 ListenBrainz。不会重复发送。</value></data>
@@ -8705,7 +8705,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Scrobbling.UserToken" xml:space="preserve"><value>用户令牌</value></data>
   <data name="Mobile.Scrobbling.SetUpDetail" xml:space="preserve"><value>在电脑上的 Noctis 中连接 Last.fm 和 ListenBrainz。或者选择“从这台手机”，改为在这里登录。</value></data>
   <data name="Mobile.Scrobbling.DisconnectQuestion" xml:space="preserve"><value>要断开 {0} 吗？</value></data>
-  <data name="Mobile.Scrobbling.DisconnectDetail" xml:space="preserve"><value>等待发送给它的播放记录将被丢弃。你在该网站上的 Scrobble 记录仍会保留。</value></data>
+  <data name="Mobile.Scrobbling.DisconnectDetail" xml:space="preserve"><value>等待发送给它的播放记录将被丢弃。你在该网站上的播放记录仍会保留。</value></data>
   <data name="Mobile.Scrobbling.Disconnect" xml:space="preserve"><value>断开连接</value></data>
   <data name="Mobile.BackgroundName.Graphite" xml:space="preserve"><value>石墨</value></data>
   <data name="Mobile.BackgroundName.Ash" xml:space="preserve"><value>灰烬</value></data>
@@ -8745,7 +8745,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Accent.Silver" xml:space="preserve"><value>银色</value><comment>Accent colour name</comment></data>
   <data name="Mobile.Accent.Slate" xml:space="preserve"><value>岩灰</value><comment>Accent colour name</comment></data>
   <data name="Mobile.Accent.MatchArtwork" xml:space="preserve"><value>跟随封面</value><comment>Accent page swatch: the accent follows the playing song’s artwork</comment></data>
-  <data name="Mobile.Accent.Custom" xml:space="preserve"><value>自定</value></data>
+  <data name="Mobile.Accent.Custom" xml:space="preserve"><value>自定义</value></data>
   <data name="Mobile.Theme.System" xml:space="preserve"><value>跟随系统</value></data>
   <data name="Mobile.Theme.Light" xml:space="preserve"><value>浅色</value></data>
   <data name="Mobile.Theme.Dark" xml:space="preserve"><value>深色</value></data>
@@ -8782,14 +8782,14 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Settings.WifiOnlyValue" xml:space="preserve"><value>仅 Wi-Fi</value></data>
   <data name="Mobile.Settings.AnyNetwork" xml:space="preserve"><value>任意网络</value></data>
   <data name="Mobile.Downloads.RemoveQuestion" xml:space="preserve"><value>要移除所有下载吗？</value></data>
-  <data name="Mobile.Downloads.RemoveDetail" xml:space="preserve"><value>{0}将从这台手机上移除。它们仍保留在你的电脑上，并可继续串流播放。</value></data>
+  <data name="Mobile.Downloads.RemoveDetail" xml:space="preserve"><value>{0} 将从这台手机上移除。它们仍保留在你的电脑上，并可继续串流播放。</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>移除下载</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} 首歌曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} 个播放列表</value></data>
   <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>在播放列表中“添加歌曲”：轻点 + 并从资料库中挑选歌曲。</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>歌词会适配你的屏幕，滚动流畅。</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>来自电脑的歌曲会显示在“最近添加”中。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>将歌曲拖到待播清单的顶部或底部边缘，列表会随之滚动。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>将歌曲拖到队列的顶部或底部边缘，列表会随之滚动。</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>启动更快，加载资料库时不再卡顿，菜单也更流畅。</value><comment>What's New</comment></data>
   <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>进度条在整个高度内都能响应，横屏也能完整显示。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>内置的 ALAC 解码器，基于未经修改的 FFmpeg 6.0 源代码构建，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value></data>
@@ -8811,7 +8811,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Settings.ExportCancelled" xml:space="preserve"><value>导出已取消</value></data>
   <data name="Mobile.Settings.LogFailed" xml:space="preserve"><value>无法保存日志</value></data>
   <data name="Mobile.Account.Title" xml:space="preserve"><value>账户</value></data>
-  <data name="Mobile.Account.SignOutQuestion" xml:space="preserve"><value>要退出 {0} 吗？</value></data>
+  <data name="Mobile.Account.SignOutQuestion" xml:space="preserve"><value>要从 {0} 退出登录吗？</value></data>
   <data name="Mobile.Account.StopSending" xml:space="preserve"><value>停止发送</value></data>
   <data name="Mobile.Account.SendSongs" xml:space="preserve"><value>将手机上的歌曲发送到电脑</value></data>
   <data name="Mobile.Account.SendTile" xml:space="preserve"><value>发送到电脑</value></data>
@@ -8892,7 +8892,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>重试</value><comment>Remote page button</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>跟随系统</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis 已失去这首歌所在文件夹的访问权限。请在“设置”→“资料库”中重新添加该文件夹。</value></data>
-  <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>这台手机无法解码{0}，因此已跳过这首歌。</value></data>
+  <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>这台手机无法解码 {0}，因此已跳过这首歌。</value></data>
   <data name="Mobile.Player.UnknownFormat" xml:space="preserve"><value>未知格式</value></data>
   <data name="Mobile.Player.UnknownTrack" xml:space="preserve"><value>未知曲目</value></data>
   <data name="Mobile.Folders.SdCard" xml:space="preserve"><value>SD 卡</value></data>
@@ -9064,7 +9064,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="LibraryArtists.AllArtistsHidden" xml:space="preserve"><value>筛选隐藏了所有艺人</value><comment>Artists page empty state when Hide Small Artists hides everyone</comment></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>在筛选菜单中选择“全部艺人”，或搜索名称</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>隐藏小众艺人</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>在艺人页面中隐藏歌曲很少的艺人。搜索以及歌曲和专辑上的艺人链接仍能找到他们。按该艺人担任主艺人的歌曲计数，与每个名字下显示的数字相同。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>在艺人页面中隐藏歌曲很少的艺人。搜索仍能找到他们。</value><comment>Description under Hide small artists</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>隐藏歌曲少于以下数量的艺人</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>悬停前隐藏侧边栏</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>完全隐藏侧边栏，让页面使用全部宽度。将指针移到窗口左边缘即可滑出。</value><comment>Description under Hide sidebar until hover</comment></data>
@@ -9198,19 +9198,19 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Palette.AudioSetting" xml:space="preserve"><value>音频设置</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.AppearanceSetting" xml:space="preserve"><value>外观设置</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.LyricsStudio" xml:space="preserve"><value>歌词工作室…</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>为没有同步歌词的歌曲计时或转写歌词</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.LyricsStudioSub" xml:space="preserve"><value>为没有同步歌词的歌曲计时或转录歌词</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyrics" xml:space="preserve"><value>为资料库查找歌词…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindLyricsSub" xml:space="preserve"><value>为每首歌查找歌词，优先逐字同步</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindAnimatedArtwork" xml:space="preserve"><value>为资料库查找动态封面…</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.FindAnimatedArtworkSub" xml:space="preserve"><value>从 Apple Music 为专辑添加动态封面</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.ToggleShuffle" xml:space="preserve"><value>切换随机播放</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.CycleRepeat" xml:space="preserve"><value>切换重复模式</value><comment>Command palette (Ctrl+K)</comment></data>
-  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>切换淡入淡出</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.ToggleCrossfade" xml:space="preserve"><value>切换交叉淡化</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.ToggleTransitions" xml:space="preserve"><value>切换歌曲过渡</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Palette.ToggleAnimatedCovers" xml:space="preserve"><value>切换动态封面</value><comment>Command palette (Ctrl+K)</comment></data>
   <data name="Menu.OpenFileWith" xml:space="preserve"><value>打开方式</value><comment>Song context menu › Tools</comment></data>
   <data name="Menu.OpenIn" xml:space="preserve"><value>在 {0} 中打开</value><comment>Song context menu › Tools</comment></data>
-  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>专辑含露骨内容</value><comment>Metadata window</comment></data>
+  <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>专辑为儿童不宜</value><comment>Metadata window</comment></data>
   <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>已选择 {0} 位艺人</value><comment>Metadata window</comment></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>已选择 {0} 首歌曲</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>无法将标签写入“{0}”。可能有其他应用打开了该文件，或文件为只读 — 请在那里关闭它或检查文件，然后重试。</value><comment>Metadata window</comment></data>
@@ -9264,10 +9264,10 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.LastFm.ShowingSaved" xml:space="preserve"><value>无法连接 Last.fm。显示已保存的混合歌单。</value></data>
   <data name="Mobile.LastFm.Unreachable" xml:space="preserve"><value>无法连接 Last.fm。请稍后再试。</value></data>
   <data name="Mobile.LastFm.Discover" xml:space="preserve"><value>在 Last.fm 上发现</value></data>
-  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>与{0}相似</value></data>
+  <data name="Mobile.LastFm.SimilarTo" xml:space="preserve"><value>与 {0} 相似</value></data>
   <data name="Mobile.LastFm.AlbumYouPlay" xml:space="preserve"><value>{0} · 在你的热门专辑中</value></data>
   <data name="Mobile.LastFm.ArtistYouPlay" xml:space="preserve"><value>在你的热门艺人中</value></data>
-  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>在 Last.fm 上打开{0}</value></data>
+  <data name="Mobile.LastFm.OpenOnLastFm" xml:space="preserve"><value>在 Last.fm 上打开 {0}</value></data>
   <data name="Mobile.Scrobbling.Taste" xml:space="preserve"><value>混合歌单与推荐</value></data>
   <data name="Mobile.Scrobbling.TasteFootnote" xml:space="preserve"><value>主页显示来自你 Last.fm 排行的混合歌单，不会回传任何内容</value></data>
   <data name="GroupAlbums.Menu" xml:space="preserve"><value>合并为一张专辑</value><comment>Album menu row (GitHub #178)</comment></data>
@@ -9308,7 +9308,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.SleepTimer.Left" xml:space="preserve"><value>{0} 后暂停</value></data>
   <data name="Mobile.SleepTimer.AfterSong" xml:space="preserve"><value>本曲结束后暂停</value></data>
   <data name="Mobile.HideSong" xml:space="preserve"><value>隐藏歌曲</value></data>
-  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>已隐藏。可在 设置 › 资料库 › 已隐藏 中恢复。</value></data>
+  <data name="Mobile.HiddenNotice" xml:space="preserve"><value>已隐藏。可在“设置 › 资料库 › 已隐藏”中恢复。</value></data>
   <data name="Mobile.Settings.Hidden" xml:space="preserve"><value>已隐藏</value></data>
   <data name="Mobile.Hidden.Hint" xml:space="preserve"><value>隐藏的歌曲仍在手机上，但不会出现在资料库和混合歌单中</value></data>
   <data name="Mobile.Hidden.None" xml:space="preserve"><value>没有隐藏的内容</value></data>
