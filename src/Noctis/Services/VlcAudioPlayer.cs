@@ -3685,7 +3685,22 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // Exclusive mode: open/reuse the device sink at this track's source
             // rate and pin the output format before the aout starts.
             if (_exclusiveModeEnabled && _wasapiOut == null && OperatingSystem.IsWindows())
+            {
                 PrepareExclusiveOutputFor(_currentMedia);
+                // No output at all: it turned Exclusive Mode off and rebuilt the players on
+                // shared output (resumeTrack: false, it must not nest a resume), which
+                // disposed this Media with them. Open the same track once more on the
+                // rebuilt players, at the same start position and paused state. Exclusive
+                // Mode is off now, so the reopen cannot come back here.
+                if (_currentMedia == null && !_exclusiveModeEnabled)
+                {
+                    DebugLogger.Info(DebugLogger.Category.Playback, "VLC.Play.Reopen",
+                        $"session={sessionId}, reason=exclusiveFallback, path={LogName(filePath)}");
+                    Interlocked.Exchange(ref _pendingSeekMs, pendingMs);
+                    PlayInternal(filePath, startPaused, fallbackPath);
+                    return;
+                }
+            }
 
             // 5. Start playback
             if (_gaplessEngine)
