@@ -7308,7 +7308,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private void ApplyReadAhead(Media media)
     {
         var adaptiveMs = Volatile.Read(ref _adaptiveCachingMs);
-        if (ContainerTrimInput.IsTrimMedia(media))
+        if (IsCallbackMedia(media))
         {
             if (CallbackReadAheadOption(Math.Max(_baseCachingMs, adaptiveMs)) is { } callbackOption)
                 media.AddOption(callbackOption);
@@ -7327,7 +7327,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// The read-ahead of a file for media read through callbacks: there the input buffers
     /// only 300 ms, so the decoder ran 0.34 s ahead instead of 1.03 s and a gapless handoff
     /// (taken 0.5 s before the end) abandoned the outgoing track before its last block
-    /// (harness 11-19: 425 ms cut from a cold-started Opus track). VLC lengthens the input
+    /// (harness 11-19: 425 ms cut from a cold-started Opus track, 475 ms from a DSD one).
+    /// VLC lengthens the input
     /// delay by a negative subtitle delay (src/input/input.c UpdatePtsDelay: min(audio,
     /// spu) delay below zero is added to it) without moving the audio, and the players run
     /// with --no-spu; ":sub-delay" is in 100 ms steps. Measured: "Stream buffering done
