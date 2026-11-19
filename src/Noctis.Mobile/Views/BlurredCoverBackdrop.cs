@@ -137,7 +137,11 @@ public sealed class BlurredCoverBackdrop : Control
         if (_previous == null) _fading = false;
         HasImage = _current != null;
         InvalidateVisual();
+        ImageChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>A new blurred bitmap (or none) is showing: the Lyrics page's soft edges repaint it.</summary>
+    public event EventHandler? ImageChanged;
 
     /// <summary>Battery Saver keeps the swap still, as it keeps the Background's Slow Motion still.</summary>
     private bool CanFade() => DataContext is not ShellViewModel { BatterySaver.IsOn: true };
