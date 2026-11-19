@@ -731,6 +731,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
         try { _libVlc.Log += OnVlcLogForDecoderWedge; }
         catch { /* recovery is best-effort; never block playback on it */ }
+        try { _libVlc.Log += OnVlcLogForResampler; }
+        catch { /* unknown resampler: no delay correction off Windows */ }
 
         if (vlcDiag)
         {
@@ -893,6 +895,10 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             return;
         }
         _gaplessSink.Rebuilt += OnGaplessSinkRebuilt;
+        _gaplessSink.Provider.ResamplerDelayApplies = () => VlcResamplerDelay.CorrectionApplies(
+            ShouldForceSpeexResampler(OperatingSystem.IsWindows(), OperatingSystem.IsLinux()),
+            Volatile.Read(ref _vlcResamplerModule),
+            speexKnownBundled: OperatingSystem.IsWindows());
         _enginePlayers[0] = _player;
         _enginePlayers[1] = _standbyPlayer;
         // Per-slot state of the players (and the sink) this wiring replaces.
@@ -5245,7 +5251,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         seg.Gain = EngineSegmentGain(slot, path);
         seg.TailTrimFrames = tailTrimFrames;
         seg.LeadTrimFrames = leadTrimFrames;
-        // The speex resampler is the one forced on every engine platform (ShouldForceSpeexResampler).
+        // The speex resampler is the one forced on every engine platform (ShouldForceSpeexResampler);
+        // the provider skips the alignment when LibVLC logged another (ResamplerDelayApplies).
         seg.ResamplerDelayFrames = VlcResamplerDelay.OutputFrames(sourceRate, sink.SampleRate);
         seg.DamageAhead = KnownMp3Damage(path);
         seg.DecodesThroughDamage = decodesThroughDamage;
@@ -5348,6 +5355,24 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
     /// <summary>How far past the stuck position the <paramref name="attempt"/>th skip lands. Pure.</summary>
     internal static long DecoderWedgeSkipMs(int attempt) => 1000L * Math.Max(1, attempt);
+
+    // The resampler LibVLC put in the last input's chain ("speex_resampler" when the forced
+    // one loaded; a system LibVLC without that plugin falls back to another). Read by the
+    // splice engine at each natural seam (VlcResamplerDelay.CorrectionApplies).
+    private string? _vlcResamplerModule;
+
+    // VLC thread: a field write only, never call into libvlc here.
+    private void OnVlcLogForResampler(object? sender, LogEventArgs e)
+    {
+        try
+        {
+            if (e.Level != LogLevel.Debug || VlcResamplerDelay.ModuleFromLogLine(e.Message) is not { } module)
+                return;
+            if (Interlocked.Exchange(ref _vlcResamplerModule, module) != module)
+                DebugLog.Write("Playback", $"audio resampler: {module}");
+        }
+        catch { /* an exception into native code kills the process */ }
+    }
 
     // VLC thread: count only, never call into libvlc here.
     private void OnVlcLogForDecoderWedge(object? sender, LogEventArgs e)
@@ -6881,6 +6906,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         }
         DebugLog.VlcBridgeChanged -= OnVlcBridgeChanged;
         try { _libVlc.Log -= OnVlcLogForDecoderWedge; } catch { }
+        try { _libVlc.Log -= OnVlcLogForResampler; } catch { }
         lock (_devBridgeLock)
         {
             if (_devBridgeAttached)

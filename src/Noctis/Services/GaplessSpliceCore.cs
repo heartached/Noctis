@@ -647,6 +647,13 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     /// <summary>Raised (on the render thread) when the audible boundary is crossed.</summary>
     public event Action<GaplessTrackSegment>? SegmentStarted;
 
+    /// <summary>
+    /// Whether the segments' <see cref="GaplessTrackSegment.ResamplerDelayFrames"/> describe the
+    /// resampler LibVLC really runs, asked at each natural seam: false skips the alignment (a
+    /// fallback resampler has another delay). Null = they do.
+    /// </summary>
+    public Func<bool>? ResamplerDelayApplies { get; set; }
+
     private readonly int _startThresholdMs;
 
     // Underrun hysteresis: after a mid-track 0-read, hold silence until this much
@@ -915,7 +922,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                     if (_pending.Count > 0)
                     {
                         _active = _pending.Dequeue();
-                        if (ended != null)
+                        if (ended != null && (ResamplerDelayApplies?.Invoke() ?? true))
                             _active.AlignResamplerDelayAfter(ended);
                         _activeAdapted = Adapt(_active);
                         _refillSamplesNeeded = 0; // fresh segment: the start gate governs

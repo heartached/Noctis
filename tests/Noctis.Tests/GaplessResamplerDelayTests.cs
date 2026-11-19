@@ -90,6 +90,46 @@ public class GaplessResamplerDelayTests
     }
 
     [Fact]
+    public void AnotherResamplerInUse_SpliceUntouched()
+    {
+        // A system LibVLC without speex: the speex delays describe nothing, so no alignment.
+        var provider = new GaplessSpliceProvider(8000, 1) { ResamplerDelayApplies = () => false };
+        var a = new GaplessTrackSegment(8000, 1, source: 0) { ResamplerDelayFrames = 139 };
+        var b = new GaplessTrackSegment(8000, 1, source: 1) { ResamplerDelayFrames = 128 };
+        provider.Enqueue(a);
+        provider.Enqueue(b);
+        Assert.True(a.Write(Block(16384, 100)));
+        Assert.True(b.Write(Block(-16384, 400)));
+        provider.Read(new float[70], 0, 70);
+        a.MarkEndOfStream();
+        var s = new float[60];
+        provider.Read(s, 0, 60);
+        Assert.All(s[..30], v => Assert.Equal(0.5f, v));
+        Assert.All(s[30..], v => Assert.Equal(-0.5f, v));
+    }
+
+    [Theory]
+    [InlineData("using audio resampler module \"speex_resampler\"", "speex_resampler")]
+    [InlineData("using audio resampler module \"soxr\"", "soxr")]
+    [InlineData("using audio resampler module \"ugly_resampler\"", "ugly_resampler")]
+    [InlineData("looking for audio resampler module matching \"speex\": 2 candidates", null)]
+    [InlineData("using audio resampler module \"", null)]
+    [InlineData(null, null)]
+    public void ResamplerModule_FromLibVlcLogLine(string? line, string? expected) =>
+        Assert.Equal(expected, VlcResamplerDelay.ModuleFromLogLine(line));
+
+    [Theory]
+    [InlineData(true, "speex_resampler", false, true)]
+    [InlineData(true, "soxr", true, false)]            // the plugin is missing: fell back
+    [InlineData(true, "ugly_resampler", false, false)]
+    [InlineData(true, "samplerate", false, false)]
+    [InlineData(true, null, true, true)]               // nothing logged yet, bundled LibVLC (Windows)
+    [InlineData(true, null, false, false)]             // nothing logged yet, system LibVLC (Linux)
+    [InlineData(false, "speex_resampler", true, false)] // speex not forced: not quality 10
+    public void Correction_OnlyWithSpeexReallyLoaded(bool forced, string? module, bool bundled, bool expected) =>
+        Assert.Equal(expected, VlcResamplerDelay.CorrectionApplies(forced, module, bundled));
+
+    [Fact]
     public void CutSeam_IsNotAligned()
     {
         // An abandoned (cut) outgoing track did not lose its tail to the end of its input.

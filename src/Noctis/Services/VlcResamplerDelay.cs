@@ -15,6 +15,36 @@ public static class VlcResamplerDelay
     // speexdsp quality_map[10].base_length.
     private const int BaseFilterLength = 256;
 
+    /// <summary>The module name LibVLC logs for its speex resampler.</summary>
+    public const string SpeexModule = "speex_resampler";
+
+    private const string UsingResamplerPrefix = "using audio resampler module \"";
+
+    /// <summary>
+    /// The resampler a LibVLC log line says it put in an input's chain
+    /// (main: <c>using audio resampler module "speex_resampler"</c>), or null for any other line.
+    /// </summary>
+    public static string? ModuleFromLogLine(string? message)
+    {
+        if (message == null || !message.StartsWith(UsingResamplerPrefix, StringComparison.Ordinal))
+            return null;
+        var end = message.IndexOf('"', UsingResamplerPrefix.Length);
+        return end > UsingResamplerPrefix.Length ? message[UsingResamplerPrefix.Length..end] : null;
+    }
+
+    /// <summary>
+    /// Whether <see cref="OutputFrames"/> is the delay LibVLC really adds: only with speex at
+    /// quality 10 (<paramref name="speexForced"/>) and speex actually loaded. A system LibVLC
+    /// without the speex plugin falls back to another resampler (soxr, samplerate, ugly) with
+    /// another delay, and correcting by the speex one would step every mixed-rate seam.
+    /// Before any input has logged its resampler (<paramref name="loggedModule"/> null), only
+    /// <paramref name="speexKnownBundled"/> (a LibVLC shipped with the plugin) counts as speex.
+    /// </summary>
+    public static bool CorrectionApplies(bool speexForced, string? loggedModule, bool speexKnownBundled) =>
+        speexForced && (loggedModule == null
+            ? speexKnownBundled
+            : string.Equals(loggedModule, SpeexModule, StringComparison.Ordinal));
+
     /// <summary>
     /// speexdsp's output latency (speex_resampler_get_output_latency) for a
     /// <paramref name="inputRate"/> to <paramref name="outputRate"/> resampler at quality 10;
