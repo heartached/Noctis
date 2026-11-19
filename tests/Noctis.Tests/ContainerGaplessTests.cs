@@ -77,6 +77,42 @@ public class ContainerGaplessTests
         Assert.Equal(new byte[4], c);
     }
 
+    // The rate the decoder outputs, not the timescale: an HE-AAC track may be timed at its
+    // core rate and decodes at twice that, and the resampler delay follows the decoded rate.
+    [Theory]
+    [InlineData("1210", 44100)]        // AAC-LC 44.1 kHz stereo (ffmpeg, qaac)
+    [InlineData("1190", 48000)]        // AAC-LC 48 kHz
+    [InlineData("2b920800", 44100)]    // HE-AAC, explicit (object type 5): 22050 core, 44100 out (a real file's)
+    [InlineData("eb1188", 48000)]      // HE-AACv2 (object type 29): 24000 core, 48000 out
+    [InlineData("139056e5a0", 44100)]  // AAC-LC 22050 + sync extension: SBR present, 44100 out
+    [InlineData("131056e500", 24000)]  // AAC-LC 24000 + sync extension: SBR signalled absent
+    [InlineData("1390", 0)]            // AAC-LC 22050, no extension: implicit SBR possible, left open
+    [InlineData("", 0)]
+    [InlineData("f8", 0)]              // escape object type, truncated
+    public void AacDecodedRate_FollowsTheAudioSpecificConfig(string ascHex, int expected) =>
+        Assert.Equal(expected, ContainerGaplessInfo.AacDecodedRate(Convert.FromHexString(ascHex)));
+
+    [Fact]
+    public void Mp4_HeAacTimedAtItsCoreRate_ReportsTheDecodedRate_AndTrimsInTime()
+    {
+        // Same 12 s HE-AAC track timed at 22050 (the core rate): 2048 output samples per frame
+        // are 1024 timescale units, the edit's media time 2529 units = 5058 output samples.
+        var file = BuildMp4(edit: (12000, 2529), stts: [(259, 1024), (1, 1000)], smpb: null,
+            asc: Convert.FromHexString("2b920800"), timescale: 22050);
+        Assert.True(ContainerGaplessInfo.TryParseMp4(new MemoryStream(file), out var info));
+        Assert.Equal(22050, info!.Timescale);
+        Assert.Equal(44100, info.DecodedRate);
+        Assert.Equal(5505, info.LeadFrames(48000)); // 2529 / 22050 s at 48 kHz, as 5058 / 44100 s
+    }
+
+    [Fact]
+    public void Mp4_WithoutAnEsds_HasNoDecodedRate()
+    {
+        var file = BuildMp4(edit: (12000, 1024), stts: [(517, 1024), (1, 816)], smpb: null);
+        Assert.True(ContainerGaplessInfo.TryParseMp4(new MemoryStream(file), out var info));
+        Assert.Equal(0, info!.DecodedRate);
+    }
+
     [Fact]
     public void Mp4_EditListGivesPrimingAndPadding_AndThePatchRenamesEdts()
     {
@@ -366,10 +402,10 @@ public class ContainerGaplessTests
     // ── synthetic MP4 ──────────────────────────────────────────────────────
 
     private static byte[] BuildMp4((uint SegmentMs, int MediaTime)? edit, (uint Count, uint Delta)[] stts, string? smpb,
-        bool extraVideo = false, string format = "mp4a")
+        bool extraVideo = false, string format = "mp4a", byte[]? asc = null, uint timescale = 44100)
     {
         var mvhd = FullBox("mvhd", U32(0), U32(0), U32(1000), U32(12000), new byte[80]);
-        var trak = AudioTrak(edit, stts, format);
+        var trak = AudioTrak(edit, stts, format, asc, timescale);
         var parts = new List<byte[]> { mvhd, trak };
         if (extraVideo) parts.Add(Box("trak", Box("mdia", FullBox("hdlr", U32(0), Encoding.ASCII.GetBytes("vide"), new byte[12]))));
         if (smpb != null)
@@ -386,20 +422,30 @@ public class ContainerGaplessTests
         return Concat(ftyp, mdat, Box("moov", parts.ToArray()));
     }
 
-    private static byte[] AudioTrak((uint SegmentMs, int MediaTime)? edit, (uint Count, uint Delta)[] stts, string format)
+    private static byte[] AudioTrak((uint SegmentMs, int MediaTime)? edit, (uint Count, uint Delta)[] stts, string format,
+        byte[]? asc = null, uint timescale = 44100)
     {
         var entry = Box(format, new byte[6], U16(1), new byte[8], U16(2), U16(16), new byte[4],
-            U32(44100u << 16));
+            U32(44100u << 16), asc == null ? [] : Esds(asc));
         var stsd = FullBox("stsd", U32(1), entry);
         var sttsBox = FullBox("stts", U32((uint)stts.Length), Concat(stts.Select(e => Concat(U32(e.Count), U32(e.Delta))).ToArray()));
         var minf = Box("minf", Box("stbl", stsd, sttsBox));
-        var mdhd = FullBox("mdhd", U32(0), U32(0), U32(44100), U32(530432), new byte[4]);
+        var mdhd = FullBox("mdhd", U32(0), U32(0), U32(timescale), U32(530432), new byte[4]);
         var hdlr = FullBox("hdlr", U32(0), Encoding.ASCII.GetBytes("soun"), new byte[12]);
         var mdia = Box("mdia", mdhd, hdlr, minf);
         var tkhd = FullBox("tkhd", new byte[80]);
         if (edit is not { } e) return Box("trak", tkhd, mdia);
         var elst = FullBox("elst", U32(1), U32(e.SegmentMs), U32((uint)e.MediaTime), U32(0x00010000));
         return Box("trak", tkhd, Box("edts", elst), mdia);
+    }
+
+    // esds > ES_Descriptor (3) > DecoderConfigDescriptor (4, AAC) > DecoderSpecificInfo (5) = the ASC.
+    private static byte[] Esds(byte[] asc)
+    {
+        var dsi = Concat([0x05, (byte)asc.Length], asc);
+        var dcd = Concat([0x04, (byte)(13 + dsi.Length), 0x40, 0x15], new byte[11], dsi);
+        var es = Concat([0x03, (byte)(3 + dcd.Length), 0, 1, 0], dcd);
+        return FullBox("esds", es);
     }
 
     private static byte[] Box(string type, params byte[][] body)

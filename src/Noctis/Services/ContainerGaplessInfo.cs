@@ -35,6 +35,13 @@ internal sealed record ContainerGaplessInfo(
     // well below: their sample tables are a few MB).
     private const int MaxMoovBytes = 64 << 20;
 
+    /// <summary>
+    /// The rate the decoder outputs, 0 when the header leaves it open. Not always the
+    /// timescale the trims are counted in: an HE-AAC (SBR) track may be timed at its core rate
+    /// (22050/24000) and decode at twice that, which is what its AudioSpecificConfig says.
+    /// </summary>
+    public int DecodedRate { get; init; }
+
     /// <summary>Frames to drop from the head at the engine's rate (LibVLC resamples to it).</summary>
     public int LeadFrames(int outputSampleRate) => Scale(LeadSamples, outputSampleRate);
 
@@ -118,7 +125,8 @@ internal sealed record ContainerGaplessInfo(
         BinaryPrimitives.WriteUInt32LittleEndian(patched.AsSpan(22), OggCrc(patched, crcOffset: 22));
         // Only the bytes that change: the pre-skip and the page checksum.
         info = new ContainerGaplessInfo("opus", 48000, channels, preSkip, 0,
-            [(22, patched[22..26]), (headerLen + 10, patched[(headerLen + 10)..(headerLen + 12)])]);
+            [(22, patched[22..26]), (headerLen + 10, patched[(headerLen + 10)..(headerLen + 12)])])
+        { DecodedRate = 48000 };
         return true;
     }
 
@@ -186,7 +194,7 @@ internal sealed record ContainerGaplessInfo(
             // dates the first packet 0 and LibVLC decodes it (harness 11-19: head 0.000 ms); only
             // the padding is left (+1.19 ms).
             if (tail == 0) return false;
-            info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, 0, tail, []);
+            info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, 0, tail, []) { DecodedRate = v.Rate };
             return true;
         }
 
@@ -215,7 +223,7 @@ internal sealed record ContainerGaplessInfo(
         }
 
         if (patches.Count == 0 && tail == 0) return false;
-        info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, Math.Max(0, -start), tail, patches);
+        info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, Math.Max(0, -start), tail, patches) { DecodedRate = v.Rate };
         return true;
     }
 
@@ -624,7 +632,10 @@ internal sealed record ContainerGaplessInfo(
         // letter of the tag's name changed makes FFmpeg pass over it.
         if (smpb != null)
             patches.Add((fileOffset + smpb.NameOffset + 7, "b"u8.ToArray()));
-        info = new ContainerGaplessInfo("aac", (int)a.Timescale, a.Channels, lead, tail, patches);
+        info = new ContainerGaplessInfo("aac", (int)a.Timescale, a.Channels, lead, tail, patches)
+        {
+            DecodedRate = a.Asc is { } asc ? AacDecodedRate(asc) : 0,
+        };
         return true;
     }
 
@@ -641,7 +652,7 @@ internal sealed record ContainerGaplessInfo(
     }
 
     private sealed record Trak(string? Handler, string? Format, long Timescale, long Decoded, int Channels,
-        int EdtsOffset, (long SegmentDuration, long MediaTime)[] Edits, Smpb? Smpb);
+        int EdtsOffset, (long SegmentDuration, long MediaTime)[] Edits, Smpb? Smpb, byte[]? Asc);
 
     /// <summary>An iTunSMPB tag's value and where its name ("iTunSMPB") starts in the moov.</summary>
     private sealed record Smpb(string Value, int NameOffset);
@@ -652,6 +663,7 @@ internal sealed record ContainerGaplessInfo(
         Smpb? smpb = null;
         long timescale = 0, total = 0;
         int channels = 0, edtsOffset = -1;
+        byte[]? asc = null;
         var edits = Array.Empty<(long, long)>();
         if (!TryBox(buf, start, out var body, out _, out _)) return null;
         foreach (var (s, e, t) in Children(buf, body, end))
@@ -677,13 +689,13 @@ internal sealed record ContainerGaplessInfo(
                             if (nt == "stbl")
                                 foreach (var (ts, te, tt) in Children(buf, BodyOf(buf, ns), ne))
                                 {
-                                    if (tt == "stsd") (format, channels) = ParseStsd(buf[ts..te]);
+                                    if (tt == "stsd") (format, channels, asc) = ParseStsd(buf[ts..te]);
                                     else if (tt == "stts") total = DecodedDuration(buf[ts..te]);
                                 }
                 }
             }
         }
-        return new Trak(handler, format, timescale, total, channels, edtsOffset, edits, smpb);
+        return new Trak(handler, format, timescale, total, channels, edtsOffset, edits, smpb, asc);
     }
 
     private static int BodyOf(ReadOnlySpan<byte> buf, int start) => TryBox(buf, start, out var body, out _, out _) ? body : start + 8;
@@ -717,14 +729,140 @@ internal sealed record ContainerGaplessInfo(
 
     // stsd: version/flags, entry count, then the first sample entry: size, format, 6 reserved,
     // data ref index (2), then the audio sample entry's version (2), revision (2), vendor (4),
-    // channel count (2).
-    private static (string?, int) ParseStsd(ReadOnlySpan<byte> box)
+    // channel count (2), sample size, compression id, packet size (2 each), rate (4); a
+    // QuickTime version 1/2 entry carries 16/36 more bytes. Then its boxes: 'esds', or 'esds'
+    // inside a QuickTime 'wave'.
+    private static (string?, int, byte[]?) ParseStsd(ReadOnlySpan<byte> box)
     {
-        if (box.Length < 16 + 8 + 8 + 10) return (null, 0);
+        if (box.Length < 16 + 8 + 8 + 10) return (null, 0, null);
         var entry = box[16..];
         var format = Encoding.ASCII.GetString(entry.Slice(4, 4));
         int channels = BinaryPrimitives.ReadUInt16BigEndian(entry[24..]);
-        return (format, channels);
+        byte[]? asc = null;
+        var entrySize = (int)Math.Min(BinaryPrimitives.ReadUInt32BigEndian(entry), entry.Length);
+        var version = BinaryPrimitives.ReadUInt16BigEndian(entry[16..]);
+        var children = 36 + (version == 1 ? 16 : version == 2 ? 36 : 0);
+        if (format == "mp4a" && children < entrySize)
+        {
+            var e = entry[..entrySize];
+            foreach (var (s, end, t) in Children(e, children, entrySize))
+            {
+                if (t == "esds") asc = AscFromEsds(e[s..end]);
+                else if (t == "wave")
+                    foreach (var (ws, we, wt) in Children(e, BodyOf(e, s), end))
+                        if (wt == "esds") asc = AscFromEsds(e[ws..we]);
+                if (asc != null) break;
+            }
+        }
+        return (format, channels, asc);
+    }
+
+    /// <summary>The AudioSpecificConfig in an 'esds' box (header included), or null. Pure.</summary>
+    internal static byte[]? AscFromEsds(ReadOnlySpan<byte> esds)
+    {
+        // Full box: 8 header + 4 version/flags, then ES_Descriptor (tag 3).
+        var p = 12;
+        if (!ReadDescriptor(esds, ref p, 0x03, out _)) return null;
+        if (p + 3 > esds.Length) return null;
+        var flags = esds[p + 2];
+        p += 3; // ES_ID, flags
+        if ((flags & 0x80) != 0) p += 2;                                   // dependsOn_ES_ID
+        if ((flags & 0x40) != 0) { if (p >= esds.Length) return null; p += 1 + esds[p]; } // URL
+        if ((flags & 0x20) != 0) p += 2;                                   // OCR_ES_Id
+        if (!ReadDescriptor(esds, ref p, 0x04, out _)) return null;
+        p += 13; // objectTypeIndication, streamType, bufferSize, max/avg bitrate
+        if (!ReadDescriptor(esds, ref p, 0x05, out var len) || len <= 0 || p + len > esds.Length) return null;
+        return esds.Slice(p, len).ToArray();
+    }
+
+    // tag (1) + size (1-4 bytes, 7 bits each); leaves p on the descriptor's body.
+    private static bool ReadDescriptor(ReadOnlySpan<byte> buf, ref int p, byte tag, out int length)
+    {
+        length = 0;
+        if (p >= buf.Length || buf[p] != tag) return false;
+        p++;
+        for (var i = 0; i < 4; i++)
+        {
+            if (p >= buf.Length) return false;
+            var b = buf[p++];
+            length = (length << 7) | (b & 0x7F);
+            if ((b & 0x80) == 0) return true;
+        }
+        return false;
+    }
+
+    private static readonly int[] AacRates =
+        [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
+
+    /// <summary>
+    /// The rate an AAC decoder outputs for this AudioSpecificConfig (ISO 14496-3 1.6.2.1), 0
+    /// when it cannot be told from it. HE-AAC (SBR, PS) decodes at its extension rate, twice
+    /// the core rate the track may be timed at: signalled explicitly (object type 5 or 29) or
+    /// by a sync extension after an AAC-LC config. An AAC-LC config at 24 kHz or below without
+    /// that extension may still carry SBR that the decoder only finds in the stream (implicit
+    /// signalling), so it is left open. Pure.
+    /// </summary>
+    internal static int AacDecodedRate(ReadOnlySpan<byte> asc)
+    {
+        var r = new BitReader(asc);
+        var aot = ReadObjectType(ref r);
+        var rate = ReadRate(ref r);
+        var channelConfig = r.Read(4);
+        if (aot < 0 || rate <= 0 || channelConfig < 0) return 0;
+        if (aot is 5 or 29)
+        {
+            var ext = ReadRate(ref r);
+            return ext > 0 ? ext : 0;
+        }
+        if (aot != 2) return 0; // only AAC-LC is measured
+        var implicitPossible = rate <= 24000;
+        // GASpecificConfig: frameLengthFlag, dependsOnCoreCoder (+ 14-bit delay), extensionFlag.
+        if (r.Read(1) < 0) return implicitPossible ? 0 : rate;
+        var dependsOnCore = r.Read(1);
+        if (dependsOnCore < 0 || (dependsOnCore == 1 && r.Read(14) < 0) || r.Read(1) < 0)
+            return implicitPossible ? 0 : rate;
+        // A program config element (channel config 0) is not walked: no sync extension read.
+        if (channelConfig == 0 || r.BitsLeft < 16) return implicitPossible ? 0 : rate;
+        if (r.Read(11) != 0x2B7) return implicitPossible ? 0 : rate;
+        if (ReadObjectType(ref r) != 5) return implicitPossible ? 0 : rate;
+        var sbrPresent = r.Read(1);
+        if (sbrPresent == 0) return rate; // signalled: no SBR
+        if (sbrPresent < 0) return implicitPossible ? 0 : rate;
+        var extRate = ReadRate(ref r);
+        return extRate > 0 ? extRate : 0;
+    }
+
+    private static int ReadObjectType(ref BitReader r)
+    {
+        var aot = r.Read(5);
+        if (aot != 31) return aot;
+        var ext = r.Read(6);
+        return ext < 0 ? -1 : 32 + ext;
+    }
+
+    private static int ReadRate(ref BitReader r)
+    {
+        var index = r.Read(4);
+        if (index == 15) return r.Read(24);
+        return index >= 0 && index < AacRates.Length ? AacRates[index] : -1;
+    }
+
+    private ref struct BitReader(ReadOnlySpan<byte> data)
+    {
+        private readonly ReadOnlySpan<byte> _data = data;
+        private int _bit;
+
+        public int BitsLeft => _data.Length * 8 - _bit;
+
+        /// <summary>The next <paramref name="count"/> bits (MSB first), or -1 past the end.</summary>
+        public int Read(int count)
+        {
+            if (count > BitsLeft) return -1;
+            var v = 0;
+            for (var i = 0; i < count; i++, _bit++)
+                v = (v << 1) | ((_data[_bit >> 3] >> (7 - (_bit & 7))) & 1);
+            return v;
+        }
     }
 
     /// <summary>
