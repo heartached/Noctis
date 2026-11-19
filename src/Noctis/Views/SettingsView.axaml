@@ -7678,13 +7678,15 @@
                     <!-- Signed in: with whom and when, Sync now, Sign out. -->
                     <controls:CollapsibleContent IsOpen="{Binding IsComputerLinked}" Lift="10" Motion="Glide">
                     <Grid x:Name="ComputerLinkSignedIn" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,0">
-                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                        <!-- A grid, not a horizontal stack: a stack gives the text endless width, so a long
+                             status never wrapped and ran under the buttons. -->
+                        <Grid Grid.Column="0" ColumnDefinitions="Auto,*" ColumnSpacing="7" VerticalAlignment="Center">
                             <Path Data="{StaticResource SyncStatusGlyph}" Width="14" Height="14"
                                   Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="1.4"
                                   StrokeLineCap="Round" StrokeJoin="Round" Opacity="0.6" VerticalAlignment="Center"/>
-                            <TextBlock x:Name="ComputerLinkStatusText" Text="{Binding ComputerLinkStatus}" FontSize="12" Opacity="0.7"
+                            <TextBlock x:Name="ComputerLinkStatusText" Grid.Column="1" Text="{Binding ComputerLinkStatus}" FontSize="12" Opacity="0.7"
                                        VerticalAlignment="Center" TextWrapping="Wrap"/>
-                        </StackPanel>
+                        </Grid>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                             <Button x:Name="ComputerLinkSyncNowButton" Classes="pill-action account-action"
                                     AutomationProperties.Name="{loc:T PcSync.SyncNow}" Command="{Binding SyncComputerLinkNowCommand}"
