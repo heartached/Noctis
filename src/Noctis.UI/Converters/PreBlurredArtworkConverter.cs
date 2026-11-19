@@ -245,6 +245,18 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
         return pixels;
     }
 
+    /// <summary>
+    /// The phone's Blurred Cover background (Settings › Appearance › Now Playing Background): the
+    /// cover's <see cref="WorkingSize"/> px downscale blurred at <paramref name="blurPercent"/> of
+    /// the stock sigma (<see cref="Tune"/>), as a new bitmap the caller owns and disposes. Touches
+    /// no cache, so it may run off the UI thread while the caller keeps the source alive.
+    /// </summary>
+    public static Bitmap BlurredCopy(Bitmap source, int blurPercent)
+    {
+        var small = ReadDownscaled(source, out var w, out var h);
+        return ToBitmap(Tune(small, w, h, Math.Max(0, blurPercent), 100), w, h);
+    }
+
     private static void Blur(byte[] pixels, int w, int h, double sigma)
     {
         var kernel = BuildKernel(sigma);

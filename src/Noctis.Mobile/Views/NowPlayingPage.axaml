@@ -15,6 +15,16 @@
         <conv:PreBlurredArtworkConverter x:Key="PreBlur" />
         <!-- The quality badge's ink: a shade under the title's white, over the capsule's veil. -->
         <SolidColorBrush x:Key="NowPlayingBadgeText" Color="#E0FFFFFF" />
+        <!-- The wash's shade (the page's second layer, below); the Blurred Cover wears it too. -->
+        <LinearGradientBrush x:Key="NowPlayingShade" StartPoint="0%,0%" EndPoint="0%,100%">
+            <GradientStop Offset="0" Color="#4D000000" />
+            <GradientStop Offset="0.30" Color="#59000000" />
+            <GradientStop Offset="0.45" Color="#73000000" />
+            <GradientStop Offset="0.58" Color="#8F000000" />
+            <GradientStop Offset="0.72" Color="#A6000000" />
+            <GradientStop Offset="0.86" Color="#B5000000" />
+            <GradientStop Offset="1" Color="#BF000000" />
+        </LinearGradientBrush>
     </UserControl.Resources>
 
     <!-- Always dark (ruling 8): white controls over the blurred cover and scrim. Laid out as
@@ -162,25 +172,27 @@
                 step is small (MobileNowPlayingPageTests checks the shade and the dither);
              3. a tile of faint noise (NowPlayingPage.axaml.cs, +-5/255): an 8-bit gradient this
                 long otherwise lands in visible bands; a hair of noise breaks them up. -->
-        <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
-               Stretch="Fill" IsHitTestVisible="False" />
-        <Border Name="WashShade" IsHitTestVisible="False" Opacity="{Binding NowPlayingShadeOpacity}">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                    <GradientStop Offset="0" Color="#4D000000" />
-                    <GradientStop Offset="0.30" Color="#59000000" />
-                    <GradientStop Offset="0.45" Color="#73000000" />
-                    <GradientStop Offset="0.58" Color="#8F000000" />
-                    <GradientStop Offset="0.72" Color="#A6000000" />
-                    <GradientStop Offset="0.86" Color="#B5000000" />
-                    <GradientStop Offset="1" Color="#BF000000" />
-                </LinearGradientBrush>
-            </Border.Background>
-        </Border>
-        <Border Name="WashDither" IsHitTestVisible="False" />
-        <!-- Settings › Appearance › Now Playing Background: darker lays black over the wash
-             (ShellViewModel.NowPlayingDimOpacity), brighter thins the shade itself. -->
-        <Border Name="WashDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingDimOpacity}" />
+        <Panel Name="WashLayer" IsVisible="{Binding !#BlurCover.HasImage}">
+            <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
+                   Stretch="Fill" IsHitTestVisible="False" />
+            <Border Name="WashShade" IsHitTestVisible="False" Opacity="{Binding NowPlayingShadeOpacity}"
+                    Background="{StaticResource NowPlayingShade}" />
+            <Border Name="WashDither" IsHitTestVisible="False" />
+            <!-- Settings › Appearance › Now Playing Background: darker lays black over the wash
+                 (ShellViewModel.NowPlayingDimOpacity), brighter thins the shade itself. -->
+            <Border Name="WashDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingDimOpacity}" />
+        </Panel>
+        <!-- Now Playing Background › Blurred Cover (Discord #mobile-beta): the cover itself, blurred
+             once per cover off the UI thread (BlurredCoverBackdrop) and filling the screen, the
+             stock shade over it at its brightest (40%, Brightness +50's: white text still reads on
+             a white cover), then the Dim's black. No cover: the wash above shows instead. -->
+        <Panel Name="BlurLayer" IsVisible="{Binding #BlurCover.HasImage}">
+            <views:BlurredCoverBackdrop Name="BlurCover" Source="{Binding #Artwork.Source}"
+                                        IsActive="{Binding IsBlurredCoverBackground}" BlurPercent="{Binding NowPlayingBlurPercent}" />
+            <Border Name="BlurShade" IsHitTestVisible="False" Opacity="0.4" Background="{StaticResource NowPlayingShade}" />
+            <views:DitherLayer Name="BlurDither" IsHitTestVisible="False" />
+            <Border Name="BlurDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingCoverDimOpacity}" />
+        </Panel>
 
         <Border Padding="{Binding SafeArea}">
             <!-- Portrait: one column. Landscape (the code-behind, on resize): the cover on the

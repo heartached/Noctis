@@ -3533,6 +3533,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Фон плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Яркость фона плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Темнее или светлее цвета за экраном воспроизведения</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Яркость</value></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Цветная дымка</value></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Размытая обложка</value></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Размытие</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Размытие фона плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>Затемнение</value></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>Затемнение фона плеера</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>Обложка песни, размытая, за плеером и текстом песни. Затемнение делает её темнее.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Папки с музыкой</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Загрузки</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Прослушивание</value></data>

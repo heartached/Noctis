@@ -3533,6 +3533,14 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fondo de Reproduciendo</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Brillo del fondo de Reproduciendo</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Colores más oscuros o más claros detrás de Reproduciendo</value><comment>Footnote under the slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Brillo</value><comment>Settings row: the slider under it makes the Now Playing wash darker or brighter</comment></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Velo de color</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default)</comment></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Portada desenfocada</value><comment>Now Playing Background choice: the cover itself, blurred, behind the player</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Desenfoque</value><comment>Settings row: a slider for how blurred the cover behind Now Playing is</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Desenfoque del fondo de Reproduciendo</value><comment>Screen reader name of the Blur slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>Oscurecer</value><comment>Settings row: a slider for the dark tint over the blurred cover</comment></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>Oscurecimiento del fondo de Reproduciendo</value><comment>Screen reader name of the Dim slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>La portada de la canción, desenfocada, detrás de Reproduciendo y la letra. Oscurecer la vuelve más oscura.</value><comment>Footnote under the Blurred Cover sliders</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Carpetas de música</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Descargas</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Escucha</value><comment>Settings group</comment></data>

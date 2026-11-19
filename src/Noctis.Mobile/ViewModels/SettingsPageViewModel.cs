@@ -494,6 +494,24 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
     }
 
+    /// <summary>The Now Playing Background row's value: Colour Wash or Blurred Cover.</summary>
+    public string NowPlayingBackgroundValue => BackgroundStyleLabel(Shell.NowPlayingBackground);
+
+    internal static string BackgroundStyleLabel(NowPlayingBackgroundStyle style) => Loc.T("Mobile.NowPlayingBackground." + style);
+
+    public string NowPlayingBackgroundRowName => Named(Loc.T("Mobile.Settings.NowPlayingBrightness"), NowPlayingBackgroundValue);
+
+    /// <summary>The Now Playing Background row: Colour Wash / Blurred Cover on the glass pop menu,
+    /// as Now Playing Artwork; a pick applies at once.</summary>
+    [RelayCommand]
+    private void ShowNowPlayingBackgroundMenu()
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var style in NowPlayingBackgroundStyles.All)
+            items.Add(new OptionsMenuItem(Shell, BackgroundStyleLabel(style), Shell.NowPlayingBackground == style, () => Shell.NowPlayingBackground = style));
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
 
     // ── Theme ──
 
@@ -1317,6 +1335,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
         {
             OnPropertyChanged(nameof(NowPlayingArtworkValue));
             OnPropertyChanged(nameof(NowPlayingArtworkRowName));
+        }
+        else if (e.PropertyName == nameof(ShellViewModel.NowPlayingBackground))
+        {
+            OnPropertyChanged(nameof(NowPlayingBackgroundValue));
+            OnPropertyChanged(nameof(NowPlayingBackgroundRowName));
         }
     }
 

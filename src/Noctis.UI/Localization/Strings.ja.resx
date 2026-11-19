@@ -8520,6 +8520,14 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>再生中の背景</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>再生中の背景の明るさ</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生画面の背景を暗くまたは明るく</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>明るさ</value></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>カラーウォッシュ</value></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>ぼかしたカバー</value></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>ぼかし</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>再生中の背景のぼかし</value></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>暗さ</value></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>再生中の背景の暗さ</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>曲のカバーをぼかして再生画面と歌詞の背景にします。暗さで暗くできます。</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音楽フォルダー</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>ダウンロード</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>リスニング</value></data>

@@ -3533,6 +3533,14 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Fond de la lecture en cours</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Luminosité du fond de la lecture en cours</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Couleurs plus sombres ou plus claires derrière À l’écoute</value><comment>Footnote under the slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Luminosité</value><comment>Settings row: the slider under it makes the Now Playing wash darker or brighter</comment></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Voile de couleur</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default)</comment></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Pochette floutée</value><comment>Now Playing Background choice: the cover itself, blurred, behind the player</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Flou</value><comment>Settings row: a slider for how blurred the cover behind Now Playing is</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Flou du fond de la lecture en cours</value><comment>Screen reader name of the Blur slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>Assombrir</value><comment>Settings row: a slider for the dark tint over the blurred cover</comment></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>Assombrissement du fond de la lecture en cours</value><comment>Screen reader name of the Dim slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>La pochette du morceau, floutée, derrière la lecture en cours et les paroles. Assombrir la rend plus sombre.</value><comment>Footnote under the Blurred Cover sliders</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Dossiers de musique</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Téléchargements</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Écoute</value><comment>Settings group</comment></data>

@@ -3530,9 +3530,17 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Cover</value><comment>Now Playing Artwork choice: the plain square cover</comment></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Now Playing Artwork choice: the cover as a spinning record's label</comment></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value><comment>Now Playing Artwork choice: the cover printed on a spinning compact disc</comment></data>
-  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Now Playing Background</value><comment>Settings row: a slider for how dark or bright the Now Playing background is</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Now Playing Background</value><comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Now Playing background brightness</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Darker or brighter colours behind Now Playing</value><comment>Footnote under the slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Brightness</value><comment>Settings row: the slider under it makes the Now Playing wash darker or brighter</comment></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Colour Wash</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default)</comment></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Blurred Cover</value><comment>Now Playing Background choice: the cover itself, blurred, behind the player</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Blur</value><comment>Settings row: a slider for how blurred the cover behind Now Playing is</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Now Playing background blur</value><comment>Screen reader name of the Blur slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>Dim</value><comment>Settings row: a slider for the dark tint over the blurred cover</comment></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>Now Playing background dim</value><comment>Screen reader name of the Dim slider</comment></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>The song's cover, blurred, behind Now Playing and Lyrics. Dim darkens it.</value><comment>Footnote under the Blurred Cover sliders</comment></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Music Folders</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>Downloads</value><comment>Settings row and page</comment></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Listening</value><comment>Settings group</comment></data>

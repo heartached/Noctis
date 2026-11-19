@@ -619,21 +619,55 @@
                             <TextBlock Name="SmoothMotionFootnoteLabel" Classes="group-footnote" Text="{loc:T Mobile.Settings.SmoothMotionFootnote}" />
                         </StackPanel>
 
-                        <!-- Now Playing Background: the wash darker or brighter, live (beta 2 request). -->
+                        <!-- Now Playing Background: the style (the wash, or the cover blurred: Discord
+                             #mobile-beta), then the wash darker or brighter (beta 2 request), or the
+                             Blurred Cover's Blur and Dim. All live. -->
                         <StackPanel>
                             <Border Name="NowPlayingBrightnessCard" Classes="group-card">
                                 <StackPanel>
-                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
-                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBrightness}" />
-                                        <TextBlock Grid.Column="1" Name="NowPlayingBrightnessLabel" Classes="row-value"
-                                                   Text="{Binding Shell.NowPlayingBrightnessLabel}" />
-                                    </views:SettingRow>
-                                    <controls:SmoothSlider Name="NowPlayingBrightnessSlider" Classes="accent-slider" Margin="7,-12,7,6"
-                                                           Minimum="-50" Maximum="50" Step="5" SteppedValue="{Binding Shell.NowPlayingBrightness}"
-                                                           AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingBrightnessName}" />
+                                    <Button Name="NowPlayingBackgroundRow" Classes="row" Command="{Binding ShowNowPlayingBackgroundMenuCommand}"
+                                            AutomationProperties.Name="{Binding NowPlayingBackgroundRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto,Auto">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBrightness}" />
+                                            <TextBlock Grid.Column="1" Name="NowPlayingBackgroundValueLabel" Classes="row-value" Text="{Binding NowPlayingBackgroundValue}" />
+                                            <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <StackPanel Name="NowPlayingWashOptions" IsVisible="{Binding !Shell.IsBlurredCoverBackground}">
+                                        <Border Classes="row-separator plain" />
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBrightnessLevel}" />
+                                            <TextBlock Grid.Column="1" Name="NowPlayingBrightnessLabel" Classes="row-value"
+                                                       Text="{Binding Shell.NowPlayingBrightnessLabel}" />
+                                        </views:SettingRow>
+                                        <controls:SmoothSlider Name="NowPlayingBrightnessSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                               Minimum="-50" Maximum="50" Step="5" SteppedValue="{Binding Shell.NowPlayingBrightness}"
+                                                               AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingBrightnessName}" />
+                                    </StackPanel>
+                                    <StackPanel Name="NowPlayingBlurOptions" IsVisible="{Binding Shell.IsBlurredCoverBackground}">
+                                        <Border Classes="row-separator plain" />
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingBlur}" />
+                                            <TextBlock Grid.Column="1" Name="NowPlayingBlurLabel" Classes="row-value" Text="{Binding Shell.NowPlayingBlurLabel}" />
+                                        </views:SettingRow>
+                                        <controls:SmoothSlider Name="NowPlayingBlurSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                               Minimum="0" Maximum="100" Step="5" SteppedValue="{Binding Shell.NowPlayingBlur}"
+                                                               AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingBlurName}" />
+                                        <Border Classes="row-separator plain" />
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.NowPlayingDim}" />
+                                            <TextBlock Grid.Column="1" Name="NowPlayingDimLabel" Classes="row-value" Text="{Binding Shell.NowPlayingDimLabel}" />
+                                        </views:SettingRow>
+                                        <controls:SmoothSlider Name="NowPlayingDimSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                               Minimum="0" Maximum="60" Step="5" SteppedValue="{Binding Shell.NowPlayingDim}"
+                                                               AutomationProperties.Name="{loc:T Mobile.Settings.NowPlayingDimName}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
-                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.NowPlayingBrightnessHint}" />
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.NowPlayingBrightnessHint}"
+                                       IsVisible="{Binding !Shell.IsBlurredCoverBackground}" />
+                            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.NowPlayingBlurHint}"
+                                       IsVisible="{Binding Shell.IsBlurredCoverBackground}" />
                         </StackPanel>
 
                         <!-- Library: Music Folders and Downloads are pages; Rescan is an action, its state under it. -->
