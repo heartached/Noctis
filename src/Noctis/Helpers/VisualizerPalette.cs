@@ -12,12 +12,12 @@ namespace Noctis.Helpers;
 /// brush per artwork/style change, never per frame.
 ///
 /// Guards the covers where "the album's colour" would vanish on the dark scrim: near-grey
-/// covers have no hue worth painting (caller falls back to the theme accent), and dark
+/// (black-and-white) covers have no hue, so their bars are white (GitHub #255), and dark
 /// covers are lifted to a lightness floor so the bars stay visible.
 /// </summary>
 public static class VisualizerPalette
 {
-    /// <summary>Below this saturation the colour reads as grey: no artwork tint.</summary>
+    /// <summary>Below this saturation the colour reads as grey: white bars, no hue.</summary>
     public const double MinSaturation = 0.12;
 
     /// <summary>Lightness floor for the base colour so dark covers still show.</summary>
@@ -31,16 +31,16 @@ public static class VisualizerPalette
 
     /// <summary>
     /// The gradient brush for <paramref name="artwork"/> in <paramref name="style"/>, or null
-    /// when there is no usable colour (no artwork, or too grey) and the caller's fallback
+    /// when there is no artwork and the caller's fallback
     /// fill should be used.
     /// </summary>
     public static LinearGradientBrush? Build(Color? artwork, VisualizerStyle style)
     {
         if (artwork is not { } c) return null;
         var (h, s, l) = RgbToHsl(c);
-        if (s < MinSaturation) return null;
-
-        var (baseColor, tipColor) = Colors(h, s, l);
+        // A black-and-white cover has no hue to paint: white bars (GitHub #255), not the
+        // caller's accent fallback, which had nothing to do with the cover.
+        var (baseColor, tipColor) = s < MinSaturation ? NeutralColors : Colors(h, s, l);
         return style == VisualizerStyle.Mirror
             ? new LinearGradientBrush
             {
@@ -64,6 +64,9 @@ public static class VisualizerPalette
                 },
             };
     }
+
+    /// <summary>Base and tip colours for a grey cover: light grey rising to white.</summary>
+    public static (Color Base, Color Tip) NeutralColors => (Color.FromRgb(0xC8, 0xC8, 0xC8), Color.FromRgb(0xF5, 0xF5, 0xF5));
 
     /// <summary>Base and tip colours for an HSL artwork colour (exposed for tests).</summary>
     public static (Color Base, Color Tip) Colors(double h, double s, double l)

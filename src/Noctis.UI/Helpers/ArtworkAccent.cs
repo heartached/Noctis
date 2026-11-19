@@ -29,4 +29,23 @@ public static class ArtworkAccent
         var rgb = new HslColor(1, hsl.H, s, l).ToRgb();
         return $"#{rgb.R:X2}{rgb.G:X2}{rgb.B:X2}";
     }
+
+    /// <summary>
+    /// The accent of a black-and-white cover (GitHub #255): near white on a dark theme, near
+    /// black on a light one, so it reads on the page either way. Such a cover used to fall back
+    /// to the user's own accent, which looked like "Accent follows album art" had not applied.
+    /// </summary>
+    public static string NeutralAccent(bool lightTheme) => lightTheme ? "#2B2B2B" : "#F0F0F0";
+
+    /// <summary>
+    /// The accent for a cover whose colour is <paramref name="artworkHex"/> (the vibrant colour,
+    /// or the plain average of a grey cover): its tamed colour, the neutral accent when it is
+    /// grey, null without a readable cover (the caller keeps the user's own accent).
+    /// </summary>
+    public static string? ForCover(string? artworkHex, bool lightTheme)
+    {
+        if (string.IsNullOrWhiteSpace(artworkHex) || !Color.TryParse(artworkHex, out _))
+            return null;
+        return TameForAccent(artworkHex) ?? NeutralAccent(lightTheme);
+    }
 }

@@ -4061,12 +4061,19 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return;
         }
 
-        // Vibrant colour for the visualizer tint: SkiaSharp file decode, path-cached after
-        // the first call, so it runs off the UI thread and lands only if still current.
+        // The cover's colour for the visualizer tint: SkiaSharp file decode, path-cached after
+        // the first call, so it runs off the UI thread and lands only if still current. The
+        // accent source, not the share card's background colour: that one has a saturation
+        // floor, which painted the bars of a black-and-white cover in a hue the cover does
+        // not have (GitHub #255). A grey cover stays grey here and gets white bars.
         _ = Task.Run(() =>
         {
             Color? accent = null;
-            try { accent = Color.Parse(ShareCardRenderer.GetVibrantColorHex(artPath)); }
+            try
+            {
+                if (ArtworkVibrantColor.GetAccentSourceHex(artPath) is { } hex)
+                    accent = Color.Parse(hex);
+            }
             catch { /* no tint for this cover */ }
             Dispatcher.UIThread.Post(() =>
             {

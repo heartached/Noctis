@@ -160,16 +160,20 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             app.SetAccent(vm.Settings.ActiveAccentHex);
             return;
         }
-        // The same colour the phone's Match Artwork wears (ArtworkVibrantColor, shared): null
-        // for a grey or unreadable cover, which keeps the user's own accent.
-        Task.Run(() => ArtworkVibrantColor.GetAccentHex(path)).ContinueWith(t =>
+        // The cover's colour (ArtworkVibrantColor, shared with the phone): null for an
+        // unreadable cover, which keeps the user's own accent. A black-and-white cover gives
+        // the neutral accent (GitHub #255); it used to fall back to the user's accent too.
+        Task.Run(() => ArtworkVibrantColor.GetAccentSourceHex(path)).ContinueWith(t =>
         {
             if (!t.IsCompletedSuccessfully) return;
-            var hex = t.Result;
+            var source = t.Result;
             Dispatcher.UIThread.Post(() =>
             {
                 // A later track may have won the race; only the newest path paints.
                 if (!ReferenceEquals(_artworkAccentPath, path) || !vm.Settings.AccentFollowsArtwork) return;
+                // Read here, on the UI thread: a grey cover's accent depends on the theme.
+                var lightTheme = app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light;
+                var hex = ArtworkAccent.ForCover(source, lightTheme);
                 app.SetAccent(hex ?? vm.Settings.ActiveAccentHex);
             });
         });
@@ -695,6 +699,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     // so a theme switch while glass is on re-resolves them.
                     if (_liquidGlassActive)
                         ApplyLiquidGlass(true);
+                    // A black-and-white cover's accent is white on a dark theme, near black on a light one.
+                    if (vm.Settings.AccentFollowsArtwork)
+                        ApplyArtworkAccent();
                 };
                 vm.Settings.ThemeChanged += _themeChangedHandler;
 
