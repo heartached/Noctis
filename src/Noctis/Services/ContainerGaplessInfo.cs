@@ -73,7 +73,7 @@ internal sealed record ContainerGaplessInfo(
                 bufferSize: 1, FileOptions.RandomAccess);
             return IsMp4Extension(Path.GetExtension(path))
                 ? TryParseMp4(stream, out info)
-                : TryParseOggOpus(stream, out info);
+                : TryParseOggOpus(stream, out info) || TryParseOggVorbis(stream, out info);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
@@ -120,6 +120,327 @@ internal sealed record ContainerGaplessInfo(
         info = new ContainerGaplessInfo("opus", 48000, channels, preSkip, 0,
             [(22, patched[22..26]), (headerLen + 10, patched[(headerLen + 10)..(headerLen + 12)])]);
         return true;
+    }
+
+    // ── Ogg Vorbis ──────────────────────────────────────────────────────────
+
+    // The end of a file read for its last pages: a page is at most 64 KB.
+    internal const int VorbisTailWindowBytes = 256 * 1024;
+
+    /// <summary>
+    /// The end trim of an Ogg Vorbis stream, and the patch that makes LibVLC decode its first
+    /// packet. FFmpeg stamps the first page's packets back from the page's granule and counts
+    /// the first packet as a whole block, though a Vorbis decoder outputs nothing for it: the
+    /// first packet gets a negative timestamp (ffprobe: pts=-128 on a libvorbis file), LibVLC's
+    /// decoder drops it, primes on the second packet and so loses that one's samples (harness
+    /// 11-19: -2.90 ms = 128 samples at the head of every track). The last packet's padding,
+    /// FFmpeg's "discard_padding" side data, is dropped by LibVLC too (+1.81 ms = 80 samples at
+    /// the end). The patch raises the first audio page's granule by exactly what puts that
+    /// first timestamp at 0, so every sample is decoded; LibVLC's timeline is then ahead by
+    /// that much until the next page's granule, which it re-dates to without dropping audio.
+    /// The engine cuts <see cref="TailSamples"/>, the samples decoded past the last page's
+    /// granule. A stream whose first page itself trims decoded samples (a start offset) is
+    /// left alone. Pure over the stream; internal for tests.
+    /// </summary>
+    internal static bool TryParseOggVorbis(Stream stream, out ContainerGaplessInfo? info,
+        int tailWindowBytes = VorbisTailWindowBytes)
+    {
+        info = null;
+        VorbisSetup? v = null;
+        OggPage? firstPage = null;
+        long firstAudioOffset = -1, ffSum = 0, realSum = 0;
+        var prev = 0;
+        var n = 0;
+        foreach (var (page, first, data, lastOnPage) in OggPackets(stream, 0, keepData: 3))
+        {
+            n++;
+            if (n == 1) { if (!TryVorbisIdent(data, out v)) return false; continue; }
+            if (n == 2) { if (data is not [3, ..]) return false; continue; }
+            if (n == 3) { if (!TryVorbisModes(data, v!)) return false; continue; }
+            if (firstPage == null)
+            {
+                // The first audio packet, on the page FFmpeg dates it from: not the last page
+                // (FFmpeg skips its first-packet rule there) and with a granule.
+                if (first < 0 || (page.Flags & 0x04) != 0 || page.Granule < 0) return false;
+                firstPage = page;
+                firstAudioOffset = page.Offset;
+                if (!v!.TryBlock(first, out var bs, out var prevFlag)) return false;
+                // FFmpeg's count for it: the previous block is the short one, or what a long
+                // block's own flag says. A decoder outputs nothing for it.
+                ffSum = ((bs == v.Bs1 ? (prevFlag ? v.Bs1 : v.Bs0) : v.Bs0) + bs) / 4;
+                prev = bs;
+            }
+            else
+            {
+                if (!v!.TryOutput(first, ref prev, out var samples)) return false;
+                realSum += samples;
+            }
+            if (lastOnPage && page.Offset == firstPage.Offset) break;
+        }
+        if (firstPage == null || v == null) return false;
+        // Decoded samples the first page's granule leaves out: a start trim, not handled.
+        if (realSum > firstPage.Granule) return false;
+
+        var patches = new List<(long, byte[])>();
+        var raise = ffSum + realSum - firstPage.Granule;
+        if (raise > 0)
+        {
+            var page = new byte[firstPage.Length];
+            stream.Position = firstPage.Offset;
+            if (stream.ReadAtLeast(page, page.Length, throwOnEndOfStream: false) < page.Length) return false;
+            BinaryPrimitives.WriteInt64LittleEndian(page.AsSpan(6), firstPage.Granule + raise);
+            BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(22), OggCrc(page, crcOffset: 22));
+            patches.Add((firstPage.Offset + 6, page[6..14]));
+            patches.Add((firstPage.Offset + 22, page[22..26]));
+        }
+
+        var tail = VorbisTail(stream, v, firstAudioOffset, tailWindowBytes);
+        if (patches.Count == 0 && tail == 0) return false;
+        info = new ContainerGaplessInfo("vorbis", v.Rate, v.Channels, 0, tail, patches);
+        return true;
+    }
+
+    /// <summary>
+    /// What a decoder outputs past the last page's granule, from the end of the file: 0 when
+    /// unknown (no end-of-stream page, another stream chained on) or when it is more than a
+    /// block (not a padding).
+    /// </summary>
+    private static long VorbisTail(Stream stream, VorbisSetup v, long firstAudioOffset, int windowBytes)
+    {
+        var from = Math.Max(firstAudioOffset, stream.Length - windowBytes);
+        var fromFirstPage = from == firstAudioOffset;
+        if (!fromFirstPage && !TryFindOggPage(stream, from, out from)) return 0;
+        long anchor = 0, decoded = 0;
+        var known = false;
+        var prev = 0;
+        var isFirstPacket = fromFirstPage;
+        foreach (var (page, first, _, lastOnPage) in OggPackets(stream, from, keepData: 0))
+        {
+            if (isFirstPacket)
+            {
+                // The stream's first packet: no output, it only sets the previous block.
+                isFirstPacket = false;
+                if (!v.TryBlock(first, out prev, out _)) return 0;
+            }
+            else if (!v.TryOutput(first, ref prev, out var samples))
+            {
+                known = false;
+            }
+            else
+            {
+                decoded += samples;
+            }
+            if (!lastOnPage || page.Granule < 0) continue;
+            if ((page.Flags & 0x04) != 0)
+            {
+                if (!known) return 0;
+                var tail = anchor + decoded - page.Granule;
+                return tail > 0 && tail <= v.Bs1 ? tail : 0;
+            }
+            anchor = page.Granule;
+            decoded = 0;
+            known = prev != 0;
+        }
+        return 0;
+    }
+
+    private sealed class VorbisSetup
+    {
+        public int Channels, Rate, Bs0, Bs1, ModeBits;
+        public bool[] ModeLong = [];
+
+        /// <summary>The block size an audio packet starting with <paramref name="first"/> codes,
+        /// and a long block's previous-window flag.</summary>
+        public bool TryBlock(int first, out int blockSize, out bool prevFlag)
+        {
+            blockSize = 0;
+            prevFlag = false;
+            if (first < 0 || (first & 1) != 0 || ModeLong.Length == 0) return false;
+            var mode = ModeBits == 0 ? 0 : (first >> 1) & ((1 << ModeBits) - 1);
+            if (mode >= ModeLong.Length) return false;
+            blockSize = ModeLong[mode] ? Bs1 : Bs0;
+            prevFlag = ModeLong[mode] && ((first >> (1 + ModeBits)) & 1) != 0;
+            return true;
+        }
+
+        /// <summary>A decoder's output for the packet: a quarter of the previous block plus a
+        /// quarter of this one. <paramref name="prev"/> is the previous block size (0 =
+        /// unknown, then a long block's own flag tells).</summary>
+        public bool TryOutput(int first, ref int prev, out int samples)
+        {
+            samples = 0;
+            if (!TryBlock(first, out var bs, out var prevFlag)) { prev = 0; return false; }
+            if (prev == 0 && bs == Bs1) prev = prevFlag ? Bs1 : Bs0;
+            if (prev == 0) { prev = bs; return false; }
+            samples = (prev + bs) / 4;
+            prev = bs;
+            return true;
+        }
+    }
+
+    // Identification header: type 1, "vorbis", version 0, channels, rate, 3 bitrates, the two
+    // block sizes as exponents, framing bit.
+    private static bool TryVorbisIdent(byte[]? p, out VorbisSetup? v)
+    {
+        v = null;
+        if (p is not { Length: >= 30 } || p[0] != 1 || !p.AsSpan(1, 6).SequenceEqual("vorbis"u8) ||
+            BinaryPrimitives.ReadUInt32LittleEndian(p.AsSpan(7)) != 0 || p[11] == 0 || (p[29] & 1) == 0)
+            return false;
+        var rate = BinaryPrimitives.ReadInt32LittleEndian(p.AsSpan(12));
+        int e0 = p[28] & 0x0F, e1 = p[28] >> 4;
+        if (rate <= 0 || e0 < 6 || e1 > 13 || e0 > e1) return false;
+        v = new VorbisSetup { Channels = p[11], Rate = rate, Bs0 = 1 << e0, Bs1 = 1 << e1 };
+        return true;
+    }
+
+    /// <summary>
+    /// The modes' block flags, read backward from the end of the setup header the way FFmpeg's
+    /// vorbis parser does (libavcodec/vorbis_parser.c): the modes are its last fields, after
+    /// codebooks that cannot be skipped without decoding them.
+    /// </summary>
+    private static bool TryVorbisModes(byte[]? setup, VorbisSetup v)
+    {
+        if (setup is not { Length: >= 8 } || setup[0] != 5 || !setup.AsSpan(1, 6).SequenceEqual("vorbis"u8)) return false;
+        var total = (long)setup.Length * 8;
+        // Bit i counted from the end: the stream read backward.
+        int Bits(ref long pos, int count)
+        {
+            var value = 0;
+            for (var k = 0; k < count; k++, pos++)
+            {
+                var forward = total - 1 - pos;
+                value = (value << 1) | ((setup[forward >> 3] >> (int)(forward & 7)) & 1);
+            }
+            return value;
+        }
+        long at = 0, framing = -1;
+        while (total - at > 97)
+            if (Bits(ref at, 1) == 1) { framing = at; break; }
+        if (framing < 0) return false;
+        int count = 0, modes = 0;
+        while (total - at >= 97)
+        {
+            // Backward, a mode is: mapping (8), transform type (16, 0), window type (16, 0), block flag.
+            if (Bits(ref at, 8) > 63 || Bits(ref at, 16) != 0 || Bits(ref at, 16) != 0) break;
+            at++;
+            if (++count > 64) break;
+            var peek = at;
+            if (Bits(ref peek, 6) + 1 == count) modes = count;
+        }
+        if (modes == 0 || modes > 63) return false;
+        v.ModeLong = new bool[modes];
+        at = framing;
+        for (var i = modes - 1; i >= 0; i--)
+        {
+            at += 40;
+            v.ModeLong[i] = Bits(ref at, 1) == 1;
+        }
+        v.ModeBits = modes == 1 ? 0 : 32 - System.Numerics.BitOperations.LeadingZeroCount((uint)(modes - 1));
+        return true;
+    }
+
+    private sealed record OggPage(long Offset, byte Flags, long Granule, uint Serial, int Length);
+
+    /// <summary>Reads the page header at <paramref name="pos"/> (null when there is none).</summary>
+    private static OggPage? ReadOggPage(Stream stream, long pos, byte[] header, out int segments)
+    {
+        segments = 0;
+        if (pos + 27 > stream.Length) return null;
+        stream.Position = pos;
+        if (stream.ReadAtLeast(header.AsSpan(0, 27), 27, throwOnEndOfStream: false) < 27) return null;
+        if (!header.AsSpan(0, 4).SequenceEqual("OggS"u8) || header[4] != 0) return null;
+        segments = header[26];
+        if (stream.ReadAtLeast(header.AsSpan(27, segments), segments, throwOnEndOfStream: false) < segments) return null;
+        var payload = 0;
+        for (var i = 0; i < segments; i++) payload += header[27 + i];
+        var length = 27 + segments + payload;
+        if (pos + length > stream.Length) return null;
+        return new OggPage(pos, header[5], BinaryPrimitives.ReadInt64LittleEndian(header.AsSpan(6)),
+            BinaryPrimitives.ReadUInt32LittleEndian(header.AsSpan(14)), length);
+    }
+
+    /// <summary>The first page at or after <paramref name="from"/> whose checksum holds.</summary>
+    private static bool TryFindOggPage(Stream stream, long from, out long pageOffset)
+    {
+        pageOffset = -1;
+        var window = new byte[Math.Max(0, stream.Length - from)];
+        stream.Position = from;
+        if (stream.ReadAtLeast(window, window.Length, throwOnEndOfStream: false) < window.Length) return false;
+        var header = new byte[27 + 255];
+        for (var i = 0; i + 27 <= window.Length; i++)
+        {
+            if (!window.AsSpan(i, 4).SequenceEqual("OggS"u8)) continue;
+            if (ReadOggPage(stream, from + i, header, out _) is not { } page || i + page.Length > window.Length) continue;
+            var bytes = window.AsSpan(i, page.Length);
+            if (BinaryPrimitives.ReadUInt32LittleEndian(bytes[22..]) != OggCrc(bytes, crcOffset: 22)) continue;
+            pageOffset = from + i;
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// The packets of the stream's logical bitstream from the page at <paramref name="from"/>
+    /// on, in order: the page each one ends on, its first byte (-1 for one that began before
+    /// <paramref name="from"/>, -2 for an empty one), its bytes (the first
+    /// <paramref name="keepData"/> packets only) and whether it is the last one ending on its
+    /// page (the one the page's granule counts up to). Stops at another stream's page.
+    /// </summary>
+    private static IEnumerable<(OggPage Page, int First, byte[]? Data, bool LastOnPage)> OggPackets(
+        Stream stream, long from, int keepData)
+    {
+        var header = new byte[27 + 255];
+        var lacing = new byte[255];
+        var one = new byte[1];
+        var pos = from;
+        uint? serial = null;
+        var inPacket = false;
+        var first = -1;
+        MemoryStream? data = null;
+        var yielded = 0;
+        while (ReadOggPage(stream, pos, header, out var segments) is { } page)
+        {
+            if (serial == null) serial = page.Serial;
+            else if (page.Serial != serial || (page.Flags & 0x02) != 0) yield break;
+            Array.Copy(header, 27, lacing, 0, segments);
+            var continued = (page.Flags & 0x01) != 0;
+            if (!continued && inPacket) inPacket = false; // a packet cut short: dropped
+            else if (continued && !inPacket) { inPacket = true; first = -1; data = null; }
+            var lastEnd = -1;
+            for (var i = 0; i < segments; i++)
+                if (lacing[i] < 255) lastEnd = i;
+            var off = pos + 27 + segments;
+            for (var i = 0; i < segments; i++)
+            {
+                if (!inPacket)
+                {
+                    inPacket = true;
+                    first = -2;
+                    if (lacing[i] > 0)
+                    {
+                        stream.Position = off;
+                        first = stream.Read(one, 0, 1) == 1 ? one[0] : -1;
+                    }
+                    data = yielded < keepData ? new MemoryStream() : null;
+                }
+                if (data != null && lacing[i] > 0)
+                {
+                    if (data.Length + lacing[i] > 4 << 20) yield break; // no header is that large
+                    var seg = new byte[lacing[i]];
+                    stream.Position = off;
+                    if (stream.ReadAtLeast(seg, seg.Length, throwOnEndOfStream: false) < seg.Length) yield break;
+                    data.Write(seg);
+                }
+                off += lacing[i];
+                if (lacing[i] < 255)
+                {
+                    inPacket = false;
+                    yielded++;
+                    yield return (page, first, data?.ToArray(), i == lastEnd);
+                }
+            }
+            pos += page.Length;
+        }
     }
 
     private static readonly uint[] OggCrcTable = BuildOggCrcTable();

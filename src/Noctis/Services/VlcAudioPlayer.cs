@@ -3542,7 +3542,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 ? CreateAudioCdMedia(_libVlc, filePath)
                 // DSD: decoded to PCM here, LibVLC 3 has no DSD decoder (see DsdPcmInput).
                 : (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, filePath))
-                  // AAC / Opus encoder trims: served without them, the engine trims (see ContainerGaplessInfo).
+                  // AAC / Opus / Vorbis encoder trims: served without them, the engine trims (see ContainerGaplessInfo).
                   ?? (isRemote || fallbackPath != null ? null : TryCreateTrimMedia(filePath))
                   ?? new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
             if (!isCd && !isRemote)
@@ -5273,7 +5273,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     }
 
     /// <summary>
-    /// An AAC (MP4) or Opus file with encoder trims, served to LibVLC without them so the
+    /// An AAC (MP4), Opus or Vorbis file with encoder trims, served to LibVLC without them so the
     /// engine can trim them sample-exact (see ContainerGaplessInfo); null for any other file
     /// and whenever nothing would trim: off the engine, in exclusive mode, or without the
     /// forced avformat demuxer (the only one measured).
@@ -5283,11 +5283,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             ? ContainerTrimInput.TryCreateMedia(_libVlc, path)
             : null;
 
-    /// <summary>Media read through callbacks (DSD, trimmed AAC/Opus): LibVLC 3 never pre-parses those.</summary>
+    /// <summary>Media read through callbacks (DSD, trimmed AAC/Opus/Vorbis): LibVLC 3 never pre-parses those.</summary>
     private static bool IsCallbackMedia(Media media) =>
         DsdPcmInput.IsDsdMedia(media) || ContainerTrimInput.IsTrimMedia(media);
 
-    /// <summary>The engine's head and tail trims for a trimmed AAC/Opus media (0, 0 for others).</summary>
+    /// <summary>The engine's head and tail trims for a trimmed AAC/Opus/Vorbis media (0, 0 for others).</summary>
     private (int Lead, int Tail) ContainerTrimFrames(Media media) =>
         _gaplessSink is { } sink ? ContainerTrimInput.TrimFrames(media, sink.SampleRate) : (0, 0);
 

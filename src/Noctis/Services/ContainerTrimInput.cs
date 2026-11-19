@@ -4,7 +4,7 @@ using LibVLCSharp.Shared;
 namespace Noctis.Services;
 
 /// <summary>
-/// A local AAC/MP4 or Ogg Opus file served to LibVLC with its encoder trims removed (see
+/// A local AAC/MP4, Ogg Opus or Ogg Vorbis file served to LibVLC with its encoder trims removed (see
 /// <see cref="ContainerGaplessInfo"/>): the file's own bytes, with the few patched bytes laid
 /// over them, so LibVLC decodes the priming packet and the gapless engine trims the head and
 /// the tail itself. Only opened while the engine renders (nothing else would trim).
