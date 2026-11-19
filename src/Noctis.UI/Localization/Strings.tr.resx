@@ -3587,6 +3587,14 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Şimdi Çalıyor Arka Planı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Şimdi Çalıyor arka plan parlaklığı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Şimdi Çalıyor ekranının arkasında daha koyu ya da açık renkler</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Parlaklık</value></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Renk Perdesi</value></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Bulanık Kapak</value></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Bulanıklık</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Şimdi Çalıyor arka plan bulanıklığı</value></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>Karartma</value></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>Şimdi Çalıyor arka plan karartması</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>Şarkının kapağı, bulanıklaştırılmış olarak Şimdi Çalıyor ve şarkı sözlerinin arkasında. Karartma onu koyulaştırır.</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>Müzik Klasörleri</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>İndirilenler</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>Dinleme</value></data>

@@ -753,6 +753,41 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The row's value: "0", "+20", "-35".</summary>
     public string NowPlayingBrightnessLabel => NowPlayingBrightness.ToString("+0;-0;0", System.Globalization.CultureInfo.CurrentCulture);
 
+    /// <summary>Discord #mobile-beta request: Settings › Appearance › Now Playing Background's
+    /// style. Wash (the default) is the look above; Blurred Cover paints the cover itself, blurred
+    /// (BlurredCoverBackdrop), under a black tint, on Now Playing and its Lyrics. Saved with the
+    /// player bar's settings (MobileNowPlayingBackground) and applied live.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBlurredCoverBackground))]
+    private NowPlayingBackgroundStyle _nowPlayingBackground;
+
+    public bool IsBlurredCoverBackground => NowPlayingBackground == NowPlayingBackgroundStyle.BlurredCover;
+
+    public const int DefaultNowPlayingBlur = 50, DefaultNowPlayingDim = 15, NowPlayingDimLimit = 60;
+
+    /// <summary>Blurred Cover's Blur, 0-100: the cover's 128 px copy blurred at up to the wash's
+    /// own sigma (<see cref="NowPlayingBlurPercent"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingBlurPercent), nameof(NowPlayingBlurLabel))]
+    private int _nowPlayingBlur = DefaultNowPlayingBlur;
+
+    /// <summary>The Blur as PreBlurredArtworkConverter's percent of its stock sigma: 100 here is
+    /// three times it (the wash's 7.2 px at 128 px), 50 one and a half.</summary>
+    public int NowPlayingBlurPercent => NowPlayingBlur * 3;
+
+    /// <summary>Blurred Cover's Dim, 0-60: the black over it, in percent. The stock shade stays
+    /// under it at its brightest (40%, Brightness +50's), so white text reads on a white cover.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingCoverDimOpacity), nameof(NowPlayingDimLabel))]
+    private int _nowPlayingDim = DefaultNowPlayingDim;
+
+    public double NowPlayingCoverDimOpacity => NowPlayingDim / 100.0;
+
+    public string NowPlayingBlurLabel => Percent(NowPlayingBlur);
+    public string NowPlayingDimLabel => Percent(NowPlayingDim);
+
+    private static string Percent(int value) => (value / 100.0).ToString("P0", System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
     /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
     [ObservableProperty] private bool _isSuspended;
@@ -773,6 +808,9 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
     partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
     partial void OnNowPlayingBrightnessChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBrightness));
+    partial void OnNowPlayingBackgroundChanged(NowPlayingBackgroundStyle value) => SavePlayerBarSettings(nameof(NowPlayingBackground));
+    partial void OnNowPlayingBlurChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBlur));
+    partial void OnNowPlayingDimChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingDim));
 
     /// <summary>Settings › Appearance › Liquid Glass Tab Pill (testers 11-06): the selected tab's
     /// pill stays clear liquid glass at rest instead of settling into the dark tinted pill.
@@ -823,6 +861,9 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBackground))) NowPlayingBackground = NowPlayingBackgroundStyles.Parse(settings.MobileNowPlayingBackground);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBlur))) NowPlayingBlur = Math.Clamp(settings.MobileNowPlayingBlur, 0, 100);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingDim))) NowPlayingDim = Math.Clamp(settings.MobileNowPlayingDim, 0, NowPlayingDimLimit);
             }
             finally
             {
@@ -849,6 +890,8 @@ public sealed partial class ShellViewModel : ObservableObject
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
         var brightness = NowPlayingBrightness;
+        var background = NowPlayingBackground.ToString();
+        int blur = NowPlayingBlur, dim = NowPlayingDim;
         var glassPill = GlassTabPill;
         var queueHistory = ShowQueueHistory;
         var tabBar = TabBarTabs.Encode(BarTabs);
@@ -865,6 +908,9 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
                     settings.MobileNowPlayingBrightness = brightness;
+                    settings.MobileNowPlayingBackground = background;
+                    settings.MobileNowPlayingBlur = blur;
+                    settings.MobileNowPlayingDim = dim;
                     settings.MobileGlassTabPill = glassPill;
                     settings.MobileQueueShowHistory = queueHistory;
                     settings.MobileTabBar = tabBar;

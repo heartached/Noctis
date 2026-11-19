@@ -209,6 +209,17 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
     public int MobileNowPlayingBrightness { get; set; }
 
+    /// <summary>Phone, Settings › Appearance › Now Playing Background: "Wash" (the default, the
+    /// cover's colours) or "BlurredCover" (the cover itself, blurred, under a black tint). Saved by
+    /// name; anything unknown reads as Wash.</summary>
+    public string MobileNowPlayingBackground { get; set; } = "Wash";
+
+    /// <summary>Phone, Blurred Cover's Blur, 0-100 (50, the default, is a medium-strong blur).</summary>
+    public int MobileNowPlayingBlur { get; set; } = 50;
+
+    /// <summary>Phone, Blurred Cover's Dim: the black tint over it, 0-60 percent (15 by default).</summary>
+    public int MobileNowPlayingDim { get; set; } = 15;
+
     /// <summary>Phone, Settings › Appearance › Liquid Glass Tab Pill: the selected tab's pill stays
     /// clear glass instead of the dark tinted pill. Off by default.</summary>
     public bool MobileGlassTabPill { get; set; }

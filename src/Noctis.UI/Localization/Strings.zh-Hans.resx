@@ -8520,6 +8520,14 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>正在播放背景</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>正在播放背景亮度</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>正在播放背后的颜色更暗或更亮</value></data>
+  <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>亮度</value></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>色彩渲染</value></data>
+  <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>模糊封面</value></data>
+  <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>模糊</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>正在播放背景模糊</value></data>
+  <data name="Mobile.Settings.NowPlayingDim" xml:space="preserve"><value>调暗</value></data>
+  <data name="Mobile.Settings.NowPlayingDimName" xml:space="preserve"><value>正在播放背景调暗</value></data>
+  <data name="Mobile.Settings.NowPlayingBlurHint" xml:space="preserve"><value>歌曲封面经模糊后显示在正在播放和歌词后面。调暗可使其更暗。</value></data>
   <data name="Mobile.Settings.MusicFolders" xml:space="preserve"><value>音乐文件夹</value></data>
   <data name="Mobile.Settings.Downloads" xml:space="preserve"><value>下载</value></data>
   <data name="Mobile.Settings.Listening" xml:space="preserve"><value>收听</value></data>
