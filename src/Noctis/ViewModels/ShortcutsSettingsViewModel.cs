@@ -104,6 +104,10 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
     [ObservableProperty] private bool _isDefault = true;
     [ObservableProperty] private string? _conflictMessage;
 
+    /// <summary>False while the action's feature is switched off (Built-in Features): the
+    /// row is hidden, which also keeps Settings search from finding it.</summary>
+    [ObservableProperty] private bool _isAvailable = true;
+
     public bool HasConflict => ConflictMessage is not null;
 
     internal ShortcutRowViewModel(ShortcutsSettingsViewModel owner, ShortcutService service, ShortcutDescriptor descriptor, bool isMac)
@@ -128,6 +132,8 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
 
     internal void Refresh()
     {
+        IsAvailable = !_service.IsDisabled(Action);
+        if (!IsAvailable && IsRecording) CancelRecord();
         var gesture = _service.Get(Action);
         IsUnbound = gesture is null;
         GestureParts = gesture is null ? new[] { Loc.T("Shortcuts.NotSet") } : ShortcutKeyFormatter.Parts(gesture, _isMac);

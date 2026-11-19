@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Noctis.Localization;
+using Noctis.Models;
 
 namespace Noctis.ViewModels;
 
@@ -33,8 +34,17 @@ public partial class SettingsViewModel
         // Player › Clicking the artwork: the Mini Player choice leaves / rejoins the list.
         RebuildArtworkClickOptions();
         OnPropertyChanged(nameof(ShowArtworkLyricsHint));
+        ApplyShortcutFeatureGates();
         if (_settingsLoaded) _ = SaveAsync();
     }
+
+    /// <summary>Shortcuts whose feature is switched off: hidden on Settings › Shortcuts, their
+    /// key falls through and is free for another action; the stored binding is kept. Of the
+    /// Built-in Features only the Mini Player has a shortcut.</summary>
+    private void ApplyShortcutFeatureGates() =>
+        ShortcutService.SetDisabled(MiniPlayerEnabled
+            ? Array.Empty<ShortcutAction>()
+            : new[] { ShortcutAction.ToggleMiniPlayer });
 
     partial void OnAlbumCarouselEnabledChanged(bool value)
     {

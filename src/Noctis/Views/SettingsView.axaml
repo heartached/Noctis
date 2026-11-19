@@ -4918,7 +4918,8 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ShortcutRowViewModel">
-                                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                                <!-- Hidden while its feature is off (Built-in Features); search skips it too. -->
+                                                <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsAvailable}">
                                                     <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13" VerticalAlignment="Center"/>
                                                     <controls:ShortcutKeyChip Grid.Column="1" VerticalAlignment="Center"/>
                                                     <!-- Per-row reset, only once the row differs from its default. -->
