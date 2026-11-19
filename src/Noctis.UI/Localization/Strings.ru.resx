@@ -3103,6 +3103,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PcSync.CompareCode" xml:space="preserve"><value>Проверьте, что другой компьютер показывает этот код безопасности:</value><comment>Shown above the other computer's security code before signing in</comment></data>
   <data name="PcSync.SignIn" xml:space="preserve"><value>Войти</value><comment>Button: sign in to the other computer</comment></data>
   <data name="PcSync.SyncedWith" xml:space="preserve"><value>Синхронизировано с {0}</value><comment>Signed in; {0} = the other computer's name</comment></data>
+  <data name="PcSync.ConnectedTo" xml:space="preserve"><value>Подключено к {0}</value><comment>Signed in, before the first sync; {0} = the other computer's name</comment></data>
+  <data name="PcSync.NoSongs" xml:space="preserve"><value>В этой медиатеке пока нет песен. Добавьте папку с музыкой, затем синхронизируйте.</value><comment>After Sync now (or the automatic sync) when this computer has no songs: nothing can be paired, so nothing synced</comment></data>
   <data name="PcSync.Syncing" xml:space="preserve"><value>Синхронизация…</value><comment>While a sync runs</comment></data>
   <data name="PcSync.SyncNow" xml:space="preserve"><value>Синхронизировать</value><comment>Button</comment></data>
   <data name="PcSync.SignOut" xml:space="preserve"><value>Выйти</value><comment>Button: stop syncing with the other computer</comment></data>
@@ -3314,7 +3316,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PlayCountImport.Mode.Replace" xml:space="preserve"><value>Взять импортированное число</value><comment>Play count import mode: overwrite Noctis's count, even when lower</comment></data>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve"><value>Запуск…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Reading" xml:space="preserve"><value>Чтение истории прослушиваний… {0}</value><comment>Play count import progress; {0} = plays read so far</comment></data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Чтение истории прослушиваний… {0} из {1}</value><comment>Play count import progress; {0} = plays read, {1} = total</comment></data>
+  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve"><value>Чтение истории прослушиваний… {1} из {0}</value><comment>Play count import progress. Plural forms by {0} = total plays; {1} = plays read</comment></data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve"><value>Сопоставление с песнями в медиатеке…</value><comment>Play count import status</comment></data>
   <data name="Settings.PlayCountImport.Done" xml:space="preserve"><value>Готово. Обновлено песен: {0} · найдено: {1} · нет в медиатеке: {2}</value><comment>Play count import summary; {0} songs changed, {1} matched song entries, {2} entries with no library song</comment></data>
   <data name="Settings.PlayCountImport.Cancelled" xml:space="preserve"><value>Импорт отменён. Ничего не изменено.</value><comment>Play count import status</comment></data>
@@ -3949,11 +3951,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.AddSongs" xml:space="preserve"><value>Добавить песни</value></data>
   <data name="Mobile.AddSongs.Find" xml:space="preserve"><value>Поиск в медиатеке</value></data>
   <data name="Mobile.Import.Playlist" xml:space="preserve"><value>Импорт плейлиста</value></data>
-  <data name="Mobile.Import.Result" xml:space="preserve"><value>Импортировано песен: {0} из {1}</value></data>
+  <data name="Mobile.Import.Result" xml:space="preserve"><value>Импортировано песен: {1} из {0}|Импортировано песен: {1} из {0}|Импортировано песен: {1} из {0}</value></data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve"><value>Импортирован {0} плейлист|Импортировано {0} плейлиста|Импортировано {0} плейлистов</value></data>
   <data name="Mobile.Import.NothingImported" xml:space="preserve"><value>Плейлисты не импортированы</value></data>
   <data name="Mobile.Import.NoneFound" xml:space="preserve"><value>Ни одной песни из «{0}» нет на этом телефоне</value></data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>Найдено песен: {0} из {1}.</value></data>
+  <data name="Mobile.Import.SongsFound" xml:space="preserve"><value>Найдено песен: {1} из {0}.|Найдено песен: {1} из {0}.|Найдено песен: {1} из {0}.</value></data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve"><value>Эти строки не совпали ни с одной песней на телефоне:</value></data>
   <data name="Mobile.Import.UnmatchedIn" xml:space="preserve"><value>{0}: {1}</value></data>
   <data name="Mobile.Import.NotPlaylist" xml:space="preserve"><value>«{0}» — не плейлист M3U</value></data>

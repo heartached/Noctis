@@ -208,22 +208,69 @@ public class CountStringPluralTests
         finally { Loc.Instance.SetCulture("en"); }
     }
 
-    /// <summary>"{0} of {1} songs": the noun follows the total, which can be any number, so Arabic
-    /// (and Russian, already) read the counts as a label: right for 1, 3 or 11 alike.</summary>
+    /// <summary>"{1} of {0} songs": the noun follows the total, so Loc.Plural picks the form by the
+    /// total ({0}) and the part is {1}. Arabic and Russian read the counts as a label: right for 1,
+    /// 3 or 11 alike.</summary>
     [AvaloniaFact]
     public void OfTotalCounts_ReadAsLabels_InArabicAndRussian()
     {
         try
         {
             Loc.Instance.SetCulture("ar");
-            Assert.Equal("الأغاني المستوردة: 3 من 5", Loc.T("Mobile.Import.Result", 3, 5));
-            Assert.Equal("الأغاني التي عُثر عليها: 1 من 11.", Loc.T("Mobile.Import.SongsFound", 1, 11));
-            Assert.Equal("جارٍ قراءة سجل الاستماع… التشغيلات: 2 من 3", Loc.T("Settings.PlayCountImport.ReadingOf", "2", "3"));
+            Assert.Equal("الأغاني المستوردة: 3 من 5", Loc.Plural("Mobile.Import.Result", 5, 3));
+            Assert.Equal("الأغاني المستوردة: 1 من 1", Loc.Plural("Mobile.Import.Result", 1, 1));
+            Assert.Equal("الأغاني التي عُثر عليها: 1 من 11.", Loc.Plural("Mobile.Import.SongsFound", 11, 1));
+            Assert.Equal("جارٍ قراءة سجل الاستماع… التشغيلات: 2 من 3", Loc.Plural("Settings.PlayCountImport.ReadingOf", 3, "2"));
 
             Loc.Instance.SetCulture("ru");
-            Assert.Equal("Импортировано песен: 3 из 21", Loc.T("Mobile.Import.Result", 3, 21));
-            Assert.Equal("Найдено песен: 1 из 2.", Loc.T("Mobile.Import.SongsFound", 1, 2));
-            Assert.Equal("Чтение истории прослушиваний… 2 из 3", Loc.T("Settings.PlayCountImport.ReadingOf", "2", "3"));
+            Assert.Equal("Импортировано песен: 3 из 21", Loc.Plural("Mobile.Import.Result", 21, 3));
+            Assert.Equal("Импортировано песен: 1 из 1", Loc.Plural("Mobile.Import.Result", 1, 1));
+            Assert.Equal("Найдено песен: 1 из 2.", Loc.Plural("Mobile.Import.SongsFound", 2, 1));
+            Assert.Equal("Чтение истории прослушиваний… 2 из 3", Loc.Plural("Settings.PlayCountImport.ReadingOf", 3, "2"));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>"Imported 1 of 1 songs" read plural at a total of 1 (11-19): the form now follows
+    /// the total, in every language, and the part ({1}) stays in its place.</summary>
+    [AvaloniaFact]
+    public void OfTotalCounts_FollowTheTotal_AtOneAndAbove()
+    {
+        try
+        {
+            void Check(string culture, string key, string atOne, string atThree)
+            {
+                Loc.Instance.SetCulture(culture);
+                Assert.Equal(atOne, Loc.Plural(key, 1, 1));
+                Assert.Equal(atThree, Loc.Plural(key, 3, 2));
+            }
+            Check("en", "Mobile.Import.Result", "Imported 1 of 1 song", "Imported 2 of 3 songs");
+            Check("en", "Mobile.Import.SongsFound", "1 of 1 song found.", "2 of 3 songs found.");
+            Check("en", "Settings.PlayCountImport.ReadingOf", "Reading listening history… 1 of 1 play", "Reading listening history… 2 of 3 plays");
+            Check("de", "Mobile.Import.Result", "1 von 1 Song importiert", "2 von 3 Songs importiert");
+            Check("de", "Mobile.Import.SongsFound", "1 von 1 Song gefunden.", "2 von 3 Songs gefunden.");
+            Check("es", "Mobile.Import.Result", "Importada 1 de 1 canción", "Importadas 2 de 3 canciones");
+            Check("es", "Mobile.Import.SongsFound", "1 de 1 canción encontrada.", "2 de 3 canciones encontradas.");
+            Check("fr", "Mobile.Import.Result", "1 sur 1 morceau importé", "2 sur 3 morceaux importés");
+            Check("fr", "Mobile.Import.SongsFound", "1 sur 1 morceau trouvé.", "2 sur 3 morceaux trouvés.");
+            Check("tr", "Mobile.Import.Result", "1 şarkıdan 1 tanesi içe aktarıldı", "3 şarkıdan 2 tanesi içe aktarıldı");
+            Check("tr", "Mobile.Import.SongsFound", "1 şarkıdan 1 tanesi bulundu.", "3 şarkıdan 2 tanesi bulundu.");
+            Check("ar", "Mobile.Import.Result", "الأغاني المستوردة: 1 من 1", "الأغاني المستوردة: 2 من 3");
+            Check("ru", "Mobile.Import.SongsFound", "Найдено песен: 1 из 1.", "Найдено песен: 2 из 3.");
+            Check("ja", "Mobile.Import.Result", "1曲中1曲を読み込みました", "3曲中2曲を読み込みました");
+
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Reading listening history… 1 play", Loc.Plural("Settings.PlayCountImport.Reading", 1));
+            Assert.Equal("Reading listening history… 1,234 plays", Loc.Plural("Settings.PlayCountImport.Reading", 1234));
+
+            // Every language: both keys at 1, 2, 5, 11 without leftovers.
+            foreach (var culture in Loc.KnownCultures.Prepend("en"))
+            {
+                Loc.Instance.SetCulture(culture);
+                foreach (var key in new[] { "Mobile.Import.Result", "Mobile.Import.SongsFound", "Settings.PlayCountImport.ReadingOf", "Settings.PlayCountImport.Reading" })
+                    foreach (var n in new long[] { 1, 2, 5, 11 })
+                        AssertClean(Loc.Plural(key, n, "1"), $"{culture} {key} n={n}");
+            }
         }
         finally { Loc.Instance.SetCulture("en"); }
     }

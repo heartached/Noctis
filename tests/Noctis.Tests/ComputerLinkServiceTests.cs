@@ -456,11 +456,62 @@ public class ComputerLinkServiceTests : IAsyncLifetime
             new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: _b.Ledger);
         var early = new ComputerLinkService(starting, _b.Persistence, _b.Ledger, _b.Adapter, NoctisHandlers.Sockets, _b.Protector);
 
-        Assert.Equal(new ComputerLinkResult(0, 0, 0), await early.SyncNowAsync(ct));
+        Assert.Equal(new ComputerLinkResult(0, 0, 0, NoLocalSongs: true), await early.SyncNowAsync(ct));
+        Assert.True(early.LastSyncFoundNoSongs);
         Assert.Single(Link(_b).Account!.Links);
     }
 
     // ── The Settings card ────────────────────────────────────────────────
+
+    /// <summary>Signed in, before the first sync: "Connected to", not "Synced with … · Not synced yet" (11-19).</summary>
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task SettingsCard_BeforeTheFirstSync_SaysConnected_ThenSynced()
+    {
+        await _a.AddSongsAsync("One");
+        await _b.AddSongsAsync("One");
+        var link = await LinkedAsync();
+        var vm = new Noctis.ViewModels.SettingsViewModel(_b.Persistence, new FakeLibraryService(), new NoOpPlayHistory()) { ComputerLink = link };
+
+        vm.RefreshComputerLinkState();
+        Assert.True(vm.IsComputerLinked);
+        Assert.StartsWith("Connected to ", vm.ComputerLinkStatus);
+        Assert.EndsWith(" · Not synced yet", vm.ComputerLinkStatus);
+        Assert.DoesNotContain("Synced with", vm.ComputerLinkStatus);
+
+        await vm.SyncComputerLinkNowCommand.ExecuteAsync(null);
+
+        Assert.Equal(string.Empty, vm.ComputerLinkError);
+        Assert.StartsWith("Synced with ", vm.ComputerLinkStatus);
+        Assert.Contains(" · Last synced", vm.ComputerLinkStatus);
+    }
+
+    /// <summary>Sync now on a computer with no songs yet (11-19): the sync is skipped on purpose (it
+    /// would drop every pair), and the card says why instead of a silent "Not synced yet".</summary>
+    [Avalonia.Headless.XUnit.AvaloniaFact]
+    public async Task SettingsCard_SyncNow_WithNoSongsHere_SaysWhyNothingSynced()
+    {
+        await _a.AddSongsAsync("One");
+        var link = await LinkedAsync(); // B has scanned nothing
+        var vm = new Noctis.ViewModels.SettingsViewModel(_b.Persistence, new FakeLibraryService(), new NoOpPlayHistory()) { ComputerLink = link };
+
+        await vm.SyncComputerLinkNowCommand.ExecuteAsync(null);
+
+        Assert.True(link.LastSyncFoundNoSongs);
+        Assert.Null(link.Account!.LastSyncUtc);
+        Assert.Equal(string.Empty, vm.ComputerLinkError);
+        Assert.Equal("Connected to " + NameOf(link) + " · No songs in this library yet. Add a music folder, then sync.", vm.ComputerLinkStatus);
+
+        // Songs scanned: the next Sync now works and the note goes.
+        await _b.AddSongsAsync("One");
+        await vm.SyncComputerLinkNowCommand.ExecuteAsync(null);
+
+        Assert.False(link.LastSyncFoundNoSongs);
+        Assert.StartsWith("Synced with ", vm.ComputerLinkStatus);
+        Assert.Contains(" · Last synced", vm.ComputerLinkStatus);
+    }
+
+    private static string NameOf(ComputerLinkService link) =>
+        string.IsNullOrWhiteSpace(link.Account!.ServerName) ? link.Account.ServerUrl : link.Account.ServerName;
 
     [Avalonia.Headless.XUnit.AvaloniaFact]
     public async Task SettingsCard_ConnectShowsTheCode_SignInSyncs_SignOutReturnsToTheForm()
