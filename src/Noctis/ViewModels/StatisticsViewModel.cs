@@ -750,10 +750,10 @@ public partial class StatisticsViewModel : ViewModelBase
         if (age.TotalDays >= 365)
         {
             var years = (int)(age.TotalDays / 365);
-            return years == 1 ? Loc.T("Stats.YearAgo") : Loc.T("Stats.YearsAgo", years);
+            return years == 1 ? Loc.T("Stats.YearAgo") : Loc.Plural("Stats.YearsAgo", years);
         }
         var months = Math.Max(1, (int)(age.TotalDays / 30));
-        return months == 1 ? Loc.T("Stats.MonthAgo") : Loc.T("Stats.MonthsAgo", months);
+        return months == 1 ? Loc.T("Stats.MonthAgo") : Loc.Plural("Stats.MonthsAgo", months);
     }
 }
 

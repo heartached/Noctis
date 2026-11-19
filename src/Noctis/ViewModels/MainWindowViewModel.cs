@@ -1623,7 +1623,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 var destFolder = Path.GetFileName(Path.GetDirectoryName(moved[0].Value));
                 DropImportStatus = moved.Count == 1
                     ? Loc.T("Main.DropMovedOne", destFolder ?? string.Empty)
-                    : Loc.T("Main.DropMovedMany", moved.Count, destFolder ?? string.Empty);
+                    : Loc.Plural("Main.DropMovedMany", moved.Count, destFolder ?? string.Empty);
                 try { await Task.Delay(2500, ct); } catch (OperationCanceledException) { }
             }
 

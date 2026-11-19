@@ -190,7 +190,7 @@ public sealed partial class ArtistInfoSearchRow : ObservableObject
                 return fans;
             return fans + " · " + (Hit.Albums == 1
                 ? Loc.T("ArtistInfoSearch.OneAlbum")
-                : Loc.T("ArtistInfoSearch.AlbumsCount", Hit.Albums.ToString("N0", culture)));
+                : Loc.Plural("ArtistInfoSearch.AlbumsCount", Hit.Albums));
         }
     }
 

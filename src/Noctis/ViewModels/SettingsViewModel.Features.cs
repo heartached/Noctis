@@ -287,8 +287,8 @@ public partial class SettingsViewModel
     {
         var ago = nowUtc - utc;
         if (ago < TimeSpan.FromMinutes(1)) return Localization.Loc.T("Time.JustNow");
-        if (ago < TimeSpan.FromHours(1)) return Localization.Loc.T("Time.MinutesAgo", (int)ago.TotalMinutes);
-        if (ago < TimeSpan.FromDays(1)) return Localization.Loc.T("Time.HoursAgo", (int)ago.TotalHours);
+        if (ago < TimeSpan.FromHours(1)) return Localization.Loc.Plural("Time.MinutesAgo", (int)ago.TotalMinutes);
+        if (ago < TimeSpan.FromDays(1)) return Localization.Loc.Plural("Time.HoursAgo", (int)ago.TotalHours);
         // "g": a fixed "d MMM" read "9 10月" in Japanese and Chinese.
         return Localization.Loc.T("Time.OnDate", utc.ToLocalTime().ToString("g", Localization.Loc.Instance.Culture));
     }
