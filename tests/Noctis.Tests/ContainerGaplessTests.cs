@@ -168,6 +168,140 @@ public class ContainerGaplessTests
         Assert.Equal(501, seg.PositionMs);
     }
 
+    [Fact]
+    public void OggVorbis_RaisesTheFirstPageGranuleByWhatFfmpegCountsForThePrimingPacket_AndTrimsThePadding()
+    {
+        var (file, pageC) = BuildVorbis(out var total);
+        Assert.True(ContainerGaplessInfo.TryParseOggVorbis(new MemoryStream(file), out var info));
+        Assert.Equal("vorbis", info!.Kind);
+        Assert.Equal(44100, info.Timescale);
+        Assert.Equal(2, info.Channels);
+        Assert.Equal(0, info.LeadSamples); // every decoded sample is the track's
+        Assert.Equal(80, info.TailSamples);
+        Assert.Equal(87, info.TailFrames(48000)); // 80 * 48000 / 44100 = 87.07
+
+        var patched = (byte[])file.Clone();
+        ContainerTrimInput.Overlay(info.Patches, 0, patched);
+        // FFmpeg dates the first packet granule - (128 + 704): raised by 128 it is 0.
+        Assert.Equal(704 + 128, BinaryPrimitives.ReadInt64LittleEndian(patched.AsSpan(pageC.Offset + 6)));
+        Assert.Equal(BinaryPrimitives.ReadUInt32LittleEndian(patched.AsSpan(pageC.Offset + 22)),
+            ContainerGaplessInfo.OggCrc(patched.AsSpan(pageC.Offset, pageC.Length), crcOffset: 22));
+        Assert.InRange(Diff(file, patched).Count(d => d), 1, 12); // granule + checksum only
+        Assert.True(patched.AsSpan(pageC.Offset + pageC.Length).SequenceEqual(file.AsSpan(pageC.Offset + pageC.Length)));
+        Assert.Equal(total - 80, BinaryPrimitives.ReadInt64LittleEndian(file.AsSpan(LastPageOffset(file) + 6)));
+    }
+
+    [Fact]
+    public void OggVorbis_TailFromTheLastPagesOfALongFile_IsTheSame()
+    {
+        var (file, _) = BuildVorbis(out _);
+        // A window that starts inside the middle pages: found by checksum, counted from there.
+        Assert.True(ContainerGaplessInfo.TryParseOggVorbis(new MemoryStream(file), out var info, tailWindowBytes: 1500));
+        Assert.Equal(80, info!.TailSamples);
+        // Only the last page in the window: nothing to count from, so no end trim.
+        Assert.True(ContainerGaplessInfo.TryParseOggVorbis(new MemoryStream(file), out info,
+            tailWindowBytes: file.Length - LastPageOffset(file)));
+        Assert.Equal(0, info!.TailSamples);
+        Assert.Equal(2, info.Patches.Count); // the head patch is still there
+    }
+
+    [Fact]
+    public void OggVorbis_AStartTrimmedStream_AnOpusStream_AndACutFile_AreLeftAlone()
+    {
+        // The first page's granule leaves out decoded samples: a start offset, not handled.
+        var (startTrimmed, _) = BuildVorbis(out _, firstGranule: 600);
+        Assert.False(ContainerGaplessInfo.TryParseOggVorbis(new MemoryStream(startTrimmed), out _));
+
+        var opus = OpusPage0.Concat(new byte[200]).ToArray();
+        Assert.False(ContainerGaplessInfo.TryParseOggVorbis(new MemoryStream(opus), out _));
+        var (vorbis, _) = BuildVorbis(out _);
+        Assert.False(ContainerGaplessInfo.TryParseOggOpus(new MemoryStream(vorbis), out _));
+
+        // Cut before its last page: no end-of-stream granule, only the head patch.
+        var cut = vorbis.AsSpan(0, LastPageOffset(vorbis)).ToArray();
+        Assert.True(ContainerGaplessInfo.TryParseOggVorbis(new MemoryStream(cut), out var info));
+        Assert.Equal(0, info!.TailSamples);
+        Assert.Equal(2, info.Patches.Count);
+    }
+
+    // ── synthetic Ogg Vorbis ───────────────────────────────────────────────
+
+    // Blocks of 256 and 2048 (mode 0 short, mode 1 long). Audio packets' first byte: bit 0
+    // type (0), bit 1 mode, then for a long block the previous and next window flags.
+    private const byte Short = 0x00, LongAfterShortBeforeLong = 0x0A, LongLong = 0x0E, LongBeforeShort = 0x06;
+
+    /// <summary>
+    /// ident | comment + setup | C: p0 p1 p2 (decoded 0 + 128 + 576, granule 704) |
+    /// D1, D2: 10 long blocks each | E (end): long, short, short (1024 + 576 + 128), the
+    /// granule 80 short of that. Total decoded is returned.
+    /// </summary>
+    private static (byte[] File, (int Offset, int Length) PageC) BuildVorbis(out long total, long firstGranule = 704)
+    {
+        var ident = Concat([1], Encoding.ASCII.GetBytes("vorbis"), new byte[4], [2], LeU32(44100), new byte[12], [0xB8, 1]);
+        var comment = Concat([3], Encoding.ASCII.GetBytes("vorbis"), new byte[8], [1]);
+        var setup = Concat([5], Encoding.ASCII.GetBytes("vorbis"), Enumerable.Repeat((byte)0xFF, 8).ToArray(), ModeBits());
+        byte[] Audio(byte first) => Concat([first], Enumerable.Repeat((byte)0x55, 99).ToArray());
+
+        var pages = new List<byte[]>();
+        var seq = 0u;
+        pages.Add(OggPage(0x02, 0, seq++, ident));
+        pages.Add(OggPage(0x00, 0, seq++, comment, setup));
+        var pageCOffset = pages.Sum(p => p.Length);
+        pages.Add(OggPage(0x00, firstGranule, seq++, Audio(Short), Audio(Short), Audio(LongAfterShortBeforeLong)));
+        var pageC = (pageCOffset, pages[^1].Length);
+        total = 704;
+        for (var d = 0; d < 2; d++)
+        {
+            total += 10 * 1024;
+            pages.Add(OggPage(0x00, total, seq++, Enumerable.Range(0, 10).Select(_ => Audio(LongLong)).ToArray()));
+        }
+        total += 1024 + 576 + 128;
+        pages.Add(OggPage(0x04, total - 80, seq++, Audio(LongBeforeShort), Audio(Short), Audio(Short)));
+        return (Concat(pages.ToArray()), pageC);
+    }
+
+    // The setup header's end: mode count - 1 (6 bits), then per mode block flag (1), window
+    // type (16), transform type (16), mapping (8), then the framing bit; packed LSB first.
+    private static byte[] ModeBits()
+    {
+        var bits = new List<int>();
+        void Put(int value, int count) { for (var i = 0; i < count; i++) bits.Add((value >> i) & 1); }
+        Put(1, 6);
+        Put(0, 1); Put(0, 16); Put(0, 16); Put(0, 8);
+        Put(1, 1); Put(0, 16); Put(0, 16); Put(1, 8);
+        Put(1, 1);
+        var bytes = new byte[(bits.Count + 7) / 8];
+        for (var i = 0; i < bits.Count; i++) bytes[i / 8] |= (byte)(bits[i] << (i % 8));
+        return bytes;
+    }
+
+    private static byte[] OggPage(byte flags, long granule, uint seq, params byte[][] packets)
+    {
+        var lacing = new List<byte>();
+        foreach (var p in packets)
+        {
+            for (var n = p.Length; ; n -= 255)
+            {
+                lacing.Add((byte)Math.Min(n, 255));
+                if (n < 255) break;
+            }
+        }
+        var page = Concat("OggS"u8.ToArray(), [0, flags], new byte[8], LeU32(7), LeU32(seq), new byte[4],
+            [(byte)lacing.Count], lacing.ToArray(), Concat(packets));
+        BinaryPrimitives.WriteInt64LittleEndian(page.AsSpan(6), granule);
+        BinaryPrimitives.WriteUInt32LittleEndian(page.AsSpan(22), ContainerGaplessInfo.OggCrc(page, crcOffset: 22));
+        return page;
+    }
+
+    private static int LastPageOffset(byte[] file)
+    {
+        for (var i = file.Length - 4; i >= 0; i--)
+            if (file.AsSpan(i, 4).SequenceEqual("OggS"u8)) return i;
+        return -1;
+    }
+
+    private static byte[] LeU32(uint v) { var b = new byte[4]; BinaryPrimitives.WriteUInt32LittleEndian(b, v); return b; }
+
     // ── synthetic MP4 ──────────────────────────────────────────────────────
 
     private static byte[] BuildMp4((uint SegmentMs, int MediaTime)? edit, (uint Count, uint Delta)[] stts, string? smpb,

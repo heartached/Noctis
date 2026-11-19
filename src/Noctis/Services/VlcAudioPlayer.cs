@@ -3542,7 +3542,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 ? CreateAudioCdMedia(_libVlc, filePath)
                 // DSD: decoded to PCM here, LibVLC 3 has no DSD decoder (see DsdPcmInput).
                 : (isRemote ? null : DsdPcmInput.TryCreateMedia(_libVlc, filePath))
-                  // AAC / Opus encoder trims: served without them, the engine trims (see ContainerGaplessInfo).
+                  // AAC / Opus / Vorbis encoder trims: served without them, the engine trims (see ContainerGaplessInfo).
                   ?? (isRemote || fallbackPath != null ? null : TryCreateTrimMedia(filePath))
                   ?? new Media(_libVlc, filePath, isRemote ? FromType.FromLocation : FromType.FromPath);
             if (!isCd && !isRemote)
@@ -5273,7 +5273,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     }
 
     /// <summary>
-    /// An AAC (MP4) or Opus file with encoder trims, served to LibVLC without them so the
+    /// An AAC (MP4), Opus or Vorbis file with encoder trims, served to LibVLC without them so the
     /// engine can trim them sample-exact (see ContainerGaplessInfo); null for any other file
     /// and whenever nothing would trim: off the engine, in exclusive mode, or without the
     /// forced avformat demuxer (the only one measured).
@@ -5283,11 +5283,11 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             ? ContainerTrimInput.TryCreateMedia(_libVlc, path)
             : null;
 
-    /// <summary>Media read through callbacks (DSD, trimmed AAC/Opus): LibVLC 3 never pre-parses those.</summary>
+    /// <summary>Media read through callbacks (DSD, trimmed AAC/Opus/Vorbis): LibVLC 3 never pre-parses those.</summary>
     private static bool IsCallbackMedia(Media media) =>
         DsdPcmInput.IsDsdMedia(media) || ContainerTrimInput.IsTrimMedia(media);
 
-    /// <summary>The engine's head and tail trims for a trimmed AAC/Opus media (0, 0 for others).</summary>
+    /// <summary>The engine's head and tail trims for a trimmed AAC/Opus/Vorbis media (0, 0 for others).</summary>
     private (int Lead, int Tail) ContainerTrimFrames(Media media) =>
         _gaplessSink is { } sink ? ContainerTrimInput.TrimFrames(media, sink.SampleRate) : (0, 0);
 
@@ -7308,7 +7308,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     private void ApplyReadAhead(Media media)
     {
         var adaptiveMs = Volatile.Read(ref _adaptiveCachingMs);
-        if (ContainerTrimInput.IsTrimMedia(media))
+        if (IsCallbackMedia(media))
         {
             if (CallbackReadAheadOption(Math.Max(_baseCachingMs, adaptiveMs)) is { } callbackOption)
                 media.AddOption(callbackOption);
@@ -7327,7 +7327,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// The read-ahead of a file for media read through callbacks: there the input buffers
     /// only 300 ms, so the decoder ran 0.34 s ahead instead of 1.03 s and a gapless handoff
     /// (taken 0.5 s before the end) abandoned the outgoing track before its last block
-    /// (harness 11-19: 425 ms cut from a cold-started Opus track). VLC lengthens the input
+    /// (harness 11-19: 425 ms cut from a cold-started Opus track, 475 ms from a DSD one).
+    /// VLC lengthens the input
     /// delay by a negative subtitle delay (src/input/input.c UpdatePtsDelay: min(audio,
     /// spu) delay below zero is added to it) without moving the audio, and the players run
     /// with --no-spu; ":sub-delay" is in 100 ms steps. Measured: "Stream buffering done
