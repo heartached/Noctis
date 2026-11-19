@@ -2962,6 +2962,16 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// </summary>
     public bool PreparesRemoteStreams => _gaplessEngine && !_exclusiveModeEnabled;
 
+    /// <inheritdoc />
+    public bool IsNextStaged(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || !Volatile.Read(ref _standbyPrepared)) return false;
+        string path;
+        try { path = IsRemoteStreamPath(filePath) ? filePath : Path.GetFullPath(filePath); }
+        catch { return false; }
+        return string.Equals(Volatile.Read(ref _standbyPath), path, StringComparison.OrdinalIgnoreCase);
+    }
+
     public void PrepareNext(string filePath, long startPositionMs = -1)
     {
         if (_disposed || string.IsNullOrWhiteSpace(filePath))

@@ -4535,6 +4535,19 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private const double GaplessPrepareLeadSeconds = 8.0;
     private const double GaplessHandoffLeadSeconds = 0.5;
 
+    // A song's own position can be no further than where it started plus the time since,
+    // at the playback rate (the engine reports the audible position, which starts later still).
+    private const double TrackStartTickSlackMs = 150;
+
+    /// <summary>
+    /// Whether a tick soon after a song started can be that song's own position: the outgoing
+    /// song's late ticks run ahead of it. Pure; internal for tests.
+    /// </summary>
+    internal static bool IsOwnTickAtTrackStart(TimeSpan position, TimeSpan startTarget, double msSinceStart, double rate) =>
+        msSinceStart >= 0 &&
+        position.TotalMilliseconds <= startTarget.TotalMilliseconds +
+            msSinceStart * Math.Max(1.0, rate) + TrackStartTickSlackMs;
+
     // AutoMix overlap blend: both tracks play together through the crossover. The blend is
     // triggered AutoMixOverlapSeconds (plus a small margin so the old stops just before its
     // natural end) from the end; the engine holds both at the blend level for that long,
@@ -4561,7 +4574,18 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             CurrentTrack.StopTimeMs > 0)
             return false;
 
-        if (State != PlaybackState.Playing || _isSeeking || DateTime.UtcNow < _autoMixCommitGuardUntilUtc)
+        if (State != PlaybackState.Playing || _isSeeking)
+            return false;
+
+        // The first seconds of a song: a track shorter than that guard used to get neither a
+        // staged successor nor an early advance, so the next file opened cold at its end
+        // (harness: 410-450 ms of silence after a 0.5-0.9 s track, 110-140 ms after 1.5-2 s).
+        // Inside it only ticks that can be this song's own position count (the guard is there
+        // for the outgoing song's late ticks), and the advance waits until the player has the
+        // successor staged: a cold open here would cut this song before it is heard.
+        var inStartGuard = DateTime.UtcNow < _autoMixCommitGuardUntilUtc;
+        if (inStartGuard && !IsOwnTickAtTrackStart(position, _lastCommittedSeekTarget,
+                (DateTime.UtcNow - _lastSeekTime).TotalMilliseconds, PlaybackRate))
             return false;
 
         if (duration <= TimeSpan.Zero)
@@ -4577,31 +4601,36 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return false;
         var remaining = duration - position;
 
-        if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
+        if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
+            _autoMixPreparedTrackId != nextTrack.Id &&
+            !string.IsNullOrWhiteSpace(nextTrack.FilePath) &&
+            ResolveNextPlayPath(nextTrack) is { } nextPlayPath) // null: its clip is still being looked for
         {
-            if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
-                _autoMixPreparedTrackId != nextTrack.Id &&
-                !string.IsNullOrWhiteSpace(nextTrack.FilePath) &&
-                ResolveNextPlayPath(nextTrack) is { } nextPlayPath) // null: its clip is still being looked for
-            {
-                _autoMixPreparedTrackId = nextTrack.Id;
-                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
-                    nextTrack.Id,
-                    nextTrack.FilePath,
-                    _queueVersion,
-                    IsShuffleEnabled,
-                    RepeatMode,
-                    AutoMixTransitionMode,
-                    _audioPlayer.CurrentSessionId,
-                    nextPlayPath);
-                _audioPlayer.PrepareNext(
-                    nextPlayPath,
-                    nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
-            }
+            _autoMixPreparedTrackId = nextTrack.Id;
+            _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                nextTrack.Id,
+                nextTrack.FilePath,
+                _queueVersion,
+                IsShuffleEnabled,
+                RepeatMode,
+                AutoMixTransitionMode,
+                _audioPlayer.CurrentSessionId,
+                nextPlayPath);
+            _audioPlayer.PrepareNext(
+                nextPlayPath,
+                nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
+            // Prepared inside the handoff lead (a song shorter than it): the prepare runs
+            // off this thread, so the advance waits for a later tick.
             return false;
         }
 
+        if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
+            return false;
+
         if (!CanHandOffEarly(nextTrack.FilePath))
+            return false;
+
+        if (inStartGuard && !_audioPlayer.IsNextStaged(_autoMixPreparedSnapshot?.PlayPath ?? nextTrack.FilePath))
             return false;
 
         var validation = AutoMixPreparedTransitionValidator.Validate(
