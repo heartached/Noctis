@@ -1874,6 +1874,21 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         return 0;
     }
 
+    /// <summary>The rate LibVLC decodes a media at (0 = unknown): the first audio track's of a
+    /// parsed Media; DSD and trimmed AAC/Opus/Vorbis media, which are never parsed, from their headers.</summary>
+    private static int SourceRateOf(Media media)
+    {
+        try
+        {
+            if (DsdPcmInput.TryGetFormat(media, out var dsdRate, out _)) return dsdRate;
+            if (ContainerTrimInput.TryGetRate(media, out var trimRate)) return trimRate;
+            foreach (var t in media.Tracks)
+                if (t.TrackType == TrackType.Audio) return (int)t.Data.Audio.Rate;
+        }
+        catch { /* unknown */ }
+        return 0;
+    }
+
     /// <summary>
     /// The players are wired into an NAudio chain with a <see cref="BeatTapProvider"/>:
     /// the gapless engine's sink, the exclusive-mode callbacks (whose sink, exclusive or
@@ -3145,7 +3160,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     _engineStagedPath = normalizedPath;
                     var (standbyLead, standbyTail) = ContainerTrimFrames(media);
                     EngineBeginSegment(_standbyPlayer, Math.Max(0, startPositionMs), normalizedPath,
-                        mp3TailTrimFrames + standbyTail, onAvcodec, SourceChannelsOf(media), standbyLead);
+                        mp3TailTrimFrames + standbyTail, onAvcodec, SourceChannelsOf(media), standbyLead, SourceRateOf(media));
                     _standbyPlayer.Play(media);
                     if (startPositionMs > 0)
                     {
@@ -3722,7 +3737,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // same value the :start-time open actually begins at.
                 var (leadTrimFrames, containerTailFrames) = ContainerTrimFrames(_currentMedia);
                 EngineBeginSegment(_player, Math.Max(0, pendingMs), filePath, mp3TailTrimFrames + containerTailFrames, onAvcodec,
-                    SourceChannelsOf(_currentMedia), leadTrimFrames);
+                    SourceChannelsOf(_currentMedia), leadTrimFrames, SourceRateOf(_currentMedia));
                 // Pause parks the sink; a fresh play must un-park it (pause → pick
                 // a new track otherwise renders into a paused stream: silence with
                 // a moving timeline, track after track). Paused restarts stay
@@ -5207,7 +5222,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <paramref name="path"/> is the input it carries (its ReplayGain level).
     /// </summary>
     private void EngineBeginSegment(MediaPlayer player, long basePositionMs, string path, int tailTrimFrames,
-        bool decodesThroughDamage, int sourceChannels = 0, int leadTrimFrames = 0)
+        bool decodesThroughDamage, int sourceChannels = 0, int leadTrimFrames = 0, int sourceRate = 0)
     {
         var sink = _gaplessSink;
         if (sink == null) return;
@@ -5220,6 +5235,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         seg.Gain = EngineSegmentGain(slot, path);
         seg.TailTrimFrames = tailTrimFrames;
         seg.LeadTrimFrames = leadTrimFrames;
+        // The speex resampler is the one forced on every engine platform (ShouldForceSpeexResampler).
+        seg.ResamplerDelayFrames = VlcResamplerDelay.OutputFrames(sourceRate, sink.SampleRate);
         seg.DamageAhead = KnownMp3Damage(path);
         seg.DecodesThroughDamage = decodesThroughDamage;
         seg.StereoSource = sink.Channels > 2 && sourceChannels is 1 or 2;
