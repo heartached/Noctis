@@ -4141,6 +4141,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>القيم المختلفة بين المقاطع ({0}) تظهر بعبارة «مختلط»</value>
     <comment>Details tab hint in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Mixed" xml:space="preserve">
+    <value>مختلط</value>
+  </data>
   <data name="Metadata.SecSorting" xml:space="preserve">
     <value>فرز</value>
     <comment>Text in MetadataWindow.axaml</comment>

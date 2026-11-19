@@ -1554,6 +1554,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Metadata.ChangesMany" xml:space="preserve"><value>{0} Änderungen</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve"><value>gilt für {0} Dateien</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.MixedHint" xml:space="preserve"><value>Werte, die sich über die {0} Titel unterscheiden, zeigen Gemischt</value><comment>Details tab hint in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Mixed" xml:space="preserve"><value>Gemischt</value><comment>Placeholder in a MetadataWindow.axaml field whose value differs across the edited tracks</comment></data>
   <data name="Metadata.SecSorting" xml:space="preserve"><value>Sortierung</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecPeople" xml:space="preserve"><value>Personen &amp; Credits</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecIdentification" xml:space="preserve"><value>Identifikation</value><comment>Text in MetadataWindow.axaml</comment></data>

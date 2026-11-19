@@ -4141,6 +4141,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>{0}개 트랙에서 서로 다른 값은 혼합으로 표시됩니다</value>
     <comment>Details tab hint in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Mixed" xml:space="preserve">
+    <value>혼합</value>
+  </data>
   <data name="Metadata.SecSorting" xml:space="preserve">
     <value>정렬</value>
     <comment>Text in MetadataWindow.axaml</comment>

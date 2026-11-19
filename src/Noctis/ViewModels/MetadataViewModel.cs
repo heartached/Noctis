@@ -1250,7 +1250,9 @@ public partial class MetadataViewModel : ViewModelBase
     private bool AlbumFieldChanged(string key, string current)
         => current != _albumLoaded.GetValueOrDefault(key, string.Empty);
 
-    private string Watermark(string key) => _mixedFields.Contains(key) ? "Mixed" : string.Empty;
+    // The word the hint beside these fields names (Metadata.MixedHint): it was a hard-coded
+    // English "Mixed" in every language.
+    private string Watermark(string key) => _mixedFields.Contains(key) ? Localization.Loc.T("Metadata.Mixed") : string.Empty;
 
     /// <summary>Details tool-row hint for album / multi-track edits: why some fields read "Mixed".</summary>
     public bool ShowMixedHint => _albumTracks is { Count: > 1 };

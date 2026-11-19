@@ -1549,6 +1549,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Metadata.ChangesMany" xml:space="preserve"><value>{0} değişiklik</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve"><value>{0} dosyaya uygulanır</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.MixedHint" xml:space="preserve"><value>{0} parça arasında farklılık gösteren değerler Karışık olarak görünür</value><comment>Details tab hint in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Mixed" xml:space="preserve"><value>Karışık</value><comment>Placeholder in a MetadataWindow.axaml field whose value differs across the edited tracks</comment></data>
   <data name="Metadata.SecSorting" xml:space="preserve"><value>Sıralama</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecPeople" xml:space="preserve"><value>Kişiler ve katkılar</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecIdentification" xml:space="preserve"><value>Tanımlama</value><comment>Text in MetadataWindow.axaml</comment></data>

@@ -4141,6 +4141,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>{0} トラック間で異なる値は混在として表示されます</value>
     <comment>Details tab hint in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Mixed" xml:space="preserve">
+    <value>混在</value>
+  </data>
   <data name="Metadata.SecSorting" xml:space="preserve">
     <value>並び替え</value>
     <comment>Text in MetadataWindow.axaml</comment>

@@ -1558,6 +1558,7 @@ L'enregistrement les remplace par les paroles affichées. Un fichier de paroles 
   <data name="Metadata.ChangesMany" xml:space="preserve"><value>{0} changements</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve"><value>s'applique à {0} fichiers</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.MixedHint" xml:space="preserve"><value>Les valeurs qui diffèrent entre les {0} titres s'affichent comme « Mixte »</value><comment>Details tab hint in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Mixed" xml:space="preserve"><value>Mixte</value><comment>Placeholder in a MetadataWindow.axaml field whose value differs across the edited tracks</comment></data>
   <data name="Metadata.SecSorting" xml:space="preserve"><value>Tri</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecPeople" xml:space="preserve"><value>Personnes et crédits</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecIdentification" xml:space="preserve"><value>Identification</value><comment>Text in MetadataWindow.axaml</comment></data>

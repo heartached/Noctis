@@ -4141,6 +4141,9 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>{0} 首曲目中取值不同的欄位顯示為「混合」</value>
     <comment>Details tab hint in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Mixed" xml:space="preserve">
+    <value>混合</value>
+  </data>
   <data name="Metadata.SecSorting" xml:space="preserve">
     <value>排序</value>
     <comment>Text in MetadataWindow.axaml</comment>

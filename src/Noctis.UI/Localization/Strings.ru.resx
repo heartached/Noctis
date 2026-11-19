@@ -1558,6 +1558,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Metadata.ChangesMany" xml:space="preserve"><value>Изменений: {0}</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve"><value>применяется к файлам: {0}</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.MixedHint" xml:space="preserve"><value>Значения, которые различаются у выбранных треков ({0}), показаны как «Разные»</value><comment>Details tab hint in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Mixed" xml:space="preserve"><value>Разные</value><comment>Placeholder in a MetadataWindow.axaml field whose value differs across the edited tracks</comment></data>
   <data name="Metadata.SecSorting" xml:space="preserve"><value>Сортировка</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecPeople" xml:space="preserve"><value>Участники и авторы</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecIdentification" xml:space="preserve"><value>Идентификация</value><comment>Text in MetadataWindow.axaml</comment></data>

@@ -1558,6 +1558,7 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   <data name="Metadata.ChangesMany" xml:space="preserve"><value>{0} cambios</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.AppliesToFiles" xml:space="preserve"><value>se aplica a {0} archivos</value><comment>Footer status in MetadataWindow.axaml</comment></data>
   <data name="Metadata.MixedHint" xml:space="preserve"><value>Los valores que difieren entre las {0} pistas se muestran como Varios</value><comment>Details tab hint in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Mixed" xml:space="preserve"><value>Varios</value><comment>Placeholder in a MetadataWindow.axaml field whose value differs across the edited tracks</comment></data>
   <data name="Metadata.SecSorting" xml:space="preserve"><value>Ordenación</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecPeople" xml:space="preserve"><value>Personas y créditos</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SecIdentification" xml:space="preserve"><value>Identificación</value><comment>Text in MetadataWindow.axaml</comment></data>
