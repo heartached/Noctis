@@ -831,6 +831,14 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         _sessionPlayer.Dispose();
     }
 
+    /// <summary>The queue's next/previous may have changed without anything new playing (Repeat
+    /// toggled, a song queued or removed): the lock screen and notification buttons follow.
+    /// Main thread.</summary>
+    public void NotifyQueueCommandsChanged()
+    {
+        if (!_disposed) _sessionPlayer.NotifyQueueCommandsChanged();
+    }
+
     private void RaiseSessionNextRequested() => SessionNextRequested?.Invoke(this, EventArgs.Empty);
     private void RaiseSessionPreviousRequested() => SessionPreviousRequested?.Invoke(this, EventArgs.Empty);
 
@@ -981,6 +989,33 @@ public sealed class Media3AudioPlayer : IAudioPlayer
                 _answerPrevious = previous;
                 return _answer;
             }
+        }
+
+        // The session re-reads the commands only when a listener is told they changed, and the
+        // wrapped player says so for its own reasons alone. A queue change that plays nothing
+        // new (Repeat switched on for the last song) left the lock screen without Next while
+        // the app's own button worked (S23, 11-19). The listeners are kept so the owner can
+        // tell them.
+        private readonly List<IPlayerListener> _listeners = new();
+
+        public override void AddListener(IPlayerListener? listener)
+        {
+            if (listener != null) _listeners.Add(listener);
+            base.AddListener(listener);
+        }
+
+        public override void RemoveListener(IPlayerListener? listener)
+        {
+            if (listener != null) _listeners.Remove(listener);
+            base.RemoveListener(listener);
+        }
+
+        /// <summary>Tells the session the queue's next/previous may have changed. Main thread.</summary>
+        public void NotifyQueueCommandsChanged()
+        {
+            if (_owner.HasNextInQueue?.Invoke() == _answerNext && _owner.HasPreviousInQueue?.Invoke() == _answerPrevious) return;
+            var commands = AvailableCommands;
+            foreach (var listener in _listeners.ToArray()) listener.OnAvailableCommandsChanged(commands);
         }
 
         private static void ApplyOverride(PlayerCommands.Builder builder, int command, bool? available)

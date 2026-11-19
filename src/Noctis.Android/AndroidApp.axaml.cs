@@ -201,6 +201,14 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // holds at most the current track plus one prepared successor.
         _player.HasNextInQueue = () => shell.Player.HasNext;
         _player.HasPreviousInQueue = () => shell.Player.HasPrevious;
+        // The session only asks again when told: without this, Repeat switched on for the last
+        // song left the lock screen without Next.
+        shell.Player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(NowPlayingViewModel.HasNext) or nameof(NowPlayingViewModel.HasPrevious)
+                or nameof(NowPlayingViewModel.CurrentTrack))
+                Dispatcher.UIThread.Post(() => _player.NotifyQueueCommandsChanged());
+        };
 
         if (ApplicationLifetime is IActivityApplicationLifetime activity)
             activity.MainViewFactory = () =>
