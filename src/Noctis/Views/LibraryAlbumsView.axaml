@@ -298,12 +298,18 @@
                                                            FontWeight="SemiBold"
                                                            Opacity="0.75"
                                                            VerticalAlignment="Center" />
-                                                <TextBlock Text="{loc:T LibraryAlbums.Plays}"
-                                                           IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsNotOne}}"
+                                                <TextBlock IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsNotOne}}"
                                                            FontSize="11"
                                                            FontWeight="SemiBold"
                                                            Opacity="0.55"
-                                                           VerticalAlignment="Center" />
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{x:Static conv:PluralWordConverter.Instance}" ConverterParameter="LibraryAlbums.Plays">
+                                                            <Binding Path="Track.PlayCount" />
+                                                            <ReflectionBinding Path="[LibraryAlbums.Plays]" Source="{x:Static loc:Loc.Instance}" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
                                                 <TextBlock Text="{loc:T Common.Play}"
                                                            IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsOne}}"
                                                            FontSize="11"

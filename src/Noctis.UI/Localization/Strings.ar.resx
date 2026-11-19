@@ -657,7 +657,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Appearance toggle hint in SettingsView.axaml (GitHub #240)</comment>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
-    <value>{0} أغانٍ</value>
+    <value>{0} أغنية|{0} أغنية|{0} أغنيتان|{0} أغانٍ|{0} أغنية|{0} أغنية</value>
     <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
@@ -2820,7 +2820,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="CreateSmartPlaylist.LimitCount" xml:space="preserve"><value>عدد المقاطع</value><comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
-    <value>مقطعًا، مرتبة حسب</value>
+    <value>مقطع، مرتبة حسب|مقطع، مرتبة حسب|مقطعان، مرتبة حسب|مقاطع، مرتبة حسب|مقطعًا، مرتبة حسب|مقطع، مرتبة حسب</value>
     <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
   </data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve"><value>الترتيب حسب</value><comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment></data>
@@ -3040,7 +3040,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip.Tip in HomeView.axaml</comment>
   </data>
   <data name="Home.Plays" xml:space="preserve">
-    <value>مرة تشغيل</value>
+    <value>مرة تشغيل|مرة تشغيل|مرتا تشغيل|مرات تشغيل|مرة تشغيل|مرة تشغيل</value>
     <comment>Text in HomeView.axaml</comment>
   </data>
   <data name="Home.TopArtists" xml:space="preserve">
@@ -3125,7 +3125,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip.Tip in LibraryAlbumsView.axaml</comment>
   </data>
   <data name="LibraryAlbums.Plays" xml:space="preserve">
-    <value>مرة تشغيل</value>
+    <value>مرة تشغيل|مرة تشغيل|مرتا تشغيل|مرات تشغيل|مرة تشغيل|مرة تشغيل</value>
     <comment>Text in LibraryAlbumsView.axaml</comment>
   </data>
   <data name="LibraryAlbums.Play" xml:space="preserve">
@@ -6087,9 +6087,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Stats.NeverPlayed" xml:space="preserve"><value>لم تُشغَّل قط</value><comment>Forgotten Favorites row</comment></data>
   <data name="Stats.LastPlayed" xml:space="preserve"><value>آخر تشغيل: {0}</value><comment>Forgotten Favorites row; {0} = e.g. 7 months ago</comment></data>
   <data name="Stats.MonthAgo" xml:space="preserve"><value>منذ شهر</value><comment>Age, singular</comment></data>
-  <data name="Stats.MonthsAgo" xml:space="preserve"><value>منذ {0} أشهر</value><comment>Age, plural</comment></data>
+  <data name="Stats.MonthsAgo" xml:space="preserve"><value>منذ {0} شهر|منذ شهر|منذ شهرين|منذ {0} أشهر|منذ {0} شهرًا|منذ {0} شهر</value><comment>Age, plural</comment></data>
   <data name="Stats.YearAgo" xml:space="preserve"><value>منذ سنة</value><comment>Age, singular</comment></data>
-  <data name="Stats.YearsAgo" xml:space="preserve"><value>منذ {0} سنوات</value><comment>Age, plural</comment></data>
+  <data name="Stats.YearsAgo" xml:space="preserve"><value>منذ {0} سنة|منذ سنة|منذ سنتين|منذ {0} سنوات|منذ {0} سنة|منذ {0} سنة</value><comment>Age, plural</comment></data>
   <data name="Stats.Today" xml:space="preserve"><value>اليوم</value><comment>Play History day heading</comment></data>
   <data name="Stats.Yesterday" xml:space="preserve"><value>أمس</value><comment>Play History day heading</comment></data>
   <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>لا يوجد سجل استماع بعد</value><comment>Statistics empty state title</comment></data>
@@ -6621,11 +6621,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>ToolTip on the Songs row stars</comment>
   </data>
   <data name="LibrarySongs.SummarySong" xml:space="preserve"><value>أغنية واحدة</value><comment>Songs page top bar summary</comment></data>
-  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0} أغنية</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummarySongs" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value><comment>Songs page top bar summary</comment></data>
   <data name="LibrarySongs.SummaryHour" xml:space="preserve"><value>ساعة واحدة</value><comment>Songs page top bar summary</comment></data>
-  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} ساعة</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryHours" xml:space="preserve"><value>{0:N0} ساعة|{0:N0} ساعة|{0:N0} ساعتان|{0:N0} ساعات|{0:N0} ساعة|{0:N0} ساعة</value><comment>Songs page top bar summary</comment></data>
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve"><value>دقيقة واحدة</value><comment>Songs page top bar summary</comment></data>
-  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} دقيقة</value><comment>Songs page top bar summary</comment></data>
+  <data name="LibrarySongs.SummaryMinutes" xml:space="preserve"><value>{0} دقيقة|{0} دقيقة|{0} دقيقتان|{0} دقائق|{0} دقيقة|{0} دقيقة</value><comment>Songs page top bar summary</comment></data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve"><value>استيراد عدد مرات التشغيل</value><comment>Settings › Integrations, under Last.fm / ListenBrainz (GitHub #160)</comment></data>
   <data name="Settings.PlayCountImport.Line" xml:space="preserve"><value>يجلب سجل استماعك إلى أعداد مرات التشغيل في Noctis. لا يُرسَل أي شيء في المقابل.</value><comment>Settings › Integrations: what Import Play Counts does</comment></data>
   <data name="Settings.PlayCountImport.Button" xml:space="preserve"><value>استيراد</value><comment>Settings › Integrations: starts the play count import</comment></data>
@@ -7959,11 +7959,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Relative time, used after 'Synced', 'Connected', 'Last synced'</comment>
   </data>
   <data name="Time.MinutesAgo" xml:space="preserve">
-    <value>منذ {0} دقيقة</value>
+    <value>منذ {0} دقيقة|منذ دقيقة|منذ دقيقتين|منذ {0} دقائق|منذ {0} دقيقة|منذ {0} دقيقة</value>
     <comment>Relative time; {0} = minutes</comment>
   </data>
   <data name="Time.HoursAgo" xml:space="preserve">
-    <value>منذ {0} ساعة</value>
+    <value>منذ {0} ساعة|منذ ساعة|منذ ساعتين|منذ {0} ساعات|منذ {0} ساعة|منذ {0} ساعة</value>
     <comment>Relative time; {0} = hours</comment>
   </data>
   <data name="Time.OnDate" xml:space="preserve">
@@ -8184,7 +8184,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Status in ArtistInfoSearchDialog.axaml while the pick is saved</comment>
   </data>
   <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
-    <value>{0} ألبوم</value>
+    <value>{0} ألبوم|{0} ألبوم|{0} ألبومان|{0} ألبومات|{0} ألبومًا|{0} ألبوم</value>
     <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
   </data>
   <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
@@ -8953,8 +8953,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Main.DropImportingFiles" xml:space="preserve"><value>جارٍ استيراد الملفات {0} من {1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>جارٍ تحديث المكتبة…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedOne" xml:space="preserve"><value>تم نقل ملف واحد إلى {0}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
-  <data name="Main.DropMovedMany" xml:space="preserve"><value>تم نقل {0} ملفات إلى {1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
-  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>يحتوي "{0}" على {1} مقاطع من {2} ألبومات مختلفة.
+  <data name="Main.DropMovedMany" xml:space="preserve"><value>تم نقل {0} ملف إلى {1}|تم نقل ملف واحد إلى {1}|تم نقل ملفين إلى {1}|تم نقل {0} ملفات إلى {1}|تم نقل {0} ملفًا إلى {1}|تم نقل {0} ملف إلى {1}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
+  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>يحتوي "{0}" على مقاطع من ألبومات مختلفة (المقاطع: {1}، الألبومات: {2}).
 
 هل تريد إنشاء قائمة تشغيل باسم "{0}" بهذه المقاطع؟</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>مزودو كلمات الأغاني متوقفون في الإعدادات.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
@@ -9057,7 +9057,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>جارٍ سؤال المصادر المشغولة مجددًا… المتبقي: {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>لا شيء لفعله</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>أغنية واحدة لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} أغانٍ لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} أغنية لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.|أغنية واحدة لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.|أغنيتان لهما كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتهما على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.|{0:N0} أغانٍ لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.|{0:N0} أغنية لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.|{0:N0} أغنية لها كلمات عادية فقط. يمكن لاستوديو الكلمات توقيتها على هذا الكمبيوتر بنموذج الكلام الخاص به: قد يستغرق ذلك دقيقة أو أكثر لكل أغنية (أسرع مع بطاقة رسوميات)، وتراجع كل واحدة قبل حفظها.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>تُفتح أول {0} في المرة الواحدة.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} ألبوم|{0:N0} ألبوم|{0:N0} ألبومان|{0:N0} ألبومات|{0:N0} ألبومًا|{0:N0} ألبوم</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
@@ -9091,7 +9091,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>جارٍ استعادة بيانات الفنانين الأصلية…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>تعذّر تحديث بيانات الفنانين.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>بيانات الفنانين محدّثة بالفعل.</value><comment>Settings status line</comment></data>
-  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>تم تحديث بيانات الفنانين في {0:N0} مقطع.</value><comment>Settings status line</comment></data>
+  <data name="Settings.ArtistCreditsUpdated" xml:space="preserve"><value>تم تحديث بيانات الفنانين في {0:N0} مقطع.|تم تحديث بيانات الفنانين في مقطع واحد.|تم تحديث بيانات الفنانين في مقطعين.|تم تحديث بيانات الفنانين في {0:N0} مقاطع.|تم تحديث بيانات الفنانين في {0:N0} مقطعًا.|تم تحديث بيانات الفنانين في {0:N0} مقطع.</value><comment>Settings status line</comment></data>
   <data name="Settings.FfmpegNotFound" xml:space="preserve"><value>غير موجود — حدّد مسارًا أدناه أو ثبّت ffmpeg ضمن PATH.</value><comment>Settings status line</comment></data>
   <data name="Settings.FfmpegChecking" xml:space="preserve"><value>جارٍ التحقق من {0}…</value><comment>Settings status line</comment></data>
   <data name="Settings.OpeningBrowser" xml:space="preserve"><value>جارٍ فتح المتصفح…</value><comment>Settings status line</comment></data>
@@ -9214,12 +9214,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Menu.OpenFileWith" xml:space="preserve"><value>فتح الملف باستخدام</value><comment>Song context menu › Tools</comment></data>
   <data name="Menu.OpenIn" xml:space="preserve"><value>فتح في {0}</value><comment>Song context menu › Tools</comment></data>
   <data name="Metadata.AlbumIsExplicit" xml:space="preserve"><value>الألبوم صريح</value><comment>Metadata window</comment></data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>تم تحديد {0} فنانين</value><comment>Metadata window</comment></data>
-  <data name="Metadata.SongsSelected" xml:space="preserve"><value>تم تحديد {0} أغانٍ</value><comment>Metadata window</comment></data>
+  <data name="Metadata.ArtistsSelected" xml:space="preserve"><value>تم تحديد {0} فنان|تم تحديد فنان واحد|تم تحديد فنانَين|تم تحديد {0} فنانين|تم تحديد {0} فنانًا|تم تحديد {0} فنان</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SongsSelected" xml:space="preserve"><value>تم تحديد {0} أغنية|تم تحديد أغنية واحدة|تم تحديد أغنيتين|تم تحديد {0} أغانٍ|تم تحديد {0} أغنية|تم تحديد {0} أغنية</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>تعذّرت كتابة الوسوم في "{0}". ربما يكون الملف مفتوحًا في تطبيق آخر أو للقراءة فقط — أغلقه هناك أو تحقق من الملف ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
-  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>تعذّرت كتابة الوسوم في {0} ملفات (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>تعذّرت كتابة الوسوم في {0} ملف (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.|تعذّرت كتابة الوسوم في ملف واحد (مثل "{1}"). ربما يكون الملف مفتوحًا في تطبيق آخر أو للقراءة فقط — أغلقه هناك أو تحقق من الملف ثم حاول مرة أخرى.|تعذّرت كتابة الوسوم في ملفين (مثل "{1}"). ربما يكونان مفتوحين في تطبيق آخر أو للقراءة فقط — أغلقهما هناك أو تحقق من الملفين ثم حاول مرة أخرى.|تعذّرت كتابة الوسوم في {0} ملفات (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.|تعذّرت كتابة الوسوم في {0} ملفًا (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.|تعذّرت كتابة الوسوم في {0} ملف (مثل "{1}"). ربما تكون مفتوحة في تطبيق آخر أو للقراءة فقط — أغلقها هناك أو تحقق من الملفات ثم حاول مرة أخرى.</value><comment>Metadata window</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>البحث عن غلاف متحرك لألبوم واحد</value><comment>Find animated artwork in bulk dialog</comment></data>
-  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>البحث عن أغلفة متحركة لـ {0:N0} ألبومات</value><comment>Find animated artwork in bulk dialog</comment></data>
+  <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>البحث عن أغلفة متحركة لـ {0:N0} ألبوم|البحث عن غلاف متحرك لألبوم واحد|البحث عن أغلفة متحركة لألبومين|البحث عن أغلفة متحركة لـ {0:N0} ألبومات|البحث عن أغلفة متحركة لـ {0:N0} ألبومًا|البحث عن أغلفة متحركة لـ {0:N0} ألبوم</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>لا توجد ألبومات للبحث عنها.</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.LookingUp" xml:space="preserve"><value>جارٍ البحث</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.SumSaved" xml:space="preserve"><value>{0:N0} محفوظة</value><comment>Find animated artwork in bulk dialog</comment></data>

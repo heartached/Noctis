@@ -1023,7 +1023,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="CreateSmartPlaylist.AddRule" xml:space="preserve"><value>Добавить правило</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Limit" xml:space="preserve"><value>Ограничить до</value><comment>Content in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.LimitCount" xml:space="preserve"><value>Число треков</value><comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment></data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>треков, сортировка по</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
+  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve"><value>трека, сортировка по|треков, сортировка по|треков, сортировка по</value><comment>Text in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve"><value>Сортировка</value><comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment></data>
   <data name="CreateSmartPlaylist.Subtitle" xml:space="preserve"><value>Заполняется сам по заданным правилам</value><comment>One-line purpose under the title in CreateSmartPlaylistDialog.axaml</comment></data>
   <data name="CreateSmartPlaylist.Name" xml:space="preserve"><value>Название</value><comment>Field label in CreateSmartPlaylistDialog.axaml</comment></data>
@@ -2262,7 +2262,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Stats.MonthAgo" xml:space="preserve"><value>1 месяц назад</value><comment>Age, singular</comment></data>
   <data name="Stats.MonthsAgo" xml:space="preserve"><value>{0} мес. назад</value><comment>Age, plural</comment></data>
   <data name="Stats.YearAgo" xml:space="preserve"><value>1 год назад</value><comment>Age, singular</comment></data>
-  <data name="Stats.YearsAgo" xml:space="preserve"><value>{0} г. назад</value><comment>Age, plural</comment></data>
+  <data name="Stats.YearsAgo" xml:space="preserve"><value>{0} год назад|{0} года назад|{0} лет назад</value><comment>Age, plural</comment></data>
   <data name="Stats.Today" xml:space="preserve"><value>Сегодня</value><comment>Play History day heading</comment></data>
   <data name="Stats.Yesterday" xml:space="preserve"><value>Вчера</value><comment>Play History day heading</comment></data>
   <data name="Stats.NoHistoryTitle" xml:space="preserve"><value>Истории прослушиваний пока нет</value><comment>Statistics empty state title</comment></data>
@@ -3967,7 +3967,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Main.DropRefreshingLibrary" xml:space="preserve"><value>Обновление медиатеки…</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedOne" xml:space="preserve"><value>1 файл перемещён в {0}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Main.DropMovedMany" xml:space="preserve"><value>Файлов перемещено в {1}: {0}</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
-  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>«{0}» содержит {1} треков из {2} разных альбомов.
+  <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve"><value>«{0}» содержит треки из разных альбомов (треков: {1}, альбомов: {2}).
 
 Создать плейлист «{0}» с этими треками?</value><comment>Drag-and-drop import status (MainWindowViewModel)</comment></data>
   <data name="Lyrics.ProvidersOff" xml:space="preserve"><value>Источники текстов отключены в настройках.</value><comment>Lyrics page status under the empty lyrics area (LyricsViewModel)</comment></data>
@@ -4070,7 +4070,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="BulkLyrics.RetryingBusy" xml:space="preserve"><value>Повторный запрос к занятым источникам… осталось {0}</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.SumNothing" xml:space="preserve"><value>делать нечего</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferOne" xml:space="preserve"><value>У 1 песни есть только обычный текст. Lyrics Studio может синхронизировать его на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
-  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>У {0:N0} песен есть только обычный текст. Lyrics Studio может синхронизировать их на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
+  <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>У {0:N0} песни есть только обычный текст. Lyrics Studio может синхронизировать их на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.|У {0:N0} песен есть только обычный текст. Lyrics Studio может синхронизировать их на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.|У {0:N0} песен есть только обычный текст. Lyrics Studio может синхронизировать их на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>Первые {0} откроются сразу.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} альбом|{0:N0} альбома|{0:N0} альбомов</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>

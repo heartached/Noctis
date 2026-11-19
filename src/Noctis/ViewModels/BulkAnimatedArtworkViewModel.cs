@@ -42,7 +42,7 @@ public partial class BulkAnimatedArtworkViewModel : ViewModelBase
         _albums = albums;
         _service = service;
         var n = albums.Count;
-        TitleText = n == 1 ? L("BulkArtwork.TitleOne") : L("BulkArtwork.TitleMany", n);
+        TitleText = n == 1 ? L("BulkArtwork.TitleOne") : Noctis.Localization.Loc.Plural("BulkArtwork.TitleMany", n);
         foreach (var album in albums)
         {
             var row = new Row(album[0], album.Any(t => t.IsExplicit));

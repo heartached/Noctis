@@ -363,9 +363,16 @@
                                    ShowButtonSpinner="False"
                                    FormatString="0"
                                    VerticalAlignment="Center" />
-                    <TextBlock Text="{loc:T CreateSmartPlaylist.TracksSortedBy}"
+                    <TextBlock x:Name="LimitWords"
                                Classes.sp-off="{Binding !HasLimit}"
-                               FontSize="13" VerticalAlignment="Center" />
+                               FontSize="13" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{x:Static conv:PluralWordConverter.Instance}" ConverterParameter="CreateSmartPlaylist.TracksSortedBy">
+                                <Binding Path="LimitCount" />
+                                <ReflectionBinding Path="[CreateSmartPlaylist.TracksSortedBy]" Source="{x:Static loc:Loc.Instance}" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
                     <ComboBox x:Name="SortBox"
                               AutomationProperties.Name="{loc:T CreateSmartPlaylist.SortBy}"
                               Classes="pill-field"

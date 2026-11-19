@@ -750,7 +750,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         // Same rule BeginPlaylistSettle uses to move the block.
         var carried = _selectedTracks.Count > 1 && _selectedTracks.Contains(_dragTrack) ? _selectedTracks.Count : 1;
         PlaylistDragCount.IsVisible = carried > 1;
-        PlaylistDragCountText.Text = carried > 1 ? Noctis.Localization.Loc.T("Playlist.DragCount", carried) : null;
+        PlaylistDragCountText.Text = carried > 1 ? Noctis.Localization.Loc.Plural("Playlist.DragCount", carried) : null;
 
         var body = RowBodySlot(rowItem);
         liquid.Pitch = body.Height;

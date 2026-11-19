@@ -363,9 +363,9 @@ public partial class MetadataViewModel : ViewModelBase
 
     /// <summary>Track title and artist for the header.</summary>
     public string HeaderTitle => _multiSelect
-        ? Localization.Loc.T("Metadata.ArtistsSelected", DistinctArtistCount)
+        ? Localization.Loc.Plural("Metadata.ArtistsSelected", DistinctArtistCount)
         : (_albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title);
-    public string HeaderArtist => _multiSelect ? Localization.Loc.T("Metadata.SongsSelected", SongCount) : _track.Artist;
+    public string HeaderArtist => _multiSelect ? Localization.Loc.Plural("Metadata.SongsSelected", SongCount) : _track.Artist;
     public string HeaderAlbum => _multiSelect ? string.Empty : _track.Album;
 
     /// <summary>True when editing an arbitrary multi-track selection (blank art, "N selected" header).</summary>
@@ -2906,7 +2906,7 @@ public partial class MetadataViewModel : ViewModelBase
                 ? Localization.Loc.T("Metadata.DffTagsReadOnly", failedWrites[0])
                 : failedWrites.Count == 1
                 ? Localization.Loc.T("Metadata.WriteFailedOne", failedWrites[0])
-                : Localization.Loc.T("Metadata.WriteFailedMany", failedWrites.Count, failedWrites[0]);
+                : Localization.Loc.Plural("Metadata.WriteFailedMany", failedWrites.Count, failedWrites[0]);
             return;
         }
 

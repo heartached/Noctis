@@ -751,17 +751,17 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             total += t.Duration;
 
         // Was hard-coded English (seen in German, 11-04).
-        var songs = count == 1 ? Loc.T("LibrarySongs.SummarySong") : Loc.T("LibrarySongs.SummarySongs", count);
+        var songs = count == 1 ? Loc.T("LibrarySongs.SummarySong") : Loc.Plural("LibrarySongs.SummarySongs", count);
         string time;
         if (total.TotalHours >= 1)
         {
             var hours = (int)Math.Round(total.TotalHours);
-            time = hours == 1 ? Loc.T("LibrarySongs.SummaryHour") : Loc.T("LibrarySongs.SummaryHours", hours);
+            time = hours == 1 ? Loc.T("LibrarySongs.SummaryHour") : Loc.Plural("LibrarySongs.SummaryHours", hours);
         }
         else
         {
             var minutes = (int)Math.Round(total.TotalMinutes);
-            time = minutes == 1 ? Loc.T("LibrarySongs.SummaryMinute") : Loc.T("LibrarySongs.SummaryMinutes", minutes);
+            time = minutes == 1 ? Loc.T("LibrarySongs.SummaryMinute") : Loc.Plural("LibrarySongs.SummaryMinutes", minutes);
         }
 
         SummaryText = $"{songs} · {time}";

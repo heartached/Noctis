@@ -6103,7 +6103,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>"Artist credits updated on 1 track." / "… on 12 tracks." Internal for tests.</summary>
     internal static string ArtistCreditsUpdatedText(int changed) => changed == 1
         ? Loc.T("Settings.ArtistCreditsUpdatedOne")
-        : Loc.T("Settings.ArtistCreditsUpdated", changed);
+        : Loc.Plural("Settings.ArtistCreditsUpdated", changed);
 
     partial void OnTrackTitleMarqueeEnabledChanged(bool value)
     {
