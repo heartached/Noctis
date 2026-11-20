@@ -567,4 +567,67 @@ public class PlaybackQueueTests
         Assert.Contains(t[0], q.UpNext);
         Assert.Equal(3, q.UpNext.Count);
     }
+
+    // ── GitHub #256: Repeat All replays the queue as edited ──
+
+    private static List<Track> Pass(PlaybackQueue q, int n) =>
+        Enumerable.Range(0, n).Select(_ => q.Advance(QueueAdvance.Natural)!).ToList();
+
+    [Fact]
+    public void RepeatAll_a_removed_upnext_song_does_not_come_back_on_the_wrap()
+    {
+        var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(3);
+        q.ReplaceAll(t, 0);
+
+        q.RemoveAt(0);                                          // t1
+
+        Assert.Equal(new[] { t[2], t[0], t[2], t[0] }, Pass(q, 4));
+    }
+
+    [Fact]
+    public void RepeatAll_removing_one_of_two_copies_keeps_the_other()
+    {
+        var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(2);
+        q.ReplaceAll(new[] { t[0], t[1], t[1] }, 0);
+
+        q.RemoveAt(1);                                          // the second t1
+
+        Assert.Equal(new[] { t[1], t[0], t[1], t[0] }, Pass(q, 4));
+    }
+
+    [Fact]
+    public void RepeatAll_after_Clear_the_cleared_songs_do_not_come_back()
+    {
+        var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(3);
+        q.ReplaceAll(t, 0);
+        q.Advance(QueueAdvance.Natural);                        // t1 plays
+
+        q.Clear();
+
+        Assert.Equal(new[] { t[1], t[1] }, Pass(q, 2));          // the playing song alone
+    }
+
+    [Fact]
+    public void RepeatAll_after_Clear_and_refill_cycles_the_playing_song_and_the_new_ones()
+    {
+        var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(3); var add = Tracks(2);
+        q.ReplaceAll(t, 0);
+        q.Clear();
+
+        q.AddRange(add);
+
+        Assert.Equal(new[] { add[0], add[1], t[0], add[0] }, Pass(q, 4));
+    }
+
+    [Fact]
+    public void RepeatAll_songs_queued_after_the_start_stay_in_the_next_pass()
+    {
+        var q = new PlaybackQueue { RepeatMode = RepeatMode.All }; var t = Tracks(2); var add = Tracks(2);
+        q.ReplaceAll(t, 0);
+
+        q.Add(add[0]);                                          // t0 [t1 a0]
+        q.AddNext(add[1]);                                      // t0 [a1 t1 a0]
+
+        Assert.Equal(new[] { add[1], t[1], add[0], t[0], add[1], t[1], add[0] }, Pass(q, 7));
+    }
 }

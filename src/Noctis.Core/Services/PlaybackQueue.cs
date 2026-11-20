@@ -106,11 +106,22 @@ public sealed class PlaybackQueue
     // Add to Queue at its end): Shuffle off rebuilds Up Next from that order, and without them
     // there it dropped every song queued in the meantime.
 
+    // GitHub #256: queue edits go into the Repeat All cycle too (the desktop's
+    // MirrorIntoRepeatCycle / RemoveFromRepeatCycle), so a wrap replays the queue as edited:
+    // a removed or cleared song came back, a queued one was dropped. No cycle, nothing to edit
+    // (the wrap falls back to History).
+
     /// <summary>"Play Next": front of UpNext.</summary>
     public void AddNext(Track track)
     {
         _upNext.Insert(0, track);
         if (IsShuffleEnabled) _originalOrder.Insert(0, track);
+        if (_repeatCycle.Count > 0)
+        {
+            // In the cycle it follows the playing track, as it does in this pass.
+            var at = Current == null ? -1 : _repeatCycle.FindIndex(t => t.Id == Current.Id);
+            _repeatCycle.Insert(at < 0 ? _repeatCycle.Count : at + 1, track);
+        }
     }
 
     /// <summary>"Add to Queue": end of UpNext.</summary>
@@ -118,6 +129,7 @@ public sealed class PlaybackQueue
     {
         _upNext.Add(track);
         if (IsShuffleEnabled) _originalOrder.Add(track);
+        if (_repeatCycle.Count > 0) _repeatCycle.Add(track);
     }
 
     public void AddRange(IEnumerable<Track> tracks)
@@ -125,6 +137,7 @@ public sealed class PlaybackQueue
         var list = tracks.ToList();
         _upNext.AddRange(list);
         if (IsShuffleEnabled) _originalOrder.AddRange(list);
+        if (_repeatCycle.Count > 0) _repeatCycle.AddRange(list);
     }
 
     /// <summary>
@@ -202,8 +215,12 @@ public sealed class PlaybackQueue
 
     public void RemoveAt(int upNextIndex)
     {
-        if ((uint)upNextIndex < (uint)_upNext.Count)
-            _upNext.RemoveAt(upNextIndex);
+        if ((uint)upNextIndex >= (uint)_upNext.Count) return;
+        // The last copy in the cycle: a pending song sits after any copy of it that played.
+        var id = _upNext[upNextIndex].Id;
+        var at = _repeatCycle.FindLastIndex(t => t.Id == id);
+        if (at >= 0) _repeatCycle.RemoveAt(at);
+        _upNext.RemoveAt(upNextIndex);
     }
 
     public void Move(int fromUpNextIndex, int toUpNextIndex)
@@ -216,8 +233,13 @@ public sealed class PlaybackQueue
         _upNext.Insert(toUpNextIndex, t);
     }
 
-    /// <summary>Clears UpNext only; Current keeps playing.</summary>
-    public void Clear() => _upNext.Clear();
+    /// <summary>Clears UpNext only; Current keeps playing, and is all Repeat All replays
+    /// (GitHub #256: the cleared songs came back on the wrap).</summary>
+    public void Clear()
+    {
+        _upNext.Clear();
+        _repeatCycle = Current != null ? new List<Track> { Current } : new List<Track>();
+    }
 
     /// <summary>
     /// Drops every track matching <paramref name="match"/> from UpNext, History, the repeat
