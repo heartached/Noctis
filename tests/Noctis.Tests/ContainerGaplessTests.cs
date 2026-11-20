@@ -106,6 +106,27 @@ public class ContainerGaplessTests
     }
 
     [Fact]
+    public void Mp4_EditRoundedUpToTheMillisecond_EndsAtTheSttsEnd()
+    {
+        // The harness HE-AAC file (FFmpeg, 11-19): 165 x 2048 + 1922 samples, 5058 priming,
+        // the edit 7592 ms = 334807 samples but the stts end leaves 334784. The edit's 23 extra
+        // samples are the codec's padding: the tail is 126, not 103.
+        var file = BuildMp4(edit: (7592, 5058), stts: [(165, 2048), (1, 1922)], smpb: null);
+        Assert.True(ContainerGaplessInfo.TryParseMp4(new MemoryStream(file), out var info));
+        Assert.Equal(5058, info!.LeadSamples);
+        Assert.Equal(126, info.TailSamples);
+    }
+
+    [Fact]
+    public void Mp4_EditShorterThanTheSttsEnd_KeepsTheEdit()
+    {
+        // An edit that really cuts more than the stts padding (a trimmed track) is not overruled.
+        var file = BuildMp4(edit: (11000, 1024), stts: [(517, 1024), (1, 816)], smpb: null);
+        Assert.True(ContainerGaplessInfo.TryParseMp4(new MemoryStream(file), out var info));
+        Assert.Equal(530432 - 1024 - 485100, info!.TailSamples);
+    }
+
+    [Fact]
     public void Mp4_WithoutAnEsds_HasNoDecodedRate()
     {
         var file = BuildMp4(edit: (12000, 1024), stts: [(517, 1024), (1, 816)], smpb: null);
