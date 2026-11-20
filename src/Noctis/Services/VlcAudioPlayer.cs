@@ -3285,6 +3285,13 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     internal static bool IsAudioCdPath(string path) => AudioCd.AudioCdPaths.IsAudioCdPath(path);
 
     /// <summary>Paths that are not files: no File.Exists, no Path.GetFullPath, no standby pre-roll.</summary>
+    // Seeks into a part of the file the disk has not read yet wait on the disk (hard-disk
+    // libraries: up to 722 ms of silence per timeline click, 11-19). See PlaybackFileWarmer.
+    private readonly PlaybackFileWarmer _fileWarmer = new();
+
+    private void WarmPlayingFile(string filePath)
+        => _fileWarmer.Warm(IsPathlessMedia(filePath) ? null : filePath);
+
     internal static bool IsPathlessMedia(string path) => IsRemoteStreamPath(path) || IsAudioCdPath(path);
 
     /// <summary>
@@ -3434,6 +3441,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             // the mode is "Off" this is a no-op and _replayGainScalar stays 1.0.
             _currentMediaPath = filePath;
             _currentFallbackPath = fallbackPath;
+            WarmPlayingFile(filePath);
             if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
                 ApplyReplayGain(_rgMode, _rgPreampDb);
 
@@ -3653,6 +3661,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 fallbackPath = null;
                 _currentMediaPath = filePath;
                 _currentFallbackPath = null;
+                WarmPlayingFile(filePath);
                 if (!string.Equals(_rgMode, "Off", StringComparison.OrdinalIgnoreCase))
                     ApplyReplayGain(_rgMode, _rgPreampDb);
                 targetVolume = GetTargetVlcVolume();
@@ -6935,6 +6944,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         if (_disposed) return;
         _disposed = true;
         Volatile.Write(ref _rampTargetMilli, -1); // stop the volume ramp worker
+        _fileWarmer.Dispose();
 
         ResetEndReachedPending();
         lock (_seekGate) { _latestSeekMs = -1; }
