@@ -644,6 +644,11 @@ public sealed class GaplessSink : IDisposable
                         // The new output is subscribed and started per _desiredPlaying;
                         // if the player is still idle, the next watch tick parks it again.
                         _streamParked = false;
+                        // Not when a play is pending: the idle clock still read the time before
+                        // the park, so a rebuild that landed while a song was opening (headphones
+                        // connecting as Play is pressed) parked the fresh output two seconds later
+                        // and it had to be started a second time (field log 11-20, Bluetooth).
+                        if (_desiredPlaying) _idle.Touch(Environment.TickCount64);
                     }
                     try { Rebuilt?.Invoke(); } catch { /* subscriber's problem, not the sink's */ }
                     // After the volume re-assert is kicked off: the format read is COM work
