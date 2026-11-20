@@ -2048,10 +2048,12 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         MarkQueueChanged();
         // The started song is the new queue's, even when it is the one Clear Queue took out
         // (the same Track, so the CurrentTrack change that would bring it back never fires).
+        var currentWasCleared = _currentClearedFromQueue;
         SetCurrentClearedFromQueue(false);
 
-        // Move current to history if playing
-        if (CurrentTrack != null)
+        // Move current to history if playing; not a song Clear Queue took out (GitHub #256:
+        // it came back as a played row of the new queue).
+        if (CurrentTrack != null && !currentWasCleared)
         {
             History.Insert(0, CurrentTrack);
             TrimHistory();
@@ -2477,7 +2479,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _deferPlayedSync = true;
         try
         {
-            if (CurrentTrack != null)
+            // Not a song Clear Queue took out (GitHub #256: it came back as a played row).
+            if (CurrentTrack != null && !_currentClearedFromQueue)
             {
                 History.Insert(0, CurrentTrack);
                 _queueHistoryDepth++;
@@ -2522,7 +2525,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         CancelAutoMixTransition("user skipped");
         MarkQueueChanged();
 
-        if (CurrentTrack != null)
+        // Not a song Clear Queue took out (GitHub #256: it came back into the cleared queue).
+        if (CurrentTrack != null && !_currentClearedFromQueue)
             UpNext.Insert(0, CurrentTrack);
         // What played after the target replays in the order it played: History[0] is the
         // most recent, so it goes back last, right before the current track. Each entry is
@@ -3777,6 +3781,9 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return;
         }
 
+        // GitHub #256: a song Clear Queue took out is not the queue's: it does not become a
+        // played row either, or it came back into the cleared queue like a ghost.
+        var pushedCurrent = false;
         if (CurrentTrack != null)
         {
             if (CurrentTrack.RememberPlaybackPosition == true)
@@ -3784,9 +3791,13 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 CurrentTrack.SavedPositionMs = 0;
                 MarkPlayStateDirty(CurrentTrack);
             }
-            History.Insert(0, CurrentTrack);
-            _queueHistoryDepth++;
-            TrimHistory();
+            if (!_currentClearedFromQueue)
+            {
+                History.Insert(0, CurrentTrack);
+                _queueHistoryDepth++;
+                TrimHistory();
+                pushedCurrent = true;
+            }
         }
 
         // Explicit Content off: whatever explicit tracks sit at the head of the queue are
@@ -3820,14 +3831,17 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}, keepPlayed={KeepPlayedInQueue}");
-            if (KeepPlayedInQueue && CurrentTrack != null && History.Count > 0 &&
-                ReferenceEquals(History[0], CurrentTrack))
+            if (KeepPlayedInQueue && CurrentTrack != null &&
+                (!pushedCurrent || (History.Count > 0 && ReferenceEquals(History[0], CurrentTrack))))
             {
                 // Keep played songs (GitHub #124): the last song stays loaded, stopped at its
                 // start, so the bar stays up and its Previous / Play still work. It was pushed
                 // to History above; take it back off, it is the current track again.
-                History.RemoveAt(0);
-                if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+                if (pushedCurrent)
+                {
+                    History.RemoveAt(0);
+                    if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+                }
                 StopAtQueueEnd();
                 return;
             }
