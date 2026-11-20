@@ -3152,6 +3152,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Interlocked.Exchange(ref _standbyPreparedTicksUtc, DateTime.UtcNow.Ticks);
                 Interlocked.Increment(ref _standbyPrepareGeneration);
                 _standbyPrepared = true;
+                if (!isRemote) WarmNextFile(normalizedPath);
                 // Gapless (no crossfade) pre-rolls the standby below: park it at
                 // the session-open level on EVERY path, never 0 — the paused
                 // pre-roll itself is what keeps the standby silent.
@@ -3306,6 +3307,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_standbyPrepared)
                     DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.Cancelled", "inactive player stopped");
                 ReleasePreparedNext();
+                WarmNextFile(null);
             }
             finally
             {
@@ -3334,10 +3336,28 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <summary>Paths that are not files: no File.Exists, no Path.GetFullPath, no standby pre-roll.</summary>
     // Seeks into a part of the file the disk has not read yet wait on the disk (hard-disk
     // libraries: up to 722 ms of silence per timeline click, 11-19). See PlaybackFileWarmer.
-    private readonly PlaybackFileWarmer _fileWarmer = new();
+    // Swapped with _nextFileWarmer when the staged song starts (under _playbackLock); a seek
+    // reading the old one for StartNow only starts a read that is done or about to stop.
+    private PlaybackFileWarmer _fileWarmer = new();
 
+    // The staged next song's file, read while the current one plays: when that song starts
+    // (an album played through) its file is already in the cache, so a timeline click in
+    // its first second does not wait on the disk either. Becomes _fileWarmer then.
+    private PlaybackFileWarmer _nextFileWarmer = new(startDelayMs: 0);
+
+    /// <summary>Under <c>_playbackLock</c>.</summary>
     private void WarmPlayingFile(string filePath)
-        => _fileWarmer.Warm(IsPathlessMedia(filePath) ? null : filePath);
+    {
+        var path = IsPathlessMedia(filePath) ? null : filePath;
+        if (path != null && _nextFileWarmer.IsWarming(path))
+            (_fileWarmer, _nextFileWarmer) = (_nextFileWarmer, _fileWarmer);
+        _nextFileWarmer.Warm(null);
+        _fileWarmer.Warm(path);
+    }
+
+    /// <summary>Under <c>_playbackLock</c>. Null stops it.</summary>
+    private void WarmNextFile(string? filePath)
+        => _nextFileWarmer.Warm(filePath == null || IsPathlessMedia(filePath) ? null : filePath);
 
     internal static bool IsPathlessMedia(string path) => IsRemoteStreamPath(path) || IsAudioCdPath(path);
 
@@ -6996,6 +7016,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         _disposed = true;
         Volatile.Write(ref _rampTargetMilli, -1); // stop the volume ramp worker
         _fileWarmer.Dispose();
+        _nextFileWarmer.Dispose();
 
         ResetEndReachedPending();
         lock (_seekGate) { _latestSeekMs = -1; }

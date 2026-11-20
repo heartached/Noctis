@@ -48,6 +48,24 @@ public class PlaybackFileWarmerTests : IDisposable
     }
 
     [Fact]
+    public async Task TheSameFileWrittenAnotherWay_IsNotReadTwice()
+    {
+        // The staged song's warmer holds the full path; the song starts under its library path.
+        var path = MakeFile("a.flac", 200_000);
+        var other = Path.Combine(Path.GetDirectoryName(path)!, ".", Path.GetFileName(path)).ToUpperInvariant();
+        using var warmer = new PlaybackFileWarmer(startDelayMs: 0);
+
+        warmer.Warm(path);
+        var first = warmer.Current;
+        await first.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.True(warmer.IsWarming(other));
+        warmer.Warm(other);
+        Assert.Same(first, warmer.Current);
+        Assert.False(warmer.IsWarming(MakeFile("b.flac", 10)));
+    }
+
+    [Fact]
     public async Task ANewSong_DropsTheReadOfTheOldOne()
     {
         var old = MakeFile("old.flac", 200_000);

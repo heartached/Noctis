@@ -13,8 +13,14 @@ namespace Noctis.Services;
 /// </summary>
 internal sealed class PlaybackFileWarmer : IDisposable
 {
-    /// <summary>Playback starts first: the song's own first read is not made to share the disk.</summary>
-    internal const int StartDelayMs = 1500;
+    /// <summary>
+    /// The read starts with the song. It was 1.5 s (the song's own first read not made to share
+    /// the disk), but a seek in that first second still waited on the disk. Harness 11-20, cold
+    /// hard-disk FLACs, 60-107 MB, seek 0.2-2 s after Play: 1.5 s delay 4-343 ms (median 84, n=15),
+    /// read at once 3-25 ms (median 5, n=15); start of playback (Play to first audio) median 356
+    /// against 336 ms (n=18 each, no cost measured).
+    /// </summary>
+    internal const int StartDelayMs = 0;
 
     /// <summary>Longer files (audiobooks, DSD albums in one file) are left alone: reading
     /// gigabytes to save a seek would push other things out of the cache.</summary>
@@ -46,7 +52,7 @@ internal sealed class PlaybackFileWarmer : IDisposable
     {
         lock (_gate)
         {
-            if (path != null && string.Equals(path, _path, StringComparison.OrdinalIgnoreCase)) return;
+            if (path != null && SamePath(path, _path)) return;
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
@@ -60,6 +66,20 @@ internal sealed class PlaybackFileWarmer : IDisposable
             var skipToken = skip.Token;
             Current = Task.Run(() => ReadThrough(path, token, skipToken));
         }
+    }
+
+    /// <summary>Whether <paramref name="path"/> is the file this warmer reads or has read.</summary>
+    internal bool IsWarming(string path)
+    {
+        lock (_gate) return SamePath(path, _path);
+    }
+
+    private static bool SamePath(string a, string? b)
+    {
+        if (b == null) return false;
+        if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase)) return true;
+        try { return string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { return false; }
     }
 
     /// <summary>
