@@ -37,7 +37,9 @@ namespace Noctis.Services;
 public sealed class GaplessTrackSegment
 {
     private readonly object _gate = new();
-    private readonly float[] _ring;
+    private float[] _ring;
+    private readonly int _capacitySeconds;
+    private volatile int _sampleRate;
     private int _readIdx;
     private int _writeIdx;
     private int _count;              // samples (not frames) currently buffered
@@ -72,7 +74,8 @@ public sealed class GaplessTrackSegment
     /// <summary>Up to 7.1: the engine runs at the device's channel count with Multichannel output on.</summary>
     public const int MaxChannels = 8;
 
-    public int SampleRate { get; }
+    /// <summary>The rate the input delivers at (see <see cref="TryReformat"/>).</summary>
+    public int SampleRate => _sampleRate;
     public int Channels { get; }
 
     /// <summary>
@@ -89,11 +92,33 @@ public sealed class GaplessTrackSegment
 
     public GaplessTrackSegment(int sampleRate, int channels, object? source, int capacitySeconds = 15, long basePositionMs = 0)
     {
-        SampleRate = Math.Clamp(sampleRate, 1000, 384000);
+        _sampleRate = Math.Clamp(sampleRate, 1000, 384000);
         Channels = Math.Clamp(channels, 1, MaxChannels);
         Source = source;
         _basePositionMs = Math.Max(0, basePositionMs);
-        _ring = new float[SampleRate * Channels * Math.Clamp(capacitySeconds, 2, 60)];
+        _capacitySeconds = Math.Clamp(capacitySeconds, 2, 60);
+        _ring = new float[_sampleRate * Channels * _capacitySeconds];
+    }
+
+    /// <summary>
+    /// The input turned out to deliver at <paramref name="sampleRate"/> (LibVLC reports the
+    /// decoder's rate when its output starts, see VlcAudioPlayer.EngineSetupFormat): re-sizes
+    /// the ring for it. Only before the first write; true when the segment runs at that rate.
+    /// Frame counts set for the old rate (trims) are the caller's to set again.
+    /// </summary>
+    public bool TryReformat(int sampleRate)
+    {
+        sampleRate = Math.Clamp(sampleRate, 1000, 384000);
+        lock (_gate)
+        {
+            if (sampleRate == _sampleRate) return true;
+            if (_hadAudio || _count > 0) return false;
+            _sampleRate = sampleRate;
+            _ring = new float[sampleRate * Channels * _capacitySeconds];
+            _readIdx = _writeIdx = 0;
+            Monitor.PulseAll(_gate);
+            return true;
+        }
     }
 
     public bool EndOfStream { get { lock (_gate) return _endOfStream; } }
@@ -415,6 +440,13 @@ public sealed class GaplessTrackSegment
     public int TailTrimFrames { get; set; }
 
     /// <summary>
+    /// LibVLC runs a resampler of its own in this input's chain (the old engine path, or a rate
+    /// above what its audio callbacks take): it is not reset by a seek flush, so the first frames
+    /// after one are its stale history. False when VLC hands the decoder's PCM over unconverted.
+    /// </summary>
+    public bool UpstreamResampler { get; set; } = true;
+
+    /// <summary>
     /// How late LibVLC's resampler delivers this input, in frames (see <see cref="VlcResamplerDelay"/>):
     /// it also holds back that much of the input's end. 0 = unknown. Set before the segment plays.
     /// </summary>
@@ -640,7 +672,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     private readonly object _gate = new();
     private readonly System.Collections.Generic.Queue<GaplessTrackSegment> _pending = new();
     private GaplessTrackSegment? _active;
-    private ISampleProvider? _activeAdapted;
+    private Chain? _activeAdapted;
 
     public WaveFormat WaveFormat { get; }
 
@@ -692,7 +724,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
     // only butt-splice or cut, so an early transition advance cut the last
     // fade-length seconds of every playlist track dead.
     private GaplessTrackSegment? _fading;
-    private ISampleProvider? _fadingAdapted;
+    private Chain? _fadingAdapted;
     private Noctis.Models.AutoMixFadeCurve _fadeCurve;
     private int _fadeTotalSamples;
     private int _fadeElapsedSamples;   // render thread only
@@ -753,6 +785,8 @@ public sealed class GaplessSpliceProvider : ISampleProvider
 
     public void Enqueue(GaplessTrackSegment segment)
     {
+        // Measured once per rate pair: here, off the render thread.
+        EngineResampler.LatencyFrames(segment.SampleRate, WaveFormat.SampleRate);
         lock (_gate)
             _pending.Enqueue(segment);
     }
@@ -903,11 +937,34 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         }
         while (!parked && written < count)
         {
-            ISampleProvider? adapted;
+            Chain? adapted;
             GaplessTrackSegment? active;
             lock (_gate)
             {
-                if (_active == null || _active.IsFinished || _active.Abandoned)
+                // The input ended while its rate stage still holds the end of it.
+                if (_active is { Abandoned: false, IsFinished: true } && _activeAdapted is { Stage.Drained: false, Stage.IsDraining: false } holding)
+                {
+                    DropAbandonedPendingLocked();
+                    var next = _pending.Count > 0 ? _pending.Peek() : null;
+                    if (next != null && holding.Accepts(next))
+                    {
+                        // Same rate on: the stage runs on into the next track, nothing to drain.
+                        _pending.Dequeue();
+                        holding.Feed.Segment = next;
+                        _active = next;
+                        _refillSamplesNeeded = 0;
+                        SegmentStarted?.Invoke(next);
+                    }
+                    else
+                    {
+                        // Another rate follows, or nothing (yet): play the end out right here, up
+                        // to the last frame; the next track then starts on the frame after it.
+                        // (Mixing the filter's ringing past the end under the next track's head
+                        // measured worse: 0.09 against 0.04 peak error at a 44.1→48 kHz seam.)
+                        holding.Stage.BeginDrain();
+                    }
+                }
+                if (_active == null || _active.Abandoned || (_active.IsFinished && (_activeAdapted?.Stage.Drained ?? true)))
                 {
                     // Drained to its natural end (not cut): the next one aligns its resampler delay to it.
                     var ended = _active is { Abandoned: false } ? _active : null;
@@ -950,6 +1007,18 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 if (_silentSamples == 0)
                     _declickRemaining = _startFadeSamples; // ramp the live tail
                 _cutFadePending = true;                    // and fade what follows
+            }
+            // A cut leaves the rate stage holding audio from before it: start a fresh one. So
+            // does a segment that changed rate (TryReformat) after its stage was built.
+            if (cutNow || adapted.InputRate != active.SampleRate)
+            {
+                lock (_gate)
+                {
+                    if (ReferenceEquals(_active, active))
+                        _activeAdapted = Adapt(active);
+                    adapted = _activeAdapted;
+                }
+                if (adapted == null) break;
             }
 
             // Pre-buffer gate: hold a fresh segment in silence until enough is
@@ -994,7 +1063,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 continue;
             }
 
-            var n = adapted.Read(buffer, offset + written, count - written);
+            var n = adapted.Output.Read(buffer, offset + written, count - written);
             if (n > 0)
             {
                 _ringDetector?.Observe(buffer, offset + written, n);
@@ -1102,7 +1171,7 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         lock (_gate)
         {
             fading = _fading;
-            adapted = _fadingAdapted;
+            adapted = _fadingAdapted?.Output;
         }
         if (fading == null || adapted == null)
         {
@@ -1173,35 +1242,32 @@ public sealed class GaplessSpliceProvider : ISampleProvider
         }
     }
 
-    // Segment (native rate/ch) → sink format. The WDL resampler tail (a few
-    // samples) is flushed naturally: it keeps returning data after the ring
-    // empties until its internal buffer drains, and only then reports 0.
-    private ISampleProvider Adapt(GaplessTrackSegment segment)
+    // Segment (native rate/ch) → sink format: channel map, the engine's rate stage
+    // (GaplessRateStage: drained at the input's end, run on across a same-rate seam), pitch,
+    // tempo.
+    private Chain Adapt(GaplessTrackSegment segment)
     {
-        ISampleProvider source = new SegmentSampleProvider(segment);
+        var feed = new GaplessSegmentFeed(segment);
+        ISampleProvider source = feed;
         if (segment.Channels == 1 && WaveFormat.Channels == 2)
             source = new MonoToStereoSampleProvider(source);
         else if (segment.Channels == 2 && WaveFormat.Channels == 1)
             source = new StereoToMonoSampleProvider(source);
-        if (source.WaveFormat.SampleRate != WaveFormat.SampleRate)
-            source = new WdlResamplingSampleProvider(source, WaveFormat.SampleRate);
-        source = new PitchShiftProvider(source, () => Volatile.Read(ref _pitchRatio));
+        var stage = new GaplessRateStage(source, feed, WaveFormat.SampleRate, source.WaveFormat.Channels);
+        source = new PitchShiftProvider(stage, () => Volatile.Read(ref _pitchRatio));
         source = new TempoStretchProvider(source, EffectiveStretchRate);
-        return source;
+        return new Chain(feed, stage, source);
     }
 
-    private sealed class SegmentSampleProvider : ISampleProvider
+    private sealed class Chain(GaplessSegmentFeed feed, GaplessRateStage stage, ISampleProvider output)
     {
-        private readonly GaplessTrackSegment _segment;
-        public WaveFormat WaveFormat { get; }
+        public GaplessSegmentFeed Feed { get; } = feed;
+        public GaplessRateStage Stage { get; } = stage;
+        public ISampleProvider Output { get; } = output;
+        public int InputRate => Feed.WaveFormat.SampleRate;
 
-        public SegmentSampleProvider(GaplessTrackSegment segment)
-        {
-            _segment = segment;
-            WaveFormat = WaveFormat.CreateIeeeFloatWaveFormat(segment.SampleRate, segment.Channels);
-        }
-
-        public int Read(float[] buffer, int offset, int count) =>
-            _segment.Read(buffer, offset, count);
+        /// <summary>The next segment can be read by this chain as it is (same rate and channels).</summary>
+        public bool Accepts(GaplessTrackSegment next) =>
+            next.SampleRate == InputRate && next.Channels == Feed.WaveFormat.Channels;
     }
 }
