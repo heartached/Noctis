@@ -611,6 +611,14 @@ internal sealed record ContainerGaplessInfo(
             if (a.Edits is not [var e] || e.MediaTime < 0 || movieTimescale <= 0) return false;
             lead = e.MediaTime;
             var played = (long)Math.Round((double)e.SegmentDuration * a.Timescale / movieTimescale);
+            // The edit's length is in movie time (FFmpeg: whole milliseconds, rounded up), so it
+            // can run up to one movie tick past the encoder's last real sample; the stts end is
+            // exact (FFmpeg stores the last packet with its valid part only). Within one tick,
+            // the stts end wins: harness 11-19 (HE-AAC, 7592 ms edit) played 23 samples of the
+            // codec's padding (+0.52 ms) before the next track.
+            var sttsPlayed = a.Stts - lead;
+            var tick = (a.Timescale + movieTimescale - 1) / movieTimescale;
+            if (sttsPlayed > 0 && sttsPlayed < played && played - sttsPlayed <= tick) played = sttsPlayed;
             tail = Math.Max(0, a.Decoded - lead - played);
             if (lead == 0 && tail == 0) return false;
             patches.Add((fileOffset + a.EdtsOffset + 4, "free"u8.ToArray()));
@@ -651,7 +659,7 @@ internal sealed record ContainerGaplessInfo(
                priming >= 0 && padding >= 0 && valid >= 0;
     }
 
-    private sealed record Trak(string? Handler, string? Format, long Timescale, long Decoded, int Channels,
+    private sealed record Trak(string? Handler, string? Format, long Timescale, long Decoded, long Stts, int Channels,
         int EdtsOffset, (long SegmentDuration, long MediaTime)[] Edits, Smpb? Smpb, byte[]? Asc);
 
     /// <summary>An iTunSMPB tag's value and where its name ("iTunSMPB") starts in the moov.</summary>
@@ -661,7 +669,7 @@ internal sealed record ContainerGaplessInfo(
     {
         string? handler = null, format = null;
         Smpb? smpb = null;
-        long timescale = 0, total = 0;
+        long timescale = 0, total = 0, stts = 0;
         int channels = 0, edtsOffset = -1;
         byte[]? asc = null;
         var edits = Array.Empty<(long, long)>();
@@ -690,12 +698,12 @@ internal sealed record ContainerGaplessInfo(
                                 foreach (var (ts, te, tt) in Children(buf, BodyOf(buf, ns), ne))
                                 {
                                     if (tt == "stsd") (format, channels, asc) = ParseStsd(buf[ts..te]);
-                                    else if (tt == "stts") total = DecodedDuration(buf[ts..te]);
+                                    else if (tt == "stts") (total, stts) = DecodedDuration(buf[ts..te]);
                                 }
                 }
             }
         }
-        return new Trak(handler, format, timescale, total, channels, edtsOffset, edits, smpb, asc);
+        return new Trak(handler, format, timescale, total, stts, channels, edtsOffset, edits, smpb, asc);
     }
 
     private static int BodyOf(ReadOnlySpan<byte> buf, int start) => TryBox(buf, start, out var body, out _, out _) ? body : start + 8;
@@ -869,20 +877,24 @@ internal sealed record ContainerGaplessInfo(
     /// What the decoder outputs for the track: every AAC packet decodes to a full frame,
     /// so packets × the frame duration (the largest delta), in the media timescale. Not the
     /// stts sum: FFmpeg's muxer gives the last packet only its valid part (816 of 1024).
+    /// The stts sum is returned beside it (where the encoder's real samples end).
     /// </summary>
-    private static long DecodedDuration(ReadOnlySpan<byte> box)
+    private static (long Decoded, long Stts) DecodedDuration(ReadOnlySpan<byte> box)
     {
-        if (box.Length < 16) return 0;
+        if (box.Length < 16) return (0, 0);
         var count = BinaryPrimitives.ReadUInt32BigEndian(box[12..]);
-        if (16 + (long)count * 8 > box.Length) return 0;
-        long packets = 0, frame = 0;
+        if (16 + (long)count * 8 > box.Length) return (0, 0);
+        long packets = 0, frame = 0, sum = 0;
         for (var i = 0; i < count; i++)
         {
             var e = box[(16 + i * 8)..];
-            packets += BinaryPrimitives.ReadUInt32BigEndian(e);
-            frame = Math.Max(frame, BinaryPrimitives.ReadUInt32BigEndian(e[4..]));
+            var n = BinaryPrimitives.ReadUInt32BigEndian(e);
+            var delta = BinaryPrimitives.ReadUInt32BigEndian(e[4..]);
+            packets += n;
+            sum += (long)n * delta;
+            frame = Math.Max(frame, delta);
         }
-        return packets * frame;
+        return (packets * frame, sum);
     }
 
     // udta > meta > ilst > "----" (mean "com.apple.iTunes", name "iTunSMPB", data).

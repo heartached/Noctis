@@ -98,6 +98,73 @@ public class ShortTrackGaplessTests : IDisposable
         Assert.Equal(a.Id, vm.CurrentTrack?.Id);
     }
 
+    [AvaloniaFact]
+    public void RunOfVeryShortTracks_StageAndHandOffInsideTheSettleWindow()
+    {
+        // 0.3 s songs: the settle window after each start (300 ms) was the whole song, so the
+        // chain fell behind until a seam opened cold (harness 11-19: 10-120 ms of silence).
+        var a = NewTrack(1, 0.3);
+        var b = NewTrack(2, 0.3);
+        var c = NewTrack(3, 10);
+        var (player, vm) = Start(a, b, c);
+        var d = TimeSpan.FromSeconds(0.3);
+
+        // The tick's position is the outgoing song's: not used.
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.FromSeconds(9.7), d, settling: true));
+        Assert.Contains(b.FilePath, player.PreparedPaths);
+        Assert.True(vm.TryAdvanceForGapless(TimeSpan.FromSeconds(9.7), d, settling: true));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(b.Id, vm.CurrentTrack?.Id);
+
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.Zero, d, settling: true));
+        Assert.Contains(c.FilePath, player.PreparedPaths);
+    }
+
+    [AvaloniaFact]
+    public void SettleWindow_WaitsForTheStagedSuccessor_AndLeavesLongerSongsToTheirTicks()
+    {
+        var a = NewTrack(1, 0.9);
+        var b = NewTrack(2, 10);
+        var (player, vm) = Start(a, b);
+        player.StagesImmediately = false;
+
+        // 0.9 s: staged at once, but the handoff needs its own position.
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.9), settling: true));
+        Assert.Contains(b.FilePath, player.PreparedPaths);
+        player.StagesImmediately = true;
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.9), settling: true));
+        Assert.Equal(a.Id, vm.CurrentTrack?.Id);
+
+        var (player2, vm2) = Start(NewTrack(3, 9), NewTrack(4, 10));
+        Assert.False(vm2.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(9), settling: true));
+        Assert.Empty(player2.PreparedPaths);
+    }
+
+    [AvaloniaFact]
+    public void SettleWindow_RepeatOneAndLastTrack_DoNothing()
+    {
+        var (player, vm) = Start(NewTrack(1, 0.3), NewTrack(2, 10));
+        vm.RepeatMode = RepeatMode.One;
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.3), settling: true));
+        Assert.Empty(player.PreparedPaths);
+
+        var (player2, vm2) = Start(NewTrack(3, 0.3));
+        Assert.False(vm2.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.3), settling: true));
+        Assert.Empty(player2.PreparedPaths);
+    }
+
+    [AvaloniaFact]
+    public void SettleWindow_WithSongTransitionsOn_DoesNothing()
+    {
+        var a = NewTrack(1, 0.3);
+        var b = NewTrack(2, 10);
+        var (player, vm) = Start(a, b);
+        vm.AutoMixTransitionMode = AutoMixTransitionMode.Crossfade;
+
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.3), settling: true));
+        Assert.Empty(player.PreparedPaths);
+    }
+
     [Theory]
     [InlineData(0, 0, 0, 1.0, true)]
     [InlineData(400, 0, 300, 1.0, true)]      // 300 ms in, 150 ms slack

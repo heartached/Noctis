@@ -3122,6 +3122,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 return;
             }
 
+            WaitForStandbyInputEnd(cancel);
+
+            var staged = false;
             try { _playbackLock.Wait(); }
             catch (ObjectDisposedException) { media.Dispose(); return; }
 
@@ -3149,6 +3152,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 Interlocked.Exchange(ref _standbyPreparedTicksUtc, DateTime.UtcNow.Ticks);
                 Interlocked.Increment(ref _standbyPrepareGeneration);
                 _standbyPrepared = true;
+                if (!isRemote) WarmNextFile(normalizedPath);
                 // Gapless (no crossfade) pre-rolls the standby below: park it at
                 // the session-open level on EVERY path, never 0 — the paused
                 // pre-roll itself is what keeps the standby silent.
@@ -3231,6 +3235,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                     DebugLogger.Category.Playback,
                     "AutoMix.DualPrepared",
                     $"path={LogName(normalizedPath)}, startMs={startPositionMs}, preRoll={preRoll}, elapsedMs={Environment.TickCount64 - prepareStart}");
+                staged = true;
             }
             catch (Exception ex)
             {
@@ -3241,8 +3246,51 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             {
                 _playbackLock.Release();
             }
+            // The view model hands a short song off as soon as its successor is staged.
+            if (staged) TickPositionSoon();
         });
     }
+
+    /// <summary>The longest a prepare waits for the standby's last song to finish decoding.</summary>
+    internal const int StandbyInputEndWaitMs = 1500;
+
+    /// <summary>
+    /// Engine: a run of very short songs stages the next one right after the last splice,
+    /// while the standby player's own song (staged a moment before, maybe not even audible
+    /// yet) can still be finishing its input: VLC marks the end of stream ~100 ms after the
+    /// last block (harness 11-19, 0.2 s WAV). Reusing the player then abandons that segment
+    /// and the whole song is skipped. Waits, off the lock, until it has ended (bounded).
+    /// </summary>
+    private void WaitForStandbyInputEnd(CancellationToken cancel)
+    {
+        if (!_gaplessEngine) return;
+        var deadline = Environment.TickCount64 + StandbyInputEndWaitMs;
+        var waited = false;
+        while (!_disposed && !cancel.IsCancellationRequested && Environment.TickCount64 < deadline)
+        {
+            var seg = Volatile.Read(ref _engineSegments[EngineSlotOf(_standbyPlayer)]);
+            if (!StandbyInputStillRunning(seg, Volatile.Read(ref _standbyPrepared),
+                    _gaplessSink?.Provider.IsCrossfading == true))
+                break;
+            waited = true;
+            Thread.Sleep(5);
+        }
+        if (waited)
+            DebugLogger.Info(DebugLogger.Category.Playback, "GaplessEngine.StandbyInputWait",
+                $"ms={StandbyInputEndWaitMs - Math.Max(0, deadline - Environment.TickCount64)}");
+    }
+
+    /// <summary>
+    /// Whether the standby's segment is an outgoing song still taking input: not a staged
+    /// song being replaced (that one is meant to go), not a crossfade's fading tail, not
+    /// ended or abandoned. Pure; internal for tests.
+    /// </summary>
+    internal static bool StandbyInputStillRunning(GaplessTrackSegment? segment, bool standbyPrepared, bool crossfading) =>
+        segment != null && !standbyPrepared && !crossfading && !segment.EndOfStream && !segment.Abandoned;
+
+    /// <summary>One position tick now, off the timer thread (the 100 ms timer may be most of a short song).</summary>
+    private void TickPositionSoon() =>
+        ThreadPool.QueueUserWorkItem(_ => OnPositionTimerElapsed(null, null!));
 
     public void CancelPreparedNext()
     {
@@ -3259,6 +3307,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 if (_standbyPrepared)
                     DebugLogger.Info(DebugLogger.Category.Playback, "AutoMix.Cancelled", "inactive player stopped");
                 ReleasePreparedNext();
+                WarmNextFile(null);
             }
             finally
             {
@@ -3287,10 +3336,28 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <summary>Paths that are not files: no File.Exists, no Path.GetFullPath, no standby pre-roll.</summary>
     // Seeks into a part of the file the disk has not read yet wait on the disk (hard-disk
     // libraries: up to 722 ms of silence per timeline click, 11-19). See PlaybackFileWarmer.
-    private readonly PlaybackFileWarmer _fileWarmer = new();
+    // Swapped with _nextFileWarmer when the staged song starts (under _playbackLock); a seek
+    // reading the old one for StartNow only starts a read that is done or about to stop.
+    private PlaybackFileWarmer _fileWarmer = new();
 
+    // The staged next song's file, read while the current one plays: when that song starts
+    // (an album played through) its file is already in the cache, so a timeline click in
+    // its first second does not wait on the disk either. Becomes _fileWarmer then.
+    private PlaybackFileWarmer _nextFileWarmer = new(startDelayMs: 0);
+
+    /// <summary>Under <c>_playbackLock</c>.</summary>
     private void WarmPlayingFile(string filePath)
-        => _fileWarmer.Warm(IsPathlessMedia(filePath) ? null : filePath);
+    {
+        var path = IsPathlessMedia(filePath) ? null : filePath;
+        if (path != null && _nextFileWarmer.IsWarming(path))
+            (_fileWarmer, _nextFileWarmer) = (_nextFileWarmer, _fileWarmer);
+        _nextFileWarmer.Warm(null);
+        _fileWarmer.Warm(path);
+    }
+
+    /// <summary>Under <c>_playbackLock</c>. Null stops it.</summary>
+    private void WarmNextFile(string? filePath)
+        => _nextFileWarmer.Warm(filePath == null || IsPathlessMedia(filePath) ? null : filePath);
 
     internal static bool IsPathlessMedia(string path) => IsRemoteStreamPath(path) || IsAudioCdPath(path);
 
@@ -3554,6 +3621,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
                 // alive for the whole fade, so the stop waits that long extra.
                 QueueInactivePlayerCleanup(_standbyPlayer, outgoingMedia, sessionId,
                     extraDelayMs: engineFadeMs > 0 ? engineFadeMs + 500 : 0);
+                // A short song stages its successor at once (the view model, on this tick).
+                TickPositionSoon();
                 return;
             }
             var warmReopen = false;
@@ -6947,6 +7016,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         _disposed = true;
         Volatile.Write(ref _rampTargetMilli, -1); // stop the volume ramp worker
         _fileWarmer.Dispose();
+        _nextFileWarmer.Dispose();
 
         ResetEndReachedPending();
         lock (_seekGate) { _latestSeekMs = -1; }
