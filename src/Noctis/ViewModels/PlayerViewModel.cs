@@ -805,6 +805,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private bool _autoMixAdvanceQueued; // prevents repeated early-advance triggers
     private long _pendingAutoMixNextStartMs = -1;
     private DateTime _autoMixCommitGuardUntilUtc = DateTime.MinValue;
+    // The player's session before the last song's Play: until it moves on, that Play has not run.
+    private long _sessionBeforeLastPlay = -1;
     private DateTime _autoMixTransitionArmedUntilUtc = DateTime.MinValue;
     private string _lastAutoMixLogKey = string.Empty;
     private Guid _autoMixPreparedTrackId = Guid.Empty;
@@ -3511,6 +3513,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _musicVideoAudioPath = string.Equals(playPath, track.FilePath, StringComparison.Ordinal) ? null : playPath;
         MusicVideoAudioLengthDiffers = false;
 
+        _sessionBeforeLastPlay = _audioPlayer.CurrentSessionId;
         if (_musicVideoAudioPath == null)
             _audioPlayer.Play(track.FilePath);
         else
@@ -4196,6 +4199,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             if (msSinceSeek < SeekSettleWindowMs)
             {
                 NotePositionRejected("settle", latest, msSinceSeek);
+                // A short song's successor is staged (and handed to) without its position:
+                // waiting out this window per song made a run of 0.2-0.3 s songs fall
+                // behind until a seam opened cold (harness 11-19: 10-120 ms of silence).
+                if (Duration > TimeSpan.Zero)
+                    TryAdvanceForGapless(latest, Duration, settling: true);
                 return;
             }
 
@@ -4555,8 +4563,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private const int AutoMixOverlapSeconds = 3;
     private const double AutoMixOverlapLeadSeconds = AutoMixOverlapSeconds + 1.0;
 
-    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
-    internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// <paramref name="settling"/>: a tick inside the settle window after the song started or
+    /// a seek, whose position may still be the outgoing song's: only a song short enough to
+    /// need no position is handled (see below).</remarks>
+    internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration, bool settling = false)
     {
         // StopAfterCurrentTrack: see TryAdvanceForAutoMix — the stop needs the natural end.
         // Song Transitions on: only a pair the planner left alone this tick. Those pairs used
@@ -4584,11 +4595,21 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         // for the outgoing song's late ticks), and the advance waits until the player has the
         // successor staged: a cold open here would cut this song before it is heard.
         var inStartGuard = DateTime.UtcNow < _autoMixCommitGuardUntilUtc;
-        if (inStartGuard && !IsOwnTickAtTrackStart(position, _lastCommittedSeekTarget,
-                (DateTime.UtcNow - _lastSeekTime).TotalMilliseconds, PlaybackRate))
-            return false;
+        var ownTick = !settling && (!inStartGuard || IsOwnTickAtTrackStart(position, _lastCommittedSeekTarget,
+                (DateTime.UtcNow - _lastSeekTime).TotalMilliseconds, PlaybackRate));
 
         if (duration <= TimeSpan.Zero)
+            return false;
+
+        // Inside the settle window a song no longer than the prepare lead stages its
+        // successor, and one no longer than the handoff lead hands off once that successor is
+        // staged: the time left is at most the song's length either way, so the tick is taken
+        // as the song's start. Not before the player has taken this song's Play (its prepare
+        // would be dropped as superseded by it), and only plain gapless: with Song
+        // Transitions on the planner decides.
+        if (!ownTick && (!settling || transitionsOn ||
+                duration > TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) ||
+                _audioPlayer.CurrentSessionId == _sessionBeforeLastPlay))
             return false;
 
         // Never pre-roll a track the explicit filter is about to skip.
@@ -4599,7 +4620,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         var nextTrack = UpNext[0];
         if (transitionsOn && _autoMixLeftAloneNextId != nextTrack.Id)
             return false;
-        var remaining = duration - position;
+        var remaining = ownTick ? duration - position : duration;
 
         if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
             _autoMixPreparedTrackId != nextTrack.Id &&
@@ -4630,7 +4651,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         if (!CanHandOffEarly(nextTrack.FilePath))
             return false;
 
-        if (inStartGuard && !_audioPlayer.IsNextStaged(_autoMixPreparedSnapshot?.PlayPath ?? nextTrack.FilePath))
+        if ((inStartGuard || !ownTick) && !_audioPlayer.IsNextStaged(_autoMixPreparedSnapshot?.PlayPath ?? nextTrack.FilePath))
             return false;
 
         var validation = AutoMixPreparedTransitionValidator.Validate(

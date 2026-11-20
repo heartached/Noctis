@@ -125,6 +125,25 @@ public class GaplessStandbyReleaseTests
     }
 
     [Fact]
+    public void OutgoingSegmentStillTakingInput_IsWaitedFor_OnlyThen()
+    {
+        // A run of 0.2 s songs: the standby's own song can still be decoding its end when the
+        // next prepare wants the player; reusing it then would skip that song.
+        var seg = new GaplessTrackSegment(8000, 1, source: 1);
+        Assert.True(seg.Write(ConstantBlock(8192, 400)));
+        Assert.True(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: false, crossfading: false));
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: true, crossfading: false));  // a staged song being replaced
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: false, crossfading: true));  // a fading tail
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(null, standbyPrepared: false, crossfading: false));
+
+        seg.MarkEndOfStream();
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: false, crossfading: false));
+        var live = new GaplessTrackSegment(8000, 1, source: 0);
+        live.Abandon();
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(live, standbyPrepared: false, crossfading: false));
+    }
+
+    [Fact]
     public void StagedSegment_IsAbandoned_EvenWhenFullyDecoded()
     {
         var staged = new GaplessTrackSegment(8000, 1, source: 1);
