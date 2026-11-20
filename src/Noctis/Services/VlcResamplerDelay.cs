@@ -2,13 +2,12 @@ namespace Noctis.Services;
 
 /// <summary>
 /// How far VLC 3's speex resampler (--speex-resampler-quality=10) delays an input, in frames
-/// at the engine's rate. VLC puts it in every input's chain, even a 48 kHz file into the
-/// 48 kHz engine (log: "using audio resampler module speex_resampler" for each track), so
+/// at its output rate. VLC puts the resampler in every input's chain, even at equal rates, so
 /// each input comes out half a filter late, and the half still in the filter when the input
-/// ends is never drained. At a gapless seam the incoming delay takes the place of the
-/// outgoing tail; between two different delays the timeline stepped (harness 11-19, 48 kHz
-/// engine: -0.23 ms going from a 44.1 kHz track into a 48/88.2/96 kHz or DSD one, +0.23 ms
-/// coming back: 139.3 against 128.0-128.4 frames).
+/// ends is never drained (harness 11-19: the last 2.7-2.9 ms of every track at a gapless
+/// seam). The splice engine's players now run VLC's pass-through resampler and convert
+/// themselves (GaplessRateStage); this delay is still compensated for the inputs VLC keeps
+/// converting, the ones above what its audio callbacks take (AmemRate).
 /// </summary>
 public static class VlcResamplerDelay
 {
@@ -31,19 +30,6 @@ public static class VlcResamplerDelay
         var end = message.IndexOf('"', UsingResamplerPrefix.Length);
         return end > UsingResamplerPrefix.Length ? message[UsingResamplerPrefix.Length..end] : null;
     }
-
-    /// <summary>
-    /// Whether <see cref="OutputFrames"/> is the delay LibVLC really adds: only with speex at
-    /// quality 10 (<paramref name="speexForced"/>) and speex actually loaded. A system LibVLC
-    /// without the speex plugin falls back to another resampler (soxr, samplerate, ugly) with
-    /// another delay, and correcting by the speex one would step every mixed-rate seam.
-    /// Before any input has logged its resampler (<paramref name="loggedModule"/> null), only
-    /// <paramref name="speexKnownBundled"/> (a LibVLC shipped with the plugin) counts as speex.
-    /// </summary>
-    public static bool CorrectionApplies(bool speexForced, string? loggedModule, bool speexKnownBundled) =>
-        speexForced && (loggedModule == null
-            ? speexKnownBundled
-            : string.Equals(loggedModule, SpeexModule, StringComparison.Ordinal));
 
     /// <summary>
     /// speexdsp's output latency (speex_resampler_get_output_latency) for a

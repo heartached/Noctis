@@ -909,10 +909,6 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             return;
         }
         _gaplessSink.Rebuilt += OnGaplessSinkRebuilt;
-        _gaplessSink.Provider.ResamplerDelayApplies = () => VlcResamplerDelay.CorrectionApplies(
-            ShouldForceSpeexResampler(OperatingSystem.IsWindows(), OperatingSystem.IsLinux()),
-            Volatile.Read(ref _vlcResamplerModule),
-            speexKnownBundled: OperatingSystem.IsWindows());
         _enginePlayers[0] = _player;
         _enginePlayers[1] = _standbyPlayer;
         // Per-slot state of the players (and the sink) this wiring replaces.
@@ -5079,7 +5075,7 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     // VLC's resampler modules for the engine players (VlcObjectVars): a pass-through at
     // equal rates, and speex (the instance's choice) for the inputs VLC still converts.
     private const string PassThroughResampler = "ugly_resampler";
-    private const string QualityResampler = "speex_resampler";
+    private const string QualityResampler = VlcResamplerDelay.SpeexModule;
 
     /// <summary>
     /// libvlc's audio format callback for an engine player, on the decoder thread when an
@@ -5098,25 +5094,23 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
             if (sink != null)
                 channels = (uint)sink.Channels;
             var seg = Volatile.Read(ref _engineSegments[slot]);
-            if (seg != null && seg.SampleRate != target)
-            {
-                if (seg.TryReformat(target))
-                {
-                    if (_engineTrimsAt[slot] is { } trimsAt)
-                    {
-                        var (lead, tail) = trimsAt(target);
-                        seg.LeadTrimFrames = lead;
-                        seg.TailTrimFrames = tail;
-                    }
-                }
-                else
-                {
-                    target = seg.SampleRate;
-                }
-            }
+            var fresh = seg is { HadAudio: false } && seg.TryReformat(target);
+            if (seg != null && !fresh)
+                target = seg.SampleRate; // already playing: VLC converts to the rate it has
             rate = (uint)target;
             var vlcConverts = target != decoderRate;
             if (seg != null) seg.UpstreamResampler = vlcConverts;
+            if (fresh && _engineTrimsAt[slot] is { } trimsAt)
+            {
+                // Trims at the rate the input really delivers; and when VLC still converts,
+                // its speex delay: dropped from the head, given back as silence at the end, so
+                // the track keeps its length and place on the timeline.
+                var (lead, tail) = trimsAt(target);
+                var delay = vlcConverts ? VlcResamplerDelay.OutputFrames(decoderRate, target) : 0;
+                seg!.LeadTrimFrames = lead + delay;
+                seg.TailTrimFrames = tail;
+                seg.TailPadFrames = delay;
+            }
             VlcObjectVars.TrySetString(_enginePlayers[slot].NativeReference, "audio-resampler",
                 vlcConverts ? QualityResampler : PassThroughResampler);
             DebugLogger.LogOffThread(DebugLogger.Category.Playback, DebugLogger.Level.Info, "GaplessEngine.InputFormat",
@@ -5340,11 +5334,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
         seg.TailTrimFrames = tailTrimFrames;
         seg.LeadTrimFrames = leadTrimFrames;
         _engineTrimsAt[slot] = trimsAt;
-        // Old path only: VLC's speex converts to the engine rate, and its delay lines the seams up
-        // (VlcResamplerDelay). On the per-track path VLC converts nothing.
+        // Old path only (NOCTIS_ENGINE_VLC_RESAMPLE=1): VLC's speex converts to the engine rate.
+        // On the per-track path VLC converts nothing (EngineSetupFormat says otherwise).
         seg.UpstreamResampler = !_engineNativeRate;
-        if (!_engineNativeRate)
-            seg.ResamplerDelayFrames = VlcResamplerDelay.OutputFrames(sourceRate, sink.SampleRate);
         seg.DamageAhead = KnownMp3Damage(path);
         seg.DecodesThroughDamage = decodesThroughDamage;
         seg.StereoSource = sink.Channels > 2 && sourceChannels is 1 or 2;
@@ -5453,9 +5445,9 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
     /// <summary>How far past the stuck position the <paramref name="attempt"/>th skip lands. Pure.</summary>
     internal static long DecoderWedgeSkipMs(int attempt) => 1000L * Math.Max(1, attempt);
 
-    // The resampler LibVLC put in the last input's chain ("speex_resampler" when the forced
-    // one loaded; a system LibVLC without that plugin falls back to another). Read by the
-    // splice engine at each natural seam (VlcResamplerDelay.CorrectionApplies).
+    // The resampler LibVLC put in the last input's chain ("ugly" on the engine's players, see
+    // VlcObjectVars; "speex_resampler" elsewhere, or a fallback on a system LibVLC without that
+    // plugin). Logged when it changes: the evidence of what VLC does to an input.
     private string? _vlcResamplerModule;
 
     // VLC thread: a field write only, never call into libvlc here.

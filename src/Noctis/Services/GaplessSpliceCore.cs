@@ -61,8 +61,6 @@ public sealed class GaplessTrackSegment
     private bool _dropLeadingSilence; // see DropLeadingSilence
     private int _leadTrimFrames;     // see LeadTrimFrames
     private int _leadTrimSamples;    // what is still to drop of it
-    private int _headPadSamples;     // silence the render side reads first (see AlignResamplerDelayAfter)
-    private int _headSkipSamples;    // resampler delay the render side drops first (same)
 
     // A mid-play Gain change (ReplayGain setting moved) slews over this long per
     // 1.0 of amplitude, so a pre-amp drag never steps the waveform.
@@ -122,8 +120,10 @@ public sealed class GaplessTrackSegment
     }
 
     public bool EndOfStream { get { lock (_gate) return _endOfStream; } }
+    /// <summary>Any block was written since the segment was created.</summary>
+    public bool HadAudio { get { lock (_gate) return _hadAudio; } }
     public bool Abandoned { get { lock (_gate) return _abandoned; } }
-    public bool IsFinished { get { lock (_gate) return (_endOfStream || _abandoned) && _count == 0 && (_headPadSamples == 0 || _abandoned); } }
+    public bool IsFinished { get { lock (_gate) return (_endOfStream || _abandoned) && _count == 0; } }
     public int BufferedSamples { get { lock (_gate) return _count; } }
 
     /// <summary>
@@ -384,27 +384,6 @@ public sealed class GaplessTrackSegment
     {
         lock (_gate)
         {
-            var padded = 0;
-            if (_headPadSamples > 0 && !_abandoned)
-            {
-                padded = Math.Min(_headPadSamples, maxSamples - maxSamples % Channels);
-                for (var i = 0; i < padded; i++) dest[destOffset + i] = 0f;
-                _headPadSamples -= padded;
-                destOffset += padded;
-                maxSamples -= padded;
-                _started = true;
-            }
-            if (_headSkipSamples > 0)
-            {
-                // Resampler delay (near-silence) beyond the ended track's: dropped, counted as
-                // played like the rest of the delay, so PositionMs keeps its usual meaning.
-                var skip = Math.Min(_headSkipSamples, _count - _count % Channels);
-                _readIdx = (_readIdx + skip) % _ring.Length;
-                _count -= skip;
-                _consumedFrames += skip / Channels;
-                _headSkipSamples -= skip;
-                if (skip > 0) Monitor.PulseAll(_gate);
-            }
             var toCopy = Math.Min(_count, maxSamples);
             var slewStep = 1000f / (SampleRate * Channels * GainSlewMs);
             for (var i = 0; i < toCopy; i++)
@@ -427,7 +406,7 @@ public sealed class GaplessTrackSegment
                 _flushRearmed = false;
                 Monitor.PulseAll(_gate);
             }
-            return padded + toCopy;
+            return toCopy;
         }
     }
 
@@ -447,29 +426,11 @@ public sealed class GaplessTrackSegment
     public bool UpstreamResampler { get; set; } = true;
 
     /// <summary>
-    /// How late LibVLC's resampler delivers this input, in frames (see <see cref="VlcResamplerDelay"/>):
-    /// it also holds back that much of the input's end. 0 = unknown. Set before the segment plays.
+    /// Silence appended when the input ends: what LibVLC's own resampler held back of it (an
+    /// input VLC still converts, see <see cref="VlcResamplerDelay"/>), so the next track starts
+    /// on time rather than early. Set before the input ends; 0 = none.
     /// </summary>
-    public int ResamplerDelayFrames { get; set; }
-
-    /// <summary>
-    /// Follows a track that ended naturally (its input drained, not cut): it lost its last
-    /// <see cref="ResamplerDelayFrames"/> in the resampler and this one starts that late, so a
-    /// difference between the two would step the timeline. Pads the shortfall with silence
-    /// or drops the excess from this segment's (not yet played) delay. Render side, before
-    /// the first read.
-    /// </summary>
-    internal void AlignResamplerDelayAfter(GaplessTrackSegment ended)
-    {
-        var lost = ended.ResamplerDelayFrames;
-        lock (_gate)
-        {
-            if (_started || lost <= 0 || ResamplerDelayFrames <= 0) return;
-            var diff = ResamplerDelayFrames - lost;
-            _headSkipSamples = Math.Max(0, diff) * Channels;
-            _headPadSamples = Math.Max(0, -diff) * Channels;
-        }
-    }
+    public int TailPadFrames { get; set; }
 
     /// <summary>
     /// Frames at the head of the input that are not part of the track: the encoder priming
@@ -507,6 +468,14 @@ public sealed class GaplessTrackSegment
                     _count -= trim;
                     _writeIdx = (_writeIdx - trim + _ring.Length) % _ring.Length;
                 }
+                var pad = Math.Min(_ring.Length - _count, Math.Max(0, TailPadFrames) * Channels);
+                pad -= pad % Channels;
+                for (var i = 0; i < pad; i++)
+                {
+                    _ring[_writeIdx] = 0f;
+                    _writeIdx = (_writeIdx + 1) % _ring.Length;
+                }
+                _count += pad;
             }
             _endOfStream = true;
             Monitor.PulseAll(_gate);
@@ -533,7 +502,6 @@ public sealed class GaplessTrackSegment
             _basePositionMs = Math.Max(0, newBasePositionMs);
             _discardSamples = _hadAudio ? Math.Max(0, discardFrames) * Channels : 0;
             _leadTrimSamples = _leadTrimFrames * Channels;
-            _headPadSamples = _headSkipSamples = 0; // the seam alignment belongs to the head this flush dropped
             _writeFadeTotal = 0; // a damaged-tail fade-in belongs to the audio this flush dropped
             // Re-arm the pre-buffer gate: post-seek delivery ramps exactly like
             // input start, and a once-per-life gate let the first trickle blocks
@@ -678,13 +646,6 @@ public sealed class GaplessSpliceProvider : ISampleProvider
 
     /// <summary>Raised (on the render thread) when the audible boundary is crossed.</summary>
     public event Action<GaplessTrackSegment>? SegmentStarted;
-
-    /// <summary>
-    /// Whether the segments' <see cref="GaplessTrackSegment.ResamplerDelayFrames"/> describe the
-    /// resampler LibVLC really runs, asked at each natural seam: false skips the alignment (a
-    /// fallback resampler has another delay). Null = they do.
-    /// </summary>
-    public Func<bool>? ResamplerDelayApplies { get; set; }
 
     private readonly int _startThresholdMs;
 
@@ -966,8 +927,6 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                 }
                 if (_active == null || _active.Abandoned || (_active.IsFinished && (_activeAdapted?.Stage.Drained ?? true)))
                 {
-                    // Drained to its natural end (not cut): the next one aligns its resampler delay to it.
-                    var ended = _active is { Abandoned: false } ? _active : null;
                     // A track-change abandon cuts LIVE audio (a natural end-of-
                     // stream drain does not): the junction into whatever renders
                     // next must declick+fade exactly like a seek flush.
@@ -979,8 +938,6 @@ public sealed class GaplessSpliceProvider : ISampleProvider
                     if (_pending.Count > 0)
                     {
                         _active = _pending.Dequeue();
-                        if (ended != null && (ResamplerDelayApplies?.Invoke() ?? true))
-                            _active.AlignResamplerDelayAfter(ended);
                         _activeAdapted = Adapt(_active);
                         _refillSamplesNeeded = 0; // fresh segment: the start gate governs
                     }

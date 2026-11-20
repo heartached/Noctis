@@ -231,6 +231,63 @@ public class GaplessEngineResampleTests
         Assert.True(MaxResidual(y, 48000, fit, 2000, 23000) < 2e-3);
     }
 
+    [Fact]
+    public void Multichannel_EachChannelKeepsItsOwnSignal()
+    {
+        // A 5.1 engine: channel c carries a sine at (c+1) kHz; after 44.1 → 48 kHz each channel
+        // must still carry its own, at full level, with no bleed of a neighbour's.
+        const int ch = 6, inRate = 44100, outRate = 48000, frames = 22050;
+        var provider = new GaplessSpliceProvider(outRate, ch);
+        var a = new GaplessTrackSegment(inRate, ch, source: 0);
+        provider.Enqueue(a);
+        var block = new short[frames * ch];
+        for (var n = 0; n < frames; n++)
+            for (var c = 0; c < ch; c++)
+                block[n * ch + c] = (short)Math.Round(0.4 * 32767 * Math.Sin(2 * Math.PI * 1000 * (c + 1) * n / inRate));
+        Assert.True(a.Write(block));
+        a.MarkEndOfStream();
+        var y = new float[20000 * ch];
+        for (var at = 0; at < y.Length; at += 480 * ch)
+            provider.Read(y, at, Math.Min(480 * ch, y.Length - at));
+        for (var c = 0; c < ch; c++)
+        {
+            double err = 0;
+            for (var k = 2000; k < 19000; k++)
+            {
+                var want = 0.4 * Math.Sin(2 * Math.PI * 1000 * (c + 1) * k / outRate);
+                err = Math.Max(err, Math.Abs(y[k * ch + c] - want));
+            }
+            _out.WriteLine($"channel {c}: max error {err:E2}");
+            Assert.True(err < 3e-3, $"channel {c} error {err}");
+        }
+    }
+
+    // CPU of the engine's conversion, stereo, per second of audio (render-thread work).
+    [Theory]
+    [InlineData(44100)]
+    [InlineData(96000)]
+    [InlineData(192000)]
+    public void Converter_CpuPerSecondOfAudio(int inRate)
+    {
+        const int outRate = 48000, seconds = 10;
+        var provider = new GaplessSpliceProvider(outRate, 2);
+        var a = new GaplessTrackSegment(inRate, 2, source: 0, capacitySeconds: seconds + 2);
+        provider.Enqueue(a);
+        var block = new short[inRate * 2];
+        for (var n = 0; n < inRate; n++)
+            block[2 * n] = block[2 * n + 1] = (short)(12000 * Math.Sin(2 * Math.PI * 441 * n / inRate));
+        for (var s = 0; s < seconds; s++) Assert.True(a.Write(block));
+        a.MarkEndOfStream();
+        var buf = new float[480 * 2];
+        for (var i = 0; i < 100; i++) provider.Read(buf, 0, buf.Length); // warm-up
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var reads = (seconds - 1) * 100;
+        for (var i = 0; i < reads; i++) provider.Read(buf, 0, buf.Length);
+        var msPerSecond = sw.Elapsed.TotalMilliseconds / (reads / 100.0);
+        _out.WriteLine($"{inRate} -> {outRate} stereo: {msPerSecond:F2} ms per second of audio ({msPerSecond / 10:F2}% of one core)");
+        Assert.True(msPerSecond < 100, $"{msPerSecond} ms per second");
+    }
+
     // Converter quality on this PC's WDL settings: pass band and alias rejection.
     [Theory]
     [InlineData(44100, 48000, 1000, true)]

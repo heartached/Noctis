@@ -15,11 +15,13 @@ public class RenderChainAllocationTests
     private readonly ITestOutputHelper _out;
     public RenderChainAllocationTests(ITestOutputHelper output) => _out = output;
 
-    [Fact]
-    public void SteadyStateRenderRead_AllocatesAlmostNothing()
+    [Theory]
+    [InlineData(44100)]
+    [InlineData(48000)] // a 44.1 kHz input converted by the engine's rate stage
+    public void SteadyStateRenderRead_AllocatesAlmostNothing(int sinkRate)
     {
         const int rate = 44100, channels = 2, periodMs = 10;
-        var provider = new GaplessSpliceProvider(rate, channels, startThresholdMs: 200, startFadeMs: 5);
+        var provider = new GaplessSpliceProvider(sinkRate, channels, startThresholdMs: 200, startFadeMs: 5);
         var segment = new GaplessTrackSegment(rate, channels, source: null, capacitySeconds: 30);
         provider.Enqueue(segment);
         var block = new short[rate * channels]; // 1 s of a 441 Hz tone
@@ -31,7 +33,7 @@ public class RenderChainAllocationTests
         chain = new BeatTapProvider(chain, 100);
         chain = new OutputLevelProvider(chain);
         var bytes = new SampleToWaveProvider(chain);
-        var buffer = new byte[rate * periodMs / 1000 * channels * 4];
+        var buffer = new byte[sinkRate * periodMs / 1000 * channels * 4];
 
         for (int i = 0; i < 100; i++) bytes.Read(buffer, 0, buffer.Length); // warm-up (JIT, first-read state)
         const int reads = 1000; // 10 s of audio

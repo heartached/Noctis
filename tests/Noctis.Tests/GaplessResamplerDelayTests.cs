@@ -4,11 +4,12 @@ using Xunit;
 
 namespace Noctis.Tests;
 
-// VLC 3 runs every input through its speex resampler (even 48 kHz into a 48 kHz engine),
-// which delays the input by half its filter and never drains that half at the end. A
-// gapless seam therefore swaps the outgoing track's held-back tail for the incoming one's
-// delay; between two different delays the timeline stepped (harness 11-19: -0.23 ms into
-// a 48/88.2/96 kHz or DSD track after a 44.1 kHz one, +0.23 ms back out).
+// VLC 3 runs every input through the resampler module it is told to use, even at equal rates.
+// With speex (--speex-resampler-quality=10) an input comes out half a filter late and the half
+// still in the filter at its end is never drained: the last 2.7-2.9 ms of every track were lost
+// at a gapless seam (harness 11-19). The engine's players now run VLC's pass-through resampler
+// and convert themselves; speex remains only for inputs above what amem takes (AmemRate), and
+// its delay is compensated there: trimmed from the head, given back as silence at the end.
 public class GaplessResamplerDelayTests
 {
     [Theory]
@@ -18,6 +19,7 @@ public class GaplessResamplerDelayTests
     [InlineData(88200, 48000, 128)]   // down: 472-tap filter, 236 input frames = 128.4
     [InlineData(96000, 48000, 128)]   // down 2:1: 512 taps
     [InlineData(192000, 48000, 128)]
+    [InlineData(352800, 176400, 128)] // what VLC still converts: a 352.8 kHz file halved for amem
     [InlineData(22050, 48000, 279)]
     [InlineData(48000, 44100, 129)]   // down 160:147: 280 taps, 140 input frames = 128.6, rounded as speex does
     public void SpeexDelay_MatchesSpeexOutputLatency(int inRate, int outRate, int expected) =>
@@ -30,110 +32,45 @@ public class GaplessResamplerDelayTests
     public void UnknownRate_HasNoDelay(int inRate, int outRate) =>
         Assert.Equal(0, VlcResamplerDelay.OutputFrames(inRate, outRate));
 
-    private static short[] Block(short value, int samples) => Enumerable.Repeat(value, samples).ToArray();
-
-    // A (16384) ends naturally, B (-16384) follows; returns the 60 frames around the seam.
-    private static float[] Seam(int delayA, int delayB, bool abandonA = false)
-    {
-        var provider = new GaplessSpliceProvider(8000, 1);
-        var a = new GaplessTrackSegment(8000, 1, source: 0) { ResamplerDelayFrames = delayA };
-        var b = new GaplessTrackSegment(8000, 1, source: 1) { ResamplerDelayFrames = delayB };
-        provider.Enqueue(a);
-        provider.Enqueue(b);
-        Assert.True(a.Write(Block(16384, 100)));
-        Assert.True(b.Write(Block(-16384, 400)));
-        provider.Read(new float[70], 0, 70);
-        if (abandonA) a.Abandon(); else a.MarkEndOfStream();
-        var seam = new float[60];
-        provider.Read(seam, 0, 60);
-        return seam;
-    }
-
-    [Fact]
-    public void LongerDelayOut_ShorterIn_PadsTheDifference()
-    {
-        // A's lost tail (139) is longer than B's delay (128): 11 frames go missing unless padded.
-        var s = Seam(139, 128);
-        Assert.All(s[..30], v => Assert.Equal(0.5f, v));
-        Assert.All(s[30..41], v => Assert.Equal(0f, v));
-        Assert.All(s[41..], v => Assert.Equal(-0.5f, v));
-    }
-
-    [Fact]
-    public void ShorterDelayOut_LongerIn_DropsTheDifference()
-    {
-        var provider = new GaplessSpliceProvider(8000, 1);
-        var a = new GaplessTrackSegment(8000, 1, source: 0) { ResamplerDelayFrames = 128 };
-        var b = new GaplessTrackSegment(8000, 1, source: 1) { ResamplerDelayFrames = 139 };
-        provider.Enqueue(a);
-        provider.Enqueue(b);
-        Assert.True(a.Write(Block(16384, 100)));
-        var head = Enumerable.Range(0, 400).Select(i => (short)(i < 11 ? 1000 : -16384)).ToArray();
-        Assert.True(b.Write(head));
-        provider.Read(new float[70], 0, 70);
-        a.MarkEndOfStream();
-        var s = new float[60];
-        provider.Read(s, 0, 60);
-        Assert.All(s[..30], v => Assert.Equal(0.5f, v));
-        Assert.All(s[30..], v => Assert.Equal(-0.5f, v)); // B's first 11 frames are gone
-    }
-
-    [Theory]
-    [InlineData(139, 139)]
-    [InlineData(0, 128)]   // a delay not known on one side: left as it was
-    [InlineData(139, 0)]
-    public void EqualOrUnknownDelays_SpliceUntouched(int delayA, int delayB)
-    {
-        var s = Seam(delayA, delayB);
-        Assert.All(s[..30], v => Assert.Equal(0.5f, v));
-        Assert.All(s[30..], v => Assert.Equal(-0.5f, v));
-    }
-
-    [Fact]
-    public void AnotherResamplerInUse_SpliceUntouched()
-    {
-        // A system LibVLC without speex: the speex delays describe nothing, so no alignment.
-        var provider = new GaplessSpliceProvider(8000, 1) { ResamplerDelayApplies = () => false };
-        var a = new GaplessTrackSegment(8000, 1, source: 0) { ResamplerDelayFrames = 139 };
-        var b = new GaplessTrackSegment(8000, 1, source: 1) { ResamplerDelayFrames = 128 };
-        provider.Enqueue(a);
-        provider.Enqueue(b);
-        Assert.True(a.Write(Block(16384, 100)));
-        Assert.True(b.Write(Block(-16384, 400)));
-        provider.Read(new float[70], 0, 70);
-        a.MarkEndOfStream();
-        var s = new float[60];
-        provider.Read(s, 0, 60);
-        Assert.All(s[..30], v => Assert.Equal(0.5f, v));
-        Assert.All(s[30..], v => Assert.Equal(-0.5f, v));
-    }
-
     [Theory]
     [InlineData("using audio resampler module \"speex_resampler\"", "speex_resampler")]
     [InlineData("using audio resampler module \"soxr\"", "soxr")]
-    [InlineData("using audio resampler module \"ugly_resampler\"", "ugly_resampler")]
+    [InlineData("using audio resampler module \"ugly\"", "ugly")]
     [InlineData("looking for audio resampler module matching \"speex\": 2 candidates", null)]
     [InlineData("using audio resampler module \"", null)]
     [InlineData(null, null)]
     public void ResamplerModule_FromLibVlcLogLine(string? line, string? expected) =>
         Assert.Equal(expected, VlcResamplerDelay.ModuleFromLogLine(line));
 
-    [Theory]
-    [InlineData(true, "speex_resampler", false, true)]
-    [InlineData(true, "soxr", true, false)]            // the plugin is missing: fell back
-    [InlineData(true, "ugly_resampler", false, false)]
-    [InlineData(true, "samplerate", false, false)]
-    [InlineData(true, null, true, true)]               // nothing logged yet, bundled LibVLC (Windows)
-    [InlineData(true, null, false, false)]             // nothing logged yet, system LibVLC (Linux)
-    [InlineData(false, "speex_resampler", true, false)] // speex not forced: not quality 10
-    public void Correction_OnlyWithSpeexReallyLoaded(bool forced, string? module, bool bundled, bool expected) =>
-        Assert.Equal(expected, VlcResamplerDelay.CorrectionApplies(forced, module, bundled));
+    [Fact]
+    public void DelayedInput_HeadTrimmedAndTailPadded_KeepsItsPlaceOnTheTimeline()
+    {
+        // VLC's speex delays the input by 3 frames (2 near-silent ones here) and keeps its last 3.
+        // Trimmed and padded, A plays its 7 frames that reached the engine and then 3 of silence
+        // where its held tail was: B starts on frame 10, as without the delay.
+        var provider = new GaplessSpliceProvider(8000, 1);
+        var a = new GaplessTrackSegment(8000, 1, source: 0) { LeadTrimFrames = 3, TailPadFrames = 3 };
+        var b = new GaplessTrackSegment(8000, 1, source: 1);
+        provider.Enqueue(a);
+        provider.Enqueue(b);
+        Assert.True(a.Write(Enumerable.Repeat((short)0, 3).Concat(Enumerable.Repeat((short)16384, 7)).ToArray()));
+        a.MarkEndOfStream();
+        Assert.True(b.Write(Enumerable.Repeat((short)-16384, 20).ToArray()));
+        b.MarkEndOfStream();
+        var s = new float[20];
+        provider.Read(s, 0, 20);
+        Assert.All(s[..7], v => Assert.Equal(0.5f, v));
+        Assert.All(s[7..10], v => Assert.Equal(0f, v));
+        Assert.All(s[10..], v => Assert.Equal(-0.5f, v));
+    }
 
     [Fact]
-    public void CutSeam_IsNotAligned()
+    public void TailPad_NotAddedToACutInput()
     {
-        // An abandoned (cut) outgoing track did not lose its tail to the end of its input.
-        var s = Seam(139, 128, abandonA: true);
-        Assert.All(s, v => Assert.Equal(-0.5f, v));
+        var seg = new GaplessTrackSegment(8000, 1, source: 0) { TailPadFrames = 5 };
+        Assert.True(seg.Write(Enumerable.Repeat((short)100, 4).ToArray()));
+        seg.Abandon();
+        seg.MarkEndOfStream();
+        Assert.Equal(0, seg.BufferedSamples);
     }
 }
