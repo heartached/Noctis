@@ -2526,7 +2526,6 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         MarkQueueChanged();
 
         // Not a song Clear Queue took out (GitHub #256: it came back into the cleared queue).
-        // Not a song Clear Queue took out (GitHub #256: it came back into the cleared queue).
         if (CurrentTrack != null && !_currentClearedFromQueue)
             UpNext.Insert(0, CurrentTrack);
         // What played after the target replays in the order it played: History[0] is the
