@@ -84,6 +84,33 @@ public class PlaybackFileWarmerTests : IDisposable
     }
 
     [Fact]
+    public async Task ASeek_StartsTheReadAtOnce_InsteadOfAfterTheDelay()
+    {
+        var path = MakeFile("a.flac", 2_000_000);
+        using var warmer = new PlaybackFileWarmer(startDelayMs: 60_000);
+
+        warmer.Warm(path);
+        warmer.StartNow();
+        await warmer.Current.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal(2_000_000, warmer.BytesRead);
+    }
+
+    [Fact]
+    public async Task StartNow_WithNothingWaiting_ChangesNothing()
+    {
+        var path = MakeFile("a.flac", 100_000);
+        using var warmer = new PlaybackFileWarmer(startDelayMs: 0);
+        warmer.StartNow(); // nothing to start
+        warmer.Warm(path);
+        await warmer.Current.WaitAsync(TimeSpan.FromSeconds(10));
+        var done = warmer.Current;
+        warmer.StartNow(); // already read: no second pass
+        Assert.Same(done, warmer.Current);
+        Assert.Equal(100_000, warmer.BytesRead);
+    }
+
+    [Fact]
     public async Task AMissingFile_IsIgnored()
     {
         using var warmer = new PlaybackFileWarmer(startDelayMs: 0);

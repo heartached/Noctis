@@ -24,6 +24,7 @@ internal sealed class PlaybackFileWarmer : IDisposable
 
     private readonly object _gate = new();
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _skipDelay; // cancelled by StartNow: the pass reads at once
     private string? _path;
     private readonly int _startDelayMs;
 
@@ -49,19 +50,44 @@ internal sealed class PlaybackFileWarmer : IDisposable
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
+            _skipDelay = null;
             _path = path;
             if (string.IsNullOrEmpty(path)) { Current = Task.CompletedTask; return; }
             var cts = _cts = new CancellationTokenSource();
-            Current = Task.Run(() => ReadThrough(path, cts.Token));
+            var skip = _skipDelay = new CancellationTokenSource();
+            // Tokens taken here: a Warm right after this one disposes the source before the pass runs.
+            var token = cts.Token;
+            var skipToken = skip.Token;
+            Current = Task.Run(() => ReadThrough(path, token, skipToken));
         }
     }
 
-    private async Task ReadThrough(string path, CancellationToken ct)
+    /// <summary>
+    /// A seek in the song being warmed: start its read now instead of after the start delay.
+    /// A far seek right after a cold start otherwise waits on the disk (harness 11-19, hard
+    /// disk: 70-354 ms at 0.7-1.3 s into the song against 6-8 ms once the file was read).
+    /// Nothing waiting (already read, or no file): no effect.
+    /// </summary>
+    internal void StartNow()
+    {
+        lock (_gate)
+        {
+            try { _skipDelay?.Cancel(); }
+            catch (ObjectDisposedException) { }
+        }
+    }
+
+    private async Task ReadThrough(string path, CancellationToken ct, CancellationToken skipDelay)
     {
         try
         {
             Interlocked.Exchange(ref _bytesRead, 0);
-            await Task.Delay(_startDelayMs, ct).ConfigureAwait(false);
+            try
+            {
+                using var wait = CancellationTokenSource.CreateLinkedTokenSource(ct, skipDelay);
+                await Task.Delay(_startDelayMs, wait.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested) { /* StartNow */ }
             var info = new FileInfo(path);
             if (!info.Exists || info.Length > MaxBytes) return;
 
@@ -92,6 +118,7 @@ internal sealed class PlaybackFileWarmer : IDisposable
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
+            _skipDelay = null;
             _path = null;
         }
     }

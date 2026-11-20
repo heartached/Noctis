@@ -6748,6 +6748,8 @@ public class VlcAudioPlayer : IAudioPlayer, IOpenFileHolder
 
                     var nowTicks = DateTime.UtcNow.Ticks;
                     DebugLogger.Info(DebugLogger.Category.Playback, "Seek.Apply", $"targetMs={targetMs}, state={_player.State}, isPlaying={_player.IsPlaying}");
+                    // A seek before the playing file's background read began: start it now.
+                    _fileWarmer.StartNow();
 
                     // An in-place Time write flushes the audio buffer and playback
                     // resumes mid-waveform — VLC drops a "buffer too late" on every
