@@ -141,6 +141,19 @@ public class ShortTrackGaplessTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void SettleWindow_RepeatOneAndLastTrack_DoNothing()
+    {
+        var (player, vm) = Start(NewTrack(1, 0.3), NewTrack(2, 10));
+        vm.RepeatMode = RepeatMode.One;
+        Assert.False(vm.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.3), settling: true));
+        Assert.Empty(player.PreparedPaths);
+
+        var (player2, vm2) = Start(NewTrack(3, 0.3));
+        Assert.False(vm2.TryAdvanceForGapless(TimeSpan.Zero, TimeSpan.FromSeconds(0.3), settling: true));
+        Assert.Empty(player2.PreparedPaths);
+    }
+
+    [AvaloniaFact]
     public void SettleWindow_WithSongTransitionsOn_DoesNothing()
     {
         var a = NewTrack(1, 0.3);
