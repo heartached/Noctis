@@ -45,6 +45,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     private int _pollsSinceQueue;
     private Guid? _trackId;
     private Guid? _coverAlbumId;
+    private int _coverAsk;
     // Answers are applied in the order their asks were sent: a poll that left before a press and
     // lands after it would put the old state back for a second.
     private long _sent;
@@ -187,8 +188,11 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
             return;
         }
         _loopCts = new CancellationTokenSource();
-        // Back on screen: Up Next may have changed while away.
+        // Back on screen: Up Next may have changed while away, and the first answer is applied as
+        // a new song, so a cover that failed or was cut off by leaving is asked for again (one
+        // that shows is kept: LoadCover skips the album it has).
         _queueStale = true;
+        _trackId = null;
         Loop = RunAsync(_loopCts.Token);
     }
 
@@ -327,6 +331,9 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     {
         if (albumId == _coverAlbumId) return;
         _coverAlbumId = albumId;
+        // By ask, not album: a fetch cut off by leaving the page lands after the page came back
+        // and asked for the same album again, and must not clear that ask.
+        var ask = ++_coverAsk;
         if (albumId is not { } id)
         {
             ArtworkPath = null;
@@ -335,14 +342,17 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
         try
         {
             var path = await _account.GetComputerCoverAsync(id, _loopCts?.Token ?? CancellationToken.None);
-            if (_coverAlbumId == id) ArtworkPath = path;
+            if (ask == _coverAsk) ArtworkPath = path;
         }
         catch (Exception ex)
         {
-            if (_coverAlbumId == id) ArtworkPath = null;
             if (ex is not OperationCanceledException) DebugLog.Write("Remote", $"Cover failed: {ex.GetType().Name}");
             // Asked again with the next new song, or when the page comes back.
-            if (_coverAlbumId == id) _coverAlbumId = null;
+            if (ask == _coverAsk)
+            {
+                ArtworkPath = null;
+                _coverAlbumId = null;
+            }
         }
     }
 

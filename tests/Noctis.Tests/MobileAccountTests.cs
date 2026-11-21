@@ -216,6 +216,8 @@ public class MobileAccountTests
         public Exception? CommandError { get; set; }
         public List<Guid> CoverAsks { get; } = new();
         public string? CoverPath { get; set; }
+        /// <summary>Thrown by the cover fetch instead, when set.</summary>
+        public Exception? CoverError { get; set; }
 
         private ComputerPlayback Answer(bool withQueue) =>
             withQueue ? Playback with { UpNext = Playback.UpNext ?? Array.Empty<ComputerTrack>() } : Playback with { UpNext = null, UpNextTotal = 0 };
@@ -235,7 +237,7 @@ public class MobileAccountTests
         public Task<string?> GetComputerCoverAsync(Guid albumId, CancellationToken ct = default)
         {
             CoverAsks.Add(albumId);
-            return Task.FromResult(CoverPath);
+            return CoverError != null ? Task.FromException<string?>(CoverError) : Task.FromResult(CoverPath);
         }
     }
 

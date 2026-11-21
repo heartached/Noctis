@@ -133,6 +133,42 @@ public class MobileComputerRemoteTests
         Assert.True(page.IsRunning);
     }
 
+    /// <summary>A cover that failed (or whose fetch was cut off by leaving the page) is asked for
+    /// again when the page comes back, not only with the next song: it stayed blank for the rest
+    /// of a long song.</summary>
+    [AvaloniaFact]
+    public async Task AFailedCover_IsAskedAgain_WhenThePageComesBack()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), Playback = Playing(), CoverError = new System.IO.IOException("reset") };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Account = account,
+            Marshal = a => a(),
+            TintFactory = rig.Shell.TintFactory,
+        };
+        shell.OpenAccountCommand.Execute(null);
+        var page = new ComputerRemotePageViewModel(shell, account, new Clock().Delay);
+        shell.Navigate(page);
+        Assert.Null(page.ArtworkPath);
+        Assert.Single(account.CoverAsks);
+
+        account.CoverError = null;
+        account.CoverPath = "/covers/a.jpg";
+        shell.IsSuspended = true;
+        await page.Loop.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        shell.IsSuspended = false;
+
+        Assert.Equal(new[] { AlbumId, AlbumId }, account.CoverAsks);
+        Assert.Equal("/covers/a.jpg", page.ArtworkPath);
+
+        // A cover that is showing is not fetched again on the next return.
+        shell.IsSuspended = true;
+        await page.Loop.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        shell.IsSuspended = false;
+        Assert.Equal(2, account.CoverAsks.Count);
+    }
+
     [AvaloniaFact]
     public void AnotherPagePushedOverIt_Stops()
     {
