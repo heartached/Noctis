@@ -137,6 +137,7 @@ public partial class App : Application
         async void LogRenderer(object? sender, EventArgs e)
         {
             window.Opened -= LogRenderer;
+            Helpers.FrameIntervalLog.StartIfAsked(window);
             try
             {
                 // Which clock drives RequestAnimationFrame / transitions on this machine. Logged
