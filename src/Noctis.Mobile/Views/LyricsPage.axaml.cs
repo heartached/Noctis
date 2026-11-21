@@ -178,6 +178,17 @@ public partial class LyricsPage : UserControl
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ShellViewModel.IsMenuOpen) or nameof(ShellViewModel.IsSheetOpen)) UpdateMenuHold();
+        else if (e.PropertyName == nameof(ShellViewModel.IsSuspended))
+        {
+            // Gone to the background: the keep-alive stops now (the frame loop ends at its next
+            // frame). Back in front: catch up to the sung line, then the frames run again.
+            if (_shell is { IsSuspended: true }) KeepAlive.Run(false);
+            else if (IsVisible)
+            {
+                _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
+                EnsureFrameLoop();
+            }
+        }
     }
 
     /// <summary>
@@ -458,7 +469,10 @@ public partial class LyricsPage : UserControl
 
     // ── Frames ──
 
-    private bool KeepsFrames => IsVisible && !_heldForMenu && (_gliding || _lyrics?.WantsFrames == true);
+    // Not while the app is in the background (home, task switch, screen off): the frame loop and
+    // the keep-alive kept the render loop ticking there for as long as the song played.
+    private bool KeepsFrames => IsVisible && !_heldForMenu && _shell is not { IsSuspended: true }
+                                && (_gliding || _lyrics?.WantsFrames == true);
 
     private void EnsureFrameLoop()
     {
