@@ -4245,6 +4245,10 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>제목</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Version" xml:space="preserve">
+    <value>버전</value>
+    <comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment>
+  </data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve">
     <value>작품 및 악장 사용</value>
     <comment>Content in MetadataWindow.axaml</comment>

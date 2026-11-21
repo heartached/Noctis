@@ -4245,6 +4245,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>العنوان</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Version" xml:space="preserve">
+    <value>الإصدار</value>
+    <comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment>
+  </data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve">
     <value>استخدام العمل والحركة</value>
     <comment>Content in MetadataWindow.axaml</comment>

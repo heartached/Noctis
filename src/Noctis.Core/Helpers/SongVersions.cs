@@ -11,6 +11,8 @@ namespace Noctis.Helpers;
 /// version suffixes are stripped ("(Instrumental)", "[Remastered 2011]", "- Live", "(Radio Edit)",
 /// "(Deluxe)", "(Taylor's Version)" …, see <see cref="MatchText.AnalyzeTitle(string?)"/>). Only
 /// bracketed or " - " suffixes count as versions, so "Live Forever" is not a live take of anything.
+/// A song's own Version tag (<see cref="Track.Version"/>, Discord coleman 11-19) names it in the
+/// menu when set, so "Song" tagged "Acoustic" reads "Acoustic" without the title saying so.
 /// </summary>
 public static class SongVersions
 {
@@ -60,6 +62,14 @@ public static class SongVersions
     /// </summary>
     public static string VersionLabel(string? title) =>
         string.Join(" · ", MatchText.VersionSegments(title));
+
+    /// <summary>
+    /// The version <paramref name="track"/> is: its Version tag when set (it wins over a title
+    /// suffix), otherwise what the title names (<see cref="VersionLabel(string?)"/>). Empty for
+    /// neither (the menu shows it as the original).
+    /// </summary>
+    public static string VersionLabel(Track track) =>
+        string.IsNullOrWhiteSpace(track.Version) ? VersionLabel(track.Title) : track.Version.Trim();
 
     /// <summary>
     /// Where a switch to another version starts. The playing position carries over when the two

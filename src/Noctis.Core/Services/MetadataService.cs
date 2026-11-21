@@ -156,6 +156,40 @@ public class MetadataService : IMetadataService
         }
     }
 
+    /// <summary>The song's version (<see cref="Track.Version"/>) without a full read: the FLAC
+    /// comment block alone, otherwise TagLib with lazy pictures, like <see cref="ReadLabel"/>.</summary>
+    public string ReadVersion(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath) || filePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+            return string.Empty;
+        var ext = Path.GetExtension(filePath);
+        // DSDIFF has no TagLib reader; ReadDsdiffTrack never yields a version either.
+        if (ext.Equals(".dff", StringComparison.OrdinalIgnoreCase))
+            return string.Empty;
+        if (ext.Equals(".flac", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                if (ExtendedTagIO.TryReadFlacVersion(stream, out var flacVersion))
+                    return flacVersion;
+            }
+            catch (Exception)
+            {
+                // Locked or vanished: let the TagLib path decide.
+            }
+        }
+        try
+        {
+            using var file = TagLib.File.Create(filePath, TagLib.ReadStyle.None | TagLib.ReadStyle.PictureLazy);
+            return ExtendedTagIO.ReadVersion(file);
+        }
+        catch (Exception)
+        {
+            return string.Empty;
+        }
+    }
+
     /// <summary>
     /// The ReplayGain tags alone, for the ReplayGain column's backfill (GitHub #151): the FLAC
     /// comment block alone, otherwise TagLib with no audio properties and lazy pictures, like
@@ -378,6 +412,7 @@ public class MetadataService : IMetadataService
             Comment = tag.Comment ?? string.Empty,
             Copyright = ReadCopyright(file),
             Label = ExtendedTagIO.ReadLabel(file),
+            Version = ExtendedTagIO.ReadVersion(file),
             ReleaseDate = FirstNonEmpty(ReadReleaseDate(file, tag), riff.ReleaseDate),
             IsCompilation = isCompilation,
             Grouping = tag.Grouping ?? string.Empty,
@@ -797,6 +832,10 @@ public class MetadataService : IMetadataService
             ExtendedTagIO.WriteMovementCount(file, track.MovementCount);
             ExtendedTagIO.WriteRating(file, track.Rating);
             ExtendedTagIO.WriteIsDisliked(file, track.IsDisliked);
+            // Empty means "none known" (a row read before the field existed), not "erase":
+            // clearing a version on purpose goes through ClearVersion, like the year.
+            if (!string.IsNullOrWhiteSpace(track.Version))
+                ExtendedTagIO.WriteVersion(file, track.Version);
         });
         // The album artist is now in the file's own tag (written above), so the album-grouping
         // pass must treat it as a real tag from here on, as the next scan of the file will
@@ -1069,6 +1108,11 @@ public class MetadataService : IMetadataService
     public bool ClearYear(string filePath)
     {
         return SaveTagsAtomically(filePath, file => file.Tag.Year = 0);
+    }
+
+    public bool ClearVersion(string filePath)
+    {
+        return SaveTagsAtomically(filePath, file => ExtendedTagIO.WriteVersion(file, null));
     }
 
     /// <inheritdoc />

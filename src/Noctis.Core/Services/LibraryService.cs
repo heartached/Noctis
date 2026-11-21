@@ -11,7 +11,7 @@ namespace Noctis.Services;
 /// </summary>
 public class LibraryService : ILibraryService
 {
-    private const int CurrentMetadataSchemaVersion = 13;
+    private const int CurrentMetadataSchemaVersion = 14;
     // v3: album track order normalized (disc 0 → 1, missing track numbers last)
     private const int CurrentIndexCacheVersion = 3;
     // Throttle scan progress so a large library (tens of thousands of files)
@@ -2198,7 +2198,8 @@ public class LibraryService : ILibraryService
 
                     // Last and on its own task: the v11 label and v12 genre passes can take many minutes on a
                     // hard disk and nothing above should wait for it.
-                    if (_labelBackfillPending || _genreBackfillPending || _mp3LengthBackfillPending || _tracks.Any(NeedsReplayGainRead))
+                    if (_labelBackfillPending || _genreBackfillPending || _mp3LengthBackfillPending || _versionBackfillPending
+                        || _tracks.Any(NeedsReplayGainRead))
                         LabelBackfill = Task.Run(RunTagBackfillsAsync);
                 }
                 catch (Exception ex)
@@ -3563,6 +3564,8 @@ public class LibraryService : ILibraryService
         _genreBackfillPending = settings.MetadataSchemaVersion < GenreSchemaVersion;
         // v13 (MP3 lengths an Info/VBRI header states) runs after that.
         _mp3LengthBackfillPending = settings.MetadataSchemaVersion < Mp3LengthSchemaVersion;
+        // v14 (the song's Version tag, Discord 11-19) runs after that.
+        _versionBackfillPending = settings.MetadataSchemaVersion < VersionSchemaVersion;
 
         // Only advance the recorded schema version when the pass actually completed.
         // Cancelling at shutdown mid-backfill and still stamping it done would leave the
@@ -3575,6 +3578,7 @@ public class LibraryService : ILibraryService
         var stamp = _labelBackfillPending ? LabelSchemaVersion - 1
             : _genreBackfillPending ? GenreSchemaVersion - 1
             : _mp3LengthBackfillPending ? Mp3LengthSchemaVersion - 1
+            : _versionBackfillPending ? VersionSchemaVersion - 1
             : CurrentMetadataSchemaVersion;
         if (settings.MetadataSchemaVersion < stamp)
         {
@@ -3891,10 +3895,13 @@ public class LibraryService : ILibraryService
     private const int GenreSchemaVersion = 12;
     // The schema version the MP3 length pass stamps (11-07: ffmpeg's "Info" header).
     private const int Mp3LengthSchemaVersion = 13;
+    // The schema version the song-version pass stamps (Discord, coleman 11-19).
+    private const int VersionSchemaVersion = 14;
     // Set by EnsureMetadataSchemaUpToDateAsync; BackgroundInit then starts the passes last.
     private bool _labelBackfillPending;
     private bool _genreBackfillPending;
     private bool _mp3LengthBackfillPending;
+    private bool _versionBackfillPending;
     // A progress line in the session log every this many files.
     private const int LabelBackfillLogInterval = 250;
 
@@ -3973,7 +3980,20 @@ public class LibraryService : ILibraryService
             var mp3 = new TagBackfill("mp3length", Mp3LengthSchemaVersion, "mp3length-backfill.progress",
                 NeedsMp3LengthCheck, ReadStatedMp3Length, ApplyStatedMp3Length,
                 MarkPhoneTracks: false, Reindex: true);
-            await RunTagBackfillAsync(mp3);
+            if (!await RunTagBackfillAsync(mp3)) return;
+        }
+
+        // Discord (coleman, 11-19): the song's Version tag (Track.Version), which Other Versions
+        // labels its rows with. Tracks indexed before the field existed hold none and a rescan
+        // skips unchanged files, so each local file is read once for that one field. Phone
+        // tracks are left to their next re-read, like the genre pass.
+        if (_versionBackfillPending)
+        {
+            var version = new TagBackfill("version", VersionSchemaVersion, "version-backfill.progress",
+                t => string.IsNullOrWhiteSpace(t.Version), _metadata.ReadVersion,
+                (t, v) => t.Version = v,
+                MarkPhoneTracks: false, Reindex: false);
+            await RunTagBackfillAsync(version);
         }
     }
 

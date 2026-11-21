@@ -726,6 +726,7 @@ public partial class Track : ObservableObject
         Set(MovementCount, source.MovementCount, v => MovementCount = v);
         Set(Comment, source.Comment, v => Comment = v);
         Set(Copyright, source.Copyright, v => Copyright = v);
+        Set(Version, source.Version, v => Version = v);
         Set(IsExplicit, source.IsExplicit, v => IsExplicit = v);
         Set(PlayCount, source.PlayCount, v => PlayCount = v);
         Set(LastPlayed, source.LastPlayed, v => LastPlayed = v);
@@ -775,6 +776,15 @@ public partial class Track : ObservableObject
     /// file is read again (a rescan skips unchanged files).
     /// </summary>
     public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The song's version ("Acoustic", "Live at Wembley", "2011 Remaster"), from the file's
+    /// VERSION tag (<see cref="Services.ExtendedTagIO.ReadVersion"/>) — Discord, coleman 11-19:
+    /// so Other Versions can name a recording without the title saying it. Empty = none; the
+    /// menu then reads the version from the title. Tracks indexed before the field existed
+    /// get it from the v14 pass.
+    /// </summary>
+    public string Version { get; set; } = string.Empty;
 
     // ── Audio quality properties ──
 

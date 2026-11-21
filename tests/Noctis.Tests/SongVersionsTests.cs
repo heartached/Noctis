@@ -307,4 +307,88 @@ public class SongVersionsTests
             TrackContextMenuBuilder.SwitchVersionCommand = oldCommand;
         }
     }
+
+    // ── Version tag (Discord, coleman 11-19: "a detail in the song so the title doesn't change") ──
+
+    private static Track V(string title, string version, string album = "Album", int year = 0)
+    {
+        var t = T(title, album: album, year: year);
+        t.Version = version;
+        return t;
+    }
+
+    [Theory]
+    [InlineData("Wonderwall", "Acoustic", "Wonderwall", "")]          // tag vs plain
+    [InlineData("Wonderwall", "Acoustic", "Wonderwall", "Live")]      // two different tags
+    [InlineData("Wonderwall", "Acoustic", "Wonderwall (Live)", "")]   // tag vs title suffix
+    [InlineData("Wonderwall (Live)", "Live at Wembley", "Wonderwall", "")]
+    public void SameTitle_WithVersionTags_AreVersions(string titleA, string versionA, string titleB, string versionB)
+    {
+        var a = V(titleA, versionA);
+        var b = V(titleB, versionB);
+        Assert.True(SongVersions.AreVersions(a, b));
+        Assert.Contains(b, SongVersions.FindOtherVersions(a, new[] { a, b }));
+        Assert.Contains(a, SongVersions.FindOtherVersions(b, new[] { a, b }));
+    }
+
+    [Theory]
+    [InlineData("Intro", "Acoustic", "Intro", "")]                    // GenericBases still holds
+    [InlineData("Live Forever", "Acoustic", "Live", "")]
+    [InlineData("Wonderwall", "Acoustic", "Wonderwall Part 2", "")]
+    public void VersionTag_DoesNotMakeDifferentSongsVersions(string titleA, string versionA, string titleB, string versionB)
+    {
+        var a = V(titleA, versionA);
+        var b = V(titleB, versionB);
+        Assert.False(SongVersions.AreVersions(a, b));
+        Assert.Empty(SongVersions.FindOtherVersions(a, new[] { a, b }));
+    }
+
+    [Theory]
+    [InlineData("Wonderwall", "", "")]                                  // nothing: "Original"
+    [InlineData("Wonderwall", "Acoustic", "Acoustic")]                  // the tag names it
+    [InlineData("Wonderwall", "  Acoustic  ", "Acoustic")]
+    [InlineData("Wonderwall (Live)", "", "Live")]                       // no tag: the title, as before
+    [InlineData("Wonderwall (Live)", "Live at Wembley", "Live at Wembley")] // the tag wins over the suffix
+    [InlineData("Wonderwall (Live) [2014 Remaster]", "", "Live · 2014 Remaster")]
+    public void VersionLabel_PrefersTheTag_ThenTheTitle(string title, string version, string expected)
+        => Assert.Equal(expected, SongVersions.VersionLabel(V(title, version)));
+
+    [AvaloniaFact]
+    public void Menu_NamesARowByItsVersionTag()
+    {
+        var a = T("Wonderwall", album: "Morning Glory", year: 1995);
+        var acoustic = V("Wonderwall", "Acoustic", album: "Unplugged", year: 2026);
+        var original = V("Wonderwall", "", album: "Singles", year: 2026);
+        var library = new List<Track> { a, acoustic, original };
+        var oldSource = TrackContextMenuBuilder.OtherVersionsSource;
+        var oldCommand = TrackContextMenuBuilder.SwitchVersionCommand;
+        try
+        {
+            TrackContextMenuBuilder.OtherVersionsSource = t => SongVersions.FindOtherVersions(t, library);
+            TrackContextMenuBuilder.SwitchVersionCommand = new RelayCommand<VersionSwitchRequest>(_ => { });
+
+            var item = new MenuItem();
+            TrackContextMenuBuilder.BindOtherVersions(item, a);
+            var headers = item.Items.Cast<MenuItem>().Select(m => (string)m.Header!).ToList();
+            Assert.Contains("Acoustic · 2026", headers);
+            Assert.Contains("Original · 2026", headers);
+            Assert.Equal("Acoustic · Unplugged · 2026", TrackContextMenuBuilder.VersionRowText(acoustic));
+        }
+        finally
+        {
+            TrackContextMenuBuilder.OtherVersionsSource = oldSource;
+            TrackContextMenuBuilder.SwitchVersionCommand = oldCommand;
+        }
+    }
+
+    [Fact]
+    public void Search_FindsASongByItsVersionTag()
+    {
+        var tagged = V("Wonderwall", "Acoustic");
+        var plain = T("Wonderwall");
+        var query = SearchQuery.Parse("wonderwall acoustic");
+        Assert.True(query.Matches(tagged));
+        Assert.False(query.Matches(plain));
+        Assert.True(SearchQuery.Parse("acoustic").Matches(tagged));
+    }
 }

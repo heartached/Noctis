@@ -88,6 +88,96 @@ public class MetadataViewModelTests
         Assert.Empty(meta.ClearedYearPaths);
     }
 
+    // ── Version (Discord, coleman 11-19): a per-song field, Mixed like its neighbours ──
+
+    [Fact]
+    public async Task TrackScope_Version_IsSavedTrimmed_AndWrittenToTheFile()
+    {
+        var tracks = Album("Unplugged", "Oasis", 1);
+        using var p = new TestPersistenceService();
+        var meta = new FakeMetadataService();
+        var vm = new MetadataViewModel(tracks[0], meta, new FakeLibraryService { TrackList = tracks.ToList() },
+            p, new FakeAnimatedCoverService());
+        await vm.InitializeAsync();
+        Assert.Equal("", vm.SongVersion);
+
+        vm.SongVersion = "  Acoustic ";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Acoustic", tracks[0].Version);
+        Assert.Equal("Track 1", tracks[0].Title);           // the title is left alone
+        Assert.Contains(tracks[0].FilePath, meta.WrittenTagPaths);
+        Assert.Empty(meta.ClearedVersionPaths);
+    }
+
+    [Fact]
+    public async Task TrackScope_EmptyingTheVersion_ClearsItInTheFile()
+    {
+        var tracks = Album("Unplugged", "Oasis", 1);
+        tracks[0].Version = "Acoustic";
+        using var p = new TestPersistenceService();
+        var meta = new FakeMetadataService();
+        var vm = new MetadataViewModel(tracks[0], meta, new FakeLibraryService { TrackList = tracks.ToList() },
+            p, new FakeAnimatedCoverService());
+        await vm.InitializeAsync();
+        Assert.Equal("Acoustic", vm.SongVersion);
+
+        vm.SongVersion = "";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("", tracks[0].Version);
+        Assert.Equal(new[] { tracks[0].FilePath }, meta.ClearedVersionPaths);
+    }
+
+    [Fact]
+    public async Task MultiSelect_MixedVersion_LoadsBlank_AndAnUnrelatedEditKeepsEachSongsVersion()
+    {
+        var tracks = Album("Unplugged", "Oasis", 2);
+        tracks[0].Version = "Acoustic";
+        tracks[1].Version = "Live";
+        using var p = new TestPersistenceService();
+        var meta = new FakeMetadataService();
+        var vm = new MetadataViewModel(tracks[0], meta, new FakeLibraryService { TrackList = tracks.ToList() }, p,
+            new FakeAnimatedCoverService(), albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+        await vm.InitializeAsync();
+
+        Assert.Equal("", vm.SongVersion);
+        Assert.Equal(Noctis.Localization.Loc.T("Metadata.Mixed"), vm.SongVersionWatermark);
+
+        vm.Comment = "edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Acoustic", tracks[0].Version);
+        Assert.Equal("Live", tracks[1].Version);
+        Assert.Empty(meta.ClearedVersionPaths);
+    }
+
+    [Fact]
+    public async Task MultiSelect_TypedVersion_FansOut_AndEmptyingASharedOne_ClearsEveryFile()
+    {
+        var tracks = Album("Unplugged", "Oasis", 2);
+        using var p = new TestPersistenceService();
+        var meta = new FakeMetadataService();
+        var vm = new MetadataViewModel(tracks[0], meta, new FakeLibraryService { TrackList = tracks.ToList() }, p,
+            new FakeAnimatedCoverService(), albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+        await vm.InitializeAsync();
+        Assert.Equal("", vm.SongVersionWatermark);   // not mixed: both empty
+
+        vm.SongVersion = "Remastered 2011";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.All(tracks, t => Assert.Equal("Remastered 2011", t.Version));
+
+        var vm2 = new MetadataViewModel(tracks[0], meta, new FakeLibraryService { TrackList = tracks.ToList() }, p,
+            new FakeAnimatedCoverService(), albumScoped: true, albumTracks: tracks.ToList(), multiSelect: true);
+        await vm2.InitializeAsync();
+        Assert.Equal("Remastered 2011", vm2.SongVersion);
+        vm2.SongVersion = "";
+        await vm2.SaveCommand.ExecuteAsync(null);
+
+        Assert.All(tracks, t => Assert.Equal("", t.Version));
+        Assert.Equal(tracks.Select(t => t.FilePath).OrderBy(x => x), meta.ClearedVersionPaths.OrderBy(x => x));
+    }
+
     // ── Album scope: play count ──
 
     [Fact]
@@ -1371,6 +1461,14 @@ public class MetadataViewModelTests
         public bool ClearYear(string filePath)
         {
             lock (_gate) ClearedYearPaths.Add(filePath);
+            return true;
+        }
+
+        public List<string> ClearedVersionPaths { get; } = new();
+
+        public bool ClearVersion(string filePath)
+        {
+            lock (_gate) ClearedVersionPaths.Add(filePath);
             return true;
         }
 

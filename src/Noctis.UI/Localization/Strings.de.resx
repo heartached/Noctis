@@ -1581,6 +1581,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Metadaten gefunden</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Anwenden</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>Titel</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Version" xml:space="preserve"><value>Version</value><comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment></data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve"><value>Werk &amp; Satz verwenden</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.WorkName" xml:space="preserve"><value>Werkname</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Movement" xml:space="preserve"><value>Satz</value><comment>Text in MetadataWindow.axaml</comment></data>

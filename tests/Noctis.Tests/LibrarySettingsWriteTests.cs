@@ -48,7 +48,7 @@ public class LibrarySettingsWriteTests : IDisposable
                 SourceType = SourceType.Local,
             }
         });
-        await persistence.SaveSettingsAsync(new AppSettings { MetadataSchemaVersion = 13, MusicFolders = new List<string> { _music } });
+        await persistence.SaveSettingsAsync(new AppSettings { MetadataSchemaVersion = 14, MusicFolders = new List<string> { _music } });
         var library = new LibraryService(new MetadataService(), persistence, new SqliteLibraryIndexService(persistence),
             new FolderMetadataBackfillTests.FakeAuditTrail());
         await library.LoadAsync();

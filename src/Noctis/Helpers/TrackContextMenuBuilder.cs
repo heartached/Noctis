@@ -754,11 +754,12 @@ public sealed class TrackContextMenuBuilder
         }
     }
 
-    /// <summary>"Live · Live at Wembley · 1986" (or "Live · 1986" without the album); the plain
-    /// title reads "Original". Internal for tests.</summary>
+    /// <summary>"Live · Live at Wembley · 1986" (or "Live · 1986" without the album); the song's
+    /// Version tag names it when set, else the title's suffix; neither reads "Original".
+    /// Internal for tests.</summary>
     internal static string VersionRowText(Track version, bool withAlbum = true)
     {
-        var label = SongVersions.VersionLabel(version.Title);
+        var label = SongVersions.VersionLabel(version);
         var parts = new List<string> { label.Length > 0 ? label : Loc.T("Menu.OriginalVersion") };
         if (withAlbum && Track.IsRealAlbumName(version.Album)) parts.Add(version.Album);
         if (version.Year > 0) parts.Add(version.Year.ToString(System.Globalization.CultureInfo.InvariantCulture));
