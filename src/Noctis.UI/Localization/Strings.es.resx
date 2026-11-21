@@ -855,7 +855,7 @@ Deezer y TIDAL: pega el enlace.</value>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} canciones</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Color de acento</value>
@@ -1340,10 +1340,6 @@ Deezer y TIDAL: pega el enlace.</value>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve">
     <value>Zoom al pasar el cursor sobre álbumes</value>
     <comment>Settings toggle (GitHub #218)</comment>
-  </data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve">
-    <value>En la cuadrícula de álbumes, el álbum bajo el cursor crece un poco con un brillo suave.</value>
-    <comment>Settings toggle description (GitHub #218)</comment>
   </data>
   <data name="Settings.Smaller" xml:space="preserve">
     <value>Más pequeñas</value>
@@ -3802,10 +3798,6 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Número de pistas</value>
     <comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment>
   </data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
-    <value>pistas, ordenadas por</value>
-    <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
-  </data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve">
     <value>Ordenar por</value>
     <comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment>
@@ -4108,7 +4100,7 @@ Deezer y TIDAL: pega el enlace.</value>
   </data>
   <data name="Home.Plays" xml:space="preserve">
     <value>reproducciones</value>
-    <comment>Text in HomeView.axaml</comment>
+    <comment>Text in HomeView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Home.TopArtists" xml:space="preserve">
     <value>Artistas más escuchados</value>
@@ -4229,7 +4221,7 @@ Deezer y TIDAL: pega el enlace.</value>
   </data>
   <data name="LibraryAlbums.Plays" xml:space="preserve">
     <value>reproducciones</value>
-    <comment>Text in LibraryAlbumsView.axaml</comment>
+    <comment>Text in LibraryAlbumsView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibraryAlbums.Play" xml:space="preserve">
     <value>Reproducir</value>
@@ -8451,7 +8443,7 @@ Años: year:1990-1999, year:&gt;2000</value>
   </data>
   <data name="Stats.MonthsAgo" xml:space="preserve">
     <value>hace {0} meses</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.YearAgo" xml:space="preserve">
     <value>hace 1 año</value>
@@ -8459,7 +8451,7 @@ Años: year:1990-1999, year:&gt;2000</value>
   </data>
   <data name="Stats.YearsAgo" xml:space="preserve">
     <value>hace {0} años</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.Today" xml:space="preserve">
     <value>Hoy</value>
@@ -11041,14 +11033,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
     <value>Minirreproductor</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>Reproduciendo artwork</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>Cobertura</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>Página de letras</value>
     <comment>Settings section label</comment>
@@ -11535,11 +11519,11 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Time.MinutesAgo" xml:space="preserve">
     <value>hace {0} min</value>
-    <comment>Relative time; {0} = minutes</comment>
+    <comment>Relative time; {0} = minutes. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.HoursAgo" xml:space="preserve">
     <value>hace {0} h</value>
-    <comment>Relative time; {0} = hours</comment>
+    <comment>Relative time; {0} = hours. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.OnDate" xml:space="preserve">
     <value>el {0}</value>
@@ -11727,7 +11711,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
     <value>{0} álbumes</value>
-    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
     <value>1 álbum</value>
@@ -12027,7 +12011,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="LibrarySongs.SummarySongs" xml:space="preserve">
     <value>{0:N0} canciones</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryHour" xml:space="preserve">
     <value>1 hora</value>
@@ -12035,7 +12019,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="LibrarySongs.SummaryHours" xml:space="preserve">
     <value>{0:N0} horas</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve">
     <value>1 minuto</value>
@@ -12043,7 +12027,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve">
     <value>{0} minutos</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve">
     <value>Importar reproducciones</value>
@@ -12076,14 +12060,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve">
     <value>Iniciando…</value>
     <comment>Play count import status</comment>
-  </data>
-  <data name="Settings.PlayCountImport.Reading" xml:space="preserve">
-    <value>Leyendo el historial de escucha… {0} reproducciones</value>
-    <comment>Play count import progress; {0} = plays read so far</comment>
-  </data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve">
-    <value>Leyendo el historial de escucha… {0} de {1} reproducciones</value>
-    <comment>Play count import progress; {0} = plays read, {1} = total</comment>
   </data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve">
     <value>Buscando las canciones en tu biblioteca…</value>
@@ -12904,7 +12880,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve">
     <value>Fondo de Reproduciendo</value>
-    <comment>Settings row: a slider for how dark or bright the Now Playing background is</comment>
+    <comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve">
     <value>Brillo del fondo de Reproduciendo</value>
@@ -14413,10 +14389,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
     <value>Importar playlist</value>
     <comment>Playlists page menu: import .m3u/.m3u8 files</comment>
   </data>
-  <data name="Mobile.Import.Result" xml:space="preserve">
-    <value>Importadas {0} de {1} canciones</value>
-    <comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment>
-  </data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve">
     <value>{0} playlist importada|{0} playlists importadas</value>
     <comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment>
@@ -14428,10 +14400,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Import.NoneFound" xml:space="preserve">
     <value>Ninguna canción de «{0}» está en este teléfono</value>
     <comment>Import result title. {0} = playlist file name</comment>
-  </data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve">
-    <value>{0} de {1} canciones encontradas.</value>
-    <comment>Import result line for several files. {0} found, {1} total</comment>
   </data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve">
     <value>Estas líneas no coinciden con ninguna canción del teléfono:</value>
@@ -14511,7 +14479,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Main.DropMovedMany" xml:space="preserve">
     <value>Se movieron {0} archivos a {1}</value>
-    <comment>Drag-and-drop import status (MainWindowViewModel)</comment>
+    <comment>Drag-and-drop import status (MainWindowViewModel). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve">
     <value>«{0}» contiene {1} canciones de {2} álbumes distintos.
@@ -14913,7 +14881,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve">
     <value>{0:N0} canciones solo tienen letra sin sincronizar. El Estudio de letras puede sincronizarlas en este PC con su modelo de voz: puede tardar un minuto o más por canción (más rápido con tarjeta gráfica) y revisas cada una antes de guardarla.</value>
-    <comment>Fetch / remove lyrics in bulk dialog</comment>
+    <comment>Fetch / remove lyrics in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve">
     <value>Las primeras {0} se abren a la vez.</value>
@@ -15045,7 +15013,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Settings.ArtistCreditsUpdated" xml:space="preserve">
     <value>Créditos de artista actualizados en {0:N0} pistas.</value>
-    <comment>Settings status line</comment>
+    <comment>Settings status line. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.FfmpegNotFound" xml:space="preserve">
     <value>No encontrado: indica una ruta abajo o instala ffmpeg en tu PATH.</value>
@@ -15427,13 +15395,9 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
     <value>El álbum es explícito</value>
     <comment>Metadata window</comment>
   </data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve">
-    <value>{0} artistas seleccionados</value>
-    <comment>Metadata window</comment>
-  </data>
   <data name="Metadata.SongsSelected" xml:space="preserve">
     <value>{0} canciones seleccionadas</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve">
     <value>No se pudieron escribir las etiquetas en «{0}». Puede que otra app tenga el archivo abierto o que sea de solo lectura: ciérralo allí o revisa el archivo e inténtalo de nuevo.</value>
@@ -15441,7 +15405,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve">
     <value>No se pudieron escribir las etiquetas en {0} archivos (p. ej., «{1}»). Puede que otra app los tenga abiertos o que sean de solo lectura: ciérralos allí o revisa los archivos e inténtalo de nuevo.</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve">
     <value>Buscar portada animada para 1 álbum</value>
@@ -15449,7 +15413,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   </data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve">
     <value>Buscar portadas animadas para {0:N0} álbumes</value>
-    <comment>Find animated artwork in bulk dialog</comment>
+    <comment>Find animated artwork in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve">
     <value>No hay álbumes que buscar.</value>
