@@ -438,7 +438,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>The Songs tab's root: every song, embedded under the tab's title (the Library row's page).</summary>
     public SongListPageViewModel? SongsRoot => _songsRoot ??= HasTab(MobileTab.Songs)
-        ? new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs") { IsEmbedded = true }
+        ? new SongListPageViewModel(this, "Nav.Songs", Library.SourceSongs, sortKey: "Nav.Songs") { IsEmbedded = true }
         : null;
 
     /// <summary>The Albums tab's root: the album grid, embedded under the tab's title.</summary>
