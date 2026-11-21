@@ -855,7 +855,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} şarkı</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Vurgu Rengi</value>
@@ -1340,10 +1340,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve">
     <value>Üzerine Gelince Albümü Büyüt</value>
     <comment>Settings toggle (GitHub #218)</comment>
-  </data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve">
-    <value>Albümler ızgarasında işaretçinin altındaki albüm biraz büyür ve yumuşakça parlar.</value>
-    <comment>Settings toggle description (GitHub #218)</comment>
   </data>
   <data name="Settings.Smaller" xml:space="preserve">
     <value>Daha küçük</value>
@@ -3806,10 +3802,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
     <value>Parça sayısı</value>
     <comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment>
   </data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
-    <value>parça, sıralama ölçütü</value>
-    <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
-  </data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve">
     <value>Sıralama ölçütü</value>
     <comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment>
@@ -4112,7 +4104,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
   </data>
   <data name="Home.Plays" xml:space="preserve">
     <value>çalma</value>
-    <comment>Text in HomeView.axaml</comment>
+    <comment>Text in HomeView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Home.TopArtists" xml:space="preserve">
     <value>En Çok Dinlenen Sanatçılar</value>
@@ -4233,7 +4225,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value>
   </data>
   <data name="LibraryAlbums.Plays" xml:space="preserve">
     <value>çalma</value>
-    <comment>Text in LibraryAlbumsView.axaml</comment>
+    <comment>Text in LibraryAlbumsView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibraryAlbums.Play" xml:space="preserve">
     <value>Çal</value>
@@ -8446,7 +8438,7 @@ Yıllar: year:1990-1999, year:&gt;2000</value>
   </data>
   <data name="Stats.MonthsAgo" xml:space="preserve">
     <value>{0} ay önce</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.YearAgo" xml:space="preserve">
     <value>1 yıl önce</value>
@@ -8454,7 +8446,7 @@ Yıllar: year:1990-1999, year:&gt;2000</value>
   </data>
   <data name="Stats.YearsAgo" xml:space="preserve">
     <value>{0} yıl önce</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.Today" xml:space="preserve">
     <value>Bugün</value>
@@ -11039,14 +11031,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
     <value>Mini oynatıcı</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>Şimdi Çalıyor kapağı</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>Cover Flow</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>Söz sayfası</value>
     <comment>Settings section label</comment>
@@ -11541,11 +11525,11 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="Time.MinutesAgo" xml:space="preserve">
     <value>{0} dk önce</value>
-    <comment>Relative time; {0} = minutes</comment>
+    <comment>Relative time; {0} = minutes. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.HoursAgo" xml:space="preserve">
     <value>{0} sa önce</value>
-    <comment>Relative time; {0} = hours</comment>
+    <comment>Relative time; {0} = hours. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.OnDate" xml:space="preserve">
     <value>{0}</value>
@@ -11733,7 +11717,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
     <value>{0} albüm</value>
-    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
     <value>1 albüm</value>
@@ -12053,7 +12037,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="LibrarySongs.SummarySongs" xml:space="preserve">
     <value>{0:N0} şarkı</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryHour" xml:space="preserve">
     <value>1 saat</value>
@@ -12061,7 +12045,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="LibrarySongs.SummaryHours" xml:space="preserve">
     <value>{0:N0} saat</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve">
     <value>1 dakika</value>
@@ -12069,7 +12053,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve">
     <value>{0} dakika</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve">
     <value>Çalma Sayılarını İçe Aktar</value>
@@ -12102,14 +12086,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve">
     <value>Başlatılıyor…</value>
     <comment>Play count import status</comment>
-  </data>
-  <data name="Settings.PlayCountImport.Reading" xml:space="preserve">
-    <value>Dinleme geçmişi okunuyor… {0} çalma</value>
-    <comment>Play count import progress; {0} = plays read so far</comment>
-  </data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve">
-    <value>Dinleme geçmişi okunuyor… {0} / {1} çalma</value>
-    <comment>Play count import progress; {0} = plays read, {1} = total</comment>
   </data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve">
     <value>Kitaplığındaki şarkılarla eşleştiriliyor…</value>
@@ -12938,7 +12914,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve">
     <value>Şimdi Çalıyor Arka Planı</value>
-    <comment>Settings row: a slider for how dark or bright the Now Playing background is</comment>
+    <comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve">
     <value>Şimdi Çalıyor arka plan parlaklığı</value>
@@ -14499,10 +14475,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
     <value>Çalma Listesi İçe Aktar</value>
     <comment>Playlists page menu: import .m3u/.m3u8 files</comment>
   </data>
-  <data name="Mobile.Import.Result" xml:space="preserve">
-    <value>{1} şarkıdan {0} tanesi içe aktarıldı</value>
-    <comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment>
-  </data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve">
     <value>{0} çalma listesi içe aktarıldı|{0} çalma listesi içe aktarıldı</value>
     <comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment>
@@ -14514,10 +14486,6 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Import.NoneFound" xml:space="preserve">
     <value>“{0}” içindeki şarkıların hiçbiri bu telefonda yok</value>
     <comment>Import result title. {0} = playlist file name</comment>
-  </data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve">
-    <value>{1} şarkıdan {0} tanesi bulundu.</value>
-    <comment>Import result line for several files. {0} found, {1} total</comment>
   </data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve">
     <value>Bu satırlar telefondaki hiçbir şarkıyla eşleşmedi:</value>
@@ -14597,7 +14565,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   </data>
   <data name="Main.DropMovedMany" xml:space="preserve">
     <value>{0} dosya {1} klasörüne taşındı</value>
-    <comment>Drag-and-drop import status (MainWindowViewModel)</comment>
+    <comment>Drag-and-drop import status (MainWindowViewModel). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve">
     <value>"{0}", {2} farklı albümden {1} parça içeriyor.
@@ -15003,7 +14971,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
   </data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve">
     <value>{0:N0} şarkının yalnızca düz sözleri var. Söz Stüdyosu bunları bu bilgisayarda konuşma modeliyle zamanlayabilir: şarkı başına bir dakika veya daha uzun sürebilir (ekran kartıyla daha hızlı) ve her birini kaydedilmeden önce kontrol edersin.</value>
-    <comment>Fetch / remove lyrics in bulk dialog</comment>
+    <comment>Fetch / remove lyrics in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve">
     <value>İlk {0} tanesi aynı anda açılır.</value>
@@ -15139,7 +15107,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
   </data>
   <data name="Settings.ArtistCreditsUpdated" xml:space="preserve">
     <value>{0:N0} parçada sanatçı bilgileri güncellendi.</value>
-    <comment>Settings status line</comment>
+    <comment>Settings status line. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.FfmpegNotFound" xml:space="preserve">
     <value>Bulunamadı — aşağıya bir yol gir ya da ffmpeg’i PATH’ine kur.</value>
@@ -15521,13 +15489,9 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
     <value>Albüm müstehcen içerikli</value>
     <comment>Metadata window</comment>
   </data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve">
-    <value>{0} sanatçı seçildi</value>
-    <comment>Metadata window</comment>
-  </data>
   <data name="Metadata.SongsSelected" xml:space="preserve">
     <value>{0} şarkı seçildi</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve">
     <value>"{0}" dosyasına etiketler yazılamadı. Dosya başka bir uygulamada açık ya da salt okunur olabilir — orada kapat veya dosyayı kontrol et, sonra tekrar dene.</value>
@@ -15535,7 +15499,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
   </data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve">
     <value>{0} dosyaya etiketler yazılamadı (ör. "{1}"). Dosyalar başka bir uygulamada açık ya da salt okunur olabilir — orada kapat veya dosyaları kontrol et, sonra tekrar dene.</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve">
     <value>1 albüm için hareketli kapak bul</value>
@@ -15543,7 +15507,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value>
   </data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve">
     <value>{0:N0} albüm için hareketli kapak bul</value>
-    <comment>Find animated artwork in bulk dialog</comment>
+    <comment>Find animated artwork in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve">
     <value>Aranacak albüm yok.</value>
