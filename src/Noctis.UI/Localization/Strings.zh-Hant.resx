@@ -4245,6 +4245,10 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>曲名</value>
     <comment>Text in MetadataWindow.axaml</comment>
   </data>
+  <data name="Metadata.Version" xml:space="preserve">
+    <value>版本</value>
+    <comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment>
+  </data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve">
     <value>使用作品與樂章</value>
     <comment>Content in MetadataWindow.axaml</comment>

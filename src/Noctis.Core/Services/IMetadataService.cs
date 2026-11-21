@@ -62,6 +62,12 @@ public interface IMetadataService
     string ReadGenres(string filePath) => ReadTrackMetadata(filePath)?.Genre ?? string.Empty;
 
     /// <summary>
+    /// Just the song's version (<see cref="Track.Version"/>), for the v14 version pass
+    /// (Discord, coleman 11-19). Empty when none is set. The default falls back to the full read.
+    /// </summary>
+    string ReadVersion(string filePath) => ReadTrackMetadata(filePath)?.Version ?? string.Empty;
+
+    /// <summary>
     /// Just the ReplayGain tags, for the ReplayGain column's backfill (GitHub #151). Null when
     /// the file can't be read now. The default falls back to the full read.
     /// </summary>
@@ -114,6 +120,15 @@ public interface IMetadataService
     /// file's date alone. Returns false when the file could not be written.
     /// </summary>
     bool ClearYear(string filePath) => false;
+
+    /// <summary>
+    /// Removes the song's version tag (<see cref="Track.Version"/>) from an audio file. The
+    /// editor calls it when the user empties the Version field, because
+    /// <see cref="WriteTrackMetadata(Track)"/> treats an empty version as unknown (a row read
+    /// before the field existed) and leaves the file's alone. Returns false when the file
+    /// could not be written.
+    /// </summary>
+    bool ClearVersion(string filePath) => false;
 
     /// <summary>
     /// GitHub #190: writes only the Album Artist and Album tags (ID3v2 TPE2/TALB, Vorbis

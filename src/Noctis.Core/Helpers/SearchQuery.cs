@@ -230,7 +230,9 @@ public sealed class SearchQuery
              || Text(t.Album, t.SearchAlbumKey, term)
              || Text(t.AlbumArtist, t.SearchAlbumArtistKey, term)
              || Text(t.Genre, t.SearchGenreKey, term)
-             || IsYear(t.Year, term.Text),
+             || IsYear(t.Year, term.Text)
+             // The song's Version tag ("acoustic"), which the title may not say.
+             || (!string.IsNullOrEmpty(t.Version) && Text(t.Version, null, term)),
     };
 
     // Per-field matchers. Unquoted terms are "contains" everywhere; the exact (#227) paths

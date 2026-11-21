@@ -1576,6 +1576,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Meta veri bulundu</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Uygula</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>başlık</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Version" xml:space="preserve"><value>sürüm</value><comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment></data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve"><value>Eser ve Bölüm Kullan</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.WorkName" xml:space="preserve"><value>eser adı</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Movement" xml:space="preserve"><value>bölüm</value><comment>Text in MetadataWindow.axaml</comment></data>

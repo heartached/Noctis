@@ -1585,6 +1585,7 @@ L'enregistrement les remplace par les paroles affichées. Un fichier de paroles 
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Métadonnées trouvées</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Appliquer</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>titre</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Version" xml:space="preserve"><value>version</value><comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment></data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve"><value>Utiliser œuvre et mouvement</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.WorkName" xml:space="preserve"><value>nom de l'œuvre</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Movement" xml:space="preserve"><value>mouvement</value><comment>Text in MetadataWindow.axaml</comment></data>

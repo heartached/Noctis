@@ -1585,6 +1585,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Found metadata</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Apply</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>title</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Version" xml:space="preserve"><value>version</value><comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment></data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve"><value>Use Work &amp; Movement</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.WorkName" xml:space="preserve"><value>work name</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Movement" xml:space="preserve"><value>movement</value><comment>Text in MetadataWindow.axaml</comment></data>

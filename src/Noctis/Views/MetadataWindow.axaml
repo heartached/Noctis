@@ -525,6 +525,14 @@
                             <TextBox Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Title}" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" />
                         </StackPanel>
 
+                        <!-- Version ("Acoustic", "Live"): names the song in Other Versions without
+                             changing its title (Discord, coleman 11-19). Per song, so it stays for
+                             several songs too, with the Mixed placeholder. -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{loc:T Metadata.Version}" FontSize="12" Opacity="0.5" />
+                            <TextBox Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Version}" Text="{Binding SongVersion, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding SongVersionWatermark}" />
+                        </StackPanel>
+
                         <!-- Use Work & Movement: the fields glide open under the toggle (same
                              CollapsibleContent as the Discord "Show album" row). The toggle and the
                              body share one spacing-free panel so the closed state adds no gap. -->

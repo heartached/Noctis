@@ -1585,6 +1585,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Metadata.FoundMetadata" xml:space="preserve"><value>Найденные метаданные</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Apply" xml:space="preserve"><value>Применить</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Title" xml:space="preserve"><value>название</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Version" xml:space="preserve"><value>версия</value><comment>Text in MetadataWindow.axaml: the song's version (Acoustic, Live …), shown in Other Versions</comment></data>
   <data name="Metadata.UseWorkMovement" xml:space="preserve"><value>Произведение и часть</value><comment>Content in MetadataWindow.axaml</comment></data>
   <data name="Metadata.WorkName" xml:space="preserve"><value>произведение</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Movement" xml:space="preserve"><value>часть</value><comment>Text in MetadataWindow.axaml</comment></data>
