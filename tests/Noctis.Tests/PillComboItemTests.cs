@@ -66,9 +66,14 @@ public class PillComboItemTests
     /// pill and the list sits inside a rounded popup with room around the pills.</summary>
     private void AssertPillList(ComboBox combo)
     {
+        // In a full run another test's window can take focus, and a drop-down closes when its
+        // own window loses focus: make this one the active window first.
+        var owner = TopLevel.GetTopLevel(combo) as Window;
+        owner?.Activate();
+        Pump(10);
         combo.IsDropDownOpen = true;
         Pump(60);
-        Assert.True(combo.IsDropDownOpen);
+        Assert.True(combo.IsDropDownOpen, $"{combo.Name} closed; window active={owner?.IsActive}");
         Assert.True(combo.ItemCount > 1);
 
         // The list lives in the template's Popup, whose child is not under the ComboBox visually.
