@@ -1,6 +1,24 @@
 {
   "releases": [
     {
+      "tag": "plugin-youtubeimport-v1.0.2",
+      "version": "plugin-youtubeimport-v1.0.2",
+      "name": "Add from YouTube plugin 1.0.2",
+      "label": "Add from YouTube",
+      "publishedAt": "2026-11-21T20:44:36Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/plugin-youtubeimport-v1.0.2",
+      "prerelease": true,
+      "sections": [
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed yt-dlp, ffmpeg and node from Homebrew not being found on macOS when Noctis is opened from Finder."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "plugin-lyricmotion-v1.1.0",
       "version": "plugin-lyricmotion-v1.1.0",
       "name": "Lyric Motion plugin 1.1.0",
@@ -4476,6 +4494,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-15T18:25:40.835Z",
+  "updatedAt": "2026-11-21T20:44:45.544Z",
   "degraded": false
 }
