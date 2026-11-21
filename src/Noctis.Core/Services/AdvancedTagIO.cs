@@ -42,6 +42,8 @@ internal static class AdvancedTagIO
         // ExtendedTagIO custom keys
         "WORK", "MOVEMENTNAME", "MOVEMENT", "MOVEMENTTOTAL",
         "NOCTIS_SHOWCOMPOSER", "NOCTIS_USEWORKMOVEMENT",
+        // The song's version: its own box under the title (Track.Version)
+        "VERSION",
     };
 
     /// <summary>

@@ -168,6 +168,7 @@ public sealed class VideoBackdrop : Control
     private Session? _session;
     private int _generation;
     private WriteableBitmap? _current;   // frame currently painted (owned by the session)
+    private bool _currentDrawn;          // Render has picked _current up since it was set
     private readonly HostWindowWatch _hostWindow;
 
     public VideoBackdrop()
@@ -203,6 +204,7 @@ public sealed class VideoBackdrop : Control
     {
         var frame = _current;
         if (frame == null) return;
+        _currentDrawn = true;
         // UniformToFill: scale the frame to cover the control, centred, clipped by bounds.
         var bounds = Bounds;
         var src = frame.Size;
@@ -324,7 +326,12 @@ public sealed class VideoBackdrop : Control
         private readonly int _bufferBytes;
         private readonly IntPtr _buffer;
         private readonly byte[] _scratch;
-        private readonly WriteableBitmap _bitmap;
+        // Frames rotate through these. A bitmap that is on screen is never written again
+        // while the compositor can still draw it: the render thread repaints parts of the
+        // page on its own (the animating lyrics), and a frame written in place showed up
+        // in those parts one step before the rest of the page: a visible seam.
+        private readonly WriteableBitmap[] _bitmaps = new WriteableBitmap[3];
+        private int _nextBitmap;
         private volatile bool _framePending;
         private volatile bool _dead;
         private volatile bool _paused;
@@ -342,8 +349,9 @@ public sealed class VideoBackdrop : Control
             _bufferBytes = _stride * height;
             _buffer = Marshal.AllocHGlobal(_bufferBytes);
             _scratch = new byte[_bufferBytes];
-            _bitmap = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96),
-                PixelFormat.Bgra8888, AlphaFormat.Opaque);
+            for (var i = 0; i < _bitmaps.Length; i++)
+                _bitmaps[i] = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96),
+                    PixelFormat.Bgra8888, AlphaFormat.Opaque);
             _lockCb = OnLock;
             _displayCb = OnDisplay;
             Player = new MediaPlayer(SharedLibVlc.Instance) { EnableHardwareDecoding = false, Mute = true };
@@ -412,19 +420,27 @@ public sealed class VideoBackdrop : Control
         {
             if (_framePending || _dead) return;
             _framePending = true;
+            // Taken here, on VLC's thread, while the picture is complete: VLC starts writing
+            // the next one into the same buffer as soon as this callback returns.
+            Marshal.Copy(_buffer, _scratch, 0, _bufferBytes);
             Dispatcher.UIThread.Post(() =>
             {
-                _framePending = false;
-                if (_dead) return;
-                Marshal.Copy(_buffer, _scratch, 0, _bufferBytes);
-                using (var fb = _bitmap.Lock())
-                    Marshal.Copy(_scratch, 0, fb.Address, _bufferBytes);
-                if (_owner._session == this)
+                try
                 {
-                    _owner._current = _bitmap; // first real frame reveals the clip
+                    if (_dead || _owner._session != this) return;
+                    // The frame before this one has not been painted yet: keep it and drop
+                    // this one, so the bitmaps already on screen stay untouched.
+                    if (_owner._current != null && !_owner._currentDrawn) return;
+                    var bitmap = _bitmaps[_nextBitmap];
+                    _nextBitmap = (_nextBitmap + 1) % _bitmaps.Length;
+                    using (var fb = bitmap.Lock())
+                        Marshal.Copy(_scratch, 0, fb.Address, _bufferBytes);
+                    _owner._current = bitmap; // first real frame reveals the clip
+                    _owner._currentDrawn = false;
                     _owner.HasVideoStream = true;
                     _owner.InvalidateVisual();
                 }
+                finally { _framePending = false; }
             }, DispatcherPriority.Render);
         }
 
@@ -440,7 +456,7 @@ public sealed class VideoBackdrop : Control
 #pragma warning restore CS8625
                 try { Player.Dispose(); } catch { }
                 Marshal.FreeHGlobal(_buffer);
-                Dispatcher.UIThread.Post(_bitmap.Dispose);
+                Dispatcher.UIThread.Post(() => { foreach (var b in _bitmaps) b.Dispose(); });
             });
         }
     }

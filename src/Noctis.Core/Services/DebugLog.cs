@@ -62,7 +62,7 @@ public static class DebugLog
                 Lines.RemoveRange(0, Lines.Count - MaxLines);
             InvokeSinkLocked(line);
         }
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     public static void Write(string source, Exception ex) => Write(source, ex.ToString());
@@ -122,6 +122,23 @@ public static class DebugLog
         catch { _sink = null; /* a mirror that cannot write: stay memory-only */ }
     }
 
+    /// <summary>
+    /// Raises <see cref="Changed"/> with each subscriber contained, like the sink: a log view's
+    /// refresh must never throw into the code that was logging. Write runs on scan workers, and a
+    /// subscriber's Dispatcher.UIThread.Post there threw NullReferenceException in the instant
+    /// Avalonia was still building a UI dispatcher another worker had asked for, which skipped the
+    /// file that worker was about to read.
+    /// </summary>
+    private static void RaiseChanged()
+    {
+        if (Changed is not { } handlers) return;
+        foreach (var handler in handlers.GetInvocationList())
+        {
+            try { ((Action)handler)(); }
+            catch { /* a view of the log, never the log itself */ }
+        }
+    }
+
     /// <summary>Current log contents as one string (oldest first).</summary>
     public static string Snapshot()
     {
@@ -148,7 +165,7 @@ public static class DebugLog
             foreach (var line in Lines)
                 InvokeSinkLocked(line);
         }
-        Changed?.Invoke();
+        RaiseChanged();
     }
 
     /// <summary>

@@ -212,6 +212,11 @@ public interface IAudioPlayer : IDisposable
     /// next track waits for <see cref="TrackEnded"/> and opens cold.</summary>
     bool PreparesRemoteStreams => false;
 
+    /// <summary>True once <see cref="PrepareNext"/> has finished staging <paramref name="filePath"/>
+    /// (it prepares off the caller's thread). Players that stage synchronously, or not at all,
+    /// keep the default.</summary>
+    bool IsNextStaged(string filePath) => true;
+
     /// <summary>Cancels and releases any prepared inactive media item.</summary>
     void CancelPreparedNext();
 

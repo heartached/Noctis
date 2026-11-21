@@ -87,10 +87,10 @@ public class HomeViewMountTests
         Assert.Equal(2, Grid.GetColumn(view.FindControl<StackPanel>("LastPlayedPanel")!));
 
         // Albums row: one recently played album; covers use the Albums-page maths (Auto =
-        // five across the row's own measured width, 2px slack) and carry the hover overlay.
+        // five across the row's own measured width, budgeted for layout rounding) and carry the hover overlay.
         var row = view.FindControl<ItemsControl>("AlbumsRow")!;
         Assert.True(row.Bounds.Width > 0);
-        Assert.Equal(Noctis.Helpers.AlbumGridMetrics.ComputeTileSize(row.Bounds.Width - 2, 5), vm.AlbumTileSize, precision: 0);
+        Assert.Equal(Noctis.Helpers.AlbumGridMetrics.ComputeWrappedTileSize(row.Bounds.Width, 5, false, 1), vm.AlbumTileSize, precision: 0);
         // The Albums row's own tiles (New in Library, GitHub #159, lists the same album below).
         var tiles = row.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile")).ToList();
         Assert.Single(tiles);

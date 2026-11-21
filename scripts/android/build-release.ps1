@@ -118,6 +118,17 @@ try {
     # rebuild after a -UseDebugKey run leaves the debug-signed bundle in place (observed:
     # "Skipping target _Sign because all output files are up-to-date").
     Remove-Item $signedAab -ErrorAction SilentlyContinue
+    # An upload build starts clean. Incremental builds kept a cached AndroidManifest.xml when only
+    # the version changed (a bundle built after a test build carried "1.0.0 beta 4 (test)"), and
+    # deleting just those manifests dropped 453 library resources from the bundle (11-15). Wiping
+    # obj\Release and bin\Release gives the complete bundle beta 3 was. Debug-key runs stay incremental.
+    if (-not $UseDebugKey) {
+        $projectDir = Split-Path $project
+        foreach ($dir in 'obj\Release', 'bin\Release') {
+            $path = Join-Path $projectDir $dir
+            if (Test-Path $path) { Remove-Item $path -Recurse -Force }
+        }
+    }
 
     $buildArgs = @(
         # -nodeReuse:false and UseSharedCompilation=false: no MSBuild node or VBCSCompiler

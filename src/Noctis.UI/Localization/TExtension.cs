@@ -24,20 +24,46 @@ public sealed class TExtension : MarkupExtension
     /// </summary>
     public bool MacKeys { get; set; }
 
+    /// <summary>
+    /// The string names something only Windows calls that way (tray, taskbar, Recycle Bin): on
+    /// macOS it reads <c>Key + "Mac"</c> instead, see <see cref="Loc.Platform(string)"/>.
+    /// </summary>
+    public bool MacVariant { get; set; }
+
     public override object ProvideValue(IServiceProvider serviceProvider)
         => new Binding($"[{Key}]")
         {
             Source = Loc.Instance,
             Mode = BindingMode.OneWay,
-            Converter = MacKeys && OperatingSystem.IsMacOS() ? MacShortcutText.Instance : null,
+            Converter = MacVariant && OperatingSystem.IsMacOS() ? new MacVariantText(Key)
+                : MacKeys && OperatingSystem.IsMacOS() ? MacShortcutText.Instance : null,
         };
+
+    /// <summary>"Ctrl+F" as macOS writes it (⌘F). German keyboards label Ctrl "Strg", so the
+    /// German strings say "Strg+F"; that is the same key and becomes ⌘ too. Internal for tests.</summary>
+    internal static string ToMacKeys(string s)
+    {
+        foreach (var ctrl in new[] { "Ctrl+", "Strg+" })
+            s = s.Replace(ctrl + "Enter", "⌘↩").Replace(ctrl, "⌘");
+        return s;
+    }
+
+    /// <summary>Still bound to the key's own indexer entry, so a language switch re-reads it.</summary>
+    private sealed class MacVariantText(string key) : IValueConverter
+    {
+        public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => Loc.Platform(key);
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+            => throw new NotSupportedException();
+    }
 
     private sealed class MacShortcutText : IValueConverter
     {
         public static readonly MacShortcutText Instance = new();
 
         public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-            => value is string s ? s.Replace("Ctrl+Enter", "⌘↩").Replace("Ctrl+", "⌘") : value;
+            => value is string s ? ToMacKeys(s) : value;
 
         public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
             => throw new NotSupportedException();

@@ -287,8 +287,8 @@ public partial class SettingsViewModel
     {
         var ago = nowUtc - utc;
         if (ago < TimeSpan.FromMinutes(1)) return Localization.Loc.T("Time.JustNow");
-        if (ago < TimeSpan.FromHours(1)) return Localization.Loc.T("Time.MinutesAgo", (int)ago.TotalMinutes);
-        if (ago < TimeSpan.FromDays(1)) return Localization.Loc.T("Time.HoursAgo", (int)ago.TotalHours);
+        if (ago < TimeSpan.FromHours(1)) return Localization.Loc.Plural("Time.MinutesAgo", (int)ago.TotalMinutes);
+        if (ago < TimeSpan.FromDays(1)) return Localization.Loc.Plural("Time.HoursAgo", (int)ago.TotalHours);
         // "g": a fixed "d MMM" read "9 10月" in Japanese and Chinese.
         return Localization.Loc.T("Time.OnDate", utc.ToLocalTime().ToString("g", Localization.Loc.Instance.Culture));
     }
@@ -374,9 +374,11 @@ public partial class SettingsViewModel
             ServerUsers.ChangePassword(user.Name, ChangePasswordValue);
             ChangePasswordValue = string.Empty;
             IsChangePasswordVisible = false;
+            // The key on show stopped working with the old password: don't leave it to copy.
+            if (IssuedApiKeyUser == user.Name) { IssuedApiKey = string.Empty; IssuedApiKeyUser = string.Empty; }
             RefreshServerUsers();
         }
-        catch (Exception ex) { ServerUserError = ex.Message; }
+        catch (Exception ex) { ShowServerUserError(ex.Message); }
     }
 
     /// <summary>Create-your-account button on the Account &amp; Sync tab (first account is the admin).</summary>
@@ -528,6 +530,7 @@ public partial class SettingsViewModel
         SyncEnabled = AccountFeatures.Enabled && _settings.SyncEnabled;
         _syncTurnedOffByUser = _settings.SyncTurnedOffByUser;
         SyncDeviceName = string.IsNullOrWhiteSpace(_settings.SyncDeviceName) ? Environment.MachineName : _settings.SyncDeviceName;
+        InitComputerLink();
 
         LyricsStudioModel = WhisperModelManager.Info(WhisperModelManager.Parse(_settings.LyricsStudioModel));
         LyricsStudioLanguage = LyricsStudioViewModel.Languages.FirstOrDefault(l => l.Code.Equals(_settings.LyricsStudioLanguage, StringComparison.OrdinalIgnoreCase))
@@ -565,9 +568,22 @@ public partial class SettingsViewModel
     private void OnFeatureTabOpened(string tab)
     {
         SetPhoneDevicesTicker(tab == TabAccountDevices);
+        // Lines built with Loc.T are raised only when their source moves, so a language picked
+        // on General stayed in the old one here until then: re-read them on the way in.
         if (tab == TabAccountDevices)
         {
             RefreshServerUsers(); // also the phone list
+            OnPropertyChanged(nameof(ComputerLinkHelp));
+            RefreshComputerLinkState();
+        }
+        else if (tab == TabIntegrations)
+        {
+            RefreshScrobbleNotes();
+        }
+        else if (tab == TabAbout)
+        {
+            OnPropertyChanged(nameof(CheckForUpdatesButtonText));
+            OnPropertyChanged(nameof(UpdateButtonText));
         }
     }
 }

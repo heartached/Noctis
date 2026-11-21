@@ -591,4 +591,74 @@ public class SettingsViewModelPersistenceTests : IDisposable
         Assert.Equal(new[] { @"D:\Music\removed.flac" }, saved.ExcludedFilePaths);
         Assert.True(saved.DeveloperMode);
     }
+
+    /// <summary>
+    /// GitHub #245: a data folder shared by two computers, the other one on a newer Noctis. This
+    /// build keeps the settings it does not know (top level, nested objects, members of list
+    /// entries) when the Settings page saves a change through its changed-fields save, and when a
+    /// later launch saves again, so they are still there when this computer is updated.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task Save_KeepsSettingsFromANewerVersion()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "settings.json");
+        var linkA = Guid.NewGuid();
+        var linkB = Guid.NewGuid();
+        await File.WriteAllTextAsync(path, $$"""
+        {
+          "developerMode": false,
+          "futureFlag": true,
+          "futureObject": { "mode": "Wide", "nested": { "deep": [1, "two"], "n": 7 } },
+          "folderRules": [ { "path": "D:\\Music\\Live", "include": false, "enabled": true, "futureRuleField": "x" } ],
+          "albumLinks": [ { "albumId": "{{linkA}}", "sourceAlbumId": "{{linkB}}", "futureLinkField": 3 } ],
+          "writtenByVersion": "9.9.0"
+        }
+        """);
+
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+        vm.DeveloperMode = true;
+        await vm.SaveAsync();
+        await Task.Delay(300); // any save a toggle queued
+        // The next launch on this computer saves once more.
+        var next = CreateViewModel();
+        await next.LoadAsync();
+        await next.SaveAsync();
+        await Task.Delay(300);
+
+        var raw = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!;
+        Assert.True(raw["developerMode"]!.GetValue<bool>());
+        Assert.True(raw["futureFlag"]!.GetValue<bool>());
+        Assert.Equal("""{"mode":"Wide","nested":{"deep":[1,"two"],"n":7}}""", raw["futureObject"]!.ToJsonString());
+        Assert.Equal("x", raw["folderRules"]![0]!["futureRuleField"]!.GetValue<string>());
+        Assert.Equal(3, raw["albumLinks"]![0]!["futureLinkField"]!.GetValue<int>());
+        Assert.Equal("9.9.0", raw["writtenByVersion"]!.GetValue<string>());
+    }
+
+    /// <summary>
+    /// GitHub #245, Reset Settings: a reset writes a fresh install's settings, so the settings of
+    /// the newer version go back to their defaults as well (they are dropped from the file, as a
+    /// fresh install never had them); the newer version's stamp goes with them.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task ResetSettings_StillWritesAFreshInstallsSettings()
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "settings.json");
+        await File.WriteAllTextAsync(path, """{ "developerMode": true, "futureFlag": true, "writtenByVersion": "9.9.0" }""");
+
+        var vm = CreateViewModel();
+        await vm.LoadAsync();
+        var defaults = vm.CreateResetSettings();
+        await vm.WriteDefaultSettingsAsync(defaults);
+        vm.ResetSettingsToDefaults(defaults);
+        await vm.SaveAsync();
+        await Task.Delay(300);
+
+        var raw = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
+        Assert.False(raw["developerMode"]!.GetValue<bool>());
+        Assert.False(raw.ContainsKey("futureFlag"));
+        Assert.NotEqual("9.9.0", raw["writtenByVersion"]?.GetValue<string>());
+    }
 }

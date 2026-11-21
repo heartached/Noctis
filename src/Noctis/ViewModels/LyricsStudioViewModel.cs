@@ -14,7 +14,8 @@ public sealed record LyricsStudioPrefs(string Model, string Language, bool WordT
 
 public sealed record SpeechLanguageOption(string Code, string Name)
 {
-    public override string ToString() => Name;
+    /// <summary>"auto" is UI text, read from the strings each time the picker draws (Discord: it stayed English in a French UI).</summary>
+    public override string ToString() => Code == "auto" ? Noctis.Localization.Loc.T("LyricsStudio.LanguageAuto") : Name;
 }
 
 /// <summary>
@@ -1332,8 +1333,10 @@ public partial class LyricsStudioViewModel : ViewModelBase
         var intoTags = EmbedTags || SafeSaveTarget().WritesTags();
         if (intoTags && (!string.IsNullOrWhiteSpace(item.Track.Lyrics) || !string.IsNullOrWhiteSpace(item.Track.SyncedLyrics)))
             existing.Add("lyrics in the audio file's tags");
+        // macOS/Linux say "Trash": there is no Recycle Bin there (the lyrics page's prompt does the same).
+        var bin = OperatingSystem.IsWindows() ? "Recycle Bin" : "Trash";
         if (existing.Count > 0 && !await ConfirmAsync(
-                $"“{item.Title}” already has {string.Join(" and ", existing)}.\n\nSaving replaces {(existing.Count == 1 ? "it" : "them")} with the lyrics on screen. A lyrics file Noctis didn't write goes to the Recycle Bin first."))
+                $"“{item.Title}” already has {string.Join(" and ", existing)}.\n\nSaving replaces {(existing.Count == 1 ? "it" : "them")} with the lyrics on screen. A lyrics file Noctis didn't write goes to the {bin} first."))
             return;
         if (!ReferenceEquals(Selected, item)) return;
         var lines = ReviewLines.Select(l => l.ToAlignedLine()).Where(l => l.Text.Length > 0).ToList();

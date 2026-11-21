@@ -994,7 +994,9 @@ public partial class SidebarViewModel : ViewModelBase
     /// Points playlist entries at the new ids of moved tracks (a track's id is derived
     /// from its path, so Organize Files changes it). Rewrites the live playlists in place
     /// and persists them: remapping a separate copy of playlists.json left these stale,
-    /// and the next playlist save wrote the old ids back over the remap.
+    /// and the next playlist save wrote the old ids back over the remap. An entry whose new
+    /// id the playlist already listed is dropped instead (a deleted duplicate whose kept copy
+    /// is in the same playlist): rewritten, the song showed twice; left, a dead id stayed.
     /// </summary>
     public async Task ApplyTrackIdRemapAsync(IReadOnlyDictionary<Guid, Guid> remap)
     {
@@ -1004,11 +1006,13 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var pl in Playlists)
         {
             var changed = false;
-            for (var i = 0; i < pl.TrackIds.Count; i++)
+            var held = new HashSet<Guid>(pl.TrackIds.Where(id => !remap.ContainsKey(id)));
+            for (var i = pl.TrackIds.Count - 1; i >= 0; i--)
             {
                 if (remap.TryGetValue(pl.TrackIds[i], out var newId))
                 {
-                    pl.TrackIds[i] = newId;
+                    if (held.Contains(newId)) pl.TrackIds.RemoveAt(i);
+                    else pl.TrackIds[i] = newId;
                     changed = true;
                 }
             }

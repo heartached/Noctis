@@ -222,7 +222,8 @@ public class QueueIssue134Tests
         Assert.Empty(vm.PlayedTracks);
     }
 
-    /// <summary>Removing played rows changes the list, not what Repeat All replays.</summary>
+    /// <summary>Clear Played changes the list, not what Repeat All replays (removing one
+    /// played row does take it out of the cycle: GitHub #256).</summary>
     [AvaloniaFact]
     public void ClearPlayed_LeavesRepeatAllsCycleWhole()
     {

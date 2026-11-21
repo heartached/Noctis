@@ -484,7 +484,9 @@
                  With Liquid Glass on the same brush becomes the tint over a live frost of the
                  content scrolling under the pill. Negative margin reaches back across the
                  Border's 12px padding so the fill covers the whole pill as before. -->
-            <controls:GlassPanel x:Name="IslandGlass" CornerRadius="999" Margin="-12,0" Padding="12,0" BlurRadius="14">
+            <!-- GitHub #253: no glass edge of its own. The island already has its ring (IslandBorder);
+                 with Liquid Glass on the two stacked into a stroke far heavier than the sidebar's. -->
+            <controls:GlassPanel x:Name="IslandGlass" CornerRadius="999" Margin="-12,0" Padding="12,0" BlurRadius="14" EdgeThickness="0">
               <controls:GlassPanel.Background>
                 <SolidColorBrush Color="{DynamicResource IslandBackgroundColor}" Opacity="{Binding IslandBackgroundOpacity}"/>
               </controls:GlassPanel.Background>

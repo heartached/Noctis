@@ -2128,23 +2128,23 @@
                     </StackPanel>
                     <!-- Dependent on launch-at-startup: only meaningful for login launches. -->
                     <Grid ColumnDefinitions="*,Auto" Classes="dependent-setting" IsEnabled="{Binding LaunchAtStartup}">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.StartMinimizedTray, MacVariant=True}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.StartMinimizedTray}"
+                                              AutomationProperties.Name="{loc:T Settings.StartMinimizedTray, MacVariant=True}"
                                               IsChecked="{Binding StartMinimizedToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.MinimizeTray}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.MinimizeTray, MacVariant=True}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.MinimizeTray}"
+                                              AutomationProperties.Name="{loc:T Settings.MinimizeTray, MacVariant=True}"
                                               IsChecked="{Binding MinimizeToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
                     <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.CloseTray}" FontSize="13" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.CloseTray, MacVariant=True}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.CloseTray}"
+                                              AutomationProperties.Name="{loc:T Settings.CloseTray, MacVariant=True}"
                                               IsChecked="{Binding CloseToTray}"
                                               VerticalAlignment="Center"/>
                     </Grid>
@@ -2338,7 +2338,7 @@
                 <StackPanel Spacing="10">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Settings.OpenFile}" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.RightClickSongOpen}"
+                        <TextBlock Text="{loc:T Settings.RightClickSongOpen, MacVariant=True}"
                                    FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
@@ -2646,7 +2646,7 @@
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
                         <TextBlock Text="{loc:T Settings.AppIcon}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.AppIconDesc}"
+                        <TextBlock Text="{loc:T Settings.AppIconDesc, MacVariant=True}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
                     <ItemsControl x:Name="AppIconList" ItemsSource="{Binding AppIconOptions}">
@@ -2707,6 +2707,7 @@
                                                 Background="Transparent" BorderThickness="0" Padding="0"
                                                 Margin="0,0,4,4" Cursor="Hand"
                                                 ToolTip.Tip="{Binding Name}"
+                                                AutomationProperties.Name="{Binding Name}"
                                                 Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).ApplyAccentPresetCommand}"
                                                 CommandParameter="{Binding}">
                                             <Panel Width="44" Height="44">
@@ -3006,19 +3007,23 @@
                                               VerticalAlignment="Center"/>
                     </Grid>
 
-                    <!-- Sub-header: Mini Player -->
-                    <TextBlock Text="{loc:T Settings.MINIPLAYER}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"/>
-                    <Grid ColumnDefinitions="*,Auto">
+                    <!-- Sub-header: Mini Player (hidden with its rows while the Mini Player built-in
+                         feature is off; the stored switches are kept). -->
+                    <TextBlock x:Name="MiniPlayerMarqueeHeader" Text="{loc:T Settings.MINIPLAYER}" FontSize="11" FontWeight="SemiBold" Opacity="0.4" Margin="0,8,0,2"
+                               IsVisible="{Binding MiniPlayerEnabled}"/>
+                    <Grid x:Name="MiniPlayerTitleMarqueeRow" ColumnDefinitions="*,Auto" IsVisible="{Binding MiniPlayerEnabled}">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongTrackTitles}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.AnimateLongTrackTitles}"
                                               IsChecked="{Binding MiniPlayerTitleMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongAlbumTitles}" FontSize="13" VerticalAlignment="Center"/>
+                    <!-- The mini player's second line is the artist (MiniPlayerWindow: ArtistDisplay
+                         with IsForAlbum), so this switch is labelled for what it moves. -->
+                    <Grid x:Name="MiniPlayerArtistMarqueeRow" ColumnDefinitions="*,Auto" IsVisible="{Binding MiniPlayerEnabled}">
+                        <TextBlock Grid.Column="0" Text="{loc:T Settings.AnimateLongArtistNames}" FontSize="13" VerticalAlignment="Center"/>
                         <controls:LottieToggle Grid.Column="1"
-                                              AutomationProperties.Name="{loc:T Settings.AnimateLongAlbumTitles}"
+                                              AutomationProperties.Name="{loc:T Settings.AnimateLongArtistNames}"
                                               IsChecked="{Binding MiniPlayerAlbumMarqueeEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
@@ -3491,7 +3496,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.TrashButton}" FontSize="13" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Settings.TrashButtonHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.TrashButtonHint, MacVariant=True}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.TrashButton}"
@@ -3533,7 +3538,7 @@
                                     Cursor="Hand"/>
                         </Grid>
                         <controls:CollapsibleContent IsOpen="{Binding ShowTrashFolderMissingHint}" Lift="10" Motion="Glide">
-                        <TextBlock Margin="0,6,0,0" Text="{loc:T Settings.TrashFolderMissing}"
+                        <TextBlock Margin="0,6,0,0" Text="{loc:T Settings.TrashFolderMissing, MacVariant=True}"
                                    FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
                         </controls:CollapsibleContent>
                         </StackPanel>
@@ -3551,6 +3556,7 @@
                                               IsChecked="{Binding PlaybackBarShowLyrics}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.MiniPlayerButton}" FontSize="13" FontWeight="SemiBold"/>
@@ -3562,6 +3568,12 @@
                                               IsEnabled="{Binding MiniPlayerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Mini Player switched off in Plugins › Built-in Features: say why the switch is greyed. -->
+                    <controls:CollapsibleContent x:Name="MiniPlayerButtonFeatureOffHint" IsOpen="{Binding !MiniPlayerEnabled}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,6,0,0" Text="{loc:T Features.TurnedOffHint}"
+                               FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
                             <TextBlock Text="{loc:T Settings.IdleQueuePill}" FontSize="13" FontWeight="SemiBold"/>
@@ -3748,7 +3760,8 @@
                         <Slider Grid.Column="1"
                                 AutomationProperties.Name="{loc:T Settings.PlayerIslandWidth}"
                                 Classes="accent-slider"
-                                Minimum="340" Maximum="1400"
+                                Minimum="{x:Static vm:SettingsViewModel.PlaybackBarMinWidth}"
+                                Maximum="{Binding PlaybackBarIslandSliderMaximum}"
                                 x:Name="IslandWidthSlider"
                                 Value="{Binding PlaybackBarIslandWidth, Mode=TwoWay}"
                                 VerticalAlignment="Center"/>
@@ -3766,8 +3779,10 @@
             </StackPanel>
             </Border>
 
-            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.MiniPlayer}" Margin="0,16,0,8"/>
-            <Border Classes="setting-card group-card">
+            <!-- Hidden while the Mini Player built-in feature is off, like the Albums View card. -->
+            <TextBlock x:Name="MiniPlayerSectionTitle" Classes="section-title" Text="{loc:T Settings.Section.MiniPlayer}" Margin="0,16,0,8"
+                       IsVisible="{Binding MiniPlayerEnabled}"/>
+            <Border x:Name="MiniPlayerSectionCard" Classes="setting-card group-card" IsVisible="{Binding MiniPlayerEnabled}">
             <StackPanel>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
@@ -3899,14 +3914,14 @@
                         <RadioButton Grid.Column="1" Classes="transition-card medium-card"
                                      GroupName="NowPlayingArtwork"
                                      IsChecked="{Binding IsArtworkStyleCompactDisc, Mode=TwoWay}"
-                                     AutomationProperties.Name="CD"
+                                     AutomationProperties.Name="{loc:T Mobile.NowPlayingArtwork.CD}"
                                      ToolTip.Tip="{loc:T Settings.SpinningCompactDiscTip}">
                             <StackPanel Spacing="8">
                                 <Canvas Classes="medium-glyph">
                                     <Ellipse Canvas.Left="2" Canvas.Top="2" Width="24" Height="24"
                                              Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="8"/>
                                 </Canvas>
-                                <TextBlock Text="CD" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Mobile.NowPlayingArtwork.CD}" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                             </StackPanel>
                         </RadioButton>
                         <RadioButton Grid.Column="2" Classes="transition-card medium-card"
@@ -4398,8 +4413,15 @@
                                               IsEnabled="{Binding VisualizerEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Audio Visualizer switched off in Plugins › Built-in Features: say why the switch is greyed. -->
+                    <controls:CollapsibleContent x:Name="LyricsVisualizerFeatureOffHint" IsOpen="{Binding !VisualizerEnabled}" Lift="10" Motion="Glide">
+                    <TextBlock Margin="0,8,0,0" Text="{loc:T Features.TurnedOffHint}"
+                               FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
                     <!-- Artwork colour, Full spectrum and the style picker are ONE glide under the switch
-                         (owner 11-14). The row's panel is spacing-free so the 12px gap folds with the body. -->
+                         (owner 11-14). The row's panel is spacing-free so the 12px gap folds with the body.
+                         The outer glide closes them while the feature is off: they would change nothing. -->
+                    <controls:CollapsibleContent x:Name="LyricsVisualizerOptions" IsOpen="{Binding VisualizerEnabled}" Lift="10" Motion="Glide">
                     <controls:CollapsibleContent IsOpen="{Binding LyricsVisualizerEnabled}" Lift="10" Motion="Glide">
                     <StackPanel Margin="0,12,0,0">
                     <Grid ColumnDefinitions="*,Auto">
@@ -4471,6 +4493,7 @@
                         </RadioButton>
                     </Grid>
                     </StackPanel>
+                    </controls:CollapsibleContent>
                     </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
@@ -4864,7 +4887,7 @@
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.KeyboardShortcuts}" FontSize="15" FontWeight="SemiBold"/>
-                            <TextBlock Text="{loc:T Settings.ClickKeyChangePress}"
+                            <TextBlock Text="{loc:T Settings.ClickKeyChangePress, MacVariant=True}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Button Grid.Column="1"
@@ -4895,7 +4918,8 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ShortcutRowViewModel">
-                                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                                <!-- Hidden while its feature is off (Built-in Features); search skips it too. -->
+                                                <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsAvailable}">
                                                     <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="13" VerticalAlignment="Center"/>
                                                     <controls:ShortcutKeyChip Grid.Column="1" VerticalAlignment="Center"/>
                                                     <!-- Per-row reset, only once the row differs from its default. -->
@@ -4908,6 +4932,7 @@
                                                             CornerRadius="999"
                                                             Cursor="Hand"
                                                             ToolTip.Tip="{loc:T Settings.ResetDefaultTip}"
+                                                            AutomationProperties.Name="{loc:T Settings.ResetDefaultTip}"
                                                             IsVisible="{Binding !IsDefault}"
                                                             Command="{Binding ResetCommand}">
                                                         <!-- Stroked like the Plugins refresh button: an open arc in a
@@ -5019,7 +5044,7 @@
                                         DoubleTapped="OnCrossfadeSliderDoubleTapped"
                                         VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1"
-                                           Text="{Binding CrossfadeDuration, StringFormat='{}{0:0} seconds'}"
+                                           Text="{Binding CrossfadeDuration, StringFormat='{}{0:0} s'}"
                                            FontSize="12" Opacity="0.7"
                                            VerticalAlignment="Center"
                                            MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
@@ -5299,7 +5324,8 @@
             </Border>
             <!-- Accessibility: Mono Audio and Balance, applied in the output's sample stage
                  (ChannelMixProvider). Bypassed in bit-perfect Exclusive Mode. -->
-            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}">
+            <Border Classes="setting-row" IsVisible="{Binding IsChannelMixSupported}"
+                    Classes.first="{Binding !IsExclusiveAudioSupported}">
                 <StackPanel Spacing="14">
                     <Grid ColumnDefinitions="*,Auto" IsEnabled="{Binding IsChannelMixEnabled}">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -5340,7 +5366,10 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
-            <Border Classes="setting-row">
+            <!-- The Output card's first row where every row above is gated off (macOS: no
+                 output device, exclusive, upmix, surround or channel mix there). The rows
+                 above it are Windows-only except Mono/Balance, which Linux also shows. -->
+            <Border Classes="setting-row" Classes.first="{Binding !IsChannelMixSupported}">
                 <StackPanel Spacing="10">
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" Spacing="2">
@@ -5713,6 +5742,8 @@
                                                    TextTrimming="CharacterEllipsis"/>
                                         <Button Grid.Column="1"
                                                 Content="{loc:T Settings.Text}"
+                                                AutomationProperties.Name="{loc:T Settings.Remove}"
+                                                ToolTip.Tip="{loc:T Settings.Remove}"
                                                 Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveFolderCommand}"
                                                 CommandParameter="{Binding}"
                                                 Background="Transparent"
@@ -5781,74 +5812,6 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.ImportDroppedFiles}"
                                           IsChecked="{Binding ImportDroppedMedia}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <!-- GitHub #74: playlist page furniture, each opt-out. -->
-            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.PlaylistPage}" Margin="0,16,0,8"/>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeaders}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeadersHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistAlbumHeaders}"
-                                          IsChecked="{Binding PlaylistShowAlbumHeaders}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistNewBadge}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
-                                          IsChecked="{Binding PlaylistShowNewBadge}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistSideRail}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistSideRailHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1" x:Name="PlaylistSideRailToggle"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistSideRail}"
-                                          IsChecked="{Binding PlaylistShowSideRail}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumn}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumnHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistAddedColumn}"
-                                          IsChecked="{Binding PlaylistShowAddedColumn}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Classes="setting-row">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumn}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumnHint}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistFavoriteColumn}"
-                                          IsChecked="{Binding PlaylistShowFavoriteColumn}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -5939,6 +5902,79 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.UseEmbeddedArtwork}"
                                           IsChecked="{Binding UseEmbeddedArtwork}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            </StackPanel>
+            </Border>
+
+            <!-- GitHub #74: playlist page furniture, each opt-out. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.PlaylistPage}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeaders}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistAlbumHeadersHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistAlbumHeaders}"
+                                          IsChecked="{Binding PlaylistShowAlbumHeaders}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistNewBadge}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
+                                          IsChecked="{Binding PlaylistShowNewBadge}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistSideRail}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistSideRailHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1" x:Name="PlaylistSideRailToggle"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistSideRail}"
+                                          IsChecked="{Binding PlaylistShowSideRail}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistAddedColumnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistAddedColumn}"
+                                          IsChecked="{Binding PlaylistShowAddedColumn}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.PlaylistFavoriteColumnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.PlaylistFavoriteColumn}"
+                                          IsChecked="{Binding PlaylistShowFavoriteColumn}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -6098,7 +6134,8 @@
                                                 Opacity="0.5"
                                                 Cursor="Hand"
                                                 Padding="4,2"
-                                                ToolTip.Tip="{loc:T Settings.RemoveSeparatorTip}"/>
+                                                ToolTip.Tip="{loc:T Settings.RemoveSeparatorTip}"
+                                                AutomationProperties.Name="{loc:T Settings.RemoveSeparatorTip}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -6219,7 +6256,8 @@
                                                 Opacity="0.5"
                                                 Cursor="Hand"
                                                 Padding="4,2"
-                                                ToolTip.Tip="{loc:T Settings.RemoveWordTip}"/>
+                                                ToolTip.Tip="{loc:T Settings.RemoveWordTip}"
+                                                AutomationProperties.Name="{loc:T Settings.RemoveWordTip}"/>
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -6774,7 +6812,8 @@
 
                     <Border Height="1" Background="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.2"/>
 
-                    <!-- Clear Artwork Cache -->
+                    <!-- Clear Artwork Cache. Spacing-free panel: the status line's gap folds with it. -->
+                    <StackPanel>
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0">
                             <StackPanel Spacing="2">
@@ -6797,6 +6836,13 @@
                                        VerticalAlignment="Center"/>
                         </Button>
                     </Grid>
+
+                    <!-- What Reset / Clear Cache just did (they reported on the Library page's scan line). -->
+                    <controls:CollapsibleContent IsOpen="{Binding StorageStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                    <TextBlock Text="{Binding StorageStatusText}" Margin="0,14,0,0"
+                               FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
 
                 </StackPanel>
             </Border>
@@ -7571,6 +7617,101 @@
             </StackPanel>
             </Border>
 
+            <!-- Other computers: this computer signs in to another computer's Noctis (its phone
+                 address and account, the security code compared by eye), then both keep the same
+                 favorites, ratings, play counts and playlists (ComputerLinkService). Signed out:
+                 the steps and three boxes; Connect shows the code; signed in: one line and
+                 Sync now / Sign out. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.OtherComputers}" Margin="0,16,0,8"/>
+            <Border x:Name="ComputerLinkCard" Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row" Classes.parked="{Binding !AccountFeaturesEnabled}" IsEnabled="{Binding AccountFeaturesEnabled}">
+                <StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{loc:T PcSync.Title}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T PcSync.Description}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+
+                    <controls:CollapsibleContent IsOpen="{Binding IsComputerLinkFormVisible}" Lift="10" Motion="Glide">
+                    <StackPanel x:Name="ComputerLinkForm" Spacing="10" MaxWidth="440" HorizontalAlignment="Left" Margin="0,14,0,0">
+                        <TextBlock Text="{Binding ComputerLinkHelp}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                        <TextBox x:Name="ComputerLinkAddressBox" Classes="account-field" Text="{Binding ComputerLinkAddress}"
+                                 AutomationProperties.Name="{loc:T PcSync.Address}" Watermark="{loc:T PcSync.Address}"/>
+                        <TextBox x:Name="ComputerLinkUserBox" Classes="account-field" Text="{Binding ComputerLinkUser}"
+                                 AutomationProperties.Name="{loc:T PcSync.User}" Watermark="{loc:T PcSync.User}"/>
+                        <TextBox x:Name="ComputerLinkPasswordBox" Classes="account-field" Text="{Binding ComputerLinkPassword}" PasswordChar="•"
+                                 AutomationProperties.Name="{loc:T PcSync.Password}" Watermark="{loc:T PcSync.Password}">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding ConnectComputerLinkCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button x:Name="ComputerLinkConnectButton" Classes="accent-btn account-action" HorizontalAlignment="Left"
+                                AutomationProperties.Name="{loc:T PcSync.Connect}" Command="{Binding ConnectComputerLinkCommand}"
+                                IsEnabled="{Binding !IsComputerLinkBusy}"
+                                Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                            <TextBlock Text="{loc:T PcSync.Connect}" FontWeight="SemiBold"/>
+                        </Button>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
+
+                    <!-- Connect answered: the other computer's code to compare, then Sign in. -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsComputerLinkConfirming}" Lift="10" Motion="Glide">
+                    <StackPanel x:Name="ComputerLinkConfirm" Spacing="10" Margin="0,14,0,0">
+                        <TextBlock Text="{loc:T PcSync.CompareCode}" FontSize="12.5" TextWrapping="Wrap"/>
+                        <Border Classes="pair-value" HorizontalAlignment="Left">
+                            <SelectableTextBlock x:Name="ComputerLinkCodeText" Text="{Binding ComputerLinkCode}" FontSize="14"
+                                                 FontWeight="SemiBold" FontFamily="Consolas,Menlo,monospace" LineHeight="22"/>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="ComputerLinkSignInButton" Classes="accent-btn account-action"
+                                    AutomationProperties.Name="{loc:T PcSync.SignIn}" Command="{Binding ConfirmComputerLinkCommand}"
+                                    IsEnabled="{Binding !IsComputerLinkBusy}"
+                                    Background="{DynamicResource AccentButtonBackground}" Foreground="{DynamicResource AccentForegroundBrush}">
+                                <TextBlock Text="{loc:T PcSync.SignIn}" FontWeight="SemiBold"/>
+                            </Button>
+                            <Button Classes="pill-action account-action" AutomationProperties.Name="{loc:T Settings.Cancel}"
+                                    Command="{Binding CancelComputerLinkCommand}">
+                                <TextBlock Text="{loc:T Settings.Cancel}"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
+
+                    <!-- Signed in: with whom and when, Sync now, Sign out. -->
+                    <controls:CollapsibleContent IsOpen="{Binding IsComputerLinked}" Lift="10" Motion="Glide">
+                    <Grid x:Name="ComputerLinkSignedIn" ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,14,0,0">
+                        <!-- A grid, not a horizontal stack: a stack gives the text endless width, so a long
+                             status never wrapped and ran under the buttons. -->
+                        <Grid Grid.Column="0" ColumnDefinitions="Auto,*" ColumnSpacing="7" VerticalAlignment="Center">
+                            <Path Data="{StaticResource SyncStatusGlyph}" Width="14" Height="14"
+                                  Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}" StrokeThickness="1.4"
+                                  StrokeLineCap="Round" StrokeJoin="Round" Opacity="0.6" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ComputerLinkStatusText" Grid.Column="1" Text="{Binding ComputerLinkStatus}" FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        </Grid>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <Button x:Name="ComputerLinkSyncNowButton" Classes="pill-action account-action"
+                                    AutomationProperties.Name="{loc:T PcSync.SyncNow}" Command="{Binding SyncComputerLinkNowCommand}"
+                                    IsEnabled="{Binding !IsComputerLinkBusy}">
+                                <TextBlock Text="{loc:T PcSync.SyncNow}"/>
+                            </Button>
+                            <Button x:Name="ComputerLinkSignOutButton" Classes="pill-action account-action"
+                                    AutomationProperties.Name="{loc:T PcSync.SignOut}" Command="{Binding SignOutComputerLinkCommand}"
+                                    IsEnabled="{Binding !IsComputerLinkBusy}">
+                                <TextBlock Text="{loc:T PcSync.SignOut}" Foreground="#FF6B6B"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                    </controls:CollapsibleContent>
+
+                    <controls:CollapsibleContent IsOpen="{Binding ComputerLinkError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                        <TextBlock x:Name="ComputerLinkErrorText" Text="{Binding ComputerLinkError}" FontSize="12" Foreground="#FF6B6B" TextWrapping="Wrap" Margin="0,10,0,0"/>
+                    </controls:CollapsibleContent>
+                </StackPanel>
+            </Border>
+            </StackPanel>
+            </Border>
+
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.RemoteControl}" Margin="0,16,0,8"/>
             <Border x:Name="WebRemoteCard" Classes="setting-card group-card">
             <StackPanel>
@@ -7874,6 +8015,12 @@
                                        FontSize="12" Opacity="0.6" TextWrapping="Wrap" MaxWidth="560"
                                        HorizontalAlignment="Left" Margin="-2,4,0,0"/>
                             </controls:CollapsibleContent>
+                            <!-- Connect could not start a sign-in (no sign-in page, no browser), red as ListenBrainz's. -->
+                            <controls:CollapsibleContent IsOpen="{Binding LastFmError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Lift="10" Motion="Glide">
+                            <TextBlock x:Name="LastFmErrorText" Text="{Binding LastFmError}"
+                                       Foreground="#E74856" FontSize="11" TextWrapping="Wrap" MaxWidth="560"
+                                       HorizontalAlignment="Left" Margin="-2,4,0,0"/>
+                            </controls:CollapsibleContent>
                             </StackPanel>
                         </StackPanel>
 
@@ -7900,7 +8047,6 @@
                                 </ControlTemplate>
                             </Button.Template>
                         </Button>
-                        <!-- Status text removed -->
 
                         <!-- Logout button (top-right, when connected) -->
                         <Button Grid.Column="2" Grid.Row="0"
@@ -8693,10 +8839,6 @@
             </StackPanel>
             </StackPanel>
 
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- ABOUT                                               -->
-            <!-- ═══════════════════════════════════════════════════ -->
-
             <StackPanel x:Name="StatisticsTabPanel" Classes="tab-page" IsVisible="{Binding IsStatisticsTabVisible}" Spacing="4">
 
             <!-- One card, two quiet rows of big numbers; the format mix is a pill strip under the library row. -->
@@ -9117,14 +9259,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Developer -->
-
             </StackPanel>
-
-            <!-- ═══════════════════════════════════════════════════ -->
-            <!-- APPEARANCE                                          -->
-            <!-- ═══════════════════════════════════════════════════ -->
-
 
         </StackPanel>
     </ScrollViewer>

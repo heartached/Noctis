@@ -38,16 +38,15 @@ public partial class ShellView
     }
 
     /// <summary>The tab under <paramref name="x"/> (dp across a bar <paramref name="barWidth"/> wide).</summary>
-    internal static int TabAt(double barWidth, double x)
-        => Math.Clamp((int)Math.Floor(x / Math.Max(1, barWidth / TabCount)), 0, TabCount - 1);
+    internal static int TabAt(double barWidth, double x, int count = TabCount)
+        => Math.Clamp((int)Math.Floor((x - TabEdge) / Math.Max(1, TabWidth(barWidth, count))), 0, count - 1);
 
     /// <summary>Where the pill starts while dragged: centred under the finger, but never past the
-    /// first or last tab's place, at the width of the tab under the finger.</summary>
-    internal static double DraggedPillX(double barWidth, double x)
+    /// first or last tab's place.</summary>
+    internal static double DraggedPillX(double barWidth, double x, int count = TabCount)
     {
-        var tab = barWidth / TabCount;
-        var centre = Math.Clamp(x, tab / 2, barWidth - tab / 2);
-        return centre - SelectionPillWidth(barWidth, TabAt(barWidth, x)) / 2;
+        var centre = Math.Clamp(x, TabCentre(barWidth, 0, count), TabCentre(barWidth, count - 1, count));
+        return centre - SelectionPillWidth(barWidth, TabAt(barWidth, x, count), count) / 2;
     }
 
     private void OnTabRowPressed(object? sender, PointerPressedEventArgs e)
@@ -82,13 +81,14 @@ public partial class ShellView
     private void FollowTabDrag(double x)
     {
         var width = TabRow.Bounds.Width;
-        var index = TabAt(width, x);
+        var count = BarTabs.Count;
+        var index = TabAt(width, x, count);
         if (index != _tabDragIndex)
         {
             _tabDragIndex = index;
-            SelectionPill.Width = SelectionPillWidth(width, index);   // eases (its Width transition)
+            SelectionPill.Width = SelectionPillWidth(width, index, count);   // eases (its Width transition)
         }
-        SelectionPillHost.RenderTransform = Motion.TranslateX(DraggedPillX(width, x));
+        SelectionPillHost.RenderTransform = Motion.TranslateX(DraggedPillX(width, x, count));
     }
 
     private void OnTabRowReleased(object? sender, PointerReleasedEventArgs e)
@@ -98,7 +98,7 @@ public partial class ShellView
             _tabTracking = false;
             return;
         }
-        var index = TabAt(TabRow.Bounds.Width, e.GetPosition(TabRow).X);
+        var index = TabAt(TabRow.Bounds.Width, e.GetPosition(TabRow).X, BarTabs.Count);
         EndTabDrag();
         e.Pointer.Capture(null);
         e.Handled = true;
@@ -129,12 +129,6 @@ public partial class ShellView
         _pillHostTransitions = null;
     }
 
-    private static MobileTab TabFromIndex(int index) => index switch
-    {
-        0 => MobileTab.Home,
-        1 => MobileTab.Favorites,
-        2 => MobileTab.Playlists,
-        3 => MobileTab.Library,
-        _ => MobileTab.Search,
-    };
+    /// <summary>The tab in the bar's column <paramref name="index"/> (clamped to the bar).</summary>
+    private MobileTab TabFromIndex(int index) => BarTabs[Math.Clamp(index, 0, BarTabs.Count - 1)];
 }

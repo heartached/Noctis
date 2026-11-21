@@ -201,8 +201,8 @@ jobs:
           # NOTE: BtbN prunes dated autobuild releases after ~2 weeks, so this
           # pin rots — when the download 404s (curl saves an HTML page and the
           # checksum fails), re-pin to the newest autobuild + fresh hashes.
-          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-11-02-12-51/ffmpeg-N-128293-gb034eb5e7e-linux64-gpl.tar.xz -o ffmpeg.tar.xz
-          echo "2c3a505d35f78566310f6997e7a02ccda4e03112b63dab266ce439c5c719f661  ffmpeg.tar.xz" | sha256sum -c -
+          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-11-21-12-37/ffmpeg-N-129166-gae9f4540cb-linux64-gpl.tar.xz -o ffmpeg.tar.xz
+          echo "1492ec42dac9391baf1b3f7e3e3acdbb2b80f0af4efc45945ff9b988f62120c8  ffmpeg.tar.xz" | sha256sum -c -
           tar -xf ffmpeg.tar.xz
           cp ffmpeg-*-linux64-gpl/bin/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"
@@ -213,8 +213,8 @@ jobs:
         run: |
           set -euo pipefail
           # Same pinned BtbN autobuild as linux-x64 (arm64 asset).
-          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-11-02-12-51/ffmpeg-N-128293-gb034eb5e7e-linuxarm64-gpl.tar.xz -o ffmpeg.tar.xz
-          echo "9711e7d8eec415f72c2a8fd207ef752cadb87c93878fa945525d210460395d68  ffmpeg.tar.xz" | sha256sum -c -
+          curl -sSL https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2026-11-21-12-37/ffmpeg-N-129166-gae9f4540cb-linuxarm64-gpl.tar.xz -o ffmpeg.tar.xz
+          echo "2c13f66dda3d42ab994148332a2fb189823afd7b5ed10018bdba5f387db7f108  ffmpeg.tar.xz" | sha256sum -c -
           tar -xf ffmpeg.tar.xz
           cp ffmpeg-*-linuxarm64-gpl/bin/ffmpeg "publish/${{ matrix.rid }}/ffmpeg"
           chmod +x "publish/${{ matrix.rid }}/ffmpeg"

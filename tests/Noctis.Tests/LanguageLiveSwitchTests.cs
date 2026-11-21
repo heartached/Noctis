@@ -122,6 +122,81 @@ public class LanguageLiveSwitchTests
         finally { Reset(window); try { Directory.Delete(root, true); } catch { } }
     }
 
+    /// <summary>Appearance › Artwork: the cache usage line and the quality picker are built with
+    /// Loc.T, so they stayed in the old language after a switch until the next restart.</summary>
+    [AvaloniaFact]
+    public async Task PickingRussian_RelabelsAnimatedArtworkCacheLine_AndQualityPicker()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            await vm.RefreshAnimatedArtworkCacheUsageAsync();
+            Assert.Contains("used", vm.AnimatedArtworkCacheUsage);
+            var quality = vm.SelectedAnimatedArtworkQualityOption!.Value;
+            var options = vm.AnimatedArtworkQualityOptions;
+
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "ru");
+            _output.WriteLine($"ru: '{vm.AnimatedArtworkCacheUsage}'");
+            Assert.StartsWith("Использовано", vm.AnimatedArtworkCacheUsage);
+            Assert.NotSame(options, vm.AnimatedArtworkQualityOptions);           // rebuilt in the new language
+            Assert.Equal(quality, vm.SelectedAnimatedArtworkQualityOption!.Value); // selection kept
+        }
+        finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
+    }
+
+    /// <summary>Settings › Lyrics › Lyrics Renderer: a stored renderer whose plugin is off reads
+    /// "&lt;name&gt; (plugin off)", built with Loc.T; it stayed English after a language switch.</summary>
+    [AvaloniaFact]
+    public async Task PickingGerman_RelabelsALyricsRendererWhosePluginIsOff()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.LyricsRenderer = "dev.test.plugin/Timed Words"; // no plugin host: the choice waits for its plugin
+            Assert.Equal("Timed Words (plugin off)", vm.SelectedLyricsRendererOption!.Label);
+
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "de");
+            Assert.Equal("Timed Words (Plugin aus)", vm.SelectedLyricsRendererOption!.Label);
+            Assert.Equal("dev.test.plugin/Timed Words", vm.SelectedLyricsRendererOption.Key);
+        }
+        finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
+    }
+
+    /// <summary>Lines the Connect and About pages build with Loc.T ("Check for Updates", the
+    /// other-computer steps) re-read when the page opens after a switch made on General.</summary>
+    [AvaloniaFact]
+    public async Task PickingRussian_ThenOpeningAboutOrAccount_RelabelsTheirBuiltLines()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            vm.SelectedSettingsTab = SettingsViewModel.TabGeneral;
+            var englishCheck = vm.CheckForUpdatesButtonText;
+            var englishHelp = vm.ComputerLinkHelp;
+            vm.LanguageChoice = vm.LanguageOptions.Single(o => o.Code == "ru");
+            var raised = new System.Collections.Generic.List<string?>();
+            vm.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+            // The views only re-read a line when its change is raised, so both are checked:
+            // the page tells them, and what they then read is no longer the English text.
+            vm.SelectedSettingsTab = SettingsViewModel.TabAbout;
+            Assert.Contains(nameof(SettingsViewModel.CheckForUpdatesButtonText), raised);
+            Assert.Contains(nameof(SettingsViewModel.UpdateButtonText), raised);
+            Assert.NotEqual(englishCheck, vm.CheckForUpdatesButtonText);
+
+            vm.SelectedSettingsTab = SettingsViewModel.TabAccountDevices;
+            Assert.Contains(nameof(SettingsViewModel.ComputerLinkHelp), raised);
+            Assert.NotEqual(englishHelp, vm.ComputerLinkHelp);
+        }
+        finally { Reset(null); try { Directory.Delete(root, true); } catch { } }
+    }
+
     [Theory]
     [InlineData("en", "English")]
     [InlineData("es", "Español (Spanish)")]

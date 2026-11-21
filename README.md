@@ -154,6 +154,22 @@ problems on that repository.
 - [x] Sleep timer, tray icon and launch at login
 - [x] Updates itself from GitHub releases
 - [x] Song progress on the Windows taskbar
+- [x] Sync with another computer: favorites, ratings, play counts and playlists stay the same on two PCs
+
+### Use Noctis on more than one computer
+
+- **Sync with another computer.** On the first computer, create your account in Settings › Account &
+  Devices and turn on "Noctis on your phone" and "Sync with your phone"; Connect a phone › Enter
+  manually shows its address and security code. On the second, open Settings › Account & Devices ›
+  Other computers, type that address and your account, check the code, and sign in.
+  Favorites, ratings, dislikes, play counts and playlists then sync both ways every 10 minutes
+  while both are on the same network (Sync now does it at once). Each computer keeps its own music
+  files, in any folder; songs are matched by title, artist and length. Lyrics, artwork, playlist
+  covers and settings stay on each computer, and music files are not copied.
+- **One data folder for both.** Settings › Advanced › Data Folder can point at a folder on a
+  drive you carry between computers. Each computer keeps its own sign-ins and window places there,
+  but the music must be at the same path on both, and only one computer may have Noctis open at a
+  time (the last one to save wins).
 
 ### Languages
 

@@ -3,10 +3,12 @@ using System.ComponentModel;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
@@ -132,9 +134,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
         // Album Hover Zoom (GitHub #218): Loaded can fire again on re-attach, so re-subscribe.
         tile.PointerEntered -= OnTileHoverEntered;
-        tile.PointerExited -= OnTileHoverExited;
         tile.PointerEntered += OnTileHoverEntered;
-        tile.PointerExited += OnTileHoverExited;
         // A grid row re-used for other albums (TileRow) re-binds its tiles instead of loading them.
         tile.DataContextChanged -= OnAlbumTileRebound;
         tile.DataContextChanged += OnAlbumTileRebound;
@@ -147,40 +147,48 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     }
 
     // ── Album Hover Zoom (GitHub #218) ──
-    // The hovered tile's own grow + glow is pure style (Styles.axaml, .hover-zoom). The tiles
-    // around it are found here: realized tiles whose centres sit within ~1.6 tile widths of
-    // the hovered one's (its row and the rows above and below), tagged .hover-neighbor so the
-    // style steps them back. Only realized tiles exist, so this walks a few dozen.
+    // The hovered tile's grow + glow is pure style (Styles.axaml, .hover-zoom); no other tile
+    // moves (GitHub #250). Two things the style cannot do are done here when a tile is entered:
+    // - Lift it above its neighbours. Its .hover-zoom ZIndex sits on the Button, but in the row
+    //   grid each Button is the only child of a TileRow ContentPresenter, so that ZIndex sorted
+    //   nothing: the tiles to its right and the row below drew over its grown edge and glow.
+    //   The presenter and the row's ListBoxItem are lifted instead (left up until the next
+    //   hover, so the shrink back also plays on top).
+    // - Grow away from the grid's edges. Grown from its centre, a tile in the first row or an
+    //   edge column ran past the scroller's viewport and was clipped (5px of cover at 2400px).
 
-    private const string HoverNeighborClass = "hover-neighbor";
-    private readonly List<Button> _hoverNeighbors = new();
+    private const double HoverZoomScale = 1.04;
+    private readonly List<Visual> _hoverLifted = new();
 
     private void OnTileHoverEntered(object? sender, PointerEventArgs e)
     {
-        ClearHoverNeighbors();
-        if (_vm?.IsHoverZoom != true || sender is not Button hovered) return;
-        var reach = hovered.Bounds.Width * 1.6;
-        var centre = hovered.TranslatePoint(new Point(hovered.Bounds.Width / 2, hovered.Bounds.Height / 2), this);
-        if (centre is not { } c) return;
-        foreach (var tile in CollectAlbumTiles())
-        {
-            if (ReferenceEquals(tile, hovered) || !tile.IsEffectivelyVisible) continue;
-            var other = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height / 2), this);
-            if (other is not { } o) continue;
-            if (Math.Abs(o.X - c.X) <= reach && Math.Abs(o.Y - c.Y) <= Math.Max(reach, hovered.Bounds.Height * 1.2))
-            {
-                tile.Classes.Add(HoverNeighborClass);
-                _hoverNeighbors.Add(tile);
-            }
-        }
+        if (_vm?.IsHoverZoom != true || sender is not Button tile) return;
+        LiftHoveredTile(tile);
+        AnchorHoveredTile(tile);
     }
 
-    private void OnTileHoverExited(object? sender, PointerEventArgs e) => ClearHoverNeighbors();
-
-    private void ClearHoverNeighbors()
+    private void LiftHoveredTile(Button tile)
     {
-        foreach (var tile in _hoverNeighbors) tile.Classes.Remove(HoverNeighborClass);
-        _hoverNeighbors.Clear();
+        foreach (var v in _hoverLifted) v.ZIndex = 0;
+        _hoverLifted.Clear();
+        if (tile.GetVisualParent() is ContentPresenter { Parent: TileRow } presenter)
+            _hoverLifted.Add(presenter);
+        if (tile.FindAncestorOfType<ListBoxItem>() is { } row)
+            _hoverLifted.Add(row);
+        foreach (var v in _hoverLifted) v.ZIndex = 1;
+    }
+
+    private void AnchorHoveredTile(Button tile)
+    {
+        if (ActiveScroller()?.Content is not Visual content || tile.GetVisualParent() is not Visual parent) return;
+        if (parent.TranslatePoint(tile.Bounds.Position, content) is not { } at) return;
+        var growX = tile.Bounds.Width * (HoverZoomScale - 1) / 2;
+        var growY = tile.Bounds.Height * (HoverZoomScale - 1) / 2;
+        var left = at.X < growX;
+        var right = content.Bounds.Width - (at.X + tile.Bounds.Width) < growX;
+        var x = left == right ? 0.5 : left ? 0 : 1;
+        var y = at.Y < growY ? 0 : 0.5;
+        tile.RenderTransformOrigin = new RelativePoint(x, y, RelativeUnit.Relative);
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
@@ -615,7 +623,6 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
         // The press was on a tile's padding: the drag is the band's, not a file drag.
         if (press.PaddingTile != null) DragFileBehavior.CancelGesture(press.PaddingTile);
-        ClearHoverNeighbors();
 
         var band = new BandState
         {

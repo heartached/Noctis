@@ -132,7 +132,7 @@ public partial class SettingsViewModel : ViewModelBase
     public string SelectedTabTitle => Loc.T(TabLabelKey(SelectedSettingsTab));
 
     /// <summary>One line under the page title. Resx key: Settings.Desc.&lt;tab without spaces/ampersand&gt;.</summary>
-    public string SelectedTabDescription => Loc.T("Settings.Desc." + TabResxSuffix(SelectedSettingsTab));
+    public string SelectedTabDescription => Loc.Platform("Settings.Desc." + TabResxSuffix(SelectedSettingsTab));
 
     /// <summary>Text in the rail's search box. The view applies it to the card index.</summary>
     [ObservableProperty] private string _searchQuery = string.Empty;
@@ -182,14 +182,6 @@ public partial class SettingsViewModel : ViewModelBase
         PlatformHelper.OpenFolder(Plugins.PluginsDirectory);
     }
 
-    [RelayCommand]
-    private void ReloadPlugins()
-    {
-        if (Plugins is null) return;
-        Plugins.LoadAll();
-        ShowPluginsReloaded();
-    }
-
     private void ShowPluginsReloaded()
     {
         if (Plugins is null) return;
@@ -199,11 +191,11 @@ public partial class SettingsViewModel : ViewModelBase
             n == 0 ? Loc.T("Plugins.ReloadedNone") : n == 1 ? Loc.T("Plugins.ReloadedOne") : Loc.T("Plugins.ReloadedMany", n));
     }
 
-    /// <summary>The Plugins header's one refresh button: reads the plugins folder again and fetches
-    /// the list again.</summary>
     /// <summary>True while the refresh button works; the button shows a spinner instead of its icon.</summary>
     [ObservableProperty] private bool _isRefreshingPlugins;
 
+    /// <summary>The Plugins header's one refresh button: reads the plugins folder again and fetches
+    /// the list again.</summary>
     [RelayCommand]
     private async Task RefreshPlugins()
     {
@@ -534,6 +526,9 @@ public partial class SettingsViewModel : ViewModelBase
         {
             RefreshQuickPlaylistOptions();
             OnPropertyChanged(nameof(ShowTrashFolderMissingHint));
+            // Windows' Transparency effects can be switched while Noctis runs; the note under
+            // Frosted Background was only re-read when the switch itself moved.
+            OnPropertyChanged(nameof(MiniPlayerFrostUnavailable));
         }
     }
 
@@ -646,13 +641,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     // ── Appearance ──
-    // Five theme buttons (Gray is the default) plus System (auto-pick Gray vs Light from OS).
-    // Exactly one of these is true at any time so the Settings UI can highlight the active card.
+    // Six theme buttons (Gray is the default). Exactly one of these is true at any time so
+    // the Settings UI can highlight the active card (none while a custom or pack theme is on).
 
     [ObservableProperty] private bool _isGrayTheme = true;
     [ObservableProperty] private bool _isDarkTheme;
     [ObservableProperty] private bool _isLightTheme;
-    [ObservableProperty] private bool _isSystemTheme;
     [ObservableProperty] private bool _isMidnightTheme;
     [ObservableProperty] private bool _isInkTheme;
     [ObservableProperty] private bool _isSmokeTheme;
@@ -741,8 +735,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     // ── Audio Playback ──
 
-    // Back-compat mirror only: no UI binds this; SongTransitions* are the source of truth.
-    [ObservableProperty] private bool _crossfadeEnabled;
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsCrossfade3s))]
     [NotifyPropertyChangedFor(nameof(IsCrossfade6s))]
@@ -1139,7 +1131,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _albumPageTintWholeWindow;
 
     /// <summary>Persisted name of the now-playing artwork costume ("Cover", "CompactDisc",
-    /// "Vinyl", "Cassette"). The Appearance picker binds the Is* flags below, the same
+    /// "Vinyl", "Cassette"). The Player page picker binds the Is* flags below, the same
     /// shape as the Song Transitions style cards.</summary>
     [ObservableProperty] private string _nowPlayingArtworkStyle = ArtworkMediums.DefaultSetting;
 
@@ -1155,7 +1147,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsArtworkStyleVinyl { get => NowPlayingArtworkMedium == ArtworkMedium.Vinyl; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Vinyl); } }
     public bool IsArtworkStyleCassette { get => NowPlayingArtworkMedium == ArtworkMedium.Cassette; set { if (value) NowPlayingArtworkStyle = nameof(ArtworkMedium.Cassette); } }
 
-    /// <summary>Mini player design picker (Appearance): the classic resizable card or one
+    /// <summary>Mini player design picker (Player page): the classic resizable card or one
     /// of the fixed community designs. The mini player VM follows this live.</summary>
     [ObservableProperty] private string _miniPlayerStyle = MiniPlayerStyles.DefaultSetting;
 
@@ -1165,7 +1157,7 @@ public partial class SettingsViewModel : ViewModelBase
     public bool IsMiniStylePill { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Pill; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Pill); } }
     public bool IsMiniStyleSleeve { get => MiniPlayerStyleMode == Models.MiniPlayerStyle.Sleeve; set { if (value) MiniPlayerStyle = nameof(Models.MiniPlayerStyle.Sleeve); } }
 
-    /// <summary>Player Island Buttons (Appearance): the podcast/audiobook extras on the bar.
+    /// <summary>Player Island Buttons (Player page): the podcast/audiobook extras on the bar.
     /// Mirrored onto PlayerViewModel by ApplyPlayerSettings, like the marquee flags.</summary>
     [ObservableProperty] private bool _playbackBarShowSkipButtons;
     [ObservableProperty] private int _playbackBarSkipSeconds = 15;
@@ -1187,24 +1179,58 @@ public partial class SettingsViewModel : ViewModelBase
         get => _artworkClickOptions;
         private set => SetProperty(ref _artworkClickOptions, value);
     }
-    private IReadOnlyList<LyricsChoiceOption> _artworkClickOptions = BuildArtworkClickOptions();
+    private IReadOnlyList<LyricsChoiceOption> _artworkClickOptions = BuildArtworkClickOptions(miniPlayerEnabled: true);
 
-    private static IReadOnlyList<LyricsChoiceOption> BuildArtworkClickOptions() =>
+    /// <summary>The Mini Player choice is left out while the feature is switched off in
+    /// Plugins › Built-in Features.</summary>
+    private static IReadOnlyList<LyricsChoiceOption> BuildArtworkClickOptions(bool miniPlayerEnabled) =>
         Enum.GetValues<IslandArtworkClick>()
+            .Where(a => miniPlayerEnabled || a != IslandArtworkClick.MiniPlayer)
             .Select(a => new LyricsChoiceOption(a.ToString(), Loc.T($"Settings.ArtworkClick.{a}")))
             .ToList();
+
+    /// <summary>
+    /// Rebuilds the picker's list (the Mini Player feature switched, the language changed) and
+    /// re-reads the selection. While the list is swapped the picker hands back the option it
+    /// was showing, and that is no pick: with the feature just switched back on it was the
+    /// stand-in Lyrics Page, which then replaced the user's stored Mini Player for good.
+    /// </summary>
+    private void RebuildArtworkClickOptions()
+    {
+        _rebuildingArtworkClickOptions = true;
+        try
+        {
+            ArtworkClickOptions = BuildArtworkClickOptions(MiniPlayerEnabled);
+            // The picker also keeps showing that option, and a selection it was already sent
+            // is not applied a second time: empty it first (the getter reads null while the
+            // list is rebuilt), then send the real one below.
+            OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        }
+        finally { _rebuildingArtworkClickOptions = false; }
+        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+    }
+    private bool _rebuildingArtworkClickOptions;
+
+    /// <summary>What a click on the island's artwork does now: the stored choice, with Mini
+    /// Player read as the lyrics page while that feature is off (the stored choice is kept).</summary>
+    private IslandArtworkClick EffectiveArtworkClick =>
+        IslandArtworkClicks.Parse(PlaybackBarArtworkClick).Effective(MiniPlayerEnabled);
 
     public LyricsChoiceOption? SelectedArtworkClickOption
     {
         get
         {
-            var current = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+            if (_rebuildingArtworkClickOptions) return null; // see RebuildArtworkClickOptions
+            var current = EffectiveArtworkClick.ToString();
             return ArtworkClickOptions.FirstOrDefault(o => o.Value == current);
         }
         set
         {
             // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
-            if (value is null) return;
+            if (value is null || _rebuildingArtworkClickOptions) return;
+            // Echoing the shown option back is no pick: a stored Mini Player shown as the
+            // lyrics page (feature off) stays stored for when the feature comes back.
+            if (value.Value == EffectiveArtworkClick.ToString()) return;
             PlaybackBarArtworkClick = value.Value;
         }
     }
@@ -1212,7 +1238,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>The lyrics button is hidden and the artwork doesn't open lyrics either: the
     /// Settings row says where the lyrics page still opens from.</summary>
     public bool ShowArtworkLyricsHint =>
-        !PlaybackBarShowLyrics && !IslandArtworkClicks.Parse(PlaybackBarArtworkClick).OpensLyrics();
+        !PlaybackBarShowLyrics && !EffectiveArtworkClick.OpensLyrics();
 
     /// <summary>GitHub #186: the island's Move to Trash button (off by default).</summary>
     [ObservableProperty] private bool _playbackBarShowTrash;
@@ -1349,7 +1375,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Persisted name of the Cover Flow layout ("Carousel", "Cascade", "Collage").
     /// Two-way with CoverFlowViewModel.Layout via MainWindowViewModel, so the top-bar pill
-    /// segment and the Appearance picker stay in step.</summary>
+    /// segment and the Player page picker stay in step.</summary>
     [ObservableProperty] private string _coverFlowLayout = CoverFlowLayouts.DefaultSetting;
 
     public CoverFlowLayout CoverFlowLayoutMode
@@ -1366,14 +1392,14 @@ public partial class SettingsViewModel : ViewModelBase
     /// automatically; see <see cref="AppSettings.AllowExplicitContent"/>.</summary>
     [ObservableProperty] private bool _allowExplicitContent = true;
     [ObservableProperty] private bool _lyricsFlowingLightEnabled;
-    /// <summary>Live spectrum visualizer behind the lyrics page (Appearance tab).</summary>
+    /// <summary>Live spectrum visualizer behind the lyrics page (Lyrics tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerEnabled;
     /// <summary>Visualizer look, stored as a <see cref="VisualizerStyle"/> name; the picker
     /// binds the Is* flags below like the Now Playing Artwork cards.</summary>
     [ObservableProperty] private string _lyricsVisualizerStyle = VisualizerStyles.DefaultSetting;
-    /// <summary>Visualizer bars take the artwork's colour (Appearance tab).</summary>
+    /// <summary>Visualizer bars take the artwork's colour (Lyrics tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerArtworkColor = true;
-    /// <summary>GitHub #205: Full spectrum, the analyser-weighted visualizer (Appearance tab).</summary>
+    /// <summary>GitHub #205: Full spectrum, the analyser-weighted visualizer (Lyrics tab).</summary>
     [ObservableProperty] private bool _lyricsVisualizerFullSpectrum;
 
     /// <summary>One entry of the Language picker: "" = follow the OS, else a shipped culture.</summary>
@@ -1444,16 +1470,17 @@ public partial class SettingsViewModel : ViewModelBase
         foreach (var group in SectionGroups) group.Relabel();
         RelabelSidebarPages();
         RefreshFlowingStyleOptions();
+        RefreshLyricsRendererOptions(); // "Noctis", "<name> (plugin off)"
         PlayCountThresholdOptions = BuildPlayCountThresholdOptions();
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
         MissingSongsOptions = BuildMissingSongsOptions();
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
+        RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
-        ArtworkClickOptions = BuildArtworkClickOptions();
-        OnPropertyChanged(nameof(SelectedArtworkClickOption));
+        RebuildArtworkClickOptions();
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
         DiscordStatusDisplayOptions = BuildDiscordStatusDisplayOptions();
@@ -1691,7 +1718,8 @@ public partial class SettingsViewModel : ViewModelBase
     // ── Songs page sort / filter, Albums grid sort ──
     //
     // Persisted view state rather than user-facing Settings toggles: nothing in
-    // SettingsView binds these. They live here because SettingsViewModel owns the
+    // SettingsView binds these, except the Player page's Albums View card (the album
+    // view, carousel case and glow, see IsAlbumViewGrid below). They live here because SettingsViewModel owns the
     // AppSettings round-trip, and the Songs/Albums view models read and write them
     // through it — the same route the column flags already take.
 
@@ -1855,12 +1883,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Four lines of four-digit groups, exactly as the phone shows it (SecurityCode), so
     /// the two read line by line without a wall of colons.</summary>
     public string NoctisServerFingerprintDisplay => SecurityCode.Format(NoctisServerFingerprint);
-    [ObservableProperty] private Avalonia.Media.Imaging.Bitmap? _noctisServerQr;
     [ObservableProperty] private bool _noctisServerStartFailed;
     [ObservableProperty] private string _noctisServerError = string.Empty;
-    [ObservableProperty] private bool _noctisServerClientSeen;
-    [ObservableProperty] private string _noctisServerLastClient = string.Empty;
-    private int _noctisServerClientGeneration;
     [ObservableProperty] private bool _noctisServerUrlCopied;
 
     public ObservableCollection<ServerUser> ServerUsersList { get; } = new();
@@ -1879,8 +1903,6 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>The panel's close (CollapsibleContent's Glide close, 240 ms) plus a margin.</summary>
     internal static TimeSpan IssuedApiKeyClearDelay { get; set; } = TimeSpan.FromMilliseconds(320);
-
-    public bool HasServerUsers => ServerUsersList.Count > 0;
 
     /// <summary>The key shows as dots until the eye is pressed: it is a password, and Settings
     /// is on screen during calls and screen shares. Each new key starts hidden again.</summary>
@@ -1963,9 +1985,6 @@ public partial class SettingsViewModel : ViewModelBase
                 NoctisServerUrl = string.Empty;
                 NoctisServerStartFailed = false;
                 NoctisServerError = string.Empty;
-                _noctisServerClientGeneration++;
-                NoctisServerClientSeen = false;
-                SetNoctisServerQr(null);
                 return;
             }
 
@@ -2009,8 +2028,9 @@ public partial class SettingsViewModel : ViewModelBase
                     DeviceSignInEnabled = AccountFeatures.Enabled,
                     // A phone asking for a song's lyrics also gets what the lyrics page fetched online.
                     LyricsCacheDirectory = LyricsViewModel.LyricsCacheDir,
+                    // The signed-in phone's remote for this window's player (Account page › Remote).
+                    Remote = _player is { } player ? new PlayerServerRemote(player) : null,
                 };
-                _noctisServer.ClientAuthenticated += (_, user) => Dispatcher.UIThread.Post(() => OnNoctisServerClient(user));
                 _noctisServer.DevicesChanged += (_, _) => Dispatcher.UIThread.Post(RefreshPhoneDevicesInBackground);
                 _noctisServer.PairingCodeUsed += (_, _) => Dispatcher.UIThread.Post(OnPairingCodeUsed);
             }
@@ -2035,7 +2055,6 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerUrl = $"https://{ip}:{server.Port}";
             NoctisServerStartFailed = false;
             NoctisServerError = string.Empty;
-            SetNoctisServerQr(QrCodeBitmap.TryRender(NoctisServerUrl));
             // A restart (new port) killed the old code; the panel open shows one for this run.
             RefreshPairingQr();
         }
@@ -2045,7 +2064,6 @@ public partial class SettingsViewModel : ViewModelBase
             NoctisServerStartFailed = true;
             NoctisServerError = ex.Message;
             NoctisServerUrl = string.Empty;
-            SetNoctisServerQr(null);
             DebugLogger.Error(DebugLogger.Category.Error, "Server", $"start failed: {ex.Message}");
         }
     }
@@ -2064,31 +2082,12 @@ public partial class SettingsViewModel : ViewModelBase
         finally { _noctisServerGate.Release(); }
     }
 
-    private void OnNoctisServerClient(string user)
-    {
-        NoctisServerClientSeen = true;
-        NoctisServerLastClient = user;
-        var generation = ++_noctisServerClientGeneration;
-        _ = Task.Delay(WebRemotePhoneQuietMs).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
-        {
-            if (generation == _noctisServerClientGeneration) NoctisServerClientSeen = false;
-        }));
-    }
-
-    private void SetNoctisServerQr(Avalonia.Media.Imaging.Bitmap? qr)
-    {
-        var old = NoctisServerQr;
-        NoctisServerQr = qr;
-        old?.Dispose();
-    }
-
     private void RefreshServerUsers(bool phonesInBackground = false)
     {
         try
         {
             ServerUsersList.Clear();
             foreach (var u in ServerUsers.List()) ServerUsersList.Add(u);
-            OnPropertyChanged(nameof(HasServerUsers));
             RaiseAccountDerivedProperties();
         }
         catch (Exception ex) { ShowServerUserError(ex.Message); }
@@ -2496,12 +2495,20 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Opacity of the track box inside the player bar. Mirrors
     /// <see cref="AppSettings.PlaybackBarTrackBoxOpacity"/>.</summary>
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
-    /// <summary>Player island width in DIPs (GitHub #50): the Appearance slider and the
+    /// <summary>Player island width in DIPs (GitHub #50): the Player page slider and the
     /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarDefaultWidth = 536;
-    public const double PlaybackBarMinWidth = 340;
-    public const double PlaybackBarMaxWidth = 1400;
+    public const double PlaybackBarMinWidth = AppSettings.PlaybackBarMinWidth;
+    public const double PlaybackBarMaxWidth = AppSettings.PlaybackBarMaxWidth;
+
+    /// <summary>The Player page slider's right end: as wide as the grip drag can take the
+    /// island (its host width, <see cref="PlayerViewModel.IslandAvailableWidth"/>), and never
+    /// below the current width, so a wider stored bar reads as itself and touching the slider
+    /// does not cut it down.</summary>
+    public double PlaybackBarIslandSliderMaximum => Math.Max(
+        _player is { IslandAvailableWidth: > 0 } p ? Math.Min(p.IslandAvailableWidth, PlaybackBarMaxWidth) : PlaybackBarMaxWidth,
+        PlaybackBarIslandWidth);
     // True while a grip drag pushes its width into the slider property, so the
     // property handler doesn't turn around and re-persist the same value.
     private bool _syncingPlaybackBarWidth;
@@ -2936,6 +2943,16 @@ public partial class SettingsViewModel : ViewModelBase
     /// while it's active. Drives the Song Transitions card's enabled state.</summary>
     public bool CanUseSongTransitions => !ExclusiveAudioEnabled;
 
+    /// <summary>The transitions the player runs: the switch, unless Exclusive Mode greys it
+    /// out. The switch kept its value under the greyed card and still armed early AutoMix /
+    /// crossfade advances that the single exclusive stream cannot fade, and kept the
+    /// gapless pre-roll (which only runs with transitions off) from ever running.</summary>
+    private bool SongTransitionsActive => SongTransitionsEnabled && CanUseSongTransitions;
+
+    /// <summary>Whether a plain crossfade runs now (the player's signal path reads it). Was a
+    /// stored mirror set only at load and reset, so the signal path showed the launch value.</summary>
+    public bool CrossfadeEnabled => SongTransitionsActive && IsCrossfadeStyle;
+
     /// <summary>Grays the Song Transitions card while it's unavailable (exclusive on).</summary>
     public double SongTransitionsOpacity => ExclusiveAudioEnabled ? 0.5 : 1.0;
     /// <summary>Live output-path status from the player ("Exclusive output active: 44.1 kHz / 24-bit",
@@ -3019,7 +3036,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _lastFmScrobblingEnabled;
     [ObservableProperty] private string _lastFmUsername = "";
     [ObservableProperty] private bool _isLastFmConnected;
-    [ObservableProperty] private string _lastFmStatusText = Loc.T("Settings.NotConnected");
+    /// <summary>Why Connect could not start a sign-in (no sign-in page, no browser), under the
+    /// card's title; empty = hidden. The card has no status line otherwise.</summary>
+    [ObservableProperty] private string _lastFmError = "";
     /// <summary>GitHub #177: Home's Last.fm mixes and Discover; see <see cref="AppSettings.LastFmTasteEnabled"/>.</summary>
     [ObservableProperty] private bool _lastFmTasteEnabled = true;
     /// <summary>GitHub #222: the Statistics page's source; see <see cref="AppSettings.StatisticsSource"/>.</summary>
@@ -3032,7 +3051,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ListenBrainzServerDisplay))]
     private bool _isListenBrainzConnected;
-    [ObservableProperty] private string _listenBrainzStatusText = Loc.T("Settings.NotConnected");
     [ObservableProperty] private string _listenBrainzError = "";
     /// <summary>Typed API URL for a self-hosted ListenBrainz-compatible server; blank = official.</summary>
     [ObservableProperty]
@@ -3172,10 +3190,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int _losslessCount;
     [ObservableProperty] private int _lossyCount;
     [ObservableProperty] private int _hiResCount;
-    [ObservableProperty] private double _losslessPercentage;
-    [ObservableProperty] private string _losslessPercentageText = "0%";
-    [ObservableProperty] private string _lossyPercentageText = "0%";
-    [ObservableProperty] private string _hiResPercentageText = "0%";
 
     // ── Storage ──
 
@@ -3472,12 +3486,22 @@ public partial class SettingsViewModel : ViewModelBase
         DebugLog.Changed += () =>
         {
             if (Interlocked.Exchange(ref _devLogRefreshQueued, 1) == 1) return;
-            Dispatcher.UIThread.Post(() =>
+            try
             {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Volatile.Write(ref _devLogRefreshQueued, 0);
+                    if (DeveloperMode)
+                        DevLogText = ComposeDevLogText();
+                }, DispatcherPriority.Background);
+            }
+            catch
+            {
+                // Nothing was queued: let the next write try again instead of leaving the
+                // log view stuck. (DebugLog contains the exception itself.)
                 Volatile.Write(ref _devLogRefreshQueued, 0);
-                if (DeveloperMode)
-                    DevLogText = ComposeDevLogText();
-            }, DispatcherPriority.Background);
+                throw;
+            }
         };
 
         if (Avalonia.Application.Current is Noctis.App app)
@@ -3537,7 +3561,15 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetPlayer(PlayerViewModel player)
     {
         _player = player;
+        // The island's drag limit sizes the Player page width slider.
+        player.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(PlayerViewModel.IslandAvailableWidth))
+                OnPropertyChanged(nameof(PlaybackBarIslandSliderMaximum));
+        };
         ApplyPlayerSettings();
+        // A server started before the player was handed over gets its remote now.
+        if (_noctisServer is { Remote: null } server) server.Remote = new PlayerServerRemote(player);
     }
 
     /// <summary>Sets the Discord presence service reference.</summary>
@@ -3556,7 +3588,6 @@ public partial class SettingsViewModel : ViewModelBase
         {
             if (!IsLastFmConnected || LastFmUsername == name) return;
             LastFmUsername = name;
-            LastFmStatusText = Loc.T("Settings.ConnectedAs", name);
             _ = SaveAsync();
         });
     }
@@ -3700,7 +3731,6 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistShowNewBadge = _settings.PlaylistShowNewBadge;
             PlaylistShowAddedColumn = _settings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = _settings.PlaylistShowFavoriteColumn;
-            CrossfadeEnabled = _settings.CrossfadeEnabled;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SongTransitionsEnabled = _settings.SongTransitionsEnabled;
             TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
@@ -4002,7 +4032,6 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _lastFm.Configure(_settings.LastFmSessionKey);
                 IsLastFmConnected = true;
-                LastFmStatusText = Loc.T("Settings.ConnectedAs", _settings.LastFmUsername);
             }
 
             // ListenBrainz
@@ -4015,9 +4044,6 @@ public partial class SettingsViewModel : ViewModelBase
             {
                 _listenBrainz.Configure(_settings.ListenBrainzToken);
                 IsListenBrainzConnected = !string.IsNullOrEmpty(_settings.ListenBrainzUsername);
-                LastFmStatusText = LastFmStatusText; // no-op, kept for symmetry
-                if (IsListenBrainzConnected)
-                    ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", _settings.ListenBrainzUsername);
             }
             RefreshScrobbleNotes();
 
@@ -4266,7 +4292,7 @@ public partial class SettingsViewModel : ViewModelBase
         else if (IsMidnightTheme) _settings.Theme = "Midnight";
         else if (IsInkTheme) _settings.Theme = "Ink";
         else if (IsSmokeTheme) _settings.Theme = "Smoke";
-        else _settings.Theme = "System";
+        else _settings.Theme = "Gray";
 
         if (!string.IsNullOrEmpty(ActiveCustomThemeId)) _settings.Theme = "Custom:" + ActiveCustomThemeId;
         else if (!string.IsNullOrEmpty(ActivePackThemeKey)) _settings.Theme = App.PackThemePrefix + ActivePackThemeKey;
@@ -4629,7 +4655,7 @@ public partial class SettingsViewModel : ViewModelBase
     public void SetPlaybackBarWidth(double width)
     {
         _playbackBarWidth = _settings.PlaybackBarWidth = width;
-        // Keep the Appearance slider in step with a grip drag.
+        // Keep the Player page slider in step with a grip drag.
         _syncingPlaybackBarWidth = true;
         try { PlaybackBarIslandWidth = width; }
         finally { _syncingPlaybackBarWidth = false; }
@@ -4648,6 +4674,9 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarIslandWidth = clamped;
             return;
         }
+        // Raised here, before the width's own change notice: a slider whose Maximum is
+        // still the old, smaller end would otherwise clamp the new width as it arrives.
+        OnPropertyChanged(nameof(PlaybackBarIslandSliderMaximum));
         if (_suspendSettingPersistence || _syncingPlaybackBarWidth) return;
         _playbackBarWidth = _settings.PlaybackBarWidth = clamped;
         if (_player != null) _player.PlaybackBarIslandWidth = clamped;
@@ -4708,7 +4737,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetNormalization(SoundCheckEnabled);
         _audioPlayer?.SetPlayPauseFade(PlayPauseFadeEnabled, (int)Math.Round(PlayPauseFadeMs));
-        _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetCrossfade(SongTransitionsActive && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
         ApplyAutoMixToPlayer();
         _audioPlayer?.SetGapless(GaplessPlaybackEnabled);
         // Before SetExclusiveMode: the exclusive rebuild must open the pinned endpoint.
@@ -4726,7 +4755,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void ApplyAutoMixToPlayer()
     {
         if (_player == null) return;
-        _player.AutoMixTransitionMode = MapTransitionMode(SongTransitionsEnabled, TransitionStyle);
+        _player.AutoMixTransitionMode = MapTransitionMode(SongTransitionsActive, TransitionStyle);
         _player.AutoMixStrength = SongTransitionStrength switch
         {
             "Subtle" => Models.AutoMixStrength.Subtle,
@@ -4763,13 +4792,15 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandShowFavorite = PlaybackBarShowFavorite;
         _player.IslandShowMiniPlayer = PlaybackBarShowMiniPlayer && MiniPlayerEnabled;
         _player.IslandShowLyricsButton = PlaybackBarShowLyrics;
-        _player.IslandArtworkClick = IslandArtworkClicks.Parse(PlaybackBarArtworkClick).ToString();
+        _player.IslandArtworkClick = EffectiveArtworkClick.ToString();
         _player.IslandShowTrash = PlaybackBarShowTrash;
         _player.IslandTrashFolder = PlaybackBarTrashFolder ?? string.Empty;
         _player.IslandShowQuickPlaylist = PlaybackBarShowQuickPlaylist;
         _player.IslandShowChapters = PlaybackBarShowChapters;
         _player.IslandShowStop = PlaybackBarShowStop;
-        _player.IslandStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode;
+        // Exclusive Mode is Windows-only and so is this switch's row: a settings file from a
+        // Windows install must not hide the Stop button for good on macOS / Linux.
+        _player.IslandStopOnlyInExclusiveMode = PlaybackBarStopOnlyInExclusiveMode && IsExclusiveAudioSupported;
         _player.ExclusiveModeEnabled = ExclusiveAudioEnabled;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
@@ -4806,6 +4837,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
         _player.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _player.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
+        _player.LyricsPageTintsWindow = AlbumPageTintWholeWindow && AlbumPageTintEnabled;
         _player.LyricsSaveTarget = LyricsSaveTarget;
         _player.LyricsAutoDownload = LyricsAutoDownload;
         _player.LyricsPreferredType = LyricsPreferredType;
@@ -5068,7 +5100,6 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand] private void SetGrayTheme() => ApplyTheme("Gray");
     [RelayCommand] private void SetDarkTheme() => ApplyTheme("Dark");
     [RelayCommand] private void SetLightTheme() => ApplyTheme("Light");
-    [RelayCommand] private void SetSystemTheme() => ApplyTheme("System");
     [RelayCommand] private void SetMidnightTheme() => ApplyTheme("Midnight");
     [RelayCommand] private void SetInkTheme() => ApplyTheme("Ink");
     [RelayCommand] private void SetSmokeTheme() => ApplyTheme("Smoke");
@@ -5295,7 +5326,6 @@ public partial class SettingsViewModel : ViewModelBase
         IsGrayTheme = themeKey == "Gray";
         IsDarkTheme = themeKey == "Dark";
         IsLightTheme = themeKey == "Light";
-        IsSystemTheme = themeKey == "System";
         IsMidnightTheme = themeKey == "Midnight";
         IsInkTheme = themeKey == "Ink";
         IsSmokeTheme = themeKey == "Smoke";
@@ -5303,7 +5333,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (themeKey == "__Custom") return; // custom-theme active: all built-in flags stay false
 
         // Default-safety: if no flag matched, fall back to Gray.
-        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsSystemTheme && !IsMidnightTheme
+        if (!IsGrayTheme && !IsDarkTheme && !IsLightTheme && !IsMidnightTheme
             && !IsInkTheme && !IsSmokeTheme)
             IsGrayTheme = true;
     }
@@ -5318,10 +5348,7 @@ public partial class SettingsViewModel : ViewModelBase
         BaseMode = def.BaseMode,
     };
 
-    /// <summary>
-    /// Returns the actual theme key to apply now. For "System" this resolves to either
-    /// Gray or Light depending on the OS appearance setting.
-    /// </summary>
+    /// <summary>Returns the theme key to apply now.</summary>
     private string ResolveActiveThemeKey()
     {
         if (!string.IsNullOrEmpty(ActiveCustomThemeId)) return "Custom:" + ActiveCustomThemeId;
@@ -5331,24 +5358,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (IsMidnightTheme) return "Midnight";
         if (IsInkTheme) return "Ink";
         if (IsSmokeTheme) return "Smoke";
-        if (IsSystemTheme) return IsSystemDarkMode() ? "Gray" : "Light";
         return "Gray";
-    }
-
-    private static bool IsSystemDarkMode()
-    {
-        return Helpers.PlatformHelper.IsSystemDarkMode();
-    }
-
-    /// <summary>
-    /// Re-applies the theme after an OS light/dark switch. No-op unless the System
-    /// tile is active, so explicit picks and custom themes are never disturbed.
-    /// Does not save: the persisted value stays "System".
-    /// </summary>
-    public void NotifySystemColorsChanged()
-    {
-        if (!IsSystemTheme || !string.IsNullOrEmpty(ActiveCustomThemeId)) return;
-        ThemeChanged?.Invoke(this, ResolveActiveThemeKey());
     }
 
     // ── Property change handlers ──
@@ -5442,11 +5452,18 @@ public partial class SettingsViewModel : ViewModelBase
         _ = CheckForUpdateSilentAsync();
     }
 
-    partial void OnCrossfadeEnabledChanged(bool value)
+    /// <summary>Command palette › Toggle crossfade: Song Transitions on in the Crossfade style,
+    /// or off when that is what plays. It flipped a mirror property nothing read, so the
+    /// command did nothing.</summary>
+    public void ToggleCrossfade()
     {
-        ApplyAudioSettings();
-        ApplyPlayerSettings();
-        _ = SaveAsync();
+        if (SongTransitionsEnabled && IsCrossfadeStyle)
+        {
+            SongTransitionsEnabled = false;
+            return;
+        }
+        IsCrossfadeStyle = true;
+        SongTransitionsEnabled = true;
     }
 
     partial void OnPlayPauseFadeEnabledChanged(bool value)
@@ -5546,7 +5563,7 @@ public partial class SettingsViewModel : ViewModelBase
 
         // Slider-driven: only the crossfade length moved. The whole ApplyAudioSettings per drag
         // sample also rebuilt the EQ curve and re-applied it and ReplayGain (10-18).
-        _audioPlayer?.SetCrossfade(SongTransitionsEnabled && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
+        _audioPlayer?.SetCrossfade(SongTransitionsActive && IsCrossfadeStyle, (int)Math.Round(CrossfadeDuration));
         QueueSettingsSave();
     }
 
@@ -5567,6 +5584,10 @@ public partial class SettingsViewModel : ViewModelBase
     {
         _audioPlayer?.SetExclusiveMode(value);
         if (_player != null) _player.ExclusiveModeEnabled = value; // the island's Stop button
+        // Transitions follow (SongTransitionsActive): off while exclusive, back on after.
+        _audioPlayer?.SetCrossfade(CrossfadeEnabled, (int)Math.Round(CrossfadeDuration));
+        ApplyAutoMixToPlayer();
+        _player?.RefreshSignalPath();
         if (!value) ExclusiveAudioStatus = "";
         RefreshChannelMixAvailability();
         _ = SaveAsync();
@@ -6092,7 +6113,7 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>"Artist credits updated on 1 track." / "… on 12 tracks." Internal for tests.</summary>
     internal static string ArtistCreditsUpdatedText(int changed) => changed == 1
         ? Loc.T("Settings.ArtistCreditsUpdatedOne")
-        : Loc.T("Settings.ArtistCreditsUpdated", changed);
+        : Loc.Plural("Settings.ArtistCreditsUpdated", changed);
 
     partial void OnTrackTitleMarqueeEnabledChanged(bool value)
     {
@@ -6161,6 +6182,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumPageTintEnabledChanged(bool value)
     {
         // No Apply* step: AlbumDetailViewModel subscribes to this VM's PropertyChanged.
+        if (_player != null) _player.LyricsPageTintsWindow = AlbumPageTintWholeWindow && AlbumPageTintEnabled;
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -6180,6 +6202,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnAlbumPageTintWholeWindowChanged(bool value)
     {
         // MainWindowViewModel watches this VM and shows or hides the window tint.
+        if (_player != null) _player.LyricsPageTintsWindow = AlbumPageTintWholeWindow && AlbumPageTintEnabled;
         if (_settingsLoaded) _ = SaveAsync();
     }
 
@@ -7221,11 +7244,11 @@ public partial class SettingsViewModel : ViewModelBase
         var cts = new CancellationTokenSource();
         _lastFmAuthCts = cts;
 
-        LastFmStatusText = Loc.T("Settings.OpeningBrowser");
+        LastFmError = "";
         var authUrl = await _lastFm.GetAuthUrlAsync();
         if (string.IsNullOrEmpty(authUrl))
         {
-            LastFmStatusText = Loc.T("Settings.LastFmAuthUrlFailed");
+            LastFmError = Loc.T("Settings.LastFmAuthUrlFailed");
             return;
         }
 
@@ -7235,11 +7258,10 @@ public partial class SettingsViewModel : ViewModelBase
         }
         catch
         {
-            LastFmStatusText = Loc.T("Settings.OpenBrowserFailed");
+            LastFmError = Loc.T("Settings.OpenBrowserFailed");
             return;
         }
 
-        LastFmStatusText = Loc.T("Settings.WaitingForAuth");
         _ = PollLastFmAuthAsync(cts);
     }
 
@@ -7250,7 +7272,6 @@ public partial class SettingsViewModel : ViewModelBase
         try
         {
             var deadline = DateTime.UtcNow.AddMinutes(2);
-            var failedAttempts = 0;
             while (DateTime.UtcNow < deadline && !token.IsCancellationRequested)
             {
                 var success = await _lastFm.CompleteAuthAsync();
@@ -7259,7 +7280,6 @@ public partial class SettingsViewModel : ViewModelBase
                     IsLastFmConnected = true;
                     LastFmScrobblingEnabled = true;
                     LastFmUsername = _lastFm.Username ?? "";
-                    LastFmStatusText = Loc.T("Settings.ConnectedAs", LastFmUsername);
                     _settings.LastFmSessionKey = _lastFm.GetSessionKey() ?? "";
                     await SaveAsync();
                     // GitHub #197: plays that waited for this sign-in go out now.
@@ -7268,13 +7288,6 @@ public partial class SettingsViewModel : ViewModelBase
                     _ = SyncPlayCountsInBackgroundAsync(PlayCountImportSource.LastFm, "connected");
                     return;
                 }
-
-                failedAttempts++;
-
-                // Root cause fix: status was left in "Waiting..." with no early reset path.
-                // Reset to baseline quickly if authorization isn't completed.
-                if (!IsLastFmConnected && failedAttempts >= 2)
-                    LastFmStatusText = Loc.T("Settings.NotConnected");
 
                 try
                 {
@@ -7285,9 +7298,6 @@ public partial class SettingsViewModel : ViewModelBase
                     return;
                 }
             }
-
-            if (!IsLastFmConnected && !token.IsCancellationRequested)
-                LastFmStatusText = Loc.T("Settings.NotConnected");
         }
         finally
         {
@@ -7305,8 +7315,11 @@ public partial class SettingsViewModel : ViewModelBase
         // GitHub #197: signed out on purpose, so plays waiting for Last.fm are no longer owed to it.
         _scrobbleQueue?.Forget(ScrobbleService.LastFm);
         IsLastFmConnected = false;
+        // As ListenBrainz's Log Out: left on, the hidden switch kept Plugins › Built-in Features ›
+        // Scrobbling reading on with no account. Connecting turns it on again.
+        LastFmScrobblingEnabled = false;
         LastFmUsername = "";
-        LastFmStatusText = Loc.T("Settings.NotConnected");
+        LastFmError = "";
         _ = SaveAsync();
         // The account's charts behind Home's Last.fm mixes (GitHub #177) go with it.
         _ = App.Services?.GetService<LastFmTasteService>()?.ClearAsync();
@@ -7343,7 +7356,6 @@ public partial class SettingsViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(ListenBrainzToken))
         {
             ListenBrainzError = Loc.T("Settings.TokenRequired");
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             return;
         }
 
@@ -7352,14 +7364,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (apiUrl == null)
         {
             ListenBrainzError = Loc.T("Settings.ListenBrainzUrlInvalid");
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             return;
         }
         // Show the URL that is actually used; the official one goes back to blank.
         ListenBrainzApiUrl = apiUrl == ListenBrainzService.DefaultApiUrl ? "" : apiUrl;
 
         ListenBrainzError = "";
-        ListenBrainzStatusText = Loc.T("Settings.Validating");
         _listenBrainz.Configure(ListenBrainzToken);
         _listenBrainz.SetApiUrl(apiUrl);
         var username = await _listenBrainz.ValidateTokenAsync();
@@ -7371,7 +7381,6 @@ public partial class SettingsViewModel : ViewModelBase
             // scrobble. Without this, the now-default-off toggle would leave a freshly
             // connected account silently not scrobbling.
             ListenBrainzScrobblingEnabled = true;
-            ListenBrainzStatusText = Loc.T("Settings.ConnectedAs", username);
             await SaveAsync();
             // GitHub #197: listens that waited for this connection go out now.
             _ = _scrobbleQueue?.FlushAsync(now: true);
@@ -7389,7 +7398,6 @@ public partial class SettingsViewModel : ViewModelBase
                 ListenBrainzValidationError.NotCompatible => Loc.T("Settings.ListenBrainzNotCompatible"),
                 _ => Loc.T("Settings.ListenBrainzTokenOrNetwork"),
             };
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         }
     }
 
@@ -7404,7 +7412,6 @@ public partial class SettingsViewModel : ViewModelBase
         ListenBrainzScrobblingEnabled = false;
         ListenBrainzToken = "";
         ListenBrainzUsername = "";
-        ListenBrainzStatusText = Loc.T("Settings.NotConnected");
         ListenBrainzError = "";
         _ = SaveAsync();
     }
@@ -7975,8 +7982,6 @@ public partial class SettingsViewModel : ViewModelBase
         string TotalFileSize, string TotalListeningTime, string TotalPlays,
         string TimeListened, string AvgTrackLength, int LikedTracks,
         int LosslessCount, int LossyCount, int HiResCount,
-        double LosslessPercentage, string LosslessPercentageText,
-        string LossyPercentageText, string HiResPercentageText,
         List<StatItem> TopArtists, List<StatItem> TopAlbums);
 
     private static LibraryStatsResult ComputeLibraryStats(
@@ -8010,7 +8015,6 @@ public partial class SettingsViewModel : ViewModelBase
         var report = ListeningReportBuilder.Build(events, new PlayEventResolver(tracks), ListeningPeriod.AllTime);
         var (topArtists, topAlbums) = TopPlayed(report);
 
-        var pct = tracks.Count > 0 ? (double)losslessCount / tracks.Count : 0;
         return new LibraryStatsResult(
             TotalSongs: tracks.Count,
             TotalArtists: artistCount,
@@ -8027,10 +8031,6 @@ public partial class SettingsViewModel : ViewModelBase
             LosslessCount: losslessCount,
             LossyCount: tracks.Count - losslessCount,
             HiResCount: hiResCount,
-            LosslessPercentage: pct,
-            LosslessPercentageText: tracks.Count > 0 ? $"{pct * 100:F0}%" : "0%",
-            LossyPercentageText: tracks.Count > 0 ? $"{(1 - pct) * 100:F0}%" : "0%",
-            HiResPercentageText: tracks.Count > 0 ? $"{(double)hiResCount / tracks.Count * 100:F0}%" : "0%",
             TopArtists: topArtists,
             TopAlbums: topAlbums);
     }
@@ -8051,10 +8051,6 @@ public partial class SettingsViewModel : ViewModelBase
         LosslessCount = s.LosslessCount;
         LossyCount = s.LossyCount;
         HiResCount = s.HiResCount;
-        LosslessPercentage = s.LosslessPercentage;
-        LosslessPercentageText = s.LosslessPercentageText;
-        LossyPercentageText = s.LossyPercentageText;
-        HiResPercentageText = s.HiResPercentageText;
         RefreshSnoozedTracks();
         _ = RefreshRemovedTracksAsync();
     }
@@ -8336,9 +8332,24 @@ public partial class SettingsViewModel : ViewModelBase
            && (candidate[root.Length] == Path.DirectorySeparatorChar
                || candidate[root.Length] == Path.AltDirectorySeparatorChar);
 
+    /// <summary>The songs the rescan after removing <paramref name="folder"/> takes out of the
+    /// library: those under it, except songs added on their own (a scan keeps those, GitHub #108).</summary>
+    internal static int SongsLeavingWithFolder(IEnumerable<Track> tracks, string folder)
+        => tracks.Count(t => !t.AddedIndividually && LibraryService.PathIsUnder(t.FilePath, folder));
+
     [RelayCommand]
     private async Task RemoveFolder(string folder)
     {
+        // One click on the ✕ used to take the folder's songs out of the library at once.
+        var songs = SongsLeavingWithFolder(_library.AllTracks, folder);
+        var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
+            Loc.T("Settings.RemoveFolderBody", Loc.Plural("Count.Songs", songs), folder),
+            Title: Loc.T("Settings.RemoveFolderTitle"),
+            Note: Loc.T("Settings.RemoveFolderNote"),
+            ConfirmText: Loc.T("Settings.Remove"),
+            Width: 440));
+        if (!answer.Confirmed) return;
+
         MusicFolders.Remove(folder);
         _settings.MusicFolders = MusicFolders.ToList();
         OnPropertyChanged(nameof(MediaFolderDisplay));
@@ -8597,7 +8608,7 @@ public partial class SettingsViewModel : ViewModelBase
         ResetSettingsToDefaults(defaultSettings);
         await ClearSavedDataAfterSettingsResetAsync();
 
-        SetScanStatus(Loc.T("Settings.ResetDone"), autoClear: true);
+        SetStorageStatus(Loc.T("Settings.ResetDone"));
         RefreshLibraryStats();
         TotalPlaylists = 0;
         RefreshStorageInfo();
@@ -8925,7 +8936,6 @@ public partial class SettingsViewModel : ViewModelBase
             ProfileAvatarPath = defaultSettings.ProfileAvatarPath;
 
             // Playback
-            CrossfadeEnabled = false;
             CrossfadeDuration = 6;
             SongTransitionsEnabled = false;
             TransitionStyle = "Crossfade";
@@ -9012,7 +9022,7 @@ public partial class SettingsViewModel : ViewModelBase
             StatisticsSource = defaultSettings.StatisticsSource;
             ResetPlayCountImportSettings(defaultSettings);
             IsLastFmConnected = false;
-            LastFmStatusText = Loc.T("Settings.NotConnected");
+            LastFmError = "";
             // Without this the session key survived in the service and SyncToSettings
             // re-persisted it (`_settings.LastFmSessionKey = lfm.GetSessionKey()`), so the
             // account stayed connected while the UI read "Not connected".
@@ -9024,7 +9034,6 @@ public partial class SettingsViewModel : ViewModelBase
             ListenBrainzToken = "";
             ListenBrainzUsername = "";
             IsListenBrainzConnected = false;
-            ListenBrainzStatusText = Loc.T("Settings.NotConnected");
             ListenBrainzApiUrl = "";
             _listenBrainz?.Logout();
             _listenBrainz?.SetApiUrl(null);
@@ -9104,12 +9113,37 @@ public partial class SettingsViewModel : ViewModelBase
             });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
-            SetScanStatus(Loc.T("Settings.ArtworkCacheCleared"), autoClear: true);
+            SetStorageStatus(Loc.T("Settings.ArtworkCacheCleared"));
         }
         catch (Exception ex)
         {
-            SetScanStatus(Loc.T("Settings.ClearCacheFailed", ex.Message), autoClear: true);
+            SetStorageStatus(Loc.T("Settings.ClearCacheFailed", ex.Message));
         }
+    }
+
+    /// <summary>Result line under Reset Settings / Clear Cache (Advanced). Both reported on
+    /// the Library page's scan line, a page away, which cleared itself before anyone looked.</summary>
+    [ObservableProperty] private string _storageStatusText = "";
+    private CancellationTokenSource? _storageStatusClearCts;
+
+    private void SetStorageStatus(string text)
+    {
+        StorageStatusText = text;
+        _storageStatusClearCts?.Cancel();
+        _storageStatusClearCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        _storageStatusClearCts = cts;
+        _ = ClearStorageStatusAfterDelayAsync(cts.Token);
+    }
+
+    private async Task ClearStorageStatusAfterDelayAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(5000, ct);
+            StorageStatusText = "";
+        }
+        catch (OperationCanceledException) { }
     }
 
     [RelayCommand]

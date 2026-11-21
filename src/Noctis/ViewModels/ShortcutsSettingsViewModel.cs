@@ -44,12 +44,16 @@ public static class ShortcutKeyFormatter
         if (m.HasFlag(KeyModifiers.Alt)) parts.Add(isMac ? "⌥" : "Alt");
         if (m.HasFlag(KeyModifiers.Shift)) parts.Add(isMac ? "⇧" : "Shift");
         if (m.HasFlag(KeyModifiers.Meta)) parts.Add(isMac ? "⌘" : "Win");
-        parts.Add(KeyName(gesture.Key));
+        parts.Add(KeyName(gesture.Key, isMac));
         return parts;
     }
 
-    public static string KeyName(Key key) => key switch
+    public static string KeyName(Key key, bool isMac = false) => key switch
     {
+        // The Mac keyboard labels these "delete", "delete ⌦" and "return"; its menus show them as symbols.
+        Key.Back when isMac => "⌫",
+        Key.Delete when isMac => "⌦",
+        Key.Return when isMac => "↩",
         Key.Left => "←",
         Key.Right => "→",
         Key.Up => "↑",
@@ -104,6 +108,10 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
     [ObservableProperty] private bool _isDefault = true;
     [ObservableProperty] private string? _conflictMessage;
 
+    /// <summary>False while the action's feature is switched off (Built-in Features): the
+    /// row is hidden, which also keeps Settings search from finding it.</summary>
+    [ObservableProperty] private bool _isAvailable = true;
+
     public bool HasConflict => ConflictMessage is not null;
 
     internal ShortcutRowViewModel(ShortcutsSettingsViewModel owner, ShortcutService service, ShortcutDescriptor descriptor, bool isMac)
@@ -128,6 +136,8 @@ public sealed partial class ShortcutRowViewModel : ObservableObject
 
     internal void Refresh()
     {
+        IsAvailable = !_service.IsDisabled(Action);
+        if (!IsAvailable && IsRecording) CancelRecord();
         var gesture = _service.Get(Action);
         IsUnbound = gesture is null;
         GestureParts = gesture is null ? new[] { Loc.T("Shortcuts.NotSet") } : ShortcutKeyFormatter.Parts(gesture, _isMac);

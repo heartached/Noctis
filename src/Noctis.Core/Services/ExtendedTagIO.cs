@@ -237,6 +237,50 @@ internal static class ExtendedTagIO
         }
     }
 
+    // ── Song version (Discord, coleman 11-19: "a detail in the song so the title doesn't change") ──
+    // One key in every container: Vorbis VERSION (the Xiph field list's own field for telling
+    // recordings of one title apart), ID3v2 TXXX:VERSION, APE/ASF VERSION and MP4
+    // ----:com.apple.iTunes:VERSION — what Mp3tag and foobar2000 write for a VERSION field.
+    // Not TIT3 / SUBTITLE: Noctis already reads and writes those as Advanced › Description.
+
+    private const string VersionKey = "VERSION";
+
+    /// <summary>The song's version ("Acoustic", "Live at Wembley"), trimmed; empty when none
+    /// is set. A malformed tag never fails the scan.</summary>
+    public static string ReadVersion(TagFile file)
+    {
+        try
+        {
+            var version = ReadCustomString(file, VersionKey);
+            if (string.IsNullOrWhiteSpace(version) && file.GetTag(TagTypes.Apple, false) is AppleTag apple)
+                version = apple.GetDashBox(AppleItunesMean, VersionKey);
+            return version?.Trim() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>Writes the song's version; null or blank removes it.</summary>
+    public static void WriteVersion(TagFile file, string? value)
+    {
+        var clean = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        if (file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, clean)) is AppleTag apple)
+            apple.SetDashBox(AppleItunesMean, VersionKey, clean);
+        WriteCustomString(file, VersionKey, clean);
+    }
+
+    /// <summary><see cref="ReadVersion"/> for a plain FLAC, reading only the VORBIS_COMMENT
+    /// block. False means "ask TagLib", as for <see cref="TryReadFlacLabel"/>.</summary>
+    internal static bool TryReadFlacVersion(Stream stream, out string version)
+    {
+        version = string.Empty;
+        if (!TryReadFlacComments(stream, out var fields)) return false;
+        version = fields.TryGetValue(VersionKey, out var values) ? values[0].Trim() : string.Empty;
+        return true;
+    }
+
     // ── Work name ──
 
     public static string ReadWorkName(TagFile file)

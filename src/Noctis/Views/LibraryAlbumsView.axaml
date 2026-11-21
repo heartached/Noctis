@@ -298,12 +298,18 @@
                                                            FontWeight="SemiBold"
                                                            Opacity="0.75"
                                                            VerticalAlignment="Center" />
-                                                <TextBlock Text="{loc:T LibraryAlbums.Plays}"
-                                                           IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsNotOne}}"
+                                                <TextBlock IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsNotOne}}"
                                                            FontSize="11"
                                                            FontWeight="SemiBold"
                                                            Opacity="0.55"
-                                                           VerticalAlignment="Center" />
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Text>
+                                                        <MultiBinding Converter="{x:Static conv:PluralWordConverter.Instance}" ConverterParameter="LibraryAlbums.Plays">
+                                                            <Binding Path="Track.PlayCount" />
+                                                            <ReflectionBinding Path="[LibraryAlbums.Plays]" Source="{x:Static loc:Loc.Instance}" />
+                                                        </MultiBinding>
+                                                    </TextBlock.Text>
+                                                </TextBlock>
                                                 <TextBlock Text="{loc:T Common.Play}"
                                                            IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsOne}}"
                                                            FontSize="11"
@@ -351,13 +357,15 @@
 
             <!-- Carousel layout (GitHub #149, top-bar View menu): the same filtered, sorted
                  albums one at a time, Cover Flow style. Clicking the centred album opens it,
-                 like a grid tile. Bottom margin clears the floating playback bar. -->
+                 like a grid tile. Bottom margin clears the floating playback bar. GitHub #244:
+                 the row runs on to both window edges (under the sidebar rail too). -->
             <ctrl:AlbumCarousel x:Name="AlbumCarousel"
                                 IsVisible="{Binding IsCarouselView}"
                                 Albums="{Binding CarouselAlbums}"
                                 CaseStyle="{Binding CarouselStyle}"
                                 CenterAlbum="{Binding CarouselCenterAlbum}"
                                 OpenCommand="{Binding OpenAlbumCommand}"
+                                BleedToWindowEdges="True"
                                 Margin="0,4,10,110" />
 
             <!-- Empty state overlay. With a search or a Type / Quality filter on, the library is

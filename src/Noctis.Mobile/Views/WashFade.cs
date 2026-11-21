@@ -20,6 +20,7 @@ internal sealed class WashFade : Panel
     private readonly Border _wash = new() { IsHitTestVisible = false };
     private readonly Border _shade = new() { IsHitTestVisible = false };
     private IImageBrushSource? _art;
+    private Stretch _stretch;
     private Color _plain;
     private Rect _band;
     private Size _page;
@@ -38,12 +39,15 @@ internal sealed class WashFade : Panel
     public double FadeHeight { get; set; } = 44;
 
     /// <summary>What to repaint: the wash bitmap (or, with no cover, the page's plain colour),
-    /// the shade at a fraction of the page height, and where this band sits in the page.</summary>
-    public void Update(IImageBrushSource? art, Color plain, Func<double, Color> shade, Rect bandInPage, Size page)
+    /// laid over the page as the page lays it (<paramref name="stretch"/>: Fill for the wash,
+    /// UniformToFill for Blurred Cover's bitmap), the shade at a fraction of the page height, and
+    /// where this band sits in the page.</summary>
+    public void Update(IImageBrushSource? art, Stretch stretch, Color plain, Func<double, Color> shade, Rect bandInPage, Size page)
     {
         if (bandInPage.Height <= 0 || page.Height <= 0) return;
-        if (ReferenceEquals(art, _art) && plain == _plain && bandInPage == _band && page == _page) return;
+        if (ReferenceEquals(art, _art) && stretch == _stretch && plain == _plain && bandInPage == _band && page == _page) return;
         _art = art;
+        _stretch = stretch;
         _plain = plain;
         _band = bandInPage;
         _page = page;
@@ -51,7 +55,7 @@ internal sealed class WashFade : Panel
         _wash.Background = art != null
             ? new ImageBrush(art)
             {
-                Stretch = Stretch.Fill,
+                Stretch = stretch,
                 DestinationRect = new RelativeRect(-bandInPage.X, -bandInPage.Y, page.Width, page.Height, RelativeUnit.Absolute),
             }
             : new SolidColorBrush(plain);
@@ -82,6 +86,9 @@ internal sealed class WashFade : Panel
         if (ramp < 1) mask.GradientStops.Add(new GradientStop(Color.FromArgb((byte)(SolidAtTop ? 0 : 255), 0, 0, 0), 1));
         OpacityMask = mask;
     }
+
+    /// <summary>The band's repaint of the backdrop (tests).</summary>
+    internal IBrush? WashBrush => _wash.Background;
 
     /// <summary>The band takes the size it is given and never asks for more.</summary>
     protected override Size MeasureOverride(Size availableSize)

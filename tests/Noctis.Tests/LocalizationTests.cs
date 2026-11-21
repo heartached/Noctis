@@ -105,6 +105,19 @@ public class LocalizationTests
     }
 
     /// <summary>
+    /// {loc:T …, MacKeys=True} on macOS: Ctrl shortcuts read as ⌘ in every language, German's
+    /// "Strg" included (it stayed "Suchen (Strg+F)").
+    /// </summary>
+    [Theory]
+    [InlineData("Search (Ctrl+F)", "Search (⌘F)")]
+    [InlineData("Save (Ctrl+Enter)", "Save (⌘↩)")]
+    [InlineData("Suchen (Strg+F)", "Suchen (⌘F)")]
+    [InlineData("Speichern (Strg+Enter)", "Speichern (⌘↩)")]
+    [InlineData("Поиск (Ctrl+F)", "Поиск (⌘F)")]
+    public void MacKeys_WriteCtrlAndStrgAsCommand(string text, string expected)
+        => Assert.Equal(expected, TExtension.ToMacKeys(text));
+
+    /// <summary>
     /// GenerateResource dedupes names case-insensitively ("Duplicate resource name … ignored"),
     /// so a key that differs from another only by case is silently dropped from the compiled
     /// resources and renders as its raw key (Settings.Username next to Settings.USERNAME did).
@@ -146,6 +159,32 @@ public class LocalizationTests
             .Select(f => Path.GetFileNameWithoutExtension(f)["Strings.".Length..])
             .OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList();
         Assert.Equal(shipped, Loc.KnownCultures.OrderBy(c => c, StringComparer.OrdinalIgnoreCase).ToList());
+    }
+
+    /// <summary>
+    /// Settings said "tray" and "Recycle Bin" on macOS. Loc.Platform reads the key's Mac wording
+    /// there; a language without that wording keeps its own text rather than switching to English.
+    /// </summary>
+    [AvaloniaFact]
+    public void Platform_UsesTheMacWording_OnlyOnMacAndOnlyWhereTheLanguageHasIt()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Minimize to tray", Loc.Platform("Settings.MinimizeTray", isMac: false));
+            Assert.Equal("Minimize to the menu bar", Loc.Platform("Settings.MinimizeTray", isMac: true));
+            // No Mac wording for this key: the key itself.
+            Assert.Equal(Loc.T("Nav.Home"), Loc.Platform("Nav.Home", isMac: true));
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Сворачивать в строку меню", Loc.Platform("Settings.MinimizeTray", isMac: true));
+
+            // Spanish has "tray" translated but no Mac wording yet: stays Spanish.
+            Loc.Instance.SetCulture("es");
+            Assert.Equal(Loc.T("Settings.MinimizeTray"), Loc.Platform("Settings.MinimizeTray", isMac: true));
+            Assert.NotEqual(Loc.English("Settings.MinimizeTray"), Loc.Platform("Settings.MinimizeTray", isMac: true));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
     }
 
     [AvaloniaFact]
@@ -206,6 +245,37 @@ public class LocalizationTests
             Assert.Equal(@"Нет доступа к A:\Music — медиатека не изменена. Проверьте диск и обновите.",
                 Noctis.ViewModels.SettingsViewModel.ScanAbortedStatus(new[] { @"A:\Music" }));
             Assert.Equal("Неверный токен или ошибка сети.", Loc.T("Settings.ListenBrainzTokenOrNetwork"));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>
+    /// Settings › Integrations › Music Server: the status line's texts came from English literals in
+    /// the Jellyfin/Subsonic clients. They come from the strings now; a server's own error text
+    /// stays as the server sent it.
+    /// </summary>
+    [AvaloniaFact]
+    public void MusicServerStatusLines_ComeFromTheStrings()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("en");
+            Assert.Equal("Connected", Noctis.Services.MediaServer.MediaServerConnectResult.Ok().Message);
+            Assert.Equal("Wrong username or password.", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(40, "x").Message);
+
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("Подключено", Noctis.Services.MediaServer.MediaServerConnectResult.Ok().Message);
+            Assert.Equal("Неверное имя пользователя или пароль.", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(40, "x").Message);
+            Assert.Equal("Не найдено на сервере: Album not found", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(70, "Album not found").Message);
+            Assert.Equal("Ошибка сервера (код 99).", Noctis.Services.MediaServer.SubsonicClient.ClassifyError(99, "").Message);
+            Assert.Equal(Loc.T("Settings.Server.NoResponse"),
+                Noctis.Services.MediaServer.MediaServerConnectResult.FromTransportException(new OperationCanceledException()).Message);
+            Assert.Null(Noctis.Services.MediaServer.MediaServerUrl.TryNormalizeBase("http://music.example.com", out _, out var insecure));
+            Assert.Equal(Loc.T("Settings.Server.PlainHttp"), insecure);
+            Assert.DoesNotMatch("[A-Za-z]{4,}", insecure.Replace("http", ""));
+
+            Loc.Instance.SetCulture("de");
+            Assert.Equal("Verbunden", Noctis.Services.MediaServer.MediaServerConnectResult.Ok().Message);
         }
         finally { Loc.Instance.SetCulture("en"); }
     }

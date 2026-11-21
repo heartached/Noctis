@@ -180,6 +180,9 @@ public sealed partial class ShellViewModel
 
     private void OnAccountSyncProgress(object? sender, NoctisSyncProgress progress)
     {
-        if (progress.Stage == NoctisSyncStage.Done && PickUpOnComputer) Marshal(PickUp.Flush);
+        if (progress.Stage != NoctisSyncStage.Done) return;
+        // The computer's play counts came in (counts only grow): Home's Most Played re-reads them.
+        Marshal(Library.RefreshRecents);
+        if (PickUpOnComputer) Marshal(PickUp.Flush);
     }
 }

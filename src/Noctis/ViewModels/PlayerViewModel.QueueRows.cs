@@ -168,8 +168,9 @@ public partial class PlayerViewModel
         _queueHistoryDepth = 0;
     }
 
-    /// <summary>Removes the History entries at <paramref name="historyIndices"/>. Played
-    /// rows are a record of what played: Repeat All's cycle is not touched.</summary>
+    /// <summary>Removes the History entries at <paramref name="historyIndices"/>, and this
+    /// queue's ones from Repeat All's cycle too: the played rows are part of the queue, and
+    /// the wrap brought a removed one back (GitHub #256).</summary>
     private void RemovePlayedEntries(IReadOnlyCollection<int> historyIndices)
     {
         var drop = historyIndices.Where(i => i >= 0 && i < History.Count).Distinct()
@@ -177,6 +178,7 @@ public partial class PlayerViewModel
         if (drop.Count == 0) return;
         DebugLogger.Info(DebugLogger.Category.Queue, "RemovePlayed", $"count={drop.Count}");
         MarkQueueChanged();
+        RemovePlayedFromRepeatCycle(drop);
         var depth = _queueHistoryDepth;
         _deferPlayedSync = true;
         try
@@ -191,6 +193,38 @@ public partial class PlayerViewModel
         finally { _deferPlayedSync = false; }
         _queueHistoryDepth = Math.Max(0, _queueHistoryDepth);
         SyncPlayedTracks();
+    }
+
+    /// <summary>
+    /// GitHub #256: drops the History entries at <paramref name="historyIndices"/> that this
+    /// queue played out of Repeat All's cycle, one cycle copy each. Entries from before this
+    /// queue were never in it. A song in the cycle twice loses the copy the row played as:
+    /// its earlier plays in this queue count through the cycle's copies (passes wrap round).
+    /// </summary>
+    private void RemovePlayedFromRepeatCycle(IReadOnlyCollection<int> historyIndices)
+    {
+        if (_repeatCycleTracks.Count == 0) return;
+        var depth = PlayedInThisQueue;
+        var drop = new HashSet<int>();
+        foreach (var h in historyIndices)
+        {
+            if (h < 0 || h >= depth) continue;
+            var id = History[h].Id;
+            var copies = new List<int>();
+            for (var i = 0; i < _repeatCycleTracks.Count; i++)
+                if (_repeatCycleTracks[i].Id == id) copies.Add(i);
+            if (copies.Count == 0) continue;
+            // History is newest-first: older plays in this queue sit after h.
+            var earlier = 0;
+            for (var i = h + 1; i < depth; i++)
+                if (History[i].Id == id) earlier++;
+            for (var k = 0; k < copies.Count; k++)
+            {
+                if (drop.Add(copies[(earlier + k) % copies.Count])) break;
+            }
+        }
+        if (drop.Count > 0)
+            _repeatCycleTracks = _repeatCycleTracks.Where((_, i) => !drop.Contains(i)).ToList();
     }
 
     /// <summary>Drag of one row from <paramref name="from"/> to slot <paramref name="to"/>

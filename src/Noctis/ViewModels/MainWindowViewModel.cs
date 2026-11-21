@@ -1329,13 +1329,24 @@ public partial class MainWindowViewModel : ViewModelBase
     /// <summary>
     /// Saves all application state before shutdown.
     /// </summary>
+    /// <summary>
+    /// Starts the exit pause (with the user's play/pause fade) at once. GitHub #243: the exit
+    /// paths call this before any slow work (the window teardown, the background-work stops in
+    /// App's shutdown handler, the saves below), which used to run first while the music played
+    /// on for seconds. Safe to call more than once: a paused player is left alone.
+    /// </summary>
+    public void SilencePlaybackForExit()
+    {
+        try { Player.PauseForShutdown(); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Shutdown pause failed: {ex.Message}"); }
+    }
+
     public async Task ShutdownAsync()
     {
         // Silence playback first. The saves below run for seconds after the window
         // is already gone, and nothing else stops the audio engine before process
         // exit — so the track audibly kept playing after the app "closed".
-        try { Player.PauseForShutdown(); }
-        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Shutdown pause failed: {ex.Message}"); }
+        SilencePlaybackForExit();
 
         // The small user-state saves go first. App abandons this method after
         // ShutdownSaveDeadline (4 s), and the server stop, scan checkpoint and scrobble
@@ -1612,7 +1623,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 var destFolder = Path.GetFileName(Path.GetDirectoryName(moved[0].Value));
                 DropImportStatus = moved.Count == 1
                     ? Loc.T("Main.DropMovedOne", destFolder ?? string.Empty)
-                    : Loc.T("Main.DropMovedMany", moved.Count, destFolder ?? string.Empty);
+                    : Loc.Plural("Main.DropMovedMany", moved.Count, destFolder ?? string.Empty);
                 try { await Task.Delay(2500, ct); } catch (OperationCanceledException) { }
             }
 

@@ -118,10 +118,12 @@ public class SettingsSearchIndexTests
             var box = view.FindControl<TextBox>("SettingsSearchBox");
             Assert.NotNull(box);
 
-            box!.Text = "minimize to tray";
+            // macOS says "menu bar" for the tray (Loc.Platform).
+            var minimizeLabel = Noctis.Localization.Loc.Platform("Settings.MinimizeTray");
+            box!.Text = minimizeLabel.ToLowerInvariant();
             var cards = view.GetLogicalDescendants().OfType<Border>()
                 .Where(b => b.Classes.Contains(SettingsSearchIndex.CardClass)).ToList();
-            var trayCard = cards.Single(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "Minimize to tray"));
+            var trayCard = cards.Single(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == minimizeLabel));
             var animCard = cards.Single(c => c.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == "Text Animation"));
             Assert.DoesNotContain(SettingsSearchIndex.HiddenClass, trayCard.Classes);
             Assert.Contains(SettingsSearchIndex.HiddenClass, animCard.Classes);
@@ -178,6 +180,35 @@ public class SettingsSearchIndexTests
             Assert.False(Has(view.FindControl<Control>("AboutTabPanel")!, "Developer Mode"));
             Assert.True(Has(view.FindControl<Control>("LibraryTabPanel")!, "Group Artists By"));
             Assert.True(Has(view.FindControl<Control>("PlayerTabPanel")!, "Mini Player Design"));
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { }
+        }
+    }
+
+    /// <summary>
+    /// Rows that come from a template (the Shortcuts tab's action rows, General's sidebar
+    /// page rows) are searchable from a cold open, before their page was ever shown.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task SettingsView_TemplatedRows_AreSearchable_BeforeTheirPageWasShown()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
+        try
+        {
+            var vm = new SettingsViewModel(new PersistenceService(root), new FakeLibraryService(), new NoOpPlayHistory());
+            await vm.LoadAsync();
+            var view = new SettingsView { DataContext = vm };
+            var window = new Window { Width = 920, Height = 720, Content = view };
+            window.Show();
+
+            var box = view.FindControl<TextBox>("SettingsSearchBox")!;
+            box.Text = "Play / Pause";
+            Assert.True(vm.Sections.Single(s => s.Key == SettingsViewModel.TabShortcuts).MatchCount >= 1);
+
+            box.Text = "Start page";
+            Assert.True(vm.Sections.Single(s => s.Key == SettingsViewModel.TabGeneral).MatchCount >= 1);
         }
         finally
         {

@@ -110,7 +110,8 @@ public class TileOverlayProbeTests
             // The WrapPanel measures tiles unbounded: the tile must stay at cover width (+4px
             // padding each side, 1.6.9 spacing) with the cover flush left, and a long title wraps
             // (MaxLines=2) instead of stretching the tile.
-            Assert.Equal(vm.AlbumTileSize + 8, tile.Bounds.Width, precision: 0);
+            // #242: the cover size leaves room for layout rounding, so a tile may round up by a pixel.
+            Assert.InRange(tile.Bounds.Width, vm.AlbumTileSize + 8 - 0.5, vm.AlbumTileSize + 8 + 1);
             Assert.Equal(4, cp.X, precision: 0);
             Assert.True(title.Bounds.Width <= vm.AlbumTileSize, $"title width {title.Bounds.Width}");
             AssertGlyphsCentred(tile);

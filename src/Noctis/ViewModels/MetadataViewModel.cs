@@ -94,6 +94,9 @@ public partial class MetadataViewModel : ViewModelBase
 
     // ── Details tab ──
     [ObservableProperty] private string _title = string.Empty;
+    /// <summary>The song's version (<see cref="Track.Version"/>): "Acoustic", "Live" … named in
+    /// Other Versions without changing the title (Discord, coleman 11-19).</summary>
+    [ObservableProperty] private string _songVersion = string.Empty;
     [ObservableProperty] private string _artist = string.Empty;
     [ObservableProperty] private string _albumArtist = string.Empty;
     [ObservableProperty] private string _performer = string.Empty;
@@ -363,9 +366,9 @@ public partial class MetadataViewModel : ViewModelBase
 
     /// <summary>Track title and artist for the header.</summary>
     public string HeaderTitle => _multiSelect
-        ? Localization.Loc.T("Metadata.ArtistsSelected", DistinctArtistCount)
+        ? Localization.Loc.Plural("Metadata.ArtistsSelected", DistinctArtistCount)
         : (_albumScoped && !string.IsNullOrWhiteSpace(_track.Album) ? _track.Album : _track.Title);
-    public string HeaderArtist => _multiSelect ? Localization.Loc.T("Metadata.SongsSelected", SongCount) : _track.Artist;
+    public string HeaderArtist => _multiSelect ? Localization.Loc.Plural("Metadata.SongsSelected", SongCount) : _track.Artist;
     public string HeaderAlbum => _multiSelect ? string.Empty : _track.Album;
 
     /// <summary>True when editing an arbitrary multi-track selection (blank art, "N selected" header).</summary>
@@ -401,6 +404,7 @@ public partial class MetadataViewModel : ViewModelBase
     public string ArtistWatermark => Watermark(nameof(Artist));
     public string ComposerWatermark => Watermark(nameof(Composer));
     public string GroupingWatermark => Watermark(nameof(Grouping));
+    public string SongVersionWatermark => Watermark(nameof(SongVersion));
     public string GenreWatermark => Watermark(nameof(Genre));
     public string YearWatermark => Watermark(nameof(Year));
     public string TrackNumberWatermark => Watermark(nameof(TrackNumber));
@@ -893,7 +897,8 @@ public partial class MetadataViewModel : ViewModelBase
 
     private static readonly (string Name, MetadataSection Section)[] TrackedFields =
     {
-        (nameof(Title), MetadataSection.Details), (nameof(Artist), MetadataSection.Details),
+        (nameof(Title), MetadataSection.Details), (nameof(SongVersion), MetadataSection.Details),
+        (nameof(Artist), MetadataSection.Details),
         (nameof(AlbumArtist), MetadataSection.Details), (nameof(Performer), MetadataSection.Details),
         (nameof(Album), MetadataSection.Details), (nameof(Genre), MetadataSection.Details),
         (nameof(Composer), MetadataSection.Details), (nameof(TrackNumber), MetadataSection.Details),
@@ -1091,6 +1096,14 @@ public partial class MetadataViewModel : ViewModelBase
         => track.Year == 0 && _loadedTagSignatures.TryGetValue(track, out var loaded) && loaded.Year > 0;
 
     /// <summary>
+    /// True when the user emptied a version the track had when the dialog opened. Only then is
+    /// the file's version tag removed: WriteTrackMetadata reads an empty version as unknown.
+    /// </summary>
+    private bool VersionWasCleared(Track track)
+        => string.IsNullOrWhiteSpace(track.Version) && _loadedTagSignatures.TryGetValue(track, out var loaded)
+           && !string.IsNullOrWhiteSpace(loaded.Version);
+
+    /// <summary>
     /// Every field <see cref="IMetadataService.WriteTrackMetadata"/> puts in the file, and only
     /// those. Journal-only state (play count, skip-when-shuffling, start/stop, volume, EQ) is
     /// deliberately absent: changing it must not trigger a file rewrite. Rating and disliked
@@ -1105,7 +1118,7 @@ public partial class MetadataViewModel : ViewModelBase
         int Bpm, int Year, string? Lyrics, string? Comment, string? Grouping, string? Copyright,
         bool IsCompilation, bool ShowComposerInAllViews, bool UseWorkAndMovement,
         string? WorkName, string? MovementName, int MovementNumber, int MovementCount,
-        int Rating, bool IsDisliked, string ReleaseTypeOverride);
+        int Rating, bool IsDisliked, string ReleaseTypeOverride, string? Version);
 
     private static TagState ComputeTagState(Track t) => new(
         t.Title, t.Artist, t.AlbumArtist, t.Album, t.Genre, t.Composer,
@@ -1114,7 +1127,8 @@ public partial class MetadataViewModel : ViewModelBase
         t.IsCompilation, t.ShowComposerInAllViews, t.UseWorkAndMovement,
         t.WorkName, t.MovementName, t.MovementNumber, t.MovementCount,
         t.Rating, t.IsDisliked,
-        t.IsReleaseTypeOverridden ? t.ReleaseType.ToString() : string.Empty);
+        t.IsReleaseTypeOverridden ? t.ReleaseType.ToString() : string.Empty,
+        t.Version);
 
     // ── Search metadata ── lives in MetadataViewModel.Search.cs (owner 10-08: Search
     // metadata revamp): the Find online panel, its field mapping, apply and undo.
@@ -1153,6 +1167,7 @@ public partial class MetadataViewModel : ViewModelBase
         Artist = CommonStrOrMixed(nameof(Artist), t => t.Artist);
         Composer = CommonStrOrMixed(nameof(Composer), t => t.Composer);
         Grouping = CommonStrOrMixed(nameof(Grouping), t => t.Grouping);
+        SongVersion = CommonStrOrMixed(nameof(SongVersion), t => t.Version);
         Comment = CommonStrOrMixed(nameof(Comment), t => t.Comment);
         Year = CommonIntOrMixed(nameof(Year), t => t.Year);
         TrackNumber = CommonIntOrMixed(nameof(TrackNumber), t => t.TrackNumber);
@@ -1217,6 +1232,7 @@ public partial class MetadataViewModel : ViewModelBase
         _albumLoaded[nameof(AlbumArtist)] = AlbumArtist;
         _albumLoaded[nameof(Composer)] = Composer;
         _albumLoaded[nameof(Grouping)] = Grouping;
+        _albumLoaded[nameof(SongVersion)] = SongVersion;
         _albumLoaded[nameof(Genre)] = Genre;
         _albumLoaded[nameof(Year)] = Year;
         _albumLoaded[nameof(TrackNumber)] = TrackNumber;
@@ -1250,7 +1266,9 @@ public partial class MetadataViewModel : ViewModelBase
     private bool AlbumFieldChanged(string key, string current)
         => current != _albumLoaded.GetValueOrDefault(key, string.Empty);
 
-    private string Watermark(string key) => _mixedFields.Contains(key) ? "Mixed" : string.Empty;
+    // The word the hint beside these fields names (Metadata.MixedHint): it was a hard-coded
+    // English "Mixed" in every language.
+    private string Watermark(string key) => _mixedFields.Contains(key) ? Localization.Loc.T("Metadata.Mixed") : string.Empty;
 
     /// <summary>Details tool-row hint for album / multi-track edits: why some fields read "Mixed".</summary>
     public bool ShowMixedHint => _albumTracks is { Count: > 1 };
@@ -1349,6 +1367,8 @@ public partial class MetadataViewModel : ViewModelBase
         bool albumArtistChg = AlbumFieldChanged(nameof(AlbumArtist), AlbumArtist);
         bool composerChg = AlbumFieldChanged(nameof(Composer), Composer);
         bool groupingChg = AlbumFieldChanged(nameof(Grouping), Grouping);
+        var songVersion = (SongVersion ?? string.Empty).Trim();
+        bool versionChg = AlbumFieldChanged(nameof(SongVersion), songVersion);
         // A typed genre is saved trimmed (GitHub #123, 2026-10-10), several as "Rock; Pop".
         var genre = Track.NormalizeGenre(Genre);
         bool genreChg = AlbumFieldChanged(nameof(Genre), genre);
@@ -1394,6 +1414,7 @@ public partial class MetadataViewModel : ViewModelBase
             }
             if (composerChg) t.Composer = Composer;
             if (groupingChg) t.Grouping = Grouping;
+            if (versionChg) t.Version = songVersion;
             if (genreChg) t.Genre = genre;
             if (yearChg) t.Year = yearVal;
             if (trackNumberChg) t.TrackNumber = trackNumberVal;
@@ -1498,6 +1519,7 @@ public partial class MetadataViewModel : ViewModelBase
     {
         // Details
         Title = _track.Title;
+        SongVersion = _track.Version ?? string.Empty;
         Artist = _track.Artist;
         AlbumArtist = _track.AlbumArtist;
         Album = _track.Album;
@@ -2408,6 +2430,7 @@ public partial class MetadataViewModel : ViewModelBase
         {
             // Apply Details changes to the track model
             _track.Title = Title;
+            _track.Version = (SongVersion ?? string.Empty).Trim();
             _track.Artist = Artist;
             // An album artist typed here is the user's tag (GitHub #178): the album-grouping
             // pass must not re-key it, even when the file write below fails.
@@ -2543,11 +2566,13 @@ public partial class MetadataViewModel : ViewModelBase
         {
             var tagWriteTargets = _albumTracks.Where(NeedsTagWrite).ToList();
             var yearClearTargets = tagWriteTargets.Where(YearWasCleared).ToList();
+            var versionClearTargets = tagWriteTargets.Where(VersionWasCleared).ToList();
             await Task.Run(() =>
             {
                 foreach (var t in tagWriteTargets)
                     if (!_metadata.WriteTrackMetadata(t, GenreEdited(t))
-                        || (yearClearTargets.Contains(t) && !_metadata.ClearYear(t.FilePath)))
+                        || (yearClearTargets.Contains(t) && !_metadata.ClearYear(t.FilePath))
+                        || (versionClearTargets.Contains(t) && !_metadata.ClearVersion(t.FilePath)))
                         lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
             });
 
@@ -2579,9 +2604,11 @@ public partial class MetadataViewModel : ViewModelBase
         else if (NeedsTagWrite(_track))
         {
             var clearYear = YearWasCleared(_track);
+            var clearVersion = VersionWasCleared(_track);
             var genreEdited = GenreEdited(_track);
             var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track, genreEdited)
-                                          && (!clearYear || _metadata.ClearYear(_track.FilePath)));
+                                          && (!clearYear || _metadata.ClearYear(_track.FilePath))
+                                          && (!clearVersion || _metadata.ClearVersion(_track.FilePath)));
             if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
         }
 
@@ -2904,7 +2931,7 @@ public partial class MetadataViewModel : ViewModelBase
                 ? Localization.Loc.T("Metadata.DffTagsReadOnly", failedWrites[0])
                 : failedWrites.Count == 1
                 ? Localization.Loc.T("Metadata.WriteFailedOne", failedWrites[0])
-                : Localization.Loc.T("Metadata.WriteFailedMany", failedWrites.Count, failedWrites[0]);
+                : Localization.Loc.Plural("Metadata.WriteFailedMany", failedWrites.Count, failedWrites[0]);
             return;
         }
 

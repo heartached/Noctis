@@ -407,6 +407,11 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="32,24,32,40" />
+            <!-- The card sizes to its longest option row. Fluent caps a FlyoutPresenter at
+                 FlyoutThemeMaxWidth (456), which left the card 392 px inside this padding: in
+                 French the rows ran wider, and the presenter's ScrollViewer cut the card's right
+                 edge off and showed a horizontal scrollbar (Discord, 11-16). -->
+            <Setter Property="MaxWidth" Value="Infinity" />
             <!-- An option menu: its card frosts with Liquid Glass (GlassMenus, GitHub #169). -->
             <Setter Property="(helpers:GlassMenus.Track)" Value="True" />
         </Style>

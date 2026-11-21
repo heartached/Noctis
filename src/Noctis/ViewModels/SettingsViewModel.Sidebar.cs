@@ -40,8 +40,8 @@ public sealed partial class SidebarPageOption : ObservableObject
 
 public partial class SettingsViewModel
 {
-    /// <summary>Every sidebar page in the user's order (Settings › General › Sidebar).</summary>
-    /// <summary>Filled by the settings load (and Reset).</summary>
+    /// <summary>Every sidebar page in the user's order (Settings › General › Sidebar).
+    /// Filled by the settings load (and Reset).</summary>
     public ObservableCollection<SidebarPageOption> SidebarPages { get; } = new();
 
     /// <summary>Which pages exist right now, mirrored from the sidebar. Starts like the rail:

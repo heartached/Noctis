@@ -12,6 +12,9 @@
 //      the per-arrange SnapPointsChanged raise) is left out: no Noctis list snaps.
 //   3. Avalonia-internal helpers replaced: MathUtilities (nested copy), GetLayoutRoot ->
 //      TopLevel.GetTopLevel + UpdateLayout(); "protected internal override" -> "protected override".
+//   4. The viewport is re-clipped when the panel grows (OnSizeChanged): upstream clips the effective
+//      viewport to Bounds only when the viewport event arrives, so a panel that was still short
+//      then kept a short viewport until the next scroll (Albums grid after Carousel -> Grid).
 // Re-sync on an Avalonia upgrade: diff the upstream file at the new tag against this one, keep the
 // NOCTIS regions. RetainingPanelVersionTests fails until AvaloniaVersionCopiedFrom is updated.
 
@@ -92,6 +95,7 @@ namespace Noctis.Controls
         private bool _hasReachedEnd = false;
         private Rect _lastMeasuredExtendedViewport;
         private Rect _lastKnownExtendedViewport;
+        private Rect? _lastEffectiveViewport; // NOCTIS: delta 4
 
         static RetainingVirtualizingStackPanel()
         {
@@ -1332,6 +1336,7 @@ namespace Noctis.Controls
             var oldExtendedViewportEnd = vertical ? _lastMeasuredExtendedViewport.Bottom : _lastMeasuredExtendedViewport.Right;
 
             // Update current viewport
+            _lastEffectiveViewport = e.EffectiveViewport; // NOCTIS: delta 4
             _viewport = e.EffectiveViewport.Intersect(new(Bounds.Size));
             _isWaitingForViewportUpdate = false;
 
@@ -1431,6 +1436,21 @@ namespace Noctis.Controls
                 _lastMeasuredExtendedViewport = extendedViewPort;
                 InvalidateMeasure();
             }
+        }
+
+        // NOCTIS: delta 4. The effective viewport is in the panel's own coordinates, so the panel
+        // growing does not raise EffectiveViewportChanged again; but _viewport was clipped to the
+        // old, shorter Bounds. Seen on the Albums grid shown again after the Carousel: the panel
+        // was arranged 574px tall when the viewport arrived, kept that as its viewport after
+        // growing to every row, and the third, partly visible row stayed empty until a scroll.
+        protected override void OnSizeChanged(SizeChangedEventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (_lastEffectiveViewport is not { } effective)
+                return;
+            var clipped = effective.Intersect(new Rect(e.NewSize));
+            if (clipped != _viewport)
+                OnEffectiveViewportChanged(this, new EffectiveViewportChangedEventArgs(effective));
         }
 
         private void OnItemsControlPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)

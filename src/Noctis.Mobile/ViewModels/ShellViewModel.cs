@@ -155,6 +155,9 @@ public sealed partial class ShellViewModel : ObservableObject
             value.SyncProgress += OnAccountSyncProgress;
             _profileAvatarPath = AccountAvatarPath();
             _downloadedCount = value.DownloadedCount;
+            _signedIn = value.IsSignedIn ? 1 : 0;
+            Library.Account = value;   // the Library's source choice (On This Phone / From Computer)
+            Library.NotifyAccountChanged();
         }
     }
     private readonly INoctisAccountService? _account;
@@ -177,7 +180,13 @@ public sealed partial class ShellViewModel : ObservableObject
         if (_account is not { } account) return;
         var downloaded = account.DownloadedCount;
         if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
+        var signedIn = account.IsSignedIn ? 1 : 0;
+        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn) Marshal(Library.NotifyAccountChanged);
     }
+
+    // Signed in (1) or not, as last seen: the Library's source button shows only signed in (or
+    // while the computer's songs are still listed), and StateChanged fires on every download step.
+    private int _signedIn;
 
     /// <summary>
     /// A sync writes the desktop's playlists straight into playlists.json and sign-out drops them,
@@ -236,7 +245,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsHomeSelected), nameof(IsFavoritesSelected), nameof(IsLibrarySelected), nameof(IsSearchSelected),
-        nameof(IsPlaylistsSelected), nameof(IsHomeRootVisible), nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible),
+        nameof(IsPlaylistsSelected), nameof(IsSongsSelected), nameof(IsAlbumsSelected), nameof(IsArtistsSelected), nameof(IsHomeRootVisible), nameof(IsFavoritesRootVisible), nameof(IsLibraryRootVisible),
         nameof(IsSearchRootVisible), nameof(IsPlaylistsRootVisible))]
     private MobileTab _selectedTab = MobileTab.Home;
 
@@ -385,6 +394,9 @@ public sealed partial class ShellViewModel : ObservableObject
         _lastFm?.Relabel();
         _playlistsRoot?.Relabel();
         _favoritesRoot?.Relabel();
+        _songsRoot?.Relabel();
+        _albumsRoot?.Relabel();
+        _artistsRoot?.Relabel();
         foreach (var page in Pages) page.Relabel();
         OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
         OnPropertyChanged(nameof(QueueHistoryToggleText));
@@ -395,6 +407,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsLibrarySelected => SelectedTab == MobileTab.Library;
     public bool IsSearchSelected => SelectedTab == MobileTab.Search;
     public bool IsPlaylistsSelected => SelectedTab == MobileTab.Playlists;
+    public bool IsSongsSelected => SelectedTab == MobileTab.Songs;
+    public bool IsAlbumsSelected => SelectedTab == MobileTab.Albums;
+    public bool IsArtistsSelected => SelectedTab == MobileTab.Artists;
 
     public bool HasPage => CurrentPage != null;
     public bool IsHomeRootVisible => IsHomeSelected && !HasPage;
@@ -405,6 +420,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private PlaylistListPageViewModel? _playlistsRoot;
     private SongListPageViewModel? _favoritesRoot;
+    private SongListPageViewModel? _songsRoot;
+    private AlbumGridPageViewModel? _albumsRoot;
+    private ArtistListPageViewModel? _artistsRoot;
 
     /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.
     /// Made on first use; it re-reads on every library refresh.</summary>
@@ -414,6 +432,57 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
     public SongListPageViewModel FavoritesRoot =>
         _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false };
+
+    // Songs, Albums and Artists as tab roots (Settings › Tab Bar): each made once its tab is first
+    // on the bar, null before that, so a bar without them builds and refreshes none of them.
+
+    /// <summary>The Songs tab's root: every song, embedded under the tab's title (the Library row's page).</summary>
+    public SongListPageViewModel? SongsRoot => _songsRoot ??= HasTab(MobileTab.Songs)
+        ? new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs") { IsEmbedded = true }
+        : null;
+
+    /// <summary>The Albums tab's root: the album grid, embedded under the tab's title.</summary>
+    public AlbumGridPageViewModel? AlbumsRoot => _albumsRoot ??= HasTab(MobileTab.Albums)
+        ? new AlbumGridPageViewModel(this) { IsEmbedded = true }
+        : null;
+
+    /// <summary>The Artists tab's root: the artist circles, embedded under the tab's title.</summary>
+    public ArtistListPageViewModel? ArtistsRoot => _artistsRoot ??= HasTab(MobileTab.Artists)
+        ? new ArtistListPageViewModel(this) { IsEmbedded = true }
+        : null;
+
+    /// <summary>Settings › Tab Bar: the tabs on the bottom bar, in order (TabBarTabs). Set through
+    /// <see cref="SetBarTabs"/>; the bar, its pill and the roots follow at once.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartTab), nameof(HasSearchTab))]
+    private IReadOnlyList<MobileTab> _barTabs = TabBarTabs.Defaults;
+
+    public bool HasTab(MobileTab tab) => BarTabs.Contains(tab);
+
+    /// <summary>Search is on the bar: the folded bar's round Search button stands only then.</summary>
+    public bool HasSearchTab => HasTab(MobileTab.Search);
+
+    /// <summary>Where Back from another tab returns: Home while it is on the bar, else the first tab.</summary>
+    public MobileTab StartTab => HasTab(MobileTab.Home) ? MobileTab.Home : BarTabs[0];
+
+    /// <summary>Puts <paramref name="tabs"/> on the bar (normalized: TabBarTabs.Normalize) and saves it.</summary>
+    public void SetBarTabs(IEnumerable<MobileTab> tabs)
+    {
+        var next = TabBarTabs.Normalize(tabs);
+        if (next.SequenceEqual(BarTabs)) return;
+        BarTabs = next;
+    }
+
+    partial void OnBarTabsChanged(IReadOnlyList<MobileTab> value)
+    {
+        OnPropertyChanged(nameof(SongsRoot));
+        OnPropertyChanged(nameof(AlbumsRoot));
+        OnPropertyChanged(nameof(ArtistsRoot));
+        // The tab shown left the bar: its root goes, the start tab's comes (the pages pushed over
+        // it, and a sheet such as Settings, stay where they are).
+        if (!value.Contains(SelectedTab)) SelectedTab = StartTab;
+        SavePlayerBarSettings(nameof(BarTabs));
+    }
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
     // right, and without them the content drew under it.
@@ -684,6 +753,41 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>The row's value: "0", "+20", "-35".</summary>
     public string NowPlayingBrightnessLabel => NowPlayingBrightness.ToString("+0;-0;0", System.Globalization.CultureInfo.CurrentCulture);
 
+    /// <summary>Discord #mobile-beta request: Settings › Appearance › Now Playing Background's
+    /// style. Wash (the default) is the look above; Blurred Cover paints the cover itself, blurred
+    /// (BlurredCoverBackdrop), under a black tint, on Now Playing and its Lyrics. Saved with the
+    /// player bar's settings (MobileNowPlayingBackground) and applied live.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBlurredCoverBackground))]
+    private NowPlayingBackgroundStyle _nowPlayingBackground;
+
+    public bool IsBlurredCoverBackground => NowPlayingBackground == NowPlayingBackgroundStyle.BlurredCover;
+
+    public const int DefaultNowPlayingBlur = 50, DefaultNowPlayingDim = 15, NowPlayingDimLimit = 60;
+
+    /// <summary>Blurred Cover's Blur, 0-100: the cover's 128 px copy blurred at up to the wash's
+    /// own sigma (<see cref="NowPlayingBlurPercent"/>).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingBlurPercent), nameof(NowPlayingBlurLabel))]
+    private int _nowPlayingBlur = DefaultNowPlayingBlur;
+
+    /// <summary>The Blur as PreBlurredArtworkConverter's percent of its stock sigma: 100 here is
+    /// three times it (the wash's 7.2 px at 128 px), 50 one and a half.</summary>
+    public int NowPlayingBlurPercent => NowPlayingBlur * 3;
+
+    /// <summary>Blurred Cover's Dim, 0-60: the black over it, in percent. The stock shade stays
+    /// under it at its brightest (40%, Brightness +50's), so white text reads on a white cover.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NowPlayingCoverDimOpacity), nameof(NowPlayingDimLabel))]
+    private int _nowPlayingDim = DefaultNowPlayingDim;
+
+    public double NowPlayingCoverDimOpacity => NowPlayingDim / 100.0;
+
+    public string NowPlayingBlurLabel => Percent(NowPlayingBlur);
+    public string NowPlayingDimLabel => Percent(NowPlayingDim);
+
+    private static string Percent(int value) => (value / 100.0).ToString("P0", System.Globalization.CultureInfo.CurrentCulture);
+
     /// <summary>The activity is in the background (MainActivity.OnPause: home, task switch or
     /// screen off): Now Playing's disc stops asking for frames until it is back.</summary>
     [ObservableProperty] private bool _isSuspended;
@@ -704,6 +808,9 @@ public sealed partial class ShellViewModel : ObservableObject
     partial void OnSongRowMarkChanged(SongRowMark value) => SavePlayerBarSettings(nameof(SongRowMark));
     partial void OnNowPlayingArtworkChanged(NowPlayingArtworkStyle value) => SavePlayerBarSettings(nameof(NowPlayingArtwork));
     partial void OnNowPlayingBrightnessChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBrightness));
+    partial void OnNowPlayingBackgroundChanged(NowPlayingBackgroundStyle value) => SavePlayerBarSettings(nameof(NowPlayingBackground));
+    partial void OnNowPlayingBlurChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingBlur));
+    partial void OnNowPlayingDimChanged(int value) => SavePlayerBarSettings(nameof(NowPlayingDim));
 
     /// <summary>Settings › Appearance › Liquid Glass Tab Pill (testers 11-06): the selected tab's
     /// pill stays clear liquid glass at rest instead of settling into the dark tinted pill.
@@ -751,8 +858,12 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBackground))) NowPlayingBackground = NowPlayingBackgroundStyles.Parse(settings.MobileNowPlayingBackground);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBlur))) NowPlayingBlur = Math.Clamp(settings.MobileNowPlayingBlur, 0, 100);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingDim))) NowPlayingDim = Math.Clamp(settings.MobileNowPlayingDim, 0, NowPlayingDimLimit);
             }
             finally
             {
@@ -779,8 +890,11 @@ public sealed partial class ShellViewModel : ObservableObject
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
         var brightness = NowPlayingBrightness;
+        var background = NowPlayingBackground.ToString();
+        int blur = NowPlayingBlur, dim = NowPlayingDim;
         var glassPill = GlassTabPill;
         var queueHistory = ShowQueueHistory;
+        var tabBar = TabBarTabs.Encode(BarTabs);
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
             try
@@ -794,8 +908,12 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
                     settings.MobileNowPlayingBrightness = brightness;
+                    settings.MobileNowPlayingBackground = background;
+                    settings.MobileNowPlayingBlur = blur;
+                    settings.MobileNowPlayingDim = dim;
                     settings.MobileGlassTabPill = glassPill;
                     settings.MobileQueueShowHistory = queueHistory;
+                    settings.MobileTabBar = tabBar;
                 });
             }
             catch (Exception ex)
@@ -934,9 +1052,9 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>
     /// Android Back: the topmost thing closes first — a ⋯ menu or its sheet, Queue, Lyrics, Now
     /// Playing, then pushed pages (a page's own inner page first), then the Library rows' Edit
-    /// mode finishes (as Done would), then a non-start tab returns to Home. Returns whether the
-    /// press was consumed; only at the Home root does the activity fall through to the system
-    /// default (finish).
+    /// mode finishes (as Done would), then a non-start tab returns to the start tab (Home, or the
+    /// bar's first tab without it: <see cref="StartTab"/>). Returns whether the press was consumed;
+    /// only at the start tab's root does the activity fall through to the system default (finish).
     /// </summary>
     public bool TryHandleBack()
     {
@@ -949,7 +1067,7 @@ public sealed partial class ShellViewModel : ObservableObject
         if (CurrentPage?.TryGoBackWithin() == true) return true;
         if (GoBack()) return true;
         if (_libraryRows is { IsEditing: true } rows) { rows.FinishEditing(); return true; }
-        if (SelectedTab != MobileTab.Home) { SelectedTab = MobileTab.Home; return true; }
+        if (SelectedTab != StartTab) { SelectedTab = StartTab; return true; }
         return false;
     }
 
@@ -996,7 +1114,7 @@ public sealed partial class ShellViewModel : ObservableObject
         Player.PlayTracks(songs, index, Loc.T("Nav.Songs"));
     }
 
-    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs"));
+    [RelayCommand] private void OpenSongs() => Navigate(new SongListPageViewModel(this, "Nav.Songs", Library.SourceSongs, sortKey: "Nav.Songs"));
 
     [RelayCommand] private void OpenFavourites() => Navigate(new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { OffersFavouritesFilter = false });
 
@@ -1012,6 +1130,17 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand] private void OpenPinned() => Navigate(new RailGridPageViewModel(this, "Mobile.Pinned", () => Library.PinnedRail));
 
     [RelayCommand] private void OpenOnRepeat() => Navigate(new SongListPageViewModel(this, "Mobile.OnRepeat", Library.OnRepeatTracks, sortKey: "Mobile.OnRepeat"));
+
+    /// <summary>Home › Most Played: every played song, in the list's Most Played sort until the
+    /// user picks another (then that one, as any list's).</summary>
+    [RelayCommand]
+    private void OpenMostPlayed()
+    {
+        var page = new SongListPageViewModel(this, "Home.MostPlayed", Library.MostPlayedTracks, sortKey: "Home.MostPlayed");
+        if (!TryGetListSort<SongSort>("Home.MostPlayed", out _, out _))
+            page.ChooseSort(page.SortChoices.First(c => c.Key is SongSort.MostPlayed));
+        Navigate(page);
+    }
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
@@ -1211,7 +1340,14 @@ public sealed partial class ShellViewModel : ObservableObject
                 Navigate(new SongListPageViewModel(this, mix.TitleKey, () => mix.TrackIds.Select(Library.Service.GetTrackById).OfType<Track>()));
                 break;
             case Track track:
-                // A song plays the rail it sits on: On Repeat, else the pinned songs.
+                // A song plays the rail it sits on: Most Played (its own tile: the same song can sit
+                // on On Repeat too), On Repeat, else the pinned songs.
+                if (Library.MostPlayedRail.FirstOrDefault(i => ReferenceEquals(i, item)) != null)
+                {
+                    var mostPlayed = Library.MostPlayedRail.Select(CurrentPayload).OfType<Track>().ToList();
+                    Player.PlayTracks(mostPlayed, Math.Max(0, mostPlayed.IndexOf(track)), Loc.T("Home.MostPlayed"));
+                    break;
+                }
                 var onRepeat = Library.OnRepeatRail.Select(CurrentPayload).OfType<Track>().ToList();
                 var pinned = Library.PinnedRail.Select(CurrentPayload).OfType<Track>().ToList();
                 if (onRepeat.IndexOf(track) is var r and >= 0) Player.PlayTracks(onRepeat, r, Loc.T("Mobile.OnRepeat"));
@@ -1421,6 +1557,11 @@ public sealed partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void ShowSleepTimerMenu() => ShowOptions(OptionsMenuViewModel.ForSleepTimer(this, Player));
 
+    /// <summary>The Library tab's source button: All Music, On This Phone or From Computer on the
+    /// glass menu, for the Songs, Albums, Artists and Recently Added lists.</summary>
+    [RelayCommand]
+    private void ShowLibrarySourceMenu() => ShowOptions(OptionsMenuViewModel.ForLibrarySource(this, Library));
+
     /// <summary>The Library tab's ⋯: Add Folder…, Rescan Library and Settings on the glass menu.</summary>
     [RelayCommand]
     private void OpenLibraryMenu()
@@ -1487,6 +1628,14 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenAccount()
     {
         if (Account != null && CurrentPage is not AccountPageViewModel) Navigate(new AccountPageViewModel(this, Account));
+    }
+
+    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet.</summary>
+    [RelayCommand]
+    private void OpenComputerRemote()
+    {
+        if (Account is { IsSignedIn: true } && CurrentPage is not ComputerRemotePageViewModel)
+            Navigate(new ComputerRemotePageViewModel(this, Account));
     }
 
     /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play. Failures

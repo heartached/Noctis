@@ -241,6 +241,109 @@ public class FileSystemSourceScanTests : IDisposable
         Assert.Equal(new[] { "A1", "B1" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
     }
 
+    /// <summary>
+    /// What Settings › Library's folder ✕ does (SettingsViewModel.RemoveFolder: the folder leaves
+    /// the list, then a rescan of the rest). Its songs leave the library and library.json; the
+    /// user-state journal keeps their rows. Added back in the same session, the songs return with
+    /// the same ids (playlists keep pointing at them) and their journaled state at once. Before,
+    /// they came back empty until the next start, and a play in between overwrote the row.
+    /// </summary>
+    [Fact]
+    public async Task RemovedFolder_ReAddedSameSession_SongsComeBackWithTheirSavedState()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var source = new MultiRootSource();
+        foreach (var name in new[] { "A", "B" })
+        {
+            var dir = Path.Combine(_root, "roots", name);
+            Directory.CreateDirectory(dir);
+            WriteMp3(Path.Combine(dir, $"01 - {name}1.mp3"), name + "1", "Tester", "Album " + name);
+            WriteMp3(Path.Combine(dir, $"02 - {name}2.mp3"), name + "2", "Tester", "Album " + name);
+            source.Dirs["fake://tree/" + name] = dir;
+        }
+        var (library, persistence) = MakeLibrary(source);
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B" }, ct);
+        var b1 = library.Tracks.Single(t => t.Title == "B1");
+        var b1Id = b1.Id;
+        var lastPlayed = new DateTime(2026, 11, 1, 20, 0, 0, DateTimeKind.Utc);
+        var favoritedAt = new DateTime(2026, 10, 1, 8, 0, 0, DateTimeKind.Utc);
+        var snoozedUntil = new DateTime(2027, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        b1.PlayCount = 9;
+        b1.LastPlayed = lastPlayed;
+        b1.IsFavorite = true;
+        b1.FavoritedAt = favoritedAt;
+        b1.IsDisliked = true;
+        b1.SnoozedUntil = snoozedUntil;
+        b1.SavedPositionMs = 1234;
+        b1.Badge = "Gym";
+        await library.SaveTrackUserStateAsync(new[] { b1 });
+        await library.SetTracksRatingAsync(new[] { b1 }, 4);
+
+        // Remove B.
+        await library.ScanAsync(new[] { "fake://tree/A" }, ct);
+        Assert.Equal(new[] { "A1", "A2" }, library.Tracks.Select(t => t.Title).OrderBy(t => t));
+        var saved = await persistence.LoadLibraryAsync();
+        Assert.Equal(new[] { "A1", "A2" }, saved!.Select(t => t.Title).OrderBy(t => t));
+
+        // Add B back in the same session: same id, journaled state at once, no restart.
+        await library.ScanAsync(new[] { "fake://tree/A", "fake://tree/B" }, ct);
+        var back = library.Tracks.Single(t => t.Title == "B1");
+        Assert.Equal(b1Id, back.Id);
+        Assert.Equal(9, back.PlayCount);
+        Assert.Equal(lastPlayed, back.LastPlayed);
+        Assert.Equal(4, back.Rating);
+        Assert.True(back.IsFavorite);
+        Assert.Equal(favoritedAt, back.FavoritedAt);
+        Assert.True(back.IsDisliked);
+        Assert.Equal(snoozedUntil, back.SnoozedUntil);
+        Assert.Equal(1234, back.SavedPositionMs);
+        Assert.Equal("Gym", back.Badge);
+        // A song with no journal row stays empty.
+        Assert.Equal(0, library.Tracks.Single(t => t.Title == "B2").PlayCount);
+
+        // A play before any restart builds on the saved count instead of replacing it.
+        back.PlayCount++;
+        await library.SaveTrackUserStateAsync(new[] { back });
+
+        var persistence2 = new PersistenceService(Path.Combine(_root, "data"));
+        var library2 = new LibraryService(new MetadataService(), persistence2,
+            new SqliteLibraryIndexService(persistence2), new NoOpAudit(), fileSystem: source);
+        await library2.LoadAsync();
+        var restored = library2.Tracks.Single(t => t.Id == b1Id);
+        Assert.Equal(10, restored.PlayCount);
+        Assert.Equal(4, restored.Rating);
+        Assert.True(restored.IsFavorite);
+        Assert.Equal("Gym", restored.Badge);
+    }
+
+    /// <summary>
+    /// The folder watcher's path: a file deleted (RemoveTracksAsync, which also excludes it) and
+    /// put back is imported again (ImportDiscoveredFilesAsync) — with its journaled state.
+    /// </summary>
+    [Fact]
+    public async Task WatcherImport_FileDeletedAndPutBack_ComesBackWithItsSavedState()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (library, _) = MakeLibrary(new LocalFileSystemSource());
+        await library.ScanAsync(new[] { Path.Combine(_root, "music") }, ct);
+        var first = library.Tracks.Single(t => t.Title == "First");
+        var id = first.Id;
+        var path = first.FilePath;
+        first.PlayCount = 6;
+        first.IsFavorite = true;
+        await library.SaveTrackUserStateAsync(new[] { first });
+        await library.SetTracksRatingAsync(new[] { first }, 5);
+
+        await library.RemoveTracksAsync(new[] { id });
+        Assert.DoesNotContain(library.Tracks, t => t.Id == id);
+
+        await library.ImportDiscoveredFilesAsync(new[] { path }, ct);
+        var back = library.Tracks.Single(t => t.Id == id);
+        Assert.Equal(6, back.PlayCount);
+        Assert.Equal(5, back.Rating);
+        Assert.True(back.IsFavorite);
+    }
+
     /// <summary>Find All Music (phone): the media index root yields songs by content URI with no
     /// extension in the path ("…/audio/media/7"); the tags are read through the display name's
     /// format. The permission taken away keeps them (with their plays); the option turned off

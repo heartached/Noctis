@@ -125,6 +125,25 @@ public class GaplessStandbyReleaseTests
     }
 
     [Fact]
+    public void OutgoingSegmentStillTakingInput_IsWaitedFor_OnlyThen()
+    {
+        // A run of 0.2 s songs: the standby's own song can still be decoding its end when the
+        // next prepare wants the player; reusing it then would skip that song.
+        var seg = new GaplessTrackSegment(8000, 1, source: 1);
+        Assert.True(seg.Write(ConstantBlock(8192, 400)));
+        Assert.True(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: false, crossfading: false));
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: true, crossfading: false));  // a staged song being replaced
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: false, crossfading: true));  // a fading tail
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(null, standbyPrepared: false, crossfading: false));
+
+        seg.MarkEndOfStream();
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(seg, standbyPrepared: false, crossfading: false));
+        var live = new GaplessTrackSegment(8000, 1, source: 0);
+        live.Abandon();
+        Assert.False(VlcAudioPlayer.StandbyInputStillRunning(live, standbyPrepared: false, crossfading: false));
+    }
+
+    [Fact]
     public void StagedSegment_IsAbandoned_EvenWhenFullyDecoded()
     {
         var staged = new GaplessTrackSegment(8000, 1, source: 1);
@@ -148,6 +167,55 @@ public class GaplessStandbyReleaseTests
         drained.MarkEndOfStream();
         Assert.True(VlcAudioPlayer.EngineStandbyReleasable(drained, standbyPrepared: false, reuseStandby: true, out var abandonDrained));
         Assert.False(abandonDrained);
+    }
+
+    // Pause (and any other CancelPreparedNext) abandons the staged next track, which stays
+    // queued in the provider, and PrepareNext stages it again behind it. Harness 11-19: the
+    // seam into the re-staged track got a declick ramp, silence and a fade-in (+10 ms, all
+    // formats): the dead segment was dequeued and read as a cut of live audio.
+    [Fact]
+    public void AbandonedStagedSegment_IsSkipped_AndTheSeamIntoTheRestagedOneStaysExact()
+    {
+        var provider = new GaplessSpliceProvider(8000, 1, startThresholdMs: 0, startFadeMs: 5);
+        var a = new GaplessTrackSegment(8000, 1, source: 0);
+        var stale = new GaplessTrackSegment(8000, 1, source: 1);
+        var b = new GaplessTrackSegment(8000, 1, source: 1);
+        var started = new System.Collections.Generic.List<GaplessTrackSegment>();
+        provider.SegmentStarted += started.Add;
+        provider.Enqueue(a);
+        Assert.True(a.Write(ConstantBlock(16384, 600)));
+        provider.Read(new float[200], 0, 200);
+        provider.Enqueue(stale);
+        Assert.True(stale.Write(ConstantBlock(-8192, 400)));
+        stale.Abandon();                       // the pause's CancelPreparedNext
+        provider.Enqueue(b);                   // staged again after the resume
+        Assert.True(b.Write(ConstantBlock(-16384, 2000)));
+        a.MarkEndOfStream();
+
+        var seam = new float[800];
+        Assert.Equal(800, provider.Read(seam, 0, 800));
+        for (var i = 0; i < 400; i++) Assert.Equal(0.5f, seam[i]);
+        for (var i = 400; i < 800; i++) Assert.Equal(-0.5f, seam[i]);
+        Assert.Equal(new[] { a, b }, started);
+    }
+
+    [Fact]
+    public void Crossfade_GoesIntoTheRestagedSegment_NotTheAbandonedOne()
+    {
+        var provider = new GaplessSpliceProvider(8000, 1);
+        var a = new GaplessTrackSegment(8000, 1, source: 0);
+        var stale = new GaplessTrackSegment(8000, 1, source: 1);
+        var b = new GaplessTrackSegment(8000, 1, source: 1);
+        provider.Enqueue(a);
+        provider.Enqueue(stale);
+        Assert.True(a.Write(ConstantBlock(16384, 2000)));
+        provider.Read(new float[100], 0, 100);
+        stale.Abandon();
+        Assert.False(provider.BeginCrossfade(100, AutoMixFadeCurve.EqualPower)); // nothing live staged
+        provider.Enqueue(b);
+        Assert.True(b.Write(ConstantBlock(-16384, 2000)));
+        Assert.True(provider.BeginCrossfade(100, AutoMixFadeCurve.EqualPower));
+        Assert.Same(b, provider.ActiveSegment);
     }
 
     [Fact]

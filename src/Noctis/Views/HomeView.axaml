@@ -138,12 +138,18 @@
                                                        Opacity="0.8"
                                                        VerticalAlignment="Center" />
                                             <TextBlock Classes="chart-plays"
-                                                       Text="{loc:T Home.Plays}"
                                                        IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsNotOne}}"
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
                                                        Opacity="0.55"
-                                                       VerticalAlignment="Center" />
+                                                       VerticalAlignment="Center">
+                                                <TextBlock.Text>
+                                                    <MultiBinding Converter="{x:Static conv:PluralWordConverter.Instance}" ConverterParameter="Home.Plays">
+                                                        <Binding Path="Track.PlayCount" />
+                                                        <ReflectionBinding Path="[Home.Plays]" Source="{x:Static loc:Loc.Instance}" />
+                                                    </MultiBinding>
+                                                </TextBlock.Text>
+                                            </TextBlock>
                                             <TextBlock Classes="chart-plays"
                                                        Text="{loc:T Common.Play}"
                                                        IsVisible="{Binding Track.PlayCount, Converter={x:Static conv:PlayCountConverters.IsOne}}"

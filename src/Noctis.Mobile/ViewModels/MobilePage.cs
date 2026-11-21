@@ -4,9 +4,11 @@ using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
-/// <summary>The tabs of the phone UI, in the bar's order (Apple Music's: Home first, Search last).
-/// Home is the start tab (Back from the others returns to it).</summary>
-public enum MobileTab { Home, Favorites, Playlists, Library, Search }
+/// <summary>The tab roots of the phone UI. The first five are the default bar, in its order (Apple
+/// Music's: Home first, Search last); Songs, Albums and Artists can be put on it under Settings ›
+/// Tab Bar (TabBarTabs). Home is the start tab while it is on the bar (Back from the others returns
+/// to it). The names are the persisted keys (AppSettings.MobileTabBar), so they must not be renamed.</summary>
+public enum MobileTab { Home, Favorites, Playlists, Library, Search, Songs, Albums, Artists }
 
 /// <summary>How the page stack last changed: a page pushed (or presented), the top one popped,
 /// or a jump straight to the root (a tab tap) that no page slides through.</summary>
@@ -53,6 +55,9 @@ public abstract partial class MobilePage : ObservableObject
         MobileTab.Playlists => "Nav.Playlists",
         MobileTab.Library => "Tab.Library",
         MobileTab.Search => "Mobile.Search",
+        MobileTab.Songs => "Nav.Songs",
+        MobileTab.Albums => "Nav.Albums",
+        MobileTab.Artists => "Nav.Artists",
         _ => "Nav.Home",
     });
 
@@ -69,16 +74,23 @@ public abstract partial class MobilePage : ObservableObject
     /// and that is opened again and again (Settings).</summary>
     public virtual bool KeepsView => false;
 
+    /// <summary>The page's view draws its own backdrop (Settings and Account: the grouped sheet with
+    /// its rounded top), so <see cref="Views.PageStack"/> puts no page colour behind it. Every other
+    /// page draws on the stack's colour, in a sheet too (Listening History's Show All): without it the
+    /// app under the sheet showed through the page.</summary>
+    public virtual bool DrawsOwnBackdrop => false;
+
     public override string ToString() => Title;
 
     /// <summary>The UI language changed: every binding on the page re-reads (titles, counts,
     /// row values built in code). Pages with child view models add theirs.</summary>
     public virtual void Relabel() => OnPropertyChanged(string.Empty);
 
-    /// <summary>A page title given as a Strings.resx key ("Mobile.RecentlyAdded", "Nav.Songs") reads
-    /// in the current language, so an open page follows a language switch; any other text (an
-    /// artist's or playlist's name) shows as given.</summary>
+    /// <summary>A page title given as a Strings.resx key ("Mobile.RecentlyAdded", "Nav.Songs",
+    /// "Home.MostPlayed") reads in the current language, so an open page follows a language switch;
+    /// any other text (an artist's or playlist's name) shows as given.</summary>
     protected static string Localized(string titleOrKey) =>
         titleOrKey.StartsWith("Mobile.", StringComparison.Ordinal) || titleOrKey.StartsWith("Nav.", StringComparison.Ordinal)
+            || titleOrKey == "Home.MostPlayed"
             ? Loc.T(titleOrKey) : titleOrKey;
 }

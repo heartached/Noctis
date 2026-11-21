@@ -387,10 +387,13 @@
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="0" />
-            <Setter Property="Width" Value="34" />
-            <Setter Property="Height" Value="34" />
+            <!-- 32 px, 6 apart (the row's ItemSpacing): all eight kinds (ArtistLink.KindOrder) fit
+                 the side card's 300 px (340 less its padding) on one row, 8 * 32 + 7 * 6 = 298.
+                 34 px + an 8 px trailing margin fit seven, the eighth (the site) wrapped alone (Discord). -->
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
             <Setter Property="MinHeight" Value="0" />
-            <Setter Property="CornerRadius" Value="17" />
+            <Setter Property="CornerRadius" Value="16" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -621,7 +624,6 @@
         <!-- About-card link chip: brand glyph in a round chip, opens the URL. -->
         <DataTemplate x:Key="LinkChip" x:DataType="svc:ArtistLink">
             <Button Classes="link-circle"
-                    Margin="0,0,8,0"
                     Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenLinkCommand}"
                     CommandParameter="{Binding Url}"
                     ToolTip.Tip="{Binding Label}">
@@ -1193,10 +1195,10 @@
                             <!-- Links: brand chips -->
                             <StackPanel Spacing="8" IsVisible="{Binding About.HasLinks, FallbackValue=False}">
                                 <TextBlock Text="{loc:T ArtistDetail.Links}" FontSize="13" FontWeight="Bold" />
-                                <ItemsControl ItemsSource="{Binding About.Links, FallbackValue={x:Null}}" ItemTemplate="{StaticResource LinkChip}">
+                                <ItemsControl x:Name="AboutLinks" ItemsSource="{Binding About.Links, FallbackValue={x:Null}}" ItemTemplate="{StaticResource LinkChip}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="Horizontal" />
+                                            <WrapPanel Orientation="Horizontal" ItemSpacing="6" LineSpacing="6" />
                                         </ItemsPanelTemplate>
                                     </ItemsControl.ItemsPanel>
                                 </ItemsControl>

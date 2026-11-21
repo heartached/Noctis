@@ -137,6 +137,7 @@ public partial class App : Application
         async void LogRenderer(object? sender, EventArgs e)
         {
             window.Opened -= LogRenderer;
+            Helpers.FrameIntervalLog.StartIfAsked(window);
             try
             {
                 // Which clock drives RequestAnimationFrame / transitions on this machine. Logged
@@ -169,6 +170,53 @@ public partial class App : Application
         {
             Noctis.Services.StartupTrace.Mark("avalonia-initialized");
 
+            // The main window's view models need the audio player that Program.Main is still
+            // building when libvlc rebuilds its plugins cache (first start after an update):
+            // show a small starting window instead of nothing, and build the main window once
+            // the player is ready. See AudioWarmupGate.
+            if (Noctis.Helpers.AudioWarmupGate.ShouldShowStartingWindow(AudioWarmup, StartMinimizedAtLogin, Noctis.Helpers.AudioWarmupGate.Grace))
+            {
+                Noctis.Services.StartupTrace.Mark("starting-window-shown");
+                var starting = new StartingWindow();
+                desktop.MainWindow = starting;
+                Noctis.Helpers.AudioWarmupGate.RunWhenWarm(AudioWarmup!,
+                    action => Avalonia.Threading.Dispatcher.UIThread.Post(action),
+                    () =>
+                    {
+                        var main = BuildMainWindow(desktop);
+                        main.Show();
+                        starting.CloseForMainWindow();
+                    },
+                    ex =>
+                    {
+                        // Program.Main rethrows it after the lifetime ends: the same
+                        // "failed to start" message as a resolve that throws right here.
+                        StartupFailure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(ex);
+                        starting.CloseForMainWindow();
+                        desktop.Shutdown(1);
+                    });
+            }
+            else
+            {
+                BuildMainWindow(desktop);
+            }
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>The audio player warm-up Program.Main starts before Avalonia; null in tests.</summary>
+    public static Task? AudioWarmup { get; set; }
+
+    /// <summary>A main window build that failed after the starting window showed; Program.Main
+    /// rethrows it once the lifetime has ended.</summary>
+    public static System.Runtime.ExceptionServices.ExceptionDispatchInfo? StartupFailure { get; private set; }
+
+    /// <summary>Builds the view-model graph and the main window and makes it the lifetime's
+    /// main window. Blocks until the audio player exists (the graph needs it).</summary>
+    private MainWindow BuildMainWindow(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        {
             // This resolve builds the entire object graph, IAudioPlayer included — so it
             // blocks on the same singleton lock the Program.Main warm task is holding
             // while libvlc loads. The gap between the two marks is how much of that load
@@ -250,46 +298,63 @@ public partial class App : Application
                 if (shutdownSaveDone) return;
                 shutdownSaveDone = true;
                 e.Cancel = true;
-                // Await the backfill's unwind: TryWriteTags is a synchronous TagLib
-                // rewrite of a whole audio file, and exiting mid-Save() truncates it.
-                //
-                // Every step is deadline-bounded. Avalonia's Win32 backend raises this
-                // from WM_QUERYENDSESSION and reports a cancelled event back to Windows
-                // as a shutdown veto, and ShutdownRequestedEventArgs (11.3.18) exposes no
-                // way to tell an OS session-end from a normal quit. Unbounded, a slow save
-                // left the user staring at "This app is preventing you from shutting
-                // down" — or Windows force-terminated us and cut off the very save the
-                // cancel exists to protect. Bounded, the veto lasts at most a few seconds
-                // and we always exit under our own power.
-                try
-                {
-                    await Task.WhenAll(
+                await RunShutdownSequenceAsync(
+                    mainVm.SilencePlaybackForExit,
+                    () => Task.WhenAll(
                         analysisCoordinator.StopAsync(TimeSpan.FromSeconds(3)),
                         autoReplayGain.StopAsync(TimeSpan.FromSeconds(3)),
-                        autoLyrics.StopAsync(TimeSpan.FromSeconds(3)));
-                }
-                catch { }
-                try { await mainVm.ShutdownAsync().WaitAsync(ShutdownSaveDeadline); }
-                catch (TimeoutException)
-                {
-                    DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave",
-                        $"did not finish within {ShutdownSaveDeadline.TotalSeconds:0}s — exiting anyway");
-                }
-                catch (Exception ex)
-                {
-                    DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave", ex.Message);
-                }
+                        autoLyrics.StopAsync(TimeSpan.FromSeconds(3))),
+                    mainVm.ShutdownAsync,
+                    ShutdownSaveDeadline);
                 // The provider is never disposed: stop the feed thread and its ffmpeg child here.
                 sideFeed.Dispose();
                 desktop.Shutdown();
             };
+            return mainWindow;
         }
-
-        base.OnFrameworkInitializationCompleted();
     }
 
     /// <summary>How long the shutdown save may hold the exit before we quit regardless.</summary>
     private static readonly TimeSpan ShutdownSaveDeadline = TimeSpan.FromSeconds(4);
+
+    /// <summary>
+    /// The exit steps, in order. GitHub #243: the music is silenced first (the pause with the
+    /// user's fade), then the background work stops and the state is saved. The pause used to
+    /// sit at the top of the save, after the background stops, which may each wait up to 3 s,
+    /// so the song played on for seconds after the window had closed. Internal for tests.
+    ///
+    /// Await the backfill's unwind (<paramref name="stopBackgroundWork"/>): TryWriteTags is a
+    /// synchronous TagLib rewrite of a whole audio file, and exiting mid-Save() truncates it.
+    ///
+    /// Every step is deadline-bounded. Avalonia's Win32 backend raises ShutdownRequested from
+    /// WM_QUERYENDSESSION and reports a cancelled event back to Windows as a shutdown veto, and
+    /// ShutdownRequestedEventArgs (11.3.18) exposes no way to tell an OS session-end from a
+    /// normal quit. Unbounded, a slow save left the user staring at "This app is preventing you
+    /// from shutting down", or Windows force-terminated us and cut off the very save the cancel
+    /// exists to protect. Bounded, the veto lasts at most a few seconds and we always exit under
+    /// our own power.
+    /// </summary>
+    internal static async Task RunShutdownSequenceAsync(
+        Action silencePlayback, Func<Task> stopBackgroundWork, Func<Task> saveState, TimeSpan saveDeadline)
+    {
+        try { silencePlayback(); }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "ShutdownPause", ex.Message);
+        }
+        try { await stopBackgroundWork(); }
+        catch { }
+        try { await saveState().WaitAsync(saveDeadline); }
+        catch (TimeoutException)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave",
+                $"did not finish within {saveDeadline.TotalSeconds:0}s — exiting anyway");
+        }
+        catch (Exception ex)
+        {
+            DebugLogger.Error(DebugLogger.Category.Error, "ShutdownSave", ex.Message);
+        }
+    }
 
     // Names used for persistence and for picking the runtime overlay.
     public const string ThemeGray = "Gray";

@@ -108,11 +108,17 @@ internal static class MobileLibrary
     }
 
     /// <summary>Albums newest-first by their most recently added track.</summary>
-    internal static List<Album> RecentlyAddedAlbums(ILibraryService library, int max) =>
+    internal static List<Album> RecentlyAddedAlbums(ILibraryService library, int max) => RecentlyAddedAlbums(library, max, _ => true);
+
+    /// <summary>Albums with a track <paramref name="include"/> takes (the Library's source), newest
+    /// first by the most recently added of those tracks.</summary>
+    internal static List<Album> RecentlyAddedAlbums(ILibraryService library, int max, Func<Track, bool> include) =>
         library.Albums
-            .Where(a => a.Tracks.Count > 0)
-            .OrderByDescending(a => a.Tracks.Max(t => t.DateAdded))
+            .Select(a => (Album: a, Newest: a.Tracks.Where(include).Select(t => (DateTime?)t.DateAdded).Max()))
+            .Where(x => x.Newest != null)
+            .OrderByDescending(x => x.Newest)
             .Take(max)
+            .Select(x => x.Album)
             .ToList();
 
     /// <summary>The date a release sorts by (the desktop ArtistDetailViewModel.ReleaseSortDate

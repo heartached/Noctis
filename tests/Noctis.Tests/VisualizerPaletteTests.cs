@@ -16,13 +16,23 @@ public class VisualizerPaletteTests
     public void NoArtwork_ReturnsNull_SoCallerUsesFallback()
         => Assert.Null(VisualizerPalette.Build(null, VisualizerStyle.Bars));
 
-    [Theory]
+    /// <summary>GitHub #255: a black-and-white cover paints white bars. It used to return null,
+    /// and the bars took the accent, a colour the cover does not have.</summary>
+    [AvaloniaTheory]
     [InlineData(0x20, 0x20, 0x20)] // near-black
     [InlineData(0x80, 0x80, 0x80)] // mid grey
     [InlineData(0xF0, 0xF0, 0xF0)] // near-white
     [InlineData(0x60, 0x62, 0x66)] // faintly tinted grey
-    public void GreyCover_ReturnsNull(byte r, byte g, byte b)
-        => Assert.Null(VisualizerPalette.Build(Color.FromRgb(r, g, b), VisualizerStyle.Bars));
+    public void GreyCover_PaintsWhiteBars_WithoutAHue(byte r, byte g, byte b)
+    {
+        var brush = VisualizerPalette.Build(Color.FromRgb(r, g, b), VisualizerStyle.Bars);
+        Assert.NotNull(brush);
+        foreach (var stop in brush!.GradientStops)
+        {
+            Assert.True(stop.Color.R == stop.Color.G && stop.Color.G == stop.Color.B, $"not neutral: {stop.Color}");
+            Assert.True(stop.Color.R >= 0xC0, $"too dark for the scrim: {stop.Color}");
+        }
+    }
 
     [AvaloniaFact] // builds a LinearGradientBrush (AvaloniaObject): UI thread only once a headless app exists
     public void DarkColourfulCover_IsLiftedToTheLightnessFloor()

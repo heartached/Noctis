@@ -992,7 +992,8 @@ public partial class LyricsView : UserControl
                 or nameof(PlayerViewModel.ShowsMusicVideoFullSize) &&
             DataContext is LyricsViewModel vm)
             UpdateFlowAnimationState(vm);
-        else if (e.PropertyName == nameof(PlayerViewModel.LyricsBackgroundBehindSidebar) &&
+        else if (e.PropertyName is nameof(PlayerViewModel.LyricsBackgroundBehindSidebar)
+                     or nameof(PlayerViewModel.LyricsPageTintsWindow) &&
                  DataContext is LyricsViewModel bleedVm)
             ApplyBackdropBleed(bleedVm);
         // GitHub #204: the centred player makes room for the queue drawer, gliding with it
@@ -1004,10 +1005,13 @@ public partial class LyricsView : UserControl
     }
 
     /// <summary>GitHub #184: the backdrop layers reach under the sidebar rail while the
-    /// setting is on (the colour fill layer shows only then; off, the grid paints it).</summary>
+    /// setting is on (the colour fill layer shows only then; off, the grid paints it).
+    /// Tint Whole Window (#142) asks the window around the sidebar to look like this page, so
+    /// it reaches there too: the real backdrop rather than the flat average colour the window
+    /// tint paints, which with a blurred cover read as a plain band (Discord 11-16).</summary>
     private void ApplyBackdropBleed(LyricsViewModel vm)
     {
-        var on = vm.Player.LyricsBackgroundBehindSidebar;
+        var on = vm.Player.LyricsBackgroundBehindSidebar || vm.Player.LyricsPageTintsWindow;
         LyricsBackdropFill.IsVisible = on;
         _backdropBleed.Enabled = on;
     }

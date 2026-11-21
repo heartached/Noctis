@@ -28,6 +28,11 @@ public class AppSettings : IJsonOnDeserializing
     /// follow the listed ones in their default order and state.</summary>
     public List<string> PhoneLibraryRows { get; set; } = new();
 
+    /// <summary>Phone: which songs the Library's lists show (Discord #mobile-beta, 11-17): "Phone"
+    /// (the phone's own files), "Computer" (the signed-in computer's songs) or empty for all of
+    /// them. Unknown values read as all.</summary>
+    public string PhoneLibrarySource { get; set; } = "";
+
     /// <summary>Phone: Settings › Music Folders › Find All Music Automatically. The library also
     /// takes every song Android's media index knows (MediaStore), besides the folders.</summary>
     public bool PhoneAllMusic { get; set; }
@@ -68,7 +73,8 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Directory names to ignore while scanning (case-insensitive).</summary>
     public List<string> IgnoredFolderNames { get; set; } = new() { ".git", "node_modules", "$recycle.bin", "system volume information" };
 
-    /// <summary>Current theme: "Gray", "Dark", "MidnightBlack", "Light", or "System".</summary>
+    /// <summary>Current theme: "Gray", "Dark", "Light", "Midnight", "Ink", "Smoke", "Custom:&lt;id&gt;"
+    /// or "Pack:&lt;key&gt;". Older "MidnightBlack" and "System" values are migrated at load.</summary>
     public string Theme { get; set; } = "Gray";
 
     /// <summary>UI language: a culture name shipped in Localization/ ("es") or "" to follow the OS.</summary>
@@ -203,9 +209,26 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
     public int MobileNowPlayingBrightness { get; set; }
 
+    /// <summary>Phone, Settings › Appearance › Now Playing Background: "Wash" (the default, the
+    /// cover's colours) or "BlurredCover" (the cover itself, blurred, under a black tint). Saved by
+    /// name; anything unknown reads as Wash.</summary>
+    public string MobileNowPlayingBackground { get; set; } = "Wash";
+
+    /// <summary>Phone, Blurred Cover's Blur, 0-100 (50, the default, is a medium-strong blur).</summary>
+    public int MobileNowPlayingBlur { get; set; } = 50;
+
+    /// <summary>Phone, Blurred Cover's Dim: the black tint over it, 0-60 percent (15 by default).</summary>
+    public int MobileNowPlayingDim { get; set; } = 15;
+
     /// <summary>Phone, Settings › Appearance › Liquid Glass Tab Pill: the selected tab's pill stays
     /// clear glass instead of the dark tinted pill. Off by default.</summary>
     public bool MobileGlassTabPill { get; set; }
+
+    /// <summary>Phone, Settings › Tab Bar (beta testers 11-17): the tabs on the bottom bar, in order,
+    /// by name ("Home", "Songs", ...). Empty (the default, and what a settings file without the field
+    /// reads as) = Home, Favorites, Playlists, Library, Search. Names this build does not know are
+    /// skipped; Library is always kept.</summary>
+    public List<string> MobileTabBar { get; set; } = new();
 
     /// <summary>Phone, Settings › Listening › Played Songs in Queue: the Queue page keeps the songs
     /// already played in a History section above the current track (a tap plays one again). Off by
@@ -853,6 +876,10 @@ public class AppSettings : IJsonOnDeserializing
     /// lyrics-page compact pill). The window clamps the upper end live, so only a sanity
     /// ceiling is stored.</summary>
     public double PlaybackBarWidth { get; set; } = 536;
+    /// <summary>Bounds of <see cref="PlaybackBarWidth"/>: the grip drag, the Settings slider
+    /// and the load-time clamp all use these.</summary>
+    public const double PlaybackBarMinWidth = 340;
+    public const double PlaybackBarMaxWidth = 4096;
 
     /// <summary>Album cover sizing mode for the Albums/Favorites grids. True (default) keeps
     /// the classic layout — five covers per row, covers scale with the window — so existing
@@ -876,7 +903,7 @@ public class AppSettings : IJsonOnDeserializing
     public bool AlbumGridWideSpacing { get; set; }
 
     /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
-    /// glow and its neighbours step back. Off by default.</summary>
+    /// glow; no other album moves (GitHub #250). Off by default.</summary>
     public bool AlbumHoverZoom { get; set; }
 
     /// <summary>How the large now-playing cover on the Lyrics page is dressed: "Cover"
@@ -1126,7 +1153,8 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Whether long track titles in the mini player should scroll.</summary>
     public bool MiniPlayerTitleMarqueeEnabled { get; set; } = true;
 
-    /// <summary>Whether long album titles in the mini player should scroll.</summary>
+    /// <summary>Whether the long artist line in the mini player should scroll (the name says
+    /// album; the mini player shows the artist there, and the key stays for saved settings).</summary>
     public bool MiniPlayerAlbumMarqueeEnabled { get; set; } = true;
 
     // ── Equalizer settings ──
@@ -1591,7 +1619,7 @@ public class AppSettings : IJsonOnDeserializing
             : 220;
         // IsFinite first: Math.Clamp propagates NaN, and a NaN width would wedge the bar.
         PlaybackBarWidth = double.IsFinite(PlaybackBarWidth)
-            ? Math.Clamp(PlaybackBarWidth, 340, 4096)
+            ? Math.Clamp(PlaybackBarWidth, PlaybackBarMinWidth, PlaybackBarMaxWidth)
             : 536;
         // 1.4.8: the bar grew a favorite heart (+36px) and its default went 590 → 626. A
         // stored 590 is the untouched OLD default, not a choice — move it along so existing

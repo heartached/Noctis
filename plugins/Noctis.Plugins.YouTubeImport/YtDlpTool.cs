@@ -113,20 +113,8 @@ public sealed class YtDlpTool
         try { return (read() ?? string.Empty).Trim(); } catch { return string.Empty; }
     }
 
-    private static string? FindOnPath(string exe)
-    {
-        var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            try
-            {
-                var candidate = Path.Combine(dir.Trim(), exe);
-                if (File.Exists(candidate)) return candidate;
-            }
-            catch { }
-        }
-        return null;
-    }
+    // PATH, then on macOS the Homebrew/MacPorts folders a Finder-launched app's PATH lacks.
+    private static string? FindOnPath(string exe) => ToolLocator.Find(exe);
 
     /// <summary>Downloads the latest release asset into the tools folder (replacing an older copy).</summary>
     public async Task<string> InstallAsync(IProgress<double>? progress, CancellationToken ct, IProgress<DownloadReport>? report = null)
@@ -557,6 +545,8 @@ public sealed class YtDlpTool
             StandardErrorEncoding = Encoding.UTF8,
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+        // yt-dlp finds deno/node on its own PATH: give it the folders the runtime was found in.
+        if (ToolLocator.ChildPath() is { } childPath) psi.Environment["PATH"] = childPath;
 
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("yt-dlp could not be started");
         using var reg = ct.Register(() => { try { if (!p.HasExited) p.Kill(true); } catch { } });

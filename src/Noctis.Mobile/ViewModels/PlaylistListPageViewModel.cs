@@ -109,7 +109,7 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
         };
         // Only when something changed: a refresh of the same playlists must not Reset the list.
         MobileLibrary.ReplaceIfChanged(Playlists, sorted.ToList());
-        MobileLibrary.ReplaceIfChanged(Rows, Playlists.Select(p => new PlaylistRow(p, Shell.Library.PlaylistArtwork(p))).ToList());
+        MobileLibrary.ReplaceIfChanged(Rows, Playlists.Select(p => new PlaylistRow(p, Shell.Library.PlaylistArtwork(p), Shell.Library.PlaylistSongCount(p))).ToList());
         OnPropertyChanged(nameof(ShowNoMatches));
     }
 
@@ -127,9 +127,10 @@ public sealed partial class PlaylistListPageViewModel : MobilePage, ISortable
 
 public enum PlaylistSort { Title, RecentlyUpdated, RecentlyAdded }
 
-/// <summary>A playlist row: its cover (the first of its songs that has one) and its song count.</summary>
-public sealed record PlaylistRow(Playlist Playlist, string? ArtworkPath)
+/// <summary>A playlist row: its cover (the first of its songs that has one) and its song count
+/// (the songs its page lists, <see cref="LibraryViewModel.PlaylistSongCount"/>).</summary>
+public sealed record PlaylistRow(Playlist Playlist, string? ArtworkPath, int SongCount)
 {
     public string Name => Playlist.Name;
-    public string Subtitle => Loc.Plural("Mobile.Count.Songs", Playlist.TrackIds.Count);
+    public string Subtitle => Loc.Plural("Mobile.Count.Songs", SongCount);
 }

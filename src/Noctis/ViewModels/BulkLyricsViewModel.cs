@@ -112,7 +112,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         // Set after the restore above, so restoring them is not taken for a change.
         _savePrefs = remove ? null : savePrefs;
         var n = tracks.Count;
-        var songs = n == 1 ? L("LibrarySongs.SummarySong") : L("LibrarySongs.SummarySongs", n);
+        var songs = n == 1 ? L("LibrarySongs.SummarySong") : Noctis.Localization.Loc.Plural("LibrarySongs.SummarySongs", n);
         TitleText = remove ? L("BulkLyrics.TitleRemove", songs) : IsLibrary ? L("BulkLyrics.TitleLibrary", songs) : L("BulkLyrics.TitleFetch", songs);
         // GitHub #203: what a run looks for and where it saves follow Settings ▸ Lyrics (the bulk
         // service stops at the preferred type; LyricsWriter saves per "Save lyrics to").
@@ -405,7 +405,7 @@ public partial class BulkLyricsViewModel : ViewModelBase
         CanTimeInStudio = _openStudio is not null && plainOnly.Count > 0;
         if (!CanTimeInStudio) return;
         var n = Math.Min(plainOnly.Count, StudioBatch);
-        StudioOfferText = (plainOnly.Count == 1 ? L("BulkLyrics.StudioOfferOne") : L("BulkLyrics.StudioOfferMany", plainOnly.Count))
+        StudioOfferText = (plainOnly.Count == 1 ? L("BulkLyrics.StudioOfferOne") : Noctis.Localization.Loc.Plural("BulkLyrics.StudioOfferMany", plainOnly.Count))
             + (plainOnly.Count > n ? " " + L("BulkLyrics.StudioOfferFirst", n) : string.Empty);
     }
 

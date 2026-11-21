@@ -163,7 +163,4 @@ public partial class AnimatedCoverImage : UserControl
         HasFrame = frame != null;
         _image.InvalidateVisual();
     }
-
-    /// <summary>Called by the feed after it copied a new frame into the shared bitmap.</summary>
-    internal void InvalidateFrame() => _image.InvalidateVisual();
 }

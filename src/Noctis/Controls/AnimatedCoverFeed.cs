@@ -16,10 +16,10 @@ namespace Noctis.Controls;
 /// <summary>
 /// One looping decoder per animated-cover file, shared by every
 /// <see cref="AnimatedCoverImage"/> showing that file (lyrics page, mini player, Cover Flow,
-/// album page, …). Frames land in a single <see cref="WriteableBitmap"/> that all of them
-/// display. Each consumer used to run its own LibVLC player: a 2160×2160 HEVC cover costs
-/// ~0.5–0.75 GB and about one CPU core per software decoder, so five hosts of the same
-/// clip cost five times that for one picture.
+/// album page, …). Frames land in one of a few rotating <see cref="WriteableBitmap"/>s
+/// and all of them display the latest. Each consumer used to run its own LibVLC player:
+/// a 2160×2160 HEVC cover costs ~0.5–0.75 GB and about one CPU core per software
+/// decoder, so five hosts of the same clip cost five times that for one picture.
 ///
 /// All LibVLC calls (first-use core initialization, Play, Stop, Dispose) run on worker
 /// threads: they block for hundreds of milliseconds and froze the UI when a cover was
@@ -148,40 +148,32 @@ internal sealed class AnimatedCoverFeed
         _frame = null;
 
         // A frame that was painted (by this loop or bridged in from the cache) goes back
-        // to the cache so the next start of this file is seamless. The session keeps its
-        // bitmap only when that bitmap IS the retired frame; it must never hand
-        // uninitialized pixels to the cache.
-        session?.ShutDown(keepBitmap: session != null && ReferenceEquals(frame, session.Bitmap),
-            peakConsumers: _peakConsumers);
+        // to the cache so the next start of this file is seamless. The session gives up
+        // only the bitmap that IS the retired frame and disposes its others; it must
+        // never hand uninitialized pixels to the cache.
+        session?.ShutDown(keep: frame, peakConsumers: _peakConsumers);
         if (frame != null)
             CacheFrame(Source, frame);
     }
 
     /// <summary>UI thread: a decoded frame is waiting in <paramref name="session"/>'s buffer.
-    /// One copy into the shared bitmap, then every consumer repaints it.</summary>
+    /// One copy into the session's next bitmap, then every consumer shows that one.</summary>
     private void OnFrame(Session session)
     {
         if (_closed || !ReferenceEquals(_session, session)) return;
 
-        session.CopyToBitmap();
-        var bitmap = session.Bitmap;
-        var consumers = s_leases.ConsumersOf(Source);
-        if (ReferenceEquals(_frame, bitmap))
-        {
-            foreach (var consumer in consumers)
-                consumer.InvalidateFrame();
-            return;
-        }
-
-        // First real frame of this loop: swap it in for the bridge frame everywhere. The
-        // bridge bitmap can only be disposed after every Image let go of it, and after the
-        // render pass that may still reference it — hence the post.
-        var bridge = _frame;
+        var bitmap = session.CopyToNextBitmap();
+        var previous = _frame;
         _frame = bitmap;
-        foreach (var consumer in consumers)
+        foreach (var consumer in s_leases.ConsumersOf(Source))
             consumer.ShowFrame(bitmap);
-        if (bridge != null)
-            Dispatcher.UIThread.Post(bridge.Dispose);
+
+        // First real frame of this loop: the bridge frame it replaces came from the cache.
+        // It can only be disposed after every Image let go of it, and after the render
+        // pass that may still reference it — hence the post. The session's own bitmaps
+        // stay alive: they are written again in turn.
+        if (previous != null && !session.Owns(previous))
+            Dispatcher.UIThread.Post(previous.Dispose);
     }
 
     // Process-wide bridge-frame cache: the last decoded frame of recently played covers,
@@ -244,13 +236,18 @@ internal sealed class AnimatedCoverFeed
         // (into the bitmap) instead of native buffer → managed scratch → bitmap.
         private readonly byte[] _pixels = GC.AllocateUninitializedArray<byte>(BufferBytes, pinned: true);
         private readonly IntPtr _pixelsAddress;
-        private readonly WriteableBitmap _bitmap;
+        // Frames rotate through these, so the bitmap on screen is not written while the
+        // compositor can still draw it: a frame written in place shows up early in
+        // whatever part of the window the render thread repaints on its own (seen as a
+        // seam on the lyrics page video).
+        private readonly WriteableBitmap[] _bitmaps = new WriteableBitmap[3];
+        private int _nextBitmap;                         // UI thread only
         private volatile bool _framePending;             // coalesce UI copies
         private long _lastFrameTimestamp;                // VLC display thread only
         private int _dead;
 
-        /// <summary>The frame target; the feed adopts it as its frame on the first paint.</summary>
-        public WriteableBitmap Bitmap => _bitmap;
+        /// <summary>Whether <paramref name="bitmap"/> is one of this session's frame targets.</summary>
+        public bool Owns(WriteableBitmap bitmap) => Array.IndexOf(_bitmaps, bitmap) >= 0;
 
         private bool IsDead => Volatile.Read(ref _dead) != 0;
 
@@ -263,11 +260,12 @@ internal sealed class AnimatedCoverFeed
         {
             _feed = feed;
             _pixelsAddress = Marshal.UnsafeAddrOfPinnedArrayElement(_pixels, 0);
-            _bitmap = new WriteableBitmap(new PixelSize(RenderSize, RenderSize), new Vector(96, 96),
-                PixelFormat.Bgra8888, AlphaFormat.Opaque);
-            // The bitmap holds uninitialized pixels until the first decoded frame
-            // arrives; the feed only hands it to consumers from the first frame on, so
-            // no garbage ever flashes.
+            for (var i = 0; i < _bitmaps.Length; i++)
+                _bitmaps[i] = new WriteableBitmap(new PixelSize(RenderSize, RenderSize), new Vector(96, 96),
+                    PixelFormat.Bgra8888, AlphaFormat.Opaque);
+            // A bitmap holds uninitialized pixels until a decoded frame is copied into
+            // it; the feed only hands one to consumers after that copy, so no garbage
+            // ever flashes.
             _lockCb = OnLock;
             _displayCb = OnDisplay;
         }
@@ -329,27 +327,31 @@ internal sealed class AnimatedCoverFeed
             }, DispatcherPriority.Render);
         }
 
-        /// <summary>UI thread: the one per-frame copy, pinned buffer → bitmap.</summary>
-        public void CopyToBitmap()
+        /// <summary>UI thread: the one per-frame copy, pinned buffer → the next bitmap in
+        /// the rotation, which is returned.</summary>
+        public WriteableBitmap CopyToNextBitmap()
         {
-            using var fb = _bitmap.Lock();
+            var bitmap = _bitmaps[_nextBitmap];
+            _nextBitmap = (_nextBitmap + 1) % _bitmaps.Length;
+            using var fb = bitmap.Lock();
             if (fb.RowBytes == Stride)
             {
                 Marshal.Copy(_pixels, 0, fb.Address, BufferBytes);
-                return;
+                return bitmap;
             }
 
             for (var y = 0; y < RenderSize; y++)
                 Marshal.Copy(_pixels, y * Stride, fb.Address + y * fb.RowBytes, Stride);
+            return bitmap;
         }
 
         /// <summary>
         /// Stops and disposes the player on a worker thread (Stop blocks in LibVLC 3.x).
-        /// Safe to call multiple times, from the UI thread or the opening worker. With
-        /// <paramref name="keepBitmap"/> the feed adopted <see cref="Bitmap"/> as its frame
-        /// and now owns its disposal.
+        /// Safe to call multiple times, from the UI thread or the opening worker. The feed
+        /// adopted <paramref name="keep"/> as its frame and now owns its disposal; every
+        /// other bitmap of this session is disposed here.
         /// </summary>
-        public void ShutDown(bool keepBitmap = false, int peakConsumers = 0)
+        public void ShutDown(WriteableBitmap? keep = null, int peakConsumers = 0)
         {
             if (Interlocked.Exchange(ref _dead, 1) != 0) return;
             DebugLogger.Info(DebugLogger.Category.Playback, "Cover.Stop",
@@ -373,8 +375,11 @@ internal sealed class AnimatedCoverFeed
                         try { player.Dispose(); } catch { }
                     }
                 }
-                if (!keepBitmap)
-                    Dispatcher.UIThread.Post(_bitmap.Dispose);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    foreach (var bitmap in _bitmaps)
+                        if (!ReferenceEquals(bitmap, keep)) bitmap.Dispose();
+                });
             });
         }
 

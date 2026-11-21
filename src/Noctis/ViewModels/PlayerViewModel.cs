@@ -535,6 +535,10 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// AppSettings.PlaybackBarWidth at startup and updated by the bar's edge-drag; the
     /// 626 default mirrors both the settings default and the XAML base width.</summary>
     [ObservableProperty] private double _playbackBarIslandWidth = 536;
+    /// <summary>How wide the persistent island can be dragged: its host's width less the edge
+    /// margins (PlaybackBarView.UpdateIslandMaxWidth); 0 until the bar is laid out. Settings ›
+    /// Player sizes its width slider from it.</summary>
+    [ObservableProperty] private double _islandAvailableWidth;
     /// <summary>Queue panel width (GitHub #147). Hydrated from AppSettings.QueuePanelWidth and
     /// set live by the panel's left-edge drag; the panel and its glass frost bind to it.</summary>
     [ObservableProperty]
@@ -636,6 +640,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// <summary>GitHub #184: the lyrics page's background reaches under the sidebar rail.
     /// Driven by Settings; display-only (LyricsView extends its backdrop layers).</summary>
     [ObservableProperty] private bool _lyricsBackgroundBehindSidebar;
+    /// <summary>Album Page Colour + Tint Whole Window are on, so the window around the
+    /// sidebar takes the lyrics page's look (#142): LyricsView then reaches its backdrop
+    /// under the sidebar as #184 does, instead of a flat average of it (Discord 11-16).
+    /// Driven by Settings; display-only.</summary>
+    [ObservableProperty] private bool _lyricsPageTintsWindow;
     /// <summary>Whether the lyrics show TTML translations / romanization / background vocals
     /// under each line (issue #78). Driven by Settings; display-only, no re-parse.</summary>
     [ObservableProperty] private bool _lyricsShowTranslations = true;
@@ -796,9 +805,15 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private bool _autoMixAdvanceQueued; // prevents repeated early-advance triggers
     private long _pendingAutoMixNextStartMs = -1;
     private DateTime _autoMixCommitGuardUntilUtc = DateTime.MinValue;
+    // The player's session before the last song's Play: until it moves on, that Play has not run.
+    private long _sessionBeforeLastPlay = -1;
     private DateTime _autoMixTransitionArmedUntilUtc = DateTime.MinValue;
     private string _lastAutoMixLogKey = string.Empty;
     private Guid _autoMixPreparedTrackId = Guid.Empty;
+    // The next track, while Song Transitions is on and the planner leaves this pair alone
+    // (the next song of the same album, a short track, classical or live recordings): the
+    // pair the gapless advance then takes. Set by TryAdvanceForAutoMix for the tick it ran in.
+    private Guid _autoMixLeftAloneNextId = Guid.Empty;
     private long _queueVersion;
     private AutoMixPreparedTransitionSnapshot? _autoMixPreparedSnapshot;
     private SettingsViewModel? _settings;
@@ -2033,10 +2048,12 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         MarkQueueChanged();
         // The started song is the new queue's, even when it is the one Clear Queue took out
         // (the same Track, so the CurrentTrack change that would bring it back never fires).
+        var currentWasCleared = _currentClearedFromQueue;
         SetCurrentClearedFromQueue(false);
 
-        // Move current to history if playing
-        if (CurrentTrack != null)
+        // Move current to history if playing; not a song Clear Queue took out (GitHub #256:
+        // it came back as a played row of the new queue).
+        if (CurrentTrack != null && !currentWasCleared)
         {
             History.Insert(0, CurrentTrack);
             TrimHistory();
@@ -2462,7 +2479,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _deferPlayedSync = true;
         try
         {
-            if (CurrentTrack != null)
+            // Not a song Clear Queue took out (GitHub #256: it came back as a played row).
+            if (CurrentTrack != null && !_currentClearedFromQueue)
             {
                 History.Insert(0, CurrentTrack);
                 _queueHistoryDepth++;
@@ -2507,7 +2525,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         CancelAutoMixTransition("user skipped");
         MarkQueueChanged();
 
-        if (CurrentTrack != null)
+        // Not a song Clear Queue took out (GitHub #256: it came back into the cleared queue).
+        if (CurrentTrack != null && !_currentClearedFromQueue)
             UpNext.Insert(0, CurrentTrack);
         // What played after the target replays in the order it played: History[0] is the
         // most recent, so it goes back last, right before the current track. Each entry is
@@ -3498,6 +3517,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _musicVideoAudioPath = string.Equals(playPath, track.FilePath, StringComparison.Ordinal) ? null : playPath;
         MusicVideoAudioLengthDiffers = false;
 
+        _sessionBeforeLastPlay = _audioPlayer.CurrentSessionId;
         if (_musicVideoAudioPath == null)
             _audioPlayer.Play(track.FilePath);
         else
@@ -3761,6 +3781,9 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return;
         }
 
+        // GitHub #256: a song Clear Queue took out is not the queue's: it does not become a
+        // played row either, or it came back into the cleared queue like a ghost.
+        var pushedCurrent = false;
         if (CurrentTrack != null)
         {
             if (CurrentTrack.RememberPlaybackPosition == true)
@@ -3768,9 +3791,13 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 CurrentTrack.SavedPositionMs = 0;
                 MarkPlayStateDirty(CurrentTrack);
             }
-            History.Insert(0, CurrentTrack);
-            _queueHistoryDepth++;
-            TrimHistory();
+            if (!_currentClearedFromQueue)
+            {
+                History.Insert(0, CurrentTrack);
+                _queueHistoryDepth++;
+                TrimHistory();
+                pushedCurrent = true;
+            }
         }
 
         // Explicit Content off: whatever explicit tracks sit at the head of the queue are
@@ -3804,14 +3831,17 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 DebugLogger.Category.Queue,
                 "TrackEnded.NoNext",
                 $"queueCount={UpNext.Count}, historyCount={History.Count}, repeat={RepeatMode}, keepPlayed={KeepPlayedInQueue}");
-            if (KeepPlayedInQueue && CurrentTrack != null && History.Count > 0 &&
-                ReferenceEquals(History[0], CurrentTrack))
+            if (KeepPlayedInQueue && CurrentTrack != null &&
+                (!pushedCurrent || (History.Count > 0 && ReferenceEquals(History[0], CurrentTrack))))
             {
                 // Keep played songs (GitHub #124): the last song stays loaded, stopped at its
                 // start, so the bar stays up and its Previous / Play still work. It was pushed
                 // to History above; take it back off, it is the current track again.
-                History.RemoveAt(0);
-                if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+                if (pushedCurrent)
+                {
+                    History.RemoveAt(0);
+                    if (_queueHistoryDepth > 0) _queueHistoryDepth--;
+                }
                 StopAtQueueEnd();
                 return;
             }
@@ -4048,12 +4078,19 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return;
         }
 
-        // Vibrant colour for the visualizer tint: SkiaSharp file decode, path-cached after
-        // the first call, so it runs off the UI thread and lands only if still current.
+        // The cover's colour for the visualizer tint: SkiaSharp file decode, path-cached after
+        // the first call, so it runs off the UI thread and lands only if still current. The
+        // accent source, not the share card's background colour: that one has a saturation
+        // floor, which painted the bars of a black-and-white cover in a hue the cover does
+        // not have (GitHub #255). A grey cover stays grey here and gets white bars.
         _ = Task.Run(() =>
         {
             Color? accent = null;
-            try { accent = Color.Parse(ShareCardRenderer.GetVibrantColorHex(artPath)); }
+            try
+            {
+                if (ArtworkVibrantColor.GetAccentSourceHex(artPath) is { } hex)
+                    accent = Color.Parse(hex);
+            }
             catch { /* no tint for this cover */ }
             Dispatcher.UIThread.Post(() =>
             {
@@ -4176,6 +4213,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             if (msSinceSeek < SeekSettleWindowMs)
             {
                 NotePositionRejected("settle", latest, msSinceSeek);
+                // A short song's successor is staged (and handed to) without its position:
+                // waiting out this window per song made a run of 0.2-0.3 s songs fall
+                // behind until a seam opened cold (harness 11-19: 10-120 ms of silence).
+                if (Duration > TimeSpan.Zero)
+                    TryAdvanceForGapless(latest, Duration, settling: true);
                 return;
             }
 
@@ -4347,6 +4389,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         // Stop-after-current: no early handoff. The stop branch in AdvanceQueueCore only
         // flips State, so an advance before the real end let the track play out and its
         // TrackEnded then started the next one. Let the track end naturally instead.
+        _autoMixLeftAloneNextId = Guid.Empty;
         if (AutoMixTransitionMode == Noctis.Models.AutoMixTransitionMode.Off ||
             StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
@@ -4377,6 +4420,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         if (!plan.IsEnabled)
         {
             _audioPlayer.SetCrossfade(false, 6);
+            _autoMixLeftAloneNextId = nextTrack.Id;
             return false;
         }
 
@@ -4513,6 +4557,19 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private const double GaplessPrepareLeadSeconds = 8.0;
     private const double GaplessHandoffLeadSeconds = 0.5;
 
+    // A song's own position can be no further than where it started plus the time since,
+    // at the playback rate (the engine reports the audible position, which starts later still).
+    private const double TrackStartTickSlackMs = 150;
+
+    /// <summary>
+    /// Whether a tick soon after a song started can be that song's own position: the outgoing
+    /// song's late ticks run ahead of it. Pure; internal for tests.
+    /// </summary>
+    internal static bool IsOwnTickAtTrackStart(TimeSpan position, TimeSpan startTarget, double msSinceStart, double rate) =>
+        msSinceStart >= 0 &&
+        position.TotalMilliseconds <= startTarget.TotalMilliseconds +
+            msSinceStart * Math.Max(1.0, rate) + TrackStartTickSlackMs;
+
     // AutoMix overlap blend: both tracks play together through the crossover. The blend is
     // triggered AutoMixOverlapSeconds (plus a small margin so the old stops just before its
     // natural end) from the end; the engine holds both at the blend level for that long,
@@ -4520,12 +4577,20 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private const int AutoMixOverlapSeconds = 3;
     private const double AutoMixOverlapLeadSeconds = AutoMixOverlapSeconds + 1.0;
 
-    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).</remarks>
-    internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration)
+    /// <remarks>Internal for tests (InternalsVisibleTo Noctis.Tests).
+    /// <paramref name="settling"/>: a tick inside the settle window after the song started or
+    /// a seek, whose position may still be the outgoing song's: only a song short enough to
+    /// need no position is handled (see below).</remarks>
+    internal bool TryAdvanceForGapless(TimeSpan position, TimeSpan duration, bool settling = false)
     {
         // StopAfterCurrentTrack: see TryAdvanceForAutoMix — the stop needs the natural end.
+        // Song Transitions on: only a pair the planner left alone this tick. Those pairs used
+        // to get neither a transition nor a staged next track, so the next file opened cold
+        // at the seam: about half a second of silence between the songs of an album, the
+        // very place gapless playback is for (GitHub #254).
+        var transitionsOn = AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off;
         if (!GaplessEnabled ||
-            AutoMixTransitionMode != Noctis.Models.AutoMixTransitionMode.Off ||
+            (transitionsOn && _autoMixLeftAloneNextId == Guid.Empty) ||
             StopAfterCurrentTrack ||
             _autoMixAdvanceQueued ||
             CurrentTrack == null ||
@@ -4534,10 +4599,31 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             CurrentTrack.StopTimeMs > 0)
             return false;
 
-        if (State != PlaybackState.Playing || _isSeeking || DateTime.UtcNow < _autoMixCommitGuardUntilUtc)
+        if (State != PlaybackState.Playing || _isSeeking)
             return false;
 
+        // The first seconds of a song: a track shorter than that guard used to get neither a
+        // staged successor nor an early advance, so the next file opened cold at its end
+        // (harness: 410-450 ms of silence after a 0.5-0.9 s track, 110-140 ms after 1.5-2 s).
+        // Inside it only ticks that can be this song's own position count (the guard is there
+        // for the outgoing song's late ticks), and the advance waits until the player has the
+        // successor staged: a cold open here would cut this song before it is heard.
+        var inStartGuard = DateTime.UtcNow < _autoMixCommitGuardUntilUtc;
+        var ownTick = !settling && (!inStartGuard || IsOwnTickAtTrackStart(position, _lastCommittedSeekTarget,
+                (DateTime.UtcNow - _lastSeekTime).TotalMilliseconds, PlaybackRate));
+
         if (duration <= TimeSpan.Zero)
+            return false;
+
+        // Inside the settle window a song no longer than the prepare lead stages its
+        // successor, and one no longer than the handoff lead hands off once that successor is
+        // staged: the time left is at most the song's length either way, so the tick is taken
+        // as the song's start. Not before the player has taken this song's Play (its prepare
+        // would be dropped as superseded by it), and only plain gapless: with Song
+        // Transitions on the planner decides.
+        if (!ownTick && (!settling || transitionsOn ||
+                duration > TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) ||
+                _audioPlayer.CurrentSessionId == _sessionBeforeLastPlay))
             return false;
 
         // Never pre-roll a track the explicit filter is about to skip.
@@ -4546,33 +4632,40 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             return false;
 
         var nextTrack = UpNext[0];
-        var remaining = duration - position;
+        if (transitionsOn && _autoMixLeftAloneNextId != nextTrack.Id)
+            return false;
+        var remaining = ownTick ? duration - position : duration;
 
-        if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
+        if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
+            _autoMixPreparedTrackId != nextTrack.Id &&
+            !string.IsNullOrWhiteSpace(nextTrack.FilePath) &&
+            ResolveNextPlayPath(nextTrack) is { } nextPlayPath) // null: its clip is still being looked for
         {
-            if (remaining <= TimeSpan.FromSeconds(GaplessPrepareLeadSeconds) &&
-                _autoMixPreparedTrackId != nextTrack.Id &&
-                !string.IsNullOrWhiteSpace(nextTrack.FilePath) &&
-                ResolveNextPlayPath(nextTrack) is { } nextPlayPath) // null: its clip is still being looked for
-            {
-                _autoMixPreparedTrackId = nextTrack.Id;
-                _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
-                    nextTrack.Id,
-                    nextTrack.FilePath,
-                    _queueVersion,
-                    IsShuffleEnabled,
-                    RepeatMode,
-                    AutoMixTransitionMode,
-                    _audioPlayer.CurrentSessionId,
-                    nextPlayPath);
-                _audioPlayer.PrepareNext(
-                    nextPlayPath,
-                    nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
-            }
+            _autoMixPreparedTrackId = nextTrack.Id;
+            _autoMixPreparedSnapshot = new AutoMixPreparedTransitionSnapshot(
+                nextTrack.Id,
+                nextTrack.FilePath,
+                _queueVersion,
+                IsShuffleEnabled,
+                RepeatMode,
+                AutoMixTransitionMode,
+                _audioPlayer.CurrentSessionId,
+                nextPlayPath);
+            _audioPlayer.PrepareNext(
+                nextPlayPath,
+                nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
+            // Prepared inside the handoff lead (a song shorter than it): the prepare runs
+            // off this thread, so the advance waits for a later tick.
             return false;
         }
 
+        if (remaining > TimeSpan.FromSeconds(GaplessHandoffLeadSeconds))
+            return false;
+
         if (!CanHandOffEarly(nextTrack.FilePath))
+            return false;
+
+        if ((inStartGuard || !ownTick) && !_audioPlayer.IsNextStaged(_autoMixPreparedSnapshot?.PlayPath ?? nextTrack.FilePath))
             return false;
 
         var validation = AutoMixPreparedTransitionValidator.Validate(

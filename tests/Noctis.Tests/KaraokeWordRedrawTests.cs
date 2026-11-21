@@ -5,6 +5,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Noctis.Controls;
+using Noctis.Services;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -49,18 +50,25 @@ public class KaraokeWordRedrawTests
         return (word, win);
     }
 
+    /// <summary>The edge crossing a word redraws it twice at most: as the edge comes onto it (one
+    /// colour to the gradient) and as it leaves (back to one colour, see the next test). In
+    /// between only the stops move.</summary>
     [AvaloniaFact]
     public void Sweep_DoesNotRedrawTheWord()
     {
         var (word, win) = Show();
         try
         {
+            word.Progress = -2;
+            Pump();
             var draws = word.Draws;
-            for (var i = 1; i <= 20; i++)
+            for (var i = 0; i <= 60; i++)
             {
-                word.Progress = i / 20.0;
+                word.Progress = -2 + i / 15.0;
                 Pump();
             }
+            Assert.InRange(word.Draws - draws, 1, 2);
+            draws = word.Draws;
             word.BaseOpacity = 1;
             Pump();
             Assert.Equal(draws, word.Draws);
@@ -71,22 +79,31 @@ public class KaraokeWordRedrawTests
         }
     }
 
-    /// <summary>The float redraws only when it moves a quarter device pixel (the finest step
-    /// Skia draws it at): 0.055 em of 30 at scale 1 is 2 px, eight quarters.</summary>
+    /// <summary>
+    /// A word the edge is not on, in one opaque colour (sung, or on a line not being sung), is
+    /// drawn with a solid brush: a gradient brush is a new Skia shader (and its managed handle)
+    /// every frame the word is drawn, which for every word on the lyrics page was the largest
+    /// part of what the phone allocated while a song played (headless Skia, 11-17: 40% of the
+    /// frame's allocation). The translucent unsung ghost keeps the gradient (see the next test).
+    /// </summary>
     [AvaloniaFact]
-    public void Lift_RedrawsOnlyPerQuarterPixel()
+    public void AWordTheEdgeIsNotOn_IsDrawnInOneColour()
     {
         var (word, win) = Show();
         try
         {
-            var draws = word.Draws;
-            for (var i = 1; i <= 100; i++)
-            {
-                word.Lift = i / 100.0;
-                Pump();
-            }
-            var redraws = word.Draws - draws;
-            Assert.InRange(redraws, 8, 10);   // eight quarters, plus leaving and reaching the grid
+            word.Progress = KaraokeSweep.InertPast;
+            Pump();
+            Assert.True(word.DrawnUniform);
+            word.Progress = 0.5;
+            Pump();
+            Assert.False(word.DrawnUniform);
+            word.Progress = KaraokeSweep.InertFuture;
+            Pump();
+            Assert.False(word.DrawnUniform);   // the 40% ghost
+            word.BaseOpacity = 1;              // a line not being sung
+            Pump();
+            Assert.True(word.DrawnUniform);
         }
         finally
         {
@@ -94,24 +111,35 @@ public class KaraokeWordRedrawTests
         }
     }
 
-    /// <summary>A held note's letters follow its clock: those frames still redraw.</summary>
+    /// <summary>Real Skia only (NOCTIS_TEST_SKIA=1): drawn in one opaque colour, a word looks as
+    /// its gradient drew it (measured 202544 vs 202496 summed red). Translucent it would not
+    /// (75848 vs 81098: Skia picks a solid paint's glyph gamma from its colour), so the ghost
+    /// stays on the gradient.</summary>
     [AvaloniaFact]
-    public void HeldNote_StillRedrawsAsItsLettersMove()
+    public void OneColour_LooksLikeTheGradient()
     {
-        var (word, win) = Show(emphasis: true);
-        try
+        if (!HeadlessTestApp.RealRendering) return;
+        foreach (var (progress, baseOpacity) in new[] { (KaraokeSweep.InertPast, 0.4), (KaraokeSweep.InertFuture, 1.0) })
         {
-            var draws = word.Draws;
-            for (var i = 1; i <= 10; i++)
+            var (word, win) = Show();
+            try
             {
-                word.EmphasisMs = i * 50;
+                word.BaseOpacity = baseOpacity;
+                word.Progress = progress;
                 Pump();
+                Assert.True(word.DrawnUniform);
+                var solid = Brightness(win);
+                word.ForceGradient = true;
+                word.InvalidateVisual();
+                Pump();
+                Assert.False(word.DrawnUniform);
+                var gradient = Brightness(win);
+                Assert.True(Math.Abs(solid - gradient) <= gradient * 0.001, $"solid {solid:F0} vs gradient {gradient:F0}");
             }
-            Assert.Equal(draws + 10, word.Draws);
-        }
-        finally
-        {
-            win.Close();
+            finally
+            {
+                win.Close();
+            }
         }
     }
 
@@ -134,6 +162,7 @@ public class KaraokeWordRedrawTests
             win.Close();
         }
     }
+
 
     private static double Brightness(Window win)
     {

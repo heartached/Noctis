@@ -171,6 +171,22 @@ public class BuiltInFeaturesTests : IDisposable
     }
 
     [AvaloniaFact]
+    public void Scrobbling_ReadsOff_AfterLastFmLogOut()
+    {
+        var vm = Settings();
+        var row = vm.BuiltInFeatures.Single(r => r.Key == "Scrobbling");
+        vm.IsLastFmConnected = true;
+        vm.LastFmScrobblingEnabled = true;
+        Assert.True(row.IsOn);
+
+        vm.LogoutLastFmCommand.Execute(null);
+
+        Assert.False(vm.LastFmScrobblingEnabled);
+        Assert.False(row.IsOn);
+        Assert.False(row.CanToggle); // no account left to scrobble to
+    }
+
+    [AvaloniaFact]
     public void Card_HidesWhileSearchingPlugins()
     {
         var vm = Settings();
@@ -249,6 +265,161 @@ public class BuiltInFeaturesTests : IDisposable
 
         settings.AlbumCarouselEnabled = true;
         Assert.True(albums.IsCarouselView);
+    }
+
+    /// <summary>A feature switched off leaves no usable settings behind: Player hides the Mini
+    /// player section (like the Albums View card), Lyrics closes the visualizer's options under
+    /// its greyed switch and says where the feature was turned off.</summary>
+    [AvaloniaFact]
+    public void SettingsPages_HideTheOptionsOfAFeatureThatIsOff()
+    {
+        var vm = Settings();
+        vm.LyricsVisualizerEnabled = true;
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+        var view = new SettingsView { DataContext = vm };
+        var window = new Window { Width = 920, Height = 720, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            // Tab pages are realized on their first visit (GitHub #139): visit Lyrics too.
+            vm.SelectedSettingsTab = SettingsViewModel.TabLyrics;
+            Dispatcher.UIThread.RunJobs();
+            var miniTitle = view.FindControl<TextBlock>("MiniPlayerSectionTitle")!;
+            var miniCard = view.FindControl<Border>("MiniPlayerSectionCard")!;
+            var vizOptions = view.FindControl<Noctis.Controls.CollapsibleContent>("LyricsVisualizerOptions")!;
+            var vizHint = view.FindControl<Noctis.Controls.CollapsibleContent>("LyricsVisualizerFeatureOffHint")!;
+
+            Assert.True(miniTitle.IsVisible && miniCard.IsVisible);
+            Assert.True(vizOptions.IsOpen);
+            Assert.False(vizHint.IsOpen);
+
+            vm.MiniPlayerEnabled = false;
+            vm.VisualizerEnabled = false;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(miniTitle.IsVisible);
+            Assert.False(miniCard.IsVisible);
+            Assert.False(vizOptions.IsOpen);
+            Assert.True(vizHint.IsOpen);
+            Assert.True(vm.LyricsVisualizerEnabled); // the user's own switch is kept
+
+            vm.MiniPlayerEnabled = true;
+            vm.VisualizerEnabled = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(miniTitle.IsVisible && miniCard.IsVisible);
+            Assert.True(vizOptions.IsOpen);
+            Assert.False(vizHint.IsOpen);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>Found by clicking in the app: with the Player page on screen, Mini Player off and
+    /// on again left "Clicking the artwork" on Lyrics Page for good. The picker echoed the
+    /// option it was showing while its list was rebuilt, and that echo was stored over the
+    /// user's Mini Player choice.</summary>
+    [AvaloniaFact]
+    public void MiniPlayerOffAndOnAgain_WithThePlayerPageOnScreen_KeepsTheStoredArtworkChoice()
+    {
+        var vm = Settings();
+        vm.PlaybackBarArtworkClick = "MiniPlayer";
+        // As in the app: the feature is already off when the page first shows its picker.
+        vm.MiniPlayerEnabled = false;
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+        var view = new SettingsView { DataContext = vm };
+        var window = new Window { Width = 920, Height = 720, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
+            Assert.Equal("LyricsPage", vm.SelectedArtworkClickOption?.Value);
+            // The switch lives on another page: the Player page stays loaded behind it.
+            vm.SelectedSettingsTab = SettingsViewModel.TabPlugins;
+            Dispatcher.UIThread.RunJobs();
+
+            vm.MiniPlayerEnabled = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
+            Assert.Equal("MiniPlayer", vm.SelectedArtworkClickOption?.Value);
+
+            // And the picker itself shows it once the page is back on screen: it kept
+            // showing Lyrics Page while the island already opened the mini player.
+            vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+            Dispatcher.UIThread.RunJobs();
+            var combo = view.FindControl<ComboBox>("ArtworkClickCombo")!;
+            Assert.Equal("MiniPlayer", (combo.SelectedItem as SettingsViewModel.LyricsChoiceOption)?.Value);
+            Assert.Equal("MiniPlayer", vm.PlaybackBarArtworkClick);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>The rest of Mini Player off: the island's Mini player button switch says why
+    /// it is greyed, Appearance › Text Animation drops its Mini Player rows (stored values
+    /// kept), and Settings search no longer finds the hidden mini player rows and card.</summary>
+    [AvaloniaFact]
+    public void MiniPlayerOff_ExplainsTheGreyedButton_HidesItsMarqueeRows_AndSearchSkipsThem()
+    {
+        var vm = Settings();
+        vm.MiniPlayerTitleMarqueeEnabled = true;
+        vm.MiniPlayerAlbumMarqueeEnabled = true;
+        vm.SelectedSettingsTab = SettingsViewModel.TabPlayer;
+        var view = new SettingsView { DataContext = vm };
+        var window = new Window { Width = 920, Height = 720, Content = view };
+        try
+        {
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+            vm.SelectedSettingsTab = SettingsViewModel.TabAppearance; // realize the page (GitHub #139)
+            Dispatcher.UIThread.RunJobs();
+
+            var buttonHint = view.FindControl<Noctis.Controls.CollapsibleContent>("MiniPlayerButtonFeatureOffHint")!;
+            var marquee = new Control[]
+            {
+                view.FindControl<TextBlock>("MiniPlayerMarqueeHeader")!,
+                view.FindControl<Grid>("MiniPlayerTitleMarqueeRow")!,
+                view.FindControl<Grid>("MiniPlayerArtistMarqueeRow")!,
+            };
+            var panels = new (string, Control)[]
+            {
+                ("Appearance", view.FindControl<StackPanel>("AppearanceTabPanel")!),
+                ("Player", view.FindControl<StackPanel>("PlayerTabPanel")!),
+            };
+            var designTitle = Loc.T("Settings.MiniPlayerDesign");
+            var marqueeHeader = Loc.T("Settings.MINIPLAYER");
+            string MarqueeCardText(Noctis.Helpers.SettingsSearchIndex index) =>
+                index.Entries.Single(e => e.Blocks.Contains((TextBlock)marquee[0])).Text;
+
+            Assert.False(buttonHint.IsOpen);
+            Assert.All(marquee, c => Assert.True(c.IsVisible));
+            var index = Noctis.Helpers.SettingsSearchIndex.Build(panels);
+            Assert.NotEmpty(index.Query(designTitle));
+            Assert.Contains(marqueeHeader, MarqueeCardText(index));
+
+            vm.MiniPlayerEnabled = false;
+            Dispatcher.UIThread.RunJobs();
+            Assert.True(buttonHint.IsOpen);
+            Assert.All(marquee, c => Assert.False(c.IsVisible));
+            Assert.True(vm.MiniPlayerTitleMarqueeEnabled && vm.MiniPlayerAlbumMarqueeEnabled);
+            // SettingsSearchIndex: hidden card (IsNaturallyVisible) and hidden rows (Entry.Text).
+            Assert.Empty(index.Query(designTitle));
+            Assert.DoesNotContain(marqueeHeader, MarqueeCardText(index));
+
+            vm.MiniPlayerEnabled = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.False(buttonHint.IsOpen);
+            Assert.All(marquee, c => Assert.True(c.IsVisible));
+            Assert.NotEmpty(index.Query(designTitle));
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 
     // ── Playlist rail ──

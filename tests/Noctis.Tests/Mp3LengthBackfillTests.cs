@@ -79,9 +79,9 @@ public class Mp3LengthBackfillTests : IDisposable
         _persistence.Settings.MetadataSchemaVersion = 12;
 
         await MakeLibrary().LoadAsync();
-        await WaitUntil(() => _persistence.Settings.MetadataSchemaVersion == 13);
+        await WaitUntil(() => _persistence.Settings.MetadataSchemaVersion == 14);
 
-        Assert.Equal(13, _persistence.Settings.MetadataSchemaVersion);
+        Assert.Equal(14, _persistence.Settings.MetadataSchemaVersion); // then the version pass (v14)
         Assert.InRange(track.Duration.TotalSeconds, 20.0, 20.05);
         Assert.InRange(track.Bitrate, 127, 129);
     }

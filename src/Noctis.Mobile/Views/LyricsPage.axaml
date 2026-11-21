@@ -211,7 +211,11 @@
              whole screen, darkened more than Now Playing's so white lyrics read on any cover,
              and dithered against banding. Drawn once per cover, never per frame. -->
         <Image Name="Backdrop" Source="{Binding #HeaderArt.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
-               Stretch="Fill" IsHitTestVisible="False" />
+               Stretch="Fill" IsHitTestVisible="False" IsVisible="{Binding !#BlurCover.HasImage}" />
+        <!-- Now Playing Background › Blurred Cover: the cover itself, blurred once per cover (as
+             Now Playing's), in the wash's place under the same shade. -->
+        <views:BlurredCoverBackdrop Name="BlurCover" Source="{Binding #HeaderArt.Source}"
+                                    IsActive="{Binding IsBlurredCoverBackground}" BlurPercent="{Binding NowPlayingBlurPercent}" />
         <Border Name="LyricsShade" IsHitTestVisible="False">
             <Border.Background>
                 <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
@@ -221,7 +225,7 @@
                 </LinearGradientBrush>
             </Border.Background>
         </Border>
-        <Border Name="WashDither" IsHitTestVisible="False" />
+        <views:DitherLayer Name="WashDither" IsHitTestVisible="False" />
 
         <!-- Portrait: one column. Landscape (the code-behind, on resize): Now Playing's big cover
              on the left half (SideArtBox, where Now Playing's landscape cover stands), the lyrics,
@@ -308,6 +312,8 @@
                  every frame of the sweep and glide render the whole lyric area off-screen
                  (98% of animated frames over 25 ms, vs ~20% without). The lines dim and blur
                  with distance instead, so the edges are already soft. -->
+            <!-- Keeps Avalonia's render loop awake while the lines play (RenderKeepAlive). -->
+            <views:RenderKeepAlive Grid.Row="3" Name="KeepAlive" HorizontalAlignment="Left" VerticalAlignment="Top" />
             <ScrollViewer Grid.Row="3" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                           IsVisible="{Binding Lyrics.HasLyrics}">
                 <!-- Rows are built once and handed the next line (RowItemsControl): each line
