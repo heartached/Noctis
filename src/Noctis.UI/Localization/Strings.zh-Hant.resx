@@ -859,7 +859,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} 首歌曲</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>強調色</value>
@@ -1344,10 +1344,6 @@ Deezer 和 TIDAL：貼上連結。</value>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve">
     <value>暫留時放大專輯</value>
     <comment>Settings toggle (GitHub #218)</comment>
-  </data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve">
-    <value>在專輯格狀檢視中，指標下方的專輯會稍微放大並帶有柔光。</value>
-    <comment>Settings toggle description (GitHub #218)</comment>
   </data>
   <data name="Settings.Smaller" xml:space="preserve">
     <value>更小</value>
@@ -3806,10 +3802,6 @@ Deezer 和 TIDAL：貼上連結。</value>
     <value>曲目數量</value>
     <comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment>
   </data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
-    <value>首曲目,排序依據</value>
-    <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
-  </data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve">
     <value>排序方式</value>
     <comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment>
@@ -4112,7 +4104,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Home.Plays" xml:space="preserve">
     <value>次播放</value>
-    <comment>Text in HomeView.axaml</comment>
+    <comment>Text in HomeView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Home.TopArtists" xml:space="preserve">
     <value>熱門藝人</value>
@@ -4233,7 +4225,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="LibraryAlbums.Plays" xml:space="preserve">
     <value>次播放</value>
-    <comment>Text in LibraryAlbumsView.axaml</comment>
+    <comment>Text in LibraryAlbumsView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibraryAlbums.Play" xml:space="preserve">
     <value>播放</value>
@@ -8470,7 +8462,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Stats.MonthsAgo" xml:space="preserve">
     <value>{0} 個月前</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.YearAgo" xml:space="preserve">
     <value>1 年前</value>
@@ -8478,7 +8470,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Stats.YearsAgo" xml:space="preserve">
     <value>{0} 年前</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.Today" xml:space="preserve">
     <value>今天</value>
@@ -11062,14 +11054,6 @@ Deezer 和 TIDAL：貼上連結。</value>
     <value>迷你播放器</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>正在播放美工</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>封面流</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>歌詞頁面</value>
     <comment>Settings section label</comment>
@@ -11556,11 +11540,11 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Time.MinutesAgo" xml:space="preserve">
     <value>{0} 分鐘前</value>
-    <comment>Relative time; {0} = minutes</comment>
+    <comment>Relative time; {0} = minutes. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.HoursAgo" xml:space="preserve">
     <value>{0} 小時前</value>
-    <comment>Relative time; {0} = hours</comment>
+    <comment>Relative time; {0} = hours. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.OnDate" xml:space="preserve">
     <value>{0}</value>
@@ -11748,7 +11732,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
     <value>{0} 張專輯</value>
-    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
     <value>1 張專輯</value>
@@ -12072,7 +12056,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="LibrarySongs.SummarySongs" xml:space="preserve">
     <value>{0:N0} 首歌曲</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryHour" xml:space="preserve">
     <value>1 小時</value>
@@ -12080,7 +12064,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="LibrarySongs.SummaryHours" xml:space="preserve">
     <value>{0:N0} 小時</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve">
     <value>1 分鐘</value>
@@ -12088,7 +12072,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve">
     <value>{0} 分鐘</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve">
     <value>匯入播放次數</value>
@@ -12121,14 +12105,6 @@ Deezer 和 TIDAL：貼上連結。</value>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve">
     <value>正在開始…</value>
     <comment>Play count import status</comment>
-  </data>
-  <data name="Settings.PlayCountImport.Reading" xml:space="preserve">
-    <value>正在讀取聆聽記錄… {0} 次播放</value>
-    <comment>Play count import progress; {0} = plays read so far</comment>
-  </data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve">
-    <value>正在讀取聆聽記錄… {0}/{1} 次播放</value>
-    <comment>Play count import progress; {0} = plays read, {1} = total</comment>
   </data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve">
     <value>正在比對資料庫中的歌曲…</value>
@@ -12961,7 +12937,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve">
     <value>播放中背景</value>
-    <comment>Settings row: a slider for how dark or bright the Now Playing background is</comment>
+    <comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve">
     <value>播放中背景亮度</value>
@@ -14534,10 +14510,6 @@ Deezer 和 TIDAL：貼上連結。</value>
     <value>匯入播放清單</value>
     <comment>Playlists page menu: import .m3u/.m3u8 files</comment>
   </data>
-  <data name="Mobile.Import.Result" xml:space="preserve">
-    <value>已匯入 {0}/{1} 首歌曲</value>
-    <comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment>
-  </data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve">
     <value>已匯入 {0} 個播放清單</value>
     <comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment>
@@ -14549,10 +14521,6 @@ Deezer 和 TIDAL：貼上連結。</value>
   <data name="Mobile.Import.NoneFound" xml:space="preserve">
     <value>「{0}」中的歌曲都不在此手機上</value>
     <comment>Import result title. {0} = playlist file name</comment>
-  </data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve">
-    <value>找到 {0}/{1} 首歌曲。</value>
-    <comment>Import result line for several files. {0} found, {1} total</comment>
   </data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve">
     <value>以下各行未對應到此手機上的歌曲：</value>
@@ -14636,7 +14604,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Main.DropMovedMany" xml:space="preserve">
     <value>已將 {0} 個檔案移至 {1}</value>
-    <comment>Drag-and-drop import status (MainWindowViewModel)</comment>
+    <comment>Drag-and-drop import status (MainWindowViewModel). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve">
     <value>「{0}」包含來自 {2} 張不同專輯的 {1} 首曲目。
@@ -15046,7 +15014,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve">
     <value>有 {0:N0} 首歌曲只有純文字歌詞。歌詞工作室可以在這台電腦上用語音模型為其計時：每首歌可能需要一分鐘或更久（有顯示卡時更快），儲存前你會逐首檢查。</value>
-    <comment>Fetch / remove lyrics in bulk dialog</comment>
+    <comment>Fetch / remove lyrics in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve">
     <value>一次開啟前 {0} 首。</value>
@@ -15182,7 +15150,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Settings.ArtistCreditsUpdated" xml:space="preserve">
     <value>已更新 {0:N0} 首曲目的藝人資訊。</value>
-    <comment>Settings status line</comment>
+    <comment>Settings status line. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.FfmpegNotFound" xml:space="preserve">
     <value>找不到 — 請在下方設定路徑，或將 ffmpeg 安裝到 PATH。</value>
@@ -15564,13 +15532,9 @@ Deezer 和 TIDAL：貼上連結。</value>
     <value>專輯為兒童不宜</value>
     <comment>Metadata window</comment>
   </data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve">
-    <value>已選擇 {0} 位藝人</value>
-    <comment>Metadata window</comment>
-  </data>
   <data name="Metadata.SongsSelected" xml:space="preserve">
     <value>已選擇 {0} 首歌曲</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve">
     <value>無法將標籤寫入「{0}」。可能有其他應用程式開啟了該檔案，或檔案為唯讀 — 請在那裡關閉它或檢查檔案，然後再試一次。</value>
@@ -15578,7 +15542,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve">
     <value>無法將標籤寫入 {0} 個檔案（例如「{1}」）。可能有其他應用程式開啟了它們，或檔案為唯讀 — 請在那裡關閉它們或檢查檔案，然後再試一次。</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve">
     <value>為 1 張專輯尋找動態封面</value>
@@ -15586,7 +15550,7 @@ Deezer 和 TIDAL：貼上連結。</value>
   </data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve">
     <value>為 {0:N0} 張專輯尋找動態封面</value>
-    <comment>Find animated artwork in bulk dialog</comment>
+    <comment>Find animated artwork in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve">
     <value>沒有要尋找的專輯。</value>
