@@ -851,7 +851,7 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>{0} titres</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Couleur d'accentuation</value>
@@ -1336,10 +1336,6 @@ Deezer et TIDAL : collez le lien.</value>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve">
     <value>Zoom des albums au survol</value>
     <comment>Settings toggle (GitHub #218)</comment>
-  </data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve">
-    <value>Dans la grille Albums, l'album sous le pointeur grossit un peu avec un léger halo.</value>
-    <comment>Settings toggle description (GitHub #218)</comment>
   </data>
   <data name="Settings.Smaller" xml:space="preserve">
     <value>Plus petites</value>
@@ -3778,10 +3774,6 @@ Deezer et TIDAL : collez le lien.</value>
     <value>Nombre de titres</value>
     <comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment>
   </data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
-    <value>titres, triés par</value>
-    <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
-  </data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve">
     <value>Trier par</value>
     <comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment>
@@ -4076,7 +4068,7 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="Home.Plays" xml:space="preserve">
     <value>lectures</value>
-    <comment>Text in HomeView.axaml</comment>
+    <comment>Text in HomeView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Home.TopArtists" xml:space="preserve">
     <value>Artistes favoris</value>
@@ -4197,7 +4189,7 @@ Deezer et TIDAL : collez le lien.</value>
   </data>
   <data name="LibraryAlbums.Plays" xml:space="preserve">
     <value>lectures</value>
-    <comment>Text in LibraryAlbumsView.axaml</comment>
+    <comment>Text in LibraryAlbumsView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibraryAlbums.Play" xml:space="preserve">
     <value>Lire</value>
@@ -8356,7 +8348,7 @@ Années : year:1990-1999, year:&gt;2000</value>
   </data>
   <data name="Stats.MonthsAgo" xml:space="preserve">
     <value>il y a {0} mois</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.YearAgo" xml:space="preserve">
     <value>il y a 1 an</value>
@@ -8364,7 +8356,7 @@ Années : year:1990-1999, year:&gt;2000</value>
   </data>
   <data name="Stats.YearsAgo" xml:space="preserve">
     <value>il y a {0} ans</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.Today" xml:space="preserve">
     <value>Aujourd'hui</value>
@@ -10935,14 +10927,6 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
     <value>Mini-lecteur</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>Lecture de l'illustration en cours</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>Flux de couverture</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>Page des paroles</value>
     <comment>Settings section label</comment>
@@ -11429,11 +11413,11 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   </data>
   <data name="Time.MinutesAgo" xml:space="preserve">
     <value>il y a {0} min</value>
-    <comment>Relative time; {0} = minutes</comment>
+    <comment>Relative time; {0} = minutes. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.HoursAgo" xml:space="preserve">
     <value>il y a {0} h</value>
-    <comment>Relative time; {0} = hours</comment>
+    <comment>Relative time; {0} = hours. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.OnDate" xml:space="preserve">
     <value>le {0}</value>
@@ -11889,7 +11873,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   </data>
   <data name="LibrarySongs.SummarySongs" xml:space="preserve">
     <value>{0:N0} titres</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryHour" xml:space="preserve">
     <value>1 heure</value>
@@ -11897,7 +11881,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   </data>
   <data name="LibrarySongs.SummaryHours" xml:space="preserve">
     <value>{0:N0} heures</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve">
     <value>Importer les nombres d'écoutes</value>
@@ -11930,14 +11914,6 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve">
     <value>Démarrage…</value>
     <comment>Play count import status</comment>
-  </data>
-  <data name="Settings.PlayCountImport.Reading" xml:space="preserve">
-    <value>Lecture de l'historique d'écoute… {0} écoutes</value>
-    <comment>Play count import progress; {0} = plays read so far</comment>
-  </data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve">
-    <value>Lecture de l'historique d'écoute… {0} écoutes sur {1}</value>
-    <comment>Play count import progress; {0} = plays read, {1} = total</comment>
   </data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve">
     <value>Recherche des titres correspondants dans votre bibliothèque…</value>
@@ -12750,7 +12726,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   </data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve">
     <value>Fond de la lecture en cours</value>
-    <comment>Settings row: a slider for how dark or bright the Now Playing background is</comment>
+    <comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve">
     <value>Luminosité du fond de la lecture en cours</value>
@@ -14255,10 +14231,6 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
     <value>Importer une playlist</value>
     <comment>Playlists page menu: import .m3u/.m3u8 files</comment>
   </data>
-  <data name="Mobile.Import.Result" xml:space="preserve">
-    <value>{0} morceaux importés sur {1}</value>
-    <comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment>
-  </data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve">
     <value>{0} playlist importée|{0} playlists importées</value>
     <comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment>
@@ -14270,10 +14242,6 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Import.NoneFound" xml:space="preserve">
     <value>Aucun morceau de « {0} » n’est sur ce téléphone</value>
     <comment>Import result title. {0} = playlist file name</comment>
-  </data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve">
-    <value>{0} morceaux trouvés sur {1}.</value>
-    <comment>Import result line for several files. {0} found, {1} total</comment>
   </data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve">
     <value>Ces lignes ne correspondent à aucun morceau du téléphone :</value>
@@ -14357,7 +14325,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   </data>
   <data name="Main.DropMovedMany" xml:space="preserve">
     <value>{0} fichiers déplacés vers {1}</value>
-    <comment>Drag-and-drop import status (MainWindowViewModel)</comment>
+    <comment>Drag-and-drop import status (MainWindowViewModel). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve">
     <value>« {0} » contient {1} titres de {2} albums différents.
@@ -14759,7 +14727,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
   </data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve">
     <value>{0:N0} titres n'ont que des paroles non synchronisées. Lyrics Studio peut les synchroniser sur ce PC avec son modèle vocal : cela peut prendre une minute ou plus par titre (plus rapide avec une carte graphique), et vous vérifiez chacun avant l'enregistrement.</value>
-    <comment>Fetch / remove lyrics in bulk dialog</comment>
+    <comment>Fetch / remove lyrics in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve">
     <value>Les {0} premiers s’ouvrent à la fois.</value>
@@ -14887,7 +14855,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
   </data>
   <data name="Settings.ArtistCreditsUpdated" xml:space="preserve">
     <value>Crédits d’artiste mis à jour sur {0:N0} titres.</value>
-    <comment>Settings status line</comment>
+    <comment>Settings status line. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.FfmpegNotFound" xml:space="preserve">
     <value>Introuvable — indiquez un chemin ci-dessous ou installez ffmpeg dans votre PATH.</value>
@@ -15253,13 +15221,9 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
     <value>L’album est explicite</value>
     <comment>Metadata window</comment>
   </data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve">
-    <value>{0} artistes sélectionnés</value>
-    <comment>Metadata window</comment>
-  </data>
   <data name="Metadata.SongsSelected" xml:space="preserve">
     <value>{0} titres sélectionnés</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve">
     <value>Impossible d'écrire les tags dans « {0} ». Une autre app a peut-être ouvert le fichier, ou il est en lecture seule — fermez-le ou vérifiez le fichier, puis réessayez.</value>
@@ -15267,7 +15231,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
   </data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve">
     <value>Impossible d'écrire les tags dans {0} fichiers (p. ex. « {1} »). Une autre app les a peut-être ouverts, ou ils sont en lecture seule — fermez-les ou vérifiez les fichiers, puis réessayez.</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve">
     <value>Trouver une pochette animée pour 1 album</value>
@@ -15275,7 +15239,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value>
   </data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve">
     <value>Trouver des pochettes animées pour {0:N0} albums</value>
-    <comment>Find animated artwork in bulk dialog</comment>
+    <comment>Find animated artwork in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve">
     <value>Aucun album à rechercher.</value>
