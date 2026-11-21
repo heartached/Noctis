@@ -8803,12 +8803,12 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>ダウンロードを削除</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0}個のプレイリスト</value></data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>プレイリストの中で「曲を追加」：＋をタップしてライブラリから曲を選べます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>歌詞が画面に合わせて表示され、なめらかにスクロールします。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>コンピューターの曲が「最近追加した項目」に表示されます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>曲をキューの上端か下端までドラッグすると、リストが一緒にスクロールします。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>起動が速くなり、ライブラリの読み込み中も固まらず、メニューもなめらかになりました。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>再生バーは高さ全体でタップに反応し、横向きでも画面に収まります。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>リモート：コンピューターで再生中の曲をスマートフォンから操作できます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>ライブラリで「すべての音楽」「このスマートフォン内」「コンピューターから」を切り替えられます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>下部のタブを「設定」＞「タブバー」で選んで並べ替えられます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>ホームに「よく再生した曲」が登場し、スマートフォンで再生した曲もカウントされるようになりました。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>「再生中」と「歌詞」に「ぼかしたカバー」の背景を追加しました。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>歌詞がよりなめらかになり、プレイリストの曲数が正しく表示され、ロック画面のボタンがキューに沿って動きます。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>再生、メディアセッション、デコーダのJNIラッパー。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザーインターフェイスのフレームワーク。</value></data>

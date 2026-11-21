@@ -3813,12 +3813,12 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Eliminar descargas</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} canción|{0:N0} canciones</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>Añadir canciones dentro de una playlist: toca + y elige canciones de tu biblioteca.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>La letra se ajusta a tu pantalla y se desplaza con fluidez.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Las canciones de tu ordenador aparecen en Añadido recientemente.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Arrastra una canción al borde superior o inferior de la cola y la lista se desplaza con ella.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Inicio más rápido, sin bloqueos mientras se carga tu biblioteca, y menús más fluidos.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Las barras de progreso responden en toda su altura y la vista horizontal cabe en la pantalla.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>Control remoto: controla desde el teléfono lo que suena en tu ordenador.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>La Biblioteca puede mostrar Toda la música, En este teléfono o Del equipo.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>Elige y ordena las pestañas inferiores en Ajustes, Barra de pestañas.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>Más escuchadas en Inicio, y ahora cuentan las canciones reproducidas en el teléfono.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>Fondo Portada desenfocada para Reproduciendo ahora y Letras.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Letras más fluidas, recuentos de playlists correctos y botones de la pantalla de bloqueo que siguen la cola.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>El decodificador ALAC incluido, compilado a partir del código fuente sin modificar de FFmpeg 6.0, sin partes GPL ni no libres: git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Reproducción, sesión multimedia y el contenedor JNI del decodificador.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>El framework de la interfaz de usuario.</value><comment>Open-source licenses</comment></data>
