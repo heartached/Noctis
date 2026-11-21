@@ -1,9 +1,10 @@
 {
-  "total": 24125,
+  "total": 24126,
   "byRelease": {
+    "v1.7.1": 0,
     "v1.7.0": 887,
     "v1.6.9": 883,
-    "v1.6.8": 505,
+    "v1.6.8": 506,
     "v1.6.7": 412,
     "v1.6.6": 218,
     "v1.6.5": 1518,
@@ -72,73 +73,73 @@
     "v1.0.1": 24,
     "v1.0.0": 14
   },
-  "latestVersion": "1.7.0",
-  "latestTag": "v1.7.0",
-  "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.7.0",
-  "publishedAt": "2026-11-15T18:25:04Z",
-  "releaseCount": 70,
+  "latestVersion": "1.7.1",
+  "latestTag": "v1.7.1",
+  "latestUrl": "https://github.com/heartached/Noctis/releases/tag/v1.7.1",
+  "publishedAt": "2026-11-21T20:58:22Z",
+  "releaseCount": 71,
   "stars": 342,
   "openIssues": 11,
   "assets": {
     "windowsInstaller": {
-      "name": "Noctis-v1.7.0-Setup.exe",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-v1.7.0-Setup.exe",
-      "size": 160109837,
-      "downloads": 418
+      "name": "Noctis-v1.7.1-Setup.exe",
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-v1.7.1-Setup.exe",
+      "size": 160449368,
+      "downloads": 0
     },
     "windowsPortable": {
       "name": "Noctis-windows-x64.zip",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-windows-x64.zip",
-      "size": 321327721,
-      "downloads": 83
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-windows-x64.zip",
+      "size": 321976473,
+      "downloads": 0
     },
     "macosArm": {
       "name": "Noctis-osx-arm64.dmg",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-osx-arm64.dmg",
-      "size": 216056676,
-      "downloads": 34
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-osx-arm64.dmg",
+      "size": 217255113,
+      "downloads": 0
     },
     "macosIntel": {
       "name": "Noctis-osx-x64.dmg",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-osx-x64.dmg",
-      "size": 228290038,
-      "downloads": 10
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-osx-x64.dmg",
+      "size": 228756340,
+      "downloads": 0
     },
     "linuxAppImage": {
       "name": "Noctis-x86_64.AppImage",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-x86_64.AppImage",
-      "size": 217844216,
-      "downloads": 60
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-x86_64.AppImage",
+      "size": 219695608,
+      "downloads": 0
     },
     "linuxArm": {
       "name": "Noctis-linux-arm64.tar.gz",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-linux-arm64.tar.gz",
-      "size": 146629555,
-      "downloads": 6
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-linux-arm64.tar.gz",
+      "size": 148341074,
+      "downloads": 0
     },
     "linuxTar": {
       "name": "Noctis-linux-x64.tar.gz",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/Noctis-linux-x64.tar.gz",
-      "size": 166884461,
-      "downloads": 19
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/Noctis-linux-x64.tar.gz",
+      "size": 168905169,
+      "downloads": 0
     },
     "checksums": {
       "name": "SHA256SUMS",
-      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.0/SHA256SUMS",
-      "size": 1091,
-      "downloads": 235
+      "url": "https://github.com/heartached/Noctis/releases/download/v1.7.1/SHA256SUMS",
+      "size": 1079,
+      "downloads": 0
     }
   },
   "sizes": {
     "windowsInstaller": "153 MB",
-    "windowsPortable": "306 MB",
-    "macosArm": "206 MB",
+    "windowsPortable": "307 MB",
+    "macosArm": "207 MB",
     "macosIntel": "218 MB",
-    "linuxAppImage": "208 MB",
-    "linuxArm": "140 MB",
-    "linuxTar": "159 MB",
+    "linuxAppImage": "210 MB",
+    "linuxArm": "141 MB",
+    "linuxTar": "161 MB",
     "checksums": "0 MB"
   },
-  "updatedAt": "2026-11-21T20:44:44.672Z",
+  "updatedAt": "2026-11-21T20:58:38.491Z",
   "degraded": false
 }

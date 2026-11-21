@@ -1,6 +1,112 @@
 {
   "releases": [
     {
+      "tag": "v1.7.1",
+      "version": "1.7.1",
+      "name": "v1.7.1",
+      "label": "1.7.1",
+      "publishedAt": "2026-11-21T20:58:22Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.7.1",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added a Version field to song details.",
+            "Added searching by a song's version.",
+            "Added a Blurred Cover background for phone Now Playing, with Blur and Dim sliders.",
+            "Added a Noctis diagnostic switch that records real frames per second.",
+            "Added dragging several queue songs as one block. (#246)",
+            "Added syncing plays, ratings and favourites with another computer in Settings, Account & Devices, Other computers.",
+            "Added a starting window while the audio engine gets ready on first start.",
+            "Added a phone Remote page to control what plays on the computer.",
+            "Added choosing and ordering the phone tab bar tabs, a Most Played section on phone Home, and an All Music, On This Phone or From Computer choice in the phone Library."
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved the next song in the queue being read ahead for instant seeking.",
+            "Improved sample-rate conversion by moving it into the audio engine.",
+            "Improved Animate long artist names setting label.",
+            "Improved the Folders card layout and the Playlist page card.",
+            "Improved screen reader names for accent swatches, shortcut buttons and remove buttons.",
+            "Improved the crossfade length label to read \"6 s\".",
+            "Improved translations across Arabic, Spanish, French, Japanese, Korean, Turkish and both Chinese languages.",
+            "Improved the island width slider range.",
+            "Improved Music Server status messages being translated.",
+            "Improved removing a music folder asking for confirmation first.",
+            "Improved the mini player and visualizer settings explaining why they are greyed out.",
+            "Improved the player island outline to match the sidebar with Liquid Glass on. (#253)"
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed the gapless gap between album tracks when Song Transitions is on. (#254)",
+            "Fixed the gapless engine staying off after Exclusive Mode is switched off.",
+            "Fixed gaps between AAC (.m4a) and Opus tracks.",
+            "Fixed Song Transitions cutting track endings early while Exclusive Mode is on.",
+            "Fixed silence when Exclusive Mode has no usable output.",
+            "Fixed a cleanup step that could kill the next staged track after an output switch.",
+            "Fixed black-and-white covers keeping the old accent colour. (#255)",
+            "Fixed the spectrum showing made-up colours for black-and-white covers.",
+            "Fixed play counts, ratings and favourites being lost when a folder or file returns in the same session.",
+            "Fixed the Toggle Mini Player key staying dead when Mini Player is off.",
+            "Fixed the Mini Player artwork-click choice being lost when Mini Player is turned back on.",
+            "Fixed the Toggle crossfade command in the command palette.",
+            "Fixed Clear Cache and Reset not showing their result.",
+            "Fixed a stale sync error on the Other computers card after a good sync.",
+            "Fixed Last.fm Connect not explaining failures.",
+            "Fixed Last.fm Log Out leaving scrobbling on.",
+            "Fixed the dead API key showing in Change Password.",
+            "Fixed Settings search missing rows on pages you have not opened.",
+            "Fixed the tag editor Mixed placeholder not being translated.",
+            "Fixed some texts staying in the old language until restart.",
+            "Fixed songs removed from the played part of the queue coming back when Repeat All wraps. (#256)",
+            "Fixed a cleared song reappearing after new music is added. (#256)",
+            "Fixed the first song in the queue not being removable for good.",
+            "Fixed the phone queue having the same Repeat All problem.",
+            "Fixed the phone lock screen and notification Next button going missing with Repeat on.",
+            "Fixed clicking the timeline pausing sound on hard-disk libraries.",
+            "Fixed the last moments of tracks being cut at seams.",
+            "Fixed Vorbis files losing a little time at each seam.",
+            "Fixed a gap after a pause before the first seam.",
+            "Fixed DSD tracks losing their last moments when started cold.",
+            "Fixed tracks at different sample rates shifting at the seam.",
+            "Fixed very short tracks leaving silence before the next track.",
+            "Fixed HE-AAC tracks not ending on the exact sample.",
+            "Fixed audio output shutting down and restarting when headphones connect during playback.",
+            "Fixed count texts reading wrong in Arabic, Russian, Spanish and French.",
+            "Fixed \"1 of 1 song\" reading as plural.",
+            "Fixed Other computers saying the wrong thing before the first sync.",
+            "Fixed a long Other computers status running under the Sync now button.",
+            "Fixed a hard line under the phone Lyrics header with Blurred Cover on.",
+            "Fixed the vertical seam on the lyrics page video background.",
+            "Fixed the animated cover frame rotation to match the video background.",
+            "Fixed masonry albums laying out every title again on each scroll step. (#241)",
+            "Fixed Home album rows not keeping five covers per row with wide spacing. (#242)",
+            "Fixed music playing on while Noctis closes. (#243)",
+            "Fixed the Albums carousel not reaching both window edges. (#244)",
+            "Fixed settings saved by a newer Noctis being lost. (#245)",
+            "Fixed a long extra field pushing the first field out of queue rows. (#247)",
+            "Fixed the interface staying shrunk in a corner after leaving full screen on macOS. (#248)",
+            "Fixed the full spectrum tilting below 1 kHz. (#249)",
+            "Fixed Album Hover Zoom moving the albums next to the hovered one. (#250)",
+            "Fixed the mini player reopening a fixed design at the wrong size. (#251)",
+            "Fixed Settings not opening when clicked while the library was still loading. (#252)",
+            "Fixed a deleted duplicate's playlist places not going to the kept copy.",
+            "Fixed Tint Whole Window not reaching under the sidebar on the lyrics page.",
+            "Fixed the Albums grid leaving its partly visible row empty after switching from Carousel.",
+            "Fixed Add from YouTube not finding Homebrew tools on macOS when Noctis is opened from Finder.",
+            "Fixed Windows wording (tray, Recycle Bin, Ctrl) showing in Settings and hints on macOS.",
+            "Fixed phone playlist counts and the phone lyrics pausing briefly while lines change."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "plugin-youtubeimport-v1.0.2",
       "version": "plugin-youtubeimport-v1.0.2",
       "name": "Add from YouTube plugin 1.0.2",
@@ -4494,6 +4600,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-21T20:44:45.544Z",
+  "updatedAt": "2026-11-21T20:58:39.391Z",
   "degraded": false
 }
