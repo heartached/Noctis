@@ -859,7 +859,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Playlist.DragCount" xml:space="preserve">
     <value>Песен: {0}</value>
-    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125)</comment>
+    <comment>Pill on the floating drag card when several selected songs are dragged together; {0} = count (GitHub #125). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.AccentColor" xml:space="preserve">
     <value>Акцентный цвет</value>
@@ -1344,10 +1344,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve">
     <value>Увеличение альбома при наведении</value>
     <comment>Settings toggle (GitHub #218)</comment>
-  </data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve">
-    <value>В сетке альбомов альбом под указателем слегка увеличивается и мягко светится.</value>
-    <comment>Settings toggle description (GitHub #218)</comment>
   </data>
   <data name="Settings.Smaller" xml:space="preserve">
     <value>Меньше</value>
@@ -3814,10 +3810,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Число треков</value>
     <comment>Accessible name of the limit number box in CreateSmartPlaylistDialog.axaml</comment>
   </data>
-  <data name="CreateSmartPlaylist.TracksSortedBy" xml:space="preserve">
-    <value>треков, сортировка по</value>
-    <comment>Text in CreateSmartPlaylistDialog.axaml</comment>
-  </data>
   <data name="CreateSmartPlaylist.SortBy" xml:space="preserve">
     <value>Сортировка</value>
     <comment>Accessible name of the sort box in CreateSmartPlaylistDialog.axaml (its visible lead-in is "tracks, sorted by")</comment>
@@ -4120,7 +4112,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Home.Plays" xml:space="preserve">
     <value>прослуш.</value>
-    <comment>Text in HomeView.axaml</comment>
+    <comment>Text in HomeView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Home.TopArtists" xml:space="preserve">
     <value>Топ исполнителей</value>
@@ -4241,7 +4233,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="LibraryAlbums.Plays" xml:space="preserve">
     <value>прослуш.</value>
-    <comment>Text in LibraryAlbumsView.axaml</comment>
+    <comment>Text in LibraryAlbumsView.axaml. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibraryAlbums.Play" xml:space="preserve">
     <value>Слушать</value>
@@ -8486,7 +8478,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Stats.MonthsAgo" xml:space="preserve">
     <value>{0} мес. назад</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.YearAgo" xml:space="preserve">
     <value>1 год назад</value>
@@ -8494,7 +8486,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Stats.YearsAgo" xml:space="preserve">
     <value>{0} г. назад</value>
-    <comment>Age, plural</comment>
+    <comment>Age, plural. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Stats.Today" xml:space="preserve">
     <value>Сегодня</value>
@@ -11095,14 +11087,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Мини-плеер</value>
     <comment>Settings section label</comment>
   </data>
-  <data name="Settings.Section.NowPlayingArtwork" xml:space="preserve">
-    <value>Обложка в «Сейчас играет»</value>
-    <comment>Settings section label</comment>
-  </data>
-  <data name="Settings.Section.CoverFlow" xml:space="preserve">
-    <value>Cover Flow</value>
-    <comment>Settings section label</comment>
-  </data>
   <data name="Settings.Section.LyricsPage" xml:space="preserve">
     <value>Страница текста</value>
     <comment>Settings section label</comment>
@@ -11597,11 +11581,11 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Time.MinutesAgo" xml:space="preserve">
     <value>{0} мин назад</value>
-    <comment>Relative time; {0} = minutes</comment>
+    <comment>Relative time; {0} = minutes. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.HoursAgo" xml:space="preserve">
     <value>{0} ч назад</value>
-    <comment>Relative time; {0} = hours</comment>
+    <comment>Relative time; {0} = hours. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Time.OnDate" xml:space="preserve">
     <value>{0}</value>
@@ -11789,7 +11773,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="ArtistInfoSearch.AlbumsCount" xml:space="preserve">
     <value>Альбомов: {0}</value>
-    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count</comment>
+    <comment>Row detail in ArtistInfoSearchDialog.axaml; {0} = Deezer album count. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="ArtistInfoSearch.OneAlbum" xml:space="preserve">
     <value>1 альбом</value>
@@ -12113,7 +12097,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="LibrarySongs.SummarySongs" xml:space="preserve">
     <value>Песен: {0:N0}</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryHour" xml:space="preserve">
     <value>1 ч</value>
@@ -12121,7 +12105,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="LibrarySongs.SummaryHours" xml:space="preserve">
     <value>{0:N0} ч</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="LibrarySongs.SummaryMinute" xml:space="preserve">
     <value>1 мин</value>
@@ -12129,7 +12113,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="LibrarySongs.SummaryMinutes" xml:space="preserve">
     <value>{0} мин</value>
-    <comment>Songs page top bar summary</comment>
+    <comment>Songs page top bar summary. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.PlayCountImport.Title" xml:space="preserve">
     <value>Импорт числа прослушиваний</value>
@@ -12162,14 +12146,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Settings.PlayCountImport.Starting" xml:space="preserve">
     <value>Запуск…</value>
     <comment>Play count import status</comment>
-  </data>
-  <data name="Settings.PlayCountImport.Reading" xml:space="preserve">
-    <value>Чтение истории прослушиваний… {0}</value>
-    <comment>Play count import progress; {0} = plays read so far</comment>
-  </data>
-  <data name="Settings.PlayCountImport.ReadingOf" xml:space="preserve">
-    <value>Чтение истории прослушиваний… {0} из {1}</value>
-    <comment>Play count import progress; {0} = plays read, {1} = total</comment>
   </data>
   <data name="Settings.PlayCountImport.Matching" xml:space="preserve">
     <value>Сопоставление с песнями в медиатеке…</value>
@@ -12994,7 +12970,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve">
     <value>Фон плеера</value>
-    <comment>Settings row: a slider for how dark or bright the Now Playing background is</comment>
+    <comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment>
   </data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve">
     <value>Яркость фона плеера</value>
@@ -14563,10 +14539,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Импорт плейлиста</value>
     <comment>Playlists page menu: import .m3u/.m3u8 files</comment>
   </data>
-  <data name="Mobile.Import.Result" xml:space="preserve">
-    <value>Импортировано песен: {0} из {1}</value>
-    <comment>Import result title. {0} = songs found on the phone, {1} = songs in the file</comment>
-  </data>
   <data name="Mobile.Import.ResultMany" xml:space="preserve">
     <value>Импортирован {0} плейлист|Импортировано {0} плейлиста|Импортировано {0} плейлистов</value>
     <comment>Import result title for several files. Plural forms, see Mobile.Count.Songs</comment>
@@ -14578,10 +14550,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Mobile.Import.NoneFound" xml:space="preserve">
     <value>Ни одной песни из «{0}» нет на этом телефоне</value>
     <comment>Import result title. {0} = playlist file name</comment>
-  </data>
-  <data name="Mobile.Import.SongsFound" xml:space="preserve">
-    <value>Найдено песен: {0} из {1}.</value>
-    <comment>Import result line for several files. {0} found, {1} total</comment>
   </data>
   <data name="Mobile.Import.NotFoundBelow" xml:space="preserve">
     <value>Эти строки не совпали ни с одной песней на телефоне:</value>
@@ -14661,7 +14629,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Main.DropMovedMany" xml:space="preserve">
     <value>Файлов перемещено в {1}: {0}</value>
-    <comment>Drag-and-drop import status (MainWindowViewModel)</comment>
+    <comment>Drag-and-drop import status (MainWindowViewModel). Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Main.DropCreatePlaylistConfirm" xml:space="preserve">
     <value>«{0}» содержит {1} треков из {2} разных альбомов.
@@ -15071,7 +15039,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve">
     <value>У {0:N0} песен есть только обычный текст. Lyrics Studio может синхронизировать их на этом ПК с помощью речевой модели: это может занять минуту и больше на песню (быстрее с видеокартой), и вы проверяете каждую перед сохранением.</value>
-    <comment>Fetch / remove lyrics in bulk dialog</comment>
+    <comment>Fetch / remove lyrics in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve">
     <value>Первые {0} откроются сразу.</value>
@@ -15207,7 +15175,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Settings.ArtistCreditsUpdated" xml:space="preserve">
     <value>Исполнители обновлены у треков: {0:N0}.</value>
-    <comment>Settings status line</comment>
+    <comment>Settings status line. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Settings.FfmpegNotFound" xml:space="preserve">
     <value>Не найден — укажите путь ниже или установите ffmpeg в PATH.</value>
@@ -15585,13 +15553,9 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Альбом с ненормативной лексикой</value>
     <comment>Metadata window</comment>
   </data>
-  <data name="Metadata.ArtistsSelected" xml:space="preserve">
-    <value>Выбрано исполнителей: {0}</value>
-    <comment>Metadata window</comment>
-  </data>
   <data name="Metadata.SongsSelected" xml:space="preserve">
     <value>Выбрано песен: {0}</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve">
     <value>Не удалось записать теги в «{0}». Возможно, файл открыт в другой программе или доступен только для чтения — закройте его там или проверьте файл и попробуйте снова.</value>
@@ -15599,7 +15563,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve">
     <value>Не удалось записать теги в файлы ({0}), например «{1}». Возможно, они открыты в другой программе или доступны только для чтения — закройте их там или проверьте файлы и попробуйте снова.</value>
-    <comment>Metadata window</comment>
+    <comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve">
     <value>Найти анимированную обложку для 1 альбома</value>
@@ -15607,7 +15571,7 @@ Deezer и TIDAL: вставьте ссылку.</value>
   </data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve">
     <value>Найти анимированные обложки для альбомов: {0:N0}</value>
-    <comment>Find animated artwork in bulk dialog</comment>
+    <comment>Find animated artwork in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment>
   </data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve">
     <value>Нет альбомов для поиска.</value>
