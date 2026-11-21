@@ -124,8 +124,11 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.ControlHowNoctisStarts" xml:space="preserve"><value>How Noctis starts and what minimize and close do.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OpenNoctisWhenComputer" xml:space="preserve"><value>Open Noctis when computer starts</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StartMinimizedTray" xml:space="preserve"><value>Start minimized to tray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>Start hidden in the menu bar</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
   <data name="Settings.MinimizeTray" xml:space="preserve"><value>Minimize to tray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>Minimize to the menu bar</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
   <data name="Settings.CloseTray" xml:space="preserve"><value>Close to tray</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>Close to the menu bar</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
   <data name="Settings.RestoreLastPlayedTrack" xml:space="preserve"><value>Restore last played track</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ReopenLastTrackPlaybar" xml:space="preserve"><value>Reopen with your last track loaded and paused.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TextAnimation" xml:space="preserve"><value>Text Animation</value><comment>Text in SettingsView.axaml</comment></data>
@@ -341,6 +344,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>None</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>Move to Trash</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Adds a button that sends the playing song to the Trash folder below, or the Recycle Bin.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>Adds a button that sends the playing song to the Trash folder below, or the macOS Trash.</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Chapters</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Opens the chapter list. Shows only while an audiobook with chapters plays.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopButton" xml:space="preserve"><value>Stop button</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
@@ -351,6 +355,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Pick a folder outside your music folders, or the next scan adds the songs back.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Not set: the Recycle Bin / Trash</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
   <data name="Settings.TrashFolderMissing" xml:space="preserve"><value>This folder isn't there, so songs go to the Recycle Bin until it's back.</value><comment>Shown when the Trash folder set is not on disk (SettingsView.axaml)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>This folder isn't there, so songs go to the macOS Trash until it's back.</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
   <data name="Settings.ArtworkClick" xml:space="preserve"><value>Clicking the artwork</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>What a click on the song's artwork in the player island opens.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Mini Player</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
@@ -571,6 +576,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.Browse" xml:space="preserve"><value>Browse</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.OpenFile" xml:space="preserve"><value>Open File With</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve"><value>Right-click a song to open its file in this program. Blank asks each time.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>Right-click a song to open its file in this app. Blank hides the menu item.</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
   <data name="Settings.NotSet" xml:space="preserve"><value>(not set)</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Evens out loudness with ReplayGain tags.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -731,6 +737,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Clear Cache</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Keyboard shortcuts</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Click a key to change it. Esc cancels and Backspace clears it.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>Click a key to change it. Esc cancels and Delete clears it.</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
   <data name="Settings.ResetAll" xml:space="preserve"><value>Reset all</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ResetDefaultTip" xml:space="preserve"><value>Reset to default</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LIBRARYOVERVIEW" xml:space="preserve"><value>LIBRARY OVERVIEW</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2963,6 +2970,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Settings.Desc.Player" xml:space="preserve"><value>The player island, the mini player, Cover Flow and Now Playing artwork.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Lyrics" xml:space="preserve"><value>The lyrics page, online lyrics sources, and Lyrics Studio.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Shortcuts" xml:space="preserve"><value>Click a key to change it. Esc cancels, Backspace unbinds.</value><comment>Settings page description</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Click a key to change it. Esc cancels, Delete unbinds.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.Desc.Audio" xml:space="preserve"><value>Playback, output, analysis and the equalizer.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Library" xml:space="preserve"><value>Media folders, scanning, how artists and albums are organised, and library tools.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Advanced" xml:space="preserve"><value>Storage, helper programs, updates and reset.</value><comment>Settings page description</comment></data>
@@ -3232,6 +3240,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Show played songs</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
   <data name="Settings.AppIcon" xml:space="preserve"><value>App Icon</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
   <data name="Settings.AppIconDesc" xml:space="preserve"><value>Changes the icon in the title bar, taskbar and tray. The desktop shortcut keeps the classic one.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Changes the icon in the menu bar. The Dock keeps the classic one.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Classic</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Light" xml:space="preserve"><value>Light</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Dark</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
@@ -4304,6 +4313,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="GroupAlbums.Hint" xml:space="preserve"><value>{0} albums, {1} songs. Saved in the files' Album and Album Artist tags.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Group</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>No other album has this name. Ctrl-click the albums that belong together in the Albums grid, then right-click one of them.</value><comment>Shown when only one album is chosen</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>No other album has this name. ⌘-click the albums that belong together in the Albums grid, then right-click one of them.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Grouped in Noctis, but some files ({0}) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>

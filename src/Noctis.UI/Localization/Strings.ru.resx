@@ -124,8 +124,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ControlHowNoctisStarts" xml:space="preserve"><value>Как запускается Noctis и что делают кнопки «Свернуть» и «Закрыть».</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.OpenNoctisWhenComputer" xml:space="preserve"><value>Запускать Noctis при включении компьютера</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StartMinimizedTray" xml:space="preserve"><value>Запускать свёрнутым в трей</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>Запускать скрытым в строке меню</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
   <data name="Settings.MinimizeTray" xml:space="preserve"><value>Сворачивать в трей</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>Сворачивать в строку меню</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
   <data name="Settings.CloseTray" xml:space="preserve"><value>Закрывать в трей</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>Закрывать в строку меню</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
   <data name="Settings.RestoreLastPlayedTrack" xml:space="preserve"><value>Восстанавливать последний трек</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ReopenLastTrackPlaybar" xml:space="preserve"><value>При запуске загружать последний трек на паузе.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TextAnimation" xml:space="preserve"><value>Анимация текста</value><comment>Text in SettingsView.axaml</comment></data>
@@ -341,6 +344,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.QuickPlaylistNone" xml:space="preserve"><value>Нет</value><comment>Empty quick playlist slot in the pickers (GitHub #186, SettingsViewModel)</comment></data>
   <data name="Settings.TrashButton" xml:space="preserve"><value>Переместить в корзину</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashButtonHint" xml:space="preserve"><value>Добавляет кнопку, которая отправляет текущую песню в папку корзины ниже или в корзину.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>Добавляет кнопку, которая отправляет текущую песню в папку корзины ниже или в корзину.</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
   <data name="Settings.ChaptersButton" xml:space="preserve"><value>Главы</value><comment>Text in SettingsView.axaml: the island Chapters button toggle (Discord)</comment></data>
   <data name="Settings.ChaptersButtonHint" xml:space="preserve"><value>Открывает список глав. Видна, только пока играет аудиокнига с главами.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.StopButton" xml:space="preserve"><value>Кнопка «Стоп»</value><comment>Text in SettingsView.axaml: the island Stop button toggle (Discord)</comment></data>
@@ -351,6 +355,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.TrashFolderHint" xml:space="preserve"><value>Куда кнопка переносит песни, чтобы их можно было просмотреть позже. Выберите папку вне ваших музыкальных папок, иначе следующее сканирование добавит их снова.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrashFolderNotSet" xml:space="preserve"><value>Не задана: корзина системы</value><comment>Watermark of the empty Trash folder box (SettingsView.axaml)</comment></data>
   <data name="Settings.TrashFolderMissing" xml:space="preserve"><value>Этой папки сейчас нет, поэтому песни попадают в корзину системы, пока она не появится.</value><comment>Shown when the Trash folder set is not on disk (SettingsView.axaml)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>Этой папки сейчас нет, поэтому песни попадают в корзину системы, пока она не появится.</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
   <data name="Settings.ArtworkClick" xml:space="preserve"><value>Щелчок по обложке</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClickHint" xml:space="preserve"><value>Что открывает щелчок по обложке песни в плеере-острове.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ArtworkClick.MiniPlayer" xml:space="preserve"><value>Мини-плеер</value><comment>Clicking the artwork choice (GitHub #183, SettingsViewModel)</comment></data>
@@ -571,6 +576,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Browse" xml:space="preserve"><value>Обзор</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.OpenFile" xml:space="preserve"><value>Открывать файл в</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.RightClickSongOpen" xml:space="preserve"><value>Щёлкните правой кнопкой по песне, чтобы открыть её файл в этой программе. Если пусто — спрашивать каждый раз.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>Щёлкните правой кнопкой по песне, чтобы открыть её файл в этом приложении. Если пусто — пункт меню скрыт.</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
   <data name="Settings.NotSet" xml:space="preserve"><value>(не задано)</value><comment>Watermark in SettingsView.axaml</comment></data>
   <data name="Settings.ReplayGain" xml:space="preserve"><value>ReplayGain</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AdjustVolumeUsingReplayGain" xml:space="preserve"><value>Регулировать громкость по тегам ReplayGain. Сканируйте треки через контекстное меню.</value><comment>Text in SettingsView.axaml</comment></data>
@@ -731,6 +737,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ClearCache" xml:space="preserve"><value>Очистить кэш</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeyboardShortcuts" xml:space="preserve"><value>Сочетания клавиш</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ClickKeyChangePress" xml:space="preserve"><value>Нажмите на клавишу, чтобы изменить её. Esc — отмена, Backspace — снять назначение. Мультимедийные клавиши работают всегда.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>Нажмите на клавишу, чтобы изменить её. Esc — отмена, Delete — снять назначение. Мультимедийные клавиши работают всегда.</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
   <data name="Settings.ResetAll" xml:space="preserve"><value>Сбросить все</value><comment>Content in SettingsView.axaml</comment></data>
   <data name="Settings.ResetDefaultTip" xml:space="preserve"><value>Вернуть значение по умолчанию</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.LIBRARYOVERVIEW" xml:space="preserve"><value>ОБЗОР МЕДИАТЕКИ</value><comment>Text in SettingsView.axaml</comment></data>
@@ -2963,6 +2970,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Desc.Player" xml:space="preserve"><value>Островок плеера, мини-плеер, Cover Flow и обложка в «Сейчас играет».</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Lyrics" xml:space="preserve"><value>Страница текста, онлайн-источники текстов и Студия текстов.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Shortcuts" xml:space="preserve"><value>Нажмите на клавишу, чтобы изменить её. Esc — отмена, Backspace — снять назначение.</value><comment>Settings page description</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Нажмите на клавишу, чтобы изменить её. Esc — отмена, Delete — снять назначение.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.Desc.Audio" xml:space="preserve"><value>Воспроизведение, вывод, анализ и эквалайзер.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Library" xml:space="preserve"><value>Папки с медиафайлами, сканирование, упорядочивание исполнителей и альбомов, инструменты медиатеки.</value><comment>Settings page description</comment></data>
   <data name="Settings.Desc.Advanced" xml:space="preserve"><value>Хранилище, вспомогательные программы, обновления и сброс.</value><comment>Settings page description</comment></data>
@@ -3232,6 +3240,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Queue.ShowPlayedTip" xml:space="preserve"><value>Показать прослушанные песни</value><comment>Queue popup header History button tooltip in MainWindow.axaml: toggles Keep Played Songs (played songs above Now Playing)</comment></data>
   <data name="Settings.AppIcon" xml:space="preserve"><value>Значок приложения</value><comment>Title of the App Icon card in Settings &gt; Appearance (SettingsView.axaml)</comment></data>
   <data name="Settings.AppIconDesc" xml:space="preserve"><value>Сразу меняет значок в заголовке окна, на панели задач и в трее. Ярлык на рабочем столе и .exe сохраняют классический значок.</value><comment>Subtitle of the App Icon card in Settings &gt; Appearance: the pick applies live to windows/taskbar/tray; the exe icon cannot change</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Сразу меняет значок в строке меню. Dock сохраняет классический значок.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="Settings.AppIcon.Classic" xml:space="preserve"><value>Классический</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Light" xml:space="preserve"><value>Светлый</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
   <data name="Settings.AppIcon.Dark" xml:space="preserve"><value>Тёмный</value><comment>Name of an alternate app icon tile in Settings &gt; Appearance &gt; App Icon</comment></data>
@@ -4304,6 +4313,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="GroupAlbums.Hint" xml:space="preserve"><value>Альбомов: {0}, песен: {1}. Сохраняется в теги «Альбом» и «Исполнитель альбома» файлов.</value><comment>{0} album count, {1} song count</comment></data>
   <data name="GroupAlbums.Confirm" xml:space="preserve"><value>Объединить</value><comment>Confirm button</comment></data>
   <data name="GroupAlbums.SelectHint" xml:space="preserve"><value>Других альбомов с таким названием нет. В сетке альбомов выделите нужные альбомы щелчком с Ctrl, затем щёлкните правой кнопкой по одному из них.</value><comment>Shown when only one album is chosen</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Других альбомов с таким названием нет. В сетке альбомов выделите нужные альбомы щелчком с ⌘, затем щёлкните правой кнопкой по одному из них.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
   <data name="GroupAlbums.NotWritten" xml:space="preserve"><value>Объединено в Noctis, но не удалось сохранить файлов: {0} (только для чтения или открыты в другом приложении). Если такой файл изменится, при следующем сканировании он вернётся в прежний альбом.</value><comment>{0} file count; list of file names follows</comment></data>
   <!-- LyricShareDialog Lyrics Page -->
   <data name="LyricShare.LyricsPage" xml:space="preserve"><value>Lyrics Page</value><comment>Share style option</comment></data>

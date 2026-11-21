@@ -48,6 +48,17 @@ public class ShortcutsSettingsViewModelTests
     }
 
     [Fact]
+    public void KeyCaps_UseTheMacKeySymbols_OnMacOnly()
+    {
+        var chord = new KeyGesture(Key.Back, KeyModifiers.Meta);
+        Assert.Equal(new[] { "⌘", "⌫" }, ShortcutKeyFormatter.Parts(chord, isMac: true));
+        Assert.Equal(new[] { "Win", "Backspace" }, ShortcutKeyFormatter.Parts(chord, isMac: false));
+        Assert.Equal(new[] { "⌦" }, ShortcutKeyFormatter.Parts(new KeyGesture(Key.Delete), isMac: true));
+        Assert.Equal(new[] { "↩" }, ShortcutKeyFormatter.Parts(new KeyGesture(Key.Return), isMac: true));
+        Assert.Equal(new[] { "Enter" }, ShortcutKeyFormatter.Parts(new KeyGesture(Key.Return), isMac: false));
+    }
+
+    [Fact]
     public void BeginRecord_OnlyOneRowRecordsAtATime()
     {
         var (vm, _) = Build();

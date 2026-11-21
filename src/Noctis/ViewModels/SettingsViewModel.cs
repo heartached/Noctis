@@ -132,7 +132,7 @@ public partial class SettingsViewModel : ViewModelBase
     public string SelectedTabTitle => Loc.T(TabLabelKey(SelectedSettingsTab));
 
     /// <summary>One line under the page title. Resx key: Settings.Desc.&lt;tab without spaces/ampersand&gt;.</summary>
-    public string SelectedTabDescription => Loc.T("Settings.Desc." + TabResxSuffix(SelectedSettingsTab));
+    public string SelectedTabDescription => Loc.Platform("Settings.Desc." + TabResxSuffix(SelectedSettingsTab));
 
     /// <summary>Text in the rail's search box. The view applies it to the card index.</summary>
     [ObservableProperty] private string _searchQuery = string.Empty;
@@ -3486,12 +3486,22 @@ public partial class SettingsViewModel : ViewModelBase
         DebugLog.Changed += () =>
         {
             if (Interlocked.Exchange(ref _devLogRefreshQueued, 1) == 1) return;
-            Dispatcher.UIThread.Post(() =>
+            try
             {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    Volatile.Write(ref _devLogRefreshQueued, 0);
+                    if (DeveloperMode)
+                        DevLogText = ComposeDevLogText();
+                }, DispatcherPriority.Background);
+            }
+            catch
+            {
+                // Nothing was queued: let the next write try again instead of leaving the
+                // log view stuck. (DebugLog contains the exception itself.)
                 Volatile.Write(ref _devLogRefreshQueued, 0);
-                if (DeveloperMode)
-                    DevLogText = ComposeDevLogText();
-            }, DispatcherPriority.Background);
+                throw;
+            }
         };
 
         if (Avalonia.Application.Current is Noctis.App app)
