@@ -45,6 +45,9 @@ public class SearchCapsuleMorphTests
         var window = new Window { Width = 800, Height = 600, Content = root };
         // The headless app carries only Fluent; the accent the ring resolves comes from here.
         window.Resources["AccentColorBrush"] = new SolidColorBrush(TestAccent);
+        // The pill's icon buttons press with this fill; unresolved, their template background is
+        // null and a release on them hit-tests through (the click never fires).
+        window.Resources["SidebarHoverBrush"] = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
         window.Show();
         if (pump)
             for (int i = 0; i < 5; i++) { AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout(); Thread.Sleep(10); }
@@ -264,8 +267,9 @@ public class SearchCapsuleMorphTests
         rig.Window.Close();
     }
 
-    /// <summary>The 40px pill sits in the 48px button row: a click in the strip above it must
-    /// not reach the hidden button beneath and toggle a typed (sticky) pill shut.</summary>
+    /// <summary>The pill covers the hidden button's row (it was 40px in the 48px row until
+    /// 11-21): a click at the row's top edge must not reach the hidden button beneath and
+    /// toggle a typed (sticky) pill shut.</summary>
     [AvaloniaFact]
     public async Task ClickInTheStripAboveThePill_DoesNotToggleIt()
     {

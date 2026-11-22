@@ -760,7 +760,9 @@ public partial class SidebarView : UserControl
     internal const double SearchCloseMs = 240;     // total, including the lead below
     private const double SearchCloseLeadMs = 40;   // field starts fading before the shape moves
     internal const double SearchCapsuleClosedSize = 48;  // the rail button's own disc (nav-row size)
-    internal const double SearchCapsuleOpenHeight = 40;  // PillDialog's pill-field height
+    // The open pill keeps the button row's 48px: a 40px pill read as the bar shrinking on
+    // focus (Discord, Halil 11-21), the field stepping in from the hover disc it grows out of.
+    internal const double SearchCapsuleOpenHeight = SearchCapsuleClosedSize;
     internal const double SearchCapsuleOpenWidth = 250;  // 48 cap - 6 + 196 field + 12 right pad
     // The rail button's left edge in both settled rail states (RailActions' 6px margin; its
     // icon grid sits 10px in, at x=16, either way). A CONSTANT, not a live measurement:
@@ -878,9 +880,15 @@ public partial class SidebarView : UserControl
     {
         // The shadow room's padding sits around the capsule inside the popup.
         var room = SearchShadowRoom.Padding;
-        SearchPopup.HorizontalOffset = SearchCapsuleX - room.Left;
+        // At an Interface Size other than 100% the popup content inherits the sidebar's scale
+        // but its offsets are applied as they are, in window units: unscaled, they put the
+        // capsule off the row (at 110% the pill sat 4px high and looked like it shrank upward
+        // on open, Discord 11-21). Everything here is in the sidebar's own units, so scale it.
+        var scale = TopLevel.GetTopLevel(this) is { } top && this.TransformToVisual(top) is { } m && m.M22 > 0
+            ? m.M22 : 1.0;
+        SearchPopup.HorizontalOffset = (SearchCapsuleX - room.Left) * scale;
         if (SearchIconHost.TranslatePoint(new Point(0, -10), this) is { } capsuleOrigin)
-            SearchPopup.VerticalOffset = capsuleOrigin.Y - room.Top;
+            SearchPopup.VerticalOffset = (capsuleOrigin.Y - room.Top) * scale;
     }
 
     /// <summary>Every UI-side close: flips the view model, whose change plays the collapse
