@@ -198,7 +198,7 @@ public class ArtistProtectedNamesConfigurationTests : IDisposable
     public async Task OldSettingsFile_WithoutTheList_LoadsTheDefaults()
     {
         Directory.CreateDirectory(_root);
-        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), """{ "ArtistGroupMode": "Artist" }""");
+        await File.WriteAllTextAsync(Path.Combine(_root, "settings.json"), """{ "artistGroupMode": "Artist" }""");
         var loaded = await new PersistenceService(_root).LoadSettingsAsync();
         Assert.Equal(ArtistCredit.DefaultProtectedNames, loaded.ArtistProtectedNames);
 

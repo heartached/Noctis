@@ -1047,4 +1047,101 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.InRange(reopen, 0, 200 * 1024);   // was ~875 KB: the star buttons built again
         window.Close();
     }
+
+    /// <summary>
+    /// The card kept only the last menu's view: a sort or filter menu (or the Library's, the
+    /// artist links, the quality card) in between threw the song menu's rows away, and the next ⋯
+    /// built all of them again inside the tap's frame. Each kind of menu now keeps its own built
+    /// view: back to a song's menu after a sort menu only rebinds the same rows.
+    /// </summary>
+    [AvaloniaFact]
+    public void ASortMenuInBetween_DoesNotRebuildTheSongMenu()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var __ = rig;
+        var menu = MenuOf(view);
+        var song = rig.Library.TrackList[0];
+        Button AddToPlaylist() => MobileFixtures.Named<Button>(menu, "MenuAddToPlaylist");
+
+        rig.Shell.OpenTrackMenu(song, null);
+        Pump(2);
+        var row = AddToPlaylist();
+        rig.Shell.CloseSheet();
+        Pump(15);
+        rig.Shell.ShowOptions(OptionsMenuViewModel.ForItems(new List<OptionsMenuItem>
+        {
+            new(rig.Shell, "Title", true, () => { }),
+            new(rig.Shell, "Artist", false, () => { }),
+        }));
+        Pump(2);
+        Assert.Contains(menu.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Artist" && t.IsEffectivelyVisible);
+        Assert.DoesNotContain(menu.GetVisualDescendants().OfType<Button>(), b => b.Name == "MenuAddToPlaylist" && b.IsEffectivelyVisible);
+        rig.Shell.CloseSheet();
+        Pump(15);
+
+        var other = MobileFixtures.Song("Other", artist: "Someone Else");
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        rig.Shell.OpenTrackMenu(other, null);
+        var reopen = GC.GetAllocatedBytesForCurrentThread() - before;
+        Pump(2);
+        output.WriteLine($"song menu after a sort menu: {reopen / 1024} KB");
+        Assert.Same(row, AddToPlaylist());
+        Assert.True(row.IsEffectivelyVisible);
+        Assert.Contains(menu.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Someone Else" && t.IsEffectivelyVisible);   // rebound
+        Assert.DoesNotContain(menu.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Artist" && t.IsEffectivelyVisible);
+        Assert.InRange(reopen, 0, 200 * 1024);
+        window.Close();
+    }
+    /// <summary>
+    /// Add to Playlist's list was a new list on every open, so the sheet built a row for every
+    /// playlist each time (40 playlists: 7.3 MB, headless). Opened again with the same playlists
+    /// it keeps its rows; a rename, a new or a deleted playlist still shows at once.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task ThePlaylistSheet_KeepsItsRows_UntilThePlaylistsChange()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("A"), MobileFixtures.Song("B") });
+        for (var i = 0; i < 40; i++) await rig.Shell.Library.CreatePlaylistAsync("List " + i);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        var sheet = view.FindControl<ContextSheet>("Sheet")!;
+        List<Button> Rows() => sheet.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("sheet-action")).ToList();
+        void OpenFor(Track track)
+        {
+            rig.Shell.OpenTrackMenu(track, null);
+            rig.Shell.Sheet!.ShowPlaylistsCommand.Execute(null);
+            MobileFixtures.Land(window);
+            window.UpdateLayout();
+        }
+        void Close()
+        {
+            rig.Shell.CloseSheet();
+            MobileFixtures.Land(window);
+            Pump(15);
+            window.UpdateLayout();
+        }
+
+        OpenFor(rig.Library.TrackList[0]);
+        var first = Rows()[0];
+        Assert.Equal(40, Rows().Count);
+        Close();
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        OpenFor(rig.Library.TrackList[1]);
+        var reopen = GC.GetAllocatedBytesForCurrentThread() - before;
+        output.WriteLine($"playlist sheet reopened: {reopen / 1024} KB");
+        Assert.Same(first, Rows()[0]);
+        Assert.InRange(reopen, 0, 1024 * 1024);
+        Close();
+
+        // A rename and a new playlist: both show on the next open.
+        await rig.Shell.Library.RenamePlaylistAsync(rig.Shell.Library.Playlists.First(p => p.Name == "List 0"), "Renamed");
+        await rig.Shell.Library.CreatePlaylistAsync("Fresh");
+        OpenFor(rig.Library.TrackList[0]);
+        var names = Rows().Select(b => b.GetVisualDescendants().OfType<TextBlock>().First().Text).ToList();
+        Assert.Contains("Renamed", names);
+        Assert.Contains("Fresh", names);
+        Assert.DoesNotContain("List 0", names);
+        Assert.Equal(41, names.Count);
+        window.Close();
+    }
 }

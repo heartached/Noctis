@@ -95,6 +95,39 @@ public partial class PopMenu : UserControl
     public PopMenu()
     {
         InitializeComponent();
+        // One built view per kind of menu, kept while another kind shows: the content presenter
+        // keeps only the last one, so a sort menu in between threw the song menu's rows away and
+        // the next ⋯ built them all again (4 MB, headless) inside the tap's frame.
+        var kinds = MenuContent.DataTemplates.ToList();
+        MenuContent.DataTemplates.Clear();
+        MenuContent.DataTemplates.Add(new KeptViews(kinds));
+    }
+
+    /// <summary>The menu's templates, each building its view once into one host that stays in
+    /// the tree: the kind asked for shows, rebound to the new menu, and the others are hidden
+    /// with their last menu (taken out and put back, a view had all its styles applied again:
+    /// 2.8 MB a switch).</summary>
+    private sealed class KeptViews(IReadOnlyList<Avalonia.Controls.Templates.IDataTemplate> kinds) : Avalonia.Controls.Templates.IDataTemplate
+    {
+        private readonly Panel _host = new();
+        private readonly Dictionary<Avalonia.Controls.Templates.IDataTemplate, Control> _built = new();
+
+        public bool Match(object? data) => kinds.Any(k => k.Match(data));
+
+        public Control? Build(object? param)
+        {
+            var kind = kinds.FirstOrDefault(k => k.Match(param));
+            if (kind == null) return null;
+            if (!_built.TryGetValue(kind, out var view))
+            {
+                if (kind.Build(param) is not { } made) return null;
+                _built[kind] = view = made;
+                _host.Children.Add(view);
+            }
+            view.DataContext = param;
+            foreach (var (k, v) in _built) v.IsVisible = ReferenceEquals(k, kind);
+            return _host;
+        }
     }
 
     /// <summary>What the open card grew out of: the ⋯ button, or the held row or tile; null when

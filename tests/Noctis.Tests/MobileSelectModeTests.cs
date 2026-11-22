@@ -119,10 +119,10 @@ public class MobileSelectModeTests
 
         // The Favorites tab's own list (embedded, never popped) ends on a tab switch.
         rig.Shell.SelectTabCommand.Execute(MobileTab.Favorites);
-        rig.Shell.FavoritesRoot.BeginSelectCommand.Execute(null);
+        rig.Shell.FavoritesRoot!.BeginSelectCommand.Execute(null);
         Assert.True(rig.Shell.IsSelecting);
         rig.Shell.SelectTabCommand.Execute(MobileTab.Home);
-        Assert.False(rig.Shell.FavoritesRoot.Selection.IsActive);
+        Assert.False(rig.Shell.FavoritesRoot!.Selection.IsActive);
         Assert.False(rig.Shell.IsSelecting);
     }
 

@@ -208,7 +208,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [ObservableProperty] private string _newPlaylistName = string.Empty;
 
     /// <summary>Manual playlists only: a smart playlist's contents come from its rules.</summary>
-    public IReadOnlyList<Playlist> Playlists => _shell.Library.Playlists.Where(p => !p.IsSmartPlaylist).ToList();
+    public IReadOnlyList<Playlist> Playlists => _shell.PickerPlaylists();
 
     [RelayCommand]
     private void PlayNext()

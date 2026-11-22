@@ -1402,6 +1402,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Scrobbling.PropertyChanged -= OnSubPageChanged;
         Scrobbling.Detach();
         History.PropertyChanged -= OnSubPageChanged;
+        History.Detach();
         ArtistSeparators.PropertyChanged -= OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
     }

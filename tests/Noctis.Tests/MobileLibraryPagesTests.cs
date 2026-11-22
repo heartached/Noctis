@@ -139,9 +139,9 @@ public class MobileLibraryPagesTests
     {
         using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Alpha", favourite: true) });
 
-        rig.Shell.FavoritesRoot.ShowFilterMenuCommand.Execute(null);
+        rig.Shell.FavoritesRoot!.ShowFilterMenuCommand.Execute(null);
         Assert.DoesNotContain(rig.Shell.OptionsMenu?.Items ?? Array.Empty<OptionsMenuItem>(), i => i.Label == "Favorites");
-        Assert.False(rig.Shell.FavoritesRoot.HasFilters);
+        Assert.False(rig.Shell.FavoritesRoot!.HasFilters);
 
         rig.Shell.OpenSongsCommand.Execute(null);
         var songs = Assert.IsType<SongListPageViewModel>(rig.Shell.CurrentPage);
@@ -280,7 +280,7 @@ public class MobileLibraryPagesTests
         rig.Shell.SelectTabCommand.Execute(MobileTab.Playlists);
         window.UpdateLayout();
 
-        var page = rig.Shell.PlaylistsRoot;
+        var page = rig.Shell.PlaylistsRoot!;
         Assert.Equal(new[] { "Zed", "Duo", "Solo" }, page.Rows.Select(r => r.Name));
         Assert.Equal(new[] { "0 songs", "2 songs", "1 song" }, page.Rows.Select(r => r.Subtitle));
         var root = view.FindControl<Grid>("PlaylistsRoot")!;
