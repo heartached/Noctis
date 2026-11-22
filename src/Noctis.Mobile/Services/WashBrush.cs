@@ -92,29 +92,13 @@ internal sealed class WashBrush
     /// light page shows it (over white).</summary>
     public readonly record struct Extremes(Color Brightest, Color Darkest);
 
-    /// <summary>The wash's <see cref="Extremes"/>, read once per cover from its 128 px pixels;
-    /// null when they cannot be read (the page then keeps the theme's background).</summary>
-    public static Extremes? Measure(IImage? wash)
-    {
-        // The converter's own copy of the pixels: the bitmap itself, just written, can't be read back
-        // reliably (PreBlurredArtworkConverter.WashPixels).
-        if (wash is not Bitmap bitmap || PreBlurredArtworkConverter.WashPixels(bitmap) is not { Length: > 0 } pixels) return null;
-        Color brightest = Colors.Black, darkest = Colors.White;
-        double most = -1, least = 2;
-        for (var i = 0; i < pixels.Length; i += 4)
-        {
-            // Premultiplied BGRA: as-is it is the pixel over black; plus the rest of white, over white.
-            byte r = pixels[i + 2], g = pixels[i + 1], b = pixels[i];
-            var clear = 255 - pixels[i + 3];
-            var overBlack = Color.FromRgb(r, g, b);
-            var overWhite = Color.FromRgb((byte)Math.Min(255, r + clear), (byte)Math.Min(255, g + clear), (byte)Math.Min(255, b + clear));
-            var lb = DominantColorExtractor.GetRelativeLuminance(overBlack);
-            var lw = DominantColorExtractor.GetRelativeLuminance(overWhite);
-            if (lb > most) { most = lb; brightest = overBlack; }
-            if (lw < least) { least = lw; darkest = overWhite; }
-        }
-        return new Extremes(brightest, darkest);
-    }
+    /// <summary>The wash's <see cref="Extremes"/>, measured once per cover from its 128 px pixels as
+    /// the converter made it (<see cref="PreBlurredArtworkConverter.WashTonesOf"/>); null for a
+    /// bitmap it did not make (the page then keeps the theme's background).</summary>
+    public static Extremes? Measure(IImage? wash) =>
+        wash is Bitmap bitmap && PreBlurredArtworkConverter.WashTonesOf(bitmap) is { } tones
+            ? new Extremes(tones.Brightest, tones.Darkest)
+            : null;
 
     /// <summary>
     /// The veil over a wash: on a dark page black, thick enough that the brightest spot falls to

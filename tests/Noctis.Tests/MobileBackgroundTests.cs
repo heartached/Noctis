@@ -410,21 +410,30 @@ public class MobileBackgroundTests
         var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(new PixelSize(size, size), new Vector(96, 96),
             Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
         using var fb = bitmap.Lock();
-        var row = new byte[size * 4];
+        var pixels = CoverPixels(top, bottom, size);
+        for (var y = 0; y < size; y++)
+            Marshal.Copy(pixels, y * size * 4, fb.Address + y * fb.RowBytes, size * 4);
+        return bitmap;
+    }
+
+    /// <summary><see cref="Cover"/>'s pixels: premultiplied BGRA, row after row.</summary>
+    private static byte[] CoverPixels(Color top, Color? bottom = null, int size = 64)
+    {
+        var pixels = new byte[size * size * 4];
         for (var y = 0; y < size; y++)
         {
             var c = y < size / 2 ? top : bottom ?? top;
             var a = c.A / 255.0;
             for (var x = 0; x < size; x++)
             {
-                row[x * 4] = (byte)Math.Round(c.B * a);
-                row[x * 4 + 1] = (byte)Math.Round(c.G * a);
-                row[x * 4 + 2] = (byte)Math.Round(c.R * a);
-                row[x * 4 + 3] = c.A;
+                var i = (y * size + x) * 4;
+                pixels[i] = (byte)Math.Round(c.B * a);
+                pixels[i + 1] = (byte)Math.Round(c.G * a);
+                pixels[i + 2] = (byte)Math.Round(c.R * a);
+                pixels[i + 3] = c.A;
             }
-            Marshal.Copy(row, 0, fb.Address + y * fb.RowBytes, row.Length);
         }
-        return bitmap;
+        return pixels;
     }
 
     private static async Task WashSettled(PhoneBackground background)
@@ -536,21 +545,28 @@ public class MobileBackgroundTests
         var lightPlain = MobileTheme.ContrastRatio(Over(lightSecondary, Colors.White), Colors.White);
         var converter = new Noctis.Converters.PreBlurredArtworkConverter();
 
-        var covers = new[]
+        var covers = new (Color Top, Color? Bottom)[]
         {
-            Cover(Colors.White), Cover(Colors.Yellow), Cover(Colors.Black), Cover(Colors.Red), Cover(Color.Parse("#00FF88")),
-            Cover(Colors.White, Colors.Black), Cover(Color.Parse("#F5E6C8"), Color.Parse("#1A1A2E")), Cover(Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF)),
+            (Colors.White, null), (Colors.Yellow, null), (Colors.Black, null), (Colors.Red, null), (Color.Parse("#00FF88"), null),
+            (Colors.White, Colors.Black), (Color.Parse("#F5E6C8"), Color.Parse("#1A1A2E")), (Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF), null),
         };
-        foreach (var cover in covers)
+        foreach (var (top, bottom) in covers)
         {
-            var wash = (Avalonia.Media.Imaging.WriteableBitmap)converter.Convert(cover, typeof(IImage),
-                Noctis.Converters.PreBlurredArtworkConverter.WashParameter, System.Globalization.CultureInfo.InvariantCulture)!;
-            var extremes = WashBrush.Measure(wash)!.Value;
+            using (var cover = Cover(top, bottom))
+                Assert.NotNull(WashBrush.Measure(converter.Convert(cover, typeof(IImage),
+                    Noctis.Converters.PreBlurredArtworkConverter.WashParameter, System.Globalization.CultureInfo.InvariantCulture) as IImage));
+            // The wash as the converter makes it, from the cover's own pixels (64 px: its downscale
+            // keeps them as they are): the headless platform's bitmap stub does not keep what a test
+            // writes into a bitmap (MobileWashCacheTests), so its read of the cover is not the cover.
+            var washed = CoverPixels(top, bottom);
+            Noctis.Converters.PreBlurredArtworkConverter.MakeWash(washed, 64, 64);
+            var tones = Noctis.Converters.PreBlurredArtworkConverter.MeasureTones(washed);
+            var extremes = new WashBrush.Extremes(tones.Brightest, tones.Darkest);
             foreach (var light in new[] { false, true })
             foreach (var strength in new[] { 1.0, PhoneBackground.DefaultStrength, PhoneBackground.MinStrength })
             {
                 var veil = WashBrush.VeilFor(extremes, light, strength);
-                foreach (var pixel in Pixels(wash))
+                foreach (var pixel in Pixels(washed))
                 {
                     // The floor, the wash's premultiplied pixel over it, then the veil.
                     var a = pixel.A / 255.0;
@@ -571,13 +587,9 @@ public class MobileBackgroundTests
                 }
             }
         }
-        foreach (var cover in covers) cover.Dispose();
 
-        static System.Collections.Generic.IEnumerable<Color> Pixels(Avalonia.Media.Imaging.WriteableBitmap bitmap)
+        static System.Collections.Generic.IEnumerable<Color> Pixels(byte[] row)
         {
-            // The converter's copy, as WashBrush.Measure reads it (the bitmap can't be read back at once).
-            var row = Noctis.Converters.PreBlurredArtworkConverter.WashPixels(bitmap)!;
-            Assert.Equal(bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4, row.Length);
             var list = new System.Collections.Generic.List<Color>();
             for (var i = 0; i < row.Length; i += 4) list.Add(Color.FromArgb(row[i + 3], row[i + 2], row[i + 1], row[i]));
             return list;
