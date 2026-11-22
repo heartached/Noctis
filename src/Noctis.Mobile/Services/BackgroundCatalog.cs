@@ -62,6 +62,7 @@ public static class BackgroundCatalog
     /// <summary>The saved id when it names a background, else <see cref="PhoneBackground.Off"/>.</summary>
     public static string Normalize(string? id) =>
         string.Equals(id, PhoneBackground.Artwork, StringComparison.OrdinalIgnoreCase) ? PhoneBackground.Artwork
+        : string.Equals(id, PhoneBackground.ColourWash, StringComparison.OrdinalIgnoreCase) ? PhoneBackground.ColourWash
         : Find(id)?.Id ?? PhoneBackground.Off;
 
     /// <summary>What a wash may reach on a dark page (relative luminance): bright enough to show,

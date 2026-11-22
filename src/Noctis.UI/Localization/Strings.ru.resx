@@ -3497,6 +3497,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>Все</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Поиск в медиатеке</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Ничего не найдено</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Недавние запросы</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Очистить</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>Удалить «{0}» из недавних запросов</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Исполнитель</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Плавное движение</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Цвета медленно переливаются</value></data>
@@ -3504,6 +3507,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>Из обложки</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Сейчас играет</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Меняется вместе с обложкой каждой песни</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>Цветная дымка плеера за каждой страницей</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Выкл.</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>Обычный цвет темы</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Нейтральные</value></data>
@@ -3595,7 +3599,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Вкладка Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Выбранная вкладка остаётся прозрачным стеклом</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Панель вкладок</value></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Выберите от 2 до 5 вкладок и перетащите ≡, чтобы расставить их. Медиатека всегда остаётся на панели, так что все списки и Настройки под рукой.</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Выберите от 2 до 5 вкладок и перетащите точки в конце строки, чтобы расставить их. Медиатека всегда остаётся на панели, так что все списки и Настройки под рукой.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Сбросить по умолчанию</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Переместить: {0}</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Прослушанные песни в очереди</value></data>
@@ -3694,7 +3698,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Название песни</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Включён режим энергосбережения, поэтому цвета неподвижны.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Тратит чуть больше батареи и замирает в режиме энергосбережения</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>За всё время: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Всегда</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 год</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} день|{0} дня|{0} дней</value></data>
@@ -3877,6 +3882,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} нет на компьютере</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>Ошибок: {0}</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Скачивание {0} из {1}{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Скачивание с компьютера</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>Скачана {0} песня|Скачано {0} песни|Скачано {0} песен</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Нет связи с компьютером. Проверьте, что на нём открыт Noctis, включён параметр «Noctis на телефоне» и оба устройства в одной сети Wi‑Fi.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Код безопасности компьютера изменился. Выйдите и войдите снова, чтобы доверять новому.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Код безопасности компьютера изменился во время входа. Повторите попытку и проверьте код.</value></data>
@@ -3926,6 +3933,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>Далее на {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>и ещё {0}</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Повторить</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Пульт на главной</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Кнопка рядом с фото профиля</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Как в системе</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis потерял доступ к папке этой песни. Добавьте папку снова в «Настройки» → «Медиатека».</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Этот телефон не может декодировать {0}, поэтому песня пропущена.</value></data>
@@ -4353,6 +4362,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Показать {0}</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Папка</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Сейчас нет на телефоне</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Разделители исполнителей</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Каждый разделитель делит тег исполнителя на нескольких исполнителей: с «,» тег «Boys Noize, ABRA» превращается в Boys Noize и ABRA. Исполнители сразу перегруппируются.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Другие версии</value></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Оригинал</value></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Искать в текстах песен</value></data>

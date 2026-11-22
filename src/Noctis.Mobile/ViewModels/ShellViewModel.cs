@@ -181,7 +181,12 @@ public sealed partial class ShellViewModel : ObservableObject
         var downloaded = account.DownloadedCount;
         if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
         var signedIn = account.IsSignedIn ? 1 : 0;
-        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn) Marshal(Library.NotifyAccountChanged);
+        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn)
+            Marshal(() =>
+            {
+                Library.NotifyAccountChanged();
+                OnPropertyChanged(nameof(ShowsHomeRemote));
+            });
     }
 
     // Signed in (1) or not, as last seen: the Library's source button shows only signed in (or
@@ -197,6 +202,16 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OnAccountPlaylistsChanged(object? sender, EventArgs e) => Marshal(() => _ = Library.ReloadPlaylistsAsync());
 
     public bool HasAccount => Account != null;
+
+    /// <summary>The system notification for downloads from the computer (Android); null in tests
+    /// unless injected, and the in-app progress still shows.</summary>
+    public IDownloadNotifier? DownloadNotifier { get; init; }
+
+    private DownloadActivity? _downloads;
+
+    /// <summary>Where the downloads from the computer stand (album page row, Account page,
+    /// notification); null without an account. Made on first use, after the host's init values.</summary>
+    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier);
 
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
@@ -826,6 +841,18 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _showQueueHistory;
     partial void OnShowQueueHistoryChanged(bool value) => SavePlayerBarSettings(nameof(ShowQueueHistory));
 
+    /// <summary>Settings › Account › Show Remote on Home (Discord beta 11-22: "you have to go to the
+    /// settings/account page to find it"): a Remote button next to the profile picture on Home.
+    /// Off by default; saved with the player bar's settings (MobileHomeRemote).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsHomeRemote))]
+    private bool _showRemoteOnHome;
+    partial void OnShowRemoteOnHomeChanged(bool value) => SavePlayerBarSettings(nameof(ShowRemoteOnHome));
+
+    /// <summary>Home's Remote button shows: the switch is on and a computer is signed in (it goes
+    /// at sign-out, and comes back at sign-in, without a restart).</summary>
+    public bool ShowsHomeRemote => ShowRemoteOnHome && Account is { IsSignedIn: true };
+
     /// <summary>The Queue page's History is folded to its title (its Hide); for this run of the app only.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows), nameof(QueueHistoryToggleText))]
@@ -858,6 +885,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowRemoteOnHome))) ShowRemoteOnHome = settings.MobileHomeRemote;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
@@ -894,6 +922,7 @@ public sealed partial class ShellViewModel : ObservableObject
         int blur = NowPlayingBlur, dim = NowPlayingDim;
         var glassPill = GlassTabPill;
         var queueHistory = ShowQueueHistory;
+        var homeRemote = ShowRemoteOnHome;
         var tabBar = TabBarTabs.Encode(BarTabs);
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
@@ -913,6 +942,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileNowPlayingDim = dim;
                     settings.MobileGlassTabPill = glassPill;
                     settings.MobileQueueShowHistory = queueHistory;
+                    settings.MobileHomeRemote = homeRemote;
                     settings.MobileTabBar = tabBar;
                 });
             }
@@ -1143,6 +1173,12 @@ public sealed partial class ShellViewModel : ObservableObject
     }
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
+
+    /// <summary>Home › Top Artists: the rail's artists as a grid.</summary>
+    [RelayCommand] private void OpenTopArtists() => Navigate(new RailGridPageViewModel(this, "Home.TopArtists", () => Library.TopArtistsRail));
+
+    /// <summary>Home › Downloaded: every album with a song kept on this phone.</summary>
+    [RelayCommand] private void OpenDownloaded() => Navigate(new RailGridPageViewModel(this, "Mobile.Downloaded", Library.DownloadedAlbums));
 
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
@@ -1630,7 +1666,8 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account != null && CurrentPage is not AccountPageViewModel) Navigate(new AccountPageViewModel(this, Account));
     }
 
-    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet.</summary>
+    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet (or
+    /// over Home, from its Remote button: <see cref="ShowsHomeRemote"/>).</summary>
     [RelayCommand]
     private void OpenComputerRemote()
     {
@@ -1638,10 +1675,29 @@ public sealed partial class ShellViewModel : ObservableObject
             Navigate(new ComputerRemotePageViewModel(this, Account));
     }
 
-    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play. Failures
-    /// are logged; the Account page shows the running counts.</summary>
-    public Task DownloadTracksAsync(IReadOnlyList<Track> tracks) =>
-        RunAccountAsync("Download", a => a.DownloadAsync(tracks));
+    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play, as one start
+    /// named <paramref name="title"/> (the album page, the Account page and the notification follow
+    /// it). The banner says it started; a refusal the user can act on (Wi-Fi only, phone full, signed
+    /// out) replaces it, other failures are logged.</summary>
+    public async Task DownloadTracksAsync(IReadOnlyList<Track> tracks, string? title = null)
+    {
+        if (Account is not { } account || Downloads is not { } downloads) return;
+        Player.Notice = Loc.T("Mobile.Account.StartingDownloads");
+        try
+        {
+            await downloads.RunAsync(title, tracks, () => account.DownloadAsync(tracks));
+        }
+        catch (NoctisServerException ex)
+        {
+            DebugLog.Write("Account", $"Download failed: {ex.Kind}");
+            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen.
+            Player.Notice = AccountPageViewModel.Describe(ex.Kind, signedIn: true);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Download failed: {ex.Message}");
+        }
+    }
 
     /// <summary>The sheet's Remove download(s).</summary>
     public Task RemoveDownloadsAsync(IReadOnlyList<Track> tracks) =>
@@ -1665,6 +1721,7 @@ public sealed partial class ShellViewModel : ObservableObject
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
         await LoadListSortsAsync();
+        await Search.LoadRecentSearchesAsync();
         await Background.LoadAsync();
         await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads

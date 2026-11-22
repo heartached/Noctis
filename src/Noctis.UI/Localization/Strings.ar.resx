@@ -8478,6 +8478,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>الكل</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>ابحث في مكتبتك</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>لا توجد نتائج</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>عمليات البحث الأخيرة</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>مسح</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>إزالة {0} من عمليات البحث الأخيرة</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>فنان</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>حركة بطيئة</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>تنساب الألوان بهدوء</value></data>
@@ -8485,6 +8488,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>من صورة الغلاف</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>قيد التشغيل</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>يتغيّر مع غلاف كل أغنية</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>التدرّج اللوني للمشغّل خلف كل صفحة</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>إيقاف</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>لون السمة العادي</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>محايدة</value></data>
@@ -8576,7 +8580,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>كبسولة التبويب Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>تبقى علامة التبويب المحددة زجاجًا شفافًا</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>شريط علامات التبويب</value></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>اختر من 2 إلى 5 علامات تبويب واسحب ≡ لترتيبها. تبقى المكتبة دائمًا في الشريط، فتظل كل القوائم والإعدادات في متناولك.</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>اختر من 2 إلى 5 علامات تبويب واسحب النقاط في طرف الصف لترتيبها. تبقى المكتبة دائمًا في الشريط، فتظل كل القوائم والإعدادات في متناولك.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>إعادة التعيين إلى الافتراضي</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>إعادة ترتيب {0}</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>الأغاني المشغّلة في قائمة الانتظار</value></data>
@@ -8675,7 +8679,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>عنوان الأغنية</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>وضع توفير البطارية مفعّل، لذا تبقى الألوان ثابتة.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>يستهلك بطارية أكثر قليلًا ويتوقف في وضع توفير الطاقة</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}، {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>كل الأوقات: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>دائمًا</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>سنة واحدة</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} يوم|{0} يوم|{0} يومان|{0} أيام|{0} يومًا|{0} يوم</value></data>
@@ -8858,6 +8863,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} مفقودة على الكمبيوتر</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>فشل {0}</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>جارٍ تنزيل {0} من {1}{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>جارٍ التنزيل من الكمبيوتر</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>تم تنزيل {0} أغنية|تم تنزيل {0} أغنية|تم تنزيل {0} أغنيتين|تم تنزيل {0} أغانٍ|تم تنزيل {0} أغنية|تم تنزيل {0} أغنية</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>تعذّر الوصول إلى الكمبيوتر. تأكّد من أن Noctis مفتوح عليه، وأن «Noctis على هاتفك» مفعّل، وأن الجهازين على شبكة Wi-Fi نفسها.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>تغيّر رمز الأمان الخاص بالكمبيوتر. سجّل الخروج ثم سجّل الدخول مرة أخرى للوثوق بالرمز الجديد.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>تغيّر رمز الأمان الخاص بالكمبيوتر أثناء تسجيل الدخول. حاول مرة أخرى وتحقّق من الرمز.</value></data>
@@ -8907,6 +8914,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>التالي على {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>و{0} أخرى</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>إعادة المحاولة</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>إظهار التحكم عن بُعد في الرئيسية</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>زر بجانب صورة ملفك الشخصي</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>النظام</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>فقد Noctis إذن الوصول إلى مجلد هذه الأغنية. أضف المجلد مرة أخرى من الإعدادات → المكتبة.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>لا يستطيع هذا الهاتف فك ترميز {0}، لذا تم تخطي الأغنية.</value></data>
@@ -9333,6 +9342,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>إظهار {0}</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>مجلد</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>غير موجودة على هذا الهاتف الآن</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>فواصل الفنانين</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>كل فاصل يقسم وسم الفنان إلى عدة فنانين: مع «,» يصبح الوسم «Boys Noize, ABRA» فنانَين هما Boys Noize وABRA. يُعاد تجميع الفنانين فورًا.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>إزالة {0}</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>إصدارات أخرى</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>الأصلي</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>البحث في الكلمات</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

@@ -50,6 +50,8 @@ public partial class ShellView : UserControl
         AddHandler(PointerReleasedEvent, OnSheetDragReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerCaptureLostEvent, OnSheetDragCaptureLost, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         DataContextChanged += OnDataContextChanged;
+        // Settings › Background › Colour Wash washes the cover the mini player already decoded.
+        MiniArtwork.PropertyChanged += (_, e) => { if (e.Property == Image.SourceProperty) HandOverCoverArt(); };
         // Swipe the mini player sideways for the next or previous song.
         MiniSwipeGesture = new TrackSwipeGesture(MiniSwipe, MiniRow, MiniGhost, MiniGhost, MiniBar, gap: 12,
             () => _vm?.Player, () => _vm is { IsNowPlayingOpen: false });
@@ -173,10 +175,18 @@ public partial class ShellView : UserControl
         _vm = DataContext as ShellViewModel;
         if (_vm != null) _vm.PropertyChanged += OnShellPropertyChanged;
         if (_vm != null) _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
+        HandOverCoverArt();
         ApplyBarTabs();
         SyncPages(animate: false);
         ShowPlayer(animate: false);
         ShowLyrics(animate: false);
+    }
+
+    /// <summary>The playing cover, as the mini player shows it (always loaded while a song plays,
+    /// unlike Now Playing's until it first opens), for the Background's Colour Wash.</summary>
+    private void HandOverCoverArt()
+    {
+        if (_vm != null) _vm.Background.CoverArt = MiniArtwork.Source as Avalonia.Media.Imaging.Bitmap;
     }
 
     /// <summary>How long the player's banner (NowPlayingViewModel.Notice) stays up.</summary>
@@ -337,7 +347,10 @@ public partial class ShellView : UserControl
     };
 
     /// <summary>Settings › Tab Bar, live: one column per tab on the bar, each tab's button in its
-    /// column and the others hidden, then the pill laid out again for the new count.</summary>
+    /// column and the others hidden, then the pill laid out again for the new count. A hidden button
+    /// goes back to column 0: left in a column past the new count (Favorites on fifth, then off), the
+    /// Grid kept its cells when no shown button moved and its next measure threw (beta 5: the bar
+    /// stuck laid out for five and every layout after it failed, the Tab Bar editor's blank card).</summary>
     private void ApplyBarTabs()
     {
         var tabs = BarTabs;
@@ -348,7 +361,7 @@ public partial class ShellView : UserControl
             var button = TabButton(tab);
             var index = IndexIn(tabs, tab);
             button.IsVisible = index >= 0;
-            if (index >= 0) Grid.SetColumn(button, index);
+            Grid.SetColumn(button, Math.Max(0, index));
         }
         ApplyChromeLayout();
     }

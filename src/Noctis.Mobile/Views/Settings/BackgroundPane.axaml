@@ -76,7 +76,7 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <!-- The two choice rows (Now Playing, Off): a tile, the name, a check when chosen. -->
+        <!-- The choice rows (Now Playing, Colour Wash, Off): a tile, the name, a check when chosen. -->
         <Style Selector="Button.choice-row">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -211,7 +211,7 @@
         </Border>
         <TextBlock Name="MotionFootnote" Classes="group-footnote" Text="{Binding Footnote}" />
 
-        <!-- From Artwork, and Off. -->
+        <!-- From Artwork (Now Playing, Colour Wash), and Off. -->
         <TextBlock Classes="group-title" Text="{loc:T Mobile.Background.FromArtwork}" Margin="16,26,0,7" />
         <Border Classes="group-card">
             <StackPanel>
@@ -223,6 +223,19 @@
                             <TextBlock Classes="row-sub" Text="{loc:T Mobile.Background.NowPlayingHint}" />
                         </StackPanel>
                         <Path Grid.Column="2" Classes="pane-glyph" Data="M5 12.5l4.2 4.2L19 7" IsVisible="{Binding IsArtwork}" />
+                    </Grid>
+                </Button>
+                <Border Classes="row-separator" Margin="86,0,0,0" />
+                <!-- Colour Wash (Discord #mobile-beta 11-22): Now Playing's own wash of the cover
+                     behind every page, veiled for the theme's text (PhoneBackground, WashBrush). -->
+                <Button Name="WashChoice" Classes="choice-row" Command="{Binding PickWashCommand}" AutomationProperties.Name="{loc:T Mobile.NowPlayingBackground.Wash}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Classes="choice-tile" Background="{Binding WashTileBrush}" />
+                        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Classes="row-label" Text="{loc:T Mobile.NowPlayingBackground.Wash}" />
+                            <TextBlock Classes="row-sub" Text="{loc:T Mobile.Background.WashHint}" />
+                        </StackPanel>
+                        <Path Grid.Column="2" Classes="pane-glyph" Data="M5 12.5l4.2 4.2L19 7" IsVisible="{Binding IsWash}" />
                     </Grid>
                 </Button>
                 <Border Classes="row-separator" Margin="86,0,0,0" />

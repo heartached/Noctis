@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Localization;
+using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
 
@@ -108,7 +109,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     internal ArtistPhotoRequests Photos { get; }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasQuery), nameof(ShowPrompt))]
+    [NotifyPropertyChangedFor(nameof(HasQuery), nameof(ShowPrompt), nameof(ShowRecentSearches))]
     private string _query = string.Empty;
 
     [ObservableProperty]
@@ -157,7 +158,8 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     [ObservableProperty] private bool _hasFeatured;
 
     public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
-    public bool ShowPrompt => !HasQuery;
+    /// <summary>The hint shows on an empty field only while there are no recent searches to list.</summary>
+    public bool ShowPrompt => !HasQuery && !HasRecentSearches;
     public bool ShowNoResults => HasQuery && !HasSongs && !HasAlbums && !HasArtists && !HasPlaylists && !HasFeatured;
 
     /// <summary>Albums as a horizontal row under All, as a two-column grid under the Albums chip.</summary>
@@ -257,6 +259,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     private void PlaySong(Track? track)
     {
         if (track == null) return;
+        RememberQuery();
         var list = Songs.ToList();
         var index = list.IndexOf(track);
         if (index >= 0) Shell.Player.PlayTracks(list, index, Loc.T("Mobile.Search"));
@@ -267,6 +270,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     private void PlayFeaturedSong(Track? track)
     {
         if (track == null || Featured == null) return;
+        RememberQuery();
         var list = FeaturedSongs.ToList();
         var index = list.IndexOf(track);
         if (index >= 0) Shell.Player.PlayTracks(list, index, Featured.Name);
@@ -277,6 +281,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     private void PlayFeatured()
     {
         if (Featured == null) return;
+        RememberQuery();
         var songs = MobileLibrary.SongsBy(Shell.Library.Service, Featured.Name).OrderByDescending(t => t.PlayCount).ToList();
         if (songs.Count > 0) Shell.Player.PlayTracks(songs, 0, Featured.Name);
     }
@@ -285,6 +290,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     private void ShuffleFeatured()
     {
         if (Featured == null) return;
+        RememberQuery();
         var songs = MobileLibrary.SongsBy(Shell.Library.Service, Featured.Name);
         if (songs.Count > 0) Shell.Player.PlayShuffled(songs, source: Featured.Name);
     }
@@ -292,7 +298,140 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
     [RelayCommand]
     private void OpenArtist(ArtistListItem? item)
     {
-        if (item != null) Shell.OpenArtistCommand.Execute(item.Name);
+        if (item == null) return;
+        RememberQuery();
+        Shell.OpenArtistCommand.Execute(item.Name);
+    }
+
+    [RelayCommand]
+    private void OpenAlbum(Album? album)
+    {
+        if (album == null) return;
+        RememberQuery();
+        Shell.OpenAlbumCommand.Execute(album);
+    }
+
+    [RelayCommand]
+    private void OpenPlaylist(Playlist? playlist)
+    {
+        if (playlist == null) return;
+        RememberQuery();
+        Shell.OpenPlaylistCommand.Execute(playlist);
+    }
+
+    // ── Recent Searches ──
+
+    /// <summary>How many searches Recent Searches keeps.</summary>
+    internal const int RecentCap = 10;
+
+    /// <summary>
+    /// Recent Searches (beta testers 11-22): what the empty field lists, newest first, each once
+    /// (ignoring case). A search is kept when a result is opened or the keyboard's Search key is
+    /// pressed, not on every keystroke (a word typed letter by letter is one search, and one typed
+    /// and then cleared is none); kept in the phone's settings (AppSettings.MobileRecentSearches).
+    /// </summary>
+    public BulkObservableCollection<string> RecentSearches { get; } = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowPrompt), nameof(ShowRecentSearches))]
+    private bool _hasRecentSearches;
+
+    public bool ShowRecentSearches => !HasQuery && HasRecentSearches;
+
+    // A search kept before the saved list was read wins over it (the user's newer list).
+    private bool _recentChangedBeforeLoad;
+    private bool _recentLoaded;
+    private Task _recentSaveChain = Task.CompletedTask;
+
+    /// <summary>The tail of the recent-search saves; tests await it.</summary>
+    internal Task PendingRecentSave { get; private set; } = Task.CompletedTask;
+
+    /// <summary><paramref name="list"/> with <paramref name="query"/> (trimmed) first, any earlier
+    /// copy of it (ignoring case) dropped, at most <see cref="RecentCap"/> long.</summary>
+    internal static List<string> WithRecent(IEnumerable<string> list, string? query)
+    {
+        var text = (query ?? string.Empty).Trim();
+        var result = new List<string>();
+        if (text.Length > 0) result.Add(text);
+        foreach (var s in list)
+        {
+            if (result.Count >= RecentCap) break;
+            if (string.IsNullOrWhiteSpace(s)) continue;
+            var item = s.Trim();
+            if (!result.Contains(item, StringComparer.CurrentCultureIgnoreCase)) result.Add(item);
+        }
+        return result;
+    }
+
+    /// <summary>The field's search goes to the top of Recent Searches (a result opened, the
+    /// keyboard's Search key).</summary>
+    internal void RememberQuery()
+    {
+        if (!HasQuery) return;
+        SetRecent(WithRecent(RecentSearches, Query));
+    }
+
+    /// <summary>The keyboard's Search (Enter) key in the field.</summary>
+    [RelayCommand]
+    private void Submit() => RememberQuery();
+
+    /// <summary>A recent search tapped: it is searched again and moves to the top.</summary>
+    [RelayCommand]
+    private void SearchRecent(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return;
+        Query = text;
+        if (HasPendingSearch) Run();   // a tap is the whole query: no typing pause to wait for
+        RememberQuery();
+    }
+
+    [RelayCommand]
+    private void RemoveRecent(string? text)
+    {
+        if (text == null) return;
+        SetRecent(RecentSearches.Where(s => !string.Equals(s, text, StringComparison.Ordinal)).ToList());
+    }
+
+    [RelayCommand]
+    private void ClearRecent() => SetRecent(new List<string>());
+
+    private void SetRecent(IReadOnlyList<string> list)
+    {
+        if (RecentSearches.SequenceEqual(list, StringComparer.Ordinal)) return;
+        RecentSearches.ReplaceAll(list);
+        HasRecentSearches = RecentSearches.Count > 0;
+        if (!_recentLoaded) _recentChangedBeforeLoad = true;
+        var saved = list.ToList();
+        PendingRecentSave = _recentSaveChain = _recentSaveChain.ContinueWith(async _ =>
+        {
+            try
+            {
+                await Shell.Library.Persistence.UpdateSettingsAsync(s => s.MobileRecentSearches = saved.ToList());
+            }
+            catch (Exception ex)
+            {
+                DebugLog.Write("Settings", $"Recent searches save failed: {ex.Message}");
+            }
+        }, TaskScheduler.Default).Unwrap();
+    }
+
+    /// <summary>Reads the saved Recent Searches (the shell's start).</summary>
+    internal async Task LoadRecentSearchesAsync()
+    {
+        try
+        {
+            var saved = WithRecent((await Shell.Library.Persistence.LoadSettingsAsync()).MobileRecentSearches ?? new(), null);
+            if (!_recentChangedBeforeLoad)
+            {
+                RecentSearches.ReplaceAll(saved);
+                HasRecentSearches = RecentSearches.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Settings", $"Recent searches load failed: {ex.Message}");
+        }
+        _recentLoaded = true;
     }
 }
 

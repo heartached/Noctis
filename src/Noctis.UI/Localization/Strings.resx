@@ -3497,6 +3497,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Search.All" xml:space="preserve"><value>All</value><comment>Search scope chip</comment></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Search your library</value><comment>Search page before typing</comment></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>No results</value><comment>Search found nothing</comment></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Recent Searches</value><comment>Search page, empty field: the searches made before (newest first)</comment></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Clear</value><comment>Search page: forgets every recent search</comment></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>Remove {0} from Recent Searches</value><comment>Screen reader name of a recent search's remove button. {0} = the search text</comment></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Artist</value><comment>Row subtitle: the result is an artist</comment></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Slow Motion</value><comment>Background setting switch</comment></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>The colours drift gently</value><comment>Under Slow Motion</comment></data>
@@ -3504,6 +3507,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>From Artwork</value><comment>Background group header</comment></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Now Playing</value><comment>Background choice: colours of the playing song’s cover</comment></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Changes with each song's cover</value><comment>Under Now Playing</comment></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>The player's colour wash behind every page</value><comment>Under Colour Wash (Settings › Background): Now Playing's wash behind the app's pages</comment></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Off</value><comment>Setting value: off</comment></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>The plain theme colour</value><comment>Under Off</comment></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Neutral</value><comment>Background group header: muted colours</comment></data>
@@ -3546,7 +3550,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Now Playing background brightness</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Darker or brighter colours behind Now Playing</value><comment>Footnote under the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Brightness</value><comment>Settings row: the slider under it makes the Now Playing wash darker or brighter</comment></data>
-  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Colour Wash</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default)</comment></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Colour Wash</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default); also the Settings › Background choice that puts that wash behind the app's pages</comment></data>
   <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Blurred Cover</value><comment>Now Playing Background choice: the cover itself, blurred, behind the player</comment></data>
   <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Blur</value><comment>Settings row: a slider for how blurred the cover behind Now Playing is</comment></data>
   <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Now Playing background blur</value><comment>Screen reader name of the Blur slider</comment></data>
@@ -3595,7 +3599,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass Tab Pill</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>The selected tab stays clear glass</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Tab Bar</value><comment>Settings row and page: which tabs are on the bottom bar</comment></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Choose 2 to 5 tabs and drag ≡ to put them in order. Library always stays on the bar, so every list and Settings stay in reach.</value><comment>Footnote under the Tab Bar list</comment></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Choose 2 to 5 tabs and drag the dots at a row's end to put them in order. Library always stays on the bar, so every list and Settings stay in reach.</value><comment>Footnote under the Tab Bar list</comment></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Reset to Default</value><comment>Button: put the default tabs back</comment></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Reorder {0}</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Played Songs in Queue</value><comment>Setting switch: Queue page shows played songs</comment></data>
@@ -3694,7 +3698,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Song Title</value><comment>Stand-in title in the background preview</comment></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Battery Saver is on, so the colours stay still.</value><comment>Background footnote</comment></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Uses a little more battery and pauses in Battery Saver</value><comment>Background footnote</comment></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time, {2} = plays ("5 plays")</comment></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>All Time: {0} · {1}</value><comment>Listening History, under This Week. {0} = listening time ("41 h 3 min"), {1} = plays ("812 plays")</comment></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Forever</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Year</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} Day|{0} Days</value><comment>Keep History choice (30, 90 …). Plural forms, see Mobile.Count.Songs</comment></data>
@@ -3877,6 +3882,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} missing on your computer</value><comment>Download status part</comment></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} failed</value><comment>Status part</comment></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Downloading {0} of {1}{2}</value><comment>Download status. {2} = "" or " · 2 failed"</comment></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Downloading from your computer</value><comment>Download notification title while several downloads run (Android)</comment></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>Downloaded {0} song|Downloaded {0} songs</value><comment>Download notification once downloads end (Android). Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Can't reach your computer. Check that Noctis is open on it, Noctis on your phone is turned on, and both are on the same Wi-Fi.</value><comment>Error. "Noctis on your phone" is a desktop setting</comment></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Your computer's security code changed. Sign out and sign in again to trust the new one.</value><comment>Error</comment></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Your computer's security code changed while signing in. Try again and check the code.</value><comment>Error</comment></data>
@@ -3926,6 +3933,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>Up Next on {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>and {0} more</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Try Again</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Show Remote on Home</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>A button next to your profile picture</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>System</value><comment>Language row value: follow the phone’s language</comment></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis lost access to this song's folder. Add the folder again in Settings → Library.</value><comment>Playback error</comment></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>This phone can't decode {0}, so the song was skipped.</value><comment>Playback error. {0} = a format ("ALAC (Apple Lossless)", "audio/flac") or Mobile.Player.UnknownFormat</comment></data>
@@ -4353,6 +4362,9 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Unhide {0}</value><comment>Screen reader name of a row's Unhide; {0} is the song or folder</comment></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Folder</value><comment>Settings › Hidden: second line of a hidden folder</comment></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Not on this phone now</value><comment>Settings › Hidden: a hidden song the library no longer has</comment></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Artist Separators</value><comment>Settings › Library row and page: what splits one artist tag into several artists</comment></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Each separator splits one artist tag into several artists: with “,” the tag “Boys Noize, ABRA” becomes Boys Noize and ABRA. Your artists regroup right away.</value><comment>Footnote under the Artist Separators list; the example names stay as they are</comment></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Remove {0}</value><comment>Screen reader name of a separator's Remove button; {0} = the separator</comment></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Other Versions</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Search lyrics</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

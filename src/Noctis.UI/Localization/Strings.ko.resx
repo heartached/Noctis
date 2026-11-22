@@ -8478,6 +8478,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>전체</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>라이브러리 검색</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>결과 없음</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>최근 검색</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>지우기</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>최근 검색에서 {0} 삭제</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>아티스트</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>슬로 모션</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>색이 천천히 흐릅니다</value></data>
@@ -8485,6 +8488,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>아트워크에서</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>지금 재생 중</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>노래마다 커버에 맞춰 바뀝니다</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>플레이어의 컬러 워시를 모든 페이지 배경에</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>끔</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>기본 테마 색상</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>뉴트럴</value></data>
@@ -8576,7 +8580,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass 탭 표시</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>선택한 탭이 투명한 유리로 유지됩니다</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>탭 막대</value></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>탭을 2~5개 고르고 ≡를 끌어 순서를 바꾸세요. 라이브러리는 항상 막대에 남아 있어 모든 목록과 설정에 바로 갈 수 있습니다.</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>탭을 2~5개 고르고 줄 끝의 점을 끌어 순서를 바꾸세요. 라이브러리는 항상 막대에 남아 있어 모든 목록과 설정에 바로 갈 수 있습니다.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>기본값으로 재설정</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} 순서 변경</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>재생한 곡을 대기열에 표시</value></data>
@@ -8675,7 +8679,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>노래 제목</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>절전 모드가 켜져 있어 색이 움직이지 않습니다.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>배터리를 조금 더 쓰고 절전 모드에서는 멈춥니다</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>전체 기간: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>영구</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1년</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0}일</value></data>
@@ -8858,6 +8863,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>컴퓨터에 없음 {0}</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>실패 {0}</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>{1}개 중 {0}개 다운로드 중{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>컴퓨터에서 다운로드 중</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>{0}곡 다운로드 완료</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>컴퓨터에 연결할 수 없습니다. 컴퓨터에서 Noctis가 열려 있는지, 휴대폰에서 Noctis 사용이 켜져 있는지, 두 기기가 같은 Wi-Fi에 연결되어 있는지 확인하세요.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>컴퓨터의 보안 코드가 변경되었습니다. 로그아웃한 다음 다시 로그인해 새 코드를 신뢰하세요.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>로그인하는 동안 컴퓨터의 보안 코드가 변경되었습니다. 다시 시도하고 코드를 확인하세요.</value></data>
@@ -8907,6 +8914,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0}의 다음 곡</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>외 {0}곡</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>다시 시도</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>홈에 리모컨 표시</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>프로필 사진 옆에 버튼이 표시됩니다</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>시스템</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis가 이 노래의 폴더에 더 이상 접근할 수 없습니다. 설정 → 라이브러리에서 폴더를 다시 추가하세요.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>이 휴대폰에서 {0}을(를) 디코딩할 수 없어 노래를 건너뛰었습니다.</value></data>
@@ -9333,6 +9342,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} 표시</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>폴더</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>지금 이 휴대폰에 없음</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>아티스트 구분자</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>구분자마다 하나의 아티스트 태그를 여러 아티스트로 나눕니다. “,”가 있으면 “Boys Noize, ABRA” 태그는 Boys Noize와 ABRA가 됩니다. 아티스트는 바로 다시 묶입니다.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} 제거</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>다른 버전</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>원곡</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>가사 검색</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

@@ -205,6 +205,10 @@ public class AppSettings : IJsonOnDeserializing
     /// entry; a name the phone does not know reads as its own order.</summary>
     public Dictionary<string, string> MobileListSorts { get; set; } = new();
 
+    /// <summary>Phone: Search's Recent Searches, newest first, each once (ignoring case), at most
+    /// ten. A search is kept once a result is opened or the keyboard's Search key is pressed.</summary>
+    public List<string> MobileRecentSearches { get; set; } = new();
+
     /// <summary>Phone, Settings › Appearance › Now Playing Background: how dark the wash behind
     /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
     public int MobileNowPlayingBrightness { get; set; }
@@ -234,6 +238,10 @@ public class AppSettings : IJsonOnDeserializing
     /// already played in a History section above the current track (a tap plays one again). Off by
     /// default: played songs leave the Queue page, as they always have.</summary>
     public bool MobileQueueShowHistory { get; set; }
+
+    /// <summary>Phone, Settings › Account › Show Remote on Home (Discord beta 11-22): a Remote button
+    /// next to the profile picture on Home, while signed in. Off by default.</summary>
+    public bool MobileHomeRemote { get; set; }
 
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>

@@ -3,12 +3,13 @@
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:loc="using:Noctis.Localization"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Mobile.Views.HomePage"
              x:DataType="vm:ShellViewModel">
 
     <!-- The Home tab root (the start tab, Apple Music's Home for an offline player): what the
-         user listens to — Pinned, Recently Played, On Repeat — as rails. The Library tab keeps
-         the lists themselves and Recently Added. -->
+         user listens to — Pinned, Recently Played, On Repeat, Most Played, Top Artists,
+         Downloaded — as rails. The Library tab keeps the lists themselves and Recently Added. -->
     <UserControl.Resources>
         <!-- One rail tile: three covers across with the fourth peeking, like the Library's. -->
         <DataTemplate x:Key="RailTileTemplate" x:DataType="vm:RailItem">
@@ -29,8 +30,18 @@
             <views:FitWidth Name="HomeTitleFit" VerticalAlignment="Center">
                 <TextBlock Name="HomeTitle" Classes="title" Text="{loc:T Nav.Home}" TextTrimming="CharacterEllipsis" />
             </views:FitWidth>
-            <views:ProfileButton Grid.Column="1" Name="HomeProfile" VerticalAlignment="Center"
-                                 AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+            <!-- Remote (Account › Show Remote on Home, off by default; signed in only): the computer's
+                 player one tap from Home, a glass circle like the profile's. Then the profile (Settings). -->
+            <StackPanel Grid.Column="1" Name="HomeHeaderActions" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <controls:GlassPanel Name="HomeRemoteGlass" Classes="header-glass" IsVisible="{Binding ShowsHomeRemote}">
+                    <Button Name="HomeRemoteButton" Classes="glass-round" Command="{Binding OpenComputerRemoteCommand}"
+                            AutomationProperties.Name="{loc:T Mobile.Remote.Title}">
+                        <PathIcon Data="{DynamicResource PhComputer}" />
+                    </Button>
+                </controls:GlassPanel>
+                <views:ProfileButton Name="HomeProfile" VerticalAlignment="Center"
+                                     AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+            </StackPanel>
         </Grid>
 
         <ScrollViewer Grid.Row="1" Classes="page-scroll" Name="HomeScroll" HorizontalScrollBarVisibility="Disabled">
@@ -98,6 +109,38 @@
                     </Button>
                     <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                         <ItemsControl Name="MostPlayedRail" Margin="20,0" ItemsSource="{Binding Library.MostPlayedRail}"
+                                      ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Top Artists (beta testers 11-22, the desktop Home's): the artists with the most
+                     plays, round tiles; gone until three artists have a play. -->
+                <StackPanel Name="TopArtistsSection" Spacing="10" IsVisible="{Binding Library.HasTopArtists}">
+                    <Button Name="TopArtistsHeader" Classes="row section-header" Command="{Binding OpenTopArtistsCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource ChipArtistsIcon}" />
+                            <TextBlock Classes="section" Text="{loc:T Home.TopArtists}" />
+                            <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                        </StackPanel>
+                    </Button>
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="TopArtistsRail" Margin="20,0" ItemsSource="{Binding Library.TopArtistsRail}"
+                                      ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Downloaded (beta testers 11-22): the albums with a song downloaded from the computer
+                     to this phone, newest download first; gone while nothing is. -->
+                <StackPanel Name="DownloadedSection" Spacing="10" IsVisible="{Binding Library.HasDownloaded}">
+                    <Button Name="DownloadedHeader" Classes="row section-header" Command="{Binding OpenDownloadedCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource PhDownload}" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.Downloaded}" />
+                            <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                        </StackPanel>
+                    </Button>
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="DownloadedRail" Margin="20,0" ItemsSource="{Binding Library.DownloadedRail}"
                                       ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
                     </ScrollViewer>
                 </StackPanel>

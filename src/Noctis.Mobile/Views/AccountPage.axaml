@@ -598,6 +598,17 @@
                                         <views:GridIcon Grid.Column="2" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                     </Grid>
                                 </Button>
+                                <!-- Show Remote on Home (Discord beta 11-22): a Remote button by Home's profile
+                                     picture (ShellViewModel.ShowsHomeRemote). Under the row it opens, its text
+                                     lined up with the row's. -->
+                                <Border Classes="row-separator" Margin="86,0,16,0" IsVisible="{Binding CanUseServer}" />
+                                <ToggleButton Name="HomeRemoteSwitch" Classes="switch-row" IsChecked="{Binding Shell.ShowRemoteOnHome}"
+                                              IsVisible="{Binding CanUseServer}" AutomationProperties.Name="{loc:T Mobile.Remote.OnHome}">
+                                    <StackPanel VerticalAlignment="Center" Margin="70,8,0,8">
+                                        <TextBlock Classes="row-label" Text="{loc:T Mobile.Remote.OnHome}" />
+                                        <TextBlock Classes="row-sub" Text="{loc:T Mobile.Remote.OnHomeHint}" />
+                                    </StackPanel>
+                                </ToggleButton>
                             </StackPanel>
                         </Border>
 

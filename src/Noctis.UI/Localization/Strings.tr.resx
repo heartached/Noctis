@@ -3542,6 +3542,9 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Search.All" xml:space="preserve"><value>Tümü</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Kitaplığında ara</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Sonuç yok</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Son Aramalar</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Temizle</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>{0} aramasını son aramalardan kaldır</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Sanatçı</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Ağır Çekim</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Renkler yavaşça süzülür</value></data>
@@ -3549,6 +3552,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>Kapaktan</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Şimdi Çalıyor</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Her şarkının kapağıyla değişir</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>Oynatıcının renk perdesi her sayfanın arkasında</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Kapalı</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>Düz tema rengi</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Nötr</value></data>
@@ -3640,7 +3644,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass sekme kapsülü</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Seçili sekme şeffaf cam kalır</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Sekme Çubuğu</value></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>2 ile 5 arası sekme seç ve sıralamak için ≡ simgesini sürükle. Kitaplık her zaman çubukta kalır, böylece tüm listeler ve Ayarlar elinin altında olur.</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>2 ile 5 arası sekme seç ve sıralamak için satırın sonundaki noktaları sürükle. Kitaplık her zaman çubukta kalır, böylece tüm listeler ve Ayarlar elinin altında olur.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Varsayılana Sıfırla</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} öğesini taşı</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Kuyrukta çalınan şarkılar</value></data>
@@ -3739,7 +3743,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Şarkı Adı</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Pil Tasarrufu açık, bu yüzden renkler sabit kalır.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Biraz daha fazla pil harcar ve Pil Tasarrufu'nda durur</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>Tüm Zamanlar: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Süresiz</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Yıl</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} Gün|{0} Gün</value></data>
@@ -3922,6 +3927,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} bilgisayarında yok</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} başarısız</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>İndiriliyor: {0} / {1}{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Bilgisayarından indiriliyor</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>{0} şarkı indirildi|{0} şarkı indirildi</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Bilgisayarına ulaşılamıyor. Orada Noctis’in açık olduğunu, “Telefonunda Noctis” seçeneğinin açık olduğunu ve ikisinin de aynı Wi-Fi ağında olduğunu kontrol et.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Bilgisayarının güvenlik kodu değişti. Yenisine güvenmek için oturumu kapatıp yeniden aç.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Oturum açılırken bilgisayarının güvenlik kodu değişti. Yeniden dene ve kodu kontrol et.</value></data>
@@ -3971,6 +3978,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} üzerinde Sıradaki</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>ve {0} tane daha</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Tekrar Dene</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Uzaktan Kumandayı Ana Sayfada Göster</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Profil fotoğrafının yanında bir düğme</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistem</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis bu şarkının klasörüne erişimi kaybetti. Klasörü Ayarlar → Kitaplık’tan yeniden ekle.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Bu telefon şu biçimi çözemiyor: {0}. Şarkı atlandı.</value></data>
@@ -4397,6 +4406,9 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} öğesini göster</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Klasör</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Şu an bu telefonda yok</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Sanatçı Ayırıcıları</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Her ayırıcı bir sanatçı etiketini birkaç sanatçıya böler: “,” ile “Boys Noize, ABRA” etiketi Boys Noize ve ABRA olur. Sanatçılarınız hemen yeniden gruplanır.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} öğesini kaldır</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Diğer Sürümler</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Orijinal</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Sözlerde ara</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

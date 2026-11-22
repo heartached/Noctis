@@ -141,13 +141,21 @@ public class MobileAccountTests
         public Dictionary<Guid, Guid> Links { get; } = new();
         public Guid? DesktopIdOf(Track track) => IsRemote(track) ? track.Id : Links.TryGetValue(track.Id, out var d) ? d : null;
         public bool IsDownloaded(Track track) => DownloadedIds.Contains(track.Id);
+        /// <summary>When each download was saved (Home's Downloaded rail order); none = unknown.</summary>
+        public Dictionary<Guid, DateTime> DownloadedTimes { get; } = new();
+        public DateTime? DownloadedAt(Track track) =>
+            DownloadedIds.Contains(track.Id) && DownloadedTimes.TryGetValue(track.Id, out var at) ? at : null;
         public long DownloadedBytes => DownloadedIds.Count * 5L * 1024 * 1024;
         public int DownloadedCount => DownloadedIds.Count;
+
+        /// <summary>Thrown by DownloadAsync instead, when set (Wi-Fi only on mobile data…).</summary>
+        public Exception? DownloadError { get; set; }
 
         public Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
         {
             var list = tracks.ToList();
             DownloadCalls.Add(list);
+            if (DownloadError != null) return Task.FromException(DownloadError);
             foreach (var t in list) DownloadedIds.Add(t.Id);
             return Task.CompletedTask;
         }

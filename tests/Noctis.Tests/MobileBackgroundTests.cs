@@ -401,6 +401,217 @@ public class MobileBackgroundTests
         return Color.FromRgb(L(top.R, under.R), L(top.G, under.G), L(top.B, under.B));
     }
 
+    // ── Colour Wash (Discord #mobile-beta 11-22: "the app background same as the colour wash in
+    //    the now playing background") ──
+
+    /// <summary>A cover of one colour, or two halves (top and bottom), as the mini player decodes one.</summary>
+    private static Avalonia.Media.Imaging.WriteableBitmap Cover(Color top, Color? bottom = null, int size = 64)
+    {
+        var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(new PixelSize(size, size), new Vector(96, 96),
+            Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+        using var fb = bitmap.Lock();
+        var row = new byte[size * 4];
+        for (var y = 0; y < size; y++)
+        {
+            var c = y < size / 2 ? top : bottom ?? top;
+            var a = c.A / 255.0;
+            for (var x = 0; x < size; x++)
+            {
+                row[x * 4] = (byte)Math.Round(c.B * a);
+                row[x * 4 + 1] = (byte)Math.Round(c.G * a);
+                row[x * 4 + 2] = (byte)Math.Round(c.R * a);
+                row[x * 4 + 3] = c.A;
+            }
+            Marshal.Copy(row, 0, fb.Address + y * fb.RowBytes, row.Length);
+        }
+        return bitmap;
+    }
+
+    private static async Task WashSettled(PhoneBackground background)
+    {
+        await background.PendingWash;
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    private static IBrush? PageBrush(ThemeVariant variant) => Application.Current!.Resources.MergedDictionaries
+        .OfType<ResourceDictionary>()
+        .Select(d => d.ThemeDictionaries.TryGetValue(variant, out var t) && t is ResourceDictionary set && set.TryGetValue("PhoneBackgroundBrush", out var b) ? b as IBrush : null)
+        .LastOrDefault(b => b != null);
+
+    [AvaloniaFact]
+    public async Task ColourWash_IsSavedAndLoaded_AndNamed_WhileOlderValuesStillReadAsBefore()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var first = new PhoneBackground(rig.Persistence);
+        await first.LoadAsync();
+        first.Choice = "wash";                                    // any case
+        await Settled(first);
+
+        Assert.Equal(PhoneBackground.ColourWash, first.Choice);
+        Assert.Equal("Colour Wash", first.Summary);
+        Assert.Equal("Wash", (await rig.Persistence.LoadSettingsAsync()).MobileBackground);
+        var second = new PhoneBackground(rig.Persistence);
+        await second.LoadAsync();
+        Assert.Equal(PhoneBackground.ColourWash, second.Choice);
+        Assert.Equal("Off", new AppSettings().MobileBackground);  // off by default: nothing changes
+        first.Choice = "Off";
+        second.Choice = "Off";
+    }
+
+    [AvaloniaFact]
+    public async Task ColourWash_PaintsTheCoversWash_AndWithoutACoverTheThemesPageShows()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var background = rig.Shell.Background;
+        await background.LoadAsync();
+        background.Choice = PhoneBackground.ColourWash;
+        await WashSettled(background);
+        Assert.Equal(0, LayerCount());                            // nothing playing: the theme's page
+
+        using var red = Cover(Color.Parse("#C0392B"));
+        background.CoverArt = red;
+        await WashSettled(background);
+
+        Assert.Equal(1, LayerCount());
+        Assert.Same(background.WashFor(false)!.Brush, PageBrush(ThemeVariant.Dark));
+        Assert.Same(background.WashFor(true)!.Brush, PageBrush(ThemeVariant.Light));
+        // Now Playing's own wash of that cover, from the converter's cache: not made twice.
+        var nowPlaying = new Noctis.Converters.PreBlurredArtworkConverter().Convert(red, typeof(IImage),
+            Noctis.Converters.PreBlurredArtworkConverter.WashParameter, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Same(nowPlaying, background.WashImage);
+        Assert.Same(nowPlaying, background.WashFor(false)!.Wash);
+        Assert.False(background.MotionRuns);                      // nothing drifts, Slow Motion or not
+        background.Motion = true;
+        Assert.False(background.MotionTimerRunning);
+
+        background.CoverArt = null;                               // a song without a cover
+        await WashSettled(background);
+        Assert.Equal(0, LayerCount());
+        background.Reassert();                                    // a theme re-applied: still nothing over it
+        Assert.Equal(0, LayerCount());
+
+        background.Motion = false;
+        background.Choice = "Off";
+    }
+
+    [AvaloniaFact]
+    public async Task ColourWash_ANewSongsCoverFadesIn_ThenTheFadeStops()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var background = rig.Shell.Background;
+        await background.LoadAsync();
+        using var red = Cover(Color.Parse("#C0392B"));
+        using var blue = Cover(Color.Parse("#2B6CC0"));
+        background.CoverArt = red;
+        background.Choice = PhoneBackground.ColourWash;
+        await WashSettled(background);
+        Assert.False(background.FadeRunning);                     // chosen in Settings: at once
+        var dark = background.WashFor(false)!;
+        var redVeil = dark.Veil;
+
+        background.CoverArt = blue;
+        await WashSettled(background);
+
+        Assert.True(background.FadeRunning);
+        Assert.Same(background.WashImage, dark.Wash);
+        background.FadeTick(0);                                   // (the timer may have stepped meanwhile)
+        Assert.Equal(redVeil, dark.Veil);                         // starts from the old cover's look
+        background.FadeTick(1);
+        Assert.False(background.FadeRunning);
+        Assert.Equal(WashBrush.VeilFor(WashBrush.Measure(background.WashImage)!.Value, false, background.Strength), dark.Veil);
+        background.Choice = "Off";
+    }
+
+    [AvaloniaFact]
+    public void ColourWash_KeepsTextReadable_InLightAndDark_OnEveryPixel()
+    {
+        // Now Playing's wash is the cover's own colours, light ones too: the veil keeps every pixel
+        // of the page inside the mesh's band (white text 8:1 on dark, black 12:1 on light), and the
+        // cards over it as readable as on the mesh, at full Strength (the most cover showing).
+        var darkCard = Color.Parse("#E02C2C2E");
+        var lightCard = Color.Parse("#CCFFFFFF");
+        var darkSecondary = Color.Parse("#8D8D93");
+        var darkPlain = MobileTheme.ContrastRatio(darkSecondary, Color.Parse("#2C2C2E"));
+        var lightSecondary = Color.Parse("#993C3C43");
+        var lightPlain = MobileTheme.ContrastRatio(Over(lightSecondary, Colors.White), Colors.White);
+        var converter = new Noctis.Converters.PreBlurredArtworkConverter();
+
+        var covers = new[]
+        {
+            Cover(Colors.White), Cover(Colors.Yellow), Cover(Colors.Black), Cover(Colors.Red), Cover(Color.Parse("#00FF88")),
+            Cover(Colors.White, Colors.Black), Cover(Color.Parse("#F5E6C8"), Color.Parse("#1A1A2E")), Cover(Color.FromArgb(0x80, 0xFF, 0xFF, 0xFF)),
+        };
+        foreach (var cover in covers)
+        {
+            var wash = (Avalonia.Media.Imaging.WriteableBitmap)converter.Convert(cover, typeof(IImage),
+                Noctis.Converters.PreBlurredArtworkConverter.WashParameter, System.Globalization.CultureInfo.InvariantCulture)!;
+            var extremes = WashBrush.Measure(wash)!.Value;
+            foreach (var light in new[] { false, true })
+            foreach (var strength in new[] { 1.0, PhoneBackground.DefaultStrength, PhoneBackground.MinStrength })
+            {
+                var veil = WashBrush.VeilFor(extremes, light, strength);
+                foreach (var pixel in Pixels(wash))
+                {
+                    // The floor, the wash's premultiplied pixel over it, then the veil.
+                    var a = pixel.A / 255.0;
+                    var floor = light ? Colors.White : Colors.Black;
+                    byte L(byte p, byte f) => (byte)Math.Min(255, Math.Round(p + f * (1 - a)));
+                    var page = Over(veil, Color.FromRgb(L(pixel.R, floor.R), L(pixel.G, floor.G), L(pixel.B, floor.B)));
+                    var card = Over(light ? lightCard : darkCard, page);
+                    if (light)
+                    {
+                        Assert.True(MobileTheme.ContrastRatio(Colors.Black, page) >= 12, $"black on page {page} (veil {veil})");
+                        Assert.True(MobileTheme.ContrastRatio(Over(lightSecondary, card), card) >= lightPlain * 0.9, $"secondary on light card {page}");
+                    }
+                    else
+                    {
+                        Assert.True(MobileTheme.ContrastRatio(Colors.White, page) >= 8, $"white on page {page} (veil {veil})");
+                        Assert.True(MobileTheme.ContrastRatio(darkSecondary, card) >= darkPlain * 0.93, $"secondary on dark card {page}");
+                    }
+                }
+            }
+        }
+        foreach (var cover in covers) cover.Dispose();
+
+        static System.Collections.Generic.IEnumerable<Color> Pixels(Avalonia.Media.Imaging.WriteableBitmap bitmap)
+        {
+            // The converter's copy, as WashBrush.Measure reads it (the bitmap can't be read back at once).
+            var row = Noctis.Converters.PreBlurredArtworkConverter.WashPixels(bitmap)!;
+            Assert.Equal(bitmap.PixelSize.Width * bitmap.PixelSize.Height * 4, row.Length);
+            var list = new System.Collections.Generic.List<Color>();
+            for (var i = 0; i < row.Length; i += 4) list.Add(Color.FromArgb(row[i + 3], row[i + 2], row[i + 1], row[i]));
+            return list;
+        }
+    }
+
+    [AvaloniaFact]
+    public async Task Pane_PicksColourWash_AndItsTileShowsTheCoversWash()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        await rig.Shell.Background.LoadAsync();
+        using var red = Cover(Color.Parse("#C0392B"));
+        rig.Shell.Background.CoverArt = red;
+        var vm = new BackgroundSettingsViewModel(rig.Shell);       // the tile asks for the wash
+        await WashSettled(rig.Shell.Background);
+
+        Assert.Same(rig.Shell.Background.WashImage, ((ImageBrush)vm.WashTileBrush).Source);
+        vm.PickWashCommand.Execute(null);
+        Assert.True(vm.IsWash);
+        Assert.False(vm.IsArtwork);
+        Assert.Equal("Colour Wash", vm.Summary);
+        Assert.IsType<ImageBrush>(vm.SummarySwatch);
+        Assert.Empty(vm.Neutrals.Concat(vm.Colours).Where(s => s.IsSelected));
+
+        var pane = new BackgroundPane { DataContext = vm };
+        var window = new Window { Width = 412, Height = 1400, Content = pane };
+        window.Show();
+        window.UpdateLayout();
+        Assert.NotNull(pane.FindControl<Button>("WashChoice"));
+        window.Close();
+        vm.Detach();
+        vm.PickOffCommand.Execute(null);
+    }
+
     /// <summary>The mesh is one shared brush: every surface showing it must repaint when the
     /// cover, Strength or the drift change its parts in place. A DrawingBrush does not notice its
     /// drawing's gradients changing, so <see cref="MeshBrush"/> flips the brush's own opacity by a

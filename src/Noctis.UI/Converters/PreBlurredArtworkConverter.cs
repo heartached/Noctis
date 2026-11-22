@@ -136,8 +136,19 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
         var pixels = ReadDownscaled(source, out var w, out var h);
         Vivify(pixels);
         Blur(pixels, w, h, WashSigma);
-        return ToBitmap(pixels, w, h);
+        var wash = ToBitmap(pixels, w, h);
+        WashPixelCache.AddOrUpdate(wash, pixels);
+        return wash;
     }
+
+    // A wash's own pixels, kept with it (16 K pixels, 64 KB): a WriteableBitmap just written can't be
+    // read back at once (CopyPixels and Lock both gave another cover's pixels or none in the phone's
+    // Colour Wash tests), and the phone's Colour Wash measures its wash.
+    private static readonly ConditionalWeakTable<Bitmap, byte[]> WashPixelCache = new();
+
+    /// <summary>The pixels of a bitmap this converter made as a "wash" (premultiplied BGRA, rows of
+    /// its <see cref="Bitmap.PixelSize"/> width, no padding); null for any other bitmap.</summary>
+    public static byte[]? WashPixels(Bitmap wash) => WashPixelCache.TryGetValue(wash, out var pixels) ? pixels : null;
 
     // A pixel counts as vivid from this much chroma (max - min channel, 0..255) and brightness
     // (max channel) up; the share of a cover's pixels that must be vivid for it to have a colour

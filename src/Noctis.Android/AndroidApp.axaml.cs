@@ -153,6 +153,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             PlaylistFiles = new AndroidPlaylistFilePicker(context),
             VersionText = DescribeVersion(context),
             Account = account,
+            // Downloads from the computer: an ongoing progress card, then "Downloaded 12 songs".
+            DownloadNotifier = account != null ? new AndroidDownloadNotifier(context) : null,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
             // Without an account there is no computer to send plays through: the phone sends them.
             Scrobbler = new PhoneScrobbler(persistence, new HttpClient()) { HasComputerRoute = account != null },
@@ -359,6 +361,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
             _shell!.Library.ApplySettings(settings);
+            // Settings › Artist Separators, before the library builds (or restores) its artist list.
+            ArtistSeparatorsViewModel.ApplySaved(settings);
             // No SetGapless(settings.GaplessPlaybackEnabled): the phone is always gapless
             // (NowPlayingViewModel turns it on), whatever a desktop-written settings.json says.
             await history.PreloadAsync();

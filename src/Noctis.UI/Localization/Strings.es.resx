@@ -3488,6 +3488,9 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Search.All" xml:space="preserve"><value>Todo</value><comment>Search scope chip</comment></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Busca en tu biblioteca</value><comment>Search page before typing</comment></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Sin resultados</value><comment>Search found nothing</comment></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Búsquedas recientes</value><comment>Search page, empty field: the searches made before (newest first)</comment></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Borrar</value><comment>Search page: forgets every recent search</comment></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>Quitar {0} de las búsquedas recientes</value><comment>Screen reader name of a recent search's remove button. {0} = the search text</comment></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Artista</value><comment>Row subtitle: the result is an artist</comment></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Cámara lenta</value><comment>Background setting switch</comment></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Los colores se mueven suavemente</value><comment>Under Slow Motion</comment></data>
@@ -3495,6 +3498,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>De la portada</value><comment>Background group header</comment></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Ahora suena</value><comment>Background choice: colours of the playing song’s cover</comment></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Cambia con la portada de cada canción</value><comment>Under Now Playing</comment></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>El velo de color del reproductor detrás de cada página</value><comment>Under Colour Wash (Settings › Background): Now Playing's wash behind the app's pages</comment></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Desactivado</value><comment>Setting value: off</comment></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>El color liso del tema</value><comment>Under Off</comment></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Neutros</value><comment>Background group header: muted colours</comment></data>
@@ -3586,7 +3590,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Pestaña de Liquid Glass</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>La pestaña elegida queda en cristal claro</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Barra de pestañas</value><comment>Settings row and page: which tabs are on the bottom bar</comment></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Elige de 2 a 5 pestañas y arrastra ≡ para ordenarlas. Biblioteca siempre se queda en la barra, así todas las listas y los Ajustes siguen a mano.</value><comment>Footnote under the Tab Bar list</comment></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Elige de 2 a 5 pestañas y arrastra los puntos al final de una fila para ordenarlas. Biblioteca siempre se queda en la barra, así todas las listas y los Ajustes siguen a mano.</value><comment>Footnote under the Tab Bar list</comment></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Restablecer valores predeterminados</value><comment>Button: put the default tabs back</comment></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Reordenar {0}</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Canciones reproducidas en la cola</value><comment>Setting switch: Queue page shows played songs</comment></data>
@@ -3685,7 +3689,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Título de la canción</value><comment>Stand-in title in the background preview</comment></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>El ahorro de batería está activado, así que los colores no se mueven.</value><comment>Background footnote</comment></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Gasta un poco más de batería y se pausa en Ahorro de batería</value><comment>Background footnote</comment></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time, {2} = plays ("5 plays")</comment></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>Desde siempre: {0} · {1}</value><comment>Listening History, under This Week. {0} = listening time ("41 h 3 min"), {1} = plays ("812 plays")</comment></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Siempre</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 año</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} día|{0} días</value><comment>Keep History choice (30, 90 …). Plural forms, see Mobile.Count.Songs</comment></data>
@@ -3868,6 +3873,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>faltan en tu equipo: {0}</value><comment>Download status part</comment></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} con error</value><comment>Status part</comment></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Descargando {0} de {1}{2}</value><comment>Download status. {2} = "" or " · 2 failed"</comment></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Descargando desde tu equipo</value><comment>Download notification title while several downloads run (Android)</comment></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>{0} canción descargada|{0} canciones descargadas</value><comment>Download notification once downloads end (Android). Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>No se puede conectar con tu equipo. Comprueba que Noctis esté abierto en él, que Noctis en tu teléfono esté activado y que ambos estén en la misma red Wi-Fi.</value><comment>Error. "Noctis on your phone" is a desktop setting</comment></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>El código de seguridad de tu equipo ha cambiado. Cierra sesión y vuelve a iniciarla para confiar en el nuevo.</value><comment>Error</comment></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>El código de seguridad de tu equipo cambió durante el inicio de sesión. Inténtalo de nuevo y comprueba el código.</value><comment>Error</comment></data>
@@ -3917,6 +3924,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>A continuación en {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>y {0} más</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Reintentar</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Mostrar Control remoto en Inicio</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Un botón junto a tu foto de perfil</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistema</value><comment>Language row value: follow the phone’s language</comment></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis perdió el acceso a la carpeta de esta canción. Vuelve a añadirla en Ajustes → Biblioteca.</value><comment>Playback error</comment></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Este teléfono no puede decodificar {0}, así que se saltó la canción.</value><comment>Playback error. {0} = a format ("ALAC (Apple Lossless)", "audio/flac") or Mobile.Player.UnknownFormat</comment></data>
@@ -4343,6 +4352,9 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Mostrar {0}</value><comment>Screen reader name of a row's Unhide; {0} is the song or folder</comment></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Carpeta</value><comment>Settings › Hidden: second line of a hidden folder</comment></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Ya no está en este teléfono</value><comment>Settings › Hidden: a hidden song the library no longer has</comment></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Separadores de artistas</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Cada separador divide una etiqueta de artista en varios artistas: con «,» la etiqueta «Boys Noize, ABRA» pasa a ser Boys Noize y ABRA. Tus artistas se reagrupan al instante.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Quitar {0}</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Otras versiones</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Buscar en las letras</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>
