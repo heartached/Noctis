@@ -46,8 +46,11 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
             new SortChoice("Mobile.Sort.MostPlayed", SearchSort.MostPlayed),
             new SortChoice("Mobile.Sort.Title", SearchSort.Title),
         };
-        shell.Library.Refreshed += (_, _) =>
+        shell.Library.Refreshed += (_, e) =>
         {
+            // A heart or a download changes no result and no cover: the page (a tab, alive all
+            // session) searched the library again at each, and rebuilt the cover map next time.
+            if (ReferenceEquals(e, LibraryViewModel.FavouritesRefresh) || ReferenceEquals(e, LibraryViewModel.DownloadsRefresh)) return;
             _artistArtwork = null;
             Run();
         };

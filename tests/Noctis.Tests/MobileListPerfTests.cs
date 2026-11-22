@@ -253,4 +253,41 @@ public class MobileListPerfTests
         Assert.Same(extra, downloaded.Songs[0]);
         Assert.Equal(51, downloaded.SongCount);
     }
+
+    /// <summary>
+    /// Search is a tab root, alive the whole session, and re-ran its query over the library on
+    /// every library refresh, hearts and downloads included (and threw away its artist → cover
+    /// map, which walks every song). Neither changes a result or an artist's cover.
+    /// </summary>
+    [Fact]
+    public void HeartsAndDownloads_DoNotRerunAnOpenSearch()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary();
+        var search = rig.Shell.Search;
+        search.Query = "love";
+        rig.Library.NotifyFavoritesChanged();
+        rig.Shell.Library.NotifyDownloadsChanged();
+        var runs = search.RunCount;
+        var songs = search.Songs.ToList();
+
+        var alloc = GC.GetAllocatedBytesForCurrentThread();
+        var start = Stopwatch.GetTimestamp();
+        for (var i = 0; i < 10; i++)
+        {
+            rig.Library.TrackList[i].IsFavorite = !rig.Library.TrackList[i].IsFavorite;
+            rig.Library.NotifyFavoritesChanged();
+            rig.Shell.Library.NotifyDownloadsChanged();
+        }
+        var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds / 20;
+        var per = (GC.GetAllocatedBytesForCurrentThread() - alloc) / 20;
+        _out.WriteLine($"heart/download refresh with \"love\" searched, 12k songs: {ms:F1} ms, {per / 1024} KB, {search.RunCount - runs} searches");
+        Assert.Equal(runs, search.RunCount);
+        Assert.Equal(songs, search.Songs);
+        // Before: a search each (3.1 ms, 209 KB a refresh, desktop).
+        Assert.True(per < 100 * 1024, $"{per / 1024} KB per refresh");
+
+        // A library update still searches again.
+        rig.Library.RaiseLibraryUpdated();
+        Assert.Equal(runs + 1, search.RunCount);
+    }
 }
