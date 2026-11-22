@@ -168,11 +168,12 @@
                                         HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                     </Grid>
                     <Grid Name="AlbumsRoot" RowDefinitions="Auto,*" IsVisible="{Binding IsAlbumsSelected}">
-                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Classes="tab-header">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Classes="tab-header">
                             <views:FitWidth Name="AlbumsTitleFit" VerticalAlignment="Center">
                                 <TextBlock Name="AlbumsTitle" Classes="title" Text="{loc:T Nav.Albums}" TextTrimming="CharacterEllipsis" />
                             </views:FitWidth>
-                            <views:ProfileButton Grid.Column="1" Name="AlbumsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
+                            <views:AlbumTools Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" DataContext="{Binding AlbumsRoot}" />
+                            <views:ProfileButton Grid.Column="2" Name="AlbumsProfile" Margin="10,0,0,0" VerticalAlignment="Center"
                                                  AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
                         </Grid>
                         <ContentControl Grid.Row="1" Name="AlbumsHost" Content="{Binding AlbumsRoot}"

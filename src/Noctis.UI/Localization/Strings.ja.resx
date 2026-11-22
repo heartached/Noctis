@@ -8447,6 +8447,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>プレイリストはまだありません。曲を長押しして作成できます。</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>一致するプレイリストはありません</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>プレイリストを並べ替え</value></data>
+  <data name="Mobile.Albums.SortName" xml:space="preserve"><value>アルバムを並べ替え</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>新規プレイリスト</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>作成</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>次に再生</value></data>

@@ -7,8 +7,14 @@
              x:Class="Noctis.Mobile.Views.AlbumGridPage"
              x:DataType="vm:AlbumGridPageViewModel">
     <Grid RowDefinitions="Auto,Auto,*">
-        <!-- The shared header (PageHeader): "‹ Library" over the large title. -->
-        <views:PageHeader Grid.Row="0" Name="Header" IsVisible="{Binding !IsEmbedded}" />
+        <!-- The shared header (PageHeader): "‹ Library" with the tools' pill (sort) at its right,
+             the large title below. Embedded (the Albums tab), the tab's own header carries the
+             title and the same pill. -->
+        <views:PageHeader Grid.Row="0" Name="Header" IsVisible="{Binding !IsEmbedded}">
+            <views:PageHeader.Tools>
+                <views:AlbumTools VerticalAlignment="Center" />
+            </views:PageHeader.Tools>
+        </views:PageHeader>
 
         <!-- "Find in Albums": the list pages' shared field (FindField), by album title or artist. -->
         <views:FindField Grid.Row="1" Name="AlbumFindField" Text="{Binding Query}" Placeholder="{loc:T Mobile.Albums.Find}"
@@ -19,7 +25,7 @@
         <TextBlock Grid.Row="2" Name="NoAlbumResultsText" Classes="subtle" Text="{loc:T Mobile.Albums.NoMatch}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
-        <ScrollViewer Classes="page-scroll" Grid.Row="2" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Name="AlbumScroll" Classes="page-scroll" Grid.Row="2" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
             <!-- Rows built once and handed the next row (RowItemsControl), tiles built once per
                  row and handed the next album (SlotRow): a fling only rebinds. -->
             <views:RowItemsControl Name="AlbumRows" ItemsSource="{Binding Rows}" Margin="14,0,14,16">

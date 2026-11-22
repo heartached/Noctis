@@ -1,0 +1,17 @@
+<controls:GlassPanel xmlns="https://github.com/avaloniaui"
+                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                     xmlns:loc="using:Noctis.Localization"
+                     xmlns:vm="using:Noctis.Mobile.ViewModels"
+                     xmlns:controls="using:Noctis.Controls"
+                     x:Class="Noctis.Mobile.Views.AlbumTools"
+                     x:DataType="vm:AlbumGridPageViewModel"
+                     Classes="header-glass" Width="NaN" IsVisible="{Binding HasAlbums}">
+    <!-- The Albums page's tools, in the same glass pill as a song list's (ListTools): sort, lit
+         while it changes the order. The search is the page's own field (FindField). -->
+    <StackPanel Orientation="Horizontal" Margin="4,0">
+        <Button Name="AlbumSortButton" Classes="glass-round" Classes.on="{Binding IsSorted}" Command="{Binding ShowSortMenuCommand}"
+                AutomationProperties.Name="{loc:T Mobile.Albums.SortName}">
+            <PathIcon Data="{DynamicResource PhSort}" />
+        </Button>
+    </StackPanel>
+</controls:GlassPanel>
