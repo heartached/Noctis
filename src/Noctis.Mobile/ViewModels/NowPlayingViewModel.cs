@@ -107,6 +107,13 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     [ObservableProperty] private bool _isPlaying;
 
+    // The app's own Pause (the button, the sleep timer) stops the player's position ticks, so no
+    // tick ever says audio stopped: the scrobbler's play clock ran on through the pause.
+    partial void OnIsPlayingChanged(bool value)
+    {
+        if (!value) PlaybackTick?.Invoke(this, false);
+    }
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
     private TimeSpan _position;

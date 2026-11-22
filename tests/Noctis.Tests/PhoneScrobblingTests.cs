@@ -185,6 +185,31 @@ public sealed class PhoneScrobblingTests : IDisposable
     }
 
     [Fact]
+    public async Task PausingInTheApp_StopsThePlayClock_ThoughNoMoreTicksCome()
+    {
+        // The app's own Pause (the button, the sleep timer) stops the player's position ticks, so
+        // the scrobbler heard of no pause: ten minutes paused then counted as played, and 10 s of
+        // a song, a pause and Play scrobbled it on the first tick after.
+        var s = await Connected();
+        var song = Song("A", seconds: 200);
+        var player = new FakeAudioPlayer();
+        var library = new FakeLibraryService();
+        library.TrackList.Add(song);
+        var vm = new NowPlayingViewModel(player, library, NewPersistence(), marshal: a => a());
+        vm.TrackStarted += (_, t) => s.TrackStarted(t);
+        vm.PlaybackTick += (_, playing) => s.Tick(playing);
+
+        vm.PlayTracks(new[] { song }, 0);
+        for (var i = 1; i <= 10; i++) { _time.Advance(TimeSpan.FromSeconds(1)); player.RaisePositionChanged(TimeSpan.FromSeconds(i)); }
+        vm.TogglePlayPauseCommand.Execute(null);      // pause: the engine sends no ticks now
+        _time.Advance(TimeSpan.FromMinutes(10));
+        vm.TogglePlayPauseCommand.Execute(null);      // play again
+        _time.Advance(TimeSpan.FromSeconds(1)); player.RaisePositionChanged(TimeSpan.FromSeconds(11));
+
+        Assert.Equal(0, s.PendingCount);              // 11 s of 200 s
+    }
+
+    [Fact]
     public async Task LongSongCountsAtFourMinutes()
     {
         var s = await Connected();
