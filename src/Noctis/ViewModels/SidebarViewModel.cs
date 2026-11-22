@@ -263,6 +263,8 @@ public partial class SidebarViewModel : ViewModelBase
     public async Task LoadPlaylistsAsync()
     {
         var loadedPlaylists = await _persistence.LoadPlaylistsAsync();
+        // The highlighted playlist keeps its highlight: its row is rebuilt below.
+        var selectedPlaylist = SelectedNavItem?.PlaylistId;
         Playlists.Clear();
         PlaylistItems.Clear();
 
@@ -273,7 +275,18 @@ public partial class SidebarViewModel : ViewModelBase
         }
 
         RebuildSidebarRows();
+        if (selectedPlaylist is { } selected && PlaylistItems.FirstOrDefault(n => n.PlaylistId == selected) is { } again)
+            SetSelectedNavItemSilently(again);
+        PlaylistsReloaded?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// <see cref="LoadPlaylistsAsync"/> read the playlists again (a sync from a phone or another
+    /// computer, an import, a reset): every <see cref="Playlist"/> in <see cref="Playlists"/> is a
+    /// new object, so a page holding one must take the new one (same id) or it shows and edits
+    /// a copy nothing saves.
+    /// </summary>
+    public event EventHandler? PlaylistsReloaded;
 
     /// <summary>
     /// Rebuilds the flattened sidebar rows: pinned playlists, then the folders (with

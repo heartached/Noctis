@@ -320,6 +320,80 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         Assert.True(_b.Song("Later").IsFavorite);
     }
 
+    // ── The same playlists on both computers before linking ──────────────
+
+    [Fact]
+    public async Task APlaylistBothComputersHave_UnderOneName_BecomesOnePlaylist_NotTwo()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One", "Two", "Three");
+        await _b.AddSongsAsync("One", "Two", "Three");
+        // Made on each computer by hand (or imported from the same file): two different ids.
+        var onA = new Playlist { Name = "Mix", TrackIds = { _a.Song("One").Id, _a.Song("Two").Id }, ModifiedAt = DateTime.UtcNow };
+        await _a.SavePlaylistAsync(onA);
+        await Tick();
+        var onB = new Playlist { Name = "mix ", TrackIds = { _b.Song("One").Id, _b.Song("Three").Id }, ModifiedAt = DateTime.UtcNow };
+        await _b.SavePlaylistAsync(onB);
+        var link = await LinkedAsync();
+
+        await link.SyncNowAsync(ct);
+
+        // One playlist each, holding every song either had (nothing is lost by linking).
+        var allA = await _a.Persistence.LoadPlaylistsAsync();
+        var allB = await _b.Persistence.LoadPlaylistsAsync();
+        Assert.Single(allA);
+        Assert.Single(allB);
+        Assert.Equal(onA.Id, allA[0].Id);
+        Assert.Equal(onB.Id, allB[0].Id);
+        Assert.Equal(new[] { "One", "Three", "Two" }, allA[0].TrackIds.Select(id => _a.Library.GetTrackById(id)!.Title).OrderBy(t => t));
+        Assert.Equal(new[] { "One", "Three", "Two" }, allB[0].TrackIds.Select(id => _b.Library.GetTrackById(id)!.Title).OrderBy(t => t));
+
+        // From then on it is one playlist: an edit on A changes B's existing one, and back.
+        await Tick();
+        var edit = (await _a.PlaylistAsync(onA.Id))!;
+        edit.TrackIds.Remove(_a.Song("Two").Id);
+        edit.ModifiedAt = DateTime.UtcNow;
+        await _a.SavePlaylistAsync(edit);
+        await link.SyncNowAsync(ct);
+        allB = await _b.Persistence.LoadPlaylistsAsync();
+        Assert.Single(allB);
+        Assert.DoesNotContain(_b.Song("Two").Id, allB[0].TrackIds);
+
+        await Tick();
+        var back = (await _b.PlaylistAsync(onB.Id))!;
+        back.Name = "Mix 2";
+        back.ModifiedAt = DateTime.UtcNow;
+        await _b.SavePlaylistAsync(back);
+        await link.SyncNowAsync(ct);
+        allA = await _a.Persistence.LoadPlaylistsAsync();
+        Assert.Single(allA);
+        Assert.Equal("Mix 2", allA[0].Name);
+
+        // A delete follows the pair too.
+        await Tick();
+        await _a.DeletePlaylistAsync(onA.Id);
+        await link.SyncNowAsync(ct);
+        Assert.Empty(await _b.Persistence.LoadPlaylistsAsync());
+    }
+
+    [Fact]
+    public async Task TheSamePlaylistId_OnBothComputers_AtTheFirstSync_TheNewerEditWins()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One", "Two");
+        await _b.AddSongsAsync("One", "Two");
+        // A copied data folder: one id on both computers; B's copy was edited later.
+        var id = Guid.NewGuid();
+        await _a.SavePlaylistAsync(new Playlist { Id = id, Name = "Mix", TrackIds = { _a.Song("One").Id }, ModifiedAt = DateTime.UtcNow.AddDays(-2) });
+        await _b.SavePlaylistAsync(new Playlist { Id = id, Name = "Mix", TrackIds = { _b.Song("One").Id, _b.Song("Two").Id }, ModifiedAt = DateTime.UtcNow.AddDays(-1) });
+        var link = await LinkedAsync();
+
+        await link.SyncNowAsync(ct);
+
+        Assert.Equal(new[] { _b.Song("One").Id, _b.Song("Two").Id }, (await _b.PlaylistAsync(id))!.TrackIds);
+        Assert.Equal(new[] { _a.Song("One").Id, _a.Song("Two").Id }, (await _a.PlaylistAsync(id))!.TrackIds);
+    }
+
     // ── Deletes ──────────────────────────────────────────────────────────
 
     [Fact]
