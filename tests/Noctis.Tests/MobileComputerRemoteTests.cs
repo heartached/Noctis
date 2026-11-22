@@ -232,6 +232,23 @@ public class MobileComputerRemoteTests
         Assert.True(page.IsRunning);
     }
 
+    /// <summary>A computer whose security code changed (and that none of its other addresses
+    /// answers as the pinned one) read as "Can't reach … Check that Noctis is open", every 4 s for
+    /// ever: nothing told the user the fix is signing in again.</summary>
+    [AvaloniaFact]
+    public void CertificateChanged_SaysSo_AndStopsAsking()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var (_, account, page, clock) = Open(rig);
+        account.PlaybackError = new NoctisServerException(NoctisErrorKind.CertificateChanged, "x");
+        clock.Tick();
+
+        Assert.Equal(RemoteStatus.CertificateChanged, page.Status);
+        Assert.Equal(Noctis.Localization.Loc.T("Mobile.Account.Error.CertificateChanged"), page.MessageText);
+        Assert.False(page.IsRunning);
+        Assert.True(page.CanRetry);
+    }
+
     [AvaloniaFact]
     public async Task Presses_GoToTheComputer_NotThePhonesPlayer()
     {
