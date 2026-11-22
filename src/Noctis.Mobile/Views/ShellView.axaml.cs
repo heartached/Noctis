@@ -50,6 +50,8 @@ public partial class ShellView : UserControl
         AddHandler(PointerReleasedEvent, OnSheetDragReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         AddHandler(PointerCaptureLostEvent, OnSheetDragCaptureLost, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, handledEventsToo: true);
         DataContextChanged += OnDataContextChanged;
+        // Settings › Background › Colour Wash washes the cover the mini player already decoded.
+        MiniArtwork.PropertyChanged += (_, e) => { if (e.Property == Image.SourceProperty) HandOverCoverArt(); };
         // Swipe the mini player sideways for the next or previous song.
         MiniSwipeGesture = new TrackSwipeGesture(MiniSwipe, MiniRow, MiniGhost, MiniGhost, MiniBar, gap: 12,
             () => _vm?.Player, () => _vm is { IsNowPlayingOpen: false });
@@ -173,10 +175,18 @@ public partial class ShellView : UserControl
         _vm = DataContext as ShellViewModel;
         if (_vm != null) _vm.PropertyChanged += OnShellPropertyChanged;
         if (_vm != null) _vm.Player.PropertyChanged += OnPlayerPropertyChanged;
+        HandOverCoverArt();
         ApplyBarTabs();
         SyncPages(animate: false);
         ShowPlayer(animate: false);
         ShowLyrics(animate: false);
+    }
+
+    /// <summary>The playing cover, as the mini player shows it (always loaded while a song plays,
+    /// unlike Now Playing's until it first opens), for the Background's Colour Wash.</summary>
+    private void HandOverCoverArt()
+    {
+        if (_vm != null) _vm.Background.CoverArt = MiniArtwork.Source as Avalonia.Media.Imaging.Bitmap;
     }
 
     /// <summary>How long the player's banner (NowPlayingViewModel.Notice) stays up.</summary>

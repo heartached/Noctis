@@ -8485,6 +8485,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>アートワークから</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>再生中</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>曲のカバーに合わせて変化します</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>プレーヤーのカラーウォッシュをすべてのページの背景に</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>オフ</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>テーマの単色</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>ニュートラル</value></data>
