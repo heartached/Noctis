@@ -1174,6 +1174,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
+    /// <summary>Home › Top Artists: the rail's artists as a grid.</summary>
+    [RelayCommand] private void OpenTopArtists() => Navigate(new RailGridPageViewModel(this, "Home.TopArtists", () => Library.TopArtistsRail));
+
+    /// <summary>Home › Downloaded: every album with a song kept on this phone.</summary>
+    [RelayCommand] private void OpenDownloaded() => Navigate(new RailGridPageViewModel(this, "Mobile.Downloaded", Library.DownloadedAlbums));
+
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
     private void OpenAlbum(Album? album)
@@ -1715,6 +1721,7 @@ public sealed partial class ShellViewModel : ObservableObject
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
         await LoadListSortsAsync();
+        await Search.LoadRecentSearchesAsync();
         await Background.LoadAsync();
         await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads

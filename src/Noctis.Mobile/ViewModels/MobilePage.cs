@@ -91,6 +91,6 @@ public abstract partial class MobilePage : ObservableObject
     /// any other text (an artist's or playlist's name) shows as given.</summary>
     protected static string Localized(string titleOrKey) =>
         titleOrKey.StartsWith("Mobile.", StringComparison.Ordinal) || titleOrKey.StartsWith("Nav.", StringComparison.Ordinal)
-            || titleOrKey == "Home.MostPlayed"
+            || titleOrKey is "Home.MostPlayed" or "Home.TopArtists"
             ? Loc.T(titleOrKey) : titleOrKey;
 }

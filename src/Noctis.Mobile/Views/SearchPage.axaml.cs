@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Noctis.Mobile.ViewModels;
 
@@ -12,6 +13,15 @@ public partial class SearchPage : UserControl
     public SearchPage()
     {
         InitializeComponent();
+        SearchBox.KeyDown += OnSearchKeyDown;
+    }
+
+    /// <summary>The keyboard's Search key (Enter): the search is kept in Recent Searches.</summary>
+    private void OnSearchKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || DataContext is not SearchPageViewModel vm) return;
+        e.Handled = true;
+        vm.SubmitCommand.Execute(null);
     }
 
     protected override void OnDataContextChanged(EventArgs e)

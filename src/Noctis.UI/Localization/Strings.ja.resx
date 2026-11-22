@@ -8478,6 +8478,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>すべて</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>ライブラリを検索</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>結果なし</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>最近の検索</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>消去</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>{0} を最近の検索から削除</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>アーティスト</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>スローモーション</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>色がゆっくりと移ろいます</value></data>

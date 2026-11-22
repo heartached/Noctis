@@ -8,8 +8,8 @@
              x:DataType="vm:ShellViewModel">
 
     <!-- The Home tab root (the start tab, Apple Music's Home for an offline player): what the
-         user listens to — Pinned, Recently Played, On Repeat — as rails. The Library tab keeps
-         the lists themselves and Recently Added. -->
+         user listens to — Pinned, Recently Played, On Repeat, Most Played, Top Artists,
+         Downloaded — as rails. The Library tab keeps the lists themselves and Recently Added. -->
     <UserControl.Resources>
         <!-- One rail tile: three covers across with the fourth peeking, like the Library's. -->
         <DataTemplate x:Key="RailTileTemplate" x:DataType="vm:RailItem">
@@ -109,6 +109,38 @@
                     </Button>
                     <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
                         <ItemsControl Name="MostPlayedRail" Margin="20,0" ItemsSource="{Binding Library.MostPlayedRail}"
+                                      ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Top Artists (beta testers 11-22, the desktop Home's): the artists with the most
+                     plays, round tiles; gone until three artists have a play. -->
+                <StackPanel Name="TopArtistsSection" Spacing="10" IsVisible="{Binding Library.HasTopArtists}">
+                    <Button Name="TopArtistsHeader" Classes="row section-header" Command="{Binding OpenTopArtistsCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource ChipArtistsIcon}" />
+                            <TextBlock Classes="section" Text="{loc:T Home.TopArtists}" />
+                            <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                        </StackPanel>
+                    </Button>
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="TopArtistsRail" Margin="20,0" ItemsSource="{Binding Library.TopArtistsRail}"
+                                      ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
+                    </ScrollViewer>
+                </StackPanel>
+
+                <!-- Downloaded (beta testers 11-22): the albums with a song downloaded from the computer
+                     to this phone, newest download first; gone while nothing is. -->
+                <StackPanel Name="DownloadedSection" Spacing="10" IsVisible="{Binding Library.HasDownloaded}">
+                    <Button Name="DownloadedHeader" Classes="row section-header" Command="{Binding OpenDownloadedCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <PathIcon Data="{DynamicResource PhDownload}" />
+                            <TextBlock Classes="section" Text="{loc:T Mobile.Downloaded}" />
+                            <PathIcon Classes="chevron" Data="{DynamicResource LibChevronIcon}" />
+                        </StackPanel>
+                    </Button>
+                    <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl Name="DownloadedRail" Margin="20,0" ItemsSource="{Binding Library.DownloadedRail}"
                                       ItemTemplate="{StaticResource RailTileTemplate}" ItemsPanel="{StaticResource RailPanel}" />
                     </ScrollViewer>
                 </StackPanel>

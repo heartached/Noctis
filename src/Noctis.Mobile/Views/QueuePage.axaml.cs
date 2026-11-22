@@ -82,6 +82,11 @@ public partial class QueuePage : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        // A row's long press opened the song's menu: the finger still down is no swipe after it.
+        AddHandler(LongPress.FiredEvent, (_, _) =>
+        {
+            if (_gesture == Gesture.Pending) ResetGesture();
+        });
         // Mid-drag the list can scroll under the row (the edge auto-scroll, another finger): the row stays with its finger.
         QueueScroll.ScrollChanged += (_, _) =>
         {
@@ -713,6 +718,10 @@ public partial class QueuePage : UserControl
     {
         if (_gesture == Gesture.Drag && IsDragPointer(e.Pointer)) ResetGesture();
     }
+
+    /// <summary>A finger resting on the handle before it drags: not the row's long press (its
+    /// menu), which the hold would otherwise reach as it bubbles up to the row.</summary>
+    private void OnHandleHolding(object? sender, HoldingRoutedEventArgs e) => e.Handled = true;
 
     /// <summary>The release half of a handle drag; a no-op if Up Next no longer holds
     /// <paramref name="pressed"/> at <paramref name="from"/>. Internal for tests.</summary>

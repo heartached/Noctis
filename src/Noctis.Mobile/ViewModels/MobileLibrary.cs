@@ -1,4 +1,5 @@
 using Noctis.Helpers;
+using Noctis.Mobile.Services.Account;
 using Noctis.Models;
 using Noctis.Services;
 
@@ -105,6 +106,31 @@ internal static class MobileLibrary
             if (unchanged) return;
         }
         target.ReplaceAll(next);
+    }
+
+    /// <summary>
+    /// Home's Downloaded rail: the albums with at least one song downloaded from the computer to
+    /// this phone, the newest download first (the offline file's time, <see cref="INoctisAccountService.DownloadedAt"/>),
+    /// then by name. Nothing without an account or a download, so a phone without one never walks the songs.
+    /// </summary>
+    internal static List<Album> DownloadedAlbums(ILibraryService library, INoctisAccountService? account, int max)
+    {
+        if (account == null || account.DownloadedCount == 0) return new List<Album>();
+        var newest = new Dictionary<Guid, DateTime>();
+        foreach (var track in library.Tracks)
+        {
+            if (track.AlbumId == Guid.Empty || !account.IsDownloaded(track)) continue;
+            var at = account.DownloadedAt(track) ?? DateTime.MinValue;
+            if (!newest.TryGetValue(track.AlbumId, out var seen) || at > seen) newest[track.AlbumId] = at;
+        }
+        return newest
+            .Select(kv => (Album: library.GetAlbumById(kv.Key), At: kv.Value))
+            .Where(x => x.Album != null)
+            .OrderByDescending(x => x.At)
+            .ThenBy(x => x.Album!.Name, StringComparer.CurrentCultureIgnoreCase)
+            .Take(max)
+            .Select(x => x.Album!)
+            .ToList();
     }
 
     /// <summary>Albums newest-first by their most recently added track.</summary>

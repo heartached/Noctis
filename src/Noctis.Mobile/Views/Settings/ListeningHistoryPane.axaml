@@ -109,7 +109,10 @@
                     <ItemsControl Name="RecentList" ItemsSource="{Binding Recent}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:HistoryRow">
-                                <StackPanel>
+                                <!-- A long press opens the song's menu, as on every song row. -->
+                                <StackPanel Background="Transparent"
+                                            views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                            views:LongPress.CommandParameter="{Binding Track}">
                                     <Grid ColumnDefinitions="Auto,*,Auto" Height="60" Margin="12,0,16,0">
                                         <Border Classes="history-art" Width="44" Height="44">
                                             <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
