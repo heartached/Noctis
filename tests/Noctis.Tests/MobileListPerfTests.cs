@@ -62,4 +62,60 @@ public class MobileListPerfTests
         Assert.True(search.ShowAlbumRow);
         window.Close();
     }
+
+    /// <summary>
+    /// A section's › page (Downloaded, Pinned, Top Artists, an artist's See All): every tile was
+    /// built at once over a plain three-column panel. Rows now virtualise.
+    /// </summary>
+    [AvaloniaFact]
+    public void RailGridPage_BuildsOnlyTheTilesOnScreen_AndScrollsThroughEveryItem()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary(4_800, 300);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        var items = rig.Library.Albums.Select(RailItem.ForAlbum).ToList();
+        var start = Stopwatch.GetTimestamp();
+        rig.Shell.Navigate(new RailGridPageViewModel(rig.Shell, "Mobile.Downloaded", () => items));
+        MobileFixtures.Land(window);
+        Dispatcher.UIThread.RunJobs();
+        var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+        var page = MobileFixtures.Find<RailGridPage>(view);
+        var tiles = page.GetVisualDescendants().OfType<RailTile>().ToList();
+        _out.WriteLine($"rail grid: {items.Count} items, {tiles.Count} tiles realized, {ms:F0} ms");
+        // Before: 400 tiles (every item), 1,946 ms.
+        Assert.InRange(tiles.Count, 6, 36);
+
+        // The tiles on screen as the page opens glide in (Appear), as before.
+        Assert.All(tiles, t => Assert.NotNull(((Control)t.Content!).Transitions));
+
+        // Scrolled to the end, the tiles on screen are the last items, in order, each opening its own;
+        // a row the panel hands the next items to does not replay the arrival (a plain panel's tiles,
+        // all built at once, never did).
+        var scroll = page.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.Classes.Contains("page-scroll"));
+        var grid = MobileFixtures.Named<ItemsControl>(page, "RailGrid");
+        var built = new HashSet<RailTile>(ReferenceEqualityComparer.Instance);
+        var replays = 0;
+        void Watch()
+        {
+            foreach (var t in page.GetVisualDescendants().OfType<RailTile>())
+                if (built.Add(t))
+                    ((Control)t.Content!).PropertyChanged += (_, e) =>
+                    {
+                        if (e.Property == Avalonia.Animation.Animatable.TransitionsProperty && e.NewValue == null) replays++;
+                    };
+        }
+        Watch();
+        for (var y = 0.0; y <= scroll.Extent.Height; y += 120)
+        {
+            scroll.Offset = new Avalonia.Vector(0, y);
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+            Watch();
+        }
+        Assert.InRange(built.Count, 6, 48);   // reused, not built per row scrolled past
+        Assert.Equal(0, replays);             // without RowHost.Arrives: 105 over this scroll
+        var last = grid.GetRealizedContainers().OrderBy(grid.IndexFromContainer).Last();
+        var lastButtons = last.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("row") && b.IsVisible).ToList();
+        Assert.Equal(items.Skip((items.Count - 1) / 3 * 3), lastButtons.Select(b => b.CommandParameter));
+        window.Close();
+    }
 }
