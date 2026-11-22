@@ -3488,6 +3488,9 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Search.All" xml:space="preserve"><value>Alle</value><comment>Search scope chip</comment></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Durchsuche deine Bibliothek</value><comment>Search page before typing</comment></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Keine Ergebnisse</value><comment>Search found nothing</comment></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Letzte Suchen</value><comment>Search page, empty field: the searches made before (newest first)</comment></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Löschen</value><comment>Search page: forgets every recent search</comment></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>{0} aus den letzten Suchen entfernen</value><comment>Screen reader name of a recent search's remove button. {0} = the search text</comment></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Künstler</value><comment>Row subtitle: the result is an artist</comment></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Zeitlupe</value><comment>Background setting switch</comment></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Die Farben ziehen sanft dahin</value><comment>Under Slow Motion</comment></data>

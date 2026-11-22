@@ -1686,6 +1686,7 @@ public sealed partial class ShellViewModel : ObservableObject
         await Library.InitializeAsync();
         await LoadPlayerBarSettingsAsync();
         await LoadListSortsAsync();
+        await Search.LoadRecentSearchesAsync();
         await Background.LoadAsync();
         await LoadHistoryPrefsAsync();
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads

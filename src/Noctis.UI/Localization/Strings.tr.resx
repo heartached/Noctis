@@ -3542,6 +3542,9 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Search.All" xml:space="preserve"><value>Tümü</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Kitaplığında ara</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Sonuç yok</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Son Aramalar</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Temizle</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>{0} aramasını son aramalardan kaldır</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Sanatçı</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Ağır Çekim</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Renkler yavaşça süzülür</value></data>

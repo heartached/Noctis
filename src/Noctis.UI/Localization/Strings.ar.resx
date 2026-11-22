@@ -8478,6 +8478,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>الكل</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>ابحث في مكتبتك</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>لا توجد نتائج</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>عمليات البحث الأخيرة</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>مسح</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>إزالة {0} من عمليات البحث الأخيرة</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>فنان</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>حركة بطيئة</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>تنساب الألوان بهدوء</value></data>

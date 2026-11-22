@@ -3497,6 +3497,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>Все</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Поиск в медиатеке</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Ничего не найдено</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Недавние запросы</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Очистить</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>Удалить «{0}» из недавних запросов</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Исполнитель</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Плавное движение</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Цвета медленно переливаются</value></data>

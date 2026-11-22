@@ -3497,6 +3497,9 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Search.All" xml:space="preserve"><value>All</value><comment>Search scope chip</comment></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Search your library</value><comment>Search page before typing</comment></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>No results</value><comment>Search found nothing</comment></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Recent Searches</value><comment>Search page, empty field: the searches made before (newest first)</comment></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Clear</value><comment>Search page: forgets every recent search</comment></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>Remove {0} from Recent Searches</value><comment>Screen reader name of a recent search's remove button. {0} = the search text</comment></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Artist</value><comment>Row subtitle: the result is an artist</comment></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Slow Motion</value><comment>Background setting switch</comment></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>The colours drift gently</value><comment>Under Slow Motion</comment></data>

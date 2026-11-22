@@ -8478,6 +8478,9 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Search.All" xml:space="preserve"><value>全部</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>搜尋你的資料庫</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>沒有結果</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>最近搜尋</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>清除</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>從最近搜尋中移除「{0}」</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>藝人</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>慢動作</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>色彩緩緩流動</value></data>
