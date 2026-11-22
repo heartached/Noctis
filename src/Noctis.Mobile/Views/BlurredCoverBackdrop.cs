@@ -36,6 +36,12 @@ public sealed class BlurredCoverBackdrop : Control
     public static readonly DirectProperty<BlurredCoverBackdrop, bool> HasImageProperty =
         AvaloniaProperty.RegisterDirect<BlurredCoverBackdrop, bool>(nameof(HasImage), o => o.HasImage);
 
+    public static readonly StyledProperty<double> DimProperty =
+        AvaloniaProperty.Register<BlurredCoverBackdrop, double>(nameof(Dim));
+
+    public static readonly DirectProperty<BlurredCoverBackdrop, double> EffectiveDimProperty =
+        AvaloniaProperty.RegisterDirect<BlurredCoverBackdrop, double>(nameof(EffectiveDim), o => o.EffectiveDim);
+
     /// <summary>The sharp cover's bitmap (the page's CachedImage), the one to blur.</summary>
     public IImage? Source { get => GetValue(SourceProperty); set => SetValue(SourceProperty, value); }
 
@@ -52,6 +58,55 @@ public sealed class BlurredCoverBackdrop : Control
     {
         get => _hasImage;
         private set => SetAndRaise(HasImageProperty, ref _hasImage, value);
+    }
+
+    /// <summary>The user's Dim (Settings), 0..1: the black laid over the blurred cover.</summary>
+    public double Dim { get => GetValue(DimProperty); set => SetValue(DimProperty, value); }
+
+    private double _contrastDim;
+    private double _effectiveDim;
+
+    /// <summary>The Dim to draw: the user's, or more where a light cover needs it for white text
+    /// (<see cref="ContrastDim"/>). The user's value stays the floor, so the slider still darkens.</summary>
+    public double EffectiveDim
+    {
+        get => _effectiveDim;
+        private set => SetAndRaise(EffectiveDimProperty, ref _effectiveDim, value);
+    }
+
+    /// <summary>The least Dim the showing blurred cover needs (<see cref="ContrastDimFor"/>); 0 without one.</summary>
+    internal double ContrastDim => _contrastDim;
+
+    /// <summary>The showing blurred cover's brightest pixel (tests).</summary>
+    internal Color Brightest { get; private set; }
+
+    // Now Playing's stock shade at its transport row (NowPlayingShade's 0.72 stop: about 72% down,
+    // where MobileNowPlayingPageTests holds the wash to white text 4.5:1 over a white cover), drawn at
+    // BlurShade's 40% over the blurred cover.
+    internal const double ShadeAtTransport = 0xA6 / 255.0, ShadeOpacity = 0.4;
+
+    /// <summary>White text over the transport row keeps the wash's 4.5:1 (WCAG AA).</summary>
+    internal const double MinTextContrast = 4.5;
+
+    /// <summary>
+    /// Discord #mobile-beta (11-19): on a light cover the default Dim (15%) left white text weak, as
+    /// low as 2.6:1 under the transport on a white cover where the wash gives 4.5:1. The least Dim, in
+    /// whole percent, that brings the cover's brightest spot under the stock shade down far enough
+    /// for white text to keep <see cref="MinTextContrast"/> there; 0 for a cover that needs none.
+    /// Higher up the shade is lighter, but the title's large bold type needs only 3:1 (it gets 3.3:1
+    /// or more at the top of a landscape screen).
+    /// </summary>
+    internal static double ContrastDimFor(Color brightest)
+    {
+        for (var percent = 0; percent < 100; percent++)
+        {
+            var keep = (1 - ShadeAtTransport * ShadeOpacity) * (1 - percent / 100.0);
+            var under = Color.FromRgb(Scale(brightest.R, keep), Scale(brightest.G, keep), Scale(brightest.B, keep));
+            if (Services.MobileTheme.ContrastRatio(Colors.White, under) >= MinTextContrast) return percent / 100.0;
+        }
+        return 1;
+
+        static byte Scale(byte channel, double keep) => (byte)Math.Round(channel * keep);
     }
 
     internal static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(400);
@@ -81,6 +136,7 @@ public sealed class BlurredCoverBackdrop : Control
         base.OnPropertyChanged(change);
         if (change.Property == SourceProperty) Rebuild(fade: true);
         else if (change.Property == BlurPercentProperty || change.Property == IsActiveProperty) Rebuild(fade: false);
+        else if (change.Property == DimProperty) EffectiveDim = Math.Max(Dim, _contrastDim);
     }
 
     private async void Rebuild(bool fade)
@@ -88,18 +144,19 @@ public sealed class BlurredCoverBackdrop : Control
         var generation = ++_generation;
         if (!IsActive || Source is not Bitmap source)
         {
-            Show(null, fade: false);
+            Show(null, default, fade: false);
             return;
         }
         var percent = Math.Max(0, BlurPercent);
         // The cover stays alive while the pool reads it: CachedImage lets go of it on the next song.
         ArtworkCache.Acquire(source);
         Bitmap? blurred = null;
+        Color brightest = default;
         try
         {
-            var build = Task.Run(() => PreBlurredArtworkConverter.BlurredCopy(source, percent));
+            var build = Task.Run(() => (PreBlurredArtworkConverter.BlurredCopy(source, percent, out var b), b));
             PendingBuild = build;
-            blurred = await build;
+            (blurred, brightest) = await build;
         }
         catch (Exception ex)
         {
@@ -115,13 +172,16 @@ public sealed class BlurredCoverBackdrop : Control
             blurred?.Dispose();   // a newer cover or Blur step came in meanwhile
             return;
         }
-        Show(blurred, fade);
+        Show(blurred, brightest, fade);
     }
 
-    private void Show(Bitmap? next, bool fade)
+    private void Show(Bitmap? next, Color brightest, bool fade)
     {
         var old = _current;
         _current = next;
+        Brightest = next != null ? brightest : default;
+        _contrastDim = next != null ? ContrastDimFor(brightest) : 0;
+        EffectiveDim = Math.Max(Dim, _contrastDim);
         // A fade's outgoing bitmap is done with either way.
         if (_previous != null && !ReferenceEquals(_previous, old)) Release(_previous);
         _previous = null;

@@ -184,14 +184,16 @@
         </Panel>
         <!-- Now Playing Background › Blurred Cover (Discord #mobile-beta): the cover itself, blurred
              once per cover off the UI thread (BlurredCoverBackdrop) and filling the screen, the
-             stock shade over it at its brightest (40%, Brightness +50's: white text still reads on
-             a white cover), then the Dim's black. No cover: the wash above shows instead. -->
+             stock shade over it at its brightest (40%, Brightness +50's), then the Dim's black: the
+             user's, or more on a light cover, as much as white text needs to read (EffectiveDim).
+             No cover: the wash above shows instead. -->
         <Panel Name="BlurLayer" IsVisible="{Binding #BlurCover.HasImage}">
             <views:BlurredCoverBackdrop Name="BlurCover" Source="{Binding #Artwork.Source}"
-                                        IsActive="{Binding IsBlurredCoverBackground}" BlurPercent="{Binding NowPlayingBlurPercent}" />
+                                        IsActive="{Binding IsBlurredCoverBackground}" BlurPercent="{Binding NowPlayingBlurPercent}"
+                                        Dim="{Binding NowPlayingCoverDimOpacity}" />
             <Border Name="BlurShade" IsHitTestVisible="False" Opacity="0.4" Background="{StaticResource NowPlayingShade}" />
             <views:DitherLayer Name="BlurDither" IsHitTestVisible="False" />
-            <Border Name="BlurDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingCoverDimOpacity}" />
+            <Border Name="BlurDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding #BlurCover.EffectiveDim}" />
         </Panel>
 
         <Border Padding="{Binding SafeArea}">

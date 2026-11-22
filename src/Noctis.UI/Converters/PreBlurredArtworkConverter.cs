@@ -293,10 +293,16 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     /// the stock sigma (<see cref="Tune"/>), as a new bitmap the caller owns and disposes. Touches
     /// no cache, so it may run off the UI thread while the caller keeps the source alive.
     /// </summary>
-    public static Bitmap BlurredCopy(Bitmap source, int blurPercent)
+    public static Bitmap BlurredCopy(Bitmap source, int blurPercent) => BlurredCopy(source, blurPercent, out _);
+
+    /// <summary><see cref="BlurredCopy(Bitmap, int)"/>, and the blurred copy's brightest pixel as
+    /// it shows over black (premultiplied), measured from its pixels while they are in hand.</summary>
+    public static Bitmap BlurredCopy(Bitmap source, int blurPercent, out Color brightest)
     {
         var small = ReadDownscaled(source, out var w, out var h);
-        return ToBitmap(Tune(small, w, h, Math.Max(0, blurPercent), 100), w, h);
+        var pixels = Tune(small, w, h, Math.Max(0, blurPercent), 100);
+        brightest = MeasureTones(pixels).Brightest;
+        return ToBitmap(pixels, w, h);
     }
 
     private static void Blur(byte[] pixels, int w, int h, double sigma)

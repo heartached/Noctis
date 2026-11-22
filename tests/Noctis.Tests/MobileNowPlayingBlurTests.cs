@@ -250,11 +250,12 @@ public class MobileNowPlayingBlurTests : IDisposable
         Assert.False(MobileFixtures.Named<Panel>(page, "WashLayer").IsVisible);
         Assert.True(MobileFixtures.Named<Panel>(page, "BlurLayer").IsVisible);
         Assert.Equal(0.4, MobileFixtures.Named<Border>(page, "BlurShade").Opacity, 3);   // the readability floor
-        Assert.Equal(0.15, MobileFixtures.Named<Border>(page, "BlurDim").Opacity, 3);
+        // The user's Dim, or more where the cover is light (MobileBlurredCoverContrastTests).
+        Assert.Equal(Math.Max(0.15, cover.ContrastDim), MobileFixtures.Named<Border>(page, "BlurDim").Opacity, 3);
         Assert.Equal(150, cover.BlurPercent);
 
         rig.Shell.NowPlayingDim = 40;
-        Assert.Equal(0.4, MobileFixtures.Named<Border>(page, "BlurDim").Opacity, 3);
+        Assert.Equal(Math.Max(0.4, cover.ContrastDim), MobileFixtures.Named<Border>(page, "BlurDim").Opacity, 3);
 
         // A Blur step re-blurs the same cover (a new bitmap, the old one let go).
         var before = cover.Current;
