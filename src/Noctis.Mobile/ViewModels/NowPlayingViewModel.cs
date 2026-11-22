@@ -96,7 +96,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasTrack), nameof(Quality), nameof(HasQuality))]
+    [NotifyPropertyChangedFor(nameof(HasTrack), nameof(Quality), nameof(HasQuality), nameof(HasNext))]
     private Track? _currentTrack;
 
     /// <summary>Now Playing's quality badge: the playing file's class (<see cref="TrackQuality"/>),
@@ -648,6 +648,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _listenTrack = null;
         _flushedListened = TimeSpan.MinValue;
         _startedFrom = _unrecordedFrom;
+        // Up Next first: whoever reacts to the new CurrentTrack (Pick Up on Computer sends the
+        // queue on it) read the old Up Next, still headed by this very song, and sent it twice.
+        SyncUpNext();
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
         Duration = track.Duration;
@@ -656,7 +659,6 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.Play(track.FilePath);
         IsPlaying = true;
         TrackStarted?.Invoke(this, track);
-        SyncUpNext();
         PrepareUpcoming();
         SaveStateNow();
     }
