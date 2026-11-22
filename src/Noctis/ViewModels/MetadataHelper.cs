@@ -382,9 +382,45 @@ public static class MetadataHelper
         if (tracks == null || tracks.Count == 0) return;
         var service = App.Services!.GetRequiredService<IAudioConverterService>();
         var library = App.Services!.GetRequiredService<ILibraryService>();
-        var vm = new AudioConverterViewModel(tracks, service, library);
+        var vm = new AudioConverterViewModel(tracks, service, library, ConverterPrefs(), SaveConverterPrefs);
         var window = new AudioConverterDialog(vm);
         await ShowDialogOwned(window);
+    }
+
+    /// <summary>The Convert dialog's options as of the last conversion started.</summary>
+    private static AudioConverterPrefs? ConverterPrefs()
+    {
+        var s = App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings();
+        return s is null ? null : ConverterPrefsFrom(s);
+    }
+
+    internal static AudioConverterPrefs ConverterPrefsFrom(AppSettings s) => new(
+        s.ConverterFormat, s.ConverterBitrateKbps, s.ConverterBitDepth, s.ConverterPcmBitDepth,
+        s.ConverterDsdRate, s.ConverterOutputFolder, s.ConverterFilenamePattern,
+        s.ConverterCopyTags, s.ConverterEmbedArtwork, s.ConverterAddToLibrary);
+
+    internal static void ApplyConverterPrefs(AppSettings s, AudioConverterPrefs p)
+    {
+        s.ConverterFormat = p.Format;
+        s.ConverterBitrateKbps = p.BitrateKbps;
+        s.ConverterBitDepth = p.BitDepth;
+        s.ConverterPcmBitDepth = p.PcmBitDepth;
+        s.ConverterDsdRate = p.DsdRate;
+        s.ConverterOutputFolder = p.OutputFolder;
+        s.ConverterFilenamePattern = p.FilenamePattern;
+        s.ConverterCopyTags = p.CopyTags;
+        s.ConverterEmbedArtwork = p.EmbedArtwork;
+        s.ConverterAddToLibrary = p.AddToLibrary;
+    }
+
+    /// <summary>Keeps the options, in the live settings and on disk (as the Find Lyrics ones, #217).</summary>
+    private static void SaveConverterPrefs(AudioConverterPrefs prefs)
+    {
+        if (App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() is { } live) ApplyConverterPrefs(live, prefs);
+        if (App.Services?.GetService<IPersistenceService>() is { } persistence)
+            _ = persistence.UpdateSettingsAsync(s => ApplyConverterPrefs(s, prefs)).ContinueWith(
+                t => DebugLog.Write("AudioConverter", $"Saving the options failed: {t.Exception?.GetBaseException().Message}"),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     public static async Task OpenBatchMetadataWindow(IReadOnlyList<Track> tracks)

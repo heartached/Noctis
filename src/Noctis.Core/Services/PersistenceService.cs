@@ -645,6 +645,8 @@ public class PersistenceService : IPersistenceService
         nameof(AppSettings.YtDlpPath),
         nameof(AppSettings.ExternalOpenAppPath),
         nameof(AppSettings.LyricsStudioUseGpu),
+        // The Convert dialog's last output folder: a folder on this computer's disks.
+        nameof(AppSettings.ConverterOutputFolder),
     };
 
     private static void ApplyComputerSettings(AppSettings settings, JsonObject? slot)
