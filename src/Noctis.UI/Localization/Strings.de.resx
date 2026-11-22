@@ -3685,7 +3685,8 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Songtitel</value><comment>Stand-in title in the background preview</comment></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Der Energiesparmodus ist an, daher bleiben die Farben stehen.</value><comment>Background footnote</comment></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Braucht etwas mehr Akku und pausiert im Energiesparmodus</value><comment>Background footnote</comment></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value><comment>Screen reader: a day bar. {0} = weekday, {1} = listening time, {2} = plays ("5 plays")</comment></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>Insgesamt: {0} · {1}</value><comment>Listening History, under This Week. {0} = listening time ("41 h 3 min"), {1} = plays ("812 plays")</comment></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Für immer</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Jahr</value><comment>Keep History choice</comment></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} Tag|{0} Tage</value><comment>Keep History choice (30, 90 …). Plural forms, see Mobile.Count.Songs</comment></data>

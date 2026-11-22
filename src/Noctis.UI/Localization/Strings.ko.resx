@@ -8675,7 +8675,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>노래 제목</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>절전 모드가 켜져 있어 색이 움직이지 않습니다.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>배터리를 조금 더 쓰고 절전 모드에서는 멈춥니다</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>전체 기간: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>영구</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1년</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0}일</value></data>

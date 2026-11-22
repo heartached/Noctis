@@ -8675,7 +8675,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>عنوان الأغنية</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>وضع توفير البطارية مفعّل، لذا تبقى الألوان ثابتة.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>يستهلك بطارية أكثر قليلًا ويتوقف في وضع توفير الطاقة</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}، {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>كل الأوقات: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>دائمًا</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>سنة واحدة</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} يوم|{0} يوم|{0} يومان|{0} أيام|{0} يومًا|{0} يوم</value></data>

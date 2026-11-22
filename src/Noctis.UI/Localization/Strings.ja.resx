@@ -8675,7 +8675,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>曲のタイトル</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>バッテリーセーバーがオンのため、色は静止したままです。</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>電池を少し多く使い省電力モードでは止まります</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}、{2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>全期間：{0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>無期限</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1年</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0}日</value></data>
