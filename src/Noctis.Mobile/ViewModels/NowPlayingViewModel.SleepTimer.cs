@@ -189,13 +189,13 @@ public sealed partial class NowPlayingViewModel
         _player.Stop();
         IsPlaying = false;
         Position = TimeSpan.Zero;
+        SyncUpNext();   // before CurrentTrack, as in StartTrack
         if (next != null)
         {
             CurrentTrack = next;
             Duration = next.Duration;
             ErrorText = string.Empty;
         }
-        SyncUpNext();
         SaveStateNow();
         UpdateSleepFade();
         DebugLog.Write("Audio", "Sleep timer: stopped after the song");
