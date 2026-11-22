@@ -912,17 +912,20 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public Task SaveStateAsync()
     {
         var snapshot = _queue.Snapshot();
+        // Snapshot's lists are new and nobody else's: copying them again doubled the garbage of
+        // every save (a queue started from the library holds the whole library) on the UI thread.
+        static List<Guid> Own(IReadOnlyList<Guid> ids) => ids as List<Guid> ?? ids.ToList();
         var state = new QueueState
         {
             CurrentTrackId = snapshot.CurrentId,
             PositionSeconds = Position.TotalSeconds,
-            UpNextIds = snapshot.UpNextIds.ToList(),
-            HistoryIds = snapshot.HistoryIds.ToList(),
-            RepeatCycleIds = snapshot.RepeatCycleIds.ToList(),
+            UpNextIds = Own(snapshot.UpNextIds),
+            HistoryIds = Own(snapshot.HistoryIds),
+            RepeatCycleIds = Own(snapshot.RepeatCycleIds),
             RepeatMode = snapshot.RepeatMode,
             IsShuffleEnabled = snapshot.IsShuffleEnabled,
             IsMuted = _player.IsMuted,
-            OriginalOrderIds = snapshot.OriginalOrderIds.ToList(),
+            OriginalOrderIds = Own(snapshot.OriginalOrderIds),
             SourceLabel = SourceLabel,
             PlayedInQueue = snapshot.PlayedInQueue,
         };

@@ -623,6 +623,32 @@ public class MobileNowPlayingViewModelTests : IDisposable
         Assert.Equal(new[] { t[1].FilePath }, player.PlayedPaths);
     }
 
+    /// <summary>
+    /// Measurement: every song change and queue edit saves the queue, on the UI thread up to the
+    /// write's own thread hop. A queue started from the library holds the whole library, and the
+    /// save copied each id list twice (the snapshot's lists, then a copy of each for the file),
+    /// all of it large-object-heap garbage for a big library. One copy is enough.
+    /// </summary>
+    [Fact]
+    public async Task SaveState_CopiesTheQueueIdsOnce()
+    {
+        const int n = 20_000;
+        var t = Tracks(n);
+        var (vm, _, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.ToggleShuffleCommand.Execute(null);             // the pre-shuffle order is saved too
+        await vm.SaveStateAsync();                          // warm up
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var save = vm.SaveStateAsync();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        await save;
+
+        // Up Next, the Repeat All cycle and the pre-shuffle order: about 3n ids of 16 bytes each.
+        var oneCopy = 3L * n * 16;
+        Assert.True(allocated < oneCopy * 3 / 2, $"allocated {allocated:N0} bytes, one copy is {oneCopy:N0}");
+    }
+
     // ── Queue History and Add Before Current Song (Discord 11-07) ──
 
     [Fact]
