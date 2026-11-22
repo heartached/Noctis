@@ -36,6 +36,11 @@
                      share one plate height (GitHub #209). -->
 
                 <StackPanel Classes="tile-text" Spacing="0" HorizontalAlignment="Stretch">
+                    <!-- Album Hover Zoom (GitHub #218, Discord 11-21): only the artwork grows, round
+                         its own centre, with the glow behind it; the title lines stay put.
+                         Styles.axaml, .hover-zoom. -->
+                    <Panel Classes="tile-art" HorizontalAlignment="Center">
+                    <Border Classes="tile-glow" CornerRadius="6" />
                     <!-- Album artwork: size computed once in code-behind, no per-tile Bounds binding -->
                     <Border Width="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
                             Height="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).TileArtworkSize}"
@@ -71,6 +76,7 @@
                             </Button>
                         </Panel>
                     </Border>
+                    </Panel>
                     <!-- Title + explicit badge; the heart sits at the line's right end (09-13) -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
                         <ctrl:HighlightTextBlock Grid.Column="0"
@@ -177,8 +183,11 @@
                     </ItemsPanelTemplate>
                 </ListBox.ItemsPanel>
                 <ListBox.Styles>
+                    <!-- Unclipped (an Avalonia 12 TemplatedControl clips to its bounds): the
+                         hovered cover's grow and glow run past its row (Album Hover Zoom). -->
                     <Style Selector="ListBoxItem">
                         <Setter Property="Focusable" Value="False" />
+                        <Setter Property="ClipToBounds" Value="False" />
                     </Style>
                 </ListBox.Styles>
                 <ListBox.DataTemplates>
