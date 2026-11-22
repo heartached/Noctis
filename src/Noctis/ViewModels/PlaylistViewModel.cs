@@ -250,7 +250,33 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
         _sidebar.PlaylistTracksChanged += OnPlaylistTracksChanged;
         _sidebar.PlaylistEdited += OnPlaylistEdited;
+        _sidebar.PlaylistsReloaded += OnPlaylistsReloaded;
     }
+
+    /// <summary>
+    /// The sidebar read the playlists again (a sync from a phone or another computer changed the
+    /// file). This page held the object it was opened with, so it kept the old songs and name,
+    /// and an edit made here changed that orphan while the save wrote the sidebar's list. Take
+    /// the new object; a playlist that is gone (deleted on the other device) closes the page.
+    /// </summary>
+    private void OnPlaylistsReloaded(object? sender, EventArgs e)
+    {
+        var fresh = _sidebar.Playlists.FirstOrDefault(p => p.Id == _playlist.Id);
+        if (ReferenceEquals(fresh, _playlist)) return;
+        if (fresh is null)
+        {
+            BackRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        _playlist = fresh;
+        _navItem = _sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == fresh.Id);
+        foreach (var property in ReloadedArtProperties)
+            OnPropertyChanged(property);
+        OnPlaylistEdited(this, fresh.Id);
+        LoadTracks();
+    }
+
+    private static readonly string[] ReloadedArtProperties = { nameof(Art1), nameof(Art2), nameof(Art3), nameof(Art4) };
 
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
@@ -1181,6 +1207,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _sidebar.PlaylistTracksChanged -= OnPlaylistTracksChanged;
         _sidebar.PlaylistEdited -= OnPlaylistEdited;
+        _sidebar.PlaylistsReloaded -= OnPlaylistsReloaded;
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }

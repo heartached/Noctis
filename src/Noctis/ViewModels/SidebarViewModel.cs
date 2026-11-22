@@ -273,7 +273,16 @@ public partial class SidebarViewModel : ViewModelBase
         }
 
         RebuildSidebarRows();
+        PlaylistsReloaded?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// <see cref="LoadPlaylistsAsync"/> read the playlists again (a sync from a phone or another
+    /// computer, an import, a reset): every <see cref="Playlist"/> in <see cref="Playlists"/> is a
+    /// new object, so a page holding one must take the new one (same id) or it shows and edits
+    /// a copy nothing saves.
+    /// </summary>
+    public event EventHandler? PlaylistsReloaded;
 
     /// <summary>
     /// Rebuilds the flattened sidebar rows: pinned playlists, then the folders (with
