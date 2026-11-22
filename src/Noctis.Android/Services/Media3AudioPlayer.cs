@@ -487,6 +487,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         if (_disposed || generation != _positionPumpGeneration) return;
         PollPosition();
+        // An outside pause (focus loss, unplug, lock screen) leaves the chain running so that
+        // this tick tells the ViewModel; once it has, a paused player has nothing more to say.
+        // It ran four times a second for as long as the app lived (battery). Resume() and
+        // OnIsPlayingChanged's Play branch start a new chain; Seek reports its own position.
+        if (State == PlaybackState.Paused) return;
         _positionHandler.PostDelayed(() => PositionTick(generation), PositionPollMs);
     }
 
