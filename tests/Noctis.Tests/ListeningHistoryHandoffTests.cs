@@ -553,6 +553,27 @@ public class ListeningHistoryHandoffTests : IDisposable
     }
 
     [Fact]
+    public void PickUp_OnTheNextSong_SendsItOnce_NotAlsoAsTheSongAfterIt()
+    {
+        // The send on a song change ran while Up Next still held the song just started, so the
+        // computer was told to play it twice in a row.
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        shell.SetPickUpOnComputer(true);
+        shell.Player.PlayTracks(new[] { a, b, c }, 0);
+
+        rig.Player.RaiseTrackEnded();
+
+        var sent = account.SavedQueues.Last();
+        Assert.Equal(b.Id, sent.Current);
+        Assert.Equal(new[] { b.Id, c.Id }, sent.Ids);
+    }
+
+    [Fact]
     public void PickUp_IsOffByDefault_AndSendsNothingUntilOn()
     {
         var a = RemoteSong("A");

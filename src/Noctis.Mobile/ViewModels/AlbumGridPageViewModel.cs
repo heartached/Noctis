@@ -210,7 +210,11 @@ public sealed partial class AlbumGridPageViewModel : MobilePage, ISortable
         return true;
     }
 
-    private void OnRefreshed(object? sender, EventArgs e) => Refresh();
+    // A heart toggled changes nothing an album tile shows, nor any album sort.
+    private void OnRefreshed(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(e, LibraryViewModel.FavouritesRefresh)) Refresh();
+    }
 
     public override void OnClosed()
     {

@@ -161,6 +161,16 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
 
+    /// <summary>The <see cref="Refreshed"/> args of a heart toggled (<see cref="RefreshFavourites"/>):
+    /// no song, album or artist changed but its favourite, so a page whose rows and order do not
+    /// depend on hearts keeps them.</summary>
+    public static readonly EventArgs FavouritesRefresh = new();
+
+    /// <summary>The <see cref="Refreshed"/> args of the number of offline copies changing
+    /// (<see cref="NotifyDownloadsChanged"/>, during a download batch as songs land): no song's
+    /// tags changed, though a source or the Downloaded filter may now hold other songs.</summary>
+    public static readonly EventArgs DownloadsRefresh = new();
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private int _songCount;
@@ -706,7 +716,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void NotifyDownloadsChanged()
     {
         RefreshDownloaded();
-        Refreshed?.Invoke(this, EventArgs.Empty);
+        Refreshed?.Invoke(this, DownloadsRefresh);
     }
 
     /// <summary>The UI language changed: the rails' subtitles ("Artist", "12 songs") and the open
@@ -743,13 +753,19 @@ public sealed partial class LibraryViewModel : ObservableObject
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
         LibraryRowKeys = settings.PhoneLibraryRows.ToList();
         Source = LibrarySources.Parse(settings.PhoneLibrarySource);
+        _settingsApplied = true;
     }
+
+    /// <summary>The host applied the settings at start (<see cref="ApplySettings"/>): the start does
+    /// not read them again. That second read put back a source picked during the library load
+    /// whose save had not landed yet, and read settings.json once more on every cold launch.</summary>
+    private bool _settingsApplied;
 
     public async Task InitializeAsync()
     {
         try
         {
-            ApplySettings(await _persistence.LoadSettingsAsync());
+            if (!_settingsApplied) ApplySettings(await _persistence.LoadSettingsAsync());
             await LoadPlaylistsAsync();
             RefreshFromLibrary();
         }
@@ -1150,7 +1166,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void RefreshFavourites()
     {
         FavoriteCount = _library.Tracks.Count(t => t.IsFavorite);
-        Refreshed?.Invoke(this, EventArgs.Empty);
+        Refreshed?.Invoke(this, FavouritesRefresh);
     }
 
     /// <summary>Pinned and Recently Added: library structure and pins only.</summary>

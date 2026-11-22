@@ -588,13 +588,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         // 1. Catalog → the library.
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
         await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
-        var albumArtists = await client.GetAlbumArtistsAsync(ct).ConfigureAwait(false);
+        var coverVersions = new Dictionary<Guid, string>();
+        var albumArtists = await client.GetAlbumArtistsAsync(ct, coverVersions).ConfigureAwait(false);
         var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
         var (tracks, linked) = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
         RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count + linked, tracks.Count + linked);
 
         // 2. Covers.
-        await SyncCoversAsync(client, tracks, ct).ConfigureAwait(false);
+        await SyncCoversAsync(client, tracks, coverVersions, ct).ConfigureAwait(false);
 
         // 3–4. Ledger: pull, push favorite/rating edits, playlists. Sync can be off on the
         // desktop (error 50): the catalog and plays still go through, then the caller hears it.
@@ -837,18 +838,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 if (NoctisRemoteIds.TryParseSyncId(d, out var did) && NoctisRemoteIds.TryParseSyncId(l, out var lid)) sticky[did] = lid;
 
         var matched = NoctisLocalMatcher.Match(songs, _library.Tracks, sticky);
-        if (keepUnlisted)
+        // The phone's own files, hidden ones too (Hide Song): Tracks and GetTrackById leave a hidden
+        // file out, so its pair ended and the computer's copy came back as a row, the song shown again.
+        var own = new Dictionary<Guid, Track>();
+        foreach (var t in _library.AllTracks)
+            if (t.SourceType == SourceType.Local) own.TryAdd(t.Id, t);
+        var listed = new HashSet<Guid>(songs.Select(s => s.Id));
+        var visible = new HashSet<Guid>(_library.Tracks.Select(t => t.Id));
+        var taken = new HashSet<Guid>(matched.Values);
+        foreach (var (d, l) in sticky)
         {
-            // A partial catalog proves nothing about the songs it left out: their pairs stay.
-            var listed = new HashSet<Guid>(songs.Select(s => s.Id));
-            var taken = new HashSet<Guid>(matched.Values);
-            foreach (var (d, l) in sticky)
-                if (!listed.Contains(d) && _library.GetTrackById(l) is { SourceType: SourceType.Local } && taken.Add(l)) matched[d] = l;
+            if (matched.ContainsKey(d) || !own.ContainsKey(l)) continue;
+            // A hidden file keeps its pair while the computer lists the song. A partial catalog
+            // proves nothing about the songs it left out: their pairs stay.
+            var keep = listed.Contains(d) ? !visible.Contains(l) : keepUnlisted;
+            if (keep && taken.Add(l)) matched[d] = l;
         }
 
         var result = new Dictionary<Guid, Track>(matched.Count);
         foreach (var (d, l) in matched)
-            if (_library.GetTrackById(l) is { SourceType: SourceType.Local } t) result[d] = t;
+            if (own.TryGetValue(l, out var t)) result[d] = t;
         fresh = new HashSet<Guid>(result.Keys.Where(d => !sticky.TryGetValue(d, out var old) || old != result[d].Id));
 
         lock (_gate)
@@ -880,6 +889,40 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (IsRemote(track)) return track.Id;
         if (track.SourceType != SourceType.Local) return null;
         lock (_gate) return _linkedByLocal.TryGetValue(track.Id, out var d) ? d : null;
+    }
+
+    /// <summary>
+    /// <paramref name="synced"/> (playlists.json as read at the start of the playlist stage, with this
+    /// sync's changes) plus what the phone did to the file since: the stage talks to the computer
+    /// (playlist covers) before it writes, and writing the list read at the start dropped a playlist
+    /// made on the phone meanwhile, undid an edit (ModifiedAt moved) and brought back a deleted one.
+    /// </summary>
+    private async Task<List<Playlist>> WithPhoneEditsSinceAsync(List<Playlist> synced, Dictionary<Guid, DateTime> read)
+    {
+        List<Playlist> current;
+        try { current = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"playlists re-read failed ({ex.GetType().Name})");
+            return synced;
+        }
+        var now = new Dictionary<Guid, Playlist>();
+        foreach (var p in current) now.TryAdd(p.Id, p);
+        var result = new List<Playlist>(synced.Count);
+        var ids = new HashSet<Guid>();
+        foreach (var p in synced)
+        {
+            if (!ids.Add(p.Id)) continue;
+            if (read.TryGetValue(p.Id, out var at))
+            {
+                if (!now.TryGetValue(p.Id, out var mine)) continue;               // deleted on the phone meanwhile
+                if (Newer(mine.ModifiedAt, at)) { result.Add(mine); continue; }  // edited on the phone meanwhile
+            }
+            result.Add(p);
+        }
+        foreach (var p in current)
+            if (!read.ContainsKey(p.Id) && ids.Add(p.Id)) result.Add(p);           // made on the phone meanwhile
+        return result;
     }
 
     /// <summary>The phone's track a synced id points at: the desktop row, or the file paired with it.</summary>
@@ -996,13 +1039,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         _ => suffix.ToUpperInvariant(),
     };
 
-    private async Task SyncCoversAsync(NoctisServerClient client, List<Track> tracks, CancellationToken ct)
+    /// <param name="versions">Each album's cover version on the computer (noctisCover), empty from a
+    /// computer that does not say: its covers are asked again once 30 days old.</param>
+    private async Task SyncCoversAsync(NoctisServerClient client, List<Track> tracks, Dictionary<Guid, string> versions, CancellationToken ct)
     {
         var now = UtcNow;
+        var adopted = false;
         var due = tracks.Select(t => t.AlbumId).Distinct()
             .Where(id => id != Track.UnknownAlbumBucketId && !_coverMisses.ContainsKey(id))
-            .Where(id => CoverIsDue(_persistence.GetArtworkPath(id), now))
+            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, ref adopted))
             .ToList();
+        if (adopted) SaveSyncState();
         RaiseSyncProgress(NoctisSyncStage.Covers, 0, due.Count);
         if (due.Count == 0) return;
 
@@ -1031,7 +1078,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     try
                     {
                         if (await client.DownloadCoverAsync(albumId, _persistence.GetArtworkPath(albumId), token).ConfigureAwait(false))
+                        {
                             Interlocked.Increment(ref written);
+                            if (versions.TryGetValue(albumId, out var version))
+                                lock (_gate) _sync.Covers[albumId.ToString("N")] = version;
+                        }
                         else
                             _coverMisses.TryAdd(albumId, 0);
                     }
@@ -1052,7 +1103,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (full) DebugLog.Write("Account", $"covers: {written} saved, then stopped: the phone is too full (the reserve stays free)");
             else if (failed > 0) DebugLog.Write("Account", $"covers: {written} saved, {failed} failed{(stage.IsCancellationRequested && !ct.IsCancellationRequested ? ", stopped asking" : "")}");
             // Rebuild so albums pick the new files up.
-            if (written > 0) _library.NotifyMetadataChanged();
+            if (written > 0)
+            {
+                if (versions.Count > 0) SaveSyncState();
+                _library.NotifyMetadataChanged();
+            }
         }
     }
 
@@ -1072,11 +1127,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
     }
 
-    private static bool CoverIsDue(string path, DateTime now)
+    /// <summary>Whether to download an album's cover: none here yet, or the computer's version of it
+    /// changed since the phone's copy (a cover corrected there arrives with the next sync). From a
+    /// computer that names no version, a copy over 30 days old. A copy saved before the phone kept
+    /// versions is current when written after the computer's file (<paramref name="adopted"/>: that
+    /// version is recorded, so an update does not download every cover again).</summary>
+    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, ref bool adopted)
     {
         try
         {
-            return !File.Exists(path) || now - File.GetLastWriteTimeUtc(path) > CoverMaxAge;
+            if (!File.Exists(path)) return true;
+            if (!versions.TryGetValue(albumId, out var version)) return now - File.GetLastWriteTimeUtc(path) > CoverMaxAge;
+            var key = albumId.ToString("N");
+            lock (_gate)
+            {
+                if (_sync.Covers.TryGetValue(key, out var known)) return known != version;
+                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || File.GetLastWriteTimeUtc(path) < changed) return true;
+                _sync.Covers[key] = version;
+            }
+            adopted = true;
+            return false;
         }
         catch { return true; }
     }
@@ -1276,6 +1346,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         CancellationToken ct)
     {
         var phone = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+        var read = new Dictionary<Guid, DateTime>();
+        foreach (var p in phone) read.TryAdd(p.Id, p.ModifiedAt);
         Dictionary<string, PlaylistSyncState> agreed;
         Dictionary<string, DateTime> deleted;
         lock (_gate)
@@ -1364,6 +1436,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         if (changed)
         {
+            phone = await WithPhoneEditsSinceAsync(phone, read).ConfigureAwait(false);
             await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
             RaisePlaylistsChanged();
         }
@@ -1692,6 +1765,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     Links = new Dictionary<string, string>(_sync.Links),
                     Retired = new Dictionary<string, string>(_sync.Retired),
                     ArrivalDates = _sync.ArrivalDates,
+                    Covers = new Dictionary<string, string>(_sync.Covers),
                 };
             }
             try { _store.SaveSyncState(copy); }
@@ -1710,7 +1784,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public DateTime? DownloadedAt(Track track) =>
         IsRemote(track) && _downloaded.TryGetValue(track.Id, out var file) ? file.SavedUtc : null;
 
-    public long DownloadedBytes => _downloaded.Values.Sum(f => f.Size);
+    /// <summary>Walks the dictionary itself: <c>Values</c> copied every download into a new list, on
+    /// each progress report (one per song a batch finishes).</summary>
+    public long DownloadedBytes
+    {
+        get
+        {
+            long total = 0;
+            foreach (var (_, file) in _downloaded) total += file.Size;
+            return total;
+        }
+    }
 
     public int DownloadedCount => _downloaded.Count;
 

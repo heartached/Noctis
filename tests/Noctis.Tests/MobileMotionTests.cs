@@ -123,7 +123,13 @@ public class MobileMotionTests
         Assert.True(Math.Abs(values[^1] - to) <= Math.Min(0.5, span * 0.01), $"{target} ends at {values[^1]:0.###}, not {to}");
         var tol = Math.Min(0.5, span * 0.01);
         var between = values.Count(v => v > Math.Min(from, to) + tol && v < Math.Max(from, to) - tol);
-        Assert.True(between >= minBetween, $"{target}: {between} frames between {from} and {to} (a snap has none)");
+        // Frames come as fast as the machine draws them: on a loaded run (60-80 ms a frame) a
+        // 350 ms push only has room for three or four, so the count asked for follows the frame
+        // time this recording saw. A snap still has none, so at least one is always asked for.
+        var gaps = s.Zip(s.Skip(1), (a, b) => b.Ms - a.Ms).Order().ToList();
+        var frameMs = gaps.Count > 0 ? Math.Max(1, gaps[gaps.Count / 2]) : 16;
+        var need = Math.Clamp((int)(runMs * 0.6 / frameMs), 1, minBetween);
+        Assert.True(between >= need, $"{target}: {between} frames between {from} and {to}, {need} asked for at {frameMs:0} ms a frame (a snap has none)");
         var sign = Math.Sign(to - from);
         var since = s[0].Ms;   // when the target took the value it holds: a glide has run at most since then
         for (var i = 1; i < values.Count; i++)

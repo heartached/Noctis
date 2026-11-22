@@ -111,9 +111,10 @@ public class MobileTabBarSettingsTests
             await p.SaveSettingsAsync(s);
             var path = Path.Combine(p.DataDirectory, "settings.json");
             var json = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
-            json.Remove("MobileTabBar");   // an empty list may not be written at all
+            // settings.json keys are camelCase: "MobileTabBar" never matched and the test removed nothing.
+            Assert.True(json.Remove("mobileTabBar"), "the key is written camelCase");
             await File.WriteAllTextAsync(path, json.ToJsonString());
-            Assert.DoesNotContain("MobileTabBar", await File.ReadAllTextAsync(path));
+            Assert.DoesNotContain("mobileTabBar", await File.ReadAllTextAsync(path), StringComparison.OrdinalIgnoreCase);
         });
         await rig.Shell.InitializeAsync();
         Assert.True(rig.Shell.GlassTabPill);            // the file was read
@@ -152,6 +153,43 @@ public class MobileTabBarSettingsTests
         rig.Shell.SetBarTabs(TabBarTabs.All);                                       // eight: cut to five
         Assert.Equal(5, rig.Shell.BarTabs.Count);
         Assert.Contains(MobileTab.Library, rig.Shell.BarTabs);
+    }
+
+    /// <summary>The library's Refreshed handlers: one per page that re-reads on every refresh.</summary>
+    private static int RefreshListeners(LibraryViewModel library) =>
+        (typeof(LibraryViewModel).GetField(nameof(LibraryViewModel.Refreshed),
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(library) as Delegate)
+        ?.GetInvocationList().Length ?? 0;
+
+    /// <summary>A tab taken off the bar stops re-reading the library on every refresh (its root was
+    /// kept, listening, until the app closed), and comes back fresh when it is put back.</summary>
+    [Fact]
+    public void ATabTakenOffTheBar_StopsRefreshing_AndComesBackFresh()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("A"), MobileFixtures.Song("B") });
+        var shell = rig.Shell;
+        _ = shell.FavoritesRoot;                        // the shell view binds both at start
+        _ = shell.PlaylistsRoot;
+        var start = RefreshListeners(shell.Library);
+        shell.SetBarTabs(new[] { MobileTab.Home, MobileTab.Songs, MobileTab.Albums, MobileTab.Artists, MobileTab.Library });
+        var songs = shell.SongsRoot!;
+        Assert.NotNull(shell.AlbumsRoot);
+        Assert.NotNull(shell.ArtistsRoot);
+        Assert.Null(shell.FavoritesRoot);               // off the bar: not kept, not made
+        Assert.Null(shell.PlaylistsRoot);
+        Assert.Equal(start + 1, RefreshListeners(shell.Library));   // three roots in, two out
+
+        shell.SetBarTabs(Defaults);
+        Assert.Null(shell.SongsRoot);
+        Assert.Null(shell.AlbumsRoot);
+        Assert.Null(shell.ArtistsRoot);
+        _ = shell.FavoritesRoot;
+        _ = shell.PlaylistsRoot;
+        Assert.Equal(start, RefreshListeners(shell.Library));
+
+        shell.SetBarTabs(new[] { MobileTab.Home, MobileTab.Songs, MobileTab.Library });
+        Assert.NotSame(songs, shell.SongsRoot);         // a new root, reading the library now
+        Assert.Equal(2, shell.SongsRoot!.Songs.Count);
     }
 
     /// <summary>Playlists off the bar stays one tap away: the Library tab's Playlists row (on by default).</summary>

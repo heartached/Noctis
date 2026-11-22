@@ -71,14 +71,14 @@ public class MobileTabBarTests : IDisposable
         window.UpdateLayout();
         Assert.True(shell.IsFavoritesRootVisible);
         Assert.False(shell.IsHomeRootVisible);
-        Assert.True(shell.FavoritesRoot.IsEmbedded);
-        Assert.Equal(new[] { "Loved" }, shell.FavoritesRoot.Songs.Select(t => t.Title));
+        Assert.True(shell.FavoritesRoot!.IsEmbedded);
+        Assert.Equal(new[] { "Loved" }, shell.FavoritesRoot!.Songs.Select(t => t.Title));
         Assert.True(view.FindControl<Grid>("FavoritesRoot")!.IsVisible);
 
         shell.SelectTabCommand.Execute(MobileTab.Playlists);
         window.UpdateLayout();
         Assert.True(shell.IsPlaylistsRootVisible);
-        Assert.True(shell.PlaylistsRoot.IsEmbedded);
+        Assert.True(shell.PlaylistsRoot!.IsEmbedded);
         Assert.DoesNotContain(view.GetVisualDescendants().OfType<Button>(), b => b.Name == "FavouriteSongsRow");
         window.Close();
     }

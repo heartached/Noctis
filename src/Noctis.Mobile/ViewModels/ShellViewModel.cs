@@ -439,17 +439,19 @@ public sealed partial class ShellViewModel : ObservableObject
     private AlbumGridPageViewModel? _albumsRoot;
     private ArtistListPageViewModel? _artistsRoot;
 
-    /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.
-    /// Made on first use; it re-reads on every library refresh.</summary>
-    public PlaylistListPageViewModel PlaylistsRoot =>
-        _playlistsRoot ??= new PlaylistListPageViewModel(this) { IsEmbedded = true };
+    // Every tab's root is made on first use while its tab is on the bar and null otherwise: a root
+    // re-reads on every library refresh, so a tab taken off the bar closes and drops its root
+    // (OnBarTabsChanged) and a bar without it builds and refreshes none.
+
+    /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.</summary>
+    public PlaylistListPageViewModel? PlaylistsRoot => _playlistsRoot ??= HasTab(MobileTab.Playlists)
+        ? new PlaylistListPageViewModel(this) { IsEmbedded = true }
+        : null;
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
-    public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false };
-
-    // Songs, Albums and Artists as tab roots (Settings › Tab Bar): each made once its tab is first
-    // on the bar, null before that, so a bar without them builds and refreshes none of them.
+    public SongListPageViewModel? FavoritesRoot => _favoritesRoot ??= HasTab(MobileTab.Favorites)
+        ? new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false }
+        : null;
 
     /// <summary>The Songs tab's root: every song, embedded under the tab's title (the Library row's page).</summary>
     public SongListPageViewModel? SongsRoot => _songsRoot ??= HasTab(MobileTab.Songs)
@@ -490,6 +492,13 @@ public sealed partial class ShellViewModel : ObservableObject
 
     partial void OnBarTabsChanged(IReadOnlyList<MobileTab> value)
     {
+        Drop(ref _playlistsRoot, MobileTab.Playlists);
+        Drop(ref _favoritesRoot, MobileTab.Favorites);
+        Drop(ref _songsRoot, MobileTab.Songs);
+        Drop(ref _albumsRoot, MobileTab.Albums);
+        Drop(ref _artistsRoot, MobileTab.Artists);
+        OnPropertyChanged(nameof(PlaylistsRoot));
+        OnPropertyChanged(nameof(FavoritesRoot));
         OnPropertyChanged(nameof(SongsRoot));
         OnPropertyChanged(nameof(AlbumsRoot));
         OnPropertyChanged(nameof(ArtistsRoot));
@@ -497,6 +506,13 @@ public sealed partial class ShellViewModel : ObservableObject
         // it, and a sheet such as Settings, stay where they are).
         if (!value.Contains(SelectedTab)) SelectedTab = StartTab;
         SavePlayerBarSettings(nameof(BarTabs));
+
+        void Drop<T>(ref T? root, MobileTab tab) where T : MobilePage
+        {
+            if (root == null || value.Contains(tab)) return;
+            root.OnClosed();
+            root = null;
+        }
     }
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
@@ -1461,6 +1477,28 @@ public sealed partial class ShellViewModel : ObservableObject
     private void OpenArtistSheet(ArtistListItem? item)
     {
         if (item != null) Sheet = ContextSheetViewModel.ForArtist(this, item.Artist, item.ArtworkPath);
+    }
+
+    private readonly Noctis.Helpers.BulkObservableCollection<Playlist> _pickerPlaylists = new();
+    private string[] _pickerNames = Array.Empty<string>();
+
+    /// <summary>
+    /// Add to Playlist's list (the manual playlists), one collection kept from sheet to sheet:
+    /// a new list on every open made the sheet build a row for every playlist each time. It is
+    /// replaced only when the playlists or their names changed (a rename is made in place).
+    /// </summary>
+    internal IReadOnlyList<Playlist> PickerPlaylists()
+    {
+        var next = Library.Playlists.Where(p => !p.IsSmartPlaylist).ToList();
+        var names = next.Select(p => p.Name).ToArray();
+        var same = next.Count == _pickerPlaylists.Count && names.SequenceEqual(_pickerNames)
+            && next.Zip(_pickerPlaylists).All(pair => ReferenceEquals(pair.First, pair.Second));
+        if (!same)
+        {
+            _pickerPlaylists.ReplaceAll(next);
+            _pickerNames = names;
+        }
+        return _pickerPlaylists;
     }
 
     /// <summary>Closes whichever menu or sheet is open.</summary>

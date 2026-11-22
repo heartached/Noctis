@@ -329,6 +329,45 @@ public class MobileLibraryViewModelTests : IDisposable
         public override Task SaveSettingsAsync(AppSettings settings) => throw new IOException("disk full");
     }
 
+    /// <summary>Settings whose save waits until the test lets it land; reads give what landed last.</summary>
+    private sealed class HeldSavePersistence : TestPersistenceService
+    {
+        public string SavedSource = "";
+        public int Loads;
+        public readonly TaskCompletionSource Land = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override Task<AppSettings> LoadSettingsAsync()
+        {
+            Loads++;
+            return Task.FromResult(new AppSettings { PhoneLibrarySource = SavedSource });
+        }
+        public override async Task SaveSettingsAsync(AppSettings settings)
+        {
+            await Land.Task;
+            SavedSource = settings.PhoneLibrarySource;
+        }
+    }
+
+    /// <summary>Cold start: the host applies the settings, then the library loads (a second or
+    /// more) with the source button already on screen. A pick in that window whose save had not
+    /// landed when the start re-read the settings was put back to the old source.</summary>
+    [Fact]
+    public async Task ASourcePick_DuringTheColdStart_IsNotPutBack_ByTheStartsSettingsRead()
+    {
+        using var persistence = new HeldSavePersistence();
+        var vm = new LibraryViewModel(new FakeLibraryService(), persistence, new ScriptedPicker(), marshal: a => a());
+        vm.ApplySettings(await persistence.LoadSettingsAsync());                // what the host does first
+
+        var pick = vm.SetSourceAsync(LibrarySource.Computer);                     // its save still in flight
+        var loads = persistence.Loads;
+        await vm.InitializeAsync();
+
+        Assert.Equal(LibrarySource.Computer, vm.Source);
+        Assert.Equal(loads, persistence.Loads);                                   // the start does not read settings.json again
+        persistence.Land.SetResult();
+        await pick;
+        Assert.Equal("Computer", persistence.SavedSource);
+    }
+
     [Fact]
     public async Task SetAlbumPinned_SettingsSaveFails_IsLoggedNotThrown()
     {

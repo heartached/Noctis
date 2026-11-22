@@ -96,7 +96,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasTrack), nameof(Quality), nameof(HasQuality))]
+    [NotifyPropertyChangedFor(nameof(HasTrack), nameof(Quality), nameof(HasQuality), nameof(HasNext))]
     private Track? _currentTrack;
 
     /// <summary>Now Playing's quality badge: the playing file's class (<see cref="TrackQuality"/>),
@@ -106,6 +106,13 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public bool HasQuality => Quality != null;
 
     [ObservableProperty] private bool _isPlaying;
+
+    // The app's own Pause (the button, the sleep timer) stops the player's position ticks, so no
+    // tick ever says audio stopped: the scrobbler's play clock ran on through the pause.
+    partial void OnIsPlayingChanged(bool value)
+    {
+        if (!value) PlaybackTick?.Invoke(this, false);
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
@@ -641,6 +648,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _listenTrack = null;
         _flushedListened = TimeSpan.MinValue;
         _startedFrom = _unrecordedFrom;
+        // Up Next first: whoever reacts to the new CurrentTrack (Pick Up on Computer sends the
+        // queue on it) read the old Up Next, still headed by this very song, and sent it twice.
+        SyncUpNext();
         CurrentTrack = track;
         Position = fromPosition ?? TimeSpan.Zero;
         Duration = track.Duration;
@@ -649,7 +659,6 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _player.Play(track.FilePath);
         IsPlaying = true;
         TrackStarted?.Invoke(this, track);
-        SyncUpNext();
         PrepareUpcoming();
         SaveStateNow();
     }
@@ -853,7 +862,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         DebugLog.Write("Audio", $"Playback error: {message} — track: {CurrentTrack?.Title ?? "(none)"}");
-        if (CurrentTrack is { } failed && NeedsComputer?.Invoke(failed) == true && IsConnectionError(message))
+        // Only the computer's streams reach the network, so a connection error is the computer's
+        // even while a song on the phone plays: the player loads the next song ahead (gapless),
+        // and a stream that fails to load is reported near the end of the song before it.
+        if (CurrentTrack != null && NeedsComputer != null && IsConnectionError(message))
         {
             // The computer did not answer. Every other song that needs it would wait out the
             // same timeout in silence, so go straight to the next one on the phone, or stop
@@ -903,17 +915,20 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     public Task SaveStateAsync()
     {
         var snapshot = _queue.Snapshot();
+        // Snapshot's lists are new and nobody else's: copying them again doubled the garbage of
+        // every save (a queue started from the library holds the whole library) on the UI thread.
+        static List<Guid> Own(IReadOnlyList<Guid> ids) => ids as List<Guid> ?? ids.ToList();
         var state = new QueueState
         {
             CurrentTrackId = snapshot.CurrentId,
             PositionSeconds = Position.TotalSeconds,
-            UpNextIds = snapshot.UpNextIds.ToList(),
-            HistoryIds = snapshot.HistoryIds.ToList(),
-            RepeatCycleIds = snapshot.RepeatCycleIds.ToList(),
+            UpNextIds = Own(snapshot.UpNextIds),
+            HistoryIds = Own(snapshot.HistoryIds),
+            RepeatCycleIds = Own(snapshot.RepeatCycleIds),
             RepeatMode = snapshot.RepeatMode,
             IsShuffleEnabled = snapshot.IsShuffleEnabled,
             IsMuted = _player.IsMuted,
-            OriginalOrderIds = snapshot.OriginalOrderIds.ToList(),
+            OriginalOrderIds = Own(snapshot.OriginalOrderIds),
             SourceLabel = SourceLabel,
             PlayedInQueue = snapshot.PlayedInQueue,
         };
@@ -958,12 +973,17 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
             new PlaybackQueueState(state.CurrentTrackId, state.UpNextIds, state.HistoryIds, state.RepeatCycleIds,
                 state.RepeatMode, state.IsShuffleEnabled, state.OriginalOrderIds, state.PlayedInQueue),
             id => _library.GetTrackById(id));
+        // The saved song left the library since (deleted, a duplicate removed): the next one
+        // queued takes its place, from its start. Without it nothing was loaded over a full
+        // Up Next: no player bar, Play did nothing, and the next song tapped replaced the queue.
+        var currentGone = state.CurrentTrackId != null && _queue.Current == null;
+        if (currentGone && _queue.UpNext.Count > 0) _queue.Advance(QueueAdvance.UserSkip);
         SourceLabel = state.SourceLabel;
         RepeatMode = state.RepeatMode;
         IsShuffleEnabled = state.IsShuffleEnabled;
         CurrentTrack = _queue.Current;
         Duration = _queue.Current?.Duration ?? TimeSpan.Zero;
-        Position = _queue.Current != null ? TimeSpan.FromSeconds(Math.Max(0, state.PositionSeconds)) : TimeSpan.Zero;
+        Position = _queue.Current != null && !currentGone ? TimeSpan.FromSeconds(Math.Max(0, state.PositionSeconds)) : TimeSpan.Zero;
         IsPlaying = false;
         SyncUpNext();
     }

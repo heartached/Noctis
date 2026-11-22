@@ -140,6 +140,7 @@ public partial class LyricsPage : UserControl
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty) return;
         UpdateMenuHold();
+        FeedTimeline();
         if (!IsVisible)
         {
             EndBrowse(scrollBack: false);
@@ -178,14 +179,20 @@ public partial class LyricsPage : UserControl
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ShellViewModel.IsMenuOpen) or nameof(ShellViewModel.IsSheetOpen)) UpdateMenuHold();
+        // Android may report the insets after the resize, and the page's size does not change
+        // when only they do: the landscape layout is placed from them, so it follows them too.
+        else if (e.PropertyName == nameof(ShellViewModel.SafeArea)) ApplyOrientation(Bounds.Size);
         else if (e.PropertyName == nameof(ShellViewModel.IsSuspended))
         {
             // Gone to the background: the keep-alive stops now (the frame loop ends at its next
-            // frame). Back in front: catch up to the sung line, then the frames run again.
+            // frame). Back in front: catch up to the sung line and stand on it, as on open (it
+            // used to glide there from wherever the page left off, in front of the user), then
+            // the frames run again.
             if (_shell is { IsSuspended: true }) KeepAlive.Run(false);
             else if (IsVisible)
             {
                 _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
+                if (!_heldForMenu) ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: false);
                 EnsureFrameLoop();
             }
         }
@@ -274,6 +281,7 @@ public partial class LyricsPage : UserControl
 
     private bool? _landscape;
     private double _sideWidth = double.NaN;
+    private Thickness _safe;
 
     /// <summary>
     /// Beta 2 (#mobile-beta): sideways, the lyrics kept the portrait column, its header and
@@ -285,12 +293,14 @@ public partial class LyricsPage : UserControl
     /// </summary>
     private void ApplyOrientation(Size size)
     {
+        if (size.Width <= 0 || size.Height <= 0) return;
         var landscape = size.Width > size.Height;
         var safe = _shell?.SafeArea ?? default;
         var side = landscape ? safe.Left + 24 + Math.Max(0, size.Width - safe.Left - safe.Right - 48) * 5 / 11 : 0;
-        if (_landscape == landscape && side == _sideWidth) return;
+        if (_landscape == landscape && side == _sideWidth && safe == _safe) return;
         _landscape = landscape;
         _sideWidth = side;
+        _safe = safe;
         // Built, not parsed: "{side},*" formats in the phone's culture, and "444,27,*" (German,
         // French, Russian...) is three columns - the lyrics got a 27 dp one and spilled off screen.
         Split.ColumnDefinitions = landscape
@@ -355,6 +365,7 @@ public partial class LyricsPage : UserControl
     {
         _controlsOffTimer.Stop();
         ControlsLayer.IsVisible = true;
+        FeedTimeline();
         ControlsLayer.Opacity = 1;
         ControlsLayer.IsHitTestVisible = true;
         _controlsTimer.Stop();
@@ -385,6 +396,17 @@ public partial class LyricsPage : UserControl
     {
         _controlsOffTimer.Stop();
         if (!ControlsShown) ControlsLayer.IsVisible = false;
+        FeedTimeline();
+    }
+
+    /// <summary>The seek bar and times are fed only while they can be seen: the page shown and
+    /// the transport not faded away (NowPlayingPage.FeedTimeline).</summary>
+    private void FeedTimeline()
+    {
+        if (SeekBar is null) return;   // before InitializeComponent
+        var seen = IsVisible && ControlsLayer.IsVisible;
+        NowPlayingPage.FeedTimeline(SeekBar, SeekBar, seen);
+        NowPlayingPage.FeedTimeline(TimeRow, SeekBar, seen);
     }
 
     // Seek on release only, as Now Playing (NowPlayingPage.OnSeekCompleted).
