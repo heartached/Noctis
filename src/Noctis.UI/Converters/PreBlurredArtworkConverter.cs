@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Data.Converters;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 
@@ -134,21 +135,51 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     private static Bitmap CreateWash(Bitmap source)
     {
         var pixels = ReadDownscaled(source, out var w, out var h);
-        Vivify(pixels);
-        Blur(pixels, w, h, WashSigma);
+        MakeWash(pixels, w, h);
         var wash = ToBitmap(pixels, w, h);
-        WashPixelCache.AddOrUpdate(wash, pixels);
+        WashToneCache.AddOrUpdate(wash, new StrongBox<WashTones>(MeasureTones(pixels)));
         return wash;
     }
 
-    // A wash's own pixels, kept with it (16 K pixels, 64 KB): a WriteableBitmap just written can't be
-    // read back at once (CopyPixels and Lock both gave another cover's pixels or none in the phone's
-    // Colour Wash tests), and the phone's Colour Wash measures its wash.
-    private static readonly ConditionalWeakTable<Bitmap, byte[]> WashPixelCache = new();
+    /// <summary>The Vivify and blur a wash is made of, on a cover's downscaled pixels (in place).</summary>
+    internal static void MakeWash(byte[] pixels, int w, int h)
+    {
+        Vivify(pixels);
+        Blur(pixels, w, h, WashSigma);
+    }
 
-    /// <summary>The pixels of a bitmap this converter made as a "wash" (premultiplied BGRA, rows of
-    /// its <see cref="Bitmap.PixelSize"/> width, no padding); null for any other bitmap.</summary>
-    public static byte[]? WashPixels(Bitmap wash) => WashPixelCache.TryGetValue(wash, out var pixels) ? pixels : null;
+    /// <summary>A wash's brightest pixel as a dark page shows it (over black) and its darkest as a
+    /// light page shows it (over white): all the phone's Colour Wash needs of its pixels.</summary>
+    public readonly record struct WashTones(Color Brightest, Color Darkest);
+
+    // Each wash's tones, measured while its pixels are in hand. Its pixels used to be kept instead
+    // (64 KB a cover, for as long as the cover stayed decoded), as a WriteableBitmap "could not be
+    // read back": that is the headless test platform's bitmap stub, which hands every Lock a fresh
+    // native buffer and frees it after (MobileWashCacheTests); Skia, the phone's, reads back fine.
+    private static readonly ConditionalWeakTable<Bitmap, StrongBox<WashTones>> WashToneCache = new();
+
+    /// <summary>The <see cref="WashTones"/> of a bitmap this converter made as a "wash"; null for any other bitmap.</summary>
+    public static WashTones? WashTonesOf(Bitmap wash) => WashToneCache.TryGetValue(wash, out var tones) ? tones.Value : null;
+
+    /// <summary>The <see cref="WashTones"/> of premultiplied BGRA pixels: as they are, a pixel over
+    /// black; plus the rest of white, over white.</summary>
+    internal static WashTones MeasureTones(byte[] pixels)
+    {
+        Color brightest = Colors.Black, darkest = Colors.White;
+        double most = -1, least = 2;
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            byte r = pixels[i + 2], g = pixels[i + 1], b = pixels[i];
+            var clear = 255 - pixels[i + 3];
+            var overBlack = Color.FromRgb(r, g, b);
+            var overWhite = Color.FromRgb((byte)Math.Min(255, r + clear), (byte)Math.Min(255, g + clear), (byte)Math.Min(255, b + clear));
+            var lb = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(overBlack);
+            var lw = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(overWhite);
+            if (lb > most) { most = lb; brightest = overBlack; }
+            if (lw < least) { least = lw; darkest = overWhite; }
+        }
+        return new WashTones(brightest, darkest);
+    }
 
     // A pixel counts as vivid from this much chroma (max - min channel, 0..255) and brightness
     // (max channel) up; the share of a cover's pixels that must be vivid for it to have a colour
