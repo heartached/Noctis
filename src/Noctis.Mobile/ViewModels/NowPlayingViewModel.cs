@@ -862,7 +862,10 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         DebugLog.Write("Audio", $"Playback error: {message} — track: {CurrentTrack?.Title ?? "(none)"}");
-        if (CurrentTrack is { } failed && NeedsComputer?.Invoke(failed) == true && IsConnectionError(message))
+        // Only the computer's streams reach the network, so a connection error is the computer's
+        // even while a song on the phone plays: the player loads the next song ahead (gapless),
+        // and a stream that fails to load is reported near the end of the song before it.
+        if (CurrentTrack != null && NeedsComputer != null && IsConnectionError(message))
         {
             // The computer did not answer. Every other song that needs it would wait out the
             // same timeout in silence, so go straight to the next one on the phone, or stop
