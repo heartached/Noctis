@@ -7,31 +7,58 @@ using Noctis.Localization;
 
 namespace Noctis.Mobile.ViewModels;
 
-/// <summary>One day of "This Week": its bar's height (0 to <see cref="HistoryBar.MaxHeight"/>), its weekday's letter, and whether it is today.</summary>
-public sealed record HistoryBar(double Height, string Label, bool IsToday, string Name)
+/// <summary>One day of "This Week": its bar's height (0 to <see cref="MaxHeight"/>), its weekday's
+/// letter, whether it is today, and whether it is the day the card shows (tapped).</summary>
+public sealed partial class HistoryBar : ObservableObject
 {
     public const double MaxHeight = 120;
     private const double MinHeight = 6;
 
-    public static IReadOnlyList<HistoryBar> Of(ListeningWeek week)
+    public HistoryBar(DateTime date, double height, string label, bool isToday, string name)
+    {
+        Date = date;
+        Height = height;
+        Label = label;
+        IsToday = isToday;
+        Name = name;
+    }
+
+    public DateTime Date { get; }
+    public double Height { get; }
+    public string Label { get; }
+    public bool IsToday { get; }
+
+    /// <summary>The screen reader's name: "Wednesday: 2 h 3 min, 5 plays".</summary>
+    public string Name { get; }
+
+    /// <summary>Changed in place, so a tap leaves the bars (and a screen reader's focus) where they are.</summary>
+    [ObservableProperty] private bool _isSelected;
+
+    public static IReadOnlyList<HistoryBar> Of(ListeningWeek week, DateTime? selected = null)
     {
         var max = week.DayTicks.Max();
-        return week.Days.Select((day, i) => new HistoryBar(
+        return week.Days.Select((day, i) => new HistoryBar(day,
             max == 0 ? MinHeight : Math.Max(MinHeight, MaxHeight * week.DayTicks[i] / max),
             Loc.Instance.Culture.DateTimeFormat.GetShortestDayName(day.DayOfWeek)[..1].ToUpper(Loc.Instance.Culture),
             i == week.Days.Count - 1,
-            Loc.T("Mobile.History.DayName", day.ToString("dddd", Loc.Instance.Culture), ListeningHistoryViewModel.FormatTotal(week.DayTicks[i])))).ToList();
+            Loc.T("Mobile.History.DayName", day.ToString("dddd", Loc.Instance.Culture), ListeningHistoryViewModel.FormatTotal(week.DayTicks[i]),
+                Loc.Plural("Mobile.Count.Plays", week.DayPlays[i])))
+        {
+            IsSelected = day == selected,
+        }).ToList();
     }
 }
 
-/// <summary>A song in Recently Played with how long ago it last played ("Now", "12 min", "1 h").</summary>
-public sealed record HistoryRow(Track Track, string When);
+/// <summary>A song in Recently Played with how long ago it last played ("Now", "12 min", "1 h") and,
+/// under its title, its artist and how often the log has it ("Artist · 12 plays").</summary>
+public sealed record HistoryRow(Track Track, string When, string Sub);
 
 /// <summary>
-/// Settings → Listening History: this week's listening from the phone's play log, the last few
-/// plays, how long plays are kept, whether they are shared with the computer and Clear; and the
-/// Pick Up on Computer switch the main sheet shows. The choices live on <see cref="ShellViewModel"/>
-/// (the player and the sync read them without Settings open); this is their face.
+/// Settings → Listening History: this week's listening from the phone's play log (or one day's,
+/// a bar tapped), the all-time total, the last few plays with their counts, how long plays are
+/// kept, whether they are shared with the computer and Clear; and the Pick Up on Computer switch
+/// the main sheet shows. The choices live on <see cref="ShellViewModel"/> (the player and the
+/// sync read them without Settings open); this is their face.
 /// </summary>
 public sealed partial class ListeningHistoryViewModel : ObservableObject
 {
@@ -40,6 +67,7 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
 
     private readonly ShellViewModel _shell;
     private bool _syncing;
+    private ListeningWeek? _week;
 
     public ListeningHistoryViewModel(ShellViewModel shell)
     {
@@ -77,9 +105,17 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
     }
     private string _summary = string.Empty;
 
+    // The card's numbers: the week's, or the tapped day's (SelectedDay).
+    [ObservableProperty] private string _weekCaption = Loc.T("Mobile.History.ThisWeek");
     [ObservableProperty] private string _weekTotal = FormatTotal(0);
     [ObservableProperty] private string _weekPlays = string.Empty;
     [ObservableProperty] private IReadOnlyList<HistoryBar> _bars = Array.Empty<HistoryBar>();
+
+    /// <summary>The day the card shows, a bar tapped; null for the week. Kept by date across a refresh.</summary>
+    public DateTime? SelectedDay { get; private set; }
+
+    /// <summary>"All Time: 41 h 3 min · 812 plays" over the whole kept log; "" without plays.</summary>
+    [ObservableProperty] private string _allTime = string.Empty;
 
     /// <summary>The last <see cref="PreviewRows"/> different songs played, newest first.</summary>
     public BulkObservableCollection<HistoryRow> Recent { get; } = new();
@@ -184,15 +220,82 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
         var events = _shell.Library.History?.Events ?? Array.Empty<PlayHistoryEvent>();
         var now = UtcNow();
         var library = _shell.Library.Service;
-        var week = ListeningWeekCalculator.Compute(events, id => library.GetTrackById(id)?.Duration, now, Zone);
+        Func<Guid, TimeSpan?> lengthOf = id => library.GetTrackById(id)?.Duration;
+        var week = ListeningWeekCalculator.Compute(events, lengthOf, now, Zone);
+        _week = week;
         Summary = FormatSummary(week);
-        WeekTotal = FormatTotal(week.TotalTicks);
-        WeekPlays = Loc.Plural("Mobile.Count.Plays", week.Plays);
-        Bars = HistoryBar.Of(week);
+        // A day that has left the window (midnight passed) lets go; one still in it stays shown.
+        if (SelectedDay is { } day && !week.Days.Contains(day)) SelectedDay = null;
+        Bars = HistoryBar.Of(week, SelectedDay);
+        ShowSelection();
 
-        var rows = RecentPlays(events, PreviewRows).Select(r => new HistoryRow(r.Track, FormatAgo(r.PlayedUtc, now))).ToList();
+        var (allTicks, allPlays) = ListeningWeekCalculator.ComputeAllTime(events, lengthOf);
+        AllTime = allPlays == 0 ? string.Empty
+            : Loc.T("Mobile.History.AllTime", FormatTotal(allTicks), Loc.Plural("Mobile.Count.Plays", allPlays));
+
+        var recent = RecentPlays(events, PreviewRows).ToList();
+        var counts = PlayCounts(events, recent.Select(r => r.Track.Id));
+        var rows = recent.Select(r => new HistoryRow(r.Track, FormatAgo(r.PlayedUtc, now), RowSub(r.Track, counts[r.Track.Id]))).ToList();
         MobileLibrary.ReplaceIfChanged(Recent, rows);
         HasRecent = Recent.Count > 0;
+    }
+
+    /// <summary>A day bar tapped: the card shows that day; the shown day tapped again shows the week.</summary>
+    [RelayCommand]
+    private void SelectDay(HistoryBar? bar)
+    {
+        SelectedDay = bar == null || bar.Date == SelectedDay ? null : bar.Date;
+        foreach (var b in Bars) b.IsSelected = b.Date == SelectedDay;
+        ShowSelection();
+    }
+
+    /// <summary>The card tapped outside the bars: back to the week.</summary>
+    [RelayCommand]
+    private void ClearDay() => SelectDay(null);
+
+    /// <summary>The caption, total and plays for the shown day, or for the week.</summary>
+    private void ShowSelection()
+    {
+        if (_week is not { } week) return;
+        var i = SelectedDay is { } day ? IndexOf(week.Days, day) : -1;
+        if (i < 0)
+        {
+            WeekCaption = Loc.T("Mobile.History.ThisWeek");
+            WeekTotal = FormatTotal(week.TotalTicks);
+            WeekPlays = Loc.Plural("Mobile.Count.Plays", week.Plays);
+            return;
+        }
+        var culture = Loc.Instance.Culture;
+        var name = week.Days[i].ToString("dddd", culture);
+        // Some languages write weekdays in lower case ("mercredi"); the caption is a title.
+        WeekCaption = i == week.Days.Count - 1 ? Loc.T("Stats.Today")
+            : name.Length == 0 ? name : char.ToUpper(name[0], culture) + name[1..];
+        WeekTotal = FormatTotal(week.DayTicks[i]);
+        WeekPlays = Loc.Plural("Mobile.Count.Plays", week.DayPlays[i]);
+    }
+
+    private static int IndexOf(IReadOnlyList<DateTime> days, DateTime day)
+    {
+        for (var i = 0; i < days.Count; i++)
+            if (days[i] == day) return i;
+        return -1;
+    }
+
+    /// <summary>How often the log has each of <paramref name="ids"/> (skips count, as in the week's plays).</summary>
+    private static Dictionary<Guid, int> PlayCounts(IReadOnlyList<PlayHistoryEvent> events, IEnumerable<Guid> ids)
+    {
+        var counts = ids.Distinct().ToDictionary(id => id, _ => 0);
+        if (counts.Count == 0) return counts;
+        foreach (var e in events)
+            if (counts.TryGetValue(e.TrackId, out var n)) counts[e.TrackId] = n + 1;
+        return counts;
+    }
+
+    /// <summary>"Artist · 12 plays"; just the plays for a song without an artist.</summary>
+    private static string RowSub(Track track, int plays)
+    {
+        var count = Loc.Plural("Mobile.Count.Plays", plays);
+        return string.IsNullOrWhiteSpace(track.Artist) ? count : $"{track.Artist} · {count}";
     }
 
     /// <summary>The newest-first plays of songs still in the library, each song once.</summary>

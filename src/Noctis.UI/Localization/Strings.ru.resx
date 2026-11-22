@@ -3694,7 +3694,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Название песни</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Включён режим энергосбережения, поэтому цвета неподвижны.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Тратит чуть больше батареи и замирает в режиме энергосбережения</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>За всё время: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Всегда</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 год</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} день|{0} дня|{0} дней</value></data>

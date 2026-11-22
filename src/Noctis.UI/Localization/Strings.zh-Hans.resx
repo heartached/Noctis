@@ -8675,7 +8675,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>歌曲标题</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>省电模式已开启，因此色彩保持静止。</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>稍微多耗电并在省电模式下暂停</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}：{1}，{2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>全部时间：{0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>永久</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 年</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} 天</value></data>
