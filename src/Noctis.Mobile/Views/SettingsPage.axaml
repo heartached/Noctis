@@ -708,6 +708,18 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
+                                    <!-- Artist Separators: what splits one artist tag into several artists (the desktop's
+                                         Artist Tag Separators; Discord beta feedback). -->
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ArtistSeparatorsRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.ArtistSeparators}" AutomationProperties.Name="{Binding ArtistSeparatorsRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconSeparators}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.ArtistSeparators}" />
+                                            <TextBlock Grid.Column="2" Name="ArtistSeparatorsValueLabel" Classes="row-value" Text="{Binding ArtistSeparators.Summary}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
                                             IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
@@ -1012,6 +1024,9 @@
                         </Panel>
                         <Panel Name="TabBarHost" IsVisible="{Binding ShowsTabBarPane}">
                             <views:TabBarPane Name="TabBarPane" DataContext="{Binding TabBar}" />
+                        </Panel>
+                        <Panel Name="ArtistSeparatorsHost" IsVisible="{Binding ShowsArtistSeparatorsPane}">
+                            <views:ArtistSeparatorsPane Name="ArtistSeparatorsPane" DataContext="{Binding ArtistSeparators}" />
                         </Panel>
 
                         <!-- Accent: the colours and Match Artwork, then whether album and artist pages take the cover's colour. -->

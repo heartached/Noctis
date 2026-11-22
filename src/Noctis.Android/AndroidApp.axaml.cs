@@ -359,6 +359,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
             _shell!.Library.ApplySettings(settings);
+            // Settings › Artist Separators, before the library builds (or restores) its artist list.
+            ArtistSeparatorsViewModel.ApplySaved(settings);
             // No SetGapless(settings.GaplessPlaybackEnabled): the phone is always gapless
             // (NowPlayingViewModel turns it on), whatever a desktop-written settings.json says.
             await history.PreloadAsync();

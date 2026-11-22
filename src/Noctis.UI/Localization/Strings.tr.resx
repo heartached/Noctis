@@ -4399,6 +4399,9 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} öğesini göster</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Klasör</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Şu an bu telefonda yok</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Sanatçı Ayırıcıları</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Her ayırıcı bir sanatçı etiketini birkaç sanatçıya böler: “,” ile “Boys Noize, ABRA” etiketi Boys Noize ve ABRA olur. Sanatçılarınız hemen yeniden gruplanır.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} öğesini kaldır</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Diğer Sürümler</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Orijinal</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Sözlerde ara</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

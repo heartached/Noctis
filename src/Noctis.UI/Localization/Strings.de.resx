@@ -4346,6 +4346,9 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} einblenden</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Ordner</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Derzeit nicht auf diesem Telefon</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Künstler-Trennzeichen</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Jedes Trennzeichen teilt einen Künstler-Tag in mehrere Künstler: Mit „,“ wird aus „Boys Noize, ABRA“ Boys Noize und ABRA. Deine Künstler werden sofort neu gruppiert.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} entfernen</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Andere Versionen</value></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Songtexte durchsuchen</value></data>
