@@ -110,6 +110,22 @@ public partial class NowPlayingPage : UserControl
     private void UpdateDiscActive()
     {
         if (Disc is { } disc) disc.IsActive = IsVisible && _shell is not { IsSuspended: true };
+        if (TimelineRow is not null) FeedTimeline(TimelineRow, SeekBar, IsVisible);
+    }
+
+    /// <summary>
+    /// The seek bar and its times follow the player's four position ticks a second, and each tick
+    /// marked them for redraw even on a hidden page: a render pass every tick and, once a second,
+    /// both times' text laid out again, for the closed Now Playing and its lyrics alike, all the
+    /// while music played (MobileHiddenTimelineTests). While hidden, <paramref name="row"/> has no
+    /// data (its bindings go quiet); shown again, it takes the page's data back and reads the
+    /// current values before it is drawn. Never mid-drag. (A page on screen when the app goes to
+    /// the background stays fed: the system's snapshot of it must not show a blank bar.)
+    /// </summary>
+    internal static void FeedTimeline(Control row, CapsuleSlider seekBar, bool seen)
+    {
+        if (seen) row.ClearValue(DataContextProperty);
+        else if (!seekBar.IsScrubbing) row.DataContext = null;
     }
 
     private bool? _landscape;

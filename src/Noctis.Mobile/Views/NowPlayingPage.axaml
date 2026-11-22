@@ -293,8 +293,9 @@
                     </Button>
                 </Grid>
 
-                <Grid Grid.Row="3" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
-                    <!-- Seeks on release only (the code-behind); the times follow the drag. -->
+                <Grid Grid.Row="3" Name="TimelineRow" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
+                    <!-- Seeks on release only (the code-behind); the times follow the drag. While the
+                         page is hidden or the app is away the row is not fed (the code-behind). -->
                     <views:CapsuleSlider Name="SeekBar" Height="30" Minimum="0" Maximum="{Binding Player.Duration.TotalSeconds}"
                                          Value="{Binding Player.Position.TotalSeconds, Mode=OneWay}"
                                          AutomationProperties.Name="{loc:T Mobile.PlaybackPosition}" />

@@ -140,6 +140,7 @@ public partial class LyricsPage : UserControl
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty) return;
         UpdateMenuHold();
+        FeedTimeline();
         if (!IsVisible)
         {
             EndBrowse(scrollBack: false);
@@ -364,6 +365,7 @@ public partial class LyricsPage : UserControl
     {
         _controlsOffTimer.Stop();
         ControlsLayer.IsVisible = true;
+        FeedTimeline();
         ControlsLayer.Opacity = 1;
         ControlsLayer.IsHitTestVisible = true;
         _controlsTimer.Stop();
@@ -394,6 +396,17 @@ public partial class LyricsPage : UserControl
     {
         _controlsOffTimer.Stop();
         if (!ControlsShown) ControlsLayer.IsVisible = false;
+        FeedTimeline();
+    }
+
+    /// <summary>The seek bar and times are fed only while they can be seen: the page shown and
+    /// the transport not faded away (NowPlayingPage.FeedTimeline).</summary>
+    private void FeedTimeline()
+    {
+        if (SeekBar is null) return;   // before InitializeComponent
+        var seen = IsVisible && ControlsLayer.IsVisible;
+        NowPlayingPage.FeedTimeline(SeekBar, SeekBar, seen);
+        NowPlayingPage.FeedTimeline(TimeRow, SeekBar, seen);
     }
 
     // Seek on release only, as Now Playing (NowPlayingPage.OnSeekCompleted).
