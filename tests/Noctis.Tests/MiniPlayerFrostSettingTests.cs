@@ -491,13 +491,17 @@ public class MiniPlayerFrostSettingTests : IDisposable
         TrayMenuFrost.Register(() => glass, () => Color.Parse("#202030"));
         Window Open(string name)
         {
+            // The app style gives every menu card the pop (Styles.axaml); set here directly.
+            var presenter = new MenuFlyoutPresenter { ItemsSource = new[] { "Open Noctis", "Quit" } };
+            MenuOpenAnimation.SetPop(presenter, true);
+            MenuOpenAnimation.SetEnable(presenter, true);
             var w = new Window
             {
                 Name = name,
                 SizeToContent = SizeToContent.WidthAndHeight,
                 WindowDecorations = WindowDecorations.None,
                 TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
-                Content = new MenuFlyoutPresenter { ItemsSource = new[] { "Open Noctis", "Quit" } },
+                Content = presenter,
             };
             w.Show();
             Dispatcher.UIThread.RunJobs();
@@ -525,6 +529,11 @@ public class MiniPlayerFrostSettingTests : IDisposable
                 var shape = Assert.IsType<MiniPlayerWindow.RegionShape>(TrayMenuFrost.CardShape(card));
                 Assert.Equal(card.Bounds.Size, shape.Rect.Size);
                 Assert.Equal(card.CornerRadius.TopLeft, shape.Radius);
+                // Discord 11-21: the OS blur can't fade, so the frosted card shows at once
+                // (no pop): no empty frosted rectangle while the rows fade in.
+                Assert.Null(card.Transitions);
+                Assert.Equal(1, card.Opacity);
+                Assert.All(card.GetRealizedContainers(), r => Assert.Equal(1, r.Opacity));
             }
             Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, other.TransparencyLevelHint);
             Assert.Equal(new[] { WindowTransparencyLevel.Transparent }, trayNoGlass.TransparencyLevelHint);
