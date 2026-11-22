@@ -184,11 +184,14 @@ public partial class LyricsPage : UserControl
         else if (e.PropertyName == nameof(ShellViewModel.IsSuspended))
         {
             // Gone to the background: the keep-alive stops now (the frame loop ends at its next
-            // frame). Back in front: catch up to the sung line, then the frames run again.
+            // frame). Back in front: catch up to the sung line and stand on it, as on open (it
+            // used to glide there from wherever the page left off, in front of the user), then
+            // the frames run again.
             if (_shell is { IsSuspended: true }) KeepAlive.Run(false);
             else if (IsVisible)
             {
                 _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
+                if (!_heldForMenu) ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: false);
                 EnsureFrameLoop();
             }
         }
