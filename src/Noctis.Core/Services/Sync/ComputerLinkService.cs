@@ -23,6 +23,10 @@ internal sealed record ComputerLinkAccount
     /// <summary>The other computer's song id → this computer's file of the same song (both "N" hex),
     /// from the last sync: a pair holds while both songs exist, so a tag edit never moves it.</summary>
     public Dictionary<string, string> Links { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>The other computer's playlist id → this computer's playlist that is the same one
+    /// (both "N" hex): playlists both computers already had under one name when they first synced.
+    /// A playlist one computer got from the other keeps its id and needs no entry.</summary>
+    public Dictionary<string, string> PlaylistLinks { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Never prints the key.</summary>
     public override string ToString() => $"ComputerLinkAccount {{ ServerUrl = {ServerUrl}, UserName = {UserName} }}";
@@ -55,6 +59,10 @@ internal sealed record ComputerLinkResult(int Paired, int Received, int Sent, bo
 /// both computers then hold the merge. Nothing is unfavourited or unrated by linking.</item>
 /// <item>Play counts never go down (the higher count wins), so plays on both computers between two
 /// syncs count once each side, not added together.</item>
+/// <item>A playlist both computers already had before they first synced (the same name, capitals
+/// and outer spaces aside, and only one of that name on each) is one playlist from then on, not
+/// two: it keeps the newer one's name, description and order, with the other's extra songs added
+/// at the end, and every later edit or delete reaches the other computer's copy.</item>
 /// <item>A playlist deleted on one computer is deleted on the other when the delete is newer than
 /// the other's last edit of it; a delete of a playlist the other computer never had is not sent.
 /// An empty or unreadable playlist list on this computer sends no deletes at all.</item>
@@ -268,9 +276,14 @@ internal sealed class ComputerLinkService
         // 2. The other computer's whole ledger.
         var remote = await PullAllAsync(client, account, ct).ConfigureAwait(false);
 
-        // 3. Into this computer's ledger and library, newest change wins.
+        // 3. Into this computer's ledger and library, newest change wins. This computer's
+        // playlists go into its ledger first: without their stamps there, anything the other
+        // computer has would win over a playlist edited here later (the first sync).
         var now = DateTime.UtcNow;
+        var before = await _ledger.LocalItemsAsync(ct).ConfigureAwait(false);
         var playlists = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+        var (listToLocal, freshLists) = PairPlaylists(account, remote, before, playlists);
+        var listToRemote = listToLocal.ToDictionary(kv => kv.Value, kv => kv.Key);
         var localCovers = playlists.Where(p => p is not null)
             .GroupBy(p => p.Id).ToDictionary(g => g.Key, g => PlaylistCovers.CoverOf(g.First().CoverArtPath));
         var songById = songs.ToDictionary(s => s.Id);
@@ -283,7 +296,10 @@ internal sealed class ComputerLinkService
                 case SyncKinds.Track when toLocal.TryGetValue(id, out var lid) && !fresh.Contains(id):
                     incoming.Add(new SyncItem(SyncKinds.Track, lid.ToString("N"), item.Payload.GetRawText(), item.UpdatedUtc, item.Device, 0));
                     break;
+                case SyncKinds.Playlist when freshLists.Contains(id):
+                    break; // paired just now: merged below
                 case SyncKinds.Playlist when SyncJson.Deserialize<PlaylistSyncState>(item.Payload.GetRawText()) is { } state:
+                    if (listToLocal.TryGetValue(id, out var listId)) id = listId;
                     // Covers stay on each computer: this computer's cover (or none) is what the
                     // item says, so taking the other computer's edit never removes or changes it.
                     state = state with
@@ -314,6 +330,26 @@ internal sealed class ComputerLinkService
                 // The merge, newer than either side: applied here, then sent there.
                 incoming.Add(new SyncItem(SyncKinds.Track, lid.ToString("N"), SyncJson.Serialize(merged), now, _ledger.DeviceId, 0));
         }
+        foreach (var rid in freshLists)
+        {
+            // The same playlist made on both computers: one from now on, nothing lost.
+            var lid = listToLocal[rid];
+            if (playlists.FirstOrDefault(p => p is not null && p.Id == lid) is not { } local) continue;
+            var theirs = remote[Key(SyncKinds.Playlist, rid)];
+            if (SyncJson.Deserialize<PlaylistSyncState>(theirs.Payload.GetRawText()) is not { } their) continue;
+            var mine = PlaylistSyncState.From(local);
+            var theirIds = Translate(their.TrackIds, toLocal);
+            var mineNewer = (local.ModifiedAt.Kind == DateTimeKind.Utc ? local.ModifiedAt : local.ModifiedAt.ToUniversalTime()) >= theirs.UpdatedUtc;
+            var merged = (mineNewer ? mine : their) with
+            {
+                TrackIds = (mineNewer ? mine.TrackIds.Concat(theirIds) : theirIds.Concat(mine.TrackIds))
+                    .Distinct().Take(LibrarySyncService.MaxPlaylistTracks).ToList(),
+                ModifiedAt = now,
+                Deleted = false,
+                Cover = localCovers.TryGetValue(lid, out var cover) ? cover : null,
+            };
+            incoming.Add(new SyncItem(SyncKinds.Playlist, lid.ToString("N"), SyncJson.Serialize(merged), now, _ledger.DeviceId, 0));
+        }
         var received = incoming.Count == 0 ? 0 : await _ledger.MergeAsync(incoming, _applier, ct).ConfigureAwait(false);
 
         // 4. This computer's changes the other computer does not have yet.
@@ -335,6 +371,7 @@ internal sealed class ComputerLinkService
                 }
                 case SyncKinds.Playlist:
                 {
+                    if (listToRemote.TryGetValue(id, out var remoteId)) id = remoteId;
                     remote.TryGetValue(Key(SyncKinds.Playlist, id), out var theirs);
                     if (theirs is not null && item.UpdatedUtc <= theirs.UpdatedUtc) continue;
                     if (SyncJson.Deserialize<PlaylistSyncState>(item.Payload) is not { } state) continue;
@@ -372,12 +409,63 @@ internal sealed class ComputerLinkService
             {
                 LastSyncUtc = DateTime.UtcNow,
                 Links = toLocal.ToDictionary(kv => kv.Key.ToString("N"), kv => kv.Value.ToString("N"), StringComparer.OrdinalIgnoreCase),
+                PlaylistLinks = listToLocal.ToDictionary(kv => kv.Key.ToString("N"), kv => kv.Value.ToString("N"), StringComparer.OrdinalIgnoreCase),
             };
             Save(updated);
             _account = updated;
         }
         return new ComputerLinkResult(toLocal.Count, received, sent);
     }
+
+    /// <summary>
+    /// The other computer's playlist id → this computer's playlist that is the same one: the pairs
+    /// kept from earlier syncs, plus (<c>Fresh</c>) playlists both computers had before they ever
+    /// synced. A new pair needs the same name (capitals and outer spaces aside), exactly one
+    /// playlist of that name on each computer, and neither id known to the other computer in any
+    /// way (a playlist that already travelled keeps its own id).
+    /// </summary>
+    private static (Dictionary<Guid, Guid> ToLocal, HashSet<Guid> Fresh) PairPlaylists(ComputerLinkAccount account,
+        Dictionary<string, PulledItem> remote, IReadOnlyList<SyncItem> localLedger, List<Playlist> playlists)
+    {
+        var toLocal = new Dictionary<Guid, Guid>();
+        var fresh = new HashSet<Guid>();
+        var localLedgerIds = new HashSet<Guid>();
+        foreach (var item in localLedger)
+            if (item.Kind == SyncKinds.Playlist && NoctisRemoteIds.TryParseSyncId(item.Id, out var id)) localLedgerIds.Add(id);
+        var remoteIds = new HashSet<Guid>();
+        var remoteLive = new List<(Guid Id, string Name)>();
+        foreach (var item in remote.Values)
+        {
+            if (item.Kind != SyncKinds.Playlist || !NoctisRemoteIds.TryParseSyncId(item.Id, out var id)) continue;
+            remoteIds.Add(id);
+            if (SyncJson.Deserialize<PlaylistSyncState>(item.Payload.GetRawText()) is { Deleted: false } state)
+                remoteLive.Add((id, NameKey(state.Name)));
+        }
+        var taken = new HashSet<Guid>();
+        foreach (var (r, l) in account.PlaylistLinks)
+        {
+            if (!NoctisRemoteIds.TryParseSyncId(r, out var rid) || !NoctisRemoteIds.TryParseSyncId(l, out var lid)) continue;
+            // Kept while both ledgers know their side (a delete is known too, and must travel).
+            if (rid == lid || !remoteIds.Contains(rid) || !localLedgerIds.Contains(lid) || !taken.Add(lid)) continue;
+            toLocal[rid] = lid;
+        }
+        // Two of one name on either computer (paired and shared ones count) is not a clear pair.
+        var live = playlists.Where(p => p is not null).Select(p => (p.Id, Name: NameKey(p.Name))).ToList();
+        var localByName = live.GroupBy(p => p.Name, StringComparer.Ordinal).Where(g => g.Count() == 1)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal);
+        foreach (var group in remoteLive.GroupBy(p => p.Name, StringComparer.Ordinal))
+        {
+            if (group.Key.Length == 0 || group.Count() != 1 || !localByName.TryGetValue(group.Key, out var lid)) continue;
+            var rid = group.First().Id;
+            // Neither one known to the other computer yet, nor paired already.
+            if (toLocal.ContainsKey(rid) || localLedgerIds.Contains(rid) || taken.Contains(lid) || remoteIds.Contains(lid)) continue;
+            toLocal[rid] = lid;
+            fresh.Add(rid);
+        }
+        return (toLocal, fresh);
+    }
+
+    private static string NameKey(string? name) => (name ?? string.Empty).Trim().ToUpperInvariant();
 
     /// <summary>The other computer's ledger from the start, the latest item per (kind, id).</summary>
     private static async Task<Dictionary<string, PulledItem>> PullAllAsync(NoctisServerClient client, ComputerLinkAccount account, CancellationToken ct)
