@@ -1736,6 +1736,31 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Same(local, _phoneLibrary.GetTrackById(local.Id));
     }
 
+    /// <summary>Hide Song on a file paired with a desktop song: the next sync no longer saw the file
+    /// (hidden songs are out of the library's list), ended the pair and brought the computer's copy
+    /// back as a row of its own, the hidden song showing again (and twice once unhidden).</summary>
+    [Fact]
+    public async Task HidingAPairedFile_KeepsTheSongHidden_TheComputersCopyDoesNotComeBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_t3.Id, svc.DesktopIdOf(local));
+
+        await _phoneLibrary.SetFolderHiddenAsync(local.FilePath, hidden: true);   // Hide Song
+        await svc.SyncNowAsync(ct);
+
+        Assert.DoesNotContain(_phoneLibrary.Tracks, t => t.Id == _t3.Id || t.Id == local.Id);
+        Assert.Equal(_t3.Id, svc.DesktopIdOf(local));
+
+        // Unhidden: the one song again, not the file and the computer's copy side by side.
+        await _phoneLibrary.SetFolderHiddenAsync(local.FilePath, hidden: false);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+    }
+
     [Fact]
     public async Task EditsAndPlaysOfAPairedFile_GoToTheDesktopUnderTheDesktopId()
     {

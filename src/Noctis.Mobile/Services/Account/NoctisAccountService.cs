@@ -851,18 +851,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 if (NoctisRemoteIds.TryParseSyncId(d, out var did) && NoctisRemoteIds.TryParseSyncId(l, out var lid)) sticky[did] = lid;
 
         var matched = NoctisLocalMatcher.Match(songs, _library.Tracks, sticky);
-        if (keepUnlisted)
+        // The phone's own files, hidden ones too (Hide Song): Tracks and GetTrackById leave a hidden
+        // file out, so its pair ended and the computer's copy came back as a row, the song shown again.
+        var own = new Dictionary<Guid, Track>();
+        foreach (var t in _library.AllTracks)
+            if (t.SourceType == SourceType.Local) own.TryAdd(t.Id, t);
+        var listed = new HashSet<Guid>(songs.Select(s => s.Id));
+        var visible = new HashSet<Guid>(_library.Tracks.Select(t => t.Id));
+        var taken = new HashSet<Guid>(matched.Values);
+        foreach (var (d, l) in sticky)
         {
-            // A partial catalog proves nothing about the songs it left out: their pairs stay.
-            var listed = new HashSet<Guid>(songs.Select(s => s.Id));
-            var taken = new HashSet<Guid>(matched.Values);
-            foreach (var (d, l) in sticky)
-                if (!listed.Contains(d) && _library.GetTrackById(l) is { SourceType: SourceType.Local } && taken.Add(l)) matched[d] = l;
+            if (matched.ContainsKey(d) || !own.ContainsKey(l)) continue;
+            // A hidden file keeps its pair while the computer lists the song. A partial catalog
+            // proves nothing about the songs it left out: their pairs stay.
+            var keep = listed.Contains(d) ? !visible.Contains(l) : keepUnlisted;
+            if (keep && taken.Add(l)) matched[d] = l;
         }
 
         var result = new Dictionary<Guid, Track>(matched.Count);
         foreach (var (d, l) in matched)
-            if (_library.GetTrackById(l) is { SourceType: SourceType.Local } t) result[d] = t;
+            if (own.TryGetValue(l, out var t)) result[d] = t;
         fresh = new HashSet<Guid>(result.Keys.Where(d => !sticky.TryGetValue(d, out var old) || old != result[d].Id));
 
         lock (_gate)
