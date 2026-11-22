@@ -264,6 +264,57 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(_art, File.ReadAllBytes(_phonePersistence.GetArtworkPath(AlbumA)));
     }
 
+    /// <summary>A cover corrected on the computer reached the phone only once the phone's copy was
+    /// 30 days old. The computer's album list says which version of each cover it has: a changed
+    /// one comes on the next sync, an unchanged one is not asked again.</summary>
+    [Fact]
+    public async Task ACoverChangedOnTheComputer_ArrivesWithTheNextSync_AndAnUnchangedOneIsNotAskedAgain()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var phoneCover = _phonePersistence.GetArtworkPath(AlbumA);
+        Assert.Equal(_art, File.ReadAllBytes(phoneCover));
+
+        // Corrected on the computer (a new file there, written after the phone's copy).
+        var corrected = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 9, 8, 7, 6, 5 };
+        var deskCover = Path.Combine(_dir, "cover.jpg");
+        File.WriteAllBytes(deskCover, corrected);
+        File.SetLastWriteTimeUtc(deskCover, File.GetLastWriteTimeUtc(phoneCover).AddMinutes(1));
+        lock (_coverSizes) _coverSizes.Clear();
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
+        lock (_coverSizes) Assert.Single(_coverSizes);
+
+        // Nothing changed since: not downloaded again.
+        lock (_coverSizes) _coverSizes.Clear();
+        await svc.SyncNowAsync(ct);
+        lock (_coverSizes) Assert.Empty(_coverSizes);
+
+        // A phone from before the versions (none saved) whose copy is newer than the computer's
+        // file keeps it: an update does not download every cover again.
+        var syncFile = Path.Combine(AccountDir, "sync.json");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(syncFile))!.AsObject();
+        Assert.True(json.Remove("covers"));
+        File.WriteAllText(syncFile, json.ToJsonString());
+        File.SetLastWriteTimeUtc(phoneCover, File.GetLastWriteTimeUtc(deskCover).AddMinutes(1));
+        var updated = Restart();
+        await updated.SyncNowAsync(ct);
+        lock (_coverSizes) Assert.Empty(_coverSizes);
+        Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
+    }
+
+    /// <summary>The album list without cover versions (a computer from before them): the copy on
+    /// the phone is kept until it is 30 days old, as before.</summary>
+    [Fact]
+    public void AnAlbumWithoutACoverVersion_ParsesWithNone_AndABadOneIsIgnored()
+    {
+        Assert.Null(NoctisServerClient.ParseCoverVersion(null));
+        Assert.Null(NoctisServerClient.ParseCoverVersion("not hex"));
+        Assert.Null(NoctisServerClient.ParseCoverVersion(new string('f', 40)));
+        Assert.Equal("8de1a2b3c4d5e6f", NoctisServerClient.ParseCoverVersion("8DE1A2B3C4D5E6F"));
+    }
+
     // ── The desktop's profile picture ────────────────────────────────────
 
     private string DeskAvatar(string name, byte[] bytes)

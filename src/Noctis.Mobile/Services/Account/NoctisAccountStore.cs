@@ -45,6 +45,9 @@ internal sealed class NoctisSyncState
     /// <summary>The desktop songs here are dated by when they reached the phone. False in a file
     /// from before that rule: those songs still carry the computer's date and are re-dated once.</summary>
     public bool ArrivalDates { get; set; }
+    /// <summary>The computer's version of each album cover the phone has (album id "N" → its
+    /// noctisCover): a cover whose version changed there is downloaded again.</summary>
+    public Dictionary<string, string> Covers { get; set; } = new();
 }
 
 /// <summary>Phone changes waiting for the next sync. Written on every change.</summary>

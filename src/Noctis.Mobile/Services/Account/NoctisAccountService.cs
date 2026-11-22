@@ -588,13 +588,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         // 1. Catalog → the library.
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
         await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
-        var albumArtists = await client.GetAlbumArtistsAsync(ct).ConfigureAwait(false);
+        var coverVersions = new Dictionary<Guid, string>();
+        var albumArtists = await client.GetAlbumArtistsAsync(ct, coverVersions).ConfigureAwait(false);
         var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
         var (tracks, linked) = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
         RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count + linked, tracks.Count + linked);
 
         // 2. Covers.
-        await SyncCoversAsync(client, tracks, ct).ConfigureAwait(false);
+        await SyncCoversAsync(client, tracks, coverVersions, ct).ConfigureAwait(false);
 
         // 3–4. Ledger: pull, push favorite/rating edits, playlists. Sync can be off on the
         // desktop (error 50): the catalog and plays still go through, then the caller hears it.
@@ -996,13 +997,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         _ => suffix.ToUpperInvariant(),
     };
 
-    private async Task SyncCoversAsync(NoctisServerClient client, List<Track> tracks, CancellationToken ct)
+    /// <param name="versions">Each album's cover version on the computer (noctisCover), empty from a
+    /// computer that does not say: its covers are asked again once 30 days old.</param>
+    private async Task SyncCoversAsync(NoctisServerClient client, List<Track> tracks, Dictionary<Guid, string> versions, CancellationToken ct)
     {
         var now = UtcNow;
+        var adopted = false;
         var due = tracks.Select(t => t.AlbumId).Distinct()
             .Where(id => id != Track.UnknownAlbumBucketId && !_coverMisses.ContainsKey(id))
-            .Where(id => CoverIsDue(_persistence.GetArtworkPath(id), now))
+            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, ref adopted))
             .ToList();
+        if (adopted) SaveSyncState();
         RaiseSyncProgress(NoctisSyncStage.Covers, 0, due.Count);
         if (due.Count == 0) return;
 
@@ -1031,7 +1036,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     try
                     {
                         if (await client.DownloadCoverAsync(albumId, _persistence.GetArtworkPath(albumId), token).ConfigureAwait(false))
+                        {
                             Interlocked.Increment(ref written);
+                            if (versions.TryGetValue(albumId, out var version))
+                                lock (_gate) _sync.Covers[albumId.ToString("N")] = version;
+                        }
                         else
                             _coverMisses.TryAdd(albumId, 0);
                     }
@@ -1052,7 +1061,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (full) DebugLog.Write("Account", $"covers: {written} saved, then stopped: the phone is too full (the reserve stays free)");
             else if (failed > 0) DebugLog.Write("Account", $"covers: {written} saved, {failed} failed{(stage.IsCancellationRequested && !ct.IsCancellationRequested ? ", stopped asking" : "")}");
             // Rebuild so albums pick the new files up.
-            if (written > 0) _library.NotifyMetadataChanged();
+            if (written > 0)
+            {
+                if (versions.Count > 0) SaveSyncState();
+                _library.NotifyMetadataChanged();
+            }
         }
     }
 
@@ -1072,11 +1085,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
     }
 
-    private static bool CoverIsDue(string path, DateTime now)
+    /// <summary>Whether to download an album's cover: none here yet, or the computer's version of it
+    /// changed since the phone's copy (a cover corrected there arrives with the next sync). From a
+    /// computer that names no version, a copy over 30 days old. A copy saved before the phone kept
+    /// versions is current when written after the computer's file (<paramref name="adopted"/>: that
+    /// version is recorded, so an update does not download every cover again).</summary>
+    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, ref bool adopted)
     {
         try
         {
-            return !File.Exists(path) || now - File.GetLastWriteTimeUtc(path) > CoverMaxAge;
+            if (!File.Exists(path)) return true;
+            if (!versions.TryGetValue(albumId, out var version)) return now - File.GetLastWriteTimeUtc(path) > CoverMaxAge;
+            var key = albumId.ToString("N");
+            lock (_gate)
+            {
+                if (_sync.Covers.TryGetValue(key, out var known)) return known != version;
+                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || File.GetLastWriteTimeUtc(path) < changed) return true;
+                _sync.Covers[key] = version;
+            }
+            adopted = true;
+            return false;
         }
         catch { return true; }
     }
@@ -1692,6 +1720,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     Links = new Dictionary<string, string>(_sync.Links),
                     Retired = new Dictionary<string, string>(_sync.Retired),
                     ArrivalDates = _sync.ArrivalDates,
+                    Covers = new Dictionary<string, string>(_sync.Covers),
                 };
             }
             try { _store.SaveSyncState(copy); }
