@@ -843,10 +843,10 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>Settings › Account › Show Remote on Home (Discord beta 11-22: "you have to go to the
     /// settings/account page to find it"): a Remote button next to the profile picture on Home.
-    /// Off by default; saved with the player bar's settings (MobileHomeRemote).</summary>
+    /// On by default; saved with the player bar's settings (MobileHomeRemote).</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsHomeRemote))]
-    private bool _showRemoteOnHome;
+    private bool _showRemoteOnHome = true;
     partial void OnShowRemoteOnHomeChanged(bool value) => SavePlayerBarSettings(nameof(ShowRemoteOnHome));
 
     /// <summary>Home's Remote button shows: the switch is on and a computer is signed in (it goes

@@ -384,8 +384,12 @@ public class MobileComputerRemoteTests
         var raised = new List<string?>();
         shell.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
 
-        Assert.False(shell.ShowRemoteOnHome);                              // off by default
+        Assert.True(shell.ShowRemoteOnHome);                               // on by default
+        Assert.True(shell.ShowsHomeRemote);
+        shell.ShowRemoteOnHome = false;
         Assert.False(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+        raised.Clear();
         shell.ShowRemoteOnHome = true;
         Assert.True(shell.ShowsHomeRemote);
         Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
@@ -410,16 +414,34 @@ public class MobileComputerRemoteTests
         using var rig = MobileFixtures.MakeRig(seed: async p =>
         {
             var s = await p.LoadSettingsAsync();
-            Assert.False(s.MobileHomeRemote);                              // the default
-            s.MobileHomeRemote = true;
+            Assert.True(s.MobileHomeRemote);                               // the default
+            s.MobileHomeRemote = false;
             await p.SaveSettingsAsync(s);
         });
         await rig.Shell.InitializeAsync();
-        Assert.True(rig.Shell.ShowRemoteOnHome);
+        Assert.False(rig.Shell.ShowRemoteOnHome);                          // a saved off stays off
 
-        rig.Shell.ShowRemoteOnHome = false;
+        rig.Shell.ShowRemoteOnHome = true;
         await rig.Shell.PendingPlayerBarSave;
-        Assert.False((await rig.Persistence.LoadSettingsAsync()).MobileHomeRemote);
+        Assert.True((await rig.Persistence.LoadSettingsAsync()).MobileHomeRemote);
+    }
+
+    /// <summary>A settings file from before the default flipped (no MobileHomeRemote field) reads as on.</summary>
+    [Fact]
+    public async Task HomeRemote_ASettingsFileWithoutTheField_ReadsAsOn()
+    {
+        using var rig = MobileFixtures.MakeRig(seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MobileHomeRemote = false;
+            await p.SaveSettingsAsync(s);
+            var path = System.IO.Path.Combine(p.DataDirectory, "settings.json");
+            var json = System.Text.Json.Nodes.JsonNode.Parse(await System.IO.File.ReadAllTextAsync(path))!.AsObject();
+            Assert.True(json.Remove("mobileHomeRemote"));
+            await System.IO.File.WriteAllTextAsync(path, json.ToJsonString());
+        });
+        await rig.Shell.InitializeAsync();
+        Assert.True(rig.Shell.ShowRemoteOnHome);
     }
 
     [AvaloniaFact]
@@ -434,7 +456,7 @@ public class MobileComputerRemoteTests
             window.UpdateLayout();
             var home = MobileFixtures.Find<Noctis.Mobile.Views.HomePage>(view);
             var glass = MobileFixtures.Named<Noctis.Controls.GlassPanel>(home, "HomeRemoteGlass");
-            Assert.False(glass.IsEffectivelyVisible);                       // off by default
+            Assert.True(glass.IsEffectivelyVisible);                        // on by default
             Assert.True(MobileFixtures.Named<Noctis.Mobile.Views.ProfileButton>(home, "HomeProfile").IsEffectivelyVisible);
 
             shell.OpenAccountCommand.Execute(null);
@@ -443,6 +465,17 @@ public class MobileComputerRemoteTests
             var toggle = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(accountView, "HomeRemoteSwitch");
             Assert.True(toggle.IsEffectivelyVisible);
             Assert.Equal("Show Remote on Home", Avalonia.Automation.AutomationProperties.GetName(toggle));
+            Assert.True(toggle.IsChecked);
+            toggle.IsChecked = false;
+            Assert.False(shell.ShowRemoteOnHome);
+            shell.PopToRoot();
+            window.UpdateLayout();
+            Assert.False(glass.IsEffectivelyVisible);                       // turned off: the button goes
+
+            shell.OpenAccountCommand.Execute(null);
+            window.UpdateLayout();
+            accountView = MobileFixtures.Find<Noctis.Mobile.Views.AccountPage>(view);
+            toggle = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(accountView, "HomeRemoteSwitch");
             Assert.False(toggle.IsChecked);
             toggle.IsChecked = true;
             Assert.True(shell.ShowRemoteOnHome);
