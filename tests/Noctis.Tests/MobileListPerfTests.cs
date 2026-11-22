@@ -22,6 +22,53 @@ public class MobileListPerfTests
     private readonly ITestOutputHelper _out;
     public MobileListPerfTests(ITestOutputHelper output) => _out = output;
 
+    private static readonly string[] FindKeys = { "l", "lo", "lov", "love", "lov", "lo", "l", "" };
+
+    /// <summary>
+    /// Find in Songs on a sorted list: each filter the field hands on (after its debounce) sorted
+    /// the matches again, culture-aware with four tie-breaks, and clearing the field sorted every
+    /// song. The order does not depend on the filter, so the list keeps the sorted songs and a
+    /// filter only walks them.
+    /// </summary>
+    [Fact]
+    public void FindInSongs_OnASortedList_DoesNotSortAgainPerKeystroke()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary(7_200, 600);
+        var page = new SongListPageViewModel(rig.Shell, "Nav.Songs", rig.Shell.Library.SourceSongs);
+        Assert.Equal(7_200, page.Songs.Count);
+        page.ChooseSort(page.SortChoices.First(c => Equals(c.Key, SongSort.Artist)));
+        foreach (var k in FindKeys) page.FilterText = k;   // warm-up: the lazily cached search keys
+
+        var times = new List<double>();
+        var allocBefore = GC.GetAllocatedBytesForCurrentThread();
+        for (var round = 0; round < 5; round++)
+            foreach (var k in FindKeys)
+            {
+                var start = Stopwatch.GetTimestamp();
+                page.FilterText = k;
+                times.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+            }
+        var perKey = (GC.GetAllocatedBytesForCurrentThread() - allocBefore) / (5 * FindKeys.Length);
+        times.Sort();
+        var median = times[times.Count / 2];
+        _out.WriteLine($"7.2k songs by Artist: median filter {median:F2} ms, max {times[^1]:F2} ms, {perKey / 1024.0:F0} KB per keystroke");
+
+        // Same rows, same order as a fresh sort of the matches.
+        page.FilterText = "love";
+        var match = new MobileSearch.Matcher("love");
+        var names = StringComparer.CurrentCultureIgnoreCase;
+        var expected = rig.Shell.Library.SourceSongs().Where(match.HitTrack)
+            .OrderBy(t => t.Artist, names).ThenBy(t => t.Album, names).ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber)
+            .ThenBy(t => t.Title, names).ToList();
+        Assert.Equal(expected, page.Songs);
+        page.FilterText = "";
+        Assert.Equal(7_200, page.Songs.Count);
+
+        // Before: median 1.55 ms, slowest 5.9 ms (the cleared field sorted every song), 174 KB a
+        // keystroke; after: 0.52 ms, 0.54 ms, 20 KB (desktop).
+        Assert.True(perKey < 64 * 1024, $"{perKey / 1024} KB per keystroke");
+    }
+
     /// <summary>
     /// Search's Albums chip: a broad query's matches (up to 300) were a plain two-column panel,
     /// so every match built its tile and decoded its cover at once. Rows now virtualise.
