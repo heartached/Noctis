@@ -171,13 +171,15 @@
                 between the cover's foot and the screen's); gradient stops close together, so each
                 step is small (MobileNowPlayingPageTests checks the shade and the dither);
              3. a tile of faint noise (NowPlayingPage.axaml.cs, +-5/255): an 8-bit gradient this
-                long otherwise lands in visible bands; a hair of noise breaks them up. -->
+                long otherwise lands in visible bands; a hair of noise breaks them up. Drawn by a
+                DitherLayer (one Skia shader), as the lyrics page's: a tiled image brush is redrawn
+                through a new surface every time anything over it moves. -->
         <Panel Name="WashLayer" IsVisible="{Binding !#BlurCover.HasImage}">
             <Image Name="Backdrop" Source="{Binding #Artwork.Source, Converter={StaticResource PreBlur}, ConverterParameter=wash}"
                    Stretch="Fill" IsHitTestVisible="False" />
             <Border Name="WashShade" IsHitTestVisible="False" Opacity="{Binding NowPlayingShadeOpacity}"
                     Background="{StaticResource NowPlayingShade}" />
-            <Border Name="WashDither" IsHitTestVisible="False" />
+            <views:DitherLayer Name="WashDither" IsHitTestVisible="False" />
             <!-- Settings › Appearance › Now Playing Background: darker lays black over the wash
                  (ShellViewModel.NowPlayingDimOpacity), brighter thins the shade itself. -->
             <Border Name="WashDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingDimOpacity}" />
