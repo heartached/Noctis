@@ -19,8 +19,13 @@ public sealed class PaletteItem
     /// <summary>The icon is a stroked line icon (MenuLine*/Line*/PageLine*), drawn with
     /// LineIcon; otherwise a filled glyph drawn with PathIcon.</summary>
     public bool IsLineIcon { get; init; }
-    public bool ShowGlyphIcon => Icon != null && !IsLineIcon;
-    public bool ShowLineIcon => Icon != null && IsLineIcon;
+    /// <summary>The sidebar's own PNG mask for this row (Home, Songs, Albums...), when it has one:
+    /// the palette then shows the same icon as the sidebar instead of the older filled glyph.</summary>
+    public Avalonia.Media.Imaging.Bitmap? Mask => Icon as Avalonia.Media.Imaging.Bitmap;
+    public Avalonia.Media.Geometry? Glyph => Icon as Avalonia.Media.Geometry;
+    public bool ShowMaskIcon => Mask != null;
+    public bool ShowGlyphIcon => Glyph != null && !IsLineIcon;
+    public bool ShowLineIcon => Glyph != null && IsLineIcon;
     public required Action Execute { get; init; }
 }
 
@@ -92,8 +97,14 @@ public partial class CommandPaletteViewModel : ViewModelBase
         || key.StartsWith("PageLine", StringComparison.Ordinal)
         || key.StartsWith("Line", StringComparison.Ordinal);
 
-    private static object? Icon(string key) =>
-        Application.Current?.TryFindResource(key, out var res) == true ? res : null;
+    private static readonly Noctis.Converters.IconKeyToGeometryConverter SidebarMasks = new();
+
+    /// <summary>The sidebar's PNG mask when the key has one (so pages look the same in both
+    /// places), otherwise the geometry resource.</summary>
+    internal static object? Icon(string key) =>
+        Noctis.Converters.IconKeyToGeometryConverter.HasKey(key)
+            ? SidebarMasks.Convert(key, typeof(object), null, System.Globalization.CultureInfo.InvariantCulture)
+            : Application.Current?.TryFindResource(key, out var res) == true ? res : null;
 
     private List<PaletteItem> BuildStaticItems()
     {
@@ -113,7 +124,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Albums")), "albums", "AlbumsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Artists")), "artists", "ArtistsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Genres")), "genres", "TagIcon");
-        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Folders")), "folders", "FolderIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Folders")), "folders", "FoldersIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Playlists")), "playlists", "PlaylistsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Favorites")), "favorites", "FavoritesIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Tab.Statistics")), "statistics", "StatisticsIcon");

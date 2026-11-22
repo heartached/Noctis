@@ -75,8 +75,17 @@
                         <DataTemplate x:DataType="vm:PaletteItem">
                             <Border Classes="palette-row" PointerReleased="OnItemPointerReleased">
                                 <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Pages the sidebar draws with a PNG mask use that same mask here. -->
+                                    <controls:MaskIcon Grid.Column="0"
+                                                       Source="{Binding Mask}"
+                                                       Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                                                       Width="17" Height="17"
+                                                       Opacity="0.7"
+                                                       Margin="1,0,11,0"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding ShowMaskIcon}"/>
                                     <PathIcon Grid.Column="0"
-                                              Data="{Binding Icon}"
+                                              Data="{Binding Glyph}"
                                               Width="15" Height="15"
                                               Opacity="0.7"
                                               Margin="2,0,12,0"
@@ -85,7 +94,7 @@
                                     <!-- The menus' line icons (Queue, Lyrics) are strokes: a PathIcon
                                          would fill them into blobs. -->
                                     <controls:LineIcon Grid.Column="0"
-                                                       Data="{Binding Icon}"
+                                                       Data="{Binding Glyph}"
                                                        Width="17" Height="17"
                                                        Opacity="0.7"
                                                        Margin="1,0,11,0"
