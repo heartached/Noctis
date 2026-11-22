@@ -358,6 +358,26 @@ public class MobileTabBarSettingsTests
             ((TabBarSettingsViewModel)p.DataContext!).Choices.Select(c => c.Tab).ToList();
     }
 
+    /// <summary>Beta 5 tester: "Icons should be filled when they're on the tab bar". Every tab the bar
+    /// can hold draws its Tab*FilledIcon there, in the folded circle and in the editor's row chip.</summary>
+    [AvaloniaFact]
+    public void EveryTabOnTheBar_DrawsItsFilledGlyph()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        Pump(window);
+        var circle = view.FindControl<Button>("CollapsedTabButton")!;
+        foreach (var tab in TabBarTabs.All)
+        {
+            var key = "Tab" + tab + "FilledIcon";
+            Assert.True(view.TryFindResource(key, out var glyph), key);
+            var button = view.FindControl<Button>(ButtonName(tab))!;
+            Assert.Same(glyph, Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(button).OfType<PathIcon>().Single().Data);
+            Assert.Contains(Avalonia.LogicalTree.LogicalExtensions.GetLogicalDescendants(circle).OfType<PathIcon>(), i => ReferenceEquals(i.Data, glyph));
+        }
+        window.Close();
+    }
+
     // ── Beta 5 testers: a blank editor card, and the bar left laid out for five with four tabs ──
 
     /// <summary>Favorites switched off live (the testers' bar: Home, Playlists, Library, Search): the four
@@ -515,6 +535,9 @@ public class MobileTabBarSettingsTests
                     var label = container.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => t.Classes.Contains("row-label"));
                     Assert.True(label is { IsEffectivelyVisible: true } && label.Text == model.Choices[i].Title && label.Bounds.Width > 0, $"{when}: row {i} label blank");
                     Assert.True(container.Opacity > 0.99 && container.RenderTransform == null, $"{when}: row {i} opacity {container.Opacity} transform {container.RenderTransform}");
+                    // The row chip draws the bar's own filled glyph.
+                    Assert.True(pane.TryFindResource("Tab" + model.Choices[i].Tab + "FilledIcon", out var glyph));
+                    Assert.Same(glyph, container.GetVisualDescendants().OfType<PathIcon>().Single(p => p.Classes.Contains("tab-glyph")).Data);
                 }
             }
 
