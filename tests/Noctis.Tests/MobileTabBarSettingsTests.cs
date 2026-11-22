@@ -111,9 +111,10 @@ public class MobileTabBarSettingsTests
             await p.SaveSettingsAsync(s);
             var path = Path.Combine(p.DataDirectory, "settings.json");
             var json = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
-            json.Remove("MobileTabBar");   // an empty list may not be written at all
+            // settings.json keys are camelCase: "MobileTabBar" never matched and the test removed nothing.
+            Assert.True(json.Remove("mobileTabBar"), "the key is written camelCase");
             await File.WriteAllTextAsync(path, json.ToJsonString());
-            Assert.DoesNotContain("MobileTabBar", await File.ReadAllTextAsync(path));
+            Assert.DoesNotContain("mobileTabBar", await File.ReadAllTextAsync(path), StringComparison.OrdinalIgnoreCase);
         });
         await rig.Shell.InitializeAsync();
         Assert.True(rig.Shell.GlassTabPill);            // the file was read
