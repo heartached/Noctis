@@ -3917,6 +3917,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>A continuación en {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>y {0} más</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Reintentar</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Mostrar Control remoto en Inicio</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Un botón junto a tu foto de perfil</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistema</value><comment>Language row value: follow the phone’s language</comment></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis perdió el acceso a la carpeta de esta canción. Vuelve a añadirla en Ajustes → Biblioteca.</value><comment>Playback error</comment></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Este teléfono no puede decodificar {0}, así que se saltó la canción.</value><comment>Playback error. {0} = a format ("ALAC (Apple Lossless)", "audio/flac") or Mobile.Player.UnknownFormat</comment></data>

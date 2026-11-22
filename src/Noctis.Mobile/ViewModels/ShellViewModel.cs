@@ -181,7 +181,12 @@ public sealed partial class ShellViewModel : ObservableObject
         var downloaded = account.DownloadedCount;
         if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
         var signedIn = account.IsSignedIn ? 1 : 0;
-        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn) Marshal(Library.NotifyAccountChanged);
+        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn)
+            Marshal(() =>
+            {
+                Library.NotifyAccountChanged();
+                OnPropertyChanged(nameof(ShowsHomeRemote));
+            });
     }
 
     // Signed in (1) or not, as last seen: the Library's source button shows only signed in (or
@@ -826,6 +831,18 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _showQueueHistory;
     partial void OnShowQueueHistoryChanged(bool value) => SavePlayerBarSettings(nameof(ShowQueueHistory));
 
+    /// <summary>Settings › Account › Show Remote on Home (Discord beta 11-22: "you have to go to the
+    /// settings/account page to find it"): a Remote button next to the profile picture on Home.
+    /// Off by default; saved with the player bar's settings (MobileHomeRemote).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsHomeRemote))]
+    private bool _showRemoteOnHome;
+    partial void OnShowRemoteOnHomeChanged(bool value) => SavePlayerBarSettings(nameof(ShowRemoteOnHome));
+
+    /// <summary>Home's Remote button shows: the switch is on and a computer is signed in (it goes
+    /// at sign-out, and comes back at sign-in, without a restart).</summary>
+    public bool ShowsHomeRemote => ShowRemoteOnHome && Account is { IsSignedIn: true };
+
     /// <summary>The Queue page's History is folded to its title (its Hide); for this run of the app only.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows), nameof(QueueHistoryToggleText))]
@@ -858,6 +875,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowRemoteOnHome))) ShowRemoteOnHome = settings.MobileHomeRemote;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
@@ -894,6 +912,7 @@ public sealed partial class ShellViewModel : ObservableObject
         int blur = NowPlayingBlur, dim = NowPlayingDim;
         var glassPill = GlassTabPill;
         var queueHistory = ShowQueueHistory;
+        var homeRemote = ShowRemoteOnHome;
         var tabBar = TabBarTabs.Encode(BarTabs);
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
@@ -913,6 +932,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileNowPlayingDim = dim;
                     settings.MobileGlassTabPill = glassPill;
                     settings.MobileQueueShowHistory = queueHistory;
+                    settings.MobileHomeRemote = homeRemote;
                     settings.MobileTabBar = tabBar;
                 });
             }
@@ -1630,7 +1650,8 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account != null && CurrentPage is not AccountPageViewModel) Navigate(new AccountPageViewModel(this, Account));
     }
 
-    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet.</summary>
+    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet (or
+    /// over Home, from its Remote button: <see cref="ShowsHomeRemote"/>).</summary>
     [RelayCommand]
     private void OpenComputerRemote()
     {

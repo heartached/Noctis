@@ -9,7 +9,7 @@ using Noctis.Mobile.Services.Account;
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>Where the remote stands with the computer.</summary>
-public enum RemoteStatus { Connecting, Ready, Unreachable, NotAllowed, Outdated, SignedOut }
+public enum RemoteStatus { Connecting, Ready, Unreachable, NotAllowed, Outdated, SignedOut, CertificateChanged }
 
 /// <summary>One of the computer's Up Next songs; a tap plays it there.</summary>
 public sealed record ComputerQueueRow(int Index, Guid Id, string Title, string Artist);
@@ -85,7 +85,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     /// <summary>The hero in place of the player: connecting, or why it cannot be reached.</summary>
     public bool ShowsMessage => Status != RemoteStatus.Ready;
 
-    public bool CanRetry => Status is RemoteStatus.Unreachable or RemoteStatus.NotAllowed or RemoteStatus.Outdated;
+    public bool CanRetry => Status is RemoteStatus.Unreachable or RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.CertificateChanged;
 
     public string MessageTitle => Status switch
     {
@@ -99,6 +99,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
         RemoteStatus.Unreachable => Loc.T("Mobile.Account.Error.Unreachable"),
         RemoteStatus.NotAllowed => Loc.T("Mobile.Remote.NotAllowed", ComputerName),
         RemoteStatus.Outdated => Loc.T("Mobile.Remote.Outdated", ComputerName),
+        RemoteStatus.CertificateChanged => Loc.T("Mobile.Account.Error.CertificateChanged"),
         RemoteStatus.SignedOut => Loc.T("Mobile.Account.Error.SignedOut"),
         _ => string.Empty,
     };
@@ -238,7 +239,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
                 if (ct.IsCancellationRequested) return;
                 var status = Fail(ex);
                 // Nothing a wait fixes: the page stops asking until Try Again.
-                if (status is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut)
+                if (status is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut or RemoteStatus.CertificateChanged)
                 {
                     StopIfCurrent(ct);
                     return;
@@ -272,6 +273,9 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
             NoctisErrorKind.RemoteNotAllowed => RemoteStatus.NotAllowed,
             NoctisErrorKind.Outdated => RemoteStatus.Outdated,
             NoctisErrorKind.SignedOut => RemoteStatus.SignedOut,
+            // Every address of the computer was tried (the service moves to one that answers as
+            // the pinned computer): only a new sign-in trusts a new security code.
+            NoctisErrorKind.CertificateChanged => RemoteStatus.CertificateChanged,
             NoctisErrorKind.Server when Status == RemoteStatus.Ready => RemoteStatus.Ready,
             _ => RemoteStatus.Unreachable,
         };
@@ -378,7 +382,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
             if (ct.IsCancellationRequested) return;
             // A jump whose row moved on, say: the next ask brings Up Next as it is now.
             _queueStale = true;
-            if (Fail(ex) is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut) StopIfCurrent(ct);
+            if (Fail(ex) is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut or RemoteStatus.CertificateChanged) StopIfCurrent(ct);
         }
     }
 

@@ -1257,6 +1257,55 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(3, (await svc.SyncNowAsync(TestContext.Current.CancellationToken)).Songs);
     }
 
+    /// <summary>The desktop's player for the remote tests: always the same song.</summary>
+    private sealed class StillRemote : IServerRemote
+    {
+        public Task<RemoteSnapshot> SnapshotAsync(int upNextLimit) => Task.FromResult(new RemoteSnapshot(
+            new RemoteTrack(Guid.NewGuid(), AlbumA, "Alpha", "The Xylophones", "First", 200_000),
+            true, 1000, 200_000, 50, false, RemoteRepeat.Off, Array.Empty<RemoteTrack>(), 0));
+
+        public Task<bool> ControlAsync(RemoteCommand command) => Task.FromResult(true);
+    }
+
+    /// <summary>Discord beta 11-22 ("Remote is not working for me"; the reply: sign out and in).
+    /// Only a sync tried the computer's other addresses: once the address the phone signed in
+    /// through stopped answering, Remote said "Can't reach" and Try Again asked the same dead
+    /// address until a sync ran or the user signed in again. An ask now moves too.</summary>
+    [Fact]
+    public async Task RemoteAsk_ThatCannotReachTheAddress_MovesToTheComputersOtherAddress()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _server.Remote = new StillRemote();
+        var first = await SignedInAsync();
+        var dead = "http://127.0.0.1:1";
+        new NoctisAccountStore(AccountDir).SaveAccount(first.Account! with { ServerUrl = dead, OtherServerUrls = new[] { _url } });
+
+        var svc = Restart();
+        var state = await svc.GetComputerPlaybackAsync(withQueue: false, ct);
+
+        Assert.Equal("Alpha", state.Track!.Title);
+        Assert.Equal(_url, svc.Account!.ServerUrl);
+        Assert.Equal(_url, new NoctisAccountStore(AccountDir).LoadAccount()!.ServerUrl);
+    }
+
+    /// <summary>A key the desktop removed: Remote said "signed out" while the Account page still
+    /// showed the phone signed in (and offered Remote again) until a sync noticed. Now the
+    /// remote's ask forgets the account as a sync, upload or download does.</summary>
+    [Fact]
+    public async Task RemoteAsk_WithARejectedKey_SignsOutLocally()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _server.Remote = new StillRemote();
+        var svc = await SignedInAsync();
+        Assert.True(_users.RevokeDevice("alice", svc.DeviceId));
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.GetComputerPlaybackAsync(withQueue: false, ct));
+
+        Assert.Equal(NoctisErrorKind.SignedOut, ex.Kind);
+        Assert.False(svc.IsSignedIn);
+        Assert.True(svc.WasSignedOutByComputer);
+    }
+
     [Fact]
     public async Task SignOut_RemovesDesktopSongs_TheirPlaylists_Downloads_AndTheAccount()
     {
