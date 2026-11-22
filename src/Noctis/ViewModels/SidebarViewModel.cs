@@ -263,6 +263,8 @@ public partial class SidebarViewModel : ViewModelBase
     public async Task LoadPlaylistsAsync()
     {
         var loadedPlaylists = await _persistence.LoadPlaylistsAsync();
+        // The highlighted playlist keeps its highlight: its row is rebuilt below.
+        var selectedPlaylist = SelectedNavItem?.PlaylistId;
         Playlists.Clear();
         PlaylistItems.Clear();
 
@@ -273,6 +275,8 @@ public partial class SidebarViewModel : ViewModelBase
         }
 
         RebuildSidebarRows();
+        if (selectedPlaylist is { } selected && PlaylistItems.FirstOrDefault(n => n.PlaylistId == selected) is { } again)
+            SetSelectedNavItemSilently(again);
         PlaylistsReloaded?.Invoke(this, EventArgs.Empty);
     }
 

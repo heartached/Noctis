@@ -83,6 +83,18 @@ public class PlaylistPageReloadTests
     }
 
     [AvaloniaFact]
+    public async Task TheSidebarHighlight_StaysOnThePlaylist_AfterASync()
+    {
+        var (_, sidebar, _, _, id) = await OpenAsync();
+        sidebar.SetSelectedNavItemSilently(sidebar.PlaylistItems.Single());
+
+        await sidebar.LoadPlaylistsAsync();
+
+        Assert.Same(sidebar.PlaylistItems.Single(), sidebar.SelectedNavItem);
+        Assert.Equal(id, sidebar.SelectedNavItem!.PlaylistId);
+    }
+
+    [AvaloniaFact]
     public async Task AnEditOnTheOpenPage_AfterASync_IsSaved()
     {
         var (page, sidebar, files, t, _) = await OpenAsync();
