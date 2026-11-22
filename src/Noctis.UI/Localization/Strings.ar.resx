@@ -8580,6 +8580,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>تمرير أكثر سلاسة على شاشات 120 هرتز لكنه يستهلك بطارية أكثر</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>كبسولة التبويب Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>تبقى علامة التبويب المحددة زجاجًا شفافًا</value></data>
+  <data name="Mobile.Settings.ReduceGlass" xml:space="preserve"><value>تقليل الزجاج</value></data>
+  <data name="Mobile.Settings.ReduceGlassHint" xml:space="preserve"><value>قوائم وأشرطة بلا زجاج، أكثر سلاسة على الهواتف الأبطأ</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>شريط علامات التبويب</value></data>
   <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>اختر من 2 إلى 5 علامات تبويب واسحب النقاط في طرف الصف لترتيبها. تبقى المكتبة دائمًا في الشريط، فتظل كل القوائم والإعدادات في متناولك.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>إعادة التعيين إلى الافتراضي</value></data>

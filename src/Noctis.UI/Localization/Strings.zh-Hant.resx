@@ -8580,6 +8580,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz 螢幕上捲動更流暢但更耗電</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass 標籤膠囊</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>所選標籤保持透明玻璃效果</value></data>
+  <data name="Mobile.Settings.ReduceGlass" xml:space="preserve"><value>減少玻璃效果</value></data>
+  <data name="Mobile.Settings.ReduceGlassHint" xml:space="preserve"><value>選單和列不使用玻璃效果，在較慢的手機上更流暢</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>標籤列</value></data>
   <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>選擇 2 到 5 個標籤，拖曳列尾的圓點調整順序。資料庫一律留在標籤列上，所有列表和設定都隨時可達。</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>恢復預設</value></data>

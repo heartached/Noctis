@@ -8,6 +8,7 @@
              x:Class="Noctis.Mobile.Views.ShellView"
              x:DataType="vm:ShellViewModel"
              views:RowMark.Mode="{Binding SongRowMark}"
+             controls:GlassPanel.ReduceGlass="{Binding ReduceGlass}"
              Background="{DynamicResource PhoneBackgroundBrush}">
 
     <UserControl.Styles>

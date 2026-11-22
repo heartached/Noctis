@@ -228,6 +228,11 @@ public class AppSettings : IJsonOnDeserializing
     /// clear glass instead of the dark tinted pill. Off by default.</summary>
     public bool MobileGlassTabPill { get; set; }
 
+    /// <summary>Phone, Settings › Appearance › Reduce Glass (beta testers 11-22): the menus, the
+    /// floating bars and the header buttons draw a plain fill instead of Liquid Glass (no backdrop
+    /// blur or lens). Off by default.</summary>
+    public bool MobileReduceGlass { get; set; }
+
     /// <summary>Phone, Settings › Tab Bar (beta testers 11-17): the tabs on the bottom bar, in order,
     /// by name ("Home", "Songs", ...). Empty (the default, and what a settings file without the field
     /// reads as) = Home, Favorites, Playlists, Library, Search. Names this build does not know are
@@ -240,8 +245,9 @@ public class AppSettings : IJsonOnDeserializing
     public bool MobileQueueShowHistory { get; set; }
 
     /// <summary>Phone, Settings › Account › Show Remote on Home (Discord beta 11-22): a Remote button
-    /// next to the profile picture on Home, while signed in. Off by default.</summary>
-    public bool MobileHomeRemote { get; set; }
+    /// next to the profile picture on Home, while signed in. On by default (a settings file without
+    /// the field reads as on; a saved false stays off).</summary>
+    public bool MobileHomeRemote { get; set; } = true;
 
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>

@@ -348,7 +348,9 @@
          tint and outline are the palette's (MobileTheme.BuildPalette), the luminance range
          ShellView's theme resources. Dark content under the light glass is lifted under a white
          veil (BackdropLift), as the menus' glass is: scaling its colour up to the floor turned a
-         dark brown cover peach and orange under the tab bar and the mini player. -->
+         dark brown cover peach and orange under the tab bar and the mini player. Settings ›
+         Appearance › Reduce Glass (GlassPanel.ReduceGlass, set on ShellView) draws these, the
+         header glass and the menus' card as a plain fill instead: PlainBackground, opaque. -->
     <Style Selector="controls|GlassPanel.liquid">
         <Setter Property="UseAppGlass" Value="False" />
         <Setter Property="IsGlassActive" Value="True" />
@@ -362,6 +364,7 @@
         <Setter Property="BackdropLift" Value="1" />
         <Setter Property="BoxShadow" Value="0 6 20 0 #1F000000" />
         <Setter Property="Background" Value="{DynamicResource PhoneChromeBrush}" />
+        <Setter Property="PlainBackground" Value="{DynamicResource PhoneChromePlainBrush}" />
         <Setter Property="EdgeBrush" Value="{DynamicResource PhoneChromeOutlineBrush}" />
         <Setter Property="EdgeThickness" Value="1" />
     </Style>
@@ -388,6 +391,7 @@
         <Setter Property="Height" Value="44" />
         <Setter Property="CornerRadius" Value="22" />
         <Setter Property="Background" Value="{DynamicResource PhoneChromeBrush}" />
+        <Setter Property="PlainBackground" Value="{DynamicResource PhoneChromePlainBrush}" />
         <Setter Property="EdgeBrush" Value="{DynamicResource PhoneChromeOutlineBrush}" />
         <Setter Property="EdgeThickness" Value="1" />
         <Setter Property="VerticalAlignment" Value="Center" />
