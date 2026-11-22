@@ -1479,6 +1479,28 @@ public sealed partial class ShellViewModel : ObservableObject
         if (item != null) Sheet = ContextSheetViewModel.ForArtist(this, item.Artist, item.ArtworkPath);
     }
 
+    private readonly Noctis.Helpers.BulkObservableCollection<Playlist> _pickerPlaylists = new();
+    private string[] _pickerNames = Array.Empty<string>();
+
+    /// <summary>
+    /// Add to Playlist's list (the manual playlists), one collection kept from sheet to sheet:
+    /// a new list on every open made the sheet build a row for every playlist each time. It is
+    /// replaced only when the playlists or their names changed (a rename is made in place).
+    /// </summary>
+    internal IReadOnlyList<Playlist> PickerPlaylists()
+    {
+        var next = Library.Playlists.Where(p => !p.IsSmartPlaylist).ToList();
+        var names = next.Select(p => p.Name).ToArray();
+        var same = next.Count == _pickerPlaylists.Count && names.SequenceEqual(_pickerNames)
+            && next.Zip(_pickerPlaylists).All(pair => ReferenceEquals(pair.First, pair.Second));
+        if (!same)
+        {
+            _pickerPlaylists.ReplaceAll(next);
+            _pickerNames = names;
+        }
+        return _pickerPlaylists;
+    }
+
     /// <summary>Closes whichever menu or sheet is open.</summary>
     [RelayCommand]
     public void CloseSheet()
