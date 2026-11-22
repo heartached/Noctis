@@ -241,6 +241,9 @@ public class MobileTabBarSettingsTests
         Assert.Equal(Defaults, vm.Choices.Take(5).Select(c => c.Tab));
         Assert.True(vm.IsDefault);
         Assert.False(Choice(MobileTab.Library).CanToggle);
+        // Five on: every one on but Library can still go (the S23 repro's "stuck" switch was the
+        // failed layout, not this state).
+        Assert.All(Defaults.Where(t => t != MobileTab.Library), t => Assert.True(Choice(t).CanToggle));
         // Five on: nothing more switches on, and a switch forced on flips back.
         Assert.False(Choice(MobileTab.Songs).CanToggle);
         Choice(MobileTab.Songs).IsOn = true;
@@ -270,6 +273,23 @@ public class MobileTabBarSettingsTests
         Assert.All(vm.Choices.Skip(5), c => Assert.False(c.IsOn));
 
         TabBarChoice Choice(MobileTab tab) => vm.Choices.Single(c => c.Tab == tab);
+    }
+
+    /// <summary>A drop from a row index that went stale (the rows rebuilt under a drag) or past the
+    /// list does nothing harmful: clamped or ignored, never thrown.</summary>
+    [Fact]
+    public void Editor_Move_OutOfRange_IsClampedOrIgnored()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var vm = new TabBarSettingsViewModel(rig.Shell);
+        vm.Move(-1, 2);
+        vm.Move(vm.Choices.Count, 0);
+        vm.Move(99, 99);
+        Assert.Equal(Defaults, rig.Shell.BarTabs);
+        vm.Move(0, 99);                                     // Home to the very end: off-bar rows' place
+        Assert.Equal(TabBarTabs.All.Count, vm.Choices.Count);
+        Assert.Equal(MobileTab.Home, vm.Choices[^1].Tab);
+        Assert.Equal(new[] { MobileTab.Favorites, MobileTab.Playlists, MobileTab.Library, MobileTab.Search, MobileTab.Home }, rig.Shell.BarTabs);
     }
 
     [AvaloniaFact]
@@ -336,6 +356,176 @@ public class MobileTabBarSettingsTests
 
         static System.Collections.Generic.List<MobileTab> TabBarChoices(TabBarPane p) =>
             ((TabBarSettingsViewModel)p.DataContext!).Choices.Select(c => c.Tab).ToList();
+    }
+
+    // ── Beta 5 testers: a blank editor card, and the bar left laid out for five with four tabs ──
+
+    /// <summary>Favorites switched off live (the testers' bar: Home, Playlists, Library, Search): the four
+    /// buttons share the whole bar, the last one ends at the bar's end, no empty slot after it.</summary>
+    [AvaloniaFact]
+    public void ATabTakenOffLive_TheOthersShareTheWholeBar()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        Pump(window);
+        var row = view.FindControl<Panel>("TabRow")!;
+        rig.Shell.SetBarTabs(new[] { MobileTab.Home, MobileTab.Playlists, MobileTab.Library, MobileTab.Search });
+        Pump(window);
+        var bar = row.Bounds.Width;
+        var tabs = rig.Shell.BarTabs;
+        for (var i = 0; i < tabs.Count; i++)
+        {
+            var button = view.FindControl<Button>(ButtonName(tabs[i]))!;
+            var left = button.TranslatePoint(new Point(0, 0), row)!.Value.X;
+            Assert.True(Math.Abs(button.Bounds.Width - ShellView.TabWidth(bar, 4)) <= 1.01, $"tab {tabs[i]}: width {button.Bounds.Width}, expected {ShellView.TabWidth(bar, 4)}");
+            Assert.True(Math.Abs(left - (ShellView.TabEdge + i * ShellView.TabWidth(bar, 4))) <= 1.01, $"tab {tabs[i]}: left {left}");
+        }
+        // And back to five, then down to three: the bar follows every count.
+        rig.Shell.SetBarTabs(Defaults);
+        Pump(window);
+        Assert.True(Math.Abs(ShellView.TabWidth(bar, 5) - view.FindControl<Button>("SearchTab")!.Bounds.Width) <= 1.01);
+        rig.Shell.SetBarTabs(new[] { MobileTab.Home, MobileTab.Library, MobileTab.Search });
+        Pump(window);
+        Assert.True(Math.Abs(ShellView.TabWidth(bar, 3) - view.FindControl<Button>("SearchTab")!.Bounds.Width) <= 1.01);
+        window.Close();
+    }
+
+    /// <summary>
+    /// The beta 5 crash, as reproduced on an S23 (Liquid Glass pill on, bar Home, Playlists, Library,
+    /// Search): Favorites on (it goes fifth, its hidden button moves to column 4), then off again. The
+    /// bar went back to four columns but the hidden Favorites button stayed in column 4, and as no
+    /// shown button changed column the Grid kept its cells: the next measure read column 4 of four,
+    /// threw ArgumentOutOfRangeException (Grid.GetMeasureSizeForRange) and every layout pass after it
+    /// did too: the bar stayed laid out for five, the switch looked stuck, and the editor's rows,
+    /// rebuilt on the next change, were never measured (the blank card).
+    /// </summary>
+    [AvaloniaFact]
+    public async Task FavoritesOnThenOff_FromTheFourTabBar_KeepsLayingOut()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        await rig.Shell.InitializeAsync();
+        rig.Shell.GlassTabPill = true;
+        rig.Shell.SetBarTabs(new[] { MobileTab.Home, MobileTab.Playlists, MobileTab.Library, MobileTab.Search });
+        var app = Application.Current!;
+        var icons = new ResourceInclude(new Uri("avares://Noctis.Mobile/")) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") };
+        app.Resources.MergedDictionaries.Add(icons);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        try
+        {
+            rig.Shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)rig.Shell.CurrentPage!;
+            await vm.Loaded;
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+            vm.OpenPaneCommand.Execute(SettingsPane.TabBar);
+            MobileFixtures.Land(window);
+            Pump(window);
+            var pane = MobileFixtures.Named<TabBarPane>(page, "TabBarPane");
+            var row = view.FindControl<Panel>("TabRow")!;
+
+            Switch(MobileTab.Favorites).IsChecked = true;       // (1) five on
+            Pump(window);
+            Assert.Equal(MobileTab.Favorites, rig.Shell.BarTabs[^1]);
+            Switch(MobileTab.Favorites).IsChecked = false;      // (2) off again: this layout threw
+            Pump(window);
+            Assert.Equal(new[] { MobileTab.Home, MobileTab.Playlists, MobileTab.Library, MobileTab.Search }, rig.Shell.BarTabs);
+            Assert.True(Switch(MobileTab.Favorites).IsEnabled);  // four on: it can come back
+            var bar = row.Bounds.Width;
+            var search = view.FindControl<Button>("SearchTab")!;
+            Assert.True(Math.Abs(search.Bounds.Width - ShellView.TabWidth(bar, 4)) <= 1.01, $"Search {search.Bounds.Width} wide, a quarter is {ShellView.TabWidth(bar, 4)}");
+
+            Switch(MobileTab.Playlists).IsChecked = false;      // (4) the rows rebuild: still drawn
+            Pump(window);
+            var model = (TabBarSettingsViewModel)pane.DataContext!;
+            var list = MobileFixtures.Named<ItemsControl>(pane, "TabBarList");
+            for (var i = 0; i < model.Choices.Count; i++)
+                Assert.True(list.ContainerFromIndex(i) is { Bounds.Height: >= 52 }, $"row {i} not laid out");
+        }
+        finally
+        {
+            window.Close();
+            app.Resources.MergedDictionaries.Remove(icons);
+        }
+
+        ToggleButton Switch(MobileTab tab) => MobileFixtures.Find<SettingsPage>(view).GetVisualDescendants().OfType<ToggleButton>()
+            .Single(t => t.Name == "TabSwitch" && ((TabBarChoice)t.DataContext!).Tab == tab);
+    }
+
+    /// <summary>The editor's rows after switches flip and a drag lands, and after the page is left and
+    /// opened again: one drawn row per tab, each with its label, none blank.</summary>
+    [AvaloniaFact]
+    public async Task Editor_RowsStayDrawn_AfterTogglesDragsAndReopening()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        await rig.Shell.InitializeAsync();
+        var app = Application.Current!;
+        var icons = new ResourceInclude(new Uri("avares://Noctis.Mobile/")) { Source = new Uri("avares://Noctis.UI/Assets/Icons.axaml") };
+        app.Resources.MergedDictionaries.Add(icons);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        try
+        {
+            rig.Shell.OpenSettingsCommand.Execute(null);
+            var vm = (SettingsPageViewModel)rig.Shell.CurrentPage!;
+            await vm.Loaded;
+            window.UpdateLayout();
+            var page = MobileFixtures.Find<SettingsPage>(view);
+            vm.OpenPaneCommand.Execute(SettingsPane.TabBar);
+            MobileFixtures.Land(window);
+            Pump(window);
+            var pane = MobileFixtures.Named<TabBarPane>(page, "TabBarPane");
+            AssertRowsDrawn("opened");
+
+            Switch(MobileTab.Favorites).IsChecked = false;      // the testers' change
+            Pump(window);
+            AssertRowsDrawn("Favorites off");
+            Switch(MobileTab.Songs).IsChecked = true;
+            Pump(window);
+            AssertRowsDrawn("Songs on");
+            Switch(MobileTab.Songs).IsChecked = false;          // two quick toggles, a frame apart
+            Pump(window, 1);
+            Switch(MobileTab.Favorites).IsChecked = true;
+            Pump(window);
+            AssertRowsDrawn("two toggles");
+
+            var rowHeight = Switch(MobileTab.Home).Bounds.Height;
+            pane.CommitDrag(0, 3 * rowHeight, rowHeight);
+            Pump(window);
+            AssertRowsDrawn("dragged");
+
+            Assert.True(rig.Shell.TryHandleBack());            // back to Settings' main list
+            Pump(window);
+            vm.OpenPaneCommand.Execute(SettingsPane.TabBar);
+            MobileFixtures.Land(window);
+            Pump(window);
+            AssertRowsDrawn("reopened");
+
+            void AssertRowsDrawn(string when)
+            {
+                var model = (TabBarSettingsViewModel)pane.DataContext!;
+                var list = MobileFixtures.Named<ItemsControl>(pane, "TabBarList");
+                var rows = pane.GetVisualDescendants().OfType<ToggleButton>()
+                    .Where(t => t.Name == "TabSwitch" && t.IsEffectivelyVisible).ToList();
+                Assert.True(model.Choices.Count == rows.Count, $"{when}: {rows.Count} rows drawn for {model.Choices.Count} tabs");
+                for (var i = 0; i < model.Choices.Count; i++)
+                {
+                    var container = list.ContainerFromIndex(i);
+                    Assert.True(container != null, $"{when}: row {i} has no container");
+                    Assert.True(container!.Bounds.Height >= 52, $"{when}: row {i} {container.Bounds.Height} tall");
+                    Assert.Same(model.Choices[i], container.DataContext);
+                    var label = container.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => t.Classes.Contains("row-label"));
+                    Assert.True(label is { IsEffectivelyVisible: true } && label.Text == model.Choices[i].Title && label.Bounds.Width > 0, $"{when}: row {i} label blank");
+                    Assert.True(container.Opacity > 0.99 && container.RenderTransform == null, $"{when}: row {i} opacity {container.Opacity} transform {container.RenderTransform}");
+                }
+            }
+
+            ToggleButton Switch(MobileTab tab) => pane.GetVisualDescendants().OfType<ToggleButton>()
+                .Single(t => t.Name == "TabSwitch" && ((TabBarChoice)t.DataContext!).Tab == tab);
+        }
+        finally
+        {
+            window.Close();
+            app.Resources.MergedDictionaries.Remove(icons);
+        }
     }
 
     // ── The pill: one size on every tab, any bar (tester 11-15: "smaller at the ends") ──
