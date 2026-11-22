@@ -94,6 +94,22 @@ public sealed partial class ListeningHistoryViewModel : ObservableObject
         };
         _shell.HistoryPrefsChanged += prefs;
         _shell.Player.PlayRecorded += played;
+        _detach = () =>
+        {
+            _shell.HistoryPrefsChanged -= prefs;
+            _shell.Player.PlayRecorded -= played;
+        };
+    }
+
+    private Action? _detach;
+
+    /// <summary>The sheet closed: stop following the shell. Until a collection let the weak
+    /// handlers go, every Settings opened since launch re-read the whole play log (the week and
+    /// the all-time total) on each play.</summary>
+    public void Detach()
+    {
+        _detach?.Invoke();
+        _detach = null;
     }
 
     /// <summary>The clock behind "12 min" and "this week"; tests pin it.</summary>
