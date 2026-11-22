@@ -163,6 +163,10 @@ public interface INoctisAccountService
     /// desktop's id). Null for a song only the phone has.</summary>
     Guid? DesktopIdOf(Track track) => IsRemote(track) ? track.Id : null;
     bool IsDownloaded(Track track);
+
+    /// <summary>When the phone saved <paramref name="track"/>'s offline copy (the file's time), null
+    /// when it has none or the host cannot tell: Home's Downloaded rail puts the newest first.</summary>
+    DateTime? DownloadedAt(Track track) => null;
     long DownloadedBytes { get; }
     int DownloadedCount { get; }
     Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default);

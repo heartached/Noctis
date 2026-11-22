@@ -338,6 +338,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _hasRecentlyAdded;
     [ObservableProperty] private bool _hasOnRepeat;
     [ObservableProperty] private bool _hasMostPlayed;
+    [ObservableProperty] private bool _hasDownloaded;
 
     /// <summary>The Shelf as a horizontal rail of covers (true) or a vertical list (false).</summary>
     [ObservableProperty] private bool _isShelfGrid = true;
@@ -382,6 +383,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     public BulkObservableCollection<RailItem> RecentlyAddedRail { get; } = new();
     public BulkObservableCollection<RailItem> OnRepeatRail { get; } = new();
     public BulkObservableCollection<RailItem> MostPlayedRail { get; } = new();
+
+    /// <summary>Home › Downloaded: the albums with a song downloaded from the computer, newest
+    /// download first (<see cref="MobileLibrary.DownloadedAlbums"/>).</summary>
+    public BulkObservableCollection<RailItem> DownloadedRail { get; } = new();
+
+    /// <summary>Home › Downloaded's › page: every such album (the rail holds the first twelve).</summary>
+    public IEnumerable<RailItem> DownloadedAlbums() =>
+        MobileLibrary.DownloadedAlbums(_library, Account, int.MaxValue).Select(RailItem.ForAlbum);
 
     /// <summary>The Shelf's albums as rail tiles: Library → Recently Played.</summary>
     public BulkObservableCollection<RailItem> RecentlyPlayedRail { get; } = new();
@@ -686,7 +695,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>The desktop songs' offline copies changed: open lists (Downloaded, the Downloaded
     /// filter) re-read.</summary>
-    public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
+    public void NotifyDownloadsChanged()
+    {
+        RefreshDownloaded();
+        Refreshed?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>The UI language changed: the rails' subtitles ("Artist", "12 songs") and the open
     /// pages' rows are rebuilt; the library itself is unchanged.</summary>
@@ -1156,6 +1169,16 @@ public sealed partial class LibraryViewModel : ObservableObject
         var recent = MobileLibrary.RecentlyAddedAlbums(_library, RailSize, InSource).Select(RailItem.ForAlbum).ToList();
         MobileLibrary.ReplaceIfChanged(RecentlyAddedRail, recent);
         HasRecentlyAdded = RecentlyAddedRail.Count > 0;
+
+        RefreshDownloaded();
+    }
+
+    /// <summary>Home › Downloaded: the library or the offline copies changed.</summary>
+    private void RefreshDownloaded()
+    {
+        var downloaded = MobileLibrary.DownloadedAlbums(_library, Account, RailSize).Select(RailItem.ForAlbum).ToList();
+        MobileLibrary.ReplaceIfChanged(DownloadedRail, downloaded);
+        HasDownloaded = DownloadedRail.Count > 0;
     }
 
     /// <summary>A pinned artist's circle shows on the Library tab: ask once a session for a photo

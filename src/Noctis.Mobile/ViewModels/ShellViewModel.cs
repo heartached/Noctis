@@ -1164,6 +1164,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
 
+    /// <summary>Home › Downloaded: every album with a song kept on this phone.</summary>
+    [RelayCommand] private void OpenDownloaded() => Navigate(new RailGridPageViewModel(this, "Mobile.Downloaded", Library.DownloadedAlbums));
+
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
     private void OpenAlbum(Album? album)

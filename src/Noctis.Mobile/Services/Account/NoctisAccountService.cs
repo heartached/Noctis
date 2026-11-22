@@ -84,7 +84,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private CancellationTokenSource? _syncCts;
     private volatile bool _isSyncing;
 
-    private sealed record DownloadedFile(string Path, long Size);
+    private sealed record DownloadedFile(string Path, long Size, DateTime SavedUtc);
     private readonly ConcurrentDictionary<Guid, DownloadedFile> _downloaded = new();
     /// <summary>Songs downloading now, each with its own stop (Remove Download on it).</summary>
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _inFlight = new();
@@ -1707,6 +1707,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public bool IsDownloaded(Track track) => IsRemote(track) && _downloaded.ContainsKey(track.Id);
 
+    public DateTime? DownloadedAt(Track track) =>
+        IsRemote(track) && _downloaded.TryGetValue(track.Id, out var file) ? file.SavedUtc : null;
+
     public long DownloadedBytes => _downloaded.Values.Sum(f => f.Size);
 
     public int DownloadedCount => _downloaded.Count;
@@ -1867,7 +1870,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             lock (_downloadCommit)
             {
                 removed = _withdrawn.ContainsKey(id);
-                if (!removed) _downloaded[id] = new DownloadedFile(final, new FileInfo(final).Length);
+                if (!removed)
+                {
+                    var file = new FileInfo(final);
+                    _downloaded[id] = new DownloadedFile(final, file.Length, file.LastWriteTimeUtc);
+                }
             }
             if (removed)
             {
@@ -2008,7 +2015,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 var ext = name[(dot + 1)..];
                 if (!(AllowedExtensions.Contains(ext) || ext == "bin")) continue;
                 if (!NoctisRemoteIds.IsLowerHex32(name.AsSpan(0, 32)) || !Guid.TryParseExact(name.AsSpan(0, 32), "N", out var id)) continue;
-                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file), new FileInfo(file).Length);
+                var info = new FileInfo(file);
+                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file), info.Length, info.LastWriteTimeUtc);
             }
         }
         catch (Exception ex) { DebugLog.Write("Account", $"offline folder unreadable ({ex.GetType().Name})"); }
