@@ -373,6 +373,103 @@ public class MobileComputerRemoteTests
         }
     }
 
+    // ── Show Remote on Home (Discord beta 11-22) ──
+
+    [AvaloniaFact]
+    public void HomeRemote_ShowsOnlyWithTheSwitchOn_WhileSignedIn()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), Playback = Playing() };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
+        var raised = new List<string?>();
+        shell.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        Assert.False(shell.ShowRemoteOnHome);                              // off by default
+        Assert.False(shell.ShowsHomeRemote);
+        shell.ShowRemoteOnHome = true;
+        Assert.True(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+
+        raised.Clear();
+        var signedIn = account.Account;
+        account.Account = null;                                            // signed out
+        account.RaiseStateChanged();
+        Assert.False(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+
+        raised.Clear();
+        account.Account = signedIn;                                        // signed in again
+        account.RaiseStateChanged();
+        Assert.True(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+    }
+
+    [Fact]
+    public async Task HomeRemote_IsSaved_AndReadBack()
+    {
+        using var rig = MobileFixtures.MakeRig(seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            Assert.False(s.MobileHomeRemote);                              // the default
+            s.MobileHomeRemote = true;
+            await p.SaveSettingsAsync(s);
+        });
+        await rig.Shell.InitializeAsync();
+        Assert.True(rig.Shell.ShowRemoteOnHome);
+
+        rig.Shell.ShowRemoteOnHome = false;
+        await rig.Shell.PendingPlayerBarSave;
+        Assert.False((await rig.Persistence.LoadSettingsAsync()).MobileHomeRemote);
+    }
+
+    [AvaloniaFact]
+    public void TheAccountSwitch_PutsARemoteButtonOnHome_ThatOpensTheRemote()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), Playback = Playing() };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            window.UpdateLayout();
+            var home = MobileFixtures.Find<Noctis.Mobile.Views.HomePage>(view);
+            var glass = MobileFixtures.Named<Noctis.Controls.GlassPanel>(home, "HomeRemoteGlass");
+            Assert.False(glass.IsEffectivelyVisible);                       // off by default
+            Assert.True(MobileFixtures.Named<Noctis.Mobile.Views.ProfileButton>(home, "HomeProfile").IsEffectivelyVisible);
+
+            shell.OpenAccountCommand.Execute(null);
+            window.UpdateLayout();
+            var accountView = MobileFixtures.Find<Noctis.Mobile.Views.AccountPage>(view);
+            var toggle = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(accountView, "HomeRemoteSwitch");
+            Assert.True(toggle.IsEffectivelyVisible);
+            Assert.Equal("Show Remote on Home", Avalonia.Automation.AutomationProperties.GetName(toggle));
+            Assert.False(toggle.IsChecked);
+            toggle.IsChecked = true;
+            Assert.True(shell.ShowRemoteOnHome);
+
+            shell.PopToRoot();
+            window.UpdateLayout();
+            Assert.True(glass.IsEffectivelyVisible);
+            var button = MobileFixtures.Named<Avalonia.Controls.Button>(home, "HomeRemoteButton");
+            Assert.Equal("Remote", Avalonia.Automation.AutomationProperties.GetName(button));
+            Assert.Equal(MobileFixtures.Named<Noctis.Mobile.Views.ProfileButton>(home, "HomeProfile").Bounds.Height, glass.Bounds.Height);
+
+            button.Command!.Execute(null);
+            var remote = Assert.IsType<ComputerRemotePageViewModel>(shell.CurrentPage);
+            shell.GoBack();
+            Assert.False(remote.IsRunning);
+
+            account.Account = null;                                        // signed out: the button goes
+            account.RaiseStateChanged();
+            window.UpdateLayout();
+            Assert.False(glass.IsEffectivelyVisible);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
     // ── The client ──
 
     private sealed class ScriptedHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler

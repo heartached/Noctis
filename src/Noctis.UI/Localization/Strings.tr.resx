@@ -3971,6 +3971,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} üzerinde Sıradaki</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>ve {0} tane daha</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Tekrar Dene</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Uzaktan Kumandayı Ana Sayfada Göster</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Profil fotoğrafının yanında bir düğme</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistem</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis bu şarkının klasörüne erişimi kaybetti. Klasörü Ayarlar → Kitaplık’tan yeniden ekle.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Bu telefon şu biçimi çözemiyor: {0}. Şarkı atlandı.</value></data>

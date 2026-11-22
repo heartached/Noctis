@@ -3,6 +3,7 @@
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
              xmlns:loc="using:Noctis.Localization"
+             xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Mobile.Views.HomePage"
              x:DataType="vm:ShellViewModel">
 
@@ -29,8 +30,18 @@
             <views:FitWidth Name="HomeTitleFit" VerticalAlignment="Center">
                 <TextBlock Name="HomeTitle" Classes="title" Text="{loc:T Nav.Home}" TextTrimming="CharacterEllipsis" />
             </views:FitWidth>
-            <views:ProfileButton Grid.Column="1" Name="HomeProfile" VerticalAlignment="Center"
-                                 AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+            <!-- Remote (Account › Show Remote on Home, off by default; signed in only): the computer's
+                 player one tap from Home, a glass circle like the profile's. Then the profile (Settings). -->
+            <StackPanel Grid.Column="1" Name="HomeHeaderActions" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <controls:GlassPanel Name="HomeRemoteGlass" Classes="header-glass" IsVisible="{Binding ShowsHomeRemote}">
+                    <Button Name="HomeRemoteButton" Classes="glass-round" Command="{Binding OpenComputerRemoteCommand}"
+                            AutomationProperties.Name="{loc:T Mobile.Remote.Title}">
+                        <PathIcon Data="{DynamicResource PhComputer}" />
+                    </Button>
+                </controls:GlassPanel>
+                <views:ProfileButton Name="HomeProfile" VerticalAlignment="Center"
+                                     AvatarPath="{Binding ProfileAvatarPath}" Command="{Binding OpenSettingsCommand}" />
+            </StackPanel>
         </Grid>
 
         <ScrollViewer Grid.Row="1" Classes="page-scroll" Name="HomeScroll" HorizontalScrollBarVisibility="Disabled">

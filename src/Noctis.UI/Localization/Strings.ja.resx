@@ -8907,6 +8907,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} で次に再生</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>ほか {0} 曲</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>再試行</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>ホームにリモートを表示</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>プロフィール写真の横にボタンを表示します</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>システム</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>この曲のフォルダーへのアクセス権が失われました。設定 → ライブラリでフォルダーをもう一度追加してください。</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>このスマートフォンは{0}をデコードできないため、曲をスキップしました。</value></data>

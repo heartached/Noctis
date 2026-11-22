@@ -3926,6 +3926,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>Далее на {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>и ещё {0}</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Повторить</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Пульт на главной</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Кнопка рядом с фото профиля</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Как в системе</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis потерял доступ к папке этой песни. Добавьте папку снова в «Настройки» → «Медиатека».</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Этот телефон не может декодировать {0}, поэтому песня пропущена.</value></data>

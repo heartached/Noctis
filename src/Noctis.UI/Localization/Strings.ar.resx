@@ -8907,6 +8907,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>التالي على {0}</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>و{0} أخرى</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>إعادة المحاولة</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>إظهار التحكم عن بُعد في الرئيسية</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>زر بجانب صورة ملفك الشخصي</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>النظام</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>فقد Noctis إذن الوصول إلى مجلد هذه الأغنية. أضف المجلد مرة أخرى من الإعدادات → المكتبة.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>لا يستطيع هذا الهاتف فك ترميز {0}، لذا تم تخطي الأغنية.</value></data>

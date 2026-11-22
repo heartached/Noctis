@@ -235,6 +235,10 @@ public class AppSettings : IJsonOnDeserializing
     /// default: played songs leave the Queue page, as they always have.</summary>
     public bool MobileQueueShowHistory { get; set; }
 
+    /// <summary>Phone, Settings › Account › Show Remote on Home (Discord beta 11-22): a Remote button
+    /// next to the profile picture on Home, while signed in. Off by default.</summary>
+    public bool MobileHomeRemote { get; set; }
+
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
     public bool MobileDownloadWifiOnly { get; set; } = true;
