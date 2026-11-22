@@ -114,6 +114,17 @@ public class PillDialogHost : ContentControl
         set => SetValue(BlurBackdropProperty, value);
     }
 
+    public static readonly StyledProperty<Thickness> CardMarginProperty =
+        AvaloniaProperty.Register<PillDialogHost, Thickness>(nameof(CardMargin));
+
+    /// <summary>Room around the card, with <see cref="ContentControl.VerticalContentAlignment"/>
+    /// placing it (default: none, centred). The Ctrl+K palette sits near the top this way.</summary>
+    public Thickness CardMargin
+    {
+        get => GetValue(CardMarginProperty);
+        set => SetValue(CardMarginProperty, value);
+    }
+
     /// <summary>
     /// Optional: something the content shows from its first frame but loads in the background
     /// (the metadata editor's cover decode). The open waits for it together with the backdrop

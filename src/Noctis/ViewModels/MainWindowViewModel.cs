@@ -2735,6 +2735,8 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var vm = new CommandPaletteViewModel(this, _library);
         await Views.CommandPaletteDialog.ShowAsync(vm);
+        // The picked row runs once the palette has closed (it may open a pop-up of its own).
+        vm.RunChosen();
     }
 
     private void OnAlbumOpened(object? sender, Album album)

@@ -325,7 +325,6 @@ public class PillDialogGlass234Tests
             ["MiniPlayerWindow"] = "its own frosted player (MiniPlayerFrostedBackground)",
             ["ArtworkViewerDialog"] = "a full-window artwork viewer, no card",
             ["BadgeNameDialog"] = "no blurred backdrop to frost (plain dim overlay)",
-            ["CommandPaletteDialog"] = "no blurred backdrop to frost (plain dim overlay)",
             ["LrcEditorDialog"] = "no blurred backdrop to frost (plain dim overlay)",
         };
         var others = Directory.GetFiles(ViewsDir(), "*.axaml")
