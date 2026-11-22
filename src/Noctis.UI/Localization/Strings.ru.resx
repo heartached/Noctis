@@ -4353,6 +4353,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Показать {0}</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Папка</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Сейчас нет на телефоне</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Разделители исполнителей</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Каждый разделитель делит тег исполнителя на нескольких исполнителей: с «,» тег «Boys Noize, ABRA» превращается в Boys Noize и ABRA. Исполнители сразу перегруппируются.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Другие версии</value></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Оригинал</value></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Искать в текстах песен</value></data>

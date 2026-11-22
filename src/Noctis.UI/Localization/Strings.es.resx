@@ -4343,6 +4343,9 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>Mostrar {0}</value><comment>Screen reader name of a row's Unhide; {0} is the song or folder</comment></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Carpeta</value><comment>Settings › Hidden: second line of a hidden folder</comment></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Ya no está en este teléfono</value><comment>Settings › Hidden: a hidden song the library no longer has</comment></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Separadores de artistas</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Cada separador divide una etiqueta de artista en varios artistas: con «,» la etiqueta «Boys Noize, ABRA» pasa a ser Boys Noize y ABRA. Tus artistas se reagrupan al instante.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Quitar {0}</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Otras versiones</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Buscar en las letras</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

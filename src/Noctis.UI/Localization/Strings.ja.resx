@@ -9333,6 +9333,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} を表示する</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>フォルダー</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>現在このスマートフォンにありません</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>アーティスト区切り文字</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>区切り文字ごとに、1つのアーティストタグが複数のアーティストに分かれます。「,」があれば「Boys Noize, ABRA」は Boys Noize と ABRA になります。アーティストはすぐにグループ分けし直されます。</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} を削除</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>ほかのバージョン</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>オリジナル</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>歌詞を検索</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

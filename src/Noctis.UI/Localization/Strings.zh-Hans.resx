@@ -9333,6 +9333,9 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>取消隐藏 {0}</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>文件夹</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>目前不在此手机上</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>艺人分隔符</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>每个分隔符都会把一个艺人标签拆成多位艺人：有了“,”，标签“Boys Noize, ABRA”就会变成 Boys Noize 和 ABRA。艺人会立即重新分组。</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>其他版本</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>原版</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>搜索歌词</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>
