@@ -3495,6 +3495,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>D’après la pochette</value><comment>Background group header</comment></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>À l’écoute</value><comment>Background choice: colours of the playing song’s cover</comment></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Change avec la pochette de chaque morceau</value><comment>Under Now Playing</comment></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>Le voile de couleur du lecteur derrière chaque page</value><comment>Under Colour Wash (Settings › Background): Now Playing's wash behind the app's pages</comment></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Désactivé</value><comment>Setting value: off</comment></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>La couleur unie du thème</value><comment>Under Off</comment></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Neutre</value><comment>Background group header: muted colours</comment></data>

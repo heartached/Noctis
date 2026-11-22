@@ -8485,6 +8485,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>取自封面</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>正在播放</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>随每首歌曲的封面变化</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>将播放器的色彩渲染用作每个页面的背景</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>关闭</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>纯色主题色</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>中性色</value></data>

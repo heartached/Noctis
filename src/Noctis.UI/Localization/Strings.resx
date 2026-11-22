@@ -3504,6 +3504,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>From Artwork</value><comment>Background group header</comment></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Now Playing</value><comment>Background choice: colours of the playing song’s cover</comment></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Changes with each song's cover</value><comment>Under Now Playing</comment></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>The player's colour wash behind every page</value><comment>Under Colour Wash (Settings › Background): Now Playing's wash behind the app's pages</comment></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Off</value><comment>Setting value: off</comment></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>The plain theme colour</value><comment>Under Off</comment></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Neutral</value><comment>Background group header: muted colours</comment></data>
@@ -3546,7 +3547,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Now Playing background brightness</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Darker or brighter colours behind Now Playing</value><comment>Footnote under the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessLevel" xml:space="preserve"><value>Brightness</value><comment>Settings row: the slider under it makes the Now Playing wash darker or brighter</comment></data>
-  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Colour Wash</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default)</comment></data>
+  <data name="Mobile.NowPlayingBackground.Wash" xml:space="preserve"><value>Colour Wash</value><comment>Now Playing Background choice: the cover's colours as a soft wash (the default); also the Settings › Background choice that puts that wash behind the app's pages</comment></data>
   <data name="Mobile.NowPlayingBackground.BlurredCover" xml:space="preserve"><value>Blurred Cover</value><comment>Now Playing Background choice: the cover itself, blurred, behind the player</comment></data>
   <data name="Mobile.Settings.NowPlayingBlur" xml:space="preserve"><value>Blur</value><comment>Settings row: a slider for how blurred the cover behind Now Playing is</comment></data>
   <data name="Mobile.Settings.NowPlayingBlurName" xml:space="preserve"><value>Now Playing background blur</value><comment>Screen reader name of the Blur slider</comment></data>

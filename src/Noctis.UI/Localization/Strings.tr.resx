@@ -3549,6 +3549,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>Kapaktan</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Şimdi Çalıyor</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Her şarkının kapağıyla değişir</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>Oynatıcının renk perdesi her sayfanın arkasında</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Kapalı</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>Düz tema rengi</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Nötr</value></data>

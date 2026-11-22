@@ -59,6 +59,9 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
         _all.AddRange(Colours);
         _artwork.Set(BackgroundCatalog.ForCover(shell.Background.Cover, _light), 1);
         shell.Background.ChoiceChanged += OnChoiceChanged;
+        // The Colour Wash tile: the playing cover's wash, made now if Colour Wash is not on.
+        shell.Background.PropertyChanged += OnBackgroundChanged;
+        shell.Background.EnsureWash();
         // Live: Settings opened in Light, Theme switched to Dark, and every swatch stayed pale.
         if (Application.Current is { } app) app.ActualThemeVariantChanged += OnThemeChanged;
         SyncSelection();
@@ -70,7 +73,15 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
     internal void Detach()
     {
         _shell.Background.ChoiceChanged -= OnChoiceChanged;
+        _shell.Background.PropertyChanged -= OnBackgroundChanged;
         if (Application.Current is { } app) app.ActualThemeVariantChanged -= OnThemeChanged;
+    }
+
+    private void OnBackgroundChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PhoneBackground.WashImage)) return;
+        OnPropertyChanged(nameof(WashTileBrush));
+        if (IsWash) OnPropertyChanged(nameof(SummarySwatch));
     }
 
     private void OnThemeChanged(object? sender, EventArgs e)
@@ -94,7 +105,13 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
     /// <summary>The Now Playing card's tile: the playing cover's mesh.</summary>
     public IBrush ArtworkBrush => _artwork.Brush;
 
-    /// <summary>The current choice's name: "Off", "Now Playing" or a swatch's name.</summary>
+    /// <summary>The Colour Wash card's tile: the playing cover's wash as Now Playing paints it; the
+    /// plain grey with nothing playing.</summary>
+    public IBrush WashTileBrush => Background.WashImage is IImageBrushSource wash
+        ? new ImageBrush(wash) { Stretch = Stretch.Fill }
+        : new ImmutableSolidColorBrush(Color.FromArgb(0x59, 0x80, 0x80, 0x80));
+
+    /// <summary>The current choice's name: "Off", "Now Playing", "Colour Wash" or a swatch's name.</summary>
     public string Summary => Background.Summary;
 
     /// <summary>The current choice as a small swatch, for the Settings row.</summary>
@@ -102,11 +119,13 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
     {
         PhoneBackground.Off => new ImmutableSolidColorBrush(Color.FromArgb(0x59, 0x80, 0x80, 0x80)),
         PhoneBackground.Artwork => Paint(BackgroundCatalog.ForCover(Background.Cover, _light)),
+        PhoneBackground.ColourWash => WashTileBrush,
         var id => _all.FirstOrDefault(s => s.Id == id)?.Brush ?? new ImmutableSolidColorBrush(Colors.Gray),
     };
 
     public bool IsOff => Background.Choice == PhoneBackground.Off;
     public bool IsArtwork => Background.Choice == PhoneBackground.Artwork;
+    public bool IsWash => Background.Choice == PhoneBackground.ColourWash;
 
     /// <summary>The preview card's tag: "Preview · Ash".</summary>
     public string PreviewTag => Loc.T("Mobile.Background.PreviewTag", Summary);
@@ -151,6 +170,9 @@ public sealed partial class BackgroundSettingsViewModel : ObservableObject
 
     [RelayCommand]
     private void PickArtwork() => Background.Choice = PhoneBackground.Artwork;
+
+    [RelayCommand]
+    private void PickWash() => Background.Choice = PhoneBackground.ColourWash;
 
     [RelayCommand]
     private void PickOff() => Background.Choice = PhoneBackground.Off;

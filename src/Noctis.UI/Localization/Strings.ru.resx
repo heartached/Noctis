@@ -3504,6 +3504,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>Из обложки</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Сейчас играет</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Меняется вместе с обложкой каждой песни</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>Цветная дымка плеера за каждой страницей</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Выкл.</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>Обычный цвет темы</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Нейтральные</value></data>

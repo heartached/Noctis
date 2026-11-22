@@ -8485,6 +8485,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>من صورة الغلاف</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>قيد التشغيل</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>يتغيّر مع غلاف كل أغنية</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>التدرّج اللوني للمشغّل خلف كل صفحة</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>إيقاف</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>لون السمة العادي</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>محايدة</value></data>
