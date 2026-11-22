@@ -3598,6 +3598,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Плавнее прокрутка на экранах 120 Гц но больше расход батареи</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Вкладка Liquid Glass</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Выбранная вкладка остаётся прозрачным стеклом</value></data>
+  <data name="Mobile.Settings.ReduceGlass" xml:space="preserve"><value>Меньше стекла</value></data>
+  <data name="Mobile.Settings.ReduceGlassHint" xml:space="preserve"><value>Меню и панели без стекла, плавнее на медленных телефонах</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Панель вкладок</value></data>
   <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Выберите от 2 до 5 вкладок и перетащите точки в конце строки, чтобы расставить их. Медиатека всегда остаётся на панели, так что все списки и Настройки под рукой.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Сбросить по умолчанию</value></data>

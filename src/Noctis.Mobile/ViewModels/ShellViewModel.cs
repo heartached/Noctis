@@ -833,6 +833,14 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private bool _glassTabPill;
     partial void OnGlassTabPillChanged(bool value) => SavePlayerBarSettings(nameof(GlassTabPill));
 
+    /// <summary>Settings › Appearance › Reduce Glass (beta testers 11-22: "in some menus it just feels
+    /// laggy"): every glass surface (the menus' card, the tab bar, mini player and other floating
+    /// bars, the header buttons, the tab pill) is a plain fill that reads nothing beneath it
+    /// (GlassPanel.ReduceGlass, set on ShellView). Off by default. While on, Liquid Glass Tab Pill
+    /// has nothing to draw and its switch is disabled; its value is kept for when this goes off.</summary>
+    [ObservableProperty] private bool _reduceGlass;
+    partial void OnReduceGlassChanged(bool value) => SavePlayerBarSettings(nameof(ReduceGlass));
+
     /// <summary>Settings › Listening › Played Songs in Queue (Discord request 11-07): the Queue page
     /// shows the songs already played above the current track (NowPlayingViewModel.PlayedSongs).
     /// Off by default, the Queue page as it was.</summary>
@@ -884,6 +892,7 @@ public sealed partial class ShellViewModel : ObservableObject
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ReduceGlass))) ReduceGlass = settings.MobileReduceGlass;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowRemoteOnHome))) ShowRemoteOnHome = settings.MobileHomeRemote;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
@@ -921,6 +930,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var background = NowPlayingBackground.ToString();
         int blur = NowPlayingBlur, dim = NowPlayingDim;
         var glassPill = GlassTabPill;
+        var reduceGlass = ReduceGlass;
         var queueHistory = ShowQueueHistory;
         var homeRemote = ShowRemoteOnHome;
         var tabBar = TabBarTabs.Encode(BarTabs);
@@ -941,6 +951,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileNowPlayingBlur = blur;
                     settings.MobileNowPlayingDim = dim;
                     settings.MobileGlassTabPill = glassPill;
+                    settings.MobileReduceGlass = reduceGlass;
                     settings.MobileQueueShowHistory = queueHistory;
                     settings.MobileHomeRemote = homeRemote;
                     settings.MobileTabBar = tabBar;

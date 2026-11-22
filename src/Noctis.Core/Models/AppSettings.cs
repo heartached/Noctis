@@ -228,6 +228,11 @@ public class AppSettings : IJsonOnDeserializing
     /// clear glass instead of the dark tinted pill. Off by default.</summary>
     public bool MobileGlassTabPill { get; set; }
 
+    /// <summary>Phone, Settings › Appearance › Reduce Glass (beta testers 11-22): the menus, the
+    /// floating bars and the header buttons draw a plain fill instead of Liquid Glass (no backdrop
+    /// blur or lens). Off by default.</summary>
+    public bool MobileReduceGlass { get; set; }
+
     /// <summary>Phone, Settings › Tab Bar (beta testers 11-17): the tabs on the bottom bar, in order,
     /// by name ("Home", "Songs", ...). Empty (the default, and what a settings file without the field
     /// reads as) = Home, Favorites, Playlists, Library, Search. Names this build does not know are

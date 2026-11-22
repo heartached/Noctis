@@ -3589,6 +3589,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>Desplazamiento más fluido en pantallas de 120 Hz pero gasta más batería</value><comment>Footnote</comment></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Pestaña de Liquid Glass</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>La pestaña elegida queda en cristal claro</value></data>
+  <data name="Mobile.Settings.ReduceGlass" xml:space="preserve"><value>Reducir cristal</value></data>
+  <data name="Mobile.Settings.ReduceGlassHint" xml:space="preserve"><value>Menús y barras sin cristal, más fluido en móviles lentos</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Barra de pestañas</value><comment>Settings row and page: which tabs are on the bottom bar</comment></data>
   <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Elige de 2 a 5 pestañas y arrastra los puntos al final de una fila para ordenarlas. Biblioteca siempre se queda en la barra, así todas las listas y los Ajustes siguen a mano.</value><comment>Footnote under the Tab Bar list</comment></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Restablecer valores predeterminados</value><comment>Button: put the default tabs back</comment></data>

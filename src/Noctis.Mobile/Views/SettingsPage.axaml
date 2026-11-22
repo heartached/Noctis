@@ -591,8 +591,22 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
-                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06). -->
+                                    <!-- Reduce Glass: menus, bars and header buttons as a plain fill (testers 11-22). -->
+                                    <ToggleButton Name="ReduceGlassSwitch" Classes="switch-row" IsChecked="{Binding Shell.ReduceGlass}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.ReduceGlass}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconBackground}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.ReduceGlass}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.ReduceGlassHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06).
+                                         Disabled under Reduce Glass, where the pill is a plain fill. -->
                                     <ToggleButton Name="GlassTabPillSwitch" Classes="switch-row" IsChecked="{Binding Shell.GlassTabPill}"
+                                                  IsEnabled="{Binding !Shell.ReduceGlass}"
                                                   AutomationProperties.Name="{loc:T Mobile.Settings.GlassTabPill}">
                                         <Grid ColumnDefinitions="Auto,*">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
