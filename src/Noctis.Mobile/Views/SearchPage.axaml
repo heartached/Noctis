@@ -232,24 +232,31 @@
                             </views:RowItemsControl.ItemTemplate>
                         </views:RowItemsControl>
                     </ScrollViewer>
-                    <!-- The Albums chip: every match as a two-column grid. -->
-                    <ItemsControl Name="AlbumGridResults" ItemsSource="{Binding Albums}" Margin="4,0" IsVisible="{Binding ShowAlbumGrid}">
-                        <ItemsControl.ItemsPanel>
+                    <!-- The Albums chip: every match as a two-column grid, in rows (AlbumRows) that
+                         virtualise and keep their tiles (SlotRow), as the Albums page's grid. -->
+                    <views:RowItemsControl Name="AlbumGridResults" ItemsSource="{Binding AlbumRows}" Margin="4,0" IsVisible="{Binding ShowAlbumGrid}">
+                        <views:RowItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" />
+                                <VirtualizingStackPanel />
                             </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:Album">
-                                <Button Classes="row" Margin="6,0,6,14"
-                                        Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenAlbumCommand}"
-                                        CommandParameter="{Binding}"
-                                        views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
-                                    <views:AlbumTile />
-                                </Button>
+                        </views:RowItemsControl.ItemsPanel>
+                        <views:RowItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:AlbumRow">
+                                <views:SlotRow Items="{Binding Albums}" Columns="2">
+                                    <views:SlotRow.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Album">
+                                            <Button Classes="row" Margin="6,0,6,14" VerticalAlignment="Top"
+                                                    Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenAlbumCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
+                                                <views:AlbumTile />
+                                            </Button>
+                                        </DataTemplate>
+                                    </views:SlotRow.ItemTemplate>
+                                </views:SlotRow>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </views:RowItemsControl.ItemTemplate>
+                    </views:RowItemsControl>
                 </StackPanel>
 
                 <StackPanel Spacing="4" IsVisible="{Binding HasArtists}">
