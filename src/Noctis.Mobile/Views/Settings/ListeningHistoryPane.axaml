@@ -116,7 +116,11 @@
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
                                             <TextBlock Classes="row-title" Text="{Binding Track.Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Classes="row-sub" Margin="0" Text="{Binding Sub}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            <!-- The count first (docked right, at its full width), so a long artist is the one cut short. -->
+                                            <DockPanel HorizontalAlignment="Left">
+                                                <TextBlock DockPanel.Dock="Right" Classes="row-sub" Margin="0" Text="{Binding Plays}" MaxLines="1" />
+                                                <TextBlock Classes="row-sub" Margin="0" Text="{Binding Track.Artist}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Classes="row-value" FontSize="15" Text="{Binding When}" />
                                     </Grid>

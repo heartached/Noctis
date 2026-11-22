@@ -51,7 +51,12 @@ public sealed partial class HistoryBar : ObservableObject
 
 /// <summary>A song in Recently Played with how long ago it last played ("Now", "12 min", "1 h") and,
 /// under its title, its artist and how often the log has it ("Artist · 12 plays").</summary>
-public sealed record HistoryRow(Track Track, string When, string Sub);
+public sealed record HistoryRow(Track Track, string When, string Sub)
+{
+    /// <summary>The end of <see cref="Sub"/> after the artist (" · 12 plays", or all of it without one):
+    /// the row draws it apart so a long artist is cut short instead of the count.</summary>
+    public string Plays => string.IsNullOrWhiteSpace(Track.Artist) ? Sub : Sub[Track.Artist.Length..];
+}
 
 /// <summary>
 /// Settings → Listening History: this week's listening from the phone's play log (or one day's,
