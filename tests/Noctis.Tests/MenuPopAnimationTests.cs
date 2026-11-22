@@ -71,6 +71,39 @@ public class MenuPopAnimationTests
         finally { menu.Close(); window.Close(); }
     }
 
+    /// <summary>Discord 11-21 (tray menu, "spam right click"): the frosted tray menu's OS blur
+    /// cannot fade, so the pop showed an empty frosted card while the rows faded in. SettleNow
+    /// lands the card and rows at once, and the open's pending steps must not start it again.</summary>
+    [AvaloniaFact]
+    public async Task SettleNow_LandsTheCardAndRowsAtOnce_AndThePendingOpenStaysStopped()
+    {
+        MenuOpenAnimation.ForgetLastPress();
+        var card = new MenuFlyoutPresenter { ItemsSource = new[] { "Open Noctis", "Play", "Quit" } };
+        MenuOpenAnimation.SetPop(card, true);
+        var window = new Window { Content = card, SizeToContent = SizeToContent.WidthAndHeight };
+        window.Show();
+        // Starts the pop (the card is already attached) with its steps still pending.
+        MenuOpenAnimation.SetEnable(card, true);
+        Assert.True(card.Opacity < 1);
+        try
+        {
+            MenuOpenAnimation.SettleNow(card);
+            await PumpUntilAsync(() => false, 400);
+
+            Assert.Null(card.Transitions);
+            Assert.Equal(1, card.Opacity);
+            Assert.Equal(Matrix.Identity, card.RenderTransform!.Value);
+            var rows = card.GetRealizedContainers().ToList();
+            Assert.Equal(3, rows.Count);
+            Assert.All(rows, r =>
+            {
+                Assert.Null(r.Transitions);
+                Assert.Equal(1, r.Opacity);
+            });
+        }
+        finally { window.Close(); }
+    }
+
     [AvaloniaFact]
     public void Pop_GrowsOutOfTheAnchor_ClampedToTheCard()
     {

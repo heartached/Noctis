@@ -93,6 +93,9 @@ public static class TrayMenuFrost
     internal static void Apply(Window window, Color tint)
     {
         if (window.Content is not MenuFlyoutPresenter card) return;
+        // The OS blur shows at once and cannot fade, so the menus' pop would show it as an
+        // empty frosted rectangle while the card and rows faded in (Discord 11-21).
+        MenuOpenAnimation.SettleNow(card);
         card.Background = new SolidColorBrush(tint, CardTintOpacity);
         window.TransparencyLevelHint = MiniPlayerWindow.TransparencyLevels(true);
         void Clip() => ApplyRegion(window, card);
