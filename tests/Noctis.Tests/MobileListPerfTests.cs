@@ -165,4 +165,57 @@ public class MobileListPerfTests
         Assert.Equal(items.Skip((items.Count - 1) / 3 * 3), lastButtons.Select(b => b.CommandParameter));
         window.Close();
     }
+
+    /// <summary>
+    /// A heart toggled (a row's menu, the album heart, Now Playing) refreshes every open list. The
+    /// Songs tab sorted all its songs again and the Artists tab rebuilt every circle, though a
+    /// heart changes no sort key and nothing a circle shows. Now only what hearts touch re-runs:
+    /// the Favorites list, and a list filtered to favourites.
+    /// </summary>
+    [Fact]
+    public void HeartTap_DoesNotResortOrRebuildTheOpenLists_ButFavouriteViewsFollow()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary(7_200, 600);
+        var songs = new SongListPageViewModel(rig.Shell, "Nav.Songs", rig.Shell.Library.SourceSongs);
+        songs.ChooseSort(songs.SortChoices.First(c => Equals(c.Key, SongSort.Artist)));
+        var filtered = new SongListPageViewModel(rig.Shell, "Nav.Songs", rig.Shell.Library.SourceSongs) { OnlyFavourites = true };
+        var favs = new SongListPageViewModel(rig.Shell, "Nav.Favorites", rig.Shell.Library.Favourites);
+        var albums = new AlbumGridPageViewModel(rig.Shell);
+        var artists = new ArtistListPageViewModel(rig.Shell);
+        var shownSongs = songs.Songs.ToList();
+        var albumRows = albums.Rows.ToList();
+        var artistRows = artists.Rows.ToList();
+        rig.Library.NotifyFavoritesChanged();   // warm-up
+
+        var times = new List<double>();
+        var alloc = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 10; i++)
+        {
+            rig.Library.TrackList[i].IsFavorite = !rig.Library.TrackList[i].IsFavorite;
+            var start = Stopwatch.GetTimestamp();
+            rig.Library.NotifyFavoritesChanged();
+            times.Add(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+        }
+        var perTap = (GC.GetAllocatedBytesForCurrentThread() - alloc) / 10;
+        times.Sort();
+        _out.WriteLine($"heart tap, Songs (by Artist) + Favorites + filtered + Albums + Artists open: median {times[5]:F1} ms, {perTap / 1024} KB");
+
+        // Ten taps on ten songs left them all favourites (they started not).
+        var hearted = rig.Library.TrackList.Take(10).ToHashSet();
+        Assert.Equal(shownSongs, songs.Songs);
+        Assert.Equal(hearted.OrderBy(t => t.Id), favs.Songs.OrderBy(t => t.Id));
+        Assert.Equal(hearted.OrderBy(t => t.Id), filtered.Songs.OrderBy(t => t.Id));
+        Assert.Equal(10, filtered.SongCount);
+        Assert.True(albumRows.SequenceEqual(albums.Rows, ReferenceEqualityComparer.Instance));
+        Assert.True(artistRows.SequenceEqual(artists.Rows, ReferenceEqualityComparer.Instance));
+
+        // Before: 17.3 ms, 735 KB a tap (Songs 11 ms / 423 KB, Artists 7.7 ms / 246 KB of it).
+        Assert.True(perTap < 200 * 1024, $"{perTap / 1024} KB per heart tap");
+
+        // A library update still re-sorts: a renamed artist moves.
+        var moved = songs.Songs[0];
+        moved.Artist = "zzzz";
+        rig.Library.RaiseLibraryUpdated();
+        Assert.Same(moved, songs.Songs[^1]);
+    }
 }

@@ -161,6 +161,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
 
+    /// <summary>The <see cref="Refreshed"/> args of a heart toggled (<see cref="RefreshFavourites"/>):
+    /// no song, album or artist changed but its favourite, so a page whose rows and order do not
+    /// depend on hearts keeps them.</summary>
+    public static readonly EventArgs FavouritesRefresh = new();
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private int _songCount;
@@ -1150,7 +1155,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void RefreshFavourites()
     {
         FavoriteCount = _library.Tracks.Count(t => t.IsFavorite);
-        Refreshed?.Invoke(this, EventArgs.Empty);
+        Refreshed?.Invoke(this, FavouritesRefresh);
     }
 
     /// <summary>Pinned and Recently Added: library structure and pins only.</summary>

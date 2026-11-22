@@ -330,7 +330,35 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         return ordered.ThenBy(t => t.Album, names).ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, names);
     }
 
-    private void OnRefreshed(object? sender, EventArgs e) => Refresh();
+    private void OnRefreshed(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(e, LibraryViewModel.FavouritesRefresh)) RefreshFavourites();
+        else Refresh();
+    }
+
+    /// <summary>
+    /// A heart toggled: no sort key changed (a heart is none), so the same songs keep their sorted
+    /// order and only the filters run again (Favorites only, the Favorites list's own songs).
+    /// Every heart used to sort the whole list again: ~11 ms headless for 7,200 songs by Artist.
+    /// </summary>
+    private void RefreshFavourites()
+    {
+        var next = _source().ToList();
+        if (!SameSongs(next, _all))
+        {
+            Refresh();
+            return;
+        }
+        ApplyFilter();
+    }
+
+    private static bool SameSongs(List<Track> a, List<Track> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+            if (!ReferenceEquals(a[i], b[i])) return false;
+        return true;
+    }
 
     /// <summary>A row tap: play this list from that row.</summary>
     [RelayCommand]
