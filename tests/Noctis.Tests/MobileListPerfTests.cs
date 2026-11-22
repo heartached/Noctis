@@ -290,4 +290,47 @@ public class MobileListPerfTests
         rig.Library.RaiseLibraryUpdated();
         Assert.Equal(runs + 1, search.RunCount);
     }
+
+    /// <summary>
+    /// An artist page rebuilt itself on every library refresh: a heart on one of its songs (its
+    /// menu, Now Playing) or a song finishing downloading replaced every rail and card with new
+    /// lists, so every tile was built again and blanked its cover until the reload landed. A heart
+    /// or a download changes nothing the page shows (Top Songs ranks by plays).
+    /// </summary>
+    [AvaloniaFact]
+    public void ArtistPage_KeepsItsRailsAndTiles_WhenASongIsHeartedOrDownloaded()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary(4_800, 300);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        var name = rig.Library.Albums[0].Artist;
+        rig.Shell.OpenArtistCommand.Execute(name);
+        MobileFixtures.Land(window);
+        Dispatcher.UIThread.RunJobs();
+        var page = Assert.IsType<ArtistPageViewModel>(rig.Shell.CurrentPage);
+        var (topSongs, albums, cards) = (page.TopSongPages, page.Albums, page.Cards);
+        var pageView = MobileFixtures.Find<ArtistPage>(view);
+        var tiles = pageView.GetVisualDescendants().OfType<Button>().ToList();
+
+        var song = page.Songs[0];
+        song.IsFavorite = !song.IsFavorite;
+        var alloc = GC.GetAllocatedBytesForCurrentThread();
+        var start = Stopwatch.GetTimestamp();
+        rig.Library.NotifyFavoritesChanged();
+        rig.Shell.Library.NotifyDownloadsChanged();
+        var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+        window.UpdateLayout();
+        Dispatcher.UIThread.RunJobs();
+        _out.WriteLine($"artist page, heart + download refresh: {ms:F1} ms, {(GC.GetAllocatedBytesForCurrentThread() - alloc) / 1024} KB");
+
+        Assert.Same(topSongs, page.TopSongPages);
+        Assert.Same(albums, page.Albums);
+        Assert.Same(cards, page.Cards);
+        var kept = pageView.GetVisualDescendants().OfType<Button>().ToList();
+        Assert.True(tiles.SequenceEqual(kept, ReferenceEqualityComparer.Instance), "the page's buttons and tiles were rebuilt");
+
+        // A library update (a rescan) still rebuilds it.
+        rig.Library.RaiseLibraryUpdated();
+        Assert.NotSame(albums, page.Albums);
+        window.Close();
+    }
 }

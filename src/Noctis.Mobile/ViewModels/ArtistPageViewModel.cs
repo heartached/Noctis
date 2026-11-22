@@ -342,7 +342,13 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         }
     }
 
-    private void OnRefreshed(object? sender, EventArgs e) => Rebuild();
+    // A heart or a download changes nothing the page shows (Top Songs ranks by plays). Rebuilding
+    // replaced every rail and card, so each tile was built again and blanked its cover.
+    private void OnRefreshed(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(e, LibraryViewModel.FavouritesRefresh) || ReferenceEquals(e, LibraryViewModel.DownloadsRefresh)) return;
+        Rebuild();
+    }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
