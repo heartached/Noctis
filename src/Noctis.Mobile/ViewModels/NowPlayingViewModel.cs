@@ -967,12 +967,17 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
             new PlaybackQueueState(state.CurrentTrackId, state.UpNextIds, state.HistoryIds, state.RepeatCycleIds,
                 state.RepeatMode, state.IsShuffleEnabled, state.OriginalOrderIds, state.PlayedInQueue),
             id => _library.GetTrackById(id));
+        // The saved song left the library since (deleted, a duplicate removed): the next one
+        // queued takes its place, from its start. Without it nothing was loaded over a full
+        // Up Next: no player bar, Play did nothing, and the next song tapped replaced the queue.
+        var currentGone = state.CurrentTrackId != null && _queue.Current == null;
+        if (currentGone && _queue.UpNext.Count > 0) _queue.Advance(QueueAdvance.UserSkip);
         SourceLabel = state.SourceLabel;
         RepeatMode = state.RepeatMode;
         IsShuffleEnabled = state.IsShuffleEnabled;
         CurrentTrack = _queue.Current;
         Duration = _queue.Current?.Duration ?? TimeSpan.Zero;
-        Position = _queue.Current != null ? TimeSpan.FromSeconds(Math.Max(0, state.PositionSeconds)) : TimeSpan.Zero;
+        Position = _queue.Current != null && !currentGone ? TimeSpan.FromSeconds(Math.Max(0, state.PositionSeconds)) : TimeSpan.Zero;
         IsPlaying = false;
         SyncUpNext();
     }

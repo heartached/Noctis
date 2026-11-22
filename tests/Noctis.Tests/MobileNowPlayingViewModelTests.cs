@@ -594,6 +594,35 @@ public class MobileNowPlayingViewModelTests : IDisposable
         Assert.Equal(new[] { t[1], t[2] }, next.UpNext);
     }
 
+    /// <summary>
+    /// Bug: the song playing when the app was closed left the library before the next start
+    /// (deleted, a duplicate removed). The restore came back with no song loaded but its Up Next
+    /// still queued: no player bar, Play did nothing, and the next song tapped replaced the queue.
+    /// </summary>
+    [Fact]
+    public async Task Restore_WhenTheSavedSongLeftTheLibrary_TheNextQueuedSongTakesItsPlace()
+    {
+        var t = Tracks(3);
+        var (vm, _, library, persistence) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.Seek(TimeSpan.FromSeconds(42));
+        await vm.SaveStateAsync();
+        library.TrackList.Remove(t[0]);
+
+        var player = new FakeAudioPlayer();
+        var restored = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
+        await restored.RestoreStateAsync();
+
+        Assert.Same(t[1], restored.CurrentTrack);
+        Assert.Equal(new[] { t[2] }, restored.UpNext);
+        Assert.Equal(TimeSpan.Zero, restored.Position);    // the 42 s were the gone song's
+        Assert.Equal(t[1].Duration, restored.Duration);
+        Assert.False(restored.IsPlaying);
+
+        restored.TogglePlayPauseCommand.Execute(null);
+        Assert.Equal(new[] { t[1].FilePath }, player.PlayedPaths);
+    }
+
     // ── Queue History and Add Before Current Song (Discord 11-07) ──
 
     [Fact]
