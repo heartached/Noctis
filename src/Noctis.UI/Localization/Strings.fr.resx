@@ -3587,7 +3587,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Onglet en Liquid Glass</value> <comment>Setting switch (tab bar selection pill look)</comment></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>L’onglet choisi reste en verre clair</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Barre d’onglets</value><comment>Settings row and page: which tabs are on the bottom bar</comment></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Choisissez de 2 à 5 onglets et faites glisser ≡ pour les ordonner. Bibliothèque reste toujours dans la barre : toutes les listes et les Paramètres restent accessibles.</value><comment>Footnote under the Tab Bar list</comment></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>Choisissez de 2 à 5 onglets et faites glisser les points au bout d'une ligne pour les ordonner. Bibliothèque reste toujours dans la barre : toutes les listes et les Paramètres restent accessibles.</value><comment>Footnote under the Tab Bar list</comment></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Rétablir par défaut</value><comment>Button: put the default tabs back</comment></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Déplacer {0}</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Morceaux écoutés dans la file</value><comment>Setting switch: Queue page shows played songs</comment></data>
