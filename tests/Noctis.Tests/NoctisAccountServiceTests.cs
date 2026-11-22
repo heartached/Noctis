@@ -527,35 +527,6 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(allocated < 64 * 1024, $"{allocated} bytes allocated by 200 reads");
     }
 
-    /// <summary>A downloaded song the computer no longer has leaves the phone's library with the
-    /// next settled sync; its file stayed in the offline folder, counted in Downloaded and its
-    /// space, with no row left to remove it from.</summary>
-    [Fact]
-    public async Task ADownloadedSong_TheComputerDropped_TakesItsFileWith_WhenTheCatalogIsSettled()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var svc = await SignedInAsync();
-        await svc.SyncNowAsync(ct);
-        await svc.DownloadAsync(new[] { Phone(_t1), Phone(_t3) }, ct);
-        var file3 = Path.Combine(OfflineDir, _t3.Id.ToString("N") + ".flac");
-        Assert.True(File.Exists(file3));
-
-        // Mid-scan the list proves nothing: the download stays.
-        _desk.IsScanning = true;
-        _desk.Show(_t1, _t2);
-        await svc.SyncNowAsync(ct);
-        Assert.Equal(2, svc.DownloadedCount);
-
-        // Settled without _t3: the song and its file go; the others stay.
-        _desk.IsScanning = false;
-        await svc.SyncNowAsync(ct);
-        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
-        Assert.False(File.Exists(file3));
-        Assert.Equal(1, svc.DownloadedCount);
-        Assert.Equal(_audio.Length, svc.DownloadedBytes);
-        Assert.True(svc.IsDownloaded(Phone(_t1)));
-    }
-
     [Fact]
     public async Task Download_WritesTheFile_AndPlaybackSwitchesToIt_ThenBackWhenRemoved()
     {

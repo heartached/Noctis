@@ -759,19 +759,6 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         SaveSyncState();
         await _library.ReplaceRemoteTracksAsync(tracks, ct).ConfigureAwait(false);
         if (links.Count > 0) DiscardDownloadsOf(links.Keys);
-        // A settled catalog lists every desktop song: a download of one it does not list is of a song
-        // gone from the computer (and now from the library), with no row left to remove it from, yet
-        // still counted in Downloaded and its space. Never on an empty list (a computer still starting).
-        if (!keepUnlisted && songs.Count > 0)
-        {
-            var listedIds = new HashSet<Guid>(songs.Select(s => s.Id));
-            var orphans = _downloaded.Keys.Where(id => !listedIds.Contains(id)).ToList();
-            if (orphans.Count > 0)
-            {
-                DiscardDownloadsOf(orphans);
-                DebugLog.Write("Account", $"downloads: {orphans.Count} removed, their songs are gone from the computer");
-            }
-        }
         if (redate) await RedateKnownSongsAsync(arriving, known).ConfigureAwait(false);
 
         // Known songs: the catalog's favorite/rating (unless an edit is pending); counts only grow.
