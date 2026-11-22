@@ -3457,6 +3457,7 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Aucune playlist pour l’instant. Maintenez le doigt sur un morceau pour en créer une.</value><comment>Empty Playlists page</comment></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Aucune playlist trouvée</value><comment>Playlists search found nothing</comment></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Trier les playlists</value><comment>Screen reader name</comment></data>
+  <data name="Mobile.Albums.SortName" xml:space="preserve"><value>Trier les albums</value><comment>Screen reader name</comment></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>Nouvelle playlist</value><comment>Playlists page: the + button's name and the prompt's title</comment></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Créer</value><comment>Button: makes the new playlist</comment></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Lire ensuite</value><comment>Menu action</comment></data>
