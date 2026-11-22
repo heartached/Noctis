@@ -192,6 +192,27 @@ public class GlassPanel : Decorator
     public static readonly StyledProperty<BoxShadows> BoxShadowProperty =
         Border.BoxShadowProperty.AddOwner<GlassPanel>();
 
+    /// <summary>
+    /// The phone's Settings › Appearance › Reduce Glass (beta testers 11-22: "in some menus it just
+    /// feels laggy"), inherited down the tree from where it is set (the phone's ShellView). On, the
+    /// panel is not glass whatever else it is set to: it reads nothing beneath it (no backdrop copy,
+    /// blur, lens, spill, lite frost or reach op; any copy it held is released) and draws no rim
+    /// light, just its <see cref="BoxShadow"/>, a plain fill (<see cref="PlainBackground"/>, else
+    /// <see cref="Background"/>) and its edge (<see cref="EdgeBrush"/>). Off (the default, and all
+    /// the desktop ever has) changes nothing.
+    /// </summary>
+    public static readonly AttachedProperty<bool> ReduceGlassProperty =
+        AvaloniaProperty.RegisterAttached<GlassPanel, Visual, bool>("ReduceGlass", inherits: true);
+
+    /// <summary>The fill under <see cref="ReduceGlass"/>; null: <see cref="Background"/>. Glass
+    /// tints are see-through for the frost beneath them, so a surface whose text needs a solid face
+    /// sets one here.</summary>
+    public static readonly StyledProperty<IBrush?> PlainBackgroundProperty =
+        AvaloniaProperty.Register<GlassPanel, IBrush?>(nameof(PlainBackground));
+
+    public static bool GetReduceGlass(Visual element) => element.GetValue(ReduceGlassProperty);
+    public static void SetReduceGlass(Visual element, bool value) => element.SetValue(ReduceGlassProperty, value);
+
     static GlassPanel()
     {
         AffectsRender<GlassPanel>(BackgroundProperty, CornerRadiusProperty, UseAppGlassProperty,
@@ -200,7 +221,7 @@ public class GlassPanel : Decorator
             RefractionProperty, RefractionAmountProperty, DispersionProperty, MagnificationProperty,
             SaturationProperty, SpecularProperty, BoxShadowProperty, BackdropMinLuminanceProperty, BackdropMaxLuminanceProperty,
             SpecularStyleProperty, BackdropToneCurveProperty, BackdropLiftProperty, BackdropSpillProperty, BackdropShadeProperty,
-            BeneathRepaintsWholeProperty, LiteProperty);
+            BeneathRepaintsWholeProperty, LiteProperty, ReduceGlassProperty, PlainBackgroundProperty);
         AffectsArrange<GlassPanel>(BlurRadiusProperty);
     }
 
@@ -220,6 +241,8 @@ public class GlassPanel : Decorator
     public BoxShadows BoxShadow { get => GetValue(BoxShadowProperty); set => SetValue(BoxShadowProperty, value); }
     public bool BeneathRepaintsWhole { get => GetValue(BeneathRepaintsWholeProperty); set => SetValue(BeneathRepaintsWholeProperty, value); }
     public double Lite { get => GetValue(LiteProperty); set => SetValue(LiteProperty, value); }
+    public bool ReduceGlass { get => GetValue(ReduceGlassProperty); set => SetValue(ReduceGlassProperty, value); }
+    public IBrush? PlainBackground { get => GetValue(PlainBackgroundProperty); set => SetValue(PlainBackgroundProperty, value); }
 
     /// <summary>Any lens setting is on: the backdrop is drawn through <see cref="GlassLens"/>.</summary>
     internal bool HasLens =>
@@ -241,8 +264,8 @@ public class GlassPanel : Decorator
     public IBrush? EdgeBrush { get => GetValue(EdgeBrushProperty); set => SetValue(EdgeBrushProperty, value); }
     public double EdgeThickness { get => GetValue(EdgeThicknessProperty); set => SetValue(EdgeThicknessProperty, value); }
 
-    /// <summary>The state this panel renders with right now.</summary>
-    public bool EffectiveGlassActive => UseAppGlass ? AppGlass.IsActive : IsGlassActive;
+    /// <summary>The state this panel renders with right now (never glass under <see cref="ReduceGlass"/>).</summary>
+    public bool EffectiveGlassActive => !ReduceGlass && (UseAppGlass ? AppGlass.IsActive : IsGlassActive);
 
     private EventHandler? _glassChanged, _backdropRetired;
 
@@ -284,7 +307,8 @@ public class GlassPanel : Decorator
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty || change.Property == BlurRadiusProperty
+        if (change.Property == UseAppGlassProperty || change.Property == IsGlassActiveProperty || change.Property == ReduceGlassProperty
+            || change.Property == BlurRadiusProperty
             || change.Property == RefractionProperty || change.Property == RefractionAmountProperty
             || change.Property == MagnificationProperty || change.Property == SaturationProperty
             || change.Property == BackdropMinLuminanceProperty || change.Property == BackdropMaxLuminanceProperty
@@ -400,6 +424,22 @@ public class GlassPanel : Decorator
         if (fade <= 0) return;
 
         var shadows = BoxShadow;
+        if (ReduceGlass)
+        {
+            // Reduce Glass: shadow, plain fill and edge; nothing read from beneath, no rim light.
+            using (fade < 1 ? context.PushOpacity(fade) : default)
+            {
+                var fill = PlainBackground ?? Background;
+                if (fill != null || shadows.Count > 0)
+                    context.DrawRectangle(fill, null, rrect, shadows);
+                if (EdgeBrush != null && EdgeThickness > 0)
+                {
+                    var half = EdgeThickness / 2;
+                    context.DrawRectangle(null, new ImmutablePen(EdgeBrush.ToImmutable(), EdgeThickness), rrect.Deflate(half, half));
+                }
+            }
+            return;
+        }
         if (!EffectiveGlassActive)
         {
             if (Background == null && shadows.Count == 0) return;
