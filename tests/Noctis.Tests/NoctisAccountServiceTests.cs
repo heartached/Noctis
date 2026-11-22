@@ -506,6 +506,27 @@ public class NoctisAccountServiceTests : IAsyncLifetime
 
     // ── Downloads and playback ───────────────────────────────────────────
 
+    /// <summary>Every download progress report (one per song a batch finishes) reads the space the
+    /// downloads take: on a phone with thousands of downloads that copied the whole set into a new
+    /// list each time, garbage for the phone's GC through a Download Everything. Measured: bytes
+    /// allocated by 200 reads with 3,000 downloads.</summary>
+    [Fact]
+    public void DownloadedBytes_DoesNotCopyEveryDownload_OnEachRead()
+    {
+        Directory.CreateDirectory(OfflineDir);
+        for (var i = 0; i < 3000; i++) File.WriteAllBytes(Path.Combine(OfflineDir, Guid.NewGuid().ToString("N") + ".mp3"), new byte[] { 1, 2 });
+        var svc = Restart();
+        Assert.Equal(6000, svc.DownloadedBytes);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        long sum = 0;
+        for (var i = 0; i < 200; i++) sum += svc.DownloadedBytes;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(200 * 6000, sum);
+        Assert.True(allocated < 64 * 1024, $"{allocated} bytes allocated by 200 reads");
+    }
+
     /// <summary>A downloaded song the computer no longer has leaves the phone's library with the
     /// next settled sync; its file stayed in the offline folder, counted in Downloaded and its
     /// space, with no row left to remove it from.</summary>

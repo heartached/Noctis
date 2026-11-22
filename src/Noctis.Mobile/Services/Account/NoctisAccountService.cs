@@ -1797,7 +1797,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public DateTime? DownloadedAt(Track track) =>
         IsRemote(track) && _downloaded.TryGetValue(track.Id, out var file) ? file.SavedUtc : null;
 
-    public long DownloadedBytes => _downloaded.Values.Sum(f => f.Size);
+    /// <summary>Walks the dictionary itself: <c>Values</c> copied every download into a new list, on
+    /// each progress report (one per song a batch finishes).</summary>
+    public long DownloadedBytes
+    {
+        get
+        {
+            long total = 0;
+            foreach (var (_, file) in _downloaded) total += file.Size;
+            return total;
+        }
+    }
 
     public int DownloadedCount => _downloaded.Count;
 
