@@ -165,20 +165,36 @@ public class PreBlurredArtworkConverter : IValueConverter, IMultiValueConverter
     /// black; plus the rest of white, over white.</summary>
     internal static WashTones MeasureTones(byte[] pixels)
     {
+        // The Now Playing wash is made on the UI thread (its binding): DominantColorExtractor's
+        // relative luminance from a table, not six Math.Pow calls a pixel.
+        var lin = LinearTable;
         Color brightest = Colors.Black, darkest = Colors.White;
         double most = -1, least = 2;
         for (var i = 0; i < pixels.Length; i += 4)
         {
             byte r = pixels[i + 2], g = pixels[i + 1], b = pixels[i];
             var clear = 255 - pixels[i + 3];
-            var overBlack = Color.FromRgb(r, g, b);
-            var overWhite = Color.FromRgb((byte)Math.Min(255, r + clear), (byte)Math.Min(255, g + clear), (byte)Math.Min(255, b + clear));
-            var lb = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(overBlack);
-            var lw = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(overWhite);
-            if (lb > most) { most = lb; brightest = overBlack; }
-            if (lw < least) { least = lw; darkest = overWhite; }
+            byte wr = (byte)Math.Min(255, r + clear), wg = (byte)Math.Min(255, g + clear), wb = (byte)Math.Min(255, b + clear);
+            var lb = 0.2126 * lin[r] + 0.7152 * lin[g] + 0.0722 * lin[b];
+            var lw = 0.2126 * lin[wr] + 0.7152 * lin[wg] + 0.0722 * lin[wb];
+            if (lb > most) { most = lb; brightest = Color.FromRgb(r, g, b); }
+            if (lw < least) { least = lw; darkest = Color.FromRgb(wr, wg, wb); }
         }
         return new WashTones(brightest, darkest);
+    }
+
+    // DominantColorExtractor.GetRelativeLuminance's linearisation of each 8-bit channel value.
+    private static readonly double[] LinearTable = BuildLinearTable();
+
+    private static double[] BuildLinearTable()
+    {
+        var table = new double[256];
+        for (var c = 0; c < 256; c++)
+        {
+            var v = c / 255.0;
+            table[c] = v <= 0.03928 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+        }
+        return table;
     }
 
     // A pixel counts as vivid from this much chroma (max - min channel, 0..255) and brightness

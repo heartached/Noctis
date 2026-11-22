@@ -86,6 +86,46 @@ public class MobileWashCacheTests
         foreach (var cover in covers) cover.Dispose();
     }
 
+    /// <summary>The tones are measured where the wash is made, on the UI thread for Now Playing's
+    /// binding: the same pick as WashBrush's per-pixel luminance, from a table, at a 128 px wash's
+    /// size well under a millisecond.</summary>
+    [Fact]
+    public void TheTones_MatchThePerPixelLuminance_AndAreCheap()
+    {
+        var rng = new Random(7);
+        var pixels = new byte[128 * 128 * 4];
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            var a = (byte)rng.Next(256);
+            pixels[i + 3] = a;
+            for (var c = 0; c < 3; c++) pixels[i + c] = (byte)rng.Next(a + 1);   // premultiplied
+        }
+        // The loop WashBrush.Measure ran before (DominantColorExtractor per pixel).
+        Color brightest = Colors.Black, darkest = Colors.White;
+        double most = -1, least = 2;
+        var reference = System.Diagnostics.Stopwatch.StartNew();
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            byte r = pixels[i + 2], g = pixels[i + 1], b = pixels[i];
+            var clear = 255 - pixels[i + 3];
+            var overBlack = Color.FromRgb(r, g, b);
+            var overWhite = Color.FromRgb((byte)Math.Min(255, r + clear), (byte)Math.Min(255, g + clear), (byte)Math.Min(255, b + clear));
+            var lb = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(overBlack);
+            var lw = Noctis.Services.DominantColorExtractor.GetRelativeLuminance(overWhite);
+            if (lb > most) { most = lb; brightest = overBlack; }
+            if (lw < least) { least = lw; darkest = overWhite; }
+        }
+        var referenceMs = reference.Elapsed.TotalMilliseconds;
+        PreBlurredArtworkConverter.MeasureTones(pixels);   // JIT
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var tones = PreBlurredArtworkConverter.MeasureTones(pixels);
+        var ms = clock.Elapsed.TotalMilliseconds;
+        _o.WriteLine($"tones of a 128 px wash: {ms:0.000} ms (per-pixel luminance: {referenceMs:0.000} ms)");
+        Assert.Equal(brightest, tones.Brightest);
+        Assert.Equal(darkest, tones.Darkest);
+        Assert.True(ms < 5, $"{ms} ms");
+    }
+
     /// <summary>The cache is bounded by the covers themselves (ArtworkCache's budget): a wash, and
     /// what it keeps, goes once its cover is let go, however many songs were skipped through.</summary>
     [AvaloniaFact]
