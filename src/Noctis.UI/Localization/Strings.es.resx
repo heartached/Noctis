@@ -3870,6 +3870,8 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>faltan en tu equipo: {0}</value><comment>Download status part</comment></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} con error</value><comment>Status part</comment></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Descargando {0} de {1}{2}</value><comment>Download status. {2} = "" or " · 2 failed"</comment></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Descargando desde tu equipo</value><comment>Download notification title while several downloads run (Android)</comment></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>{0} canción descargada|{0} canciones descargadas</value><comment>Download notification once downloads end (Android). Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>No se puede conectar con tu equipo. Comprueba que Noctis esté abierto en él, que Noctis en tu teléfono esté activado y que ambos estén en la misma red Wi-Fi.</value><comment>Error. "Noctis on your phone" is a desktop setting</comment></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>El código de seguridad de tu equipo ha cambiado. Cierra sesión y vuelve a iniciarla para confiar en el nuevo.</value><comment>Error</comment></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>El código de seguridad de tu equipo cambió durante el inicio de sesión. Inténtalo de nuevo y comprueba el código.</value><comment>Error</comment></data>

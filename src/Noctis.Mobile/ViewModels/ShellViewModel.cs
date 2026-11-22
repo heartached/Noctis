@@ -203,6 +203,16 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool HasAccount => Account != null;
 
+    /// <summary>The system notification for downloads from the computer (Android); null in tests
+    /// unless injected, and the in-app progress still shows.</summary>
+    public IDownloadNotifier? DownloadNotifier { get; init; }
+
+    private DownloadActivity? _downloads;
+
+    /// <summary>Where the downloads from the computer stand (album page row, Account page,
+    /// notification); null without an account. Made on first use, after the host's init values.</summary>
+    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier);
+
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
 
@@ -1659,10 +1669,29 @@ public sealed partial class ShellViewModel : ObservableObject
             Navigate(new ComputerRemotePageViewModel(this, Account));
     }
 
-    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play. Failures
-    /// are logged; the Account page shows the running counts.</summary>
-    public Task DownloadTracksAsync(IReadOnlyList<Track> tracks) =>
-        RunAccountAsync("Download", a => a.DownloadAsync(tracks));
+    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play, as one start
+    /// named <paramref name="title"/> (the album page, the Account page and the notification follow
+    /// it). The banner says it started; a refusal the user can act on (Wi-Fi only, phone full, signed
+    /// out) replaces it, other failures are logged.</summary>
+    public async Task DownloadTracksAsync(IReadOnlyList<Track> tracks, string? title = null)
+    {
+        if (Account is not { } account || Downloads is not { } downloads) return;
+        Player.Notice = Loc.T("Mobile.Account.StartingDownloads");
+        try
+        {
+            await downloads.RunAsync(title, tracks, () => account.DownloadAsync(tracks));
+        }
+        catch (NoctisServerException ex)
+        {
+            DebugLog.Write("Account", $"Download failed: {ex.Kind}");
+            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen.
+            Player.Notice = AccountPageViewModel.Describe(ex.Kind, signedIn: true);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Download failed: {ex.Message}");
+        }
+    }
 
     /// <summary>The sheet's Remove download(s).</summary>
     public Task RemoveDownloadsAsync(IReadOnlyList<Track> tracks) =>

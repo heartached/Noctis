@@ -57,6 +57,8 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Shell.Library.Refreshed += OnRefreshed;
         Shell.Player.PropertyChanged += OnPlayerChanged;
         Shell.PropertyChanged += OnShellChanged;
+        _downloads = shell.Downloads;
+        if (_downloads != null) _downloads.Changed += OnDownloadsChanged;
         Apply(album);
         DescriptionLoad = LoadDescriptionAsync(album.Artist, album.Name, _descriptionCts.Token);
     }
@@ -115,6 +117,14 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRecordLabel))]
     private string _recordLabel = string.Empty;
+
+    private readonly DownloadActivity? _downloads;
+
+    /// <summary>This album's songs are downloading from the computer: "Downloading 3 of 12" over a
+    /// bar under the buttons, wherever the download was started (its menu, Select, Download Everything).</summary>
+    [ObservableProperty] private bool _isDownloading;
+    [ObservableProperty] private string _downloadText = string.Empty;
+    [ObservableProperty] private double _downloadFraction;
 
     public bool HasQualityLine => QualityLine.Length > 0;
     public bool HasReleaseDate => ReleaseDateText.Length > 0;
@@ -186,7 +196,19 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         ArtistArtworkPath = Shell.ArtistPhotos?.CachedPhoto(album.Artist) ?? MobileLibrary.ArtistArtworkFor(Shell.Library.Service, album.Artist);
         IsFavourite = album.IsAllTracksFavorite;
         SyncNowPlaying();
+        RefreshDownload();
         Tint.Load(album.ArtworkPath);
+    }
+
+    private void OnDownloadsChanged(object? sender, EventArgs e) => RefreshDownload();
+
+    private void RefreshDownload()
+    {
+        var progress = _downloads?.ProgressOf(Album.Tracks);
+        IsDownloading = progress != null;
+        if (progress is not { } p) return;
+        DownloadText = Loc.T("Mobile.Account.Downloading", p.Done, p.Total, string.Empty);
+        DownloadFraction = p.Done / (double)p.Total;
     }
 
     /// <summary>"Lossless · 24-bit/96 kHz FLAC": Core's badge and its detail line (the desktop's
@@ -350,5 +372,6 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Shell.Library.Refreshed -= OnRefreshed;
         Shell.Player.PropertyChanged -= OnPlayerChanged;
         Shell.PropertyChanged -= OnShellChanged;
+        if (_downloads != null) _downloads.Changed -= OnDownloadsChanged;
     }
 }

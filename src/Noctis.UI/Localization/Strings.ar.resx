@@ -8860,6 +8860,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} مفقودة على الكمبيوتر</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>فشل {0}</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>جارٍ تنزيل {0} من {1}{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>جارٍ التنزيل من الكمبيوتر</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>تم تنزيل {0} أغنية|تم تنزيل {0} أغنية|تم تنزيل {0} أغنيتين|تم تنزيل {0} أغانٍ|تم تنزيل {0} أغنية|تم تنزيل {0} أغنية</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>تعذّر الوصول إلى الكمبيوتر. تأكّد من أن Noctis مفتوح عليه، وأن «Noctis على هاتفك» مفعّل، وأن الجهازين على شبكة Wi-Fi نفسها.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>تغيّر رمز الأمان الخاص بالكمبيوتر. سجّل الخروج ثم سجّل الدخول مرة أخرى للوثوق بالرمز الجديد.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>تغيّر رمز الأمان الخاص بالكمبيوتر أثناء تسجيل الدخول. حاول مرة أخرى وتحقّق من الرمز.</value></data>

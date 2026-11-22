@@ -50,6 +50,21 @@
         <Style Selector="views|AlbumPage.tinted Path.album-subtle">
             <Setter Property="Fill" Value="{DynamicResource AlbumSubtleText}" />
         </Style>
+        <!-- The album's download bar (DownloadRow): the Account page's thin bar, in the tint's
+             text colour on its wash once the cover's colour lands. -->
+        <Style Selector="views|AlbumPage ProgressBar.album-download">
+            <Setter Property="Height" Value="3" />
+            <Setter Property="MinHeight" Value="3" />
+            <Setter Property="CornerRadius" Value="1.5" />
+            <Setter Property="Minimum" Value="0" />
+            <Setter Property="Maximum" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
+            <Setter Property="Background" Value="{DynamicResource PhoneFillBrush}" />
+        </Style>
+        <Style Selector="views|AlbumPage.tinted ProgressBar.album-download">
+            <Setter Property="Foreground" Value="{DynamicResource AlbumText}" />
+            <Setter Property="Background" Value="{DynamicResource AlbumWash}" />
+        </Style>
 
         <!-- Play: a dark pill on light tints and a light one on dark tints (Apple's black pill
              on a pale cover); without a tint, the theme's text colour on its background. -->
@@ -204,6 +219,14 @@
                             <PathIcon Name="HeartFilled" Data="{DynamicResource PhHeartFill}" IsVisible="{Binding IsFavourite}" />
                         </Panel>
                     </Button>
+                </StackPanel>
+
+                <!-- This album's songs downloading from the computer (DownloadActivity), wherever the
+                     download was started: "Downloading 3 of 12" over a thin bar. -->
+                <StackPanel Name="DownloadRow" Margin="48,16,48,0" Spacing="7" IsVisible="{Binding IsDownloading}">
+                    <TextBlock Name="DownloadLabel" Classes="album-subtle" FontSize="13" HorizontalAlignment="Center"
+                               Text="{Binding DownloadText}" />
+                    <ProgressBar Name="DownloadBar" Classes="album-download" Value="{Binding DownloadFraction}" />
                 </StackPanel>
 
                 <!-- Apple's description under the buttons: its first lines with MORE over the end of

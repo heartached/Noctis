@@ -45,6 +45,9 @@ public sealed partial class AccountPageViewModel : MobilePage
         _account.SyncProgress += OnSyncProgress;
         _account.DownloadProgress += OnDownloadProgress;
         _account.UploadProgress += OnUploadProgress;
+        // Opened while an album's download runs: its counts from the start, not from the next
+        // song to land (a big FLAC left the row blank, and Download Everything on offer, for minutes).
+        if (shell.Downloads?.Last is { Pending: > 0 } running) _lastDownload = running;
         Refresh();
         // Signed out by the sync at app start (which only logs): say why the form is back.
         if (!IsSignedIn && _account.WasSignedOutByComputer) SetError(Describe(NoctisErrorKind.SignedOut, signedIn: false));
@@ -428,7 +431,10 @@ public sealed partial class AccountPageViewModel : MobilePage
         var finished = false;
         try
         {
-            await _account.DownloadAllAsync();
+            // As one start, so album pages and the notification follow it too.
+            await (Shell.Downloads is { } downloads && ReferenceEquals(Shell.Account, _account)
+                ? downloads.RunAsync(null, Shell.Library.Service.Tracks, () => _account.DownloadAllAsync())
+                : _account.DownloadAllAsync());
             finished = true;
         }
         catch (Exception ex)
@@ -701,10 +707,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         IsDownloadCounted = pending;
         DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Completed / (double)(d.Completed + d.Pending) : 0;
         if (_lastDownload is not { } p) return;
-        // Songs whose file is gone from the computer are told apart: a retry cannot fetch them.
-        var otherFailures = p.Failed - p.Missing;
-        var failed = (p.Missing > 0 ? " · " + Loc.T("Mobile.Account.MissingOnComputer", p.Missing) : string.Empty)
-                     + (otherFailures > 0 ? " · " + Loc.T("Mobile.Account.Failed", otherFailures) : string.Empty);
+        var failed = DownloadActivity.FailureParts(p);
         DownloadText = pending
             ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Completed + p.Pending, failed)
             : _downloadRunning ? DownloadText : Loc.T("Mobile.Account.DownloadsFinished", failed);

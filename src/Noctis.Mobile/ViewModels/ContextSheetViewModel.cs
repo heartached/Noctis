@@ -400,7 +400,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     {
         var tracks = NotDownloaded.ToList();
         _shell.CloseSheet();
-        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks);
+        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks, Title);
     }
 
     /// <summary>Every desktop song here, not only the downloaded ones: the service removes the
