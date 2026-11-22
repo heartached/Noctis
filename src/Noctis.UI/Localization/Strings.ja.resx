@@ -208,7 +208,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <value>このリンクを読み込むには TIDAL にサインインしてください。</value>
   </data>
   <data name="Import.TidalHelp" xml:space="preserve">
-    <value>TIDAL のプレイリストはご自身のアカウントで読み取ります (読み取り専用、ブラウザーでのサインインは1回のみ)。</value>
+    <value>TIDALのプレイリストを読み込みます（初回のみブラウザ上でのサインインが必要です）。</value>
   </data>
   <data name="Import.TidalSignIn" xml:space="preserve">
     <value>TIDAL にサインイン</value>
@@ -226,7 +226,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <value>削除</value>
   </data>
   <data name="Import.StatusAdded" xml:space="preserve">
-    <value>{0}曲を追加</value>
+    <value>{0}曲追加されました</value>
     <comment>{0} = songs added by hand from the library</comment>
   </data>
   <data name="Import.Change" xml:space="preserve">
@@ -914,7 +914,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumPageTintWholePageHint" xml:space="preserve">
-    <value>「ほかのバージョン」と「このアーティストのその他の作品」の部分にもカバーの色を広げます。</value>
+    <value>「他のバージョン」と「このアーティストのその他の作品」の部分にもカバーの色を広げます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.AlbumPageTintWholeWindow" xml:space="preserve">
@@ -3033,7 +3033,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>ToolTip.Tip in AlbumDescriptionDialog.axaml</comment>
   </data>
   <data name="AlbumDescription.EmptyClickToAdd" xml:space="preserve">
-    <value>説明はまだありません。ここをクリックして追加してください。</value>
+    <value>概要がまだありません。ここをクリックして記載できます</value>
     <comment>Text in AlbumDescriptionDialog.axaml</comment>
   </data>
   <data name="AlbumDetail.FooterOneSong" xml:space="preserve">
@@ -3045,7 +3045,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>Album page footer; {0} = number of songs, {1} = total length (e.g. "45 min")</comment>
   </data>
   <data name="AlbumDetail.AddDescription" xml:space="preserve">
-    <value>説明を追加</value>
+    <value>概要を追加</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
   <data name="AlbumDescription.Cancel" xml:space="preserve">
@@ -3819,7 +3819,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>Field label in CreateSmartPlaylistDialog.axaml</comment>
   </data>
   <data name="CreateSmartPlaylist.AddDescription" xml:space="preserve">
-    <value>説明を追加</value>
+    <value>概要を追加</value>
     <comment>Button that reveals the optional description field in CreateSmartPlaylistDialog.axaml</comment>
   </data>
   <data name="CreateSmartPlaylist.Optional" xml:space="preserve">
@@ -7372,11 +7372,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>Label above the description editor</comment>
   </data>
   <data name="DescriptionDialog.AlbumPlaceholder" xml:space="preserve">
-    <value>このアルバムについて数行書いてください…</value>
+    <value>このアルバムの概要をここに記載してください</value>
     <comment>Placeholder in the empty album description editor</comment>
   </data>
   <data name="DescriptionDialog.PlaylistPlaceholder" xml:space="preserve">
-    <value>このプレイリストについて数行書いてください…</value>
+    <value>このプレイリストの概要をここに記載してください</value>
     <comment>Placeholder in the empty playlist description editor</comment>
   </data>
   <data name="DescriptionDialog.Clear" xml:space="preserve">
@@ -11431,7 +11431,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>v2 right-click menu row</comment>
   </data>
   <data name="Menu.CreateMix" xml:space="preserve">
-    <value>この曲からミックスを作成</value>
+    <value>この曲からミックスプレイリストを作成</value>
     <comment>Song right-click menu, beside Start Radio</comment>
   </data>
   <data name="Menu.Snooze" xml:space="preserve">
