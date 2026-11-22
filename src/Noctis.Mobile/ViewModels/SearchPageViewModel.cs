@@ -46,8 +46,11 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
             new SortChoice("Mobile.Sort.MostPlayed", SearchSort.MostPlayed),
             new SortChoice("Mobile.Sort.Title", SearchSort.Title),
         };
-        shell.Library.Refreshed += (_, _) =>
+        shell.Library.Refreshed += (_, e) =>
         {
+            // A heart or a download changes no result and no cover: the page (a tab, alive all
+            // session) searched the library again at each, and rebuilt the cover map next time.
+            if (ReferenceEquals(e, LibraryViewModel.FavouritesRefresh) || ReferenceEquals(e, LibraryViewModel.DownloadsRefresh)) return;
             _artistArtwork = null;
             Run();
         };
@@ -132,6 +135,12 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
 
     public BulkObservableCollection<Track> Songs { get; } = new();
     public BulkObservableCollection<Album> Albums { get; } = new();
+
+    /// <summary>The Albums chip's grid: <see cref="Albums"/> two to a row (AlbumRow), so the grid
+    /// virtualises as the Albums page's does. Over a plain two-column panel all of a broad
+    /// query's matches (up to <see cref="ScopedCap"/>) built a tile at once, each decoding its
+    /// cover: 300 tiles and 2.7 s headless for "e" over 1,000 albums. Filled under that chip only.</summary>
+    public BulkObservableCollection<AlbumRow> AlbumRows { get; } = new();
     public BulkObservableCollection<ArtistListItem> Artists { get; } = new();
     public BulkObservableCollection<PlaylistResult> Playlists { get; } = new();
 
@@ -191,6 +200,10 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         // (and every library refresh) used to Reset all of them, re-realising every row and
         // every album tile — the typing lag on a broad query.
         MobileLibrary.ReplaceIfChanged(Albums, Shows(SearchScope.Albums) ? results.Albums : Array.Empty<Album>());
+        MobileLibrary.ReplaceIfChanged(AlbumRows, Scope == SearchScope.Albums
+                ? Albums.Chunk(AlbumGridPageViewModel.Columns).Select(chunk => new AlbumRow { Albums = chunk.ToList() }).ToList()
+                : Array.Empty<AlbumRow>(),
+            (a, b) => a.Albums.SequenceEqual(b.Albums));
         MobileLibrary.ReplaceIfChanged(Playlists, Shows(SearchScope.Playlists)
             ? results.Playlists.Select(p => new PlaylistResult(p, Shell.Library.PlaylistArtwork(p), Shell.Library.PlaylistSongCount(p))).ToList()
             : Array.Empty<PlaylistResult>());

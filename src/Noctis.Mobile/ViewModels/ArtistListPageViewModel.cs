@@ -200,7 +200,11 @@ public sealed partial class ArtistListPageViewModel : MobilePage
         if (item != null) Shell.OpenArtistCommand.Execute(item.Name);
     }
 
-    private void OnRefreshed(object? sender, EventArgs e) => Refresh();
+    // A heart toggled changes nothing an artist circle shows (~8 ms headless to rebuild 600).
+    private void OnRefreshed(object? sender, EventArgs e)
+    {
+        if (!ReferenceEquals(e, LibraryViewModel.FavouritesRefresh)) Refresh();
+    }
 
     public override void OnClosed()
     {

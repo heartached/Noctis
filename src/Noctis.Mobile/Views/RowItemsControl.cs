@@ -35,6 +35,10 @@ public class RowItemsControl : ItemsControl
 
     protected override Control CreateContainerForItemOverride(object? item, int index, object? recycleKey) => new RowHost();
 
+    // The rows realised as the list first comes up arrive (Appear); a row realised later, as the
+    // list scrolls, was already there before the virtualising panel took it.
+    private bool _settled, _settling;
+
     protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
     {
         if (container is not RowHost host)
@@ -42,6 +46,12 @@ public class RowItemsControl : ItemsControl
             base.PrepareContainerForItemOverride(container, item, index);
             return;
         }
+        if (!_settling)
+        {
+            _settling = true;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => _settled = true, Avalonia.Threading.DispatcherPriority.Loaded);
+        }
+        host.Arrives = !_settled && host.Row is null;
         if (host.Row is null && ItemTemplate?.Build(item) is { } built)
             host.Row = built;
         if (host.Row is not { } row) return;
@@ -53,8 +63,10 @@ public class RowItemsControl : ItemsControl
 
     protected override void ClearContainerForItemOverride(Control container)
     {
-        // Nothing to undo: the row stays built (and styled) for the next item.
-        if (container is not RowHost) base.ClearContainerForItemOverride(container);
+        // Nothing to undo: the row stays built (and styled) for the next item, which it shows
+        // without the arrival fade (the panel may put it back before preparing it).
+        if (container is RowHost host) host.Arrives = false;
+        else base.ClearContainerForItemOverride(container);
     }
 }
 
@@ -65,6 +77,15 @@ public class RowItemsControl : ItemsControl
 public sealed class RowHost : Control
 {
     private Control? _row;
+
+    /// <summary>
+    /// Whether the row's arrival fade (<see cref="Appear"/>) plays when it joins the tree: only
+    /// for a row built as its list first came up. The virtualising panel takes a recycled
+    /// container out of the visual tree and puts it back with the next item, so without this a
+    /// tile fade (a section's › page) replayed on every row scrolled in, where a plain panel's
+    /// tiles, all built at once, never did.
+    /// </summary>
+    public bool Arrives { get; internal set; } = true;
 
     public Control? Row
     {
