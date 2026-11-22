@@ -219,7 +219,7 @@ public sealed partial class TrackSelection : ObservableObject
         if (_shell.Account is not { } account) return;
         var tracks = SelectedTracks.Where(t => account.IsRemote(t) && !account.IsDownloaded(t)).ToList();
         End();
-        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks);
+        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks, tracks.Count == 1 ? tracks[0].Title : _source());
     }
 
     [RelayCommand]

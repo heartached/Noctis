@@ -3879,6 +3879,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} нет на компьютере</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>Ошибок: {0}</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Скачивание {0} из {1}{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Скачивание с компьютера</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>Скачана {0} песня|Скачано {0} песни|Скачано {0} песен</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Нет связи с компьютером. Проверьте, что на нём открыт Noctis, включён параметр «Noctis на телефоне» и оба устройства в одной сети Wi‑Fi.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Код безопасности компьютера изменился. Выйдите и войдите снова, чтобы доверять новому.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Код безопасности компьютера изменился во время входа. Повторите попытку и проверьте код.</value></data>

@@ -3879,6 +3879,8 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} missing on your computer</value><comment>Download status part</comment></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} failed</value><comment>Status part</comment></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>Downloading {0} of {1}{2}</value><comment>Download status. {2} = "" or " · 2 failed"</comment></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Downloading from your computer</value><comment>Download notification title while several downloads run (Android)</comment></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>Downloaded {0} song|Downloaded {0} songs</value><comment>Download notification once downloads end (Android). Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Can't reach your computer. Check that Noctis is open on it, Noctis on your phone is turned on, and both are on the same Wi-Fi.</value><comment>Error. "Noctis on your phone" is a desktop setting</comment></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Your computer's security code changed. Sign out and sign in again to trust the new one.</value><comment>Error</comment></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Your computer's security code changed while signing in. Try again and check the code.</value><comment>Error</comment></data>
