@@ -268,21 +268,21 @@
                                     <Button Name="SongsTab" Classes="tab" Classes.selected="{Binding IsSongsSelected}" IsVisible="False"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Songs}">
                                         <StackPanel Spacing="2">
-                                            <PathIcon Data="{DynamicResource ChipSongsIcon}" />
+                                            <PathIcon Data="{DynamicResource TabSongsFilledIcon}" />
                                             <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Songs}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                     <Button Name="AlbumsTab" Classes="tab" Classes.selected="{Binding IsAlbumsSelected}" IsVisible="False"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Albums}">
                                         <StackPanel Spacing="2">
-                                            <PathIcon Data="{DynamicResource ChipAlbumsIcon}" />
+                                            <PathIcon Data="{DynamicResource TabAlbumsFilledIcon}" />
                                             <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Albums}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
                                     <Button Name="ArtistsTab" Classes="tab" Classes.selected="{Binding IsArtistsSelected}" IsVisible="False"
                                             Command="{Binding SelectTabCommand}" CommandParameter="{x:Static vm:MobileTab.Artists}">
                                         <StackPanel Spacing="2">
-                                            <PathIcon Data="{DynamicResource ChipArtistsIcon}" />
+                                            <PathIcon Data="{DynamicResource TabArtistsFilledIcon}" />
                                             <views:FitWidth MinScale="0.75" HorizontalAlignment="Center"><TextBlock Text="{loc:T Nav.Artists}" /></views:FitWidth>
                                         </StackPanel>
                                     </Button>
@@ -298,9 +298,9 @@
                                     <PathIcon Data="{DynamicResource TabFavoritesFilledIcon}" IsVisible="{Binding IsFavoritesSelected}" />
                                     <PathIcon Data="{DynamicResource TabPlaylistsFilledIcon}" IsVisible="{Binding IsPlaylistsSelected}" />
                                     <PathIcon Data="{DynamicResource TabSearchFilledIcon}" IsVisible="{Binding IsSearchSelected}" />
-                                    <PathIcon Data="{DynamicResource ChipSongsIcon}" IsVisible="{Binding IsSongsSelected}" />
-                                    <PathIcon Data="{DynamicResource ChipAlbumsIcon}" IsVisible="{Binding IsAlbumsSelected}" />
-                                    <PathIcon Data="{DynamicResource ChipArtistsIcon}" IsVisible="{Binding IsArtistsSelected}" />
+                                    <PathIcon Data="{DynamicResource TabSongsFilledIcon}" IsVisible="{Binding IsSongsSelected}" />
+                                    <PathIcon Data="{DynamicResource TabAlbumsFilledIcon}" IsVisible="{Binding IsAlbumsSelected}" />
+                                    <PathIcon Data="{DynamicResource TabArtistsFilledIcon}" IsVisible="{Binding IsArtistsSelected}" />
                                 </Panel>
                             </Button>
                         </Panel>

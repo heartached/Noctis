@@ -25,9 +25,9 @@
         <Style Selector="PathIcon.tab-glyph[Tag=Playlists]"><Setter Property="Data" Value="{DynamicResource TabPlaylistsFilledIcon}" /></Style>
         <Style Selector="PathIcon.tab-glyph[Tag=Library]"><Setter Property="Data" Value="{DynamicResource TabLibraryFilledIcon}" /></Style>
         <Style Selector="PathIcon.tab-glyph[Tag=Search]"><Setter Property="Data" Value="{DynamicResource TabSearchFilledIcon}" /></Style>
-        <Style Selector="PathIcon.tab-glyph[Tag=Songs]"><Setter Property="Data" Value="{DynamicResource ChipSongsIcon}" /></Style>
-        <Style Selector="PathIcon.tab-glyph[Tag=Albums]"><Setter Property="Data" Value="{DynamicResource ChipAlbumsIcon}" /></Style>
-        <Style Selector="PathIcon.tab-glyph[Tag=Artists]"><Setter Property="Data" Value="{DynamicResource ChipArtistsIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Songs]"><Setter Property="Data" Value="{DynamicResource TabSongsFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Albums]"><Setter Property="Data" Value="{DynamicResource TabAlbumsFilledIcon}" /></Style>
+        <Style Selector="PathIcon.tab-glyph[Tag=Artists]"><Setter Property="Data" Value="{DynamicResource TabArtistsFilledIcon}" /></Style>
         <!-- No hairline above the list's first row (the Settings lists'). -->
         <Style Selector="ItemsControl#TabBarList ContentPresenter:nth-child(1) Border.row-separator">
             <Setter Property="IsVisible" Value="False" />

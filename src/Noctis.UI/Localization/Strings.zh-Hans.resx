@@ -8577,7 +8577,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass 标签胶囊</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>所选标签保持透明玻璃效果</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>标签栏</value></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>选择 2 到 5 个标签，拖动 ≡ 调整顺序。资料库始终保留在标签栏上，所有列表和设置都随时可达。</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>选择 2 到 5 个标签，拖动行末的圆点调整顺序。资料库始终保留在标签栏上，所有列表和设置都随时可达。</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>恢复默认</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>调整“{0}”的顺序</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>在队列中显示已播放歌曲</value></data>

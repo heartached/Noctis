@@ -46,7 +46,7 @@ public class MobileDesktopIconParityTests
         { "LibraryIcons", "LibMoreIcon", "MoreDotsIcon", 0 },
         { "PhoneIcons", "PhSearch", "SearchIcon", 0 },
         { "TabIcons", "TabSearchIcon", "SearchIcon", 0 },
-        { "TabIcons", "TabSearchFilledIcon", "SearchIcon", 0 },
+        // TabSearchFilledIcon (on the bar) is a heavier magnifier of its own: the filled glyphs' weight.
         { "PhoneIcons", "PhBack", "ChevronLeftIcon", 0 },
         { "PhoneIcons", "PhChevronRight", "ChevronRightIcon", 0 },
         { "LibraryIcons", "LibChevronIcon", "ChevronRightIcon", 0 },
@@ -185,8 +185,8 @@ public class MobileDesktopIconParityTests
             $"{key} vs {png}: IoU {iou:0.00}, ink {inkPhone / inkDesktop:0.00}");
     }
 
-    /// <summary>The selected Playlists tab is the traced mask's silhouette with the note's head
-    /// filled in: it covers every inked pixel of the outline glyph.</summary>
+    /// <summary>The bar's Playlists glyph is the traced mask's silhouette with the note's head
+    /// filled in and the lines drawn heavier: it covers every inked pixel of the outline glyph.</summary>
     [Fact]
     public void TabPlaylistsFilled_IsTheTracedOutline_FilledIn()
     {
