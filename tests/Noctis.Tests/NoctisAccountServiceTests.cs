@@ -1944,6 +1944,51 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         await _phonePersistence.SavePlaylistsAsync(lists);
     }
 
+    /// <summary>The socket handler, running <paramref name="before"/> ahead of each request.</summary>
+    private sealed class HookHandler(HttpMessageHandler inner, Func<HttpRequestMessage, Task> before) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            await before(request);
+            return await base.SendAsync(request, ct);
+        }
+    }
+
+    /// <summary>The sync reads playlists.json, fetches the computer's playlist covers, then writes the
+    /// list it read back: a playlist made on the phone in between was dropped by that write, an edit
+    /// made in between undone and a playlist deleted in between brought back.</summary>
+    [Fact]
+    public async Task PhonePlaylistChanges_MadeWhileTheSyncFetchesCovers_AreKept()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var gym = new Playlist { Name = "Gym", ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        var old = new Playlist { Name = "Old", ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { gym, old });
+        DeskSetsCover(PngA);
+        var made = new Playlist { Name = "Made mid-sync" };
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new HookHandler(NoctisHandlers.Sockets(accept), async r =>
+        {
+            if (!r.RequestUri!.AbsolutePath.EndsWith("getNoctisPlaylistCover.view", StringComparison.Ordinal)) return;
+            // Meanwhile on the phone: New Playlist, a rename, a delete (LibraryViewModel's re-read, edit, save).
+            var lists = await _phonePersistence.LoadPlaylistsAsync();
+            lists.Add(made);
+            var g = lists.Single(p => p.Id == gym.Id);
+            g.Name = "Gym 2";
+            g.ModifiedAt = DateTime.UtcNow;
+            lists.RemoveAll(p => p.Id == old.Id);
+            await _phonePersistence.SavePlaylistsAsync(lists);
+        }), AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+        await svc.SyncNowAsync(ct);
+
+        var after = await _phonePersistence.LoadPlaylistsAsync();
+        Assert.Contains(after, p => p.Id == made.Id);
+        Assert.Equal("Gym 2", after.Single(p => p.Id == gym.Id).Name);
+        Assert.DoesNotContain(after, p => p.Id == old.Id);
+        Assert.Equal(PngA, File.ReadAllBytes(after.Single(p => p.Id == _deskMixId).CoverArtPath!));   // the sync's own change still lands
+    }
+
     private async Task<Playlist> PhoneMixAsync() => (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);
 
     private Playlist DeskMix => _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);

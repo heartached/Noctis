@@ -896,6 +896,40 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         lock (_gate) return _linkedByLocal.TryGetValue(track.Id, out var d) ? d : null;
     }
 
+    /// <summary>
+    /// <paramref name="synced"/> (playlists.json as read at the start of the playlist stage, with this
+    /// sync's changes) plus what the phone did to the file since: the stage talks to the computer
+    /// (playlist covers) before it writes, and writing the list read at the start dropped a playlist
+    /// made on the phone meanwhile, undid an edit (ModifiedAt moved) and brought back a deleted one.
+    /// </summary>
+    private async Task<List<Playlist>> WithPhoneEditsSinceAsync(List<Playlist> synced, Dictionary<Guid, DateTime> read)
+    {
+        List<Playlist> current;
+        try { current = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"playlists re-read failed ({ex.GetType().Name})");
+            return synced;
+        }
+        var now = new Dictionary<Guid, Playlist>();
+        foreach (var p in current) now.TryAdd(p.Id, p);
+        var result = new List<Playlist>(synced.Count);
+        var ids = new HashSet<Guid>();
+        foreach (var p in synced)
+        {
+            if (!ids.Add(p.Id)) continue;
+            if (read.TryGetValue(p.Id, out var at))
+            {
+                if (!now.TryGetValue(p.Id, out var mine)) continue;               // deleted on the phone meanwhile
+                if (Newer(mine.ModifiedAt, at)) { result.Add(mine); continue; }  // edited on the phone meanwhile
+            }
+            result.Add(p);
+        }
+        foreach (var p in current)
+            if (!read.ContainsKey(p.Id) && ids.Add(p.Id)) result.Add(p);           // made on the phone meanwhile
+        return result;
+    }
+
     /// <summary>The phone's track a synced id points at: the desktop row, or the file paired with it.</summary>
     private Track? ResolveSyncTarget(Guid desktopId)
     {
@@ -1317,6 +1351,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         CancellationToken ct)
     {
         var phone = await _persistence.LoadPlaylistsAsync().ConfigureAwait(false);
+        var read = new Dictionary<Guid, DateTime>();
+        foreach (var p in phone) read.TryAdd(p.Id, p.ModifiedAt);
         Dictionary<string, PlaylistSyncState> agreed;
         Dictionary<string, DateTime> deleted;
         lock (_gate)
@@ -1405,6 +1441,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
         if (changed)
         {
+            phone = await WithPhoneEditsSinceAsync(phone, read).ConfigureAwait(false);
             await _persistence.SavePlaylistsAsync(phone).ConfigureAwait(false);
             RaisePlaylistsChanged();
         }
