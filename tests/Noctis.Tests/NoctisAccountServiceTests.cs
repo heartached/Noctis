@@ -264,6 +264,57 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(_art, File.ReadAllBytes(_phonePersistence.GetArtworkPath(AlbumA)));
     }
 
+    /// <summary>A cover corrected on the computer reached the phone only once the phone's copy was
+    /// 30 days old. The computer's album list says which version of each cover it has: a changed
+    /// one comes on the next sync, an unchanged one is not asked again.</summary>
+    [Fact]
+    public async Task ACoverChangedOnTheComputer_ArrivesWithTheNextSync_AndAnUnchangedOneIsNotAskedAgain()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var phoneCover = _phonePersistence.GetArtworkPath(AlbumA);
+        Assert.Equal(_art, File.ReadAllBytes(phoneCover));
+
+        // Corrected on the computer (a new file there, written after the phone's copy).
+        var corrected = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 9, 8, 7, 6, 5 };
+        var deskCover = Path.Combine(_dir, "cover.jpg");
+        File.WriteAllBytes(deskCover, corrected);
+        File.SetLastWriteTimeUtc(deskCover, File.GetLastWriteTimeUtc(phoneCover).AddMinutes(1));
+        lock (_coverSizes) _coverSizes.Clear();
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
+        lock (_coverSizes) Assert.Single(_coverSizes);
+
+        // Nothing changed since: not downloaded again.
+        lock (_coverSizes) _coverSizes.Clear();
+        await svc.SyncNowAsync(ct);
+        lock (_coverSizes) Assert.Empty(_coverSizes);
+
+        // A phone from before the versions (none saved) whose copy is newer than the computer's
+        // file keeps it: an update does not download every cover again.
+        var syncFile = Path.Combine(AccountDir, "sync.json");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(syncFile))!.AsObject();
+        Assert.True(json.Remove("covers"));
+        File.WriteAllText(syncFile, json.ToJsonString());
+        File.SetLastWriteTimeUtc(phoneCover, File.GetLastWriteTimeUtc(deskCover).AddMinutes(1));
+        var updated = Restart();
+        await updated.SyncNowAsync(ct);
+        lock (_coverSizes) Assert.Empty(_coverSizes);
+        Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
+    }
+
+    /// <summary>The album list without cover versions (a computer from before them): the copy on
+    /// the phone is kept until it is 30 days old, as before.</summary>
+    [Fact]
+    public void AnAlbumWithoutACoverVersion_ParsesWithNone_AndABadOneIsIgnored()
+    {
+        Assert.Null(NoctisServerClient.ParseCoverVersion(null));
+        Assert.Null(NoctisServerClient.ParseCoverVersion("not hex"));
+        Assert.Null(NoctisServerClient.ParseCoverVersion(new string('f', 40)));
+        Assert.Equal("8de1a2b3c4d5e6f", NoctisServerClient.ParseCoverVersion("8DE1A2B3C4D5E6F"));
+    }
+
     // ── The desktop's profile picture ────────────────────────────────────
 
     private string DeskAvatar(string name, byte[] bytes)
@@ -454,6 +505,56 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     // ── Downloads and playback ───────────────────────────────────────────
+
+    /// <summary>Every download progress report (one per song a batch finishes) reads the space the
+    /// downloads take: on a phone with thousands of downloads that copied the whole set into a new
+    /// list each time, garbage for the phone's GC through a Download Everything. Measured: bytes
+    /// allocated by 200 reads with 3,000 downloads.</summary>
+    [Fact]
+    public void DownloadedBytes_DoesNotCopyEveryDownload_OnEachRead()
+    {
+        Directory.CreateDirectory(OfflineDir);
+        for (var i = 0; i < 3000; i++) File.WriteAllBytes(Path.Combine(OfflineDir, Guid.NewGuid().ToString("N") + ".mp3"), new byte[] { 1, 2 });
+        var svc = Restart();
+        Assert.Equal(6000, svc.DownloadedBytes);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        long sum = 0;
+        for (var i = 0; i < 200; i++) sum += svc.DownloadedBytes;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(200 * 6000, sum);
+        Assert.True(allocated < 64 * 1024, $"{allocated} bytes allocated by 200 reads");
+    }
+
+    /// <summary>A downloaded song the computer no longer has leaves the phone's library with the
+    /// next settled sync; its file stayed in the offline folder, counted in Downloaded and its
+    /// space, with no row left to remove it from.</summary>
+    [Fact]
+    public async Task ADownloadedSong_TheComputerDropped_TakesItsFileWith_WhenTheCatalogIsSettled()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1), Phone(_t3) }, ct);
+        var file3 = Path.Combine(OfflineDir, _t3.Id.ToString("N") + ".flac");
+        Assert.True(File.Exists(file3));
+
+        // Mid-scan the list proves nothing: the download stays.
+        _desk.IsScanning = true;
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(2, svc.DownloadedCount);
+
+        // Settled without _t3: the song and its file go; the others stay.
+        _desk.IsScanning = false;
+        await svc.SyncNowAsync(ct);
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+        Assert.False(File.Exists(file3));
+        Assert.Equal(1, svc.DownloadedCount);
+        Assert.Equal(_audio.Length, svc.DownloadedBytes);
+        Assert.True(svc.IsDownloaded(Phone(_t1)));
+    }
 
     [Fact]
     public async Task Download_WritesTheFile_AndPlaybackSwitchesToIt_ThenBackWhenRemoved()
@@ -1656,6 +1757,31 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Same(local, _phoneLibrary.GetTrackById(local.Id));
     }
 
+    /// <summary>Hide Song on a file paired with a desktop song: the next sync no longer saw the file
+    /// (hidden songs are out of the library's list), ended the pair and brought the computer's copy
+    /// back as a row of its own, the hidden song showing again (and twice once unhidden).</summary>
+    [Fact]
+    public async Task HidingAPairedFile_KeepsTheSongHidden_TheComputersCopyDoesNotComeBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var local = await PhoneHasDesktopGammaAsync();
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_t3.Id, svc.DesktopIdOf(local));
+
+        await _phoneLibrary.SetFolderHiddenAsync(local.FilePath, hidden: true);   // Hide Song
+        await svc.SyncNowAsync(ct);
+
+        Assert.DoesNotContain(_phoneLibrary.Tracks, t => t.Id == _t3.Id || t.Id == local.Id);
+        Assert.Equal(_t3.Id, svc.DesktopIdOf(local));
+
+        // Unhidden: the one song again, not the file and the computer's copy side by side.
+        await _phoneLibrary.SetFolderHiddenAsync(local.FilePath, hidden: false);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(3, _phoneLibrary.Tracks.Count);
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+    }
+
     [Fact]
     public async Task EditsAndPlaysOfAPairedFile_GoToTheDesktopUnderTheDesktopId()
     {
@@ -1862,6 +1988,51 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         }
         p.ModifiedAt = DateTime.UtcNow;
         await _phonePersistence.SavePlaylistsAsync(lists);
+    }
+
+    /// <summary>The socket handler, running <paramref name="before"/> ahead of each request.</summary>
+    private sealed class HookHandler(HttpMessageHandler inner, Func<HttpRequestMessage, Task> before) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            await before(request);
+            return await base.SendAsync(request, ct);
+        }
+    }
+
+    /// <summary>The sync reads playlists.json, fetches the computer's playlist covers, then writes the
+    /// list it read back: a playlist made on the phone in between was dropped by that write, an edit
+    /// made in between undone and a playlist deleted in between brought back.</summary>
+    [Fact]
+    public async Task PhonePlaylistChanges_MadeWhileTheSyncFetchesCovers_AreKept()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var gym = new Playlist { Name = "Gym", ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        var old = new Playlist { Name = "Old", ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { gym, old });
+        DeskSetsCover(PngA);
+        var made = new Playlist { Name = "Made mid-sync" };
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new HookHandler(NoctisHandlers.Sockets(accept), async r =>
+        {
+            if (!r.RequestUri!.AbsolutePath.EndsWith("getNoctisPlaylistCover.view", StringComparison.Ordinal)) return;
+            // Meanwhile on the phone: New Playlist, a rename, a delete (LibraryViewModel's re-read, edit, save).
+            var lists = await _phonePersistence.LoadPlaylistsAsync();
+            lists.Add(made);
+            var g = lists.Single(p => p.Id == gym.Id);
+            g.Name = "Gym 2";
+            g.ModifiedAt = DateTime.UtcNow;
+            lists.RemoveAll(p => p.Id == old.Id);
+            await _phonePersistence.SavePlaylistsAsync(lists);
+        }), AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+        await svc.SyncNowAsync(ct);
+
+        var after = await _phonePersistence.LoadPlaylistsAsync();
+        Assert.Contains(after, p => p.Id == made.Id);
+        Assert.Equal("Gym 2", after.Single(p => p.Id == gym.Id).Name);
+        Assert.DoesNotContain(after, p => p.Id == old.Id);
+        Assert.Equal(PngA, File.ReadAllBytes(after.Single(p => p.Id == _deskMixId).CoverArtPath!));   // the sync's own change still lands
     }
 
     private async Task<Playlist> PhoneMixAsync() => (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);

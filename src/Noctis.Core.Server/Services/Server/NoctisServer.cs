@@ -665,6 +665,22 @@ public sealed partial class NoctisServer : IAsyncDisposable
         return false;
     }
 
+    /// <summary>
+    /// noctisCover on a search3 album (a Noctis extension; other clients ignore it): its cover file's
+    /// version, the last write in hex ticks (the stamp the resized copies are named by). The phone
+    /// compares it with the version it holds and downloads only a cover changed here. No cover, no field.
+    /// </summary>
+    private JsonObject WithCoverVersion(JsonObject album, Guid albumId)
+    {
+        try
+        {
+            if (_library.ArtworkPath(albumId) is { } path)
+                album["noctisCover"] = File.GetLastWriteTimeUtc(path).Ticks.ToString("x", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* no version: the phone keeps its 30-day rule */ }
+        return album;
+    }
+
     internal static string ContentTypeFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
         ".mp3" => "audio/mpeg", ".flac" => "audio/flac", ".m4a" or ".m4b" or ".mp4" or ".alac" => "audio/mp4", ".aac" => "audio/aac",
@@ -817,7 +833,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
                     [key] = new JsonObject
                     {
                         ["artist"] = new JsonArray(artists.Select(view.ArtistObject).ToArray()),
-                        ["album"] = new JsonArray(albums.Select(view.AlbumObject).ToArray()),
+                        ["album"] = new JsonArray(albums.Select(a => WithCoverVersion(view.AlbumObject(a), a.Id)).ToArray()),
                         ["song"] = new JsonArray(songs.Select(view.SongObject).ToArray()),
                     },
                 };

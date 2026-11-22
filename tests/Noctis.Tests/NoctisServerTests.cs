@@ -169,6 +169,18 @@ public class NoctisServerTests : IAsyncLifetime
         Assert.Equal("Second", starred.GetProperty("starred2").GetProperty("album")[0].GetProperty("name").GetString()); // all its tracks are starred
     }
 
+    /// <summary>search3's albums carry their cover file's version (noctisCover, its last write in
+    /// hex ticks) for the phone to tell a changed cover; an album without a cover has none.</summary>
+    [Fact]
+    public async Task Search3Albums_CarryTheirCoverVersion_OnlyWhenTheyHaveACover()
+    {
+        var albums = (await Get("search3", "query=&albumCount=500")).GetProperty("searchResult3").GetProperty("album")
+            .EnumerateArray().ToDictionary(a => a.GetProperty("name").GetString()!);
+        var path = _lib.ArtworkPath(AlbumA)!;
+        Assert.Equal(File.GetLastWriteTimeUtc(path).Ticks.ToString("x"), albums["First"].GetProperty("noctisCover").GetString());
+        Assert.False(albums["Second"].TryGetProperty("noctisCover", out _));
+    }
+
     /// <summary>GitHub #136: Gamma is tagged "Jazz; Rock". It counts under Jazz and Rock, not
     /// as a third "Jazz; Rock" genre, and browsing either genre finds it.</summary>
     [Fact]

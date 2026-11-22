@@ -274,8 +274,10 @@ internal sealed partial class NoctisServerClient : IDisposable
         return (count, Bool(s, "scanning"));
     }
 
-    /// <summary>Every album's artist by album id (search3 with an empty query, paged).</summary>
-    public async Task<Dictionary<Guid, string>> GetAlbumArtistsAsync(CancellationToken ct)
+    /// <summary>Every album's artist by album id (search3 with an empty query, paged). With
+    /// <paramref name="coverVersions"/>, also each album's cover version where the computer says it
+    /// (noctisCover; computers from before it never do).</summary>
+    public async Task<Dictionary<Guid, string>> GetAlbumArtistsAsync(CancellationToken ct, Dictionary<Guid, string>? coverVersions = null)
     {
         var result = new Dictionary<Guid, string>();
         for (var page = 0; page < MaxPages; page++)
@@ -290,12 +292,28 @@ internal sealed partial class NoctisServerClient : IDisposable
             foreach (var a in albums)
             {
                 if (NoctisRemoteIds.TryParseServerId(Str(a, "id"), "al-", out var id))
+                {
                     result.TryAdd(id, Cap(Str(a, "artist"), MaxStringLength) ?? string.Empty);
+                    if (coverVersions is not null && ParseCoverVersion(Str(a, "noctisCover")) is { } version) coverVersions.TryAdd(id, version);
+                }
             }
             if (albums.Count < PageSize) break;
         }
         return result;
     }
+
+    /// <summary>A search3 album's noctisCover: the computer's cover file version (its last write in
+    /// hex ticks). Lower-cased; null when absent or not that shape.</summary>
+    internal static string? ParseCoverVersion(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > 16 || !value.All(char.IsAsciiHexDigit)) return null;
+        return value.ToLowerInvariant();
+    }
+
+    /// <summary>When the computer's cover file was last written, from its <see cref="ParseCoverVersion"/> version.</summary>
+    internal static DateTime? CoverVersionTime(string version) =>
+        long.TryParse(version, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var ticks)
+        && ticks > 0 && ticks <= DateTime.MaxValue.Ticks ? new DateTime(ticks, DateTimeKind.Utc) : null;
 
     /// <summary>Every song (search3 with an empty query, 500 per page). Invalid entries are skipped;
     /// a song listed twice (library changed between pages) is kept once.</summary>

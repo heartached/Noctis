@@ -743,13 +743,19 @@ public sealed partial class LibraryViewModel : ObservableObject
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
         LibraryRowKeys = settings.PhoneLibraryRows.ToList();
         Source = LibrarySources.Parse(settings.PhoneLibrarySource);
+        _settingsApplied = true;
     }
+
+    /// <summary>The host applied the settings at start (<see cref="ApplySettings"/>): the start does
+    /// not read them again. That second read put back a source picked during the library load
+    /// whose save had not landed yet, and read settings.json once more on every cold launch.</summary>
+    private bool _settingsApplied;
 
     public async Task InitializeAsync()
     {
         try
         {
-            ApplySettings(await _persistence.LoadSettingsAsync());
+            if (!_settingsApplied) ApplySettings(await _persistence.LoadSettingsAsync());
             await LoadPlaylistsAsync();
             RefreshFromLibrary();
         }
