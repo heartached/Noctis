@@ -218,4 +218,39 @@ public class MobileListPerfTests
         rig.Library.RaiseLibraryUpdated();
         Assert.Same(moved, songs.Songs[^1]);
     }
+
+    /// <summary>
+    /// A download batch refreshes the open lists each time the number of offline copies changes. A
+    /// download changes no song's tags, so a list that still holds the same songs keeps its sorted
+    /// order; one whose songs changed (a source, the Favorites-like lists) sorts again.
+    /// </summary>
+    [Fact]
+    public void DownloadsChanging_DoesNotResortASongListThatHoldsTheSameSongs()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary(7_200, 600);
+        var songs = new SongListPageViewModel(rig.Shell, "Nav.Songs", rig.Shell.Library.SourceSongs);
+        songs.ChooseSort(songs.SortChoices.First(c => Equals(c.Key, SongSort.Artist)));
+        var shown = songs.Songs.ToList();
+        rig.Shell.Library.NotifyDownloadsChanged();   // warm-up
+
+        var alloc = GC.GetAllocatedBytesForCurrentThread();
+        var start = Stopwatch.GetTimestamp();
+        for (var i = 0; i < 10; i++) rig.Shell.Library.NotifyDownloadsChanged();
+        var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds / 10;
+        var per = (GC.GetAllocatedBytesForCurrentThread() - alloc) / 10;
+        _out.WriteLine($"downloads changed, Songs (by Artist) open: {ms:F1} ms, {per / 1024} KB");
+        Assert.Equal(shown, songs.Songs);
+        // Before: 7.2 ms, 423 KB per refresh (the whole list sorted again).
+        Assert.True(per < 200 * 1024, $"{per / 1024} KB per refresh");
+
+        // A list whose songs the download changed (a source, Downloaded) still sorts them in.
+        var held = rig.Library.TrackList.Skip(100).Take(50).ToList();
+        var downloaded = new SongListPageViewModel(rig.Shell, "Mobile.Downloaded", () => held);
+        downloaded.ChooseSort(downloaded.SortChoices.First(c => Equals(c.Key, SongSort.Title)));
+        var extra = MobileFixtures.Song("Aardvark", "aaaa");
+        held.Add(extra);
+        rig.Shell.Library.NotifyDownloadsChanged();
+        Assert.Same(extra, downloaded.Songs[0]);
+        Assert.Equal(51, downloaded.SongCount);
+    }
 }

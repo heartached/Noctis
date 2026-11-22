@@ -166,6 +166,11 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// depend on hearts keeps them.</summary>
     public static readonly EventArgs FavouritesRefresh = new();
 
+    /// <summary>The <see cref="Refreshed"/> args of the number of offline copies changing
+    /// (<see cref="NotifyDownloadsChanged"/>, during a download batch as songs land): no song's
+    /// tags changed, though a source or the Downloaded filter may now hold other songs.</summary>
+    public static readonly EventArgs DownloadsRefresh = new();
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
     private int _songCount;
@@ -711,7 +716,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     public void NotifyDownloadsChanged()
     {
         RefreshDownloaded();
-        Refreshed?.Invoke(this, EventArgs.Empty);
+        Refreshed?.Invoke(this, DownloadsRefresh);
     }
 
     /// <summary>The UI language changed: the rails' subtitles ("Artist", "12 songs") and the open

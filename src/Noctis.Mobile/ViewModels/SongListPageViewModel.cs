@@ -251,9 +251,17 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         if ((key == null || key == _sortKey) && ApplySavedSort()) Apply();
     }
 
-    public void Refresh()
+    public void Refresh() => Refresh(resort: true);
+
+    /// <param name="resort">False for a refresh that changed no sort key (a heart, a download):
+    /// when the list still holds the same songs they keep their sorted order and only the
+    /// filters run again. Every heart and every downloaded song sorted the whole list again
+    /// (~11 ms headless for 7,200 songs by Artist).</param>
+    private void Refresh(bool resort)
     {
-        _all = _source().ToList();
+        var next = _source().ToList();
+        if (!resort && !SameSongs(next, _all)) resort = true;
+        _all = next;
         TotalCount = _all.Count;
         if (_playlist != null)
         {
@@ -269,7 +277,8 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             OnPropertyChanged(nameof(OnlyDownloaded));
             OnPropertyChanged(nameof(IsFiltered));
         }
-        Apply();
+        if (resort) Apply();
+        else ApplyFilter();
     }
 
     /// <summary>Sorts the songs again (they or the sort changed), then filters.</summary>
@@ -330,27 +339,8 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         return ordered.ThenBy(t => t.Album, names).ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, names);
     }
 
-    private void OnRefreshed(object? sender, EventArgs e)
-    {
-        if (ReferenceEquals(e, LibraryViewModel.FavouritesRefresh)) RefreshFavourites();
-        else Refresh();
-    }
-
-    /// <summary>
-    /// A heart toggled: no sort key changed (a heart is none), so the same songs keep their sorted
-    /// order and only the filters run again (Favorites only, the Favorites list's own songs).
-    /// Every heart used to sort the whole list again: ~11 ms headless for 7,200 songs by Artist.
-    /// </summary>
-    private void RefreshFavourites()
-    {
-        var next = _source().ToList();
-        if (!SameSongs(next, _all))
-        {
-            Refresh();
-            return;
-        }
-        ApplyFilter();
-    }
+    private void OnRefreshed(object? sender, EventArgs e) =>
+        Refresh(resort: !ReferenceEquals(e, LibraryViewModel.FavouritesRefresh) && !ReferenceEquals(e, LibraryViewModel.DownloadsRefresh));
 
     private static bool SameSongs(List<Track> a, List<Track> b)
     {
