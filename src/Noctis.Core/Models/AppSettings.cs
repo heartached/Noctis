@@ -1542,6 +1542,24 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
     public string FfmpegPath { get; set; } = string.Empty;
 
+    /// <summary>The Convert dialog's options as of the last conversion started, so the next one
+    /// opens with them (Discord request 11-21). Checked against the dialog's choices on open: a
+    /// value it no longer offers falls back to its default. "Overwrite existing files" is not
+    /// kept: it replaces files on disk and stays a per-run choice.</summary>
+    public string ConverterFormat { get; set; } = "mp3";
+    public int ConverterBitrateKbps { get; set; } = 320;
+    public string ConverterBitDepth { get; set; } = "Auto";
+    /// <summary>WAV / AIFF depth as last used for one of them; empty = follow the source (24-bit
+    /// for a 24-bit source, else 16).</summary>
+    public string ConverterPcmBitDepth { get; set; } = string.Empty;
+    public string ConverterDsdRate { get; set; } = "DSD64";
+    /// <summary>Empty = next to each source file. A folder on this computer's disks (computers.json).</summary>
+    public string ConverterOutputFolder { get; set; } = string.Empty;
+    public string ConverterFilenamePattern { get; set; } = "%artist% - %title%";
+    public bool ConverterCopyTags { get; set; } = true;
+    public bool ConverterEmbedArtwork { get; set; } = true;
+    public bool ConverterAddToLibrary { get; set; } = true;
+
     // ── ReplayGain ──
 
     /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).

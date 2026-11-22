@@ -8,6 +8,13 @@ using Noctis.Services;
 
 namespace Noctis.ViewModels;
 
+/// <summary>The Convert dialog's options as of the last conversion started (Discord request
+/// 11-21). <see cref="PcmBitDepth"/> empty = follow the source. "Overwrite existing files" is
+/// left out on purpose: it replaces files on disk, so each run asks for it again.</summary>
+public sealed record AudioConverterPrefs(
+    string Format, int BitrateKbps, string BitDepth, string PcmBitDepth, string DsdRate,
+    string OutputFolder, string FilenamePattern, bool CopyTags, bool EmbedArtwork, bool AddToLibrary);
+
 /// <summary>
 /// Drives the Audio Converter dialog — owns the format/bitrate/output settings,
 /// runs the sequential conversion job, and tracks per-file status.
@@ -21,6 +28,9 @@ public partial class AudioConverterViewModel : ViewModelBase
     private readonly ILibraryService _library;
     private readonly IReadOnlyList<Track> _tracks;
     private readonly bool _hasFfmpeg;
+    private readonly Action<AudioConverterPrefs>? _savePrefs;
+    /// <summary>The WAV/AIFF depth as last saved: a run to another format keeps it as it was.</summary>
+    private string _savedPcmBitDepth = string.Empty;
     private CancellationTokenSource? _cts;
 
     /// <summary>Track -> row for progress updates (one lookup per report, not a list scan).</summary>
@@ -193,10 +203,12 @@ public partial class AudioConverterViewModel : ViewModelBase
 
     public event EventHandler? Closed;
 
-    public AudioConverterViewModel(IReadOnlyList<Track> tracks, IAudioConverterService service, ILibraryService library)
+    public AudioConverterViewModel(IReadOnlyList<Track> tracks, IAudioConverterService service, ILibraryService library,
+        AudioConverterPrefs? prefs = null, Action<AudioConverterPrefs>? savePrefs = null)
     {
         _service = service;
         _library = library;
+        _savePrefs = savePrefs;
         _hasFfmpeg = service.GetFfmpegPath() != null;
 
         // One row per file. The same track listed twice (a playlist that holds it twice)
@@ -223,9 +235,52 @@ public partial class AudioConverterViewModel : ViewModelBase
         if (_tracks.Any(t => t.BitsPerSample >= 24))
             _selectedPcmBitDepth = "24";
 
+        if (prefs != null) ApplyPrefs(prefs);
+
         if (!HasFfmpeg)
             StatusMessage = L("AudioConverter.NoFfmpeg");
     }
+
+    /// <summary>
+    /// Opens with the last run's options. Each is taken only when the dialog still offers it
+    /// (a removed format, a folder that is gone, a pattern a file name can't hold); otherwise
+    /// that option keeps its default, silently.
+    /// </summary>
+    private void ApplyPrefs(AudioConverterPrefs p)
+    {
+        if (FormatOptions.Contains(p.Format)) SelectedFormat = p.Format;
+        if (BitrateOptions.Contains(p.BitrateKbps)) SelectedBitrate = p.BitrateKbps;
+        if (BitDepthOptions.Contains(p.BitDepth)) SelectedBitDepth = p.BitDepth;
+        if (PcmBitDepthOptions.Contains(p.PcmBitDepth))
+        {
+            SelectedPcmBitDepth = p.PcmBitDepth;
+            _savedPcmBitDepth = p.PcmBitDepth;
+        }
+        if (DsdRateOptions.Contains(p.DsdRate)) SelectedDsdRate = p.DsdRate;
+        if (IsUsableSavedFolder(p.OutputFolder)) OutputFolder = p.OutputFolder.Trim();
+        if (!string.IsNullOrWhiteSpace(p.FilenamePattern) && p.FilenamePattern.IndexOfAny(InvalidNameChars) < 0)
+            FilenamePattern = p.FilenamePattern;
+        CopyTags = p.CopyTags;
+        EmbedArtwork = p.EmbedArtwork;
+        AddToLibrary = p.AddToLibrary;
+    }
+
+    private static bool IsUsableSavedFolder(string? folder)
+    {
+        folder = folder?.Trim();
+        if (string.IsNullOrEmpty(folder) || !Path.IsPathFullyQualified(folder)) return false;
+        try { return Directory.Exists(folder); }
+        catch (Exception) { return false; }
+    }
+
+    /// <summary>The options this run uses, as they are saved for the next one.</summary>
+    internal AudioConverterPrefs CurrentPrefs() => new(
+        SelectedFormat, SelectedBitrate, SelectedBitDepth,
+        // Only a WAV/AIFF run says which depth the user wants for those; the box's value in
+        // any other run is the source-based default, which must not stick.
+        IsPcm ? SelectedPcmBitDepth : _savedPcmBitDepth,
+        SelectedDsdRate, OutputFolder?.Trim() ?? string.Empty, FilenamePattern,
+        CopyTags, EmbedArtwork, AddToLibrary);
 
     public bool CanStart => !IsConverting && HasFfmpeg && _tracks.Count > 0 && !HasPatternError && !HasFolderError;
 
@@ -241,6 +296,15 @@ public partial class AudioConverterViewModel : ViewModelBase
             return;
         }
         if (!CanStart) return;
+
+        // The next dialog opens with these options. A failed save never stops the run.
+        try
+        {
+            var prefs = CurrentPrefs();
+            _savePrefs?.Invoke(prefs);
+            _savedPcmBitDepth = prefs.PcmBitDepth;
+        }
+        catch (Exception ex) { DebugLog.Write("AudioConverter", $"Saving the options failed: {ex.Message}"); }
 
         // A second run (another format, say) starts from clean rows: they used to keep the
         // previous run's Done/Failed until their turn came round.
