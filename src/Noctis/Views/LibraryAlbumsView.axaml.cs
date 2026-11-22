@@ -147,17 +147,23 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     }
 
     // ── Album Hover Zoom (GitHub #218) ──
-    // The hovered tile's grow + glow is pure style (Styles.axaml, .hover-zoom); no other tile
-    // moves (GitHub #250). Two things the style cannot do are done here when a tile is entered:
+    // The hovered tile's cover grow + glow is pure style (Styles.axaml, .hover-zoom, on the
+    // tile's Panel.tile-art); no other tile moves (GitHub #250). What the style cannot do is
+    // done here when a tile is entered:
     // - Lift it above its neighbours. Its .hover-zoom ZIndex sits on the Button, but in the row
     //   grid each Button is the only child of a TileRow ContentPresenter, so that ZIndex sorted
     //   nothing: the tiles to its right and the row below drew over its grown edge and glow.
     //   The presenter and the row's ListBoxItem are lifted instead (left up until the next
     //   hover, so the shrink back also plays on top).
-    // - Grow away from the grid's edges. Grown from its centre, a tile in the first row or an
+    // - Grow away from the grid's edges. Grown from its centre, a cover in the first row or an
     //   edge column ran past the scroller's viewport and was clipped (5px of cover at 2400px).
+    // - Drop the glow where the viewport would cut it (.glow-cut): drawn whole or not at all
+    //   (Discord 11-21: a clipped glow read as a masked plate behind the tile).
 
     private const double HoverZoomScale = 1.04;
+    /// <summary>How far the glow reaches past the cover: AlbumHoverGlow's blur 24 + spread 1
+    /// (dark themes; the light themes' 0 8 24 0 shadow reaches 16 up, 24 to the sides).</summary>
+    private const double HoverGlowReach = 25;
     private readonly List<Visual> _hoverLifted = new();
 
     private void OnTileHoverEntered(object? sender, PointerEventArgs e)
@@ -180,15 +186,23 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
 
     private void AnchorHoveredTile(Button tile)
     {
-        if (ActiveScroller()?.Content is not Visual content || tile.GetVisualParent() is not Visual parent) return;
-        if (parent.TranslatePoint(tile.Bounds.Position, content) is not { } at) return;
-        var growX = tile.Bounds.Width * (HoverZoomScale - 1) / 2;
-        var growY = tile.Bounds.Height * (HoverZoomScale - 1) / 2;
-        var left = at.X < growX;
-        var right = content.Bounds.Width - (at.X + tile.Bounds.Width) < growX;
+        if (ActiveScroller()?.Content is not Visual content) return;
+        if (tile.GetVisualDescendants().OfType<Panel>().FirstOrDefault(p => p.Classes.Contains("tile-art")) is not { } art
+            || art.GetVisualParent() is not Visual parent) return;
+        // From the parent, so a cover still easing back from a grow is measured untransformed.
+        if (parent.TranslatePoint(art.Bounds.Position, content) is not { } at) return;
+        var w = art.Bounds.Width;
+        var growX = w * (HoverZoomScale - 1) / 2;
+        var growY = art.Bounds.Height * (HoverZoomScale - 1) / 2;
+        var roomLeft = at.X;
+        var roomRight = content.Bounds.Width - (at.X + w);
+        var left = roomLeft < growX;
+        var right = roomRight < growX;
         var x = left == right ? 0.5 : left ? 0 : 1;
         var y = at.Y < growY ? 0 : 0.5;
-        tile.RenderTransformOrigin = new RelativePoint(x, y, RelativeUnit.Relative);
+        art.RenderTransformOrigin = new RelativePoint(x, y, RelativeUnit.Relative);
+        tile.Classes.Set("glow-cut", roomLeft < growX + HoverGlowReach || roomRight < growX + HoverGlowReach
+            || at.Y < growY + HoverGlowReach);
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)

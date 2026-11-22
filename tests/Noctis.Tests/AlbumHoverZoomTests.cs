@@ -53,6 +53,11 @@ public class AlbumHoverZoomTests
 
     private static double Scale(Visual v) => v.RenderTransform is TransformOperations ops ? ops.Value.M11 : v.RenderTransform?.Value.M11 ?? 1;
 
+    /// <summary>The part of a tile that zooms (Discord 11-21): its cover and the glow behind it.</summary>
+    private static Panel Art(Button tile) => tile.GetVisualDescendants().OfType<Panel>().First(p => p.Classes.Contains("tile-art"));
+
+    private static Border Glow(Button tile) => tile.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("tile-glow"));
+
     /// <summary>No transform, or one within 0.1% of none: a tile just left eases back to 100% on
     /// a curve whose tail the headless clock leaves a hair above 1 (a stepped-back tile was 97%).</summary>
     private static bool IsIdentity(Visual v)
@@ -63,9 +68,10 @@ public class AlbumHoverZoomTests
             && Math.Abs(m.M31) < 0.5 && Math.Abs(m.M32) < 0.5;
     }
 
-    /// <summary>Indexes of the tiles (other than <paramref name="hovered"/>) carrying a transform.</summary>
+    /// <summary>Indexes of the tiles (other than <paramref name="hovered"/>) whose tile or cover
+    /// carries a transform.</summary>
     private static List<int> Transformed(List<Button> tiles, Button? hovered) =>
-        tiles.Where(t => !ReferenceEquals(t, hovered) && !IsIdentity(t)).Select(t => tiles.IndexOf(t)).ToList();
+        tiles.Where(t => !ReferenceEquals(t, hovered) && (!IsIdentity(t) || !IsIdentity(Art(t)))).Select(t => tiles.IndexOf(t)).ToList();
 
     [AvaloniaTheory]
     [InlineData(true)]
@@ -101,16 +107,17 @@ public class AlbumHoverZoomTests
         win.MouseMove(p); Pump(2);
         await Task.Delay(350); Pump(3);
 
-        var glow = hovered.GetVisualDescendants().OfType<Border>().First(b => b.Name == "PART_Glow");
-        _o.WriteLine($"on={on}: hovered scale={Scale(hovered):0.###} glow={glow.Opacity:0.##} others transformed=[{string.Join(",", Transformed(tiles, hovered))}]");
+        var glow = Glow(hovered);
+        _o.WriteLine($"on={on}: hovered scale={Scale(Art(hovered)):0.###} glow={glow.Opacity:0.##} others transformed=[{string.Join(",", Transformed(tiles, hovered))}]");
         if (on)
         {
-            Assert.Equal(1.04, Scale(hovered), 2);
+            Assert.Equal(1.04, Scale(Art(hovered)), 2);
+            Assert.True(IsIdentity(hovered)); // the cover grows, not the whole tile
             Assert.Equal(1, glow.Opacity, 2);
         }
         else
         {
-            Assert.Equal(1, Scale(hovered), 2);
+            Assert.Equal(1, Scale(Art(hovered)), 2);
             Assert.Equal(0, glow.Opacity, 2);
         }
         // GitHub #250: no tile but the hovered one is transformed in any way.
@@ -121,7 +128,7 @@ public class AlbumHoverZoomTests
         // Leaving the grid lets everything settle back.
         win.MouseMove(new Point(5, 1395)); Pump(2);
         await Task.Delay(350); Pump(3);
-        Assert.Equal(1, Scale(hovered), 2);
+        Assert.Equal(1, Scale(Art(hovered)), 2);
         Assert.Empty(Transformed(tiles, null));
         win.Close();
     }
@@ -175,7 +182,7 @@ public class AlbumHoverZoomTests
             if (h.Count == 1 && (seen.Count == 0 || seen[^1] != h[0])) seen.Add(h[0]);
             var others = Transformed(tiles, h.Count == 1 ? tiles[h[0]] : null);
             Assert.True(others.All(seen.Contains), $"tiles never hovered transformed at {x - x0}: {string.Join(",", others)}");
-            Assert.All(others, i => Assert.True(Scale(tiles[i]) >= 1 - 1e-9, $"tile {i} shrank to {Scale(tiles[i]):0.###}"));
+            Assert.All(others, i => Assert.True(Scale(Art(tiles[i])) >= 1 - 1e-9, $"tile {i} shrank to {Scale(Art(tiles[i])):0.###}"));
         }
         _o.WriteLine($"wide={wide}: hovered along the sweep {string.Join(" -> ", seen)}");
         Assert.Equal(new[] { vm.GridColumns + 1, vm.GridColumns + 2 }, seen);
@@ -198,10 +205,10 @@ public class AlbumHoverZoomTests
         Assert.Equal(new[] { under }, over);
         // A tile the pointer crossed while the grid scrolled eases back; then only `under` is grown.
         var all = Tiles();
-        Assert.All(Transformed(all, under), i => Assert.True(Scale(all[i]) >= 1 - 1e-9, $"tile {i} shrank to {Scale(all[i]):0.###}"));
+        Assert.All(Transformed(all, under), i => Assert.True(Scale(Art(all[i])) >= 1 - 1e-9, $"tile {i} shrank to {Scale(Art(all[i])):0.###}"));
         for (var f = 0; f < 60 && Transformed(all, under).Count > 0; f++) { await Task.Delay(16); Pump(1); }
         Assert.Empty(Transformed(all, under));
-        Assert.Equal(1.04, Scale(under!), 2);
+        Assert.Equal(1.04, Scale(Art(under!)), 2);
         win.Close();
     }
 
@@ -249,7 +256,7 @@ public class AlbumHoverZoomTests
             var t = tiles[idx];
             var p = t.TranslatePoint(new Point(t.Bounds.Width / 2, 40), win)!.Value;
             win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
-            Assert.Equal(1.04, Scale(t), 2);
+            Assert.Equal(1.04, Scale(Art(t)), 2);
             Assert.Empty(Transformed(tiles, t));
 
             var cover = t.GetVisualDescendants().OfType<Border>().First(b => b.ClipToBounds);
@@ -267,6 +274,85 @@ public class AlbumHoverZoomTests
                     $"tile {idx}: {v.GetType().Name} not above its siblings in {parent.GetType().Name}");
             }
         }
+        win.Close();
+    }
+
+    /// <summary>Discord 11-21 (Halil, 1.7.1): the whole tile (cover, title, "artist · year") grew
+    /// as one block, so the cover grew away from its own middle and the text lines moved; and the
+    /// glow sat on the Button's template, which an Avalonia 12 TemplatedControl clips to its
+    /// bounds, so only a faint hard-edged box round the whole tile was left of it. Now only the
+    /// cover grows, round its centre (inward at the grid's edges), the title lines stay where they
+    /// were, nothing between the glow and the scroller clips, and where the scroller's own edge
+    /// would cut the glow it is not shown at all. Row grid and Masonry, either spacing.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task CoverGrowsRoundItsCentre_TextStays_GlowWholeOrNone(bool wide, bool masonry)
+    {
+        // The premise of the glow fix: a TemplatedControl clips to its bounds unless told not to.
+        Assert.True(new Button().ClipToBounds);
+
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 60; i++)
+            ((List<Album>)lib.Albums).Add(new Album { Id = Guid.NewGuid(), Name = $"Album {i:00}", Artist = "Artist", Year = 2020, Tracks = new List<Track>() });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumHoverZoom = true;
+        settings.AlbumGridWideSpacing = wide;
+        settings.AlbumGridMasonry = masonry;
+        var vm = new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
+        vm.AlbumSortMode = "title";
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = 1600, Height = 1200, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        List<Button> Tiles() => view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && Tiles().Count < 15) { Pump(1); await Task.Delay(5); }
+        Pump(4);
+        var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
+        var cols = vm.GridColumns;
+
+        Border Cover(Button t) => t.GetVisualDescendants().OfType<Border>().First(b => b.ClipToBounds);
+        Point Centre(Visual v) => v.TranslatePoint(new Point(v.Bounds.Width / 2, v.Bounds.Height / 2), view)!.Value;
+        List<Point> TextAt(Button t) => t.GetVisualDescendants().OfType<Noctis.Controls.HighlightTextBlock>()
+            .Select(x => x.TranslatePoint(default, view)!.Value).ToList();
+
+        // A middle tile of the second row: room all round.
+        var mid = tiles[cols + 1];
+        var centre = Centre(Cover(mid));
+        var text = TextAt(mid);
+        Assert.NotEmpty(text);
+        var p = mid.TranslatePoint(new Point(mid.Bounds.Width / 2, 40), win)!.Value;
+        win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
+        Assert.Equal(1.04, Scale(Art(mid)), 2);
+        Assert.True(IsIdentity(mid), "the whole tile was transformed");
+        var grown = Centre(Cover(mid));
+        _o.WriteLine($"wide={wide} masonry={masonry}: cover centre {centre} -> {grown}, cover {Cover(mid).Bounds.Size}");
+        Assert.True(Math.Abs(grown.X - centre.X) < 0.5 && Math.Abs(grown.Y - centre.Y) < 0.5, $"cover centre moved {centre} -> {grown}");
+        Assert.Equal(text, TextAt(mid));
+        // The glow is shown, sized to the cover, and nothing up to the scroller clips it.
+        var glow = Glow(mid);
+        Assert.Equal(1, glow.Opacity, 2);
+        Assert.Equal(Cover(mid).Bounds.Size, glow.Bounds.Size);
+        for (var v = glow.GetVisualParent(); v is not null and not ScrollContentPresenter; v = v.GetVisualParent())
+            Assert.False(v.ClipToBounds, $"{v.GetType().Name} clips the hovered cover's glow");
+
+        // The top-left tile: grows inside the viewport (inward where it has no room; wide spacing
+        // leaves room), and the viewport's edge would cut its glow, so none.
+        var corner = tiles[0];
+        p = corner.TranslatePoint(new Point(corner.Bounds.Width / 2, 40), win)!.Value;
+        win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
+        Assert.Equal(1.04, Scale(Art(corner)), 2);
+        var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.IsEffectivelyVisible);
+        var tl = Cover(corner).TranslatePoint(default, sv)!.Value;
+        Assert.True(tl.X >= -0.01 && tl.Y >= -0.01, $"top-left cover clipped at {tl}");
+        Assert.Contains("glow-cut", corner.Classes);
+        Assert.Equal(0, Glow(corner).Opacity, 2);
         win.Close();
     }
 }
