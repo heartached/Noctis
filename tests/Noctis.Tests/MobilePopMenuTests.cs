@@ -1047,4 +1047,49 @@ public class MobilePopMenuTests(ITestOutputHelper output)
         Assert.InRange(reopen, 0, 200 * 1024);   // was ~875 KB: the star buttons built again
         window.Close();
     }
+
+    /// <summary>
+    /// The card kept only the last menu's view: a sort or filter menu (or the Library's, the
+    /// artist links, the quality card) in between threw the song menu's rows away, and the next ⋯
+    /// built all of them again inside the tap's frame. Each kind of menu now keeps its own built
+    /// view: back to a song's menu after a sort menu only rebinds the same rows.
+    /// </summary>
+    [AvaloniaFact]
+    public void ASortMenuInBetween_DoesNotRebuildTheSongMenu()
+    {
+        var (rig, window, view) = OpenNowPlaying();
+        using var __ = rig;
+        var menu = MenuOf(view);
+        var song = rig.Library.TrackList[0];
+        Button AddToPlaylist() => MobileFixtures.Named<Button>(menu, "MenuAddToPlaylist");
+
+        rig.Shell.OpenTrackMenu(song, null);
+        Pump(2);
+        var row = AddToPlaylist();
+        rig.Shell.CloseSheet();
+        Pump(15);
+        rig.Shell.ShowOptions(OptionsMenuViewModel.ForItems(new List<OptionsMenuItem>
+        {
+            new(rig.Shell, "Title", true, () => { }),
+            new(rig.Shell, "Artist", false, () => { }),
+        }));
+        Pump(2);
+        Assert.Contains(menu.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Artist" && t.IsEffectivelyVisible);
+        Assert.DoesNotContain(menu.GetVisualDescendants().OfType<Button>(), b => b.Name == "MenuAddToPlaylist" && b.IsEffectivelyVisible);
+        rig.Shell.CloseSheet();
+        Pump(15);
+
+        var other = MobileFixtures.Song("Other", artist: "Someone Else");
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        rig.Shell.OpenTrackMenu(other, null);
+        var reopen = GC.GetAllocatedBytesForCurrentThread() - before;
+        Pump(2);
+        output.WriteLine($"song menu after a sort menu: {reopen / 1024} KB");
+        Assert.Same(row, AddToPlaylist());
+        Assert.True(row.IsEffectivelyVisible);
+        Assert.Contains(menu.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Someone Else" && t.IsEffectivelyVisible);   // rebound
+        Assert.DoesNotContain(menu.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "Artist" && t.IsEffectivelyVisible);
+        Assert.InRange(reopen, 0, 200 * 1024);
+        window.Close();
+    }
 }
