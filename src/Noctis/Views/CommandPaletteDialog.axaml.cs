@@ -76,11 +76,6 @@ public partial class CommandPaletteDialog : Window
         e.Handled = true;
     }
 
-    private void OnCardPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        e.Handled = true;
-    }
-
     public static async Task ShowAsync(CommandPaletteViewModel vm)
     {
         var dialog = new CommandPaletteDialog(vm);
@@ -93,7 +88,12 @@ public partial class CommandPaletteDialog : Window
         }
         else
         {
+            // No owner to be modal over; still returns only once closed, so the caller's
+            // RunChosen runs the picked row after the palette is gone.
+            var closed = new TaskCompletionSource();
+            dialog.Closed += (_, _) => closed.TrySetResult();
             dialog.Show();
+            await closed.Task;
         }
     }
 }
