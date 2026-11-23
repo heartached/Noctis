@@ -9442,4 +9442,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Playlist.ViewCover" xml:space="preserve"><value>عرض الغلاف</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
   <data name="Playlist.ChangeCover" xml:space="preserve"><value>تغيير الغلاف…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
   <data name="Playlist.CoverMenu" xml:space="preserve"><value>غلاف قائمة التشغيل</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>البدء مخفيًا في شريط القوائم</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>التصغير إلى شريط القوائم</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>الإغلاق إلى شريط القوائم</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>يضيف زرًا يرسل الأغنية قيد التشغيل إلى مجلد المهملات أدناه، أو إلى سلة مهملات macOS.</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>هذا المجلد غير موجود، لذا تذهب الأغاني إلى سلة مهملات macOS حتى يعود.</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>انقر بالزر الأيمن على أغنية لفتح ملفها في هذا التطبيق. إذا تُرك فارغًا يُخفى عنصر القائمة.</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>انقر على مفتاح لتغييره. Esc يلغي وDelete يمسحه.</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>انقر على مفتاح لتغييره. Esc يلغي، وDelete يزيل الاختصار.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>يغيّر الأيقونة في شريط القوائم. يحتفظ Dock بالأيقونة الكلاسيكية.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>لا يوجد ألبوم آخر بهذا الاسم. انقر مع ⌘ على الألبومات التي تنتمي معًا في شبكة الألبومات، ثم انقر بزر الماوس الأيمن على أحدها.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
 </root>

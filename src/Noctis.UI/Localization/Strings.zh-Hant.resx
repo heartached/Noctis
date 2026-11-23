@@ -9439,4 +9439,17 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Playlist.ViewCover" xml:space="preserve"><value>檢視封面</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
   <data name="Playlist.ChangeCover" xml:space="preserve"><value>更改封面…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
   <data name="Playlist.CoverMenu" xml:space="preserve"><value>播放清單封面</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>啟動時隱藏到選單列</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>最小化到選單列</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>關閉時縮到選單列</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>加入一個按鈕，將正在播放的歌曲移到下方的回收資料夾，或 macOS 垃圾桶。</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>這個資料夾不存在，在它恢復之前，歌曲會移到 macOS 垃圾桶。</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>在歌曲上按右鍵即可用此 App 開啟其檔案。留空則隱藏該選單項目。</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>按一下按鍵即可變更。Esc 取消，Delete 清除。</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>按一下按鍵即可變更。Esc 取消，Delete 解除繫結。</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>變更選單列中的圖示。Dock 仍使用經典圖示。</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>沒有其他專輯使用此名稱。請在「專輯」格狀檢視中按住 ⌘ 點選屬於同一張專輯的各項，然後以滑鼠右鍵按一下其中一個。</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>正在儲存變更…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>變更已儲存。</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>無法儲存變更：{0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
 </root>

@@ -4500,4 +4500,14 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Playlist.ViewCover" xml:space="preserve"><value>Kapağı Görüntüle</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
   <data name="Playlist.ChangeCover" xml:space="preserve"><value>Kapağı Değiştir…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
   <data name="Playlist.CoverMenu" xml:space="preserve"><value>Çalma listesi kapağı</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>Menü çubuğunda gizli başlat</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>Menü çubuğuna küçült</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>Menü çubuğuna kapat</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>Çalan şarkıyı aşağıdaki Çöp klasörüne veya macOS Çöp Sepeti'ne gönderen bir düğme ekler.</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>Bu klasör yok, bu yüzden geri gelene kadar şarkılar macOS Çöp Sepeti'ne gider.</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>Bir şarkıya sağ tıklayıp dosyasını bu uygulamada aç. Boşsa menü öğesi gizlenir.</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Delete temizler.</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Delete bağı kaldırır.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Menü çubuğundaki simgeyi değiştirir. Dock klasik simgeyi korur.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Bu adda başka albüm yok. Albümler ızgarasında birbirine ait albümlere ⌘ tuşuyla tıkla, ardından birine sağ tıkla.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
 </root>

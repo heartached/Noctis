@@ -9442,4 +9442,14 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Playlist.ViewCover" xml:space="preserve"><value>カバーを表示</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
   <data name="Playlist.ChangeCover" xml:space="preserve"><value>カバーを変更…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
   <data name="Playlist.CoverMenu" xml:space="preserve"><value>プレイリストのカバー</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>メニューバーに隠した状態で起動</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>メニューバーに最小化</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>閉じるとメニューバーに格納</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>再生中の曲を下のごみ箱フォルダー、または macOS のゴミ箱に移動するボタンを追加します。</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>このフォルダーが見つからないため、フォルダーが戻るまで曲は macOS のゴミ箱に移動されます。</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>曲を右クリックすると、このアプリでファイルを開けます。空欄にするとメニュー項目を非表示にします。</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>キーをクリックして変更します。Esc でキャンセル、Delete で割り当てを解除します。</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>キーをクリックして変更します。Esc でキャンセル、Delete で割り当てを解除します。</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>メニューバーのアイコンを変更します。Dock はクラシックのアイコンのままです。</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>同じ名前のアルバムはほかにありません。アルバムのグリッドで、まとめたいアルバムを ⌘ を押しながらクリックし、そのうちの1つを右クリックしてください。</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
 </root>
