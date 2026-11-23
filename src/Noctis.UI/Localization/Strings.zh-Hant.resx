@@ -9354,6 +9354,9 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>藝人分隔符號</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>每個分隔符號都會把一個藝人標籤拆成多位藝人：有了「,」，標籤「Boys Noize, ABRA」就會變成 Boys Noize 和 ABRA。藝人會立即重新分組。</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>移除 {0}</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>曲風分隔符號</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>每個分隔符號會將一個曲風標籤拆分為多個曲風：使用「,」時，標為「Rock, Pop」的歌曲同時算作 Rock 和 Pop。分號一律用作分隔。不會變更你的檔案。</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>無：僅以分號分隔曲風。</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>其他版本</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>原版</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>搜尋歌詞</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

@@ -4374,6 +4374,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Разделители исполнителей</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Каждый разделитель делит тег исполнителя на нескольких исполнителей: с «,» тег «Boys Noize, ABRA» превращается в Boys Noize и ABRA. Исполнители сразу перегруппируются.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Удалить {0}</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>Разделители жанров</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>Каждый разделитель делит один тег жанра на несколько жанров: с «,» песня с тегом «Rock, Pop» считается и Rock, и Pop. Точка с запятой разделяет всегда. Ваши файлы не изменяются.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>Нет: жанры разделяет только точка с запятой.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Другие версии</value></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Оригинал</value></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Искать в текстах песен</value></data>

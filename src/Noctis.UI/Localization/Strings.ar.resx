@@ -9354,6 +9354,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>فواصل الفنانين</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>كل فاصل يقسم وسم الفنان إلى عدة فنانين: مع «,» يصبح الوسم «Boys Noize, ABRA» فنانَين هما Boys Noize وABRA. يُعاد تجميع الفنانين فورًا.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>إزالة {0}</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>فواصل النوع</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>كل فاصل يقسم وسم النوع الواحد إلى عدة أنواع: مع "," تُحتسب الأغنية الموسومة بـ "Rock, Pop" ضمن Rock وضمن Pop. الفاصلة المنقوطة تفصل دائمًا. لا تتغير ملفاتك.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>لا شيء: الفاصلة المنقوطة وحدها تفصل الأنواع.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>إصدارات أخرى</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>الأصلي</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>البحث في الكلمات</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

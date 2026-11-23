@@ -4364,6 +4364,9 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Séparateurs d’artistes</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Chaque séparateur divise un tag artiste en plusieurs artistes : avec « , » le tag « Boys Noize, ABRA » devient Boys Noize et ABRA. Vos artistes sont regroupés aussitôt.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Retirer {0}</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>Séparateurs de genre</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>Chaque séparateur divise un tag genre en plusieurs genres : avec « , » un morceau marqué « Rock, Pop » compte comme Rock et comme Pop. Le point-virgule sépare toujours. Vos fichiers ne sont pas modifiés.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>Aucun : seul le point-virgule sépare les genres.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Autres versions</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Rechercher dans les paroles</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

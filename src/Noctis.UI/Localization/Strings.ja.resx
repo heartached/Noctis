@@ -9354,6 +9354,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>アーティスト区切り文字</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>区切り文字ごとに、1つのアーティストタグが複数のアーティストに分かれます。「,」があれば「Boys Noize, ABRA」は Boys Noize と ABRA になります。アーティストはすぐにグループ分けし直されます。</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} を削除</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>ジャンルの区切り文字</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>区切り文字ごとに1つのジャンルタグを複数のジャンルに分けます。「,」があると、「Rock, Pop」のタグが付いた曲は Rock と Pop の両方として扱われます。セミコロンは常に区切り文字です。ファイルは変更されません。</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>なし：ジャンルはセミコロンでのみ区切られます。</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>ほかのバージョン</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>オリジナル</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>歌詞を検索</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>
