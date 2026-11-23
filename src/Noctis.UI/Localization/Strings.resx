@@ -366,6 +366,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Shows a small Queue pill when nothing is playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player Island Width</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Wider gives the seek bar more room. Double-click the knob to reset.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Reset Player Island Width</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Narrower</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Wider</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Song Progress on Taskbar</value><comment>Text in SettingsView.axaml</comment></data>

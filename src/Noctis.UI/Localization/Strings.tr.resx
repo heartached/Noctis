@@ -358,6 +358,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Hiçbir şey çalmazken küçük bir Kuyruk kapsülü gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Oynatıcı Adası Genişliği</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Daha geniş olunca ilerleme çubuğuna daha çok yer kalır. Sıfırlamak için kaydırıcıya çift tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Oynatıcı Adası Genişliğini Sıfırla</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Daha dar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Daha geniş</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Görev Çubuğunda Şarkı İlerlemesi</value><comment>Text in SettingsView.axaml</comment></data>

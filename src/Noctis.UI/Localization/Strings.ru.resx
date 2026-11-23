@@ -366,6 +366,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Когда ничего не играет, вместо плеера показывать небольшую капсулу «Ничего не играет · Очередь».</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Ширина островка плеера</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Чем шире, тем больше места для полосы перемотки. Края островка можно также перетаскивать. Дважды щёлкните по ползунку, чтобы сбросить.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Сбросить ширину островка плеера</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Уже</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Шире</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Прогресс песни на панели задач</value><comment>Text in SettingsView.axaml</comment></data>

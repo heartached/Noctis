@@ -361,6 +361,7 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Affiche une petite pastille File d'attente quand rien n'est en lecture.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Largeur de l'îlot de lecture</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Plus large donne plus de place à la barre de progression. Double-cliquez sur le curseur pour réinitialiser.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Réinitialiser la largeur de l'îlot de lecture</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Plus étroit</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Plus large</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Progression du titre dans la barre des tâches</value><comment>Text in SettingsView.axaml</comment></data>

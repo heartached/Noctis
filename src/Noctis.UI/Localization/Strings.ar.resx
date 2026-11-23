@@ -935,6 +935,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>العرض الأكبر يمنح شريط التقدم مساحة أكبر. انقر نقرًا مزدوجًا على المقبض لإعادة الضبط.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>إعادة تعيين عرض جزيرة التشغيل</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>أضيق</value>
     <comment>Text in SettingsView.axaml</comment>

@@ -935,6 +935,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <value>越宽，进度条的空间越大。双击滑块可重置。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>重置播放岛宽度</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>更窄</value>
     <comment>Text in SettingsView.axaml</comment>

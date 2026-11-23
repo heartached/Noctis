@@ -935,6 +935,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>넓을수록 탐색 막대 공간이 커집니다. 손잡이를 더블클릭하면 초기화됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>플레이어 아일랜드 너비 재설정</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>좁게</value>
     <comment>Text in SettingsView.axaml</comment>

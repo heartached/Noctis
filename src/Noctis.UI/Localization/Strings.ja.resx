@@ -935,6 +935,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>広くするとシークバーが長くなります。リセットするにはノブをダブルクリックします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>プレイヤーアイランドの幅をリセット</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>狭く</value>
     <comment>Text in SettingsView.axaml</comment>

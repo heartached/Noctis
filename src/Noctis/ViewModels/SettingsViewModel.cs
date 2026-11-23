@@ -2500,8 +2500,20 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
     /// <summary>Player island width in DIPs (GitHub #50): the Player page slider and the
     /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
-    [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPlaybackBarWidthCustom))]
+    private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarDefaultWidth = 536;
+
+    /// <summary>The island has a width of the user's own (slider or edge-grip drag): shows the
+    /// Reset button beside the Player Island Width slider (Discord 11-23; the only way back was
+    /// double-clicking the island's invisible edge grip).</summary>
+    public bool IsPlaybackBarWidthCustom => Math.Abs(PlaybackBarIslandWidth - PlaybackBarDefaultWidth) >= 0.5;
+
+    /// <summary>Player Island Width ▸ Reset: back to the stock width, saved and pushed to the bar
+    /// like a slider move (the bar adds the extra buttons' room to the stock width itself).</summary>
+    [RelayCommand]
+    private void ResetPlaybackBarWidth() => PlaybackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarMinWidth = AppSettings.PlaybackBarMinWidth;
     public const double PlaybackBarMaxWidth = AppSettings.PlaybackBarMaxWidth;
 

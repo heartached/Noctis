@@ -365,6 +365,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Solange nichts spielt, eine kleine „Nichts spielt · Warteschlange“-Pille statt des Players zeigen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player-Insel-Breite</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Breiter gibt der Suchleiste mehr Raum. Du kannst auch an den Inselrändern ziehen. Doppelklick auf den Regler setzt zurück.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Player-Insel-Breite zurücksetzen</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Schmaler</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Breiter</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Songfortschritt in der Taskleiste</value><comment>Text in SettingsView.axaml</comment></data>
