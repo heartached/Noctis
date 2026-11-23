@@ -870,7 +870,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>معادل الصوت</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>زر لتشغيل معادل الصوت وإيقافه بعد زر التشغيل العشوائي.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>وقت التشغيل</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>الوقت المنقضي والمتبقي للمقطع الحالي في مربع المقطع.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>الوقت المنقضي والمتبقي للمقطع الحالي في مربع المقطع. انقر على الوقت لعرض المدة الكاملة بدلًا منه.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>شريط تقدم بشكل موجي</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>يعرض الشكل الموجي للأغنية في شريط التقدم.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">

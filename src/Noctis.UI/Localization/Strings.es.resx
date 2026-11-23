@@ -320,7 +320,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Ecualizador</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Un botón para activar o desactivar el ecualizador después de Aleatorio.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Tiempo de reproducción</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Tiempo transcurrido y restante de la canción actual en el cuadro de la pista.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Tiempo transcurrido y restante de la canción actual en el cuadro de la pista. Haz clic en el tiempo para ver la duración total.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Barra de progreso con forma de onda</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Muestra la forma de onda de la canción en la barra de progreso.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Opacidad del recuadro de la canción</value><comment>Text in SettingsView.axaml</comment></data>

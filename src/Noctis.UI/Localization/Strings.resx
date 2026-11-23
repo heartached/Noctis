@@ -323,7 +323,7 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Equalizer</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>An EQ on/off button after Shuffle.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Playback time</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Elapsed and remaining time of the current title in the track box.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Elapsed and remaining time of the current title in the track box. Click the time to show the total length instead.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Waveform seek bar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Shows the song's waveform in the seek bar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Track Box Opacity</value><comment>Text in SettingsView.axaml</comment></data>

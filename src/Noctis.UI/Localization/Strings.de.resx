@@ -322,7 +322,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Equalizer</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Eine EQ-An/Aus-Schaltfläche nach Zufällig.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Wiedergabezeit</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Verstrichene und restliche Zeit des aktuellen Titels in der Titelbox.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Verstrichene und restliche Zeit des aktuellen Titels in der Titelbox. Klicke auf die Zeit, um stattdessen die Gesamtlänge zu sehen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Wellenform-Suchleiste</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Zeigt die Wellenform des Songs in Player-Insel und Mini-Player. Wird im Hintergrund für aktuelle und nächste Songs berechnet und dann gemerkt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Titelbox-Deckkraft</value><comment>Text in SettingsView.axaml</comment></data>

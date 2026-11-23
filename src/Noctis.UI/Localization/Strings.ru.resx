@@ -323,7 +323,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Эквалайзер</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Кнопка включения эквалайзера после кнопки «Перемешать».</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Время воспроизведения</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Прошедшее и оставшееся время текущего трека в блоке трека.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Прошедшее и оставшееся время текущего трека в блоке трека. Нажмите на время, чтобы вместо этого показать общую длительность.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Волновая форма на полосе перемотки</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Показывать волновую форму песни на полосе перемотки островка плеера и мини-плеера. Она рассчитывается в фоне для текущей и следующей песни и затем запоминается.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Непрозрачность блока трека</value><comment>Text in SettingsView.axaml</comment></data>
