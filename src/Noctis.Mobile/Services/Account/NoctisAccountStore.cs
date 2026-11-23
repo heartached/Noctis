@@ -84,13 +84,24 @@ internal sealed class NoctisOfflineState
     public HashSet<string> NotOnComputer { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+/// <summary>Songs a download run asked for and has not finished (the app ended mid-way, or the system
+/// paused it): the next start resumes them, on the computer they were asked from only.</summary>
+internal sealed class NoctisUnfinishedDownloads
+{
+    public string ServerUrl { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    /// <summary>Desktop song ids (Guid "N").</summary>
+    public List<string> Songs { get; set; } = new();
+}
+
 /// <summary>
 /// The account's files in the platform's no-backup directory (Android NoBackupFilesDir; tests a
 /// temp folder): <c>device.json</c> (this install's id, kept across sign-outs),
 /// <c>account.json</c> (server, user, device key, pinned fingerprint — never the password),
 /// <c>sync.json</c> (checkpoint + last agreed state), <c>pending.json</c> (unpushed edits and
-/// queued plays), <c>uploads.json</c> (phone songs already sent) and <c>offline.json</c> (downloads
-/// the computer no longer has, kept across sign-outs). Every write goes to a temp file first and is then moved over the old one, so a
+/// queued plays), <c>uploads.json</c> (phone songs already sent), <c>offline.json</c> (downloads
+/// the computer no longer has, kept across sign-outs) and <c>downloads.json</c> (downloads still
+/// asked for, resumed at the next start; there only while some are). Every write goes to a temp file first and is then moved over the old one, so a
 /// crash mid-write leaves the previous version. Unreadable files read as empty.
 /// </summary>
 public sealed class NoctisAccountStore
@@ -116,6 +127,7 @@ public sealed class NoctisAccountStore
     private string PendingPath => Path.Combine(Directory, "pending.json");
     private string UploadsPath => Path.Combine(Directory, "uploads.json");
     private string OfflinePath => Path.Combine(Directory, "offline.json");
+    private string UnfinishedPath => Path.Combine(Directory, "downloads.json");
 
     /// <summary>This install's device id: 16 random bytes as hex, created on first use and kept for good.</summary>
     public string LoadOrCreateDeviceId()
@@ -180,6 +192,20 @@ public sealed class NoctisAccountStore
     {
         var json = JsonSerializer.Serialize(offline, Json);
         lock (_writeGate) WriteAtomic(OfflinePath, json);
+    }
+
+    internal NoctisUnfinishedDownloads? LoadUnfinishedDownloads() => Read<NoctisUnfinishedDownloads>(UnfinishedPath);
+
+    /// <summary>Writes the songs still asked for; none: the file goes.</summary>
+    internal void SaveUnfinishedDownloads(NoctisUnfinishedDownloads unfinished)
+    {
+        if (unfinished.Songs.Count == 0)
+        {
+            lock (_writeGate) NoctisServerClient.TryDelete(UnfinishedPath);
+            return;
+        }
+        var json = JsonSerializer.Serialize(unfinished, Json);
+        lock (_writeGate) WriteAtomic(UnfinishedPath, json);
     }
 
     /// <summary>Sign-out: forgets the checkpoint, the agreed state, anything unsent and the record of
