@@ -392,6 +392,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             // until a sign-in to one that has them.
             var kept = removeDownloads ? null : new HashSet<Guid>(_downloaded.Keys);
             await _library.RemoveRemoteTracksAsync(kept).ConfigureAwait(false);
+            if (kept is not null) await AddRowsForDownloadsWithoutAsync(kept).ConfigureAwait(false);
             _notOnComputer.Clear();
             foreach (var id in kept ?? new HashSet<Guid>()) _notOnComputer[id] = 0;
             SaveOfflineState();
@@ -1019,6 +1020,25 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         if (removed == 0) return;
         SaveSyncState();
         DebugLog.Write("Account", $"covers: {removed} removed with their albums");
+    }
+
+    /// <summary>Sign-out keeping downloads: a download an older version left with no row (its song
+    /// gone from the library already) gets one from its file's tags, as a settled sync gives it
+    /// (<see cref="SortDownloadsNotListed"/>), so No longer on your computer counts it at once.</summary>
+    private async Task AddRowsForDownloadsWithoutAsync(HashSet<Guid> kept)
+    {
+        var rows = _library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList();
+        var have = rows.Select(t => t.Id).ToHashSet();
+        var added = 0;
+        foreach (var id in kept)
+        {
+            if (have.Contains(id) || !_downloaded.TryGetValue(id, out var file)) continue;
+            rows.Add(RowFromFile(id, file));
+            added++;
+        }
+        if (added == 0) return;
+        await _library.ReplaceRemoteTracksAsync(rows).ConfigureAwait(false);
+        DebugLog.Write("Account", $"sign-out: {added} downloads without a row got one from their tags");
     }
 
     /// <summary>A row for a download with none left in the library: the file's own tags, as far as they go.</summary>

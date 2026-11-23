@@ -744,6 +744,42 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(3, (await svc.SyncNowAsync(ct)).Songs);   // the catalog's count, not the kept rows
     }
 
+    /// <summary>Sign-out keeping downloads gave a download an older version left with no row none:
+    /// it stayed uncounted in No longer on your computer until some later complete sync. Sign-out
+    /// now builds its row from the file's tags, so the list is right at once.</summary>
+    [Fact]
+    public async Task SignOutKeepingDownloads_GivesADownloadWithNoRowItsRow_FromItsTags()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(OfflineDir);
+        var lost = Guid.NewGuid();
+        var file = Path.GetFullPath(Path.Combine(OfflineDir, lost.ToString("N") + ".mp3"));
+        File.WriteAllBytes(file, _audio);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
+            _recorder, marshal: a => a())
+        {
+            ReadFileTags = path => path == file
+                ? new Track { Title = "Lost Song", Artist = "Someone", Album = "Somewhere", Duration = TimeSpan.FromSeconds(42) }
+                : null,
+        };
+        await svc.SignInAsync(_url, "alice", "correct horse", await svc.ProbeFingerprintAsync(_url, ct), ct);
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+        // An unsettled sync (the computer scanning) left the old download without a row.
+        await _phoneLibrary.RemoveRemoteTracksAsync(new HashSet<Guid> { _t1.Id, _t2.Id, _t3.Id });
+        Assert.Null(_phoneLibrary.GetTrackById(lost));
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+
+        Assert.Equal(new[] { _t1.Id, lost }.OrderBy(g => g), svc.NotOnComputerTracks.Select(t => t.Id).OrderBy(g => g));
+        var row = _phoneLibrary.GetTrackById(lost)!;
+        Assert.Equal("Lost Song", row.Title);
+        Assert.Equal("Someone", row.Artist);
+        Assert.Equal(file, svc.ResolvePlaybackUri(row.FilePath));
+        Assert.Equal(2L * _audio.Length, svc.NotOnComputerBytes);
+        Assert.Same(Phone(_t1), svc.NotOnComputerTracks.Single(t => t.Id == _t1.Id));
+    }
+
     /// <summary>Signed in to another computer (a different library): this computer's downloads are
     /// not on it, so they stay and play, listed as no longer on the computer, while its streamed
     /// songs go. Back on the first computer they are ordinary downloads again.</summary>
