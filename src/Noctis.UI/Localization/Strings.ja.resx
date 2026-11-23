@@ -9403,4 +9403,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2}で新しいアルバム「{1}」を作成します。ファイルのアルバムタグ (アルバム、アルバムアーティスト、トラック番号とディスク番号) が変更されます。</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>移動</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Noctis 内では移動しましたが、一部のファイル ({0}) を保存できませんでした (読み取り専用か、別のアプリで開かれています)。そのファイルが変更されると、次回のスキャンで元のアルバムに戻ります。</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>追加</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>{0:N0} 件のプレイリストに追加</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>{0:N0} 件のプレイリストに追加しました</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

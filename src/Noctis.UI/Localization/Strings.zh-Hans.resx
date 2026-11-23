@@ -9403,4 +9403,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2}将组成新专辑“{1}”。文件的专辑标签（专辑、专辑艺人、曲目号和碟号）会被更改。</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>移动</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>已在 Noctis 中移动，但部分文件（{0}）无法保存（只读或在其他应用中打开）。如果此类文件发生变化，下次扫描时会回到原来的专辑。</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>添加</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>添加到 {0:N0} 个播放列表</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>已添加到 {0:N0} 个播放列表</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

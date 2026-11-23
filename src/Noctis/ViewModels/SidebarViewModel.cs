@@ -969,38 +969,55 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Adds tracks to a manual playlist and persists. Smart playlists are
     /// filled by their rules, so added ids would never show and are ignored.</summary>
     public async Task AddTracksToPlaylist(Guid playlistId, IEnumerable<Track> tracks)
+        => await AddTracksToPlaylistsAsync(new[] { playlistId }, tracks);
+
+    /// <summary>
+    /// Adds tracks to each of the manual playlists (Add to Playlist with several ticked) and
+    /// saves once. Each playlist takes only the songs it lacks, as a single add does; smart
+    /// playlists and unknown ids are skipped. Returns the playlists that were written to.
+    /// </summary>
+    public async Task<IReadOnlyList<Playlist>> AddTracksToPlaylistsAsync(IEnumerable<Guid> playlistIds, IEnumerable<Track> tracks)
     {
-        var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
-        if (playlist == null || playlist.IsSmartPlaylist) return;
-
-        // Only add tracks that aren't already in the playlist to prevent duplicates
-        var existingIds = new HashSet<Guid>(playlist.TrackIds);
+        var songs = tracks as IList<Track> ?? tracks.ToList();
+        var touched = new List<Playlist>();
         var now = DateTime.UtcNow;
-        foreach (var track in tracks)
+        foreach (var playlistId in playlistIds.Distinct())
         {
-            if (existingIds.Add(track.Id))
+            var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
+            if (playlist == null || playlist.IsSmartPlaylist) continue;
+
+            // Only add tracks that aren't already in the playlist to prevent duplicates
+            var existingIds = new HashSet<Guid>(playlist.TrackIds);
+            foreach (var track in songs)
             {
-                playlist.TrackIds.Add(track.Id);
-                playlist.TrackAddedAt[track.Id] = now; // drives the row's NEW badge and "Added" date
+                if (existingIds.Add(track.Id))
+                {
+                    playlist.TrackIds.Add(track.Id);
+                    playlist.TrackAddedAt[track.Id] = now; // drives the row's NEW badge and "Added" date
+                }
             }
-        }
-        playlist.ModifiedAt = now;
+            playlist.ModifiedAt = now;
 
-        // Update the sidebar item's track count and artwork
-        var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
-        if (navItem != null)
-        {
-            var rebuilt = BuildPlaylistNavItem(playlist);
-            navItem.TrackCount = rebuilt.TrackCount;
-            navItem.MetaText = rebuilt.MetaText;
-            navItem.Art1 = rebuilt.Art1;
-            navItem.Art2 = rebuilt.Art2;
-            navItem.Art3 = rebuilt.Art3;
-            navItem.Art4 = rebuilt.Art4;
+            // Update the sidebar item's track count and artwork
+            var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
+            if (navItem != null)
+            {
+                var rebuilt = BuildPlaylistNavItem(playlist);
+                navItem.TrackCount = rebuilt.TrackCount;
+                navItem.MetaText = rebuilt.MetaText;
+                navItem.Art1 = rebuilt.Art1;
+                navItem.Art2 = rebuilt.Art2;
+                navItem.Art3 = rebuilt.Art3;
+                navItem.Art4 = rebuilt.Art4;
+            }
+            touched.Add(playlist);
         }
 
+        if (touched.Count == 0) return touched;
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
-        PlaylistTracksChanged?.Invoke(this, playlistId);
+        foreach (var playlist in touched)
+            PlaylistTracksChanged?.Invoke(this, playlist.Id);
+        return touched;
     }
 
     /// <summary>
@@ -1126,12 +1143,13 @@ public partial class SidebarViewModel : ViewModelBase
         var dialogVm = CreateAddToPlaylistViewModel(tracks);
         var dialog = new AddToPlaylistDialog { DataContext = dialogVm };
 
-        Guid? selectedExistingId = null;
+        IReadOnlyList<Guid> selectedIds = Array.Empty<Guid>();
         bool createRequested = false;
         string newName = string.Empty;
         string newDescription = string.Empty;
 
-        dialogVm.PlaylistSelected += (_, navItem) => selectedExistingId = navItem.PlaylistId;
+        dialogVm.PlaylistsSelected += (_, picked) =>
+            selectedIds = picked.Select(p => p.PlaylistId).OfType<Guid>().ToList();
         dialogVm.NewPlaylistRequested += (_, args) =>
         {
             createRequested = true;
@@ -1152,9 +1170,9 @@ public partial class SidebarViewModel : ViewModelBase
             return;
         }
 
-        if (selectedExistingId is Guid id)
+        if (selectedIds.Count > 0)
         {
-            await AddTracksToPlaylist(id, tracks);
+            await AddPickedPlaylistsAsync(selectedIds, tracks);
             return;
         }
 
@@ -1175,6 +1193,24 @@ public partial class SidebarViewModel : ViewModelBase
 
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
+
+    /// <summary>The Add to Playlist dialog's picks: the songs go in each playlist, then the pill
+    /// above the island says where ("Added to Gym" / "Added to 3 playlists"). Internal for tests.</summary>
+    internal async Task AddPickedPlaylistsAsync(IReadOnlyList<Guid> playlistIds, IList<Track> tracks)
+    {
+        var added = await AddTracksToPlaylistsAsync(playlistIds, tracks);
+        if (added.Count == 0) return;
+        var headline = added.Count == 1
+            ? Loc.T("PlaybackBar.AddedToPlaylist", added[0].Name)
+            : Loc.T("AddToPlaylist.AddedToPlaylists", added.Count);
+        var detail = tracks.Count == 1
+            ? (string.IsNullOrWhiteSpace(tracks[0].Title) ? Loc.T("QueueToast.OneSong") : tracks[0].Title)
+            : Loc.T("QueueToast.SongCount", tracks.Count);
+        ToastRequested?.Invoke(this, (headline, detail));
+    }
+
+    /// <summary>A one-line confirmation for the pill above the playback island (headline, detail).</summary>
+    public event EventHandler<(string Headline, string Detail)>? ToastRequested;
 
     /// <summary>Opens the edit playlist dialog pre-filled with existing data and saves changes.</summary>
     public async Task EditPlaylistAsync(Playlist playlist)

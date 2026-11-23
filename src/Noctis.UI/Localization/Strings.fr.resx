@@ -4413,4 +4413,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>Créer le nouvel album « {1} » avec {2}. Les tags d'album des fichiers (album, artiste de l'album, numéro de piste et de disque) seront modifiés.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Déplacer</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Déplacés dans Noctis, mais certains fichiers ({0}) n'ont pas pu être enregistrés (en lecture seule ou ouverts dans une autre application). Si un tel fichier change, il retourne dans son ancien album à la prochaine analyse.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>Ajouter</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>Ajouter à {0:N0} playlists</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>Ajouté à {0:N0} playlists</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

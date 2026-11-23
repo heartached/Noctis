@@ -9403,4 +9403,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>ستبدأ {2} الألبوم الجديد «{1}». ستتغير وسوم الألبوم في الملفات (الألبوم، فنان الألبوم، رقم المقطع والقرص).</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>نقل</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>نُقلت في Noctis، لكن تعذّر حفظ بعض الملفات ({0}) (للقراءة فقط أو مفتوحة في تطبيق آخر). إذا تغيّر أحد هذه الملفات، فسيعود إلى ألبومه القديم في الفحص التالي.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>إضافة</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>إضافة إلى {0:N0} قوائم تشغيل</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>تمت الإضافة إلى {0:N0} قوائم تشغيل</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

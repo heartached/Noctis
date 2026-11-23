@@ -3,8 +3,10 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Controls;
 using Noctis.ViewModels;
 
@@ -58,6 +60,31 @@ public partial class AddToPlaylistDialog : Window
     public AddToPlaylistDialog()
     {
         InitializeComponent();
+        // A click ticks a row (its Button command); Enter and a double click add at once, the
+        // one-pick dialog's speed. Tunnel: the row Button turns Enter into a click otherwise.
+        PlaylistList.AddHandler(KeyDownEvent, OnRowKeyDown, RoutingStrategies.Tunnel);
+        PlaylistList.AddHandler(DoubleTappedEvent, OnRowDoubleTapped, handledEventsToo: true);
+    }
+
+    private void OnRowKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || e.KeyModifiers != KeyModifiers.None) return;
+        if (AddRowOf(e.Source)) e.Handled = true;
+    }
+
+    private void OnRowDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (AddRowOf(e.Source)) e.Handled = true;
+    }
+
+    /// <summary>Adds straight away to the row under <paramref name="source"/> (and any ticked).</summary>
+    private bool AddRowOf(object? source)
+    {
+        if (_vm == null || source is not Visual v) return false;
+        var row = (v as Button ?? v.FindAncestorOfType<Button>())?.DataContext as AddToPlaylistRow;
+        if (row == null) return false;
+        _vm.SelectPlaylistCommand.Execute(row.Playlist);
+        return true;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -256,7 +283,7 @@ public partial class AddToPlaylistDialog : Window
     /// <summary>
     /// Closes the dialog. PillDialogHost turns the close into the animated one (it plays once
     /// however many closes arrive). The caller reads the result from the view model's
-    /// PlaylistSelected / NewPlaylistRequested events, so nothing rides on Close(result).
+    /// PlaylistsSelected / NewPlaylistRequested events, so nothing rides on Close(result).
     /// </summary>
     public Task CloseAnimatedAsync()
     {

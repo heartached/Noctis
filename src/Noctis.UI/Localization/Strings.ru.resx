@@ -4423,4 +4423,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} — в новый альбом «{1}». Теги альбома в их файлах (альбом, исполнитель альбома, номер трека и диска) будут изменены.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Переместить</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Перемещено в Noctis, но некоторые файлы ({0}) сохранить не удалось (только для чтения или открыт в другой программе). Если такой файл изменится, при следующем сканировании он вернётся в прежний альбом.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>Добавить</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>Добавить в плейлисты: {0:N0}</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>Добавлено в плейлисты: {0:N0}</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

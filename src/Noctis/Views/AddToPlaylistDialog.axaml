@@ -75,12 +75,38 @@
         <Style Selector="Button.atp-row.on-playlist StackPanel.atp-text">
             <Setter Property="Opacity" Value="0.5" />
         </Style>
+        <Style Selector="Button.atp-row.on-playlist Panel.atp-check">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+
+        <!-- Two users (11-23): add to several playlists at once. A click ticks the row: the
+             accent disc pops in over the quiet ring with a small overshoot, its check on top;
+             unticking eases it back out. Transitions only, no per-frame work. -->
+        <Style Selector="Border.atp-check-ring">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Opacity" Value="0.28" />
+        </Style>
+        <Style Selector="Border.atp-check-fill">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="RenderTransform" Value="scale(0.55)" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.26" Easing="BackEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.atp-row.checked Border.atp-check-fill">
+            <Setter Property="Opacity" Value="1" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
     </Window.Styles>
 
     <!-- Owner 10-08: the rounded pill pop-up of the Metadata editor and Create New Playlist,
          with the blurred app behind. PillDialogHost draws the backdrop and the card and plays the
          open/close animation (every close path animates out once). The result reaches the caller
-         through the view model's PlaylistSelected / NewPlaylistRequested events, never through
+         through the view model's PlaylistsSelected / NewPlaylistRequested events, never through
          Close(result), so the deferred close loses nothing.
 
          Two panes share the card: the playlist list and the inline create form. Each side is a
@@ -154,12 +180,15 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:AddToPlaylistRow">
+                                    <!-- Click ticks (Add in the footer); double click or Enter adds at
+                                         once (AddToPlaylistDialog.OnRowDoubleTapped / OnRowKeyDown). -->
                                     <Button Classes="atp-row"
                                             AutomationProperties.Name="{Binding Playlist.Label}"
                                             Classes.on-playlist="{Binding IsAlreadyOnPlaylist}"
-                                            Command="{Binding $parent[Window].((vm:AddToPlaylistDialogViewModel)DataContext).SelectPlaylistCommand}"
-                                            CommandParameter="{Binding Playlist}">
-                                        <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                                            Classes.checked="{Binding IsChecked}"
+                                            Command="{Binding $parent[Window].((vm:AddToPlaylistDialogViewModel)DataContext).ToggleRowCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="Auto,*,Auto" VerticalAlignment="Center">
                                             <!-- Playlist artwork (matches the sidebar thumbnail). -->
                                             <Border Grid.Column="0"
                                                     Classes="atp-cover"
@@ -221,6 +250,18 @@
                                                            TextTrimming="CharacterEllipsis"
                                                            IsVisible="{Binding SubtitleText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                             </StackPanel>
+                                            <!-- The tick: a quiet ring, the accent disc and its check over it. -->
+                                            <Panel Grid.Column="2" Classes="atp-check" Width="22" Height="22"
+                                                   Margin="12,0,0,0" VerticalAlignment="Center">
+                                                <Border Classes="atp-check-ring" CornerRadius="11" BorderThickness="1.5" />
+                                                <Border Classes="atp-check-fill" CornerRadius="11">
+                                                    <Path Data="{StaticResource MenuLineCheck}"
+                                                          Stroke="{DynamicResource AccentForegroundBrush}"
+                                                          StrokeThickness="2.4" StrokeLineCap="Round" StrokeJoin="Round"
+                                                          Stretch="Uniform" Width="11" Height="11"
+                                                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                </Border>
+                                            </Panel>
                                         </Grid>
                                     </Button>
                                 </DataTemplate>
@@ -274,6 +315,13 @@
                     <Button Classes="pill-secondary"
                             Content="{loc:T AddToPlaylist.Cancel}"
                             Command="{Binding CancelCommand}"
+                            MinWidth="108" />
+                    <!-- Adds to every ticked playlist; greyed until one is ticked. -->
+                    <Button x:Name="AddButton"
+                            Classes="pill-primary"
+                            Content="{Binding AddButtonText}"
+                            Command="{Binding AddCheckedCommand}"
+                            IsVisible="{Binding HasPlaylists}"
                             MinWidth="108" />
                 </StackPanel>
                 <StackPanel x:Name="CreateFooter" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right"

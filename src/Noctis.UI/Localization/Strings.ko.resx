@@ -9403,4 +9403,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2}(으)로 새 앨범 “{1}”을(를) 만듭니다. 파일의 앨범 태그(앨범, 앨범 아티스트, 트랙 및 디스크 번호)가 변경됩니다.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>이동</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Noctis에서는 이동했지만 일부 파일({0}개)을 저장하지 못했습니다(읽기 전용이거나 다른 앱에서 열려 있음). 해당 파일이 변경되면 다음 스캔 때 원래 앨범으로 돌아갑니다.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>추가</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>재생목록 {0:N0}개에 추가</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>재생목록 {0:N0}개에 추가됨</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

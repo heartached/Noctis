@@ -4423,4 +4423,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} will start the new album “{1}”. The files' album tags (album, album artist, track and disc number) are changed.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Move</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Moved in Noctis, but some files ({0}) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>Add</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>Add to {0:N0} Playlists</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>Added to {0:N0} playlists</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
 </root>

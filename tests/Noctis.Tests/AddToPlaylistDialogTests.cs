@@ -100,6 +100,7 @@ public class AddToPlaylistDialogTests
     {
         public int Selected, Created;
         public Guid? SelectedId;
+        public List<Guid?> SelectedIds = new();
         public string Name = "", Description = "";
     }
 
@@ -117,7 +118,7 @@ public class AddToPlaylistDialogTests
         var vm = new AddToPlaylistDialogViewModel(Lists(playlists), tracks);
         var win = new AddToPlaylistDialog { DataContext = vm, RequestedThemeVariant = ThemeVariant.Dark, Width = 1100, Height = 820 };
         var caller = new Caller();
-        vm.PlaylistSelected += (_, p) => { caller.Selected++; caller.SelectedId = p.PlaylistId; };
+        vm.PlaylistsSelected += (_, p) => { caller.Selected++; caller.SelectedId = p.Count == 1 ? p[0].PlaylistId : null; caller.SelectedIds = p.Select(x => x.PlaylistId).ToList(); };
         vm.NewPlaylistRequested += (_, a) => { caller.Created++; caller.Name = a.Name; caller.Description = a.Description; };
         vm.CloseRequested += (_, _) => _ = win.CloseAnimatedAsync();
         win.Show();
@@ -185,7 +186,7 @@ public class AddToPlaylistDialogTests
         var vm = new AddToPlaylistDialogViewModel(lists, 1);
         var picked = new List<PlaylistNavItem>();
         var created = 0;
-        vm.PlaylistSelected += (_, p) => picked.Add(p);
+        vm.PlaylistsSelected += (_, p) => picked.AddRange(p);
         vm.NewPlaylistRequested += (_, _) => created++;
         vm.SelectPlaylistCommand.Execute(vm.Playlists[0]);
         vm.SelectPlaylistCommand.Execute(vm.Playlists[1]);
@@ -426,7 +427,7 @@ public class AddToPlaylistDialogTests
     }
 
     [AvaloniaFact]
-    public void PickingARow_ReachesCaller_Once_AndClosesAnimated()
+    public void EnterOnARow_ReachesCaller_Once_AndClosesAnimated()
     {
         EnsureAppStyles();
         var d = Open(playlists: 3);
@@ -436,11 +437,13 @@ public class AddToPlaylistDialogTests
         var rows = d.Win.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("atp-row")).ToList();
         Assert.Equal(3, rows.Count);
 
-        rows[1].Command!.Execute(rows[1].CommandParameter);
+        // Enter on a row adds at once (the quick single add), not a tick.
+        rows[1].Focus();
+        d.Win.KeyPressQwerty(PhysicalKey.Enter, RawInputModifiers.None);
         Assert.True(d.Host.IsClosing);
         Assert.True(d.Win.IsVisible);
-        // A second click (the other half of a double click, another row) is ignored.
-        rows[2].Command!.Execute(rows[2].CommandParameter);
+        // A second pick while closing (another row) is ignored.
+        d.Vm.SelectPlaylistCommand.Execute(d.Vm.Playlists[2]);
         Assert.True(PumpUntil(() => closed > 0, 2000));
         PumpUntil(() => false, 250);
         Assert.Equal(1, closed);

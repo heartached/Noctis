@@ -140,7 +140,7 @@ public class AddToPlaylistAlreadyOnTests : IDisposable
         var (vm, all, some, _) = TwoSongs();
         var picked = new List<PlaylistNavItem>();
         var closes = 0;
-        vm.PlaylistSelected += (_, p) => picked.Add(p);
+        vm.PlaylistsSelected += (_, p) => picked.AddRange(p);
         vm.CloseRequested += (_, _) => closes++;
 
         vm.SelectPlaylistCommand.Execute(all);
