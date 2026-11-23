@@ -775,7 +775,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         var notOnComputer = SortDownloadsNotListed(songs, links, keepUnlisted);
         SaveSyncState();
+        var albumsBefore = !keepUnlisted && songs.Count > 0
+            ? _library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.AlbumId).ToHashSet()
+            : null;
         await _library.ReplaceRemoteTracksAsync(notOnComputer.Count > 0 ? tracks.Concat(notOnComputer).ToList() : tracks, ct).ConfigureAwait(false);
+        if (albumsBefore is not null) DeleteDroppedAlbumCovers(albumsBefore);
         if (links.Count > 0) DiscardDownloadsOf(links.Keys);
         if (redate) await RedateKnownSongsAsync(arriving, known).ConfigureAwait(false);
 
@@ -985,6 +989,36 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         if (changed) SaveOfflineState();
         return rows;
+    }
+
+    /// <summary>
+    /// The covers of the computer's albums that a settled sync left with no song on the phone (none
+    /// of the computer's, none of the phone's own files): sign-out cleaned them, a sync left them on
+    /// disk for good. Only after a settled, non-empty catalog (the caller's rule), so a scan or an
+    /// empty list never takes one. The cover's version goes too: an album back later fetches it again.
+    /// </summary>
+    private void DeleteDroppedAlbumCovers(HashSet<Guid> albumsBefore)
+    {
+        var live = _library.AllTracks.Select(t => t.AlbumId).ToHashSet();
+        var removed = 0;
+        foreach (var albumId in albumsBefore)
+        {
+            if (live.Contains(albumId) || albumId == Track.UnknownAlbumBucketId) continue;
+            try
+            {
+                var path = _persistence.GetArtworkPath(albumId);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    removed++;
+                }
+            }
+            catch (Exception ex) { DebugLog.Write("Account", $"cover not removed ({ex.GetType().Name})"); }
+            lock (_gate) _sync.Covers.Remove(albumId.ToString("N"));
+        }
+        if (removed == 0) return;
+        SaveSyncState();
+        DebugLog.Write("Account", $"covers: {removed} removed with their albums");
     }
 
     /// <summary>A row for a download with none left in the library: the file's own tags, as far as they go.</summary>

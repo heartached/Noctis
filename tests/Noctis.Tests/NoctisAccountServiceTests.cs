@@ -504,6 +504,39 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
     }
 
+    /// <summary>An album the computer dropped kept its cover on the phone after the sync took its
+    /// songs (only sign-out cleaned covers). A settled sync now removes the cover of an album no
+    /// song on the phone is in any more; mid-scan or an empty list proves nothing, so it stays.</summary>
+    [Fact]
+    public async Task ASettledSync_RemovesTheCoversOfAlbumsNoSongIsInAnyMore()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var cover = _phonePersistence.GetArtworkPath(AlbumA);
+        Assert.True(File.Exists(cover));
+
+        _desk.IsScanning = true;
+        _desk.Show(_t3);
+        await svc.SyncNowAsync(ct);
+        Assert.True(File.Exists(cover));
+
+        _desk.IsScanning = false;
+        _desk.Show();
+        await svc.SyncNowAsync(ct);
+        Assert.True(File.Exists(cover));
+
+        // One of the album's songs left: the album is still here, so is its cover.
+        _desk.Show(_t1, _t3);
+        await svc.SyncNowAsync(ct);
+        Assert.True(File.Exists(cover));
+
+        _desk.Show(_t3);
+        await svc.SyncNowAsync(ct);
+        Assert.Null(_phoneLibrary.GetTrackById(_t1.Id));
+        Assert.False(File.Exists(cover));
+    }
+
     // ── Downloads and playback ───────────────────────────────────────────
 
     /// <summary>A downloaded song the computer no longer has (deleted there, a drive unplugged, or
