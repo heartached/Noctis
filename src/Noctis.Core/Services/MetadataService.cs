@@ -784,8 +784,8 @@ public class MetadataService : IMetadataService
             // genre edit, a row holding only some of the file's genres (one read before
             // multi-genre support keeps just the first) must not shrink the file's list: a
             // lyrics or rating save would silently drop the rest.
-            var newGenres = Track.SplitGenres(track.Genre);
-            var fileGenres = Track.SplitGenres(Track.JoinGenres(tag.Genres));
+            var newGenres = Track.SplitStoredGenres(track.Genre);
+            var fileGenres = Track.SplitStoredGenres(Track.JoinGenres(tag.Genres));
             var wouldOnlyDropGenres = !genreEdited && fileGenres.Length > newGenres.Length
                                       && newGenres.All(g => fileGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
             if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !wouldOnlyDropGenres)

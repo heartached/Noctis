@@ -3500,6 +3500,7 @@ public class LibraryService : ILibraryService
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         ArtistCredit.Configure(ArtistGroupModes.Parse(settings.ArtistGroupMode), settings.ArtistTagSeparators,
             settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+        GenreSeparators.Configure(settings.GenreTagSeparators);
         // Only ever switched on here (SettingsViewModel owns the flag and loads first): a
         // default-settings library must not switch off what the settings page turned on.
         if (settings.ShowArtistsAsTagged) ArtistCredit.ShowAsTagged = true;
@@ -3962,10 +3963,10 @@ public class LibraryService : ILibraryService
         if (_genreBackfillPending)
         {
             var genre = new TagBackfill("genre", GenreSchemaVersion, "genre-backfill.progress",
-                t => Track.SplitGenres(t.Genre).Length == 1,
-                path => _metadata.ReadGenres(path) is var g && Track.SplitGenres(g).Length > 1 ? g : string.Empty,
+                t => Track.SplitStoredGenres(t.Genre).Length == 1,
+                path => _metadata.ReadGenres(path) is var g && Track.SplitStoredGenres(g).Length > 1 ? g : string.Empty,
                 // Only over the stale row it was read for: a genre typed meanwhile wins.
-                (t, v) => { if (Track.SplitGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
+                (t, v) => { if (Track.SplitStoredGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
                 MarkPhoneTracks: false, Reindex: true);
             if (!await RunTagBackfillAsync(genre)) return;
         }

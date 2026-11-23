@@ -10,7 +10,7 @@ namespace Noctis.ViewModels;
 /// <summary>
 /// The Genres page (GitHub #220, MusicBee's genre browser as the example): every genre in the
 /// library with its album and song counts. Multi-genre tags count under each of their genres
-/// (<see cref="Track.SplitGenres"/>: ';'-separated, as the scanner stores them), spellings merge
+/// (<see cref="Track.SplitGenres"/>: ';' plus the Genre Separators setting, GitHub #260), spellings merge
 /// case-insensitively, and untagged songs gather under "Unknown". Opening a genre shows its
 /// albums and songs on the Albums page (<see cref="LibraryAlbumsViewModel.SetGenreFilter"/>).
 /// </summary>
@@ -166,22 +166,9 @@ public partial class GenresViewModel : ViewModelBase, ISearchable, IDisposable
     /// a genre page filters every library song with it.</summary>
     public static bool TrackHasGenre(Track track, string genre)
     {
-        var unknown = GenreRow.IsUnknownKey(genre);
         var target = genre.AsSpan().Trim();
-        var rest = (track.Genre ?? string.Empty).AsSpan();
-        var tagged = false;
-        while (true)
-        {
-            var cut = rest.IndexOf(';');
-            var part = (cut < 0 ? rest : rest[..cut]).Trim();
-            if (part.Length > 0)
-            {
-                tagged = true;
-                if (part.Equals(target, StringComparison.OrdinalIgnoreCase)) return true;
-            }
-            if (cut < 0) return unknown && !tagged;
-            rest = rest[(cut + 1)..];
-        }
+        if (GenreSeparators.Contains(track.Genre ?? string.Empty, default, target, out var tagged)) return true;
+        return !tagged && GenreRow.IsUnknownKey(genre);
     }
 
     /// <summary>One row per genre: songs carrying it, albums with at least one such song.</summary>
