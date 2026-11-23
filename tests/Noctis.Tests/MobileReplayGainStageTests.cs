@@ -207,6 +207,59 @@ public class MobileReplayGainStageTests
     }
 
     [Fact]
+    public void AResetFlush_ThenTheStreamsOwnFlush_LandsOnTheNamedSong()
+    {
+        // Device log 11-23: a re-prepare resets the sink, whose processors are flushed with no
+        // period first (StreamMetadata.DEFAULT); the stream's own flush naming the song follows.
+        var stage = Stage(1);
+        stage.SetGain("a", 0.5);
+        stage.SetGain("b", 0.25);
+        stage.Announce("a");
+        stage.BeginStream(null);
+        Assert.True(stage.FollowsPlayer);
+        stage.BeginStream("b");
+        Assert.False(stage.FollowsPlayer);
+        stage.Update();
+        var b = Constant(Frames(10), 1f, 1);
+        stage.Process(b.AsSpan());
+        Assert.Equal("b", stage.MediaId);
+        Assert.Equal(0.25f, b[Frames(ReplayGainStage.BoundaryRampMs)], 5);
+        stage.Announce("a");   // a late player report never pulls a named stream back
+        stage.Update();
+        Assert.Equal(0.25f, stage.TargetGain);
+    }
+
+    [Fact]
+    public void FollowingThePlayer_SwitchesWithTheShortGlide()
+    {
+        var stage = Stage(1);
+        stage.SetGain("a", 1.0);
+        stage.SetGain("b", 0.5);
+        stage.Announce("a");
+        stage.BeginStream(null);
+        stage.Update();
+        stage.Process(Constant(Frames(10), 1f, 1).AsSpan());
+        stage.Announce("b");
+        stage.Update();
+        var after = Constant(Frames(ReplayGainStage.BoundaryRampMs) + 1, 1f, 1);
+        stage.Process(after.AsSpan());
+        Assert.Equal(0.5f, after[^1], 5);
+    }
+
+    [Fact]
+    public void Labels_NameTheSongInTheLog_AndGoWithIt()
+    {
+        var stage = Stage(1);
+        stage.SetGain("content://x/1", 0.5, "La Santa");
+        Assert.Equal("La Santa", stage.LabelFor("content://x/1"));
+        stage.SetGain("content://x/1", 0.4);   // a refresh keeps the name
+        Assert.Equal("La Santa", stage.LabelFor("content://x/1"));
+        Assert.Equal("content://x/2", stage.LabelFor("content://x/2"));
+        stage.Retain(Array.Empty<string>());
+        Assert.Equal("content://x/1", stage.LabelFor("content://x/1"));
+    }
+
+    [Fact]
     public void Retain_DropsSongsNoLongerQueued()
     {
         var stage = Stage(1);
