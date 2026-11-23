@@ -2016,7 +2016,9 @@
     </Border>
 
     <!-- Plugin notice pill (IPluginHost.Notify): same glass pill as the drop-import one,
-         near the top so it never covers the playback island; clears itself after a few seconds. -->
+         near the top so it never covers the playback island; clears itself after a few seconds.
+         GitHub #261: a long notice (the "saved by a newer Noctis" one, #230) wraps onto more
+         lines instead of ending in "..." before its point; the 18 radius keeps one line a pill. -->
     <Border IsVisible="{Binding PluginNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
             IsHitTestVisible="False"
             HorizontalAlignment="Center"
@@ -2026,11 +2028,14 @@
             Background="{DynamicResource IslandBackground}"
             BorderBrush="#22FFFFFF"
             BorderThickness="1"
-            CornerRadius="999"
+            CornerRadius="18"
             Padding="16,9"
             ZIndex="40">
         <TextBlock Text="{Binding PluginNotice}"
                    FontSize="13" FontWeight="SemiBold"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   MaxLines="4"
                    TextTrimming="CharacterEllipsis"
                    Foreground="{DynamicResource IslandForeground}"
                    VerticalAlignment="Center"/>
