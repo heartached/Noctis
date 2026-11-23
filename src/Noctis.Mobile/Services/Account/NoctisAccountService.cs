@@ -933,6 +933,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 if (!now.TryGetValue(p.Id, out var mine)) continue;               // deleted on the phone meanwhile
                 if (Newer(mine.ModifiedAt, at)) { result.Add(mine); continue; }  // edited on the phone meanwhile
+                // Pin/Unpin leaves ModifiedAt alone (the pin is the phone's own, never synced): the
+                // file's current pin wins, or a pin made meanwhile was written back unpinned.
+                p.IsPinned = mine.IsPinned;
             }
             result.Add(p);
         }

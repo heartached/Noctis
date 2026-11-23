@@ -2250,6 +2250,36 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(PngA, File.ReadAllBytes(after.Single(p => p.Id == _deskMixId).CoverArtPath!));   // the sync's own change still lands
     }
 
+    /// <summary>A pin made on the phone while the sync fetches covers: pinning does not move the
+    /// playlist's ModifiedAt (it is the phone's own, never sent), so the re-read before the write did
+    /// not see it as an edit and the write put the playlist back unpinned.</summary>
+    [Fact]
+    public async Task APlaylistPinnedWhileTheSyncFetchesCovers_StaysPinned()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var gym = new Playlist { Name = "Gym", ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        var pinnedBefore = new Playlist { Name = "Pinned", IsPinned = true, ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { gym, pinnedBefore });
+        DeskSetsCover(PngA);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new HookHandler(NoctisHandlers.Sockets(accept), async r =>
+        {
+            if (!r.RequestUri!.AbsolutePath.EndsWith("getNoctisPlaylistCover.view", StringComparison.Ordinal)) return;
+            // Meanwhile on the phone: Pin on one, Unpin on the other (LibraryViewModel.SetPlaylistPinnedAsync).
+            var lists = await _phonePersistence.LoadPlaylistsAsync();
+            lists.Single(p => p.Id == gym.Id).IsPinned = true;
+            lists.Single(p => p.Id == pinnedBefore.Id).IsPinned = false;
+            await _phonePersistence.SavePlaylistsAsync(lists);
+        }), AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+        await svc.SyncNowAsync(ct);
+
+        var after = await _phonePersistence.LoadPlaylistsAsync();
+        Assert.True(after.Single(p => p.Id == gym.Id).IsPinned);
+        Assert.False(after.Single(p => p.Id == pinnedBefore.Id).IsPinned);
+        Assert.Equal(PngA, File.ReadAllBytes(after.Single(p => p.Id == _deskMixId).CoverArtPath!));   // the sync's own change still lands
+    }
+
     private async Task<Playlist> PhoneMixAsync() => (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);
 
     private Playlist DeskMix => _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
