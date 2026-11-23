@@ -165,9 +165,12 @@ public class MobileLyricsCompositorGlideTests
     }
 
     /// <summary>A tap mid-glide seeks to the line under the finger (what is on screen, not where
-    /// the layout already put it), and the glide stops where it stands without a jump.</summary>
+    /// the layout already put it). The finger landing does not stop the glide (beta 5 regression,
+    /// 11-23: a touch froze the lines where they stood, for as long as it rested); the lift does,
+    /// on the line as shown, so the line Button sees the tap where the finger is and the seek
+    /// glides on from there.</summary>
     [AvaloniaFact]
-    public async Task ATapDuringTheGlide_SeeksToTheLineUnderTheFinger()
+    public async Task ATapDuringTheGlide_SeeksToTheLineUnderTheFinger_AndTheGlideRunsOn()
     {
         var rig = await Open();
         try
@@ -179,17 +182,340 @@ public class MobileLyricsCompositorGlideTests
             Frames(rig, 1);
             RunUntil(rig, clock, 80);
             // The finger lands on line 13 where it is on screen now, well short of its new place.
-            var shown = delta * (1 - LineMotion.Ease(clock.Elapsed.TotalMilliseconds / LineMotion.DurationMs));
+            var shown = ShownTranslationY(rig);
             Assert.True(shown > delta * 0.2, $"{shown:0} of {delta:0} px still to go");
             var at = LaidOutCentre(rig, 13) + new Point(0, shown);
             Assert.Equal(13, LineAt(rig, at));
-            rig.Window.MouseDown(at, MouseButton.Left);
-            Assert.False(rig.Page.IsGlidingOnCompositor);   // the finger stopped the glide...
+            var finger = rig.Window.TouchBegin(at);
             Frames(rig, 1);
-            Assert.Equal(13, LineAt(rig, at));              // ...where it stood
-            rig.Window.MouseUp(at, MouseButton.Left);
+            Assert.True(rig.Page.IsGlidingOnCompositor);    // the finger alone stops nothing
+            var before = ShownTranslationY(rig);
+            Frames(rig, 2);
+            Thread.Sleep(10);
+            Frames(rig, 1);
+            Assert.True(ShownTranslationY(rig) < before);   // still moving
+            var underFinger = LaidOutCentre(rig, 13).Y + ShownTranslationY(rig);
+            rig.Window.TouchEnd(finger, at);
             Frames(rig, 1);
             Assert.Equal(rig.Shell.Lyrics.Lines[13].Timestamp, rig.Player.Seeks.LastOrDefault());
+            Assert.False(rig.Shell.Lyrics.IsBrowsing);
+            // The lift stopped the glide on the line as shown (the seek's own glide goes on from
+            // there): no jump under the finger. The lift falls between two frames, so the lines
+            // stop where the glide has them at that moment: at most a frame's motion on from the
+            // last frame shown (the hand-over itself is exact, AnInterruptedGlide_...).
+            Assert.InRange(LaidOutCentre(rig, 13).Y + ShownTranslationY(rig) - underFinger, -3, 3);
+            Assert.DoesNotContain(":pressed", LineButton(rig, 13).Classes);   // the Button let go
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
+    /// <summary>A drag mid-glide takes the lines over: the glide stops where they stand once the
+    /// finger has moved far enough to scroll, and the list follows the finger from there (the
+    /// line under it stays under it), browsing.</summary>
+    [AvaloniaFact]
+    public async Task ADragDuringTheGlide_StopsItWhereTheLinesStand_AndTheListFollowsTheFinger()
+    {
+        var rig = await Open();
+        try
+        {
+            var startOffset = rig.Scroll.Offset.Y;
+            var clock = Stopwatch.StartNew();
+            rig.Page.ScrollToLine(11, animate: true);
+            var delta = rig.Scroll.Offset.Y - startOffset;
+            Frames(rig, 1);
+            RunUntil(rig, clock, 100);
+            var at = LaidOutCentre(rig, 13) + new Point(0, ShownTranslationY(rig));
+            Assert.Equal(13, LineAt(rig, at));
+            var finger = rig.Window.TouchBegin(at);
+            Frames(rig, 1);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            // Small moves (a shaky tap) do not take over.
+            rig.Window.TouchMove(finger, at + new Point(0, 2));
+            Frames(rig, 1);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            // A real drag does: 60 px down in steps. The glide runs on until the finger has moved
+            // far enough for the scroller to start (it then moves the list by the finger's travel
+            // past that start distance: 55 px here), and stops on the lines as shown.
+            var startLine = LaidOutCentre(rig, 13).Y + ShownTranslationY(rig);
+            for (var y = 10; y <= 60; y += 10)
+            {
+                rig.Window.TouchMove(finger, at + new Point(0, y));
+                Frames(rig, 1);
+            }
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.True(rig.Shell.Lyrics.IsBrowsing);
+            Assert.Equal(0, ShownTranslationY(rig), 3);
+            var moved = LaidOutCentre(rig, 13).Y + ShownTranslationY(rig) - startLine;
+            rig.Window.TouchEnd(finger, at + new Point(0, 60));
+            Frames(rig, 1);
+            _o.WriteLine($"finger moved 60 px: line 13 moved {moved:0.0} px (55 by the scroller, less what the glide still moved it up before the take-over)");
+            // No jump at the take-over: the glide's last bit up (a few px at most) and the drag.
+            Assert.InRange(moved, 55 - 5, 55.5);
+            _o.WriteLine($"glide of {delta:0} px taken over by a drag");
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
+    /// <summary>
+    /// S23 (11-23, round 4 build): after Lyrics was opened and closed again with its Lyrics
+    /// button, Now Playing ran at 1.2-1.4 MB/s and 56% render thread (6% before Lyrics was ever
+    /// opened), the stall monitor showing the lyrics' glide, frame loop and keep-alive still
+    /// running under it. Closed, the lyrics page does nothing: through line changes no glide
+    /// starts, no line's look animates, the frame loop and keep-alive are off; opened again, it
+    /// stands on the sung line at once.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task ClosedAgain_TheLyricsDoNothingThroughLineChanges_AndOpenOnTheSungLine()
+    {
+        var rig = await Open();
+        try
+        {
+            var keepAlive = rig.Page.FindControl<RenderKeepAlive>("KeepAlive")!;
+            rig.Shell.Player.TogglePlayPauseCommand.Execute(null);   // playing
+            Assert.True(rig.Shell.Player.IsPlaying);
+            rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(21.5));
+            var clock = Stopwatch.StartNew();
+            RunUntil(rig, clock, 300);
+            // A glide in flight, then back to Now Playing with the lyrics page's own Lyrics
+            // button, as on the phone: the glide ends with the page.
+            rig.Page.ScrollToLine(rig.Shell.Lyrics.ScrollLineIndex + 1, animate: true);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            Tap(rig, rig.Page.FindControl<Button>("LyricsButton")!);
+            Assert.False(rig.Shell.IsLyricsOpen);
+            // Closed from the tap on, though the page is still drawn while it fades out (on the
+            // phone it stayed visible to Avalonia under Now Playing): a line change in the fade
+            // starts nothing.
+            Assert.True(rig.Page.IsVisible);
+            Assert.False(rig.Page.Shown);
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.False(rig.Page.IsFrameLoopRunning);
+            var scrolls = 0;
+            rig.Shell.Lyrics.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex)) scrolls++;
+            };
+            rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(23.5));
+            rig.Shell.Lyrics.OnFrame(LyricsPageViewModel.NowMs());   // as a frame would
+            Frames(rig, 1);
+            Assert.True(scrolls > 0, "the sung line moved on");
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.False(rig.Page.IsFrameLoopRunning);
+            Assert.False(keepAlive.IsRunning);
+            clock.Restart();
+            RunUntil(rig, clock, 800);                               // the fade out runs on its own
+            Assert.False(rig.Page.IsVisible);
+            // Lyrics and back again with Now Playing's own Lyrics button and the page's.
+            var nowPlaying = rig.Window.GetVisualDescendants().OfType<NowPlayingPage>().Single();
+            Assert.True(nowPlaying.IsVisible);
+            Tap(rig, nowPlaying.FindControl<Button>("LyricsButton")!);
+            clock.Restart();
+            RunUntil(rig, clock, 800);
+            Assert.True(rig.Page.IsVisible);
+            rig.Page.ShowControls();
+            Frames(rig, 2);
+            Tap(rig, rig.Page.FindControl<Button>("LyricsButton")!);
+            clock.Restart();
+            RunUntil(rig, clock, 800);
+            Assert.False(rig.Page.IsVisible);
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.Equal(0, ShownTranslationY(rig), 3);
+
+            var pulses = keepAlive.Pulses;
+            var glides = 0;
+            rig.Shell.Lyrics.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && rig.Page.IsGlidingOnCompositor) glides++;
+            };
+            var looks = 0;
+            foreach (var c in rig.List.GetRealizedContainers())
+                c.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line")).PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == Visual.OpacityProperty || e.Property == Visual.EffectProperty) looks++;
+                };
+            // Three line changes while closed (a line a second from 0:10).
+            for (var s = 22; s <= 24; s++)
+            {
+                rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(s + 0.5));
+                clock.Restart();
+                RunUntil(rig, clock, 400);
+                Assert.False(rig.Page.IsGlidingOnCompositor);
+                Assert.False(rig.Page.IsFrameLoopRunning);
+                Assert.False(keepAlive.IsRunning);
+            }
+            Assert.Equal(0, glides);
+            Assert.Equal(pulses, keepAlive.Pulses);
+            _o.WriteLine($"closed: {looks} line look changes, {keepAlive.Pulses - pulses} keep-alive pulses");
+
+            // Opened again: on the sung line at once, no glide to it.
+            rig.Shell.ToggleLyricsCommand.Execute(null);
+            Frames(rig, 3);
+            rig.Window.UpdateLayout();
+            Frames(rig, 2);
+            var sung = rig.Shell.Lyrics.ScrollLineIndex;
+            Assert.True(sung >= 13, $"sung line {sung}");
+            var row = Row(rig, sung);
+            var top = row.TranslatePoint(default, rig.Scroll)!.Value.Y;
+            var expected = rig.Scroll.Viewport.Height * LyricsPage.AnchorRatio - row.Bounds.Height / 2;
+            Assert.InRange(top, expected - 2, expected + 2);
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
+    /// <summary>A finger tap in the middle of <paramref name="button"/>, as on the phone.</summary>
+    private static void Tap(Rig rig, Button button)
+    {
+        Frames(rig, 1);
+        var at = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), rig.Window)!.Value;
+        var finger = rig.Window.TouchBegin(at);
+        Frames(rig, 1);
+        rig.Window.TouchEnd(finger, at);
+        Frames(rig, 1);
+    }
+
+    /// <summary>A line's button (the visual its opacity and blur are on).</summary>
+    private static Button LineButton(Rig rig, int index) =>
+        Row(rig, index).GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line"));
+
+    /// <summary>The render thread's opacity of a line (what is on screen).</summary>
+    private static double ShownOpacity(Rig rig, int index)
+    {
+        var visual = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(LineButton(rig, index))!;
+        var server = typeof(Avalonia.Rendering.Composition.CompositionVisual)
+            .GetProperty("Server", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!
+            .GetValue(visual)!;
+        var serverVisual = typeof(Avalonia.Rendering.Composition.CompositionVisual).Assembly
+            .GetType("Avalonia.Rendering.Composition.Server.ServerCompositionVisual")!;
+        return (float)serverVisual.GetProperty("Opacity")!.GetValue(server)!;
+    }
+
+    /// <summary>
+    /// A line's dimming fades on the compositor (LineFade): the line's Opacity changes once, at
+    /// once, and the render thread eases what is shown over the old transition's 0.5 s on its
+    /// curve. The blur steps through three radii over the old 0.4 s (one effect change each,
+    /// then the target) instead of a new effect on every frame. A row shown afresh takes both at once.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task TheLineFade_RunsOnTheCompositor_AndTheBlurSteps()
+    {
+        var rig = await Open();
+        try
+        {
+            var line = rig.Shell.Lyrics.Lines[14];
+            var button = LineButton(rig, 14);
+            line.LineOpacity = 0.9;
+            line.BlurRadius = 0;
+            var settle = Stopwatch.StartNew();
+            RunUntil(rig, settle, 700);
+            Assert.Equal(0.9, ShownOpacity(rig, 14), 3);
+            Assert.Null(button.Effect);
+
+            var opacityChanges = 0;
+            var effects = new List<double>();
+            button.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == Visual.OpacityProperty) opacityChanges++;
+                else if (e.Property == Visual.EffectProperty) effects.Add((e.NewValue as Avalonia.Media.IBlurEffect)?.Radius ?? 0);
+            };
+            var clock = Stopwatch.StartNew();
+            line.LineOpacity = 0.3;
+            line.BlurRadius = 6;
+            Assert.Equal(0.3, button.Opacity, 3);                 // the UI side at once
+            Frames(rig, 1);
+            RunUntil(rig, clock, 250);
+            var t = clock.Elapsed.TotalMilliseconds;
+            var shown = ShownOpacity(rig, 14);
+            var ease = new Avalonia.Animation.Easings.CubicEaseInOut();
+            _o.WriteLine($"at {t:0} ms: shown opacity {shown:0.000}");
+            // On the curve, a frame of slack for the render thread's start.
+            Assert.InRange(shown, 0.9 - 0.6 * ease.Ease(Math.Min(1, t / 500)) - 0.01, 0.9 - 0.6 * ease.Ease(Math.Max(0, (t - 40) / 500)) + 0.01);
+            RunUntil(rig, clock, 650);
+            Assert.Equal(0.3, ShownOpacity(rig, 14), 3);
+            Assert.Equal(1, opacityChanges);
+
+            _o.WriteLine($"blur radii shown: {string.Join(", ", effects.Select(r => r.ToString("0.0")))}");
+            var blurEase = new Avalonia.Animation.Easings.CubicEaseOut();
+            // At once, then every 133 ms: the eased radius at the middle of each third, then 6.
+            var expected = new[] { 0.5 / 3, 1.5 / 3, 2.5 / 3 }.Select(t => Math.Round(6 * blurEase.Ease(t), 1)).Append(6.0).Distinct();
+            Assert.Equal(expected, effects.Select(r => Math.Round(r, 1)));
+
+            // Far away and back: a row handed another line shows that line's look at once.
+            rig.Page.ScrollToLine(45, animate: false);
+            Frames(rig, 3);
+            rig.Page.ScrollToLine(10, animate: false);
+            Frames(rig, 2);
+            foreach (var i in new[] { 11, 12, 13 })
+            {
+                var l = rig.Shell.Lyrics.Lines[i];
+                Assert.Equal(l.LineOpacity, ShownOpacity(rig, i), 3);
+                Assert.Equal(l.BlurRadius, (LineButton(rig, i).Effect as Avalonia.Media.IBlurEffect)?.Radius ?? 0, 1);
+            }
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
+    /// <summary>The render thread's Translation of the lyric list (what is on screen).</summary>
+    private static double ShownTranslationY(Rig rig)
+    {
+        var visual = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(rig.List)!;
+        var server = typeof(Avalonia.Rendering.Composition.CompositionVisual)
+            .GetProperty("Server", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!
+            .GetValue(visual)!;
+        var serverVisual = typeof(Avalonia.Rendering.Composition.CompositionVisual).Assembly
+            .GetType("Avalonia.Rendering.Composition.Server.ServerCompositionVisual")!;
+        return ((Vector3D)serverVisual.GetProperty("Translation")!.GetValue(server)!).Y;
+    }
+
+    /// <summary>
+    /// A glide stopped mid-way (here by browsing) hands over to the scroll offset without a jump,
+    /// even when its first frame came late: the glide's clock starts when the compositor's does
+    /// (at the commit that carries it), not when it was asked for. Measured on screen: the active
+    /// line's place in the frame before the stop and the frame after. Before (11-23) the page's
+    /// clock ran up to a frame ahead of the render thread's, a jump of up to ~3 px on the phone.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(0)]
+    [InlineData(12)]
+    public async Task AnInterruptedGlide_HandsOverWithoutAJump(int lateMs)
+    {
+        var rig = await Open();
+        try
+        {
+            var clock = Stopwatch.StartNew();
+            rig.Page.ScrollToLine(11, animate: true);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            Thread.Sleep(lateMs);                            // the first frame comes late
+            Frames(rig, 1);
+            RunUntil(rig, clock, 150 + lateMs);
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            var tick = LyricsPageViewModel.NowMs();
+            // Where the content is shown, as a scroll offset (the layout rounds the list to whole
+            // pixels wherever it stops; that is not the hand-over's).
+            var target = rig.Scroll.Offset.Y;
+            var before = target - ShownTranslationY(rig);
+            rig.Page.BeginBrowse();
+            var gap = LyricsPageViewModel.NowMs() - tick;
+            var after = rig.Scroll.Offset.Y;
+            Frames(rig, 2);
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.Equal(0, ShownTranslationY(rig), 6);
+            // The stop falls a moment after the last frame shown: the lines may have moved on by
+            // the glide's speed over that moment (at most ~0.4 px/ms on this travel).
+            var slack = 0.5 + 0.4 * gap;
+            _o.WriteLine($"first frame {lateMs} ms late: shown at {before:0.00} before the stop, {after:0.00} after ({after - before:+0.00;-0.00} px, stop {gap:0.0} ms after the frame)");
+            Assert.InRange(after - before, -slack, slack);
         }
         finally
         {

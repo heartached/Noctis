@@ -51,7 +51,7 @@ public class MobileFrameStallMonitorTests
             var summary = Assert.Single(lines, l => l.Contains("stalls in"));
             Assert.Contains("stalls while lyric glide 1,", summary);
             Assert.Contains("lyric glide on 0.", summary);
-            Assert.Contains("KB/s, GC0 +", summary);
+            Assert.Matches(@"alloc \d+ KB/s \(UI thread \d+, other threads \d+\), GC0 \+", summary);
         }
         finally
         {

@@ -163,17 +163,122 @@ public class KaraokeWordFollowTests
         }
     }
 
-    private static int Diff(Window a, Window b)
+    private static WordTiming Held(string text = "love") => new()
+    {
+        Text = text, SweepLeadIn = true, SweepTrailOut = true, IsEmphasis = true, HeldDurationMs = 2400, IsLastInLine = true,
+        Progress = KaraokeSweep.InertFuture,
+    };
+
+    /// <summary>A followed held note's letters are composition visuals of their own: through the
+    /// hold each is drawn only as the hold starts and ends (off the pixel grid while it moves),
+    /// and its pose is its visual's transform; a bound word drew every letter every frame.</summary>
+    [AvaloniaFact]
+    public void AHeldNote_PosesItsLettersOnTheCompositor_AndDrawsThemOnlyAtItsStartAndEnd()
+    {
+        var model = Held();
+        var cell = new CountingWord { FontSize = 35, FontWeight = FontWeight.Bold, Foreground = Brushes.White, BaseOpacity = 0.4, Word = model };
+        var win = Host(cell);
+        var bound = new CountingWord
+        {
+            Text = "love", FontSize = 35, FontWeight = FontWeight.Bold, Foreground = Brushes.White, BaseOpacity = 0.4,
+            LeadIn = true, TrailOut = true, IsEmphasis = true, HeldDurationMs = 2400, IsLastInLine = true,
+        };
+        var boundWin = Host(bound);
+        try
+        {
+            Assert.True(cell.LettersOnCompositor);
+            Assert.False(bound.LettersOnCompositor);
+            var letterDraws = cell.LetterDraws;
+            var draws = cell.Draws;
+            var boundDraws = bound.Draws;
+            var frames = 0;
+            for (var ms = 0.0; ms <= 3200; ms += 1000 / 60.0, frames++)
+            {
+                model.EmphasisMs = bound.EmphasisMs = ms;
+                model.Progress = bound.Progress = Math.Clamp(ms / 2400, 0, 1);
+                Pump();
+            }
+            model.EmphasisMs = bound.EmphasisMs = double.NaN;
+            model.Progress = bound.Progress = KaraokeSweep.InertPast;
+            Pump();
+            _o.WriteLine($"a {frames}-frame hold: followed word {cell.Draws - draws} draws, its 4 letters {cell.LetterDraws - letterDraws} draws; bound word {bound.Draws - boundDraws} draws");
+            Assert.InRange(cell.Draws - draws, 0, 2);
+            // Each letter at the start and end of the hold, and when the sweep's edge comes onto
+            // and leaves it (its brush switches between solid and gradient).
+            Assert.InRange(cell.LetterDraws - letterDraws, 4, 4 * 4 + 2);
+            Assert.True(bound.Draws - boundDraws > frames / 2);
+        }
+        finally
+        {
+            win.Close();
+            boundWin.Close();
+        }
+    }
+
+    /// <summary>Real Skia only (NOCTIS_TEST_SKIA=1): through a held note (the letters swelling,
+    /// pushed and lifted on the compositor, the sweep crossing them) a followed word is drawn as
+    /// a bound one draws its letters itself.</summary>
+    [AvaloniaFact]
+    public void AFollowedHeldNote_LooksLikeABoundOne()
+    {
+        if (!HeadlessTestApp.RealRendering) return;
+        var model = Held();
+        var cell = new KaraokeWordText { FontSize = 35, FontWeight = FontWeight.Bold, Foreground = Brushes.White, BaseOpacity = 0.4, Word = model };
+        var bound = new KaraokeWordText
+        {
+            Text = "love", FontSize = 35, FontWeight = FontWeight.Bold, Foreground = Brushes.White, BaseOpacity = 0.4,
+            LeadIn = true, TrailOut = true, IsEmphasis = true, HeldDurationMs = 2400, IsLastInLine = true,
+        };
+        var win = Host(cell);
+        var boundWin = Host(bound);
+        try
+        {
+            Assert.True(cell.LettersOnCompositor);
+            var worst = 0;
+            var worstMean = 0.0;
+            foreach (var ms in new[] { double.NaN, 0, 150, 400, 800, 1200, 1700, 2300, 2900, 3400 })
+            {
+                model.EmphasisMs = bound.EmphasisMs = ms;
+                model.Progress = bound.Progress = double.IsNaN(ms) ? KaraokeSweep.InertFuture : Math.Clamp(ms / 2400, 0, 1);
+                Pump();
+                Pump();
+                var d = Diff(win, boundWin, out var mean);
+                _o.WriteLine($"at {ms} ms: largest {d}, mean {mean:0.000}");
+                worst = Math.Max(worst, d);
+                worstMean = Math.Max(worstMean, mean);
+            }
+            _o.WriteLine($"largest channel difference: {worst}, largest mean {worstMean:0.000}");
+            // Mostly pixel for pixel (0). The drawn path pushes a letter's sub-pixel shear (see
+            // Unsnapped) after its swell, the compositor before it: at a few poses a glyph lands
+            // a quarter pixel apart, a soft edge pixel up to ~40 levels off, never more.
+            Assert.InRange(worst, 0, 64);
+            Assert.InRange(worstMean, 0, 0.5);
+        }
+        finally
+        {
+            win.Close();
+            boundWin.Close();
+        }
+    }
+
+    private static int Diff(Window a, Window b) => Diff(a, b, out _);
+
+    /// <summary>The largest channel difference, and the mean one over every pixel.</summary>
+    private static int Diff(Window a, Window b, out double mean)
     {
         using var x = Decode(a);
         using var y = Decode(b);
         var worst = 0;
+        long sum = 0;
         for (var j = 0; j < x.Height; j++)
             for (var i = 0; i < x.Width; i++)
             {
                 SkiaSharp.SKColor p = x.GetPixel(i, j), q = y.GetPixel(i, j);
-                worst = Math.Max(worst, Math.Max(Math.Abs(p.Red - q.Red), Math.Max(Math.Abs(p.Green - q.Green), Math.Abs(p.Blue - q.Blue))));
+                var d = Math.Max(Math.Abs(p.Red - q.Red), Math.Max(Math.Abs(p.Green - q.Green), Math.Abs(p.Blue - q.Blue)));
+                worst = Math.Max(worst, d);
+                sum += d;
             }
+        mean = sum / (double)(x.Width * x.Height);
         return worst;
     }
 

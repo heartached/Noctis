@@ -190,6 +190,7 @@ public class KaraokeWordText : TextBlock
         {
             _dirty = true;
             InvalidateVisual();
+            if (_word != null) InvalidateMeasure();   // the letters are built in measure
         }
         else if (p == ProgressProperty || p == BaseOpacityProperty || p == LeadInProperty || p == TrailOutProperty
                  || p == EmphasisMsProperty || p == HeldDurationMsProperty || p == IsLastInLineProperty
@@ -201,6 +202,15 @@ public class KaraokeWordText : TextBlock
             var switched = false;
             if (!IsVisible) _stopsStale = true;
             else if (!_dirty) switched = UpdateStops();
+            if (LettersLive)
+            {
+                // The held-note letters are their own composition visuals: a pose is their
+                // transform, written here, not a new drawing (see Letter).
+                if (IsVisible && (p == EmphasisMsProperty || p == HeldDurationMsProperty || p == IsLastInLineProperty))
+                    ApplyLetterPoses();
+                if (IsVisible) RedrawLetters(switched);
+                return;
+            }
             // The brushes are composition resources: a moved stop reaches the screen without
             // this word being drawn again. Re-recording it every frame (a new draw list, its
             // resource table and glyph runs, ~2-4 KB a word) was most of the ~4 MB a second
@@ -227,7 +237,11 @@ public class KaraokeWordText : TextBlock
             if (LiftOnCompositor)
             {
                 ApplyLift();
-                if (IsVisible && (_dirty || IsMoving != _drawnMoving)) InvalidateVisual();
+                if (LettersLive)
+                {
+                    if (IsVisible) RedrawLetters(false);
+                }
+                else if (IsVisible && (_dirty || IsMoving != _drawnMoving)) InvalidateVisual();
             }
             else if (IsVisible && (_dirty || Posed || LiftPixels() != _drawnLift || IsMoving != _drawnMoving))
                 InvalidateVisual();
@@ -282,11 +296,13 @@ public class KaraokeWordText : TextBlock
         _pieces.Clear();
         _effect = null;
         _dirty = true;
+        _lettersFor = -1;   // rebuilt with the pieces at the next measure
     }
 
     private void OnEffectChanged(object? sender, EventArgs e)
     {
         _dirty = true;
+        if (_word != null) InvalidateMeasure();
         ApplyLift();   // an effect draws the float itself
         InvalidateVisual();
     }
@@ -386,6 +402,7 @@ public class KaraokeWordText : TextBlock
     {
         if (!_dirty) return;
         _dirty = false;
+        _piecesVersion++;
         foreach (var piece in _pieces) piece.Dispose();
         _pieces.Clear();
 
@@ -528,6 +545,163 @@ public class KaraokeWordText : TextBlock
         return switched;
     }
 
+    // ── Held-note letters on the compositor (followed cells: the phone) ──
+
+    /// <summary>
+    /// S23 (11-23): a held note's letters swell, push and lift each on its own curve, and drawn
+    /// into the word they were recorded again on every frame of the hold (a new draw list with
+    /// every letter, for the word and its glow), the largest cost of a word-timed song. Here each
+    /// letter of a followed held-note word is a child visual of its own, drawn once, and its pose
+    /// is that visual's composition transform (scale about the letter's centre, then the push and
+    /// lift), written per frame without drawing anything. The sweep's band still maps through the
+    /// pose (UpdateStops): only the letters' brushes move. The same picture as the word drawn
+    /// letter by letter (KaraokeWordFollowTests). Plugin effects and the desktop keep the drawn path.
+    /// </summary>
+    private sealed class Letter : Visual
+    {
+        private readonly KaraokeWordText _owner;
+        public int Index;
+        public bool DrawnMoving;
+
+        public Letter(KaraokeWordText owner, int index)
+        {
+            _owner = owner;
+            Index = index;
+        }
+
+        public override void Render(DrawingContext context) => _owner.RenderLetter(this, context);
+
+        public void Place(Rect bounds) => Bounds = bounds;
+
+        public void Redraw() => InvalidateVisual();
+
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+        {
+            base.OnAttachedToVisualTree(e);
+            _owner.ApplyLetterPose(this);   // a new composition visual
+        }
+    }
+
+    private readonly List<Letter> _letters = new();
+    // The pieces the letters were made for (EnsurePieces counts them), -1 when none.
+    private int _piecesVersion;
+    private int _lettersFor = -1;
+    private Point _letterOrigin;
+
+    /// <summary>The letters stand for the current pieces and draw them (the word draws nothing).</summary>
+    private bool LettersLive => _lettersFor == _piecesVersion && !_dirty && _letters.Count > 0 && _letters.Count == _pieces.Count;
+
+    /// <summary>Tests: the held-note letters are composition visuals of their own, and how many
+    /// times one was drawn.</summary>
+    internal bool LettersOnCompositor => LettersLive;
+    internal int LetterDraws { get; private set; }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        var size = base.MeasureOverride(availableSize);
+        if (_word != null && _dirty && _attached)
+        {
+            EnsurePieces();
+            UpdateStops();
+        }
+        SyncLetters();
+        return size;
+    }
+
+    /// <summary>Makes, keeps or removes the letter visuals to match the pieces (never while drawing).</summary>
+    private void SyncLetters()
+    {
+        var want = _attached && !_dirty && _word != null && _perLetter && !Posed && LyricsWordEffect.Current is null && _pieces.Count > 1;
+        if (!want)
+        {
+            if (_letters.Count == 0) return;
+            foreach (var letter in _letters) VisualChildren.Remove(letter);
+            _letters.Clear();
+            _lettersFor = -1;
+            InvalidateVisual();
+            return;
+        }
+        if (_lettersFor == _piecesVersion && _letters.Count == _pieces.Count) return;
+        while (_letters.Count > _pieces.Count)
+        {
+            VisualChildren.Remove(_letters[^1]);
+            _letters.RemoveAt(_letters.Count - 1);
+        }
+        while (_letters.Count < _pieces.Count)
+        {
+            var letter = new Letter(this, _letters.Count);
+            _letters.Add(letter);
+            VisualChildren.Add(letter);
+        }
+        _lettersFor = _piecesVersion;
+        _letterOrigin = TextOrigin();
+        PlaceLetters();
+        InvalidateVisual();   // the word stops drawing them itself
+    }
+
+    /// <summary>Where TextBlock.Render puts the text (its padding, rounded as layout rounds it).</summary>
+    private Point TextOrigin()
+    {
+        var scale = Avalonia.Layout.LayoutHelper.GetLayoutScale(this);
+        var padding = Avalonia.Layout.LayoutHelper.RoundLayoutThickness(Padding, scale);
+        return new Point(padding.Left, padding.Top);
+    }
+
+    private void PlaceLetters()
+    {
+        if (!LettersLive) return;
+        var box = new Rect(Bounds.Size);
+        foreach (var letter in _letters)
+        {
+            letter.Place(box);
+            letter.Redraw();
+        }
+        ApplyLetterPoses();
+    }
+
+    private void ApplyLetterPoses()
+    {
+        foreach (var letter in _letters) ApplyLetterPose(letter);
+    }
+
+    /// <summary>The letter's pose as its visual's transform: scale about its centre, then the push
+    /// and lift (LetterTransform, the drawn path's matrix, in that visual's terms).</summary>
+    private void ApplyLetterPose(Letter letter)
+    {
+        if (!LettersLive || letter.Index >= _pieces.Count || ElementComposition.GetElementVisual(letter) is not { } visual) return;
+        var piece = _pieces[letter.Index];
+        var pose = EmphasisMotion.CharPose(EmphasisMs, letter.Index, _pieces.Count, EmphasisMotion.For(HeldDurationMs, IsLastInLine));
+        visual.CenterPoint = new Vector3D(_letterOrigin.X + piece.X + piece.Width / 2, _letterOrigin.Y + _layoutHeight / 2, 0);
+        visual.Scale = new Vector3D(pose.Scale, pose.Scale, 1);
+        visual.Translation = new Vector3D(pose.OffsetXEm * FontSize, pose.OffsetYEm * FontSize, 0);
+    }
+
+    /// <summary>A letter drawn again only when its drawing changes: its brush switches (the edge
+    /// came onto it or left it), or the hold starts or ends (drawn off the pixel grid while it
+    /// moves, see Unsnapped).</summary>
+    private void RedrawLetters(bool switched)
+    {
+        var moving = IsMoving;
+        foreach (var letter in _letters)
+        {
+            if (letter.Index >= _pieces.Count) continue;
+            var piece = _pieces[letter.Index];
+            if (letter.DrawnMoving != moving || (switched && piece.Uniform != piece.DrawnUniform)) letter.Redraw();
+        }
+    }
+
+    private void RenderLetter(Letter letter, DrawingContext context)
+    {
+        if (!LettersLive || letter.Index >= _pieces.Count || _glyphWidth <= 0) return;
+        var piece = _pieces[letter.Index];
+        LetterDraws++;
+        letter.DrawnMoving = IsMoving;
+        var at = Matrix.CreateTranslation(_letterOrigin.X + piece.X, _letterOrigin.Y);
+        if (letter.DrawnMoving) at = Unsnapped * at;
+        using (context.PushTransform(at))
+            Draw(piece, context);
+    }
+
     // TextBlock.Render (sealed) draws the background and resolves where the text goes
     // (padding, alignment); only the text itself is drawn differently.
     protected override void RenderTextLayout(DrawingContext context, Point origin)
@@ -565,6 +739,23 @@ public class KaraokeWordText : TextBlock
             }
             return;
         }
+
+        if (LettersLive)
+        {
+            // The letters draw themselves (Letter.Render) at this origin; one that moved (a new
+            // padding) re-places them after this frame.
+            _drawnLift = 0;
+            _drawnMoving = IsMoving;
+            if (origin != _letterOrigin)
+            {
+                _letterOrigin = origin;
+                Avalonia.Threading.Dispatcher.UIThread.Post(PlaceLetters, Avalonia.Threading.DispatcherPriority.Render);
+            }
+            return;
+        }
+        if (_word != null && _perLetter && !Posed && LyricsWordEffect.Current is null)
+            // Built after this frame (never while drawing); drawn here until then.
+            Avalonia.Threading.Dispatcher.UIThread.Post(SyncLetters, Avalonia.Threading.DispatcherPriority.Render);
 
         _drawnLift = LiftOnCompositor ? 0 : LiftPixels();
         _drawnMoving = IsMoving;
