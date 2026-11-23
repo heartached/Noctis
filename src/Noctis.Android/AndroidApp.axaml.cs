@@ -197,6 +197,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // through PlaybackQueue; they arrive on a Java binder thread, hence the dispatcher hop.
         _player.SessionNextRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.NextCommand.Execute(null));
         _player.SessionPreviousRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.PreviousCommand.Execute(null));
+        // Play with nothing loaded (the queue ran out, or a restored queue): what the in-app Play does.
+        _player.SessionPlayRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.Play());
         // Whether those buttons are drawn enabled. Read synchronously from the same Java
         // thread, so they stay plain field reads on the ViewModel (see NowPlayingViewModel.
         // HasNext/HasPrevious) — ExoPlayer's own item list is the wrong source because it
