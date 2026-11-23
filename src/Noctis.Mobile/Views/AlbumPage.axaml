@@ -171,7 +171,7 @@
                             </Border>
                             <TextBlock Name="ArtistName" Text="{Binding Album.Artist}" FontSize="19" MaxWidth="280"
                                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Margin="-5,1,0,0"
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Margin="-5,1,0,0"
                                       VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -357,7 +357,7 @@
               IsVisible="{Binding !Selection.IsActive}">
             <controls:GlassPanel Classes="header-glass">
                 <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
-                    <PathIcon Data="{DynamicResource PhBack}" />
+                    <PathIcon Classes="dir" Data="{DynamicResource PhBack}" />
                 </Button>
             </controls:GlassPanel>
             <TextBlock Grid.Column="1" Name="SmallTitle" Text="{Binding Album.Name}" FontSize="17" FontWeight="SemiBold"

@@ -129,13 +129,13 @@
                                                 </Button>
                                                 <Button Name="MenuAddToPlaylist" Classes="row np-tile" Command="{Binding ShowPlaylistsCommand}">
                                                     <StackPanel>
-                                                        <PathIcon Data="{DynamicResource PhAddToPlaylist}" />
+                                                        <PathIcon Classes="dir" Data="{DynamicResource PhAddToPlaylist}" />
                                                         <TextBlock Text="{loc:T Mobile.AddToPlaylist}" />
                                                     </StackPanel>
                                                 </Button>
                                                 <Button Name="MenuPlayNext" Classes="row np-tile" Command="{Binding PlayNextCommand}">
                                                     <StackPanel>
-                                                        <PathIcon Data="{DynamicResource PhPlayNext}" />
+                                                        <PathIcon Classes="dir" Data="{DynamicResource PhPlayNext}" />
                                                         <TextBlock Text="{loc:T Mobile.PlayNext}" />
                                                     </StackPanel>
                                                 </Button>
@@ -309,7 +309,7 @@
                                             <Button Name="MenuRemoveFromPlaylist" Classes="row np-row np-danger" Command="{Binding RemoveFromPlaylistCommand}"
                                                     IsVisible="{Binding CanRemoveFromPlaylist}">
                                                 <Grid ColumnDefinitions="56,*">
-                                                    <PathIcon Data="{DynamicResource PhPlaylistRemove}" />
+                                                    <PathIcon Classes="dir" Data="{DynamicResource PhPlaylistRemove}" />
                                                     <TextBlock Grid.Column="1" Classes="np-label" Text="{loc:T Mobile.RemoveFromPlaylist}" VerticalAlignment="Center" />
                                                     <Border Grid.Column="1" Classes="np-line" />
                                                 </Grid>

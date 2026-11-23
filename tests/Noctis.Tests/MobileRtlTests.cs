@@ -163,6 +163,11 @@ public class MobileRtlTests
             Assert.Equal(FlowDirection.LeftToRight, remaining.FlowDirection);
             Assert.True(Left(elapsed, window) < Left(remaining, window));
 
+            // The empty cover's music note is an object, not a direction: never mirrored.
+            // (The headless app loads no icon geometry: the 72 px note is the empty cover's.)
+            var placeholder = np.GetVisualDescendants().OfType<PathIcon>().First(p => p.Width == 72 && p.IsEffectivelyVisible);
+            Assert.False(IsMirrored(placeholder, window), "the cover placeholder's note is mirrored");
+
             // Volume is an ordinary slider: it follows the layout.
             Assert.True(IsMirrored(MobileFixtures.Named<CapsuleSlider>(np, "VolumeSlider"), window));
 

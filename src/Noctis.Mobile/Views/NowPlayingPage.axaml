@@ -381,7 +381,7 @@
                         </Button>
                         <Button Grid.Column="2" Name="QueueButton" Classes="icon bottom" HorizontalAlignment="Center"
                                 Command="{Binding ToggleQueueCommand}" AutomationProperties.Name="{loc:T Tab.Queue}">
-                            <PathIcon Data="{DynamicResource PhQueue}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhQueue}" />
                         </Button>
                     </Grid>
                 </StackPanel>
