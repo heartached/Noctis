@@ -48,9 +48,10 @@ public static class LineFade
     /// <summary>The blur's length (the style's EffectTransition, CubicEaseOut).</summary>
     internal const double BlurMs = 400;
 
-    /// <summary>Radii the blur passes through on its way, the last one its target: one every
-    /// <see cref="BlurMs"/> / BlurSteps. A blur radius is hard to tell apart by a fraction of a
-    /// pixel; three steps over 0.4 s read as the smooth ease.</summary>
+    /// <summary>Stretches of the blur's way, each showing the eased radius at its middle (the
+    /// closest one radius comes to the curve over it), then the target: the first at once, the
+    /// next every <see cref="BlurMs"/> / BlurSteps. Each the curve's value at its own start
+    /// lagged the ease visibly (real Skia, a whole stretch behind).</summary>
     internal const int BlurSteps = 3;
 
     private static readonly CubicEaseInOut FadeEase = new();
@@ -138,6 +139,7 @@ public static class LineFade
         run.To = to;
         run.StartMs = Now();
         run.Step = 0;
+        Show(control, RadiusAt(run, 0));
         if (_timerOn) return;
         _timerOn = true;
         _timer ??= new Timer(_ => Dispatcher.UIThread.Post(Step));
@@ -154,9 +156,7 @@ public static class LineFade
             var due = Math.Min(BlurSteps, (int)Math.Floor((now - run.StartMs) / (BlurMs / BlurSteps) + 0.25));
             if (due <= run.Step) continue;
             run.Step = due;
-            var radius = due >= BlurSteps ? run.To : run.From + (run.To - run.From) * BlurEase.Ease((double)due / BlurSteps);
-            var effect = (IEffect?)Effects.Convert(radius, typeof(IEffect), null, System.Globalization.CultureInfo.InvariantCulture);
-            if (!ReferenceEquals(control.Effect, effect)) control.Effect = effect;
+            Show(control, RadiusAt(run, due));
             if (due >= BlurSteps || !control.IsAttachedToVisualTree()) Done.Add(control);
         }
         foreach (var control in Done)
@@ -167,6 +167,16 @@ public static class LineFade
         if (Running.Count > 0 || !_timerOn) return;
         _timerOn = false;
         _timer?.Change(Timeout.Infinite, Timeout.Infinite);
+    }
+
+    /// <summary>The radius shown over stretch <paramref name="step"/> (the target from the last).</summary>
+    private static double RadiusAt(BlurRun run, int step) =>
+        step >= BlurSteps ? run.To : run.From + (run.To - run.From) * BlurEase.Ease((step + 0.5) / BlurSteps);
+
+    private static void Show(Control control, double radius)
+    {
+        var effect = (IEffect?)Effects.Convert(radius, typeof(IEffect), null, System.Globalization.CultureInfo.InvariantCulture);
+        if (!ReferenceEquals(control.Effect, effect)) control.Effect = effect;
     }
 
     private static double Now() => System.Diagnostics.Stopwatch.GetTimestamp() * 1000.0 / System.Diagnostics.Stopwatch.Frequency;

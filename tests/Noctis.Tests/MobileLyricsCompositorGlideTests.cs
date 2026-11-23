@@ -358,8 +358,8 @@ public class MobileLyricsCompositorGlideTests
     /// <summary>
     /// A line's dimming fades on the compositor (LineFade): the line's Opacity changes once, at
     /// once, and the render thread eases what is shown over the old transition's 0.5 s on its
-    /// curve. The blur steps through three radii over the old 0.4 s (one effect change each)
-    /// instead of a new effect on every frame. A row shown afresh takes both at once.
+    /// curve. The blur steps through three radii over the old 0.4 s (one effect change each,
+    /// then the target) instead of a new effect on every frame. A row shown afresh takes both at once.
     /// </summary>
     [AvaloniaFact]
     public async Task TheLineFade_RunsOnTheCompositor_AndTheBlurSteps()
@@ -401,7 +401,9 @@ public class MobileLyricsCompositorGlideTests
 
             _o.WriteLine($"blur radii shown: {string.Join(", ", effects.Select(r => r.ToString("0.0")))}");
             var blurEase = new Avalonia.Animation.Easings.CubicEaseOut();
-            Assert.Equal(new[] { Math.Round(6 * blurEase.Ease(1 / 3.0), 1), Math.Round(6 * blurEase.Ease(2 / 3.0), 1), 6.0 }, effects.Select(r => Math.Round(r, 1)));
+            // At once, then every 133 ms: the eased radius at the middle of each third, then 6.
+            var expected = new[] { 0.5 / 3, 1.5 / 3, 2.5 / 3 }.Select(t => Math.Round(6 * blurEase.Ease(t), 1)).Append(6.0).Distinct();
+            Assert.Equal(expected, effects.Select(r => Math.Round(r, 1)));
 
             // Far away and back: a row handed another line shows that line's look at once.
             rig.Page.ScrollToLine(45, animate: false);
