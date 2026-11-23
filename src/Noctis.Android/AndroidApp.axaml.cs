@@ -370,7 +370,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             await history.PreloadAsync();
             await library.LoadAsync();
             _libraryLoaded.TrySetResult();
-            await _shell!.InitializeAsync();
+            // The settings read above, handed along: the start reads settings.json once.
+            await _shell!.InitializeAsync(settings);
             // Scan on Startup (desktop parity): new songs in the folders show up on their own.
             _ = _shell.Library.ScanAtStartupAsync();
         }

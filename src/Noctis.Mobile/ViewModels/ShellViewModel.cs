@@ -890,11 +890,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void ToggleQueueHistoryCollapsed() => IsQueueHistoryCollapsed = !IsQueueHistoryCollapsed;
 
-    private async Task LoadPlayerBarSettingsAsync()
+    private async Task LoadPlayerBarSettingsAsync(AppSettings? saved = null)
     {
         try
         {
-            var settings = await Library.Persistence.LoadSettingsAsync();
+            var settings = saved ?? await Library.Persistence.LoadSettingsAsync();
             // A switch flipped while this load ran keeps the user's value: the load used to put
             // the saved one back, and the flip was never saved either.
             _applyingPlayerBar = true;
@@ -1765,19 +1765,30 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
-    public async Task InitializeAsync()
+    /// <param name="settings">The settings the host read and applied at start (AndroidApp.StartAsync):
+    /// every part below takes its values from them instead of reading settings.json once more each
+    /// (it was read eight times per cold launch). Null = read here, once. A value changed since that
+    /// read is kept all the same: each part keeps what the user set before its load.</param>
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    public async Task InitializeAsync(AppSettings? settings)
     {
-        await Library.InitializeAsync();
-        await LoadPlayerBarSettingsAsync();
-        await LoadListSortsAsync();
-        await Search.LoadRecentSearchesAsync();
-        await Background.LoadAsync();
-        await LoadHistoryPrefsAsync();
+        if (settings == null)
+        {
+            try { settings = await Library.Persistence.LoadSettingsAsync(); }
+            catch (Exception ex) { DebugLog.Write("Settings", $"Start settings load failed: {ex.Message}"); }   // each part reads its own
+        }
+        await Library.InitializeAsync(settings);
+        await LoadPlayerBarSettingsAsync(settings);
+        await LoadListSortsAsync(settings);
+        await Search.LoadRecentSearchesAsync(settings);
+        await Background.LoadAsync(settings);
+        await LoadHistoryPrefsAsync(settings);
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
-        await Lyrics.InitializeAsync();
+        await Lyrics.InitializeAsync(settings);
         // ReplayGain before the queue restore too: the restored song's level is set as it loads.
-        await Player.LoadReplayGainAsync();
+        await Player.LoadReplayGainAsync(settings);
         try
         {
             await Player.RestoreStateAsync();

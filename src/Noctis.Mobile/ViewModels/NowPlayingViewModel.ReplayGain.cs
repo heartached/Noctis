@@ -1,5 +1,6 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Noctis.Models;
 using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
@@ -49,11 +50,11 @@ public sealed partial class NowPlayingViewModel
     }
 
     /// <summary>Reads the saved choices and hands them to the player. Cold start, before the queue restores.</summary>
-    public async Task LoadReplayGainAsync()
+    public async Task LoadReplayGainAsync(AppSettings? saved = null)
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
+            var settings = saved ?? await _persistence.LoadSettingsAsync();
             _applyingReplayGain = true;
             try
             {

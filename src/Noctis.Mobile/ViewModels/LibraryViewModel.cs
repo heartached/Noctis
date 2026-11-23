@@ -761,11 +761,14 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// whose save had not landed yet, and read settings.json once more on every cold launch.</summary>
     private bool _settingsApplied;
 
-    public async Task InitializeAsync()
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    /// <param name="settings">The start's one read (ShellViewModel.InitializeAsync); null = read here.</param>
+    public async Task InitializeAsync(AppSettings? settings)
     {
         try
         {
-            if (!_settingsApplied) ApplySettings(await _persistence.LoadSettingsAsync());
+            if (!_settingsApplied) ApplySettings(settings ?? await _persistence.LoadSettingsAsync());
             await LoadPlaylistsAsync();
             RefreshFromLibrary();
         }

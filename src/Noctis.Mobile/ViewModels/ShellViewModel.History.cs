@@ -108,11 +108,11 @@ public sealed partial class ShellViewModel
         }, TaskScheduler.Default).Unwrap();
     }
 
-    internal async Task LoadHistoryPrefsAsync()
+    internal async Task LoadHistoryPrefsAsync(AppSettings? saved = null)
     {
         try
         {
-            var settings = await Library.Persistence.LoadSettingsAsync();
+            var settings = saved ?? await Library.Persistence.LoadSettingsAsync();
             if (!_historySetBeforeLoad.Contains(nameof(ShareHistoryWithComputer))) ShareHistoryWithComputer = settings.MobileShareHistory;
             if (!_historySetBeforeLoad.Contains(nameof(PickUpOnComputer))) PickUpOnComputer = settings.MobilePickUpOnComputer;
             if (!_historySetBeforeLoad.Contains(nameof(KeepHistoryDays))) KeepHistoryDays = settings.MobileKeepHistoryDays;
