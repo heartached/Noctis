@@ -362,7 +362,8 @@ public class MobileLyricsPageTests
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Avalonia.Threading.Dispatcher.UIThread.RunJobs();
             if (shell.Lyrics.ActiveLineIndex == 0 && page.IsFrameLoopRunning && keepAlive.IsRunning) ranBeforeTheLine = true;
-            if (shell.Lyrics.ActiveLineIndex == 1 && page.IsFrameLoopRunning) ranAfter = true;
+            // The glide itself runs on the compositor: no UI frames for it.
+            if (shell.Lyrics.ActiveLineIndex == 1 && (page.IsFrameLoopRunning || page.IsGlidingOnCompositor)) ranAfter = true;
             Thread.Sleep(8);
         }
         Assert.True(ranBeforeTheLine, "awake before line 1 started");

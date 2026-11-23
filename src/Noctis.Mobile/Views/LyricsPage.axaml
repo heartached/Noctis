@@ -323,7 +323,9 @@
                               ClipToBounds="False">
                     <views:RowItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
-                            <VirtualizingStackPanel />
+                            <!-- Half a viewport realised past each edge: the lines a compositor glide
+                                 uncovers (LyricsPage.RealisedBuffer). -->
+                            <VirtualizingStackPanel CacheLength="0.5" />
                         </ItemsPanelTemplate>
                     </views:RowItemsControl.ItemsPanel>
                     <views:RowItemsControl.ItemTemplate>
