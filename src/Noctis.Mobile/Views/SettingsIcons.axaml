@@ -21,6 +21,8 @@
     <StreamGeometry x:Key="SetIconHistory">M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M12 7.5V12l3 2</StreamGeometry>
     <!-- Played Songs in Queue: queue lines with an arrow up beside them (played songs stay above). -->
     <StreamGeometry x:Key="SetIconQueueHistory">M10 6h10M10 12h10M10 18h10 M5 18V6 M2.5 8.5L5 6l2.5 2.5</StreamGeometry>
+    <!-- Keep Shuffle On: two crossing paths, each with its arrowhead. -->
+    <StreamGeometry x:Key="SetIconShuffle">M3 7h3.5c4.5 0 6.5 10 11 10H21 M3 17h3.5c1.8 0 3-1.6 4.1-3.6 M13.4 10.6C14.5 8.6 15.7 7 17.5 7H21 M18.5 4.5L21 7l-2.5 2.5 M18.5 14.5L21 17l-2.5 2.5</StreamGeometry>
     <StreamGeometry x:Key="SetIconPickUp">M5 4H14A2 2 0 0 1 16 6V12A2 2 0 0 1 14 14H5A2 2 0 0 1 3 12V6A2 2 0 0 1 5 4Z M16.6 9H19.4A1.6 1.6 0 0 1 21 10.6V18.4A1.6 1.6 0 0 1 19.4 20H16.6A1.6 1.6 0 0 1 15 18.4V10.6A1.6 1.6 0 0 1 16.6 9Z M7 18h5</StreamGeometry>
     <StreamGeometry x:Key="SetIconWarning">M12 3l9 16H3z M12 10v4M12 16.8v.2</StreamGeometry>
     <StreamGeometry x:Key="SetIconDoc">M7 3h7l4 4v14H7z M14 3v4h4M10 12h5M10 16h5</StreamGeometry>

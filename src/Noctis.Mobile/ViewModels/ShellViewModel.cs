@@ -898,6 +898,17 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool _showQueueHistory;
     partial void OnShowQueueHistoryChanged(bool value) => SavePlayerBarSettings(nameof(ShowQueueHistory));
 
+    /// <summary>Settings › Listening › Keep Shuffle On (Discord 11-23, testers: "shuffle turns itself off
+    /// when I play something else"): while Shuffle is on, starting a list keeps it on and plays it
+    /// shuffled (NowPlayingViewModel.KeepShuffleOn). Off by default; saved under the desktop's key
+    /// (AppSettings.KeepShuffleOn).</summary>
+    [ObservableProperty] private bool _keepShuffleOn;
+    partial void OnKeepShuffleOnChanged(bool value)
+    {
+        Player.KeepShuffleOn = value;
+        SavePlayerBarSettings(nameof(KeepShuffleOn));
+    }
+
     /// <summary>Settings › Account › Show Remote on Home (Discord beta 11-22: "you have to go to the
     /// settings/account page to find it"): a Remote button next to the profile picture on Home.
     /// On by default; saved with the player bar's settings (MobileHomeRemote).</summary>
@@ -943,6 +954,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ReduceGlass))) ReduceGlass = settings.MobileReduceGlass;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(KeepShuffleOn))) KeepShuffleOn = settings.KeepShuffleOn;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowRemoteOnHome))) ShowRemoteOnHome = settings.MobileHomeRemote;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
@@ -981,6 +993,7 @@ public sealed partial class ShellViewModel : ObservableObject
         var glassPill = GlassTabPill;
         var reduceGlass = ReduceGlass;
         var queueHistory = ShowQueueHistory;
+        var keepShuffle = KeepShuffleOn;
         var homeRemote = ShowRemoteOnHome;
         var tabBar = TabBarTabs.Encode(BarTabs);
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
@@ -1002,6 +1015,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileGlassTabPill = glassPill;
                     settings.MobileReduceGlass = reduceGlass;
                     settings.MobileQueueShowHistory = queueHistory;
+                    settings.KeepShuffleOn = keepShuffle;
                     settings.MobileHomeRemote = homeRemote;
                     settings.MobileTabBar = tabBar;
                 });

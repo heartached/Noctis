@@ -296,7 +296,7 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         if (Featured == null) return;
         RememberQuery();
         var songs = MobileLibrary.SongsBy(Shell.Library.Service, Featured.Name).OrderByDescending(t => t.PlayCount).ToList();
-        if (songs.Count > 0) Shell.Player.PlayTracks(songs, 0, Featured.Name);
+        if (songs.Count > 0) Shell.Player.PlayAll(songs, Featured.Name);
     }
 
     [RelayCommand]

@@ -295,14 +295,29 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _syncingVolume = false;
     }
 
+    /// <summary>Settings › Listening › Keep Shuffle On (Discord 11-23, the desktop's KeepShuffleOn; set
+    /// by ShellViewModel): while Shuffle is on, starting a list keeps it on and plays the new list
+    /// shuffled (see <see cref="PlayTracks"/> and <see cref="PlayAll"/>). Off by default: a new list
+    /// starts in its own order and turns Shuffle off.</summary>
+    public bool KeepShuffleOn { get; set; }
+
+    private bool KeepsShuffle => KeepShuffleOn && IsShuffleEnabled;
+
     /// <summary>Replace the queue with <paramref name="tracks"/> and start at <paramref name="startIndex"/>.
-    /// <paramref name="source"/> is what the Queue sheet says it plays from (<see cref="SourceLabel"/>).</summary>
+    /// <paramref name="source"/> is what the Queue sheet says it plays from (<see cref="SourceLabel"/>).
+    /// With Keep Shuffle On and Shuffle on, that song plays first and the rest of the list follows
+    /// shuffled, Shuffle staying on (the desktop's ReplaceQueueAndPlay).</summary>
     public void PlayTracks(IReadOnlyList<Track> tracks, int startIndex, string? source = null)
     {
         // ReplaceAll returns the still-playing Current (not null) for an empty list, so
         // without this guard tapping Play on an empty/filtered-to-nothing list would
         // restart the currently playing track from zero.
         if (tracks.Count == 0) return;
+        if (KeepsShuffle)
+        {
+            PlayShuffled(tracks, source: source, startIndex: startIndex);
+            return;
+        }
         var first = _queue.ReplaceAll(tracks, startIndex);
         SourceLabel = source;
         IsShuffleEnabled = _queue.IsShuffleEnabled;
@@ -321,15 +336,22 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// (which queues only the tracks after the start index); the unshuffled order Shuffle-off
     /// restores is then the list's own order from that track, wrapping round. The start is never
     /// a track Shuffle holds out (snoozed, Skip When Shuffling; <see cref="PlaybackQueue.IsHeldOutOfShuffle"/>),
-    /// and a list of nothing else does not play, as on the desktop (PlayShuffled).
+    /// and a list of nothing else does not play, as on the desktop (PlayShuffled). A
+    /// <paramref name="startIndex"/> (a tapped song, Keep Shuffle On) starts there instead.
     /// </summary>
-    public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null, string? source = null)
+    public void PlayShuffled(IReadOnlyList<Track> tracks, Random? rng = null, string? source = null, int? startIndex = null)
     {
         if (tracks.Count == 0) return;
         rng ??= Random.Shared;
-        var candidates = Enumerable.Range(0, tracks.Count).Where(i => !PlaybackQueue.IsHeldOutOfShuffle(tracks[i])).ToList();
-        if (candidates.Count == 0) return;
-        var start = candidates[rng.Next(candidates.Count)];
+        int start;
+        if (startIndex is { } picked)
+            start = picked >= 0 && picked < tracks.Count ? picked : 0;
+        else
+        {
+            var candidates = Enumerable.Range(0, tracks.Count).Where(i => !PlaybackQueue.IsHeldOutOfShuffle(tracks[i])).ToList();
+            if (candidates.Count == 0) return;
+            start = candidates[rng.Next(candidates.Count)];
+        }
         var rotated = tracks.Skip(start).Concat(tracks.Take(start)).ToList();
         var first = _queue.ReplaceAll(rotated, 0);
         SourceLabel = source;
@@ -339,6 +361,17 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         _consecutiveErrors = 0;
         _computerUnreachable = false;
         StartTrack(first, fromPosition: null);
+    }
+
+    /// <summary>
+    /// A Play button for a whole list (album, playlist, artist, songs): plays it from its first song
+    /// in order. With Keep Shuffle On and Shuffle on, the Shuffle toggle says shuffle, so it plays the
+    /// list shuffled from a random song instead and Shuffle stays on (the desktop's PlayAll).
+    /// </summary>
+    public void PlayAll(IReadOnlyList<Track> tracks, string? source = null)
+    {
+        if (KeepsShuffle) PlayShuffled(tracks, source: source);
+        else PlayTracks(tracks, 0, source);
     }
 
     [RelayCommand]

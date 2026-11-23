@@ -167,6 +167,7 @@ public class MobileSettingsSwitchAuditTests(ITestOutputHelper output)
                 }
             }
             output.WriteLine($"pressed {expected.Count}: {string.Join(", ", expected.Keys)}");
+            Assert.Contains("Main/KeepShuffleSwitch", expected.Keys);   // Keep Shuffle On (Discord 11-23)
             await Saved(rig.Shell, vm, rig.Root, window);
 
             // ── Live: Settings closed and opened again reads the model ──
