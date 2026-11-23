@@ -96,6 +96,9 @@ public class LyricsKeyboardScrollTests
         finally
         {
             win.Close();
+            // The view model listens to the app-wide accent event: left subscribed, a later
+            // test's accent change runs it on another dispatcher thread and throws.
+            vm.Dispose();
         }
     }
 
@@ -110,7 +113,14 @@ public class LyricsKeyboardScrollTests
             vm.AutoReturnToCurrentLine = autoReturn;
             var scroller = view.FindControl<ScrollViewer>("LyricsScrollViewer")!;
             win.MouseWheel(scroller.TranslatePoint(new Point(200, 200), win)!.Value, new Vector(0, -3));
-            Dispatcher.UIThread.RunJobs();
+            // With the app styles loaded (another test may have added them) the wheel glides
+            // over render frames (SmoothScrollBehavior), so the user scroll lands a few ticks later.
+            var deadline = Environment.TickCount64 + 2000;
+            while (!vm.IsAutoFollowPaused && Environment.TickCount64 < deadline)
+            {
+                Dispatcher.UIThread.RunJobs();
+                Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            }
             Assert.True(vm.IsAutoFollowPaused);
             Assert.Equal(autoReturn, LyricsView.AutoFollowResumePending(view));
 
@@ -121,6 +131,9 @@ public class LyricsKeyboardScrollTests
         finally
         {
             win.Close();
+            // The view model listens to the app-wide accent event: left subscribed, a later
+            // test's accent change runs it on another dispatcher thread and throws.
+            vm.Dispose();
         }
     }
 }
