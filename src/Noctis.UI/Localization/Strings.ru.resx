@@ -3875,6 +3875,14 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>Выйти</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>Выйти и удалить загрузки</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>Его песни исчезнут из медиатеки телефона. Войти снова можно в любой момент.</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>Его песни исчезнут из медиатеки телефона, кроме загруженных: они останутся и будут воспроизводиться, пока вы их не удалите. Войти снова можно в любой момент.</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>Больше нет на компьютере</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>Больше нет на компьютере: {0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>Этих песен больше нет на компьютере. Они останутся на телефоне и будут воспроизводиться, пока вы их не удалите.</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>Удалить</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>Удалить все</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>Удалить эти песни?</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>С телефона будут удалены: {0}. Их больше нет на компьютере, поэтому загрузить их снова не получится.</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>Выход…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>Что-то пошло не так. Повторите попытку.</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>Синхронизация завершена</value></data>
