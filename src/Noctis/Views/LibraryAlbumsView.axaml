@@ -404,12 +404,20 @@
                            Opacity="0.5"
                            HorizontalAlignment="Center"
                            TextAlignment="Center" />
+                <!-- A genre or artist page with nothing left (its genre split away by Genre Tag
+                     Separators, #260) is not an empty library either. -->
                 <TextBlock Text="{loc:T LibraryAlbums.AddMusicFoldersSettings}"
-                           IsVisible="{Binding !HasActiveFilter}"
                            FontSize="13"
                            Opacity="0.3"
                            HorizontalAlignment="Center"
-                           TextAlignment="Center" />
+                           TextAlignment="Center">
+                    <TextBlock.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="!HasActiveFilter" />
+                            <Binding Path="!IsPageFiltered" />
+                        </MultiBinding>
+                    </TextBlock.IsVisible>
+                </TextBlock>
                 <TextBlock Text="{loc:T LibraryAlbums.NoFilterMatches}"
                            IsVisible="{Binding HasActiveFilter}"
                            FontSize="18"
