@@ -524,13 +524,27 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         // Audio focus loss, headphone unplug and lock-screen Pause all land here without a
         // Pause() call from us. Mirror it so the ViewModel's next toggle does the right thing.
-        // No PlayWhenReady check: Media3 only clears it for a PERMANENT focus loss. A
-        // transient loss (e.g. an incoming call) is signalled as a playback-suppression
-        // reason with PlayWhenReady left true — requiring it false here would miss that case
-        // and leave State stuck on Playing over a frozen clock. StateReady is still required:
-        // it is what stops our own Stop() (which drives the state to Idle) from re-entering
-        // here and being misread as an external pause.
-        if (!isPlaying && State == PlaybackState.Playing && _player.PlaybackState == BasePlayer.InterfaceConsts.StateReady)
+        // No PlayWhenReady check, and StateReady required for the pause: see PlayerStateMirror.
+        MirrorState(PlayerStateMirror.OnIsPlayingChanged(State, isPlaying,
+            _player.PlaybackState == BasePlayer.InterfaceConsts.StateReady));
+    }
+
+    /// <summary>
+    /// A permanent focus loss or a session Pause while a stream is still buffering clears
+    /// PlayWhenReady with no IsPlaying change (buffering made it false already), so
+    /// OnIsPlayingChanged never saw it and State stayed Playing over a paused player.
+    /// </summary>
+    private void OnPlayWhenReadyChanged(bool playWhenReady, int reason)
+    {
+        var next = PlayerStateMirror.OnPlayWhenReadyChanged(State, playWhenReady);
+        if (next != State) DebugLog.Write("Audio", $"Paused from outside the app (reason {reason}, playback state {_player.PlaybackState})");
+        MirrorState(next);
+    }
+
+    private void MirrorState(PlaybackState next)
+    {
+        if (next == State) return;
+        if (next == PlaybackState.Paused)
         {
             // Deliberately do NOT stop the poll timer here (unlike our own Pause()): it must
             // keep ticking through an external pause, because PollPosition's tick is the only
@@ -538,7 +552,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // state change happened at all.
             State = PlaybackState.Paused;
         }
-        else if (isPlaying && State == PlaybackState.Paused)
+        else if (next == PlaybackState.Playing)
         {
             // Mirror image of our own Resume(): a session Play (notification, lock screen,
             // Bluetooth) reaches ExoPlayer directly — SessionForwardingPlayer only intercepts
@@ -996,6 +1010,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public void OnPlayerError(PlaybackException error) => _owner.OnPlayerError(error);
         public void OnTracksChanged(Tracks tracks) => _owner.OnTracksChanged(tracks);
         public void OnIsPlayingChanged(bool isPlaying) => _owner.OnIsPlayingChanged(isPlaying);
+        public void OnPlayWhenReadyChanged(bool playWhenReady, int reason) => _owner.OnPlayWhenReadyChanged(playWhenReady, reason);
 
         /// <summary>
         /// Unused, but Java calls it after every batch of player events and the binding wraps
