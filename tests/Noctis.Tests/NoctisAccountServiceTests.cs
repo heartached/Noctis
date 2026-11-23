@@ -1597,6 +1597,47 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(_url, new NoctisAccountStore(AccountDir).LoadAccount()!.ServerUrl);
     }
 
+    /// <summary>The computer got a new address from the router, one the QR code never carried:
+    /// every saved address failed and only signing in again helped. Now the phone asks the rest of
+    /// the saved address's network on the same port, and moves to where the same pinned computer
+    /// answers. Here the computer listens on 127.0.0.1 only and the phone knows it as 127.0.0.2.</summary>
+    [Fact]
+    public async Task RemoteAsk_WhenNoSavedAddressAnswers_FindsTheComputerNearby()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        _server.Remote = new StillRemote();
+        var first = await SignedInAsync();
+        var port = _server.Port;
+        await _server.StopAsync();
+        await _server.StartAsync(port, certificate: null, ct, System.Net.IPAddress.Loopback);
+        var moved = $"http://127.0.0.2:{port}";
+        new NoctisAccountStore(AccountDir).SaveAccount(first.Account! with { ServerUrl = moved, OtherServerUrls = Array.Empty<string>() });
+
+        var svc = Restart();
+        var state = await svc.GetComputerPlaybackAsync(withQueue: false, ct);
+
+        Assert.Equal("Alpha", state.Track!.Title);
+        Assert.Equal(_url, svc.Account!.ServerUrl);
+        Assert.Contains(moved, svc.Account.OtherServerUrls);
+        Assert.Equal(_url, new NoctisAccountStore(AccountDir).LoadAccount()!.ServerUrl);
+    }
+
+    /// <summary>The neighbourhood asked: the rest of each saved private address's /24 on its port;
+    /// nothing for a name, a public address or IPv6; never a saved address twice.</summary>
+    [Fact]
+    public void NearbyAddresses_AreTheSavedPrivateNetworksOnly()
+    {
+        var near = NoctisAccountService.NearbyAddresses(new[] { "https://192.168.1.20:5443", "https://192.168.1.30:5443" }).ToList();
+        Assert.Equal(252, near.Count);
+        Assert.DoesNotContain("https://192.168.1.20:5443", near);
+        Assert.DoesNotContain("https://192.168.1.30:5443", near);
+        Assert.Contains("https://192.168.1.21:5443", near);
+        Assert.All(near, u => Assert.StartsWith("https://192.168.1.", u));
+        Assert.Equal(253, NoctisAccountService.NearbyAddresses(new[] { "https://10.0.5.9:5443" }).Count());
+        Assert.Equal(253, NoctisAccountService.NearbyAddresses(new[] { "https://172.20.1.9:5443" }).Count());
+        Assert.Empty(NoctisAccountService.NearbyAddresses(new[] { "https://studio-pc.lan:5443", "https://8.8.8.8:5443", "https://[fe80::1]:5443", "https://172.32.0.1:5443" }));
+    }
+
     /// <summary>A key the desktop removed: Remote said "signed out" while the Account page still
     /// showed the phone signed in (and offered Remote again) until a sync noticed. Now the
     /// remote's ask forgets the account as a sync, upload or download does.</summary>

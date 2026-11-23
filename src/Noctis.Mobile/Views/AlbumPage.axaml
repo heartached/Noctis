@@ -205,11 +205,11 @@
                 <!-- Apple's row: shuffle, the Play pill and the album heart as one tight centred group. -->
                 <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="14" Margin="0,18,0,0">
                     <Button Name="ShuffleButton" Classes="round album-round" Command="{Binding ShuffleCommand}">
-                        <PathIcon Data="{DynamicResource PhShuffle}" />
+                        <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" />
                     </Button>
                     <Button Name="PlayButton" Classes="album-play" Command="{Binding PlayCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
+                            <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
                             <TextBlock Text="{loc:T Mobile.Play}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>

@@ -95,6 +95,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>The lines the page shows: synced, or plain (pre-activated, never swept).</summary>
     public BulkObservableCollection<LyricLine> Lines { get; } = new();
 
+    /// <summary>The way the lines read, by their own letters (<see cref="ScriptDirection"/>): an
+    /// Arabic song's lines sit right, an English song's left, whatever the phone's language.</summary>
+    [ObservableProperty] private Avalonia.Media.FlowDirection _linesFlowDirection;
+
     [ObservableProperty, NotifyPropertyChangedFor(nameof(WantsFrames))] private bool _isSynced;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _hasLyrics;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _isLoading;
@@ -494,6 +498,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsLoading = false;
         Source = result.Source;
         Lines.ReplaceAll(result.Lines);
+        LinesFlowDirection = ScriptDirection.Of(result.Lines.Select(l => l.Text));
         _hasWordTiming = result.Lines.Any(l => l.HasWords || l.HasBackgroundWords || l.HasTransliterationWords);
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;

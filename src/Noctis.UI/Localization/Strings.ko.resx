@@ -8922,15 +8922,17 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0}일 전에 동기화됨</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>{0}에 동기화됨</value></data>
   <data name="Mobile.Remote.Title" xml:space="preserve"><value>리모컨</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
-  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>{0}에서 재생, 일시정지, 건너뛰기</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
   <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>{0}에 연결하는 중…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
   <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>{0}에 연결할 수 없음</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
-  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0}은(는) 기본 계정만 재생을 제어할 수 있습니다. 이 휴대폰에서 해당 계정으로 로그인하세요.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0}의 기본 계정만 재생을 제어할 수 있습니다. 여기서 로그아웃한 다음 {0}의 Noctis에 표시되는 QR 코드를 스캔해 해당 계정으로 로그인하세요.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
   <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>{0}의 Noctis가 너무 오래되어 리모컨을 사용할 수 없습니다. 업데이트한 후 다시 시도하세요.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
   <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>{0}에서 재생 중인 항목이 없음</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0}의 다음 곡</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>외 {0}곡</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>다시 시도</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.ServerErrorTitle" xml:space="preserve"><value>{0}와(과) 통신하는 중 문제가 발생했습니다</value><comment>Remote page title when the computer answered, but with an error or an unreadable reply (not unreachable). {0} = computer name</comment></data>
+  <data name="Mobile.Remote.ServerError" xml:space="preserve"><value>{0}이(가) 오류로 응답했습니다. 해당 컴퓨터의 Noctis를 업데이트한 후 다시 시도하세요.</value><comment>Remote page under Mobile.Remote.ServerErrorTitle. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.HintMain" xml:space="preserve"><value>{0}에서 재생, 건너뛰기. 기본 계정 전용</value><comment>Account page Remote row's grey line for a signed-in phone: what it does and who may use it. {0} = computer name</comment></data>
   <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>홈에 리모컨 표시</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
   <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>프로필 사진 옆에 버튼이 표시됩니다</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>시스템</value></data>

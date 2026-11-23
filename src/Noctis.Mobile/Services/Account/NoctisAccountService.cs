@@ -547,15 +547,16 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// <summary>
     /// The address the phone signed in through stopped answering, or something else answers
     /// there now (another network, the computer's other adapter, an address handed to another
-    /// device): the computer's other addresses from its QR code are tried, and the first where
-    /// the same pinned computer answers becomes the account's address (the old one joins the
-    /// others). Before, the only way back was to sign out and in again. True when it moved.
+    /// device): the computer's other addresses from its QR code are tried, then the nearby ones
+    /// (<see cref="FindNearbyAsync"/>), and the first where the same pinned computer answers
+    /// becomes the account's address (the old one joins the others). Before, the only way back
+    /// was to sign out and in again. True when it moved.
     /// </summary>
     private async Task<bool> TryOtherAddressAsync(CancellationToken ct)
     {
         NoctisAccount? account;
         lock (_gate) account = _account;
-        if (account is null || account.OtherServerUrls.Count == 0) return false;
+        if (account is null) return false;
         foreach (var url in account.OtherServerUrls)
         {
             string seen;
@@ -568,29 +569,36 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 continue;
             }
             if (PinHex(seen) != PinHex(account.Fingerprint)) continue;
-            lock (_gate)
-            {
-                if (!ReferenceEquals(_account, account)) return false;   // signed out or in meanwhile
-                var moved = account with
-                {
-                    ServerUrl = url,
-                    OtherServerUrls = account.OtherServerUrls.Where(u => u != url).Prepend(account.ServerUrl).ToList(),
-                };
-                // The checkpoint and the unsent edits belong to the same computer: they follow it.
-                if (SameIdentity(_sync.ServerUrl, _sync.UserName, account)) _sync.ServerUrl = url;
-                if (SameIdentity(_pending.ServerUrl, _pending.UserName, account)) _pending.ServerUrl = url;
-                _store.SaveSyncState(_sync);
-                _store.SavePending(_pending);
-                _store.SaveAccount(moved);
-                _client?.Dispose();
-                _client = null;
-                _account = moved;
-            }
-            DebugLog.Write("Account", "the desktop answers at another of its addresses now; moved there");
-            RaiseStateChanged();
-            return true;
+            return MoveTo(account, url);
         }
-        return false;
+        // A new address on the same network (the router handed the computer another one).
+        return await FindNearbyAsync(account, ct).ConfigureAwait(false) is { } nearby && MoveTo(account, nearby);
+    }
+
+    /// <summary>The pinned computer answers at <paramref name="url"/>: the account moves there.</summary>
+    private bool MoveTo(NoctisAccount account, string url)
+    {
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_account, account)) return false;   // signed out or in meanwhile
+            var moved = account with
+            {
+                ServerUrl = url,
+                OtherServerUrls = account.OtherServerUrls.Where(u => u != url).Prepend(account.ServerUrl).ToList(),
+            };
+            // The checkpoint and the unsent edits belong to the same computer: they follow it.
+            if (SameIdentity(_sync.ServerUrl, _sync.UserName, account)) _sync.ServerUrl = url;
+            if (SameIdentity(_pending.ServerUrl, _pending.UserName, account)) _pending.ServerUrl = url;
+            _store.SaveSyncState(_sync);
+            _store.SavePending(_pending);
+            _store.SaveAccount(moved);
+            _client?.Dispose();
+            _client = null;
+            _account = moved;
+        }
+        DebugLog.Write("Account", "the desktop answers at another of its addresses now; moved there");
+        RaiseStateChanged();
+        return true;
     }
 
     private static string PinHex(string? fingerprint) =>

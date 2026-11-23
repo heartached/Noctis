@@ -8922,15 +8922,17 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0} 天前同步</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>{0} 同步</value></data>
   <data name="Mobile.Remote.Title" xml:space="preserve"><value>遥控</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
-  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>在 {0} 上播放、暂停和切歌</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
   <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>正在连接 {0}…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
   <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>无法连接 {0}</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
-  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} 只允许其主账户控制播放。请在此手机上用该账户登录。</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>只有 {0} 的主账户可以控制播放。请在此退出登录，然后扫描 {0} 上 Noctis 显示的二维码，用该账户登录。</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
   <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>{0} 上的 Noctis 版本过旧，不支持遥控。请更新后重试。</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
   <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>{0} 上没有正在播放的内容</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} 上的待播清单</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>还有 {0} 首</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>重试</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.ServerErrorTitle" xml:space="preserve"><value>与 {0} 通信时出错</value><comment>Remote page title when the computer answered, but with an error or an unreadable reply (not unreachable). {0} = computer name</comment></data>
+  <data name="Mobile.Remote.ServerError" xml:space="preserve"><value>{0} 返回了错误。请更新其上的 Noctis 后重试。</value><comment>Remote page under Mobile.Remote.ServerErrorTitle. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.HintMain" xml:space="preserve"><value>在 {0} 上播放和切歌。仅限主账户</value><comment>Account page Remote row's grey line for a signed-in phone: what it does and who may use it. {0} = computer name</comment></data>
   <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>在主页显示遥控</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
   <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>在你的头像旁显示一个按钮</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>跟随系统</value></data>

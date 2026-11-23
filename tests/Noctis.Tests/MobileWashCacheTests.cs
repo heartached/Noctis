@@ -20,6 +20,7 @@ namespace Noctis.Tests;
 /// keeps its pixels; NOCTIS_TEST_SKIA=1 shows both). The wash now keeps only the two tones the
 /// veil needs, measured from the pixels while they are in hand.
 /// </summary>
+[Collection("Wash memory")]
 public class MobileWashCacheTests
 {
     private readonly ITestOutputHelper _o;
@@ -62,28 +63,38 @@ public class MobileWashCacheTests
     /// <summary>
     /// What a washed cover keeps alive beside its 128 px wash bitmap (native): before, a 64 KB copy
     /// of the wash's pixels per cover, for as long as the cover stayed decoded; now its two tones.
+    /// The managed heap is the whole process's, so whatever another thread keeps or frees between
+    /// the two readings counts too (a busy run once read 8 KB a cover over 20). The class runs
+    /// alone (<see cref="WashMemoryCollection"/>), over enough covers that a stray megabyte is a
+    /// few KB a cover, and keeps the least of three rounds: noise only has to miss one round,
+    /// while a copy of the pixels is in every round, 64 KB a cover each time.
     /// </summary>
     [AvaloniaFact]
     public void AWash_KeepsItsTones_NotACopyOfItsPixels()
     {
-        const int Count = 20;
+        const int Count = 100;
         using (var warm = Cover(Colors.Gray)) Wash(warm);   // the downscale's pooled buffer, the JIT
-        var covers = new List<WriteableBitmap>();
-        var washes = new List<object?>();
-        var before = GC.GetTotalMemory(forceFullCollection: true);
-        for (var i = 0; i < Count; i++)
+        var least = long.MaxValue;
+        for (var round = 0; round < 3; round++)
         {
-            var cover = Cover(Color.FromRgb((byte)(i * 12), 90, 200));
-            covers.Add(cover);
-            washes.Add(Wash(cover));
+            var covers = new List<WriteableBitmap>();
+            var washes = new List<object?>();
+            var before = GC.GetTotalMemory(forceFullCollection: true);
+            for (var i = 0; i < Count; i++)
+            {
+                var cover = Cover(Color.FromRgb((byte)(i * 2), 90, (byte)(200 - round)));
+                covers.Add(cover);
+                washes.Add(Wash(cover));
+            }
+            var after = GC.GetTotalMemory(forceFullCollection: true);
+            var perWash = (after - before) / Count;
+            _o.WriteLine($"round {round}: managed memory kept per washed cover: {perWash} B");
+            Assert.All(washes, w => Assert.NotNull(WashBrush.Measure(Assert.IsAssignableFrom<IImage>(w))));
+            least = Math.Min(least, perWash);
+            GC.KeepAlive(washes);
+            foreach (var cover in covers) cover.Dispose();
         }
-        var after = GC.GetTotalMemory(forceFullCollection: true);
-        var perWash = (after - before) / Count;
-        _o.WriteLine($"managed memory kept per washed cover: {perWash} B");
-        Assert.All(washes, w => Assert.NotNull(WashBrush.Measure(Assert.IsAssignableFrom<IImage>(w))));
-        Assert.True(perWash < 8 * 1024, $"{perWash} B kept per washed cover");
-        GC.KeepAlive(washes);
-        foreach (var cover in covers) cover.Dispose();
+        Assert.True(least < 8 * 1024, $"{least} B kept per washed cover");
     }
 
     /// <summary>The tones are measured where the wash is made, on the UI thread for Now Playing's
@@ -151,3 +162,8 @@ public class MobileWashCacheTests
         return new WeakReference(wash);
     }
 }
+
+/// <summary>The wash memory test reads the process's managed heap: beside other classes it read
+/// what they kept and freed too. This collection runs alone.</summary>
+[CollectionDefinition("Wash memory", DisableParallelization = true)]
+public class WashMemoryCollection { }

@@ -315,7 +315,7 @@
             <!-- Keeps Avalonia's render loop awake while the lines play (RenderKeepAlive). -->
             <views:RenderKeepAlive Grid.Row="3" Name="KeepAlive" HorizontalAlignment="Left" VerticalAlignment="Top" />
             <ScrollViewer Grid.Row="3" Name="LyricsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                          IsVisible="{Binding Lyrics.HasLyrics}">
+                          IsVisible="{Binding Lyrics.HasLyrics}" FlowDirection="{Binding Lyrics.LinesFlowDirection}">
                 <!-- Rows are built once and handed the next line (RowItemsControl): each line
                      change scrolled a line in, and Avalonia's own path built its row from
                      scratch, ~330 KB for a plain line and ~1 MB for a word-timed one. -->
