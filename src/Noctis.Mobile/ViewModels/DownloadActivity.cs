@@ -42,6 +42,11 @@ public sealed partial class DownloadActivity : ObservableObject
         _notifier = notifier;
         _keeper = keeper;
         account.DownloadProgress += (_, progress) => marshal(() => Apply(progress));
+        // The computer refused this phone's key (signed out locally): no report says so.
+        account.StateChanged += (_, _) =>
+        {
+            if (!account.IsSignedIn && (_keeping || _notifying || _paused != null)) marshal(CallOff);
+        };
         if (keeper != null)
         {
             keeper.Paused += (_, _) => marshal(() => _ = PauseAsync());
@@ -80,7 +85,8 @@ public sealed partial class DownloadActivity : ObservableObject
             // (the app is on screen, which a new job needs).
             var wasPaused = _paused != null;
             if (wasPaused) ResumePaused();
-            if (first && !_keeping || wasPaused)
+            // Not only the first start: one after a call-off may find a stopped start still ending.
+            if (!_keeping || wasPaused)
             {
                 _keeping = true;
                 _keeper?.Begin(pending.Sum(t => Math.Max(0, t.FileSize)));
@@ -122,6 +128,26 @@ public sealed partial class DownloadActivity : ObservableObject
         _paused = left;
         try { await _account.PauseDownloadsAsync(); }
         catch (Exception ex) { DebugLog.Write("Account", $"Pausing downloads failed: {ex.GetType().Name}"); }
+    }
+
+    /// <summary>Signed out, Remove All Downloads, or the computer refused this phone: nothing is left
+    /// to download, whatever state the downloads were in. The card goes and the keeper ends now;
+    /// paused, nothing else ended them, and the card stood until its 10-minute stale timeout.</summary>
+    private void CallOff()
+    {
+        _paused = null;
+        if (_notifying)
+        {
+            _notifying = false;
+            _notifier?.Clear();
+        }
+        // After the clear: the keeper's end puts the card right once nothing holds it.
+        if (_keeping)
+        {
+            _keeping = false;
+            _keeper?.End();
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>Goes on with the paused songs, each start as before (its title, the album page's row).</summary>
@@ -176,6 +202,7 @@ public sealed partial class DownloadActivity : ObservableObject
 
     private void Apply(NoctisDownloadProgress progress)
     {
+        if (progress.CalledOff) CallOff();
         Last = progress;
         IsActive = progress.Pending > 0;
         if (progress.Pending > 0)

@@ -1093,6 +1093,27 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(1, svc.DownloadedCount);
     }
 
+    /// <summary>Sign-out and Remove All Downloads tell the phone's download activity that every
+    /// download is called off (DownloadActivity ends the keeper and the card even while paused);
+    /// sign-out says so before waiting for the desktop's answer.</summary>
+    [Fact]
+    public async Task SignOut_AndRemoveAll_ReportTheDownloadsCalledOff()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var reports = new List<NoctisDownloadProgress>();
+        svc.DownloadProgress += (_, p) => { lock (reports) reports.Add(p); };
+
+        await svc.RemoveAllDownloadsAsync();
+        lock (reports) Assert.True(reports.Last().CalledOff);
+
+        var signedInWhenCalledOff = (bool?)null;
+        svc.DownloadProgress += (_, p) => { if (p.CalledOff) signedInWhenCalledOff ??= svc.IsSignedIn; };
+        await svc.SignOutAsync(removeDownloads: false, ct);
+        Assert.True(signedInWhenCalledOff);
+    }
+
     [Fact]
     public async Task Covers_AreNotFetched_WhenThePhoneHasNoRoomLeft()
     {

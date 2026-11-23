@@ -392,6 +392,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             try { await running.ConfigureAwait(false); } catch { /* cancelled or failed: irrelevant now */ }
         }
         await StopDownloadsAsync().ConfigureAwait(false);
+        // Now, not after the desktop's answer below (up to 5 s): downloads the system had paused
+        // would otherwise keep their notification and background job.
+        RaiseDownloadProgress(calledOff: true);
         await StopUploadsAsync().ConfigureAwait(false);
 
         NoctisServerClient? client;
@@ -2360,7 +2363,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         await StopDownloadsAsync().ConfigureAwait(false);
         await Task.Run(DeleteAllDownloadFiles).ConfigureAwait(false);
         await DropNotOnComputerAsync(null).ConfigureAwait(false);
-        RaiseDownloadProgress();
+        RaiseDownloadProgress(calledOff: true);
         RaiseStateChanged();
     }
 
@@ -2473,9 +2476,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private void RaiseSyncProgress(NoctisSyncStage stage, int done, int total) =>
         SyncProgress?.Invoke(this, new NoctisSyncProgress(stage, done, total));
 
-    private void RaiseDownloadProgress() =>
+    private void RaiseDownloadProgress(bool calledOff = false) =>
         DownloadProgress?.Invoke(this, new NoctisDownloadProgress(Math.Max(0, Volatile.Read(ref _dlPending)),
-            Volatile.Read(ref _dlCompleted), Volatile.Read(ref _dlFailed), DownloadedBytes, Volatile.Read(ref _dlMissing)));
+            Volatile.Read(ref _dlCompleted), Volatile.Read(ref _dlFailed), DownloadedBytes, Volatile.Read(ref _dlMissing), calledOff));
 
     private sealed class InlineProgress(Action<int> report) : IProgress<int>
     {

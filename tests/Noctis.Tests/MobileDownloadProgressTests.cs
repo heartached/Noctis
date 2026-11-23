@@ -122,6 +122,79 @@ public class MobileDownloadProgressTests
         Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
     }
 
+    /// <summary>Signed out, Remove All Downloads or the computer dropping this phone while the
+    /// system has the downloads paused (the job stopped, waiting to be run again): the keeper is
+    /// ended and the card goes at once, not after its 10-minute stale timeout; a later run of the
+    /// job resumes nothing.</summary>
+    [Theory]
+    [InlineData("sign-out")]
+    [InlineData("remove-all")]
+    [InlineData("computer")]
+    public async Task Keeper_PausedBySystem_CalledOff_EndsTheKeeperAndClearsTheCard(string how)
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+        var gate = new TaskCompletionSource();
+        account.OnPause = () => gate.TrySetResult();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a, b }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(2, 0, 0, 0));
+        keeper.Pause();
+        await run.WaitAsync(TimeSpan.FromSeconds(5));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 0, 0, 0));   // the paused batch winding down
+        Assert.Equal(new[] { "begin|0" }, keeper.Calls);
+
+        switch (how)
+        {
+            case "sign-out": await account.SignOutAsync(removeDownloads: false); break;
+            case "remove-all": await account.RemoveAllDownloadsAsync(); break;
+            default:
+                account.Account = null;   // the computer refused the key (signed out locally)
+                account.RaiseStateChanged();
+                break;
+        }
+
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+        Assert.Equal("clear", notifier.Calls.Last());
+        keeper.Resume();
+        await Task.Delay(50);
+        Assert.Empty(account.DownloadCalls);
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+    }
+
+    /// <summary>The same while running: the card goes and the keeper ends once, and a tap after it
+    /// begins a keeper again.</summary>
+    [Fact]
+    public async Task Keeper_Running_SignOut_EndsItOnce_AndANewTapBeginsAgain()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+        var gate = new TaskCompletionSource();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(1, 0, 0, 0));
+        await account.SignOutAsync(removeDownloads: false);
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+        Assert.Equal("clear", notifier.Calls.Last());
+        gate.SetResult();   // the stopped batch's task ends after the call-off
+        await run;
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+
+        account.Account = FakeAccount.SignedInAs();
+        await shell.Downloads.RunAsync("Red Album", new[] { b }, () => Task.CompletedTask);
+        Assert.Equal(new[] { "begin|0", "end", "begin|0", "end" }, keeper.Calls);
+    }
+
     private static async Task Until(Func<bool> condition)
     {
         var start = Environment.TickCount64;

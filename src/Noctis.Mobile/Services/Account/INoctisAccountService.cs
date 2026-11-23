@@ -46,7 +46,9 @@ public sealed record NoctisSyncProgress(NoctisSyncStage Stage, int Done, int Tot
 public sealed record NoctisSyncResult(int Songs, int Playlists, int StateChangesPulled, int StateChangesPushed, int PlaysSent);
 
 /// <param name="Missing">Of <paramref name="Failed"/>, the songs whose file is missing on the computer.</param>
-public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0)
+/// <param name="CalledOff">Sign-out or Remove All Downloads stopped every download (running or paused):
+/// nothing is left to download, so the notification goes and the background keeping ends now.</param>
+public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0, bool CalledOff = false)
 {
     /// <summary>The songs asked for: a failed one stays counted ("Downloading 1 of 3 · 1 failed"),
     /// where Completed + Pending shrank the total with every failure.</summary>

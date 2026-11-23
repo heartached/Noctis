@@ -103,7 +103,7 @@ public class MobileAccountTests
             AvatarPath = null;
             if (removeDownloads) DownloadedIds.Clear();
             // As the service does (NoctisAccountService.SignOutAsync): a final report with nothing running.
-            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes));
+            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes, CalledOff: true));
             StateChanged?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
@@ -193,6 +193,8 @@ public class MobileAccountTests
         {
             RemoveAllCalls++;
             DownloadedIds.Clear();
+            // As the service does (NoctisAccountService.RemoveAllDownloadsAsync): a final report with nothing running.
+            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes, CalledOff: true));
             return Task.CompletedTask;
         }
 
