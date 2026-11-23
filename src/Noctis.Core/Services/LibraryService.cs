@@ -1860,7 +1860,10 @@ public class LibraryService : ILibraryService
         && a.AlbumId == b.AlbumId && a.Duration == b.Duration && a.TrackNumber == b.TrackNumber
         && a.DiscNumber == b.DiscNumber && a.Year == b.Year && a.Genre == b.Genre && a.Bitrate == b.Bitrate
         && a.SampleRate == b.SampleRate && a.FileSize == b.FileSize && a.Codec == b.Codec
-        && a.FilePath == b.FilePath;
+        && a.FilePath == b.FilePath
+        // A ReplayGain scan on the desktop changes nothing else: the new values must still land.
+        && a.ReplayGainTrackDb == b.ReplayGainTrackDb && a.ReplayGainTrackPeak == b.ReplayGainTrackPeak
+        && a.ReplayGainAlbumDb == b.ReplayGainAlbumDb;
 
     /// <summary>
     /// Deletes cached covers for albums that no longer have any tracks after a
