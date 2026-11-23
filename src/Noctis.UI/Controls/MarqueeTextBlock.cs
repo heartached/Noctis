@@ -120,6 +120,29 @@ public class MarqueeTextBlock : UserControl
     public static readonly StyledProperty<Control?> InlineContentProperty =
         AvaloniaProperty.Register<MarqueeTextBlock, Control?>(nameof(InlineContent));
 
+    /// <summary>
+    /// The marquee takes its text's own direction (<see cref="TextDirection.FirstStrong"/>) rather
+    /// than its parent's: the phone in Arabic mirrors its whole layout, and a Latin title's ticker
+    /// laid out right to left showed its loop copy's tail beside its own head at rest
+    /// ("Cuál … t. DJ Nelson)¿"), the leading "¿" moved to the end, and the lap ran backwards. A
+    /// Latin title now scrolls as it does in English, an Arabic one right to left; the parent still
+    /// places the marquee (its start edge). Off (the desktop) by default.
+    /// </summary>
+    public static readonly StyledProperty<bool> FollowsTextDirectionProperty =
+        AvaloniaProperty.Register<MarqueeTextBlock, bool>(nameof(FollowsTextDirection));
+
+    public bool FollowsTextDirection
+    {
+        get => GetValue(FollowsTextDirectionProperty);
+        set => SetValue(FollowsTextDirectionProperty, value);
+    }
+
+    private void ApplyTextDirection()
+    {
+        if (FollowsTextDirection && TextDirection.FirstStrong(Text) is { } direction) FlowDirection = direction;
+        else ClearValue(FlowDirectionProperty);
+    }
+
     public string? Text
     {
         get => GetValue(TextProperty);
@@ -315,6 +338,12 @@ public class MarqueeTextBlock : UserControl
         {
             _textBlock.Text = Text;
             _loopCopy.Text = Text;
+            ApplyTextDirection();
+            ResetAndRecalc();
+        }
+        else if (change.Property == FollowsTextDirectionProperty)
+        {
+            ApplyTextDirection();
             ResetAndRecalc();
         }
         else if (change.Property == FontSizeProperty)

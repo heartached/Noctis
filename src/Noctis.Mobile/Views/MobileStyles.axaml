@@ -38,6 +38,15 @@
     <Style Selector="PathIcon.dir, PathIcon.chevron, PathIcon.list-chevron, PathIcon.row-chevron, views|GridIcon.dir, views|GridIcon.row-chevron">
         <Setter Property="FlowDirection" Value="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=views:ShellView}}" />
     </Style>
+    <!-- A text that reads the other way from its row (a Latin title on an Arabic phone, an Arabic
+         one on an English phone) takes its own direction and keeps to the row's edge (BidiText):
+         "¿Cuál Es Tu Plan?" kept its "¿" in front. A ticker scrolls its own text's way. -->
+    <Style Selector="TextBlock">
+        <Setter Property="views:BidiText.IsAuto" Value="True" />
+    </Style>
+    <Style Selector="controls|MarqueeTextBlock">
+        <Setter Property="FollowsTextDirection" Value="True" />
+    </Style>
     <Style Selector="TextBlock.np-time">
         <Setter Property="FlowDirection" Value="LeftToRight" />
     </Style>
