@@ -324,9 +324,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     public bool IsGridView => !IsCarouselView;
 
     /// <summary>GitHub #213: the grid as Masonry (Settings › Albums "Masonry Album Grid" or the
-    /// View menu). An artist page that interleaves its Songs section keeps the row grid: the
-    /// masonry panel lays out album cards only.</summary>
-    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry && !_rowsHaveSections;
+    /// View menu). A genre page keeps its Songs section on top, above the Masonry cards
+    /// (<see cref="MasonrySectionRows"/>, GitHub #259).</summary>
+    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry;
 
     /// <summary>GitHub #218: Settings › Appearance "Album Hover Zoom".</summary>
     public bool IsHoverZoom => _settings.AlbumHoverZoom;
@@ -334,8 +334,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>The row grid (the ListBox of album rows) is up.</summary>
     public bool IsRowGridView => IsGridView && !IsMasonryView;
 
-    /// <summary>The current rows carry an artist page's section headers / song rows.</summary>
-    private bool _rowsHaveSections;
+    /// <summary>The rows above the albums on a genre (or artist) page: the Songs header, its
+    /// song rows and the "Albums" header, which Masonry shows above its cards (GitHub #259).</summary>
+    public IReadOnlyList<object> MasonrySectionRows { get; private set; } = Array.Empty<object>();
 
     /// <summary>View menu: Masonry on/off (the same setting Settings shows).</summary>
     [RelayCommand]
@@ -383,12 +384,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
         OnPropertyChanged(nameof(CarouselAlbums));
-        var sections = FilteredAlbumRows.Any(r => r is not AlbumRow);
-        if (sections != _rowsHaveSections)
+        // Section rows lead the list (ComposeArtistRows): header, song rows, "Albums".
+        var sections = FilteredAlbumRows.TakeWhile(r => r is not AlbumRow).ToList();
+        if (!sections.SequenceEqual(MasonrySectionRows))
         {
-            _rowsHaveSections = sections;
-            OnPropertyChanged(nameof(IsMasonryView));
-            OnPropertyChanged(nameof(IsRowGridView));
+            MasonrySectionRows = sections;
+            OnPropertyChanged(nameof(MasonrySectionRows));
         }
     }
 

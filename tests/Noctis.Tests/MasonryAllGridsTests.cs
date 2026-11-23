@@ -156,4 +156,74 @@ public class MasonryAllGridsTests
             + $"worst frame {worst:0} ms, settled after {frames} frames / {total.ElapsedMilliseconds} ms, {panel.TitleLayoutCount} title layouts");
         return (worst, firstLayouts, panel.TitleLayoutCount);
     }
+
+    // ── Genre page (the Albums view narrowed to a genre, its Songs section on top) ──
+
+    [AvaloniaFact]
+    public async Task GenrePage_WithMasonryOn_ShowsTheSongsThenTheAlbumsInMasonry()
+    {
+        EnsureAppStyles();
+        var (vm, settings) = AlbumsVm(300);
+        settings.AlbumGridMasonry = true;
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = 1400, Height = 900, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        await PumpUntil(() => vm.FilteredAlbumRows.Count > 0);
+
+        vm.SetGenreFilter("Rock");
+        await PumpUntil(() => vm.FilteredAlbumRows.OfType<ArtistSongsRow>().Any());
+        var panel = view.FindControl<MasonryAlbumPanel>("MasonryPanel")!;
+        await PumpUntil(() => RealizedTiles(panel).Count > 0);
+        Pump(4);
+
+        Assert.True(vm.IsMasonryView);
+        Assert.False(view.AlbumListBox.IsVisible);
+        // The Songs section (header, song rows, "Albums" header) sits above the cards, in
+        // the same scroller.
+        Assert.Equal(vm.FilteredAlbumRows.Where(r => r is not AlbumRow), vm.MasonrySectionRows);
+        Assert.IsType<ArtistSectionHeader>(vm.MasonrySectionRows[0]);
+        Assert.IsType<ArtistSectionHeader>(vm.MasonrySectionRows[^1]);
+        var sections = view.FindControl<ItemsControl>("MasonrySections")!;
+        var sv = view.FindControl<ScrollViewer>("MasonryScroller")!;
+        Assert.True(sections.IsVisible);
+        Assert.True(sections.Bounds.Height > 100);
+        Assert.Same(sv, sections.FindAncestorOfType<ScrollViewer>());
+        Assert.Same(sv, panel.FindAncestorOfType<ScrollViewer>());
+        var songPills = sections.GetVisualDescendants().OfType<Button>().Count(b => b.Classes.Contains("browse-item"));
+        Assert.True(songPills > 0, "song pills are shown");
+        var firstTile = RealizedTiles(panel).OrderBy(t => t.TranslatePoint(default, sv)!.Value.Y).First();
+        Assert.True(firstTile.TranslatePoint(default, sections)!.Value.Y >= sections.Bounds.Height - 1,
+            "the album cards start below the Songs section");
+        Assert.Equal(vm.CarouselAlbums, panel.Albums);
+        Assert.Equal(300, vm.CarouselAlbums.Count);
+
+        // Back on the unfiltered grid the section is gone.
+        vm.ClearArtistFilter();
+        vm.ApplyFilterImmediate(string.Empty); // as the Back navigation does
+        await PumpUntil(() => !vm.FilteredAlbumRows.OfType<ArtistSongsRow>().Any());
+        Assert.Empty(vm.MasonrySectionRows);
+        Assert.True(vm.IsMasonryView);
+        win.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task GenrePage_WithMasonryOff_KeepsTheRowGrid()
+    {
+        EnsureAppStyles();
+        var (vm, _) = AlbumsVm(60);
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = 1400, Height = 900, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        await PumpUntil(() => vm.FilteredAlbumRows.Count > 0);
+        vm.SetGenreFilter("Rock");
+        await PumpUntil(() => vm.FilteredAlbumRows.OfType<ArtistSongsRow>().Any());
+        Pump(4);
+        Assert.False(vm.IsMasonryView);
+        Assert.True(vm.IsRowGridView);
+        Assert.True(view.AlbumListBox.IsVisible);
+        Assert.False(view.FindControl<ScrollViewer>("MasonryScroller")!.IsVisible);
+        win.Close();
+    }
 }
