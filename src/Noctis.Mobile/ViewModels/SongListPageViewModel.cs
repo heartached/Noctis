@@ -403,7 +403,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     [RelayCommand]
     private void PlayAll()
     {
-        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs.ToList(), 0, Title);
+        if (Songs.Count > 0) Shell.Player.PlayAll(Songs.ToList(), Title);
     }
 
     [RelayCommand]

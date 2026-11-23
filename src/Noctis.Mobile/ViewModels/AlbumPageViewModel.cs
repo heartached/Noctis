@@ -327,7 +327,11 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         }
     }
 
-    [RelayCommand] private void Play() => PlayFrom(0);
+    [RelayCommand]
+    private void Play()
+    {
+        if (Album.EditionTracks.Count > 0) Shell.Player.PlayAll(Album.EditionTracks, Album.Name);
+    }
 
     [RelayCommand]
     private void Shuffle()

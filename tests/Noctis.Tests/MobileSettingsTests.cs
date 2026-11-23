@@ -726,12 +726,12 @@ public class MobileSettingsTests
                 Settle(window);
                 lines.AddRange(page.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("row-separator") && b.IsEffectivelyVisible));
             }
-            // 23 on the top level (10 Appearance with Now Playing Artwork, Animated Covers, Language, Tab Bar, Reduce Glass, Liquid Glass Tab Pill and Smooth Motion,
+            // 24 on the top level (10 Appearance with Now Playing Artwork, Animated Covers, Language, Tab Bar, Reduce Glass, Liquid Glass Tab Pill and Smooth Motion,
             // 1 in Now Playing Background between its style and Brightness, 4 Library with
-            // Downloads away, Hidden, Artist Separators and Genre Separators, 4 Listening with ReplayGain and Played Songs in Queue, 3 Help, 2 About), 1 between two folders, none on Accent,
+            // Downloads away, Hidden, Artist Separators and Genre Separators, 5 Listening with ReplayGain, Played Songs in Queue and Keep Shuffle On, 3 Help, 2 About), 1 between two folders, none on Accent,
             // 1 between the Player Bar's two switches, 3 in Lyrics (two between its three switches,
             // one between its two sliders): none above a list's first row.
-            Assert.Equal(29, lines.Count);
+            Assert.Equal(30, lines.Count);
             Assert.All(lines, line =>
             {
                 var card = line.GetVisualAncestors().OfType<Border>().First(b => b.Classes.Contains("group-card"));

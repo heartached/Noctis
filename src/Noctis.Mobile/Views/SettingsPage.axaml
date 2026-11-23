@@ -790,7 +790,7 @@
                             <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
                         </StackPanel>
 
-                        <!-- Listening: Lyrics, Scrobbling, Listening History and ReplayGain are pages; Played Songs in Queue and Pick Up on Computer switches. -->
+                        <!-- Listening: Lyrics, Scrobbling, Listening History and ReplayGain are pages; Played Songs in Queue, Keep Shuffle On and Pick Up on Computer switches. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Listening}" />
                             <Border Name="ListeningCard" Classes="group-card">
@@ -843,6 +843,18 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
                                                 <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.QueueHistory}" />
                                                 <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.QueueHistoryHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Keep Shuffle On: starting a list leaves Shuffle on and shuffles it (Discord 11-23, the desktop's setting). -->
+                                    <ToggleButton Name="KeepShuffleSwitch" Classes="switch-row" IsChecked="{Binding Shell.KeepShuffleOn}"
+                                                  AutomationProperties.Name="{loc:T Settings.KeepShuffleOn}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconShuffle}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Settings.KeepShuffleOn}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Settings.KeepShuffleOnHint}" />
                                             </StackPanel>
                                         </Grid>
                                     </ToggleButton>
