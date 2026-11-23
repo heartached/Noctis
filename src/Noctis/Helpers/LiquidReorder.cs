@@ -44,6 +44,12 @@ public sealed class LiquidReorder
     private readonly Border _card;
     private readonly Action? _cardHidden;
     private readonly Dictionary<Control, double> _rowOffsets = new();
+    /// <summary>Containers this drag hid (the lifted rows' empty slots). Kept until each is shown
+    /// again: a list that parks scrolled-off containers (RetainingVirtualizingStackPanel) reuses
+    /// them as they are, so one parked while hidden came back as an invisible row (11-23).</summary>
+    private readonly HashSet<Control> _hiddenRows = new();
+    private readonly HashSet<Control> _liveRows = new();
+    private readonly List<Control> _staleRows = new();
 
     private bool _frameQueued;
     private TimeSpan? _lastFrame;
@@ -294,13 +300,14 @@ public sealed class LiquidReorder
         ApplyCard();
 
         var rowStep = 1 - Math.Exp(-RowSlideRate * dt);
-        var live = new HashSet<Control>();
+        var live = _liveRows;
+        live.Clear();
         foreach (var item in _list.GetRealizedContainers())
         {
             live.Add(item);
             var index = _list.IndexFromContainer(item);
             // Recycled containers are re-evaluated every frame, so the hole follows the row.
-            item.Opacity = IsBusy && index >= 0 && IsLifted(index) ? 0 : 1;
+            SetRowHidden(item, IsBusy && index >= 0 && IsLifted(index));
             var goal = !IsBusy ? 0
                 : SourceRows is { } block ? BlockGapOffset(index, block, TargetIndex, Pitch)
                 : GapOffset(index, SourceIndex, TargetIndex, Pitch, SourceCount);
@@ -310,11 +317,22 @@ public sealed class LiquidReorder
             SetRowOffset(item, next);
             if (next == 0) _rowOffsets.Remove(item); else _rowOffsets[item] = next;
         }
-        foreach (var stale in _rowOffsets.Keys.Where(k => !live.Contains(k)).ToList())
+        _staleRows.Clear();
+        foreach (var key in _rowOffsets.Keys)
+            if (!live.Contains(key)) _staleRows.Add(key);
+        foreach (var stale in _staleRows)
         {
             SetRowOffset(stale, 0);
             _rowOffsets.Remove(stale);
         }
+        // A hidden row scrolled out of the realized set (parked or dropped) is shown again
+        // now; if its row is still lifted when it comes back, the next frame hides it again.
+        _staleRows.Clear();
+        foreach (var row in _hiddenRows)
+            if (!live.Contains(row)) _staleRows.Add(row);
+        foreach (var stale in _staleRows) SetRowHidden(stale, false);
+        _staleRows.Clear();
+        live.Clear();
 
         if (IsSettling && !moving)
         {
@@ -346,6 +364,9 @@ public sealed class LiquidReorder
             item.Opacity = 1;
             SetRowOffset(item, 0);
         }
+        // Parked containers too: they are not realized but are reused as they are.
+        foreach (var item in _hiddenRows) item.Opacity = 1;
+        _hiddenRows.Clear();
         foreach (var item in _rowOffsets.Keys) SetRowOffset(item, 0);
         _rowOffsets.Clear();
         SourceIndex = TargetIndex = -1;
@@ -357,6 +378,12 @@ public sealed class LiquidReorder
     {
         _card.IsVisible = false;
         _cardHidden?.Invoke();
+    }
+
+    private void SetRowHidden(Control item, bool hidden)
+    {
+        item.Opacity = hidden ? 0 : 1;
+        if (hidden) _hiddenRows.Add(item); else _hiddenRows.Remove(item);
     }
 
     private static void SetRowOffset(Control item, double y)

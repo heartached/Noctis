@@ -25,6 +25,18 @@ public partial class HomeView : UserControl, ITrackSelectionSource
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(MultiSelectHelper.GetSelectedData<Album>(_selectedTiles));
 
+    /// <summary>A drag from a selected album tile carries every selected album, in page order
+    /// (an album shown in two rows once).</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload)
+    {
+        if (dragged is not Button tile || _selectedTiles.Count < 2 || !_selectedTiles.Contains(tile)) return null;
+        var albums = new List<Album>(_selectedTiles.Count);
+        foreach (var v in this.GetVisualDescendants())
+            if (v is Button b && _selectedTiles.Contains(b) && b.DataContext is Album a && !albums.Contains(a))
+                albums.Add(a);
+        return TrackSelection.FromAlbums(albums);
+    }
+
     /// <summary>Below this width Last Played drops under Most Played.</summary>
     private const double HeroTwoColumnMinWidth = 1100;
     private bool _heroNarrow;
@@ -139,6 +151,9 @@ public partial class HomeView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = tile;
 
+        // A plain press on a tile of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, tile, _selectedTiles, e, ClearSelection))
+            return;
         MultiSelectHelper.HandleAlbumTileClick(tile, e, _selectedTiles);
 
         // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown

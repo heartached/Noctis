@@ -975,7 +975,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>تباعد أوسع بين الألبومات</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>مساحة أكبر بين الأغلفة. يتكيّف كل صف مع عناوينه.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>تكبير الألبوم عند التمرير</value><comment>Settings toggle (GitHub #218)</comment></data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>في شبكة الألبومات، يكبر الألبوم الذي تحت المؤشر قليلًا مع توهج ناعم.</value><comment>Settings toggle description (GitHub #218)</comment></data>
+  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>في شبكتي الألبومات والمفضلة، يكبر الغلاف الذي تحت المؤشر قليلًا مع توهج ناعم.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve">
     <value>أصغر</value>
     <comment>Text in SettingsView.axaml</comment>

@@ -77,6 +77,8 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         {
             if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
                 OnPropertyChanged(nameof(IsWideAlbumSpacing));
+            if (e.PropertyName == nameof(SettingsViewModel.AlbumHoverZoom))
+                OnPropertyChanged(nameof(IsHoverZoom));
             if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                 or nameof(SettingsViewModel.AlbumTileTargetSize)
                 or nameof(SettingsViewModel.AlbumGridWideSpacing))
@@ -102,6 +104,10 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 
     /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
     public bool IsWideAlbumSpacing => _settings.AlbumGridWideSpacing;
+
+    /// <summary>Settings › Appearance "Album Hover Zoom" (GitHub #218), as on the Albums grid
+    /// (Discord 11-23: it applied to the albums there but not to the songs here).</summary>
+    public bool IsHoverZoom => _settings.AlbumHoverZoom;
 
     /// <summary>
     /// Recomputes column count and tile size from the view's usable width and the

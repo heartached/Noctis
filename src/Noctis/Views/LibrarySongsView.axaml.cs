@@ -36,6 +36,10 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
+
+    /// <summary>A drag from a selected row carries the selection, in list order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        TrackSelection.DragSelection(payload, _selectedTracks, TrackList.ItemsSource);
     private TrackContextMenuBuilder? _menuBuilder;
     /// <summary>Culture the menu's strings were read in (they are read once, at Build).</summary>
     private string? _menuCulture;
@@ -104,6 +108,9 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = track;
 
+        // A plain press on a row of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, track, _selectedTracks, e, ClearSelection))
+            return;
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
 
         if (_selectedTracks.Count > 0)

@@ -27,6 +27,13 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => FavoritesViewModel.ExpandToTracks(_selectedItems);
 
+    /// <summary>A drag from a selected tile carries every selected song and album, in grid order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        DataContext is FavoritesViewModel vm
+        && TrackSelection.DragSelection(payload, _selectedItems, vm.FavoriteItemRows.SelectMany(r => r.Items)) is { } items
+            ? FavoritesViewModel.ExpandToTracks(items)
+            : null;
+
     public FavoritesView()
     {
         InitializeComponent();
@@ -76,6 +83,9 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = item;
 
+        // A plain press on a tile of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, item, _selectedItems, e, ClearSelection))
+            return;
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, item, e, _selectedItems)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
@@ -109,10 +119,17 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     {
         if (sender is not Button tile) return;
         MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
+        // Album Hover Zoom (GitHub #218): Loaded can fire again on re-attach, so re-subscribe.
+        HoverZoom.Attach(tile);
         // A grid row re-used for other favorites (TileRow) re-binds its tiles instead of loading them.
         tile.DataContextChanged -= OnAlbumTileRebound;
         tile.DataContextChanged += OnAlbumTileRebound;
     }
+
+    private TileHoverZoom? _hoverZoom;
+    private TileHoverZoom HoverZoom => _hoverZoom ??= new TileHoverZoom(
+        () => (DataContext as FavoritesViewModel)?.IsHoverZoom == true,
+        () => FavoritesList.FindDescendantOfType<ScrollViewer>());
 
     private void OnAlbumTileRebound(object? sender, EventArgs e)
     {

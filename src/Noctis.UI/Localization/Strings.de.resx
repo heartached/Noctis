@@ -381,7 +381,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Mehr Abstand zwischen Alben</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>Mehr Platz zwischen den Covern. Jede Reihe passt sich ihren Beschriftungen an.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Album-Zoom beim Überfahren</value><comment>Settings toggle (GitHub #218)</comment></data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>Im Albenraster wird das Album unter dem Zeiger etwas größer und leuchtet sanft.</value><comment>Settings toggle description (GitHub #218)</comment></data>
+  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>In den Rastern Alben und Favoriten wird das Cover unter dem Zeiger etwas größer und leuchtet sanft.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Kleiner</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Größer</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Fließender Songtext-Hintergrund</value><comment>Text in SettingsView.axaml</comment></data>
