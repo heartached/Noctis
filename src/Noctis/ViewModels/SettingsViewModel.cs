@@ -2804,6 +2804,9 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Keep played songs in the queue (GitHub #124). Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
 
+    /// <summary>Keep Shuffle On (Discord 11-23): starting new music leaves Shuffle on. Off by default.</summary>
+    [ObservableProperty] private bool _keepShuffleOn;
+
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when it is passed over, instead of staying in it marked. Off by default.</summary>
     [ObservableProperty] private bool _removeMissingFromQueue;
@@ -3958,6 +3961,7 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
+            KeepShuffleOn = _settings.KeepShuffleOn;
             RemoveMissingFromQueue = _settings.RemoveMissingFromQueue;
             var queueRows = QueueRowLayout.FromSettings(_settings);
             QueueRowLine1 = queueRows.Line1.ToString();
@@ -4560,6 +4564,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
+        _settings.KeepShuffleOn = KeepShuffleOn;
         _settings.RemoveMissingFromQueue = RemoveMissingFromQueue;
         var queueRows = CurrentQueueRowLayout;
         _settings.QueueRowLine1 = queueRows.Line1.ToString();
@@ -4788,6 +4793,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
+        _player.KeepShuffleOn = KeepShuffleOn;
         _player.RemoveMissingFromQueue = RemoveMissingFromQueue;
         _player.QueueRowLayout = CurrentQueueRowLayout;
         _player.QueuePanelWidth = QueuePanelWidth;
@@ -7022,6 +7028,13 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnKeepShuffleOnChanged(bool value)
+    {
+        if (_player != null) _player.KeepShuffleOn = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnRemoveMissingFromQueueChanged(bool value)
     {
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
@@ -9042,6 +9055,7 @@ public partial class SettingsViewModel : ViewModelBase
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
+            KeepShuffleOn = defaultSettings.KeepShuffleOn;
             RemoveMissingFromQueue = defaultSettings.RemoveMissingFromQueue;
             QueueRowLine1 = defaultSettings.QueueRowLine1;
             QueueRowLine1Extra = defaultSettings.QueueRowLine1Extra;

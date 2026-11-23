@@ -516,6 +516,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
     <value>Çalınan şarkılar kuyrukta çalan şarkının üstünde kalır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Karıştırmayı Açık Tut</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Karıştırma açıkken bir albüm, çalma listesi veya şarkı çalmak onu açık tutar ve yeni müziği karıştırır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Eksik Şarkılar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Kuyruktaki bir şarkının dosyası yoksa Noctis onu atlar. Ona ne olacağını seç.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Eksik Olarak İşaretle</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

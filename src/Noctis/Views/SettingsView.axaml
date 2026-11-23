@@ -5177,6 +5177,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Discord 11-23: starting new music keeps Shuffle on (PlayerViewModel.KeepShuffleOn). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.KeepShuffleOn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.KeepShuffleOnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.KeepShuffleOn}"
+                                          IsChecked="{Binding KeepShuffleOn}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #154: what a queued song whose file is gone does when playback passes it. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

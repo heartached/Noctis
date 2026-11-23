@@ -518,6 +518,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>When the queue ends, keep playing similar songs.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Keep Played Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue above the one playing.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Keep Shuffle On</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>When Shuffle is on, playing an album, playlist or song keeps it on and shuffles the new music.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>If a queued song's file is gone, Noctis skips it. Choose what happens to it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

@@ -1345,6 +1345,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>تبقى الأغاني التي شُغّلت في قائمة الانتظار فوق الأغنية قيد التشغيل.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>إبقاء التشغيل العشوائي مفعّلًا</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>عندما يكون التشغيل العشوائي مفعّلًا، يبقى مفعّلًا عند تشغيل ألبوم أو قائمة تشغيل أو أغنية، وتُشغَّل الموسيقى الجديدة عشوائيًا.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>الأغاني المفقودة</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>إذا اختفى ملف أغنية في قائمة الانتظار، يتخطاها Noctis. اختر ما يحدث لها.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>وضع علامة «مفقودة»</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

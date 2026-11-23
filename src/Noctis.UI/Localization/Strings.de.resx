@@ -517,6 +517,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Wenn die Warteschlange endet, ähnliche Songs weiterspielen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Gespielte Songs behalten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Gespielte Songs bleiben oben in der Warteschlange, über dem laufenden Song, und der letzte Song bleibt geladen, wenn die Warteschlange endet.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Zufallswiedergabe beibehalten</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Wenn die Zufallswiedergabe an ist, bleibt sie beim Abspielen eines Albums, einer Playlist oder eines Songs an und mischt die neue Musik.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Fehlende Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Wenn die Datei eines angereihten Songs verschoben oder gelöscht wurde, springt die Wiedergabe zum nächsten abspielbaren Song. Wähle, was mit dem fehlenden Song passiert.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Als fehlend markieren</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

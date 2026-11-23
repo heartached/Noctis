@@ -1345,6 +1345,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>재생한 곡이 대기열에서 지금 재생 중인 곡 위에 남습니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>셔플 유지</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>셔플이 켜져 있으면 앨범, 재생목록, 곡을 재생해도 켜진 상태로 새 음악을 섞어서 재생합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>없는 노래</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>대기열에 있는 노래의 파일이 없으면 Noctis가 건너뜁니다. 그 노래를 어떻게 처리할지 선택하세요.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>없음으로 표시</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

@@ -513,6 +513,8 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Cuando la cola termine, sigue reproduciendo canciones similares.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Conservar canciones reproducidas</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Las canciones reproducidas se quedan en la cola, encima de la que suena.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Mantener el modo aleatorio</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Si el modo aleatorio está activado, sigue activado al reproducir un álbum, una lista o una canción, y mezcla la nueva música.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Canciones que faltan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Si el archivo de una canción en cola ya no está, Noctis la salta. Elige qué pasa con ella.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Marcar como no encontrada</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

@@ -323,14 +323,14 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
     {
         var tracks = await FetchAlbumTracksAsync(tile);
         if (tracks.Count > 0)
-            _player.ReplaceQueueAndPlay(tracks.ToList(), 0);
+            _player.PlayAll(tracks.ToList());
     }
 
     [RelayCommand]
     private void PlayAlbumFromDetail()
     {
         if (AlbumTracks.Count > 0)
-            _player.ReplaceQueueAndPlay(AlbumTracks.ToList(), 0);
+            _player.PlayAll(AlbumTracks.ToList());
     }
 
     [RelayCommand]

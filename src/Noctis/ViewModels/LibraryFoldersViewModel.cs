@@ -322,7 +322,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     private void PlayFolder()
     {
         if (SelectedFolderTracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(SelectedFolderTracks.ToList(), 0);
+        _player.PlayAll(SelectedFolderTracks.ToList());
     }
 
     [RelayCommand]
@@ -363,7 +363,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     {
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.PlayAll(tracks);
     }
 
     [RelayCommand]

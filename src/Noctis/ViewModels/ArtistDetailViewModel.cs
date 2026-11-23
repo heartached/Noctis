@@ -1198,7 +1198,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -1228,7 +1228,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         var album = LatestRelease;
         if (album == null || album.Tracks.Count == 0) return;
         var tracks = album.EditionTracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.PlayAll(tracks);
     }
 
     /// <summary>Plays a row: the queue is the list the row came from — favourites when the

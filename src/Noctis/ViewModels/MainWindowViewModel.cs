@@ -1240,7 +1240,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var tracks = await ResolveExternalTracksAsync(paths);
             if (tracks.Count == 0) return;
-            Player.ReplaceQueueAndPlay(tracks, 0);
+            Player.PlayAll(tracks);
         }
         catch (Exception ex)
         {
@@ -1268,7 +1268,7 @@ public partial class MainWindowViewModel : ViewModelBase
             var tracks = await ResolveExternalTracksAsync(files);
             if (tracks.Count == 0) return;
             if (DropStartsPlayback)
-                Player.ReplaceQueueAndPlay(tracks, 0);
+                Player.PlayAll(tracks);
             else if (insertAt is { } requested)
                 Player.InsertIntoQueue(QueueDropIndex(Player.UpNext, before, requested), tracks, announce: false);
             else

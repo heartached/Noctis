@@ -420,6 +420,11 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
     public bool KeepPlayedInQueue { get; set; }
 
+    /// <summary>Keep Shuffle On (Discord 11-23): while Shuffle is on, playing an album, playlist or
+    /// song list keeps it on and shuffles the new music. Off by default (a new list plays in order
+    /// and turns Shuffle off).</summary>
+    public bool KeepShuffleOn { get; set; }
+
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when playback passes over it; off (the default) keeps it there, marked missing.</summary>
     public bool RemoveMissingFromQueue { get; set; }

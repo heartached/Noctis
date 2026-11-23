@@ -513,6 +513,8 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>À la fin de la file d'attente, continue avec des titres similaires.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Garder les titres écoutés</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Les titres écoutés restent dans la file d'attente, au-dessus du titre en cours.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Garder la lecture aléatoire</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Quand la lecture aléatoire est activée, elle le reste en lançant un album, une playlist ou un titre, et mélange la nouvelle musique.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Titres manquants</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Si le fichier d'un titre de la file d'attente a disparu, Noctis le saute. Choisissez ce qu'il en advient.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Marquer comme manquant</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

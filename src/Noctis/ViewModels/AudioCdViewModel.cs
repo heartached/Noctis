@@ -92,7 +92,7 @@ public partial class AudioCdViewModel : ViewModelBase
     private void PlayAll()
     {
         if (Tracks.Count > 0)
-            _player.ReplaceQueueAndPlay(Tracks.ToList(), 0);
+            _player.PlayAll(Tracks.ToList());
     }
 
     [RelayCommand]

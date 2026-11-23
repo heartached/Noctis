@@ -705,7 +705,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.PlayAll(tracks);
     }
 
     /// <summary>The whole playlist in the current sort while a search narrows <see cref="Tracks"/>;

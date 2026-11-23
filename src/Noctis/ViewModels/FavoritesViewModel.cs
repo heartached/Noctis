@@ -283,7 +283,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(allTracks, 0);
+        _player.PlayAll(allTracks);
     }
 
     [RelayCommand]
@@ -371,7 +371,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
+        _player.PlayAll(album.EditionTracks);
     }
 
     [RelayCommand]
@@ -451,7 +451,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
             if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
             var ordered = Helpers.AlbumTile.EditionOrder(album);
             if (ordered.Count == 0) return;
-            _player.ReplaceQueueAndPlay(ordered, 0);
+            _player.PlayAll(ordered);
             return;
         }
         if (item.Track!.IsNowPlaying) _player.PlayPauseCommand.Execute(null);

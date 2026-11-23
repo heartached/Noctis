@@ -1345,6 +1345,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>已播放的歌曲會保留在佇列中目前歌曲的上方。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>保持隨機播放</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>隨機播放開啟時，播放專輯、播放清單或歌曲會保持開啟，並隨機播放新的音樂。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>遺失的歌曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>如果佇列中某首歌曲的檔案已不存在，Noctis 會略過它。選擇如何處理該歌曲。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>標示為遺失</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
