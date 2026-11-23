@@ -1465,6 +1465,11 @@ public class AppSettings : IJsonOnDeserializing
     /// instead of leaving the lyrics half empty. Ships on.</summary>
     public bool LyricsCenterWhenNoLyrics { get; set; } = true;
 
+    /// <summary>The lyrics page follows the sung line again a few seconds after the user
+    /// scrolled away (on, as it always did); off keeps the view where it was scrolled until
+    /// the Follow pill is pressed (11-23 feedback).</summary>
+    public bool LyricsAutoReturnToLine { get; set; } = true;
+
     /// <summary>Discord (f7uh): the lyrics page hides the lyrics and shows the centred player
     /// even when the song has lyrics (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics). The lyrics
     /// stay loaded; only the page's lyrics column goes. Off by default.</summary>

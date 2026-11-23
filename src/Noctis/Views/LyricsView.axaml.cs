@@ -1387,17 +1387,22 @@ public partial class LyricsView : UserControl
 
         vm.IsAutoFollowPaused = true;
 
-        // Auto-resume after 5 seconds
+        // Auto-resume after 5 seconds, unless Settings › Lyrics Page › "Return to the current
+        // line automatically" is off: then only the Follow pill (or a seek) resumes.
         CancelAutoFollowResumeTimer();
+        if (!vm.AutoReturnToCurrentLine) return;
         _autoFollowResumeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _autoFollowResumeTimer.Tick += (_, _) =>
         {
             CancelAutoFollowResumeTimer();
-            if (DataContext is LyricsViewModel v)
+            if (DataContext is LyricsViewModel { AutoReturnToCurrentLine: true } v)
                 v.IsAutoFollowPaused = false;
         };
         _autoFollowResumeTimer.Start();
     }
+
+    /// <summary>Whether a scrolled-away view will return to the sung line by itself (tests).</summary>
+    internal static bool AutoFollowResumePending(LyricsView view) => view._autoFollowResumeTimer != null;
 
     // ── Center-anchored lyrics padding ──
 

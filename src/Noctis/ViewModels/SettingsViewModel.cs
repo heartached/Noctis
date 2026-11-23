@@ -1575,6 +1575,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Plugin API 1.8: the lyrics renderer key ("" = Noctis's own). See <see cref="AppSettings.LyricsRenderer"/>.</summary>
     [ObservableProperty] private string _lyricsRenderer = "";
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>See <see cref="AppSettings.LyricsAutoReturnToLine"/>.</summary>
+    [ObservableProperty] private bool _lyricsAutoReturnToLine = true;
     /// <summary>Discord (f7uh): the lyrics page shows the centred player with its lyrics hidden.</summary>
     [ObservableProperty] private bool _lyricsPageHideLyrics;
 
@@ -3825,6 +3827,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
             LyricsRenderer = _settings.LyricsRenderer ?? "";
             LyricsCenterWhenNoLyrics = _settings.LyricsCenterWhenNoLyrics;
+            LyricsAutoReturnToLine = _settings.LyricsAutoReturnToLine;
             LyricsPageHideLyrics = _settings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = _settings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = LyricsSaveOptions.ParseTarget(_settings.LyricsSaveTarget).ToString();
@@ -4440,6 +4443,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
         _settings.LyricsRenderer = LyricsRenderer ?? "";
         _settings.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
+        _settings.LyricsAutoReturnToLine = LyricsAutoReturnToLine;
         _settings.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _settings.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
         _settings.LyricsSaveTarget = LyricsSaveOptions.ParseTarget(LyricsSaveTarget).ToString();
@@ -6858,6 +6862,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    // The lyrics page reads it through MainWindowViewModel (LyricsViewModel.AutoReturnToCurrentLine).
+    partial void OnLyricsAutoReturnToLineChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLyricsPageHideLyricsChanged(bool value)
     {
         ApplyPlayerSettings();
@@ -8928,6 +8938,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;
             LyricsRenderer = defaultSettings.LyricsRenderer;
             LyricsCenterWhenNoLyrics = defaultSettings.LyricsCenterWhenNoLyrics;
+            LyricsAutoReturnToLine = defaultSettings.LyricsAutoReturnToLine;
             LyricsPageHideLyrics = defaultSettings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = defaultSettings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = defaultSettings.LyricsSaveTarget;

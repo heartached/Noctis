@@ -1131,9 +1131,13 @@
                     </LinearGradientBrush>
                 </Border.OpacityMask>
 
+                <!-- Focus never scrolls the lyrics (11-23 feedback): a focused line (Tab, or
+                     the one the window focuses again on Alt+Tab back) was brought into view,
+                     which read as a user scroll and paused following the sung line. -->
                 <ScrollViewer x:Name="LyricsScrollViewer"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
+                              BringIntoViewOnFocusChange="False"
                               Padding="24,0,48,0">
                     <!-- Scroll content = lyric lines + the Written-By footer, one extent.
                          The ItemsControl stays this panel's FIRST child at Y=0 with no
@@ -1172,8 +1176,11 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:LyricLine">
                                 <!-- Reads its line (UIA read "Avalonia.Controls.StackPanel", 10-13). -->
+                                <!-- Not a Tab stop: Tab goes to the page's controls, not through
+                                     every line of the song (lines still click to seek). -->
                                 <Button Background="Transparent"
                                         Classes="lyric-line-btn"
+                                        IsTabStop="False"
                                         AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                         Classes.active="{Binding IsActive}"
                                         BorderThickness="0"

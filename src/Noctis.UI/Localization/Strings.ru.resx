@@ -468,6 +468,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (плагин выключен)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Центрировать плеер, если у песни нет текста</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Если у песни нет текста или это инструментал, страница текста переносит обложку, сведения о песне и кнопки в центр.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Автоматически возвращаться к текущей строке</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>После прокрутки текст через несколько секунд возвращается к строке, которая сейчас звучит. Выключено: он остаётся там, куда вы его прокрутили, пока вы не нажмёте «Следовать».</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Фон под боковой панелью</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Фон страницы текста (обложка, плавный фон, видео или цвет) доходит до края окна, а боковая панель лежит поверх него.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Волновая форма в полосе прогресса</value><comment>Text in SettingsView.axaml</comment></data>

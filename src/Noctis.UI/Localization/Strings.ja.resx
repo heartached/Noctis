@@ -1226,6 +1226,14 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>歌詞がない曲では、アートワークと操作ボタンを中央に移動します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve">
+    <value>現在の行に自動で戻る</value>
+    <comment>Lyrics Page toggle in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve">
+    <value>歌詞をスクロールしても、数秒後に歌われている行へ戻ります。オフにすると、「追従」を押すまでスクロールした位置のままになります。</value>
+    <comment>Lyrics Page toggle hint in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>サイドバーの背後にも背景を表示</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>歌詞ページの背景をサイドバーの背後まで広げます。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>波形プログレスバー</value><comment>Text in SettingsView.axaml</comment></data>

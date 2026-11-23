@@ -659,6 +659,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isAutoFollowPaused;
 
+    /// <summary>Settings › Lyrics Page › "Return to the current line automatically": a
+    /// scrolled-away view follows the sung line again after a few seconds (on, the default),
+    /// or stays put until Follow is pressed (off). Set by the app from the settings.</summary>
+    public bool AutoReturnToCurrentLine { get; set; } = true;
+
     /// <summary>Name of the lyrics source currently displayed (e.g. "LRCLIB", "NetEase", "Local").</summary>
     [ObservableProperty]
     private string _lyricsSourceName = string.Empty;

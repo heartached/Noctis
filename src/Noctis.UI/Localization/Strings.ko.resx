@@ -1226,6 +1226,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>곡에 가사가 없으면 아트워크와 컨트롤을 가운데로 옮깁니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve">
+    <value>현재 줄로 자동으로 돌아가기</value>
+    <comment>Lyrics Page toggle in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve">
+    <value>가사를 스크롤해도 몇 초 뒤 지금 부르는 줄로 돌아갑니다. 끄면 '따라가기'를 누를 때까지 스크롤한 위치에 머뭅니다.</value>
+    <comment>Lyrics Page toggle hint in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>사이드바 뒤까지 배경 표시</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>가사 배경이 사이드바 뒤까지 이어지게 합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>파형 진행 막대</value><comment>Text in SettingsView.axaml</comment></data>

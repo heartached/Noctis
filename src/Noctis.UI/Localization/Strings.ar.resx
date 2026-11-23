@@ -1226,6 +1226,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>ينقل الغلاف وعناصر التحكم إلى المنتصف عندما لا توجد كلمات للأغنية.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve">
+    <value>العودة إلى السطر الحالي تلقائيًا</value>
+    <comment>Lyrics Page toggle in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve">
+    <value>بعد تمرير الكلمات، تعود إلى السطر الذي يُغنّى بعد بضع ثوانٍ. عند الإيقاف: تبقى حيث مرّرتها حتى تضغط على «متابعة».</value>
+    <comment>Lyrics Page toggle hint in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>الخلفية خلف الشريط الجانبي</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>يجعل خلفية الكلمات تمتد خلف الشريط الجانبي.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>شريط تقدم بشكل موجي</value><comment>Text in SettingsView.axaml</comment></data>

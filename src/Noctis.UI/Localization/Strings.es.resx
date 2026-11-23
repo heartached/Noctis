@@ -463,6 +463,8 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (complemento desactivado)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Centrar el reproductor si la canción no tiene letra</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Mueve la portada y los controles al centro cuando una canción no tiene letra.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Volver a la línea actual automáticamente</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>Después de desplazar la letra, vuelve a la línea que se está cantando a los pocos segundos. Desactivado: se queda donde la dejaste hasta que pulses Seguir.</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Fondo detrás de la barra lateral</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Permite que el fondo de las letras llegue por detrás de la barra lateral.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Barra de progreso con forma de onda</value><comment>Text in SettingsView.axaml</comment></data>

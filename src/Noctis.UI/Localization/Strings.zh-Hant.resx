@@ -1226,6 +1226,14 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>歌曲沒有歌詞時，將封面和控制按鈕移到中間。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve">
+    <value>自動回到目前這一行</value>
+    <comment>Lyrics Page toggle in SettingsView.axaml</comment>
+  </data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve">
+    <value>捲動歌詞後，幾秒鐘後會回到正在演唱的那一行。關閉後，歌詞會停在你捲動到的位置，直到你點按「跟隨」。</value>
+    <comment>Lyrics Page toggle hint in SettingsView.axaml</comment>
+  </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>背景延伸到側邊欄後方</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>讓歌詞背景延伸到側邊欄後方。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>波形進度列</value><comment>Text in SettingsView.axaml</comment></data>
