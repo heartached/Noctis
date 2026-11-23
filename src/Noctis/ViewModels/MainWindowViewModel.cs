@@ -936,6 +936,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up View Artist action on ViewModels that display artist names
         _homeVm.SetViewArtistAction(ViewArtistByName);
         _songsVm.SetViewArtistAction(ViewArtistByName);
+        _songsVm.SetOpenGenreAction(OpenGenre);
         _favoritesVm.SetViewArtistAction(ViewArtistByName);
         _foldersVm.SetViewArtistAction(ViewArtistByName);
         Player.SetViewArtistAction(ViewArtistByName);

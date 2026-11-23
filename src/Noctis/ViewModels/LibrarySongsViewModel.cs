@@ -542,6 +542,22 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
             _viewArtistAction?.Invoke(artistName);
     }
 
+    private Action<string>? _openGenreAction;
+    public void SetOpenGenreAction(Action<string> action) => _openGenreAction = action;
+
+    /// <summary>The Genre cell's link: opens that genre's page, like the album page's genre
+    /// links. The cell shows <see cref="Track.GenreDisplay"/> ("Rock · Pop"); a click on one
+    /// genre passes that genre (ArtistCreditLink), a keyboard press the whole line, which
+    /// opens its first genre.</summary>
+    [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (string.IsNullOrWhiteSpace(genre)) return;
+        var first = genre.Split(" · ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (!string.IsNullOrEmpty(first))
+            _openGenreAction?.Invoke(first);
+    }
+
     // ── Live Plays re-rank (Discord, Andre 10-28) ──
     // Apple Music's way: the Plays cell counts up in place at once (Track.PlayCount is
     // observable), and the row moves to its new rank once its song is over (the next one
