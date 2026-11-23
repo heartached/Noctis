@@ -33,6 +33,12 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(_selectedAlbums);
 
+    /// <summary>A drag from a selected album carries every selected album, in grid order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        TrackSelection.DragSelection(payload, _selectedAlbums, _vm?.CarouselAlbums) is { } albums
+            ? TrackSelection.FromAlbums(albums)
+            : null;
+
     public LibraryAlbumsView()
     {
         InitializeComponent();
@@ -98,6 +104,9 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = album;
 
+        // A plain press on a tile of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, album, _selectedAlbums, e, ClearSelection))
+            return;
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)

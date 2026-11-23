@@ -28,6 +28,10 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
 
+    /// <summary>A drag from a selected row carries the selection, in album order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        TrackSelection.DragSelection(payload, _selectedTracks, (DataContext as AlbumDetailViewModel)?.Tracks);
+
     // One shared track menu for the whole page, bound to a row on open — the
     // per-row XAML menus (context menu + 3-dot flyout, ~35 items and ~14 bitmap
     // decodes per row) were the dominant cost of realizing this non-virtualized
@@ -134,6 +138,9 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = track;
 
+        // A plain press on a row of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, track, _selectedTracks, e, ClearTrackSelection))
+            return;
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
         if (_selectedTracks.Count > 0)
             Focus();

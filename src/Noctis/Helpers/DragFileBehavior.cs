@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Noctis.Models;
 
 namespace Noctis.Helpers;
@@ -11,7 +12,7 @@ namespace Noctis.Helpers;
 /// <summary>
 /// Attached behavior that enables dragging audio files out of the application.
 /// Set helpers:DragFileBehavior.EnableFileDrag="True" on any control whose
-/// DataContext is a <see cref="Track"/> or <see cref="Album"/>.
+/// DataContext is a <see cref="Track"/>, <see cref="Album"/> or <see cref="FavoriteItem"/>.
 /// The same drag carries the <see cref="Track"/> objects under <see cref="TracksFormat"/>
 /// so in-app drop targets (the sidebar playlists) can accept it, and a sidebar playlist
 /// row starts a playlist-only drag (<see cref="PlaylistFormat"/>) for reorder / move.
@@ -52,6 +53,7 @@ public static class DragFileBehavior
     public static DragPreview? BuildPreview(object? dataContext, IReadOnlyList<Track> tracks)
     {
         if (tracks.Count == 0) return null;
+        dataContext = Unwrap(dataContext);
         if (dataContext is Album album)
             return new DragPreview(
                 album.Name,
@@ -83,7 +85,35 @@ public static class DragFileBehavior
     /// <summary>The object a drag from <paramref name="ctl"/> carries: its DragItem, else its DataContext.</summary>
     internal static object? PayloadOf(Control ctl) => GetDragItem(ctl) ?? ctl.DataContext;
 
+    /// <summary>
+    /// The tracks a drag from <paramref name="ctl"/> carries. When the dragged item is part of a
+    /// multi-selection on its page (an <see cref="ITrackSelectionSource"/> above it), the whole
+    /// selection rides along in list order, as the context menu acts on it; otherwise just the
+    /// item (Discord 11-23: several selected songs dropped on a playlist added only the one
+    /// grabbed).
+    /// </summary>
+    internal static List<Track>? TracksForDrag(Control ctl, object? payload)
+    {
+        for (var v = ctl.GetVisualParent(); v != null; v = v.GetVisualParent())
+        {
+            if (v is not ITrackSelectionSource source) continue;
+            if (source.GetDragSelection(ctl, payload) is { Count: > 0 } selection)
+            {
+                var tracks = new List<Track>(selection.Count);
+                foreach (var t in selection)
+                    if (!string.IsNullOrEmpty(t.FilePath)) tracks.Add(t);
+                return tracks;
+            }
+            break;
+        }
+        return GetTracks(payload);
+    }
+
     private static readonly ConditionalWeakTable<Control, DragState> _states = new();
+
+    /// <summary>Counts the drags begun (a press moved past <see cref="DragThreshold"/>), so a
+    /// view can tell a press that became a drag from a click (MultiSelectHelper).</summary>
+    internal static int DragCount { get; private set; }
 
     static DragFileBehavior()
     {
@@ -138,6 +168,7 @@ public static class DragFileBehavior
             return;
 
         state.Started = true;
+        DragCount++;
 
         var topLevel = TopLevel.GetTopLevel(ctl);
         if (topLevel == null) return;
@@ -145,7 +176,7 @@ public static class DragFileBehavior
         try
         {
             var payload = PayloadOf(ctl);
-            var tracks = GetTracks(payload);
+            var tracks = TracksForDrag(ctl, payload);
             if (tracks == null || tracks.Count == 0) return;
 
             var items = new List<IStorageItem>();
@@ -242,9 +273,12 @@ public static class DragFileBehavior
     private static string? ReadToken(IDataTransfer data, DataFormat<string> format)
         => data.TryGetValue(format);
 
+    /// <summary>A Favorites tile's <see cref="FavoriteItem"/> stands for its album or song.</summary>
+    private static object? Unwrap(object? dc) => dc is FavoriteItem f ? f.Album ?? (object?)f.Track : dc;
+
     internal static List<Track>? GetTracks(object? dc)
     {
-        return dc switch
+        return Unwrap(dc) switch
         {
             Track t when !string.IsNullOrEmpty(t.FilePath) => new List<Track> { t },
             TopSongRow r when !string.IsNullOrEmpty(r.Track.FilePath) => new List<Track> { r.Track },
