@@ -197,6 +197,88 @@ public class MobileLyricsCompositorGlideTests
         }
     }
 
+    /// <summary>A line's button (the visual its opacity and blur are on).</summary>
+    private static Button LineButton(Rig rig, int index) =>
+        Row(rig, index).GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line"));
+
+    /// <summary>The render thread's opacity of a line (what is on screen).</summary>
+    private static double ShownOpacity(Rig rig, int index)
+    {
+        var visual = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(LineButton(rig, index))!;
+        var server = typeof(Avalonia.Rendering.Composition.CompositionVisual)
+            .GetProperty("Server", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!
+            .GetValue(visual)!;
+        var serverVisual = typeof(Avalonia.Rendering.Composition.CompositionVisual).Assembly
+            .GetType("Avalonia.Rendering.Composition.Server.ServerCompositionVisual")!;
+        return (float)serverVisual.GetProperty("Opacity")!.GetValue(server)!;
+    }
+
+    /// <summary>
+    /// A line's dimming fades on the compositor (LineFade): the line's Opacity changes once, at
+    /// once, and the render thread eases what is shown over the old transition's 0.5 s on its
+    /// curve. The blur steps through three radii over the old 0.4 s (one effect change each)
+    /// instead of a new effect on every frame. A row shown afresh takes both at once.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task TheLineFade_RunsOnTheCompositor_AndTheBlurSteps()
+    {
+        var rig = await Open();
+        try
+        {
+            var line = rig.Shell.Lyrics.Lines[14];
+            var button = LineButton(rig, 14);
+            line.LineOpacity = 0.9;
+            line.BlurRadius = 0;
+            var settle = Stopwatch.StartNew();
+            RunUntil(rig, settle, 700);
+            Assert.Equal(0.9, ShownOpacity(rig, 14), 3);
+            Assert.Null(button.Effect);
+
+            var opacityChanges = 0;
+            var effects = new List<double>();
+            button.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == Visual.OpacityProperty) opacityChanges++;
+                else if (e.Property == Visual.EffectProperty) effects.Add((e.NewValue as Avalonia.Media.IBlurEffect)?.Radius ?? 0);
+            };
+            var clock = Stopwatch.StartNew();
+            line.LineOpacity = 0.3;
+            line.BlurRadius = 6;
+            Assert.Equal(0.3, button.Opacity, 3);                 // the UI side at once
+            Frames(rig, 1);
+            RunUntil(rig, clock, 250);
+            var t = clock.Elapsed.TotalMilliseconds;
+            var shown = ShownOpacity(rig, 14);
+            var ease = new Avalonia.Animation.Easings.CubicEaseInOut();
+            _o.WriteLine($"at {t:0} ms: shown opacity {shown:0.000}");
+            // On the curve, a frame of slack for the render thread's start.
+            Assert.InRange(shown, 0.9 - 0.6 * ease.Ease(Math.Min(1, t / 500)) - 0.01, 0.9 - 0.6 * ease.Ease(Math.Max(0, (t - 40) / 500)) + 0.01);
+            RunUntil(rig, clock, 650);
+            Assert.Equal(0.3, ShownOpacity(rig, 14), 3);
+            Assert.Equal(1, opacityChanges);
+
+            _o.WriteLine($"blur radii shown: {string.Join(", ", effects.Select(r => r.ToString("0.0")))}");
+            var blurEase = new Avalonia.Animation.Easings.CubicEaseOut();
+            Assert.Equal(new[] { Math.Round(6 * blurEase.Ease(1 / 3.0), 1), Math.Round(6 * blurEase.Ease(2 / 3.0), 1), 6.0 }, effects.Select(r => Math.Round(r, 1)));
+
+            // Far away and back: a row handed another line shows that line's look at once.
+            rig.Page.ScrollToLine(45, animate: false);
+            Frames(rig, 3);
+            rig.Page.ScrollToLine(10, animate: false);
+            Frames(rig, 2);
+            foreach (var i in new[] { 11, 12, 13 })
+            {
+                var l = rig.Shell.Lyrics.Lines[i];
+                Assert.Equal(l.LineOpacity, ShownOpacity(rig, i), 3);
+                Assert.Equal(l.BlurRadius, (LineButton(rig, i).Effect as Avalonia.Media.IBlurEffect)?.Radius ?? 0, 1);
+            }
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
     /// <summary>A jump longer than the realised buffer (a seek far off) still glides, frame by
     /// frame as before, and lands.</summary>
     [AvaloniaFact]
