@@ -891,7 +891,7 @@ public class MobileLyricsPageTests
         Assert.Contains("lyric-line", line.Classes);
         foreach (var b in new[] { line, plain }) b.Transitions = null;   // transitions are frame-driven
         window.UpdateLayout();
-        var resting = line.RenderTransform?.Value ?? Matrix.Identity;   // 0.96 before the first line
+        var resting = line.RenderTransform?.Value ?? Matrix.Identity;   // none: its size is LineScale's
         var presenter = line.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
         presenter.Transitions = null;
         var plainPresenter = plain.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");

@@ -222,6 +222,68 @@ public class MobileLyricsCompositorGlideTests
         }
     }
 
+    /// <summary>The render thread's scale of a line's button (what is on screen).</summary>
+    private static double ShownScale(Rig rig, int index)
+    {
+        var button = Row(rig, index).GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line"));
+        var visual = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(button)!;
+        var server = typeof(Avalonia.Rendering.Composition.CompositionVisual)
+            .GetProperty("Server", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!
+            .GetValue(visual)!;
+        var serverVisual = typeof(Avalonia.Rendering.Composition.CompositionVisual).Assembly
+            .GetType("Avalonia.Rendering.Composition.Server.ServerCompositionVisual")!;
+        return ((Vector3D)serverVisual.GetProperty("Scale")!.GetValue(server)!).X;
+    }
+
+    /// <summary>The sung line grows to full size and the line it leaves shrinks back to 0.96 on
+    /// the line curve over the glide's second, on the compositor (LineScale); a row handed
+    /// another line shows that line's size at once.</summary>
+    [AvaloniaFact]
+    public async Task TheSungLine_GrowsOnTheCurve_OnTheCompositor()
+    {
+        var rig = await Open();
+        try
+        {
+            var lines = rig.Shell.Lyrics.Lines;
+            lines[11].IsActive = true;
+            Frames(rig, 3);
+            var clock = Stopwatch.StartNew();
+            RunUntil(rig, clock, 1100);
+            Assert.Equal(1, ShownScale(rig, 11), 3);
+            Assert.Equal(0.96, ShownScale(rig, 12), 3);
+
+            clock.Restart();
+            lines[11].IsActive = false;
+            lines[12].IsActive = true;
+            Frames(rig, 1);
+            RunUntil(rig, clock, 100);
+            var t = clock.Elapsed.TotalMilliseconds;
+            var grow = ShownScale(rig, 12);
+            var shrink = ShownScale(rig, 11);
+            _o.WriteLine($"at {t:0} ms: growing {grow:0.0000}, shrinking {shrink:0.0000}");
+            Assert.InRange(grow, 0.9605, 0.9995);
+            Assert.InRange(shrink, 0.9605, 0.9995);
+            // On the curve (the render thread's clock starts with its next frame: a frame of slack).
+            Assert.InRange(grow, 0.96 + 0.04 * LineMotion.Ease((t - 40) / LineMotion.DurationMs) - 0.002,
+                0.96 + 0.04 * LineMotion.Ease(t / LineMotion.DurationMs) + 0.002);
+            RunUntil(rig, clock, 1100);
+            Assert.Equal(1, ShownScale(rig, 12), 3);
+            Assert.Equal(0.96, ShownScale(rig, 11), 3);
+
+            // Far away and back: the rows realised for other lines show their own size at once.
+            rig.Page.ScrollToLine(45, animate: false);
+            Frames(rig, 3);
+            rig.Page.ScrollToLine(10, animate: false);
+            Frames(rig, 2);
+            Assert.Equal(1, ShownScale(rig, 12), 3);
+            Assert.Equal(0.96, ShownScale(rig, 13), 3);
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
     /// <summary>
     /// Three line-to-line glides, each followed by 170 frames at 120 Hz (the glide and its
     /// cascade, as on the S23), counted with the render: frame by frame, then on the compositor.
