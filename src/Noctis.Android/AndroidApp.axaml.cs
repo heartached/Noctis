@@ -176,6 +176,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             ArtistLogos = ArtistLogoKeys.FromAssembly(typeof(AndroidApp).Assembly) is { IsEmpty: false } logoKeys
                 ? ArtistLogoSource.Create(persistence.DataDirectory, new HttpClient(), library, logoKeys)
                 : null,
+            // Now Playing's animated covers (Settings › Appearance › Animated Covers): cover.mp4
+            // beside the phone's own songs, else the computer's loop, saved under the app's cache
+            // folder (300 MB, least recently shown first; Android's Clear cache empties it).
+            AnimatedCoverSource = CreateAnimatedCoverSource(context, account),
         };
         _shell = shell;
         // A fast word is one search, not one per letter (SearchPageViewModel.TypingDebounce).
@@ -235,6 +239,24 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         _ = StartAsync(persistence, library, history);
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private static AnimatedCoverSource? CreateAnimatedCoverSource(Context context, INoctisAccountService? account)
+    {
+        try
+        {
+            // The video view the cover's NativeControlHost shows (a muted ExoPlayer of its own).
+            Noctis.Mobile.Views.AnimatedCoverView.SurfaceFactory = () => new AndroidAnimatedCoverSurface(context);
+            var folders = new SafTrackFileAccess(context);
+            var cache = new AnimatedCoverCache(Path.Combine(context.CacheDir!.AbsolutePath, "animated_covers"));
+            return AnimatedCoverSource.ForAccount(cache, () => AndroidNetwork.IsUnmetered(context), account,
+                t => folders.FindSibling(t.FilePath, AnimatedCoverLocator.SidecarNames));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("AnimatedCover", $"Animated covers unavailable: {ex.GetType().Name}");
+            return null;
+        }
     }
 
     /// <summary>

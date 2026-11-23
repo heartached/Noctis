@@ -3594,6 +3594,10 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Kapak</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Plak</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.AnimatedCovers" xml:space="preserve"><value>Hareketli Kapaklar</value></data>
+  <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Kapalı</value></data>
+  <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Yalnızca Wi-Fi</value></data>
+  <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Her Zaman</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Şimdi Çalıyor Arka Planı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Şimdi Çalıyor arka plan parlaklığı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Şimdi Çalıyor ekranının arkasında daha koyu ya da açık renkler</value></data>

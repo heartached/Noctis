@@ -940,6 +940,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(AnimatedCovers))) AnimatedCovers = AnimatedCoversSettings.Parse(settings.MobileAnimatedCovers);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ReduceGlass))) ReduceGlass = settings.MobileReduceGlass;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
@@ -975,6 +976,7 @@ public sealed partial class ShellViewModel : ObservableObject
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
+        var animatedCovers = AnimatedCovers.ToString();
         var brightness = NowPlayingBrightness;
         var background = NowPlayingBackground.ToString();
         int blur = NowPlayingBlur, dim = NowPlayingDim;
@@ -995,6 +997,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileArtworkPageColors = pages;
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
+                    settings.MobileAnimatedCovers = animatedCovers;
                     settings.MobileNowPlayingBrightness = brightness;
                     settings.MobileNowPlayingBackground = background;
                     settings.MobileNowPlayingBlur = blur;
