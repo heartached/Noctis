@@ -183,6 +183,108 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>Counts the compositor's render passes that reach it (a custom draw op runs on every pass
+    /// that draws its spot).</summary>
+    private sealed class RenderCounter : Control
+    {
+        private readonly Op _op = new();
+        public int Passes => _op.Passes;
+        public override void Render(DrawingContext context) => context.Custom(_op);
+        private sealed class Op : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
+        {
+            private int _passes;
+            public int Passes => Volatile.Read(ref _passes);
+            public Rect Bounds => new(0, 0, 50, 50);
+            public bool HitTest(Point p) => false;
+            public bool Equals(Avalonia.Rendering.SceneGraph.ICustomDrawOperation? other) => ReferenceEquals(this, other);
+            public void Dispose() { }
+            public void Render(ImmediateDrawingContext context) => Interlocked.Increment(ref _passes);
+        }
+    }
+
+    /// <summary>S23 11-22: back from Lyrics to Now Playing the render thread stayed at 55%, playback
+    /// stopped. A keep-alive animation the page never got to stop redraws the screen on every vsync,
+    /// and a hidden parent does not stop that (its children still mark their spot changed). The
+    /// keep-alive's pulse now ends by itself: nothing has to stop it.</summary>
+    [AvaloniaFact]
+    public void KeepAlivePulse_EndsByItself_EvenUnderAHiddenPage()
+    {
+        var counter = new RenderCounter { Width = 50, Height = 50, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var keepAlive = new RenderKeepAlive { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var page = new Panel { Children = { keepAlive } };
+        var window = new Window { Width = 200, Height = 200, Content = new Panel { Children = { counter, page } } };
+        window.Show();
+        void Ticks(int n, int sleepMs = 0)
+        {
+            for (var i = 0; i < n; i++)
+            {
+                if (sleepMs > 0) Thread.Sleep(sleepMs);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            }
+        }
+        Ticks(5);
+        var before = counter.Passes;
+        Ticks(5);
+        Assert.Equal(before, counter.Passes);              // a still screen draws nothing
+
+        keepAlive.Run(true);                               // one pulse, never stopped
+        Ticks(2);
+        before = counter.Passes;
+        Ticks(5, sleepMs: 10);
+        Assert.True(counter.Passes - before >= 5, $"{counter.Passes - before} passes in 5 vsyncs");   // a frame on every vsync while it runs
+
+        page.IsVisible = false;                            // the page goes, nobody calls Run(false)
+        Ticks(3, sleepMs: 10);
+        Assert.True(counter.Passes > before + 5, "still drawing under the hidden page within the tail");
+        Thread.Sleep((int)RenderKeepAlive.Tail.TotalMilliseconds + 100);
+        Ticks(3);
+        before = counter.Passes;
+        Ticks(5, sleepMs: 10);
+        Assert.Equal(before, counter.Passes);              // the pulse ran out: the screen is still again
+        window.Close();
+    }
+
+    /// <summary>S23 11-22: Lyrics, then back to Now Playing with the lyrics button: the page's frame
+    /// loop and keep-alive must stop with the page, playing or not.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ClosingTheLyrics_StopsTheFrameLoopAndTheKeepAlive(bool stopPlaybackFirst)
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(2.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        Motion.FinishAll();
+        shell.ToggleLyricsCommand.Execute(null);
+        Motion.FinishAll();
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var keepAlive = page.FindControl<RenderKeepAlive>("KeepAlive")!;
+        void Frames(int n)
+        {
+            for (var i = 0; i < n; i++) { AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); }
+        }
+        Frames(3);
+        Assert.True(keepAlive.IsRunning && page.IsFrameLoopRunning);
+
+        if (stopPlaybackFirst) shell.Player.TogglePlayPauseCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);           // Now Playing's (or the page's) lyrics button
+        Motion.FinishAll();
+        Assert.False(page.IsVisible);
+        Assert.False(keepAlive.IsRunning);                 // at once with the page
+        Frames(2);
+        Assert.False(page.IsFrameLoopRunning);
+        Assert.False(keepAlive.IsRunning);
+        Assert.True(shell.IsNowPlayingOpen);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>Home, task switch or screen off with the lyrics open and playing: the frame loop and
     /// the render keep-alive stop (they kept the render loop ticking in the background: battery),
     /// and start again when the app is back in front.</summary>

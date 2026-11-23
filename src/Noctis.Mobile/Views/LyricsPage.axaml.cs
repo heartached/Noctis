@@ -143,6 +143,9 @@ public partial class LyricsPage : UserControl
         FeedTimeline();
         if (!IsVisible)
         {
+            // The keep-alive stops asking now (the frame loop ends at its next frame): its frames
+            // redraw the screen even under a hidden page.
+            KeepAlive?.Run(false);
             EndBrowse(scrollBack: false);
             _controlsTimer.Stop();
             _controlsOffTimer.Stop();
@@ -493,7 +496,10 @@ public partial class LyricsPage : UserControl
 
     // Not while the app is in the background (home, task switch, screen off): the frame loop and
     // the keep-alive kept the render loop ticking there for as long as the song played.
-    private bool KeepsFrames => IsVisible && !_heldForMenu && _shell is not { IsSuspended: true }
+    /// <summary>The page's frame loop is running (tests read it).</summary>
+    internal bool IsFrameLoopRunning => _frameLoopRunning;
+
+    private bool KeepsFrames =>IsVisible && !_heldForMenu && _shell is not { IsSuspended: true }
                                 && (_gliding || _lyrics?.WantsFrames == true);
 
     private void EnsureFrameLoop()
