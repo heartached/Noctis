@@ -139,4 +139,26 @@ public class MobileHiddenTimelineTests
         Assert.Equal("00:14", Named<TextBlock>(lyrics, "ElapsedText").Text);
         window.Close();
     }
+
+    /// <summary>Now Playing on screen: a position tick feeds the seek bar and the labels. The seek
+    /// bar read Position.TotalSeconds (a new boxed TimeSpan source and property reader per tick)
+    /// and every binding formatted both labels again on every tick: 5738 B a tick before, 5460
+    /// after (11-23, headless, with layout and the UI's render pass; most of the rest is the
+    /// labels laid out again once a second and the seek bar's drawing).</summary>
+    [AvaloniaFact]
+    public void NowPlayingShown_ATickCostsLittle()
+    {
+        var (shell, player, view, window) = Mount();
+        shell.OpenNowPlayingCommand.Execute(null);
+        Settle(window);
+        var nowPlaying = view.GetLogicalDescendants().OfType<NowPlayingPage>().Single();
+        Assert.True(nowPlaying.IsVisible);
+        BytesPerTick(player, 10, 2);   // warm-up
+        var perTick = BytesPerTick(player, 20, 8);
+        _o.WriteLine($"Now Playing showing: {perTick} B a position tick");
+        Assert.True(perTick < 5600, $"{perTick} B a tick");
+        Assert.Equal(28, Named<CapsuleSlider>(nowPlaying, "SeekBar").Value);
+        Assert.Equal("00:28", Named<TextBlock>(nowPlaying, "ElapsedText").Text);
+        window.Close();
+    }
 }
