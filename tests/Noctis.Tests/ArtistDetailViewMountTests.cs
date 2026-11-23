@@ -83,7 +83,7 @@ public class ArtistDetailViewMountTests
         var overviewTexts = overview.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
         Assert.Contains("Live Albums", overviewTexts);
         Assert.Contains("Compilations", overviewTexts);
-        Assert.Contains("Live Album · 2003", overviewTexts);
+        Assert.Contains("Live Album · 2003 · 12 songs", overviewTexts);
 
         vm.SelectTabCommand.Execute("live");
         Dispatcher.UIThread.RunJobs();
@@ -193,9 +193,10 @@ public class ArtistDetailViewMountTests
         Assert.Equal(ArtistDetailViewModel.MaxPopular * 2, rows.Sum(r => r.GetVisualDescendants().OfType<Button>().Count()) ); // no other inner buttons
         // Year under the title (the reference's "2017"), not the album name.
         Assert.Contains("2019", texts);
-        // Tile captions read "Album · 2019" (title case), the kicker form stays upper-case.
-        Assert.Contains("Album · 2019", texts);
-        Assert.Contains("Single · 2022", texts);
+        // Tile captions read "Album · 2019" (title case), the kicker form stays upper-case,
+        // and end with the song count (GitHub #258).
+        Assert.Contains("Album · 2019 · 12 songs", texts);
+        Assert.Contains("Single · 2022 · 1 song", texts);
 
         // The playing song's row takes the accent fill: play the #1 song through the
         // player, the shared Track's IsNowPlaying flips, the row's class follows.
