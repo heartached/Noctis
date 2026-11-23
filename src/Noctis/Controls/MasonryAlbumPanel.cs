@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Models;
@@ -29,6 +32,15 @@ namespace Noctis.Controls;
 /// measured height still differs (an explicit badge or heart changed the wrap) replaces its
 /// estimate and the stack is re-placed, which is O(n) over plain arrays: each title's line
 /// count is laid out once and kept (GitHub #241).
+///
+/// Titles are laid out only as far down as the realized band reaches (a card's place depends
+/// only on the cards before it); the rest of the stack takes an average estimate and is laid
+/// out in short idle-time slices. Laying out every title up front, twice, cost ~1.2 s on the
+/// UI thread when Masonry was switched on for 5000 albums (GitHub #259).
+///
+/// Also hosts the Genre page's albums (under its Songs section), the artist page's release
+/// tabs and Home's album sections (GitHub #259); an observable <see cref="Albums"/> list is
+/// followed as it fills.
 /// </summary>
 public sealed class MasonryAlbumPanel : Panel
 {
@@ -49,6 +61,13 @@ public sealed class MasonryAlbumPanel : Panel
     public static readonly StyledProperty<double> SpacingProperty =
         AvaloniaProperty.Register<MasonryAlbumPanel, double>(nameof(Spacing));
 
+    /// <summary>Realize every card, not only those near the viewport: for short lists whose host
+    /// tracks the selection by tile (Home's album sections), where a recycled tile would carry
+    /// another album's selection.</summary>
+    public static readonly StyledProperty<bool> RealizeAllProperty =
+        AvaloniaProperty.Register<MasonryAlbumPanel, bool>(nameof(RealizeAll));
+
+    public bool RealizeAll { get => GetValue(RealizeAllProperty); set => SetValue(RealizeAllProperty, value); }
     public double Spacing { get => GetValue(SpacingProperty); set => SetValue(SpacingProperty, value); }
     public IReadOnlyList<Album>? Albums { get => GetValue(AlbumsProperty); set => SetValue(AlbumsProperty, value); }
     public IDataTemplate? ItemTemplate { get => GetValue(ItemTemplateProperty); set => SetValue(ItemTemplateProperty, value); }
@@ -68,6 +87,10 @@ public sealed class MasonryAlbumPanel : Panel
     private int[] _column = Array.Empty<int>();
     private double[] _top = Array.Empty<double>();
     private byte[] _lines = Array.Empty<byte>(); // title line count per card; 0 = not laid out yet
+    private int _laidOut;       // every title before this index has its line count
+    private int _twoLineTitles; // of those, how many wrap to two lines
+    private bool _fillPosted, _estimatesStale;
+    private INotifyCollectionChanged? _observed;
     private double _total;
     private double _width;
     private int _columns = 1;
@@ -91,7 +114,7 @@ public sealed class MasonryAlbumPanel : Panel
         {
             _viewport = e.EffectiveViewport;
             // Re-measure only when the visible band leaves the realized one.
-            if (_viewport.Top < _bandTop || _viewport.Bottom > _bandBottom)
+            if (!RealizeAll && (_viewport.Top < _bandTop || _viewport.Bottom > _bandBottom))
                 InvalidateMeasure();
         };
     }
@@ -130,8 +153,12 @@ public sealed class MasonryAlbumPanel : Panel
         if (change.Property == AlbumsProperty)
         {
             _items = Albums ?? (IReadOnlyList<Album>)Array.Empty<Album>();
-            RecycleAll();
-            _dirty = true;
+            if (VisualRoot != null) Observe(_items);
+            ResetItems();
+        }
+        else if (change.Property == RealizeAllProperty)
+        {
+            _bandBottom = -1;
             InvalidateMeasure();
         }
         else if (change.Property == ColumnsProperty || change.Property == ArtworkSizeProperty || change.Property == SpacingProperty)
@@ -151,6 +178,58 @@ public sealed class MasonryAlbumPanel : Panel
         }
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // The list may have changed while the panel was out of the tree.
+        Observe(_items);
+        ResetItems();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        Observe(null);
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    /// <summary>Follows an observable list (the artist page's tabs stream in, Home's sections
+    /// refill); subscribed only while in the tree, so a view model that outlives the view does
+    /// not hold the panel.</summary>
+    private void Observe(IReadOnlyList<Album>? items)
+    {
+        if (_observed != null) _observed.CollectionChanged -= OnItemsChanged;
+        _observed = items as INotifyCollectionChanged;
+        if (_observed != null) _observed.CollectionChanged += OnItemsChanged;
+    }
+
+    private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        // Albums appended at the end leave every placed card and laid-out title as it was.
+        if (e.Action == NotifyCollectionChangedAction.Add && e.NewItems != null
+            && e.NewStartingIndex + e.NewItems.Count == _items.Count)
+        {
+            _dirty = true;
+            InvalidateMeasure();
+            return;
+        }
+        ResetItems();
+    }
+
+    private void ResetItems()
+    {
+        RecycleAll();
+        ClearLines();
+        _dirty = true;
+        InvalidateMeasure();
+    }
+
+    private void ClearLines()
+    {
+        Array.Clear(_lines);
+        _laidOut = 0;
+        _twoLineTitles = 0;
+    }
+
     private void RecycleAll()
     {
         foreach (var c in _realized.Values) Park(c);
@@ -166,16 +245,92 @@ public sealed class MasonryAlbumPanel : Panel
 
     private double CellWidth => _width / _columns;
 
-    /// <summary>Card height before it is ever realized.</summary>
+    /// <summary>Card height before it is ever realized: by its title's line count once that is
+    /// laid out, else by the share of two-line titles laid out so far.</summary>
     private double Estimate(int index)
     {
-        var lines = TitleLines(index);
-        if (lines <= 1 && !double.IsNaN(_oneLine)) return _oneLine;
-        if (lines >= 2 && !double.IsNaN(_twoLine)) return _twoLine;
+        double lines = _lines[index];
+        if (lines == 0)
+            lines = _laidOut > 0 ? 1 + (double)_twoLineTitles / _laidOut : 1.25;
+        if (!double.IsNaN(_oneLine) && !double.IsNaN(_twoLine)) return _oneLine + (lines - 1) * (_twoLine - _oneLine);
         if (!double.IsNaN(_oneLine)) return _oneLine + (lines - 1) * 17;
         if (!double.IsNaN(_twoLine)) return _twoLine - (2 - lines) * 17;
         // Nothing realized yet: cover + tile chrome + title lines + subtitle.
         return ArtworkSize + 18 + 5 + lines * 17 + 1 + 16;
+    }
+
+    /// <summary>Titles laid out with a TextLayout so far (tests pin the cost by it).</summary>
+    internal int TitleLayoutCount { get; private set; }
+
+    private bool CanLayOutTitles => _titleFace != null && !double.IsNaN(_titleWidth);
+
+    /// <summary>Lays out the titles of cards [<see cref="_laidOut"/>, <paramref name="end"/>).</summary>
+    private void LayOutTitles(int end)
+    {
+        if (!CanLayOutTitles) return;
+        end = Math.Min(end, _items.Count);
+        for (; _laidOut < end; _laidOut++)
+            if (TitleLines(_laidOut) >= 2) _twoLineTitles++;
+    }
+
+    /// <summary>
+    /// Every card that starts above <paramref name="bottom"/> gets its real title line count,
+    /// re-placing the stack until that holds. Cards are placed in index order, so the ones
+    /// further down never move these.
+    /// </summary>
+    private void LayOutTitlesThrough(double bottom)
+    {
+        if (!CanLayOutTitles) return;
+        for (var guard = 0; guard < 16 && _laidOut < _items.Count; guard++)
+        {
+            var last = LastCardAbove(bottom);
+            if (last < _laidOut) return;
+            LayOutTitles(last + 1 + _columns);
+            Reestimate();
+        }
+    }
+
+    /// <summary>The highest index whose card starts above <paramref name="bottom"/>, scanning
+    /// from the first card whose title is not laid out yet (-1 when none).</summary>
+    private int LastCardAbove(double bottom)
+    {
+        var last = -1;
+        var passed = 0;
+        Span<bool> done = _columns <= 64 ? stackalloc bool[_columns] : new bool[_columns];
+        done.Clear();
+        for (var i = _laidOut; i < _items.Count && passed < _columns; i++)
+        {
+            if (_top[i] < bottom) { last = i; continue; }
+            if (!done[_column[i]]) { done[_column[i]] = true; passed++; }
+        }
+        return last;
+    }
+
+    /// <summary>Unmeasured cards take the current estimates; the stack is re-placed.</summary>
+    private void Reestimate()
+    {
+        for (var i = 0; i < _items.Count; i++)
+            if (!_measured[i]) _heights[i] = Estimate(i) + Spacing;
+        Place();
+    }
+
+    /// <summary>The rest of the titles, a few milliseconds at a time with frames between, so
+    /// the scroll extent settles and a jump down the list finds them laid out. A timer rather
+    /// than a chained idle post, which ran back to back with only the layout in between.</summary>
+    private void PostTitleFill()
+    {
+        if (_fillPosted || RealizeAll || _laidOut >= _items.Count || !CanLayOutTitles) return;
+        _fillPosted = true;
+        DispatcherTimer.RunOnce(() =>
+        {
+            _fillPosted = false;
+            if (VisualRoot == null || _dirty || !CanLayOutTitles || _laidOut >= _items.Count) return;
+            var sw = Stopwatch.StartNew();
+            while (_laidOut < _items.Count && sw.ElapsedMilliseconds < 8)
+                LayOutTitles(_laidOut + 8);
+            _estimatesStale = true;
+            InvalidateMeasure();
+        }, TimeSpan.FromMilliseconds(16), DispatcherPriority.Background);
     }
 
     /// <summary>Title line count of card <paramref name="index"/>, laid out once per title
@@ -185,7 +340,9 @@ public sealed class MasonryAlbumPanel : Panel
     {
         if (_lines[index] != 0) return _lines[index];
         var title = _items[index].Name;
-        if (_titleFace is not { } face || double.IsNaN(_titleWidth) || string.IsNullOrEmpty(title)) return 1;
+        if (_titleFace is not { } face || double.IsNaN(_titleWidth)) return 1;
+        if (string.IsNullOrEmpty(title)) return _lines[index] = 1;
+        TitleLayoutCount++;
         using var layout = new TextLayout(title, face, _titleSize, null, TextAlignment.Left,
             TextWrapping.Wrap, TextTrimming.CharacterEllipsis, maxWidth: _titleWidth, maxLines: 2);
         var lines = (byte)Math.Clamp(layout.TextLines.Count, 1, 2);
@@ -202,10 +359,13 @@ public sealed class MasonryAlbumPanel : Panel
             _measured = new bool[n];
             _column = new int[n];
             _top = new double[n];
-            _lines = new byte[n];
+            // Appended albums keep the titles laid out before them (a new list or a new title
+            // width has cleared them already).
+            Array.Resize(ref _lines, n);
+            _laidOut = Math.Min(_laidOut, n);
         }
-        // New albums or a new width: titles wrap afresh.
-        Array.Clear(_lines);
+        // Line counts stay: they change only with the albums (ResetItems) or the title's width
+        // (Learn). Clearing them here laid every title out again on each width change (#259).
         for (var i = 0; i < n; i++)
         {
             _heights[i] = Estimate(i) + Spacing;
@@ -229,6 +389,8 @@ public sealed class MasonryAlbumPanel : Panel
             _titleWidthExact = false; // a wider cell re-wraps titles: re-learn from the next plain card
         }
         if (_dirty) Replace();
+        else if (_estimatesStale) Reestimate();
+        _estimatesStale = false;
         if (_width <= 0 || _items.Count == 0)
         {
             RecycleAll();
@@ -238,11 +400,12 @@ public sealed class MasonryAlbumPanel : Panel
         // The band to realize: the visible part plus a buffer. Before the first viewport
         // report, assume the top of the stack.
         var vp = _viewport.Height > 0 ? _viewport : new Rect(0, 0, _width, 1000);
-        var from = Math.Max(0, vp.Top - Buffer);
-        var to = vp.Bottom + Buffer;
+        var from = RealizeAll ? 0 : Math.Max(0, vp.Top - Buffer);
+        var to = RealizeAll ? double.PositiveInfinity : vp.Bottom + Buffer;
 
         for (var pass = 0; pass < 3; pass++)
         {
+            LayOutTitlesThrough(to);
             MasonryLayout.Visible(_heights, _column, _top, _columns, from, to, _visible);
             var keep = new HashSet<int>(_visible);
             var gone = new List<int>();
@@ -276,13 +439,12 @@ public sealed class MasonryAlbumPanel : Panel
             if (!changed) break;
             // Real heights moved cards below them: re-place and re-check the band. Unmeasured
             // cards take the freshly learned heights too.
-            for (var i = 0; i < _items.Count; i++)
-                if (!_measured[i]) _heights[i] = Estimate(i) + Spacing;
-            Place();
+            Reestimate();
         }
 
         _bandTop = from;
         _bandBottom = to;
+        PostTitleFill();
         return new Size(_width, _total);
     }
 
@@ -325,7 +487,7 @@ public sealed class MasonryAlbumPanel : Panel
                         && double.IsFinite(box.Width))
                     {
                         var width = Math.Max(1, box.Width - tb.Margin.Left - tb.Margin.Right - tb.Padding.Left - tb.Padding.Right);
-                        if (Math.Abs(width - _titleWidth) > 0.01 || double.IsNaN(_titleWidth)) Array.Clear(_lines);
+                        if (Math.Abs(width - _titleWidth) > 0.01 || double.IsNaN(_titleWidth)) ClearLines();
                         _titleWidth = width;
                         _titleWidthExact = true;
                     }
