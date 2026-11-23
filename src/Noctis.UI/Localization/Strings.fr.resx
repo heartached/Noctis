@@ -4126,6 +4126,10 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Enregistré. Choisissez Noctis dans Paramètres → Applications → Applications par défaut, ou faites un clic droit sur un titre → Ouvrir avec.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Impossible de mettre à jour les types de fichiers : {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Regroupement des artistes…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Séparateurs du tag genre</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Divise un tag genre en plusieurs : un morceau marqué « Rock, Pop » apparaît dans Rock et dans Pop. Le point-virgule sépare toujours. Vos fichiers ne sont pas modifiés.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Ajoutez un séparateur, par ex. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Regroupement des genres…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Restauration des crédits d’artiste d’origine…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Impossible de mettre à jour les crédits d’artiste.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Les crédits d’artiste sont déjà à jour.</value><comment>Settings status line</comment></data>

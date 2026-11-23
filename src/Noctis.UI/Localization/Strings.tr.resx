@@ -4180,6 +4180,10 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Kaydedildi. Ayarlar → Uygulamalar → Varsayılan uygulamalar altından Noctis’i seç ya da bir şarkıya sağ tıkla → Birlikte aç.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Dosya türleri güncellenemedi: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Sanatçılar yeniden gruplanıyor…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Tür Etiketi Ayırıcıları</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Bir tür etiketini birkaç türe böler; "Rock, Pop" etiketli bir şarkı hem Rock hem Pop altında görünür. Noktalı virgül her zaman böler. Dosyaların değiştirilmez.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Bir ayırıcı ekle, örn. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Türler yeniden gruplanıyor…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Orijinal sanatçı bilgileri geri yükleniyor…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Sanatçı bilgileri güncellenemedi.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Sanatçı bilgileri zaten güncel.</value><comment>Settings status line</comment></data>

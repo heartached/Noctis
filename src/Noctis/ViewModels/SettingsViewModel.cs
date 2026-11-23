@@ -2690,6 +2690,13 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Text of the "add separator" box on the Library tab.</summary>
     [ObservableProperty] private string _newArtistSeparator = string.Empty;
 
+    /// <summary>GitHub #260: separators that split a genre tag into several genres, on top of
+    /// ';' (always on, so not listed). Edited as chips; every change regroups at once.</summary>
+    public ObservableCollection<string> GenreTagSeparators { get; } = new(GenreSeparators.Defaults);
+
+    /// <summary>Text of the "add genre separator" box on the Library tab.</summary>
+    [ObservableProperty] private string _newGenreSeparator = string.Empty;
+
     /// <summary>"Keep these names together": names the separators never cut apart
     /// ("Tyler, The Creator"). Edited as chips. Starts on the built-ins so a regroup that
     /// runs before settings load (the mode or separators arriving first) keeps them.</summary>
@@ -3930,6 +3937,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(_settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+            ReplaceGenreTagSeparators(_settings.GenreTagSeparators ?? GenreSeparators.Defaults.ToList());
             IgnoreLeadingWordsInArtistSort = _settings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(_settings.ArtistSortIgnoredWords);
 
@@ -4539,6 +4547,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
         _settings.ArtistProtectedNames = ArtistProtectedNames.ToList();
+        _settings.GenreTagSeparators = GenreTagSeparators.ToList();
         _settings.IgnoreLeadingWordsInArtistSort = IgnoreLeadingWordsInArtistSort;
         _settings.ArtistSortIgnoredWords = ArtistSortIgnoredWords.ToList();
         _settings.LrcLibEnabled = LrcLibEnabled;
@@ -5976,6 +5985,69 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void ResetArtistSeparators() => ReplaceArtistTagSeparators(ArtistCredit.DefaultSeparators);
+
+    // ── Genre separators (GitHub #260) ──
+
+    /// <summary>Swaps the genre separator chips with one regroup at the end.</summary>
+    private void ReplaceGenreTagSeparators(IEnumerable<string>? separators)
+    {
+        var normalized = GenreSeparators.Normalize(separators);
+        if (normalized.SequenceEqual(GenreTagSeparators, StringComparer.Ordinal))
+        {
+            ApplyGenreSeparators(); // the process-wide list may still differ (settings load)
+            return;
+        }
+        GenreTagSeparators.Clear();
+        foreach (var s in normalized)
+            GenreTagSeparators.Add(s);
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void AddGenreSeparator()
+    {
+        var value = NewGenreSeparator?.Trim() ?? string.Empty;
+        NewGenreSeparator = string.Empty;
+        if (!GenreSeparators.IsAddable(value, GenreTagSeparators)) return;
+        GenreTagSeparators.Add(value);
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void RemoveGenreSeparator(string separator)
+    {
+        // Unlike the artist separators an empty list is fine: ';' still splits.
+        if (!GenreTagSeparators.Remove(separator)) return;
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void ResetGenreSeparators() => ReplaceGenreTagSeparators(GenreSeparators.Defaults);
+
+    /// <summary>
+    /// Pushes the genre separators into the process-wide splitter. They apply when genres are
+    /// read (no rescan, files untouched), so a change only needs the library indexes rebuilt
+    /// (every genre list listens to LibraryUpdated) and the visible genre lines raised.
+    /// </summary>
+    private void ApplyGenreSeparators()
+    {
+        var before = GenreSeparators.Version;
+        GenreSeparators.Configure(GenreTagSeparators);
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        if (GenreSeparators.Version == before) return;
+        _library.NotifyMetadataChanged();
+        NotifyGenreLines();
+        SetScanStatus(Loc.T("Settings.RegroupingGenres"), autoClear: true);
+    }
+
+    private void NotifyGenreLines()
+    {
+        var seen = new HashSet<Track>(ReferenceEqualityComparer.Instance);
+        foreach (var track in _library.AllTracks)
+            if (seen.Add(track)) track.NotifyGenreDisplayChanged();
+        if (_player?.CurrentTrack is { } current && seen.Add(current)) current.NotifyGenreDisplayChanged();
+    }
 
     /// <summary>Swaps the "keep together" chips with one regroup at the end.</summary>
     private void ReplaceArtistProtectedNames(IEnumerable<string>? names)
@@ -8788,6 +8860,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(defaultSettings.ArtistProtectedNames);
+            ReplaceGenreTagSeparators(defaultSettings.GenreTagSeparators);
             IgnoreLeadingWordsInArtistSort = defaultSettings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(defaultSettings.ArtistSortIgnoredWords);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;

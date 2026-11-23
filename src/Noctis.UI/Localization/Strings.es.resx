@@ -4126,6 +4126,10 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registrado. Elige Noctis en Configuración → Aplicaciones → Aplicaciones predeterminadas, o haz clic derecho en una canción → Abrir con.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>No se pudieron actualizar los tipos de archivo: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Reagrupando artistas…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Separadores de la etiqueta de género</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Divide una etiqueta de género en varios, así una canción con «Rock, Pop» aparece en Rock y en Pop. El punto y coma siempre separa. Tus archivos no se modifican.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Añade un separador, p. ej. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Reagrupando géneros…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Restaurando los créditos de artista originales…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>No se pudieron actualizar los créditos de artista.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Los créditos de artista ya están al día.</value><comment>Settings status line</comment></data>

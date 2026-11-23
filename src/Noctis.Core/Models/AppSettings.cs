@@ -1146,6 +1146,12 @@ public class AppSettings : IJsonOnDeserializing
     /// built-ins (ArtistCredit.DefaultProtectedNames); an emptied list stays empty.</summary>
     public List<string> ArtistProtectedNames { get; set; } = ArtistCredit.DefaultProtectedNames.ToList();
 
+    /// <summary>GitHub #260: separators that split one genre tag into several genres ("Rock, Pop"),
+    /// on top of ';', which always splits. Read-time only (grouping and display); files keep their
+    /// genre text. Settings saved before the list existed load GenreSeparators.Defaults (","); an
+    /// emptied list stays empty.</summary>
+    public List<string> GenreTagSeparators { get; set; } = GenreSeparators.Defaults.ToList();
+
     /// <summary>The join (ArtistCredit.JoinText) the indexed artist credits were read with —
     /// multi-value artist tags are joined with it. Every build before GitHub #117 used ", ".
     /// When the active join differs, LibraryService.ApplyArtistCreditJoinAsync re-reads the
