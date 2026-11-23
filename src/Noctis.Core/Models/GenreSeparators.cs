@@ -20,6 +20,11 @@ public static class GenreSeparators
     /// </summary>
     public static readonly IReadOnlyList<string> Defaults = new[] { "," };
 
+    /// <summary>Genre names that hold a separator but are one genre: Discogs' top-level
+    /// "Folk, World, &amp; Country" (MusicBrainz Picard and Discogs taggers write it as is).
+    /// Never split, whatever the separators.</summary>
+    private static readonly string[] Whole = { "Folk, World, & Country" };
+
     private static readonly object Gate = new();
     private static Splitter _current = new(Normalize(Defaults));
     private static int _version;
@@ -141,8 +146,41 @@ public static class GenreSeparators
         }
 
         /// <summary>Position and length of the first separator in <paramref name="text"/>
-        /// (the longest one when several start there), or -1.</summary>
+        /// (the longest one when several start there) outside a <see cref="Whole"/> name, or -1.</summary>
         public int IndexOf(ReadOnlySpan<char> text, out int length)
+        {
+            var offset = 0;
+            while (true)
+            {
+                var i = RawIndexOf(text[offset..], out length);
+                if (i < 0) return -1;
+                i += offset;
+                var end = WholeNameEnd(text, i);
+                if (end < 0) return i;
+                offset = end;
+            }
+        }
+
+        /// <summary>End of the <see cref="Whole"/> name covering <paramref name="at"/>, or -1.</summary>
+        private static int WholeNameEnd(ReadOnlySpan<char> text, int at)
+        {
+            foreach (var name in Whole)
+            {
+                var from = 0;
+                while (from <= at)
+                {
+                    var i = text[from..].IndexOf(name.AsSpan(), StringComparison.OrdinalIgnoreCase);
+                    if (i < 0) break;
+                    i += from;
+                    if (i > at) break;
+                    if (at < i + name.Length) return i + name.Length;
+                    from = i + 1;
+                }
+            }
+            return -1;
+        }
+
+        private int RawIndexOf(ReadOnlySpan<char> text, out int length)
         {
             if (_chars != null)
             {

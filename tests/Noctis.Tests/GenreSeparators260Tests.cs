@@ -49,6 +49,19 @@ public class GenreSeparators260Tests : IDisposable
     }
 
     [Fact]
+    public void DiscogsGenreWithCommas_StaysWhole()
+    {
+        // Discogs' top-level genre "Folk, World, & Country" is one genre, not three.
+        Assert.Equal(new[] { "Folk, World, & Country" }, Track.SplitGenres("Folk, World, & Country"));
+        Assert.Equal(new[] { "Rock", "folk, world, & country", "Pop" },
+            Track.SplitGenres("Rock,folk, world, & country, Pop"));
+        Assert.True(Track.SharesGenre(new[] { "Folk, World, & Country" }, "Rock; Folk, World, & Country"));
+        Assert.False(Track.SharesGenre(new[] { "World" }, "Folk, World, & Country"));
+        GenreSeparators.Configure(new[] { ",", "&" });
+        Assert.Equal(new[] { "Folk, World, & Country", "R", "B" }, Track.SplitGenres("Folk, World, & Country, R&B"));
+    }
+
+    [Fact]
     public void CommaSeparatedGenre_SplitsIntoSeparateGenres()
     {
         Assert.Equal(new[] { "Rock", "Pop", "Indie" }, Track.SplitGenres("Rock, Pop,Indie"));
