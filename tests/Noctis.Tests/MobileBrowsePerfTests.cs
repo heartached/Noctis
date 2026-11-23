@@ -297,6 +297,76 @@ public class MobileBrowsePerfTests
         Assert.Equal(vm.TopSongPages[^1].Rows, rows);
         window.Close();
     }
+
+    /// <summary>
+    /// The Playlists page with 300 playlists: a plain list, so every row was built (and every
+    /// cover loaded) as it opened, and every refresh (a heart, a download landing) asked the file
+    /// system whether each playlist's own cover still exists. Rows now virtualise, and a cover
+    /// file's check is kept until the playlists or a cover change.
+    /// </summary>
+    [AvaloniaFact]
+    public void PlaylistsPage_With300Playlists_BuildsTheRowsOnScreen_AndRefreshesWithoutTheFileChecks()
+    {
+        var songs = Enumerable.Range(0, 200).Select(i =>
+        {
+            var t = MobileFixtures.Song($"Song {i}");
+            t.AlbumArtworkPath = $"/covers/{i}.jpg";
+            return t;
+        }).ToArray();
+        var covers = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"noctis-covers-{Guid.NewGuid():N}");
+        System.IO.Directory.CreateDirectory(covers);
+        try
+        {
+            var playlists = Enumerable.Range(0, 300).Select(i =>
+            {
+                var p = new Noctis.Models.Playlist { Name = $"Mix {i:000}" };
+                p.TrackIds.AddRange(songs.Skip(i % 180).Take(20).Select(t => t.Id));
+                p.CoverArtPath = System.IO.Path.Combine(covers, $"{i}.jpg");
+                if (i % 2 == 0) System.IO.File.WriteAllBytes(p.CoverArtPath, new byte[] { 1 });   // half have their own cover
+                return p;
+            }).ToList();
+            using var rig = MobileFixtures.MakeRig(songs, null, async p =>
+            {
+                var s = await p.LoadSettingsAsync();
+                s.MusicFolders.Add("content://tree/music");
+                await p.SaveSettingsAsync(s);
+                await p.SavePlaylistsAsync(playlists);
+            });
+            var window = MobileFixtures.Mount(rig.Shell, out var view);
+            var start = Stopwatch.GetTimestamp();
+            rig.Shell.OpenPlaylistsCommand.Execute(null);
+            MobileFixtures.Land(window);
+            Dispatcher.UIThread.RunJobs();
+            var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
+            var vm = Assert.IsType<PlaylistListPageViewModel>(rig.Shell.CurrentPage);
+            Assert.Equal(300, vm.Rows.Count);
+            var page = MobileFixtures.Find<PlaylistListPage>(view);
+            var rows = page.GetVisualDescendants().OfType<Button>().Count(b => b.Classes.Contains("row"));
+
+            rig.Library.NotifyFavoritesChanged();   // warm-up
+            var times = new List<double>();
+            for (var i = 0; i < 10; i++)
+            {
+                var at = Stopwatch.GetTimestamp();
+                vm.Refresh();
+                times.Add(Stopwatch.GetElapsedTime(at).TotalMilliseconds);
+            }
+            times.Sort();
+            _out.WriteLine($"playlists page, 300 playlists: {rows} rows built, {ms:F0} ms to open, median refresh {times[5]:F2} ms");
+            Assert.True(times[5] < 12, $"{times[5]:F1} ms a refresh");
+            // Before: 300 rows built, 1,642 ms to open, 20.0 ms a refresh; after: 11, 259 ms, 4.2 ms.
+            Assert.InRange(rows, 8, 30);
+
+            // A custom cover still shows; one whose file is gone falls back to the first song's.
+            Assert.Equal(playlists[0].CoverArtPath, vm.Rows.First(r => r.Playlist.Name == "Mix 000").ArtworkPath);
+            Assert.Equal(songs[1].AlbumArtworkPath, vm.Rows.First(r => r.Playlist.Name == "Mix 001").ArtworkPath);
+            window.Close();
+        }
+        finally
+        {
+            try { System.IO.Directory.Delete(covers, recursive: true); } catch (System.IO.IOException) { }
+        }
+    }
 }
 
 /// <summary>
