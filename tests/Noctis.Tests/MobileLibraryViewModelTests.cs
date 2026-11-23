@@ -453,10 +453,13 @@ public class MobileLibraryViewModelTests : IDisposable
 
     /// <summary>On the phone the sort runs on the pool: the refresh on the UI thread only reads
     /// the counts, and the sorted songs come back as a separate step. Updates while it sorts are
-    /// one sort more, of the library as it is then.</summary>
+    /// one sort more, of the library as it is then. Each sort waits for the test to let it go: a
+    /// pool that sorted the two songs before the test sent its update (a loaded machine) made the
+    /// update land after the sort instead of during it.</summary>
     [Fact]
     public async Task SortOffUiThread_SwapsTheSortedSongsInAsALaterStep()
     {
+        using var gate = new SemaphoreSlim(0);
         var library = new FakeLibraryService();
         var b = new Track { Title = "B" };
         var a = new Track { Title = "A" };
@@ -465,6 +468,7 @@ public class MobileLibraryViewModelTests : IDisposable
         var vm = new LibraryViewModel(library, new PersistenceService(_root), new ScriptedPicker(), marshal: posted.Add)
         {
             SortOffUiThread = true,
+            SortGate = gate,
         };
         var refreshed = 0;
         vm.Refreshed += (_, _) => refreshed++;
@@ -486,11 +490,13 @@ public class MobileLibraryViewModelTests : IDisposable
         library.RaiseLibraryUpdated();
         Drain();                         // mid-sort: noted, not sorted again yet
 
+        gate.Release();
         await vm.PendingSort;
         Drain();                         // the first sort lands, the second starts
         Assert.Equal(new[] { a, b }, vm.Songs);
         Assert.Equal(1, refreshed);
 
+        gate.Release();
         await vm.PendingSort;
         Drain();
         Assert.Equal(new[] { a, b, c }, vm.Songs);
