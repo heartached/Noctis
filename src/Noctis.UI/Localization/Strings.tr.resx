@@ -4330,6 +4330,9 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} şarkı seçildi</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>"{0}" dosyasına etiketler yazılamadı. Dosya başka bir uygulamada açık ya da salt okunur olabilir — orada kapat veya dosyayı kontrol et, sonra tekrar dene.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>{0} dosyaya etiketler yazılamadı (ör. "{1}"). Dosyalar başka bir uygulamada açık ya da salt okunur olabilir — orada kapat veya dosyaları kontrol et, sonra tekrar dene.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>Değişiklikler kaydediliyor…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>Değişiklikler kaydedildi.</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>Değişiklikler kaydedilemedi: {0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>1 albüm için hareketli kapak bul</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>{0:N0} albüm için hareketli kapak bul</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>Aranacak albüm yok.</value><comment>Find animated artwork in bulk dialog</comment></data>

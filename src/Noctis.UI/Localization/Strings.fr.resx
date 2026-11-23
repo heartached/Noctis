@@ -4276,6 +4276,9 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} titres sélectionnés</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>Impossible d'écrire les tags dans « {0} ». Une autre app a peut-être ouvert le fichier, ou il est en lecture seule — fermez-le ou vérifiez le fichier, puis réessayez.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>Impossible d'écrire les tags dans {0} fichiers (p. ex. « {1} »). Une autre app les a peut-être ouverts, ou ils sont en lecture seule — fermez-les ou vérifiez les fichiers, puis réessayez.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>Enregistrement des modifications…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>Modifications enregistrées.</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>Impossible d’enregistrer les modifications : {0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>Trouver une pochette animée pour 1 album</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>Trouver des pochettes animées pour {0:N0} albums</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>Aucun album à rechercher.</value><comment>Find animated artwork in bulk dialog</comment></data>

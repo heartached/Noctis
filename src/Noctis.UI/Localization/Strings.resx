@@ -4285,6 +4285,9 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} songs selected</value><comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>Couldn't write tags to "{0}". Another app may have the file open, or it may be read-only — close it there or check the file, then try again.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>Couldn't write tags to {0} files (e.g. "{1}"). Another app may have them open, or they may be read-only — close them there or check the files, then try again.</value><comment>Metadata window. Plural forms, see Mobile.Count.Songs.</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>Saving your changes…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>Changes saved.</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>Couldn't save the changes: {0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>Find animated artwork for 1 album</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>Find animated artwork for {0:N0} albums</value><comment>Find animated artwork in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>No albums to look up.</value><comment>Find animated artwork in bulk dialog</comment></data>

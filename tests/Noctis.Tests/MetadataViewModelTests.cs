@@ -305,10 +305,12 @@ public class MetadataViewModelTests
 
     // A cover write that fails (the playing file LibVLC holds, a read-only file) used to be
     // ignored: the dialog closed as saved and the failed track was stamped with the new
-    // cover's fingerprint, so the old cover came back on its next re-read.
+    // cover's fingerprint, so the old cover came back on its next re-read. Save closes the
+    // window at once now (Discord 11-23); the failure is reported (SaveErrorMessage, shown
+    // in the notice pill) and the failed track keeps its fingerprint.
 
     [Fact]
-    public async Task AddArtwork_FailedWrite_KeepsDialogOpenAndTrackFingerprint()
+    public async Task AddArtwork_FailedWrite_ReportsTheFileAndKeepsTrackFingerprint()
     {
         var tracks = Album("A", "X", 3);
         foreach (var t in tracks) t.ArtworkHash = "OLD";
@@ -323,7 +325,7 @@ public class MetadataViewModelTests
         SetNewArtwork(vm, art);
         await vm.SaveCommand.ExecuteAsync(null);
 
-        Assert.False(closed);
+        Assert.True(closed);
         Assert.Contains(Path.GetFileName(tracks[1].FilePath), vm.SaveErrorMessage);
         Assert.Equal("OLD", tracks[1].ArtworkHash);
         Assert.Equal(TrackArtwork.Fingerprint(art), tracks[0].ArtworkHash);
@@ -331,7 +333,7 @@ public class MetadataViewModelTests
     }
 
     [Fact]
-    public async Task RemoveArtwork_FailedWrite_KeepsDialogOpenAndTrackFingerprint()
+    public async Task RemoveArtwork_FailedWrite_ReportsTheFileAndKeepsTrackFingerprint()
     {
         var tracks = Album("A", "X", 2);
         foreach (var t in tracks) t.ArtworkHash = "OLD";
@@ -345,7 +347,7 @@ public class MetadataViewModelTests
         vm.RemoveArtworkCommand.Execute(null);
         await vm.SaveCommand.ExecuteAsync(null);
 
-        Assert.False(closed);
+        Assert.True(closed);
         Assert.Contains(Path.GetFileName(tracks[0].FilePath), vm.SaveErrorMessage);
         Assert.Equal("OLD", tracks[0].ArtworkHash);
         Assert.Null(tracks[1].ArtworkHash);
