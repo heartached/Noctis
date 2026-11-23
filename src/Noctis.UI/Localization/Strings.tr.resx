@@ -318,6 +318,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Karıştır'ın ardından bir EQ açma/kapama düğmesi.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Çalma süresi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Parça kutusunda geçerli parçanın geçen ve kalan süresi. Bunun yerine toplam uzunluğu göstermek için süreye tıklayın.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Ses Kaydırıcısını Her Zaman Göster</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ses kaydırıcısı açılır pencere yerine Ses düğmesinin yanında durur. Sesi kapatmak için düğmeye tıklayın. Dar bir ada yine açılır pencereyi kullanır.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Dalga formlu ilerleme çubuğu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Şarkının dalga formunu ilerleme çubuğunda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Parça Kutusu Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>

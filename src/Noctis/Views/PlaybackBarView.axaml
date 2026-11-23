@@ -388,6 +388,11 @@
         <Style Selector="Grid#VolumePill.muted TextBlock#VolumeReadout">
             <Setter Property="Opacity" Value="0.45"/>
         </Style>
+        <!-- On the island (always-on slider) the pill is the slider alone: the level shows in
+             the fill, and the readout's width stays out of the island's budget. -->
+        <Style Selector="Canvas#InlineVolumeCanvas TextBlock#VolumeReadout">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
 
         <!-- Seek slider (horizontal) -->
         <Style Selector="Slider.seek-slider">
@@ -1875,6 +1880,23 @@
                                 </Viewbox>
                             </Panel>
                         </Button>
+
+                        <!-- Always-on volume slider (Settings › Player Island › Always Show Volume
+                             Slider, Discord 11-23). While it is on (and the island is not in its
+                             compact shape) code-behind moves the pop-up's VolumePill in here
+                             (UpdateInlineVolume) and the speaker button only mutes. The Width
+                             slides 0 ↔ InlineVolumeWidth, clipped; the Canvas keeps the pill at its
+                             own size meanwhile, so the slider never re-lays out per frame. The -5
+                             margin cancels the row's 5px spacing, so at width 0 it takes no room. -->
+                        <Border x:Name="InlineVolumeHost"
+                                Width="0"
+                                Height="22"
+                                Margin="-5,0,0,0"
+                                VerticalAlignment="Center"
+                                ClipToBounds="True"
+                                IsVisible="False">
+                            <Canvas x:Name="InlineVolumeCanvas"/>
+                        </Border>
 
                         <!-- Overlay-layer hosted: a native popup window is always-on-top and
                              would float over other apps; the overlay keeps the flyout inside

@@ -1367,6 +1367,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>The island time's lower line shows the total length instead of the time left
     /// (a click on the time swaps it, Discord 11-23).</summary>
     [ObservableProperty] private bool _playbackBarTimeShowsTotal;
+    /// <summary>Always show the volume slider on the island (Discord 11-23). Off by default.</summary>
+    [ObservableProperty] private bool _playbackBarInlineVolume;
     /// <summary>GitHub #93: waveform in the island / mini player seek bars (off by default).</summary>
     [ObservableProperty] private bool _waveformSeekBarEnabled;
     /// <summary>GitHub #181: waveform in the lyrics page's progress bar (off by default).</summary>
@@ -3807,6 +3809,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
             PlaybackBarTimeShowsTotal = _settings.PlaybackBarTimeShowsTotal;
+            PlaybackBarInlineVolume = _settings.PlaybackBarInlineVolume;
             WaveformSeekBarEnabled = _settings.WaveformSeekBarEnabled;
             LyricsWaveformSeekBarEnabled = _settings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
@@ -4433,6 +4436,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
         _settings.PlaybackBarTimeShowsTotal = PlaybackBarTimeShowsTotal;
+        _settings.PlaybackBarInlineVolume = PlaybackBarInlineVolume;
         _settings.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _settings.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
@@ -4841,6 +4845,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
         _player.IslandTimeShowsTotal = PlaybackBarTimeShowsTotal;
+        _player.IslandInlineVolume = PlaybackBarInlineVolume;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -6475,6 +6480,12 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     partial void OnPlaybackBarShowTimeChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarInlineVolumeChanged(bool value)
     {
         ApplyPlayerSettings();
         if (_settingsLoaded) _ = SaveAsync();
@@ -8935,6 +8946,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
             PlaybackBarTimeShowsTotal = defaultSettings.PlaybackBarTimeShowsTotal;
+            PlaybackBarInlineVolume = defaultSettings.PlaybackBarInlineVolume;
             WaveformSeekBarEnabled = defaultSettings.WaveformSeekBarEnabled;
             LyricsWaveformSeekBarEnabled = defaultSettings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;

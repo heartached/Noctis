@@ -871,6 +871,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>在隨機播放後加入一個 EQ 開關按鈕。</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>播放時間</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>在曲目框中顯示目前曲目的已播放時間和剩餘時間。點擊時間可改為顯示總長度。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>永遠顯示音量滑桿</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>音量滑桿顯示在音量按鈕旁邊，而不是彈出。點擊按鈕可靜音。播放島較窄時仍使用彈出視窗。</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>波形進度列</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>在進度列中顯示歌曲的波形。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">

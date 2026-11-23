@@ -871,6 +871,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>シャッフルの後ろにイコライザーのオン/オフボタンを表示します。</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>再生時間</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>トラック表示欄に、再生中の曲の経過時間と残り時間を表示します。時間をクリックすると、代わりに全体の長さを表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>音量スライダーを常に表示</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>音量スライダーをポップアップではなく音量ボタンの横に表示します。ボタンをクリックするとミュートします。幅の狭いアイランドではポップアップを使います。</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>波形シークバー</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>シークバーに曲の波形を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">

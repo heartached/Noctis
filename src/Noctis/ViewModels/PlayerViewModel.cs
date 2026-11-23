@@ -474,6 +474,9 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// <summary>The island time's lower line: the song's total length instead of the time left
     /// (Discord 11-23). Driven by Settings; <see cref="ToggleIslandTimeDisplay"/> flips it.</summary>
     [ObservableProperty] private bool _islandTimeShowsTotal;
+    /// <summary>The island shows its volume slider inline beside the Volume button instead of
+    /// the pop-up (Settings › Player Island, Discord 11-23); the button then mutes on click.</summary>
+    [ObservableProperty] private bool _islandInlineVolume;
 
     /// <summary>A click on the island's time swaps its lower line between time left and total
     /// length. Goes through Settings when attached, which saves it and pushes it back here.</summary>

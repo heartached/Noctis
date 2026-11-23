@@ -321,6 +321,8 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Un bouton d'activation de l'égaliseur après Aléatoire.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Temps de lecture</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Temps écoulé et restant du titre en cours dans le cadre du titre. Cliquez sur le temps pour afficher la durée totale à la place.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Toujours afficher le curseur de volume</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Le curseur de volume reste à côté du bouton Volume au lieu de s'ouvrir dans une bulle. Cliquez sur le bouton pour couper le son. Un îlot étroit utilise toujours la bulle.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Barre de progression en forme d'onde</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Affiche la forme d'onde du titre dans la barre de progression.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Opacité du cadre du titre</value><comment>Text in SettingsView.axaml</comment></data>

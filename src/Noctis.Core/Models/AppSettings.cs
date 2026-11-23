@@ -1034,6 +1034,10 @@ public class AppSettings : IJsonOnDeserializing
     /// left ("-2:41", the default) and the song's total length ("4:05").</summary>
     public bool PlaybackBarTimeShowsTotal { get; set; }
 
+    /// <summary>Discord 11-23: the island shows a small volume slider next to its Volume button
+    /// all the time instead of popping one up (the button then mutes on click). Off by default.</summary>
+    public bool PlaybackBarInlineVolume { get; set; }
+
     /// <summary>GitHub #93: the island and mini player seek bars draw the track's waveform
     /// (decoded in the background with ffmpeg, cached under cache/waveforms). Off by
     /// default — when off nothing is decoded and the plain seek line stays.</summary>

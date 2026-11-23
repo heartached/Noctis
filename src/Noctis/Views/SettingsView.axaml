@@ -3716,6 +3716,17 @@
                                               IsChecked="{Binding PlaybackBarShowTime}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Discord 11-23: the volume slider stays on the island (PlaybackBarView.UpdateInlineVolume). -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.InlineVolumeSlider}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.InlineVolumeSliderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.InlineVolumeSlider}"
+                                              IsChecked="{Binding PlaybackBarInlineVolume}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
             <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->

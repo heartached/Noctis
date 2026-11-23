@@ -425,6 +425,13 @@ public partial class PlaybackBarView : UserControl
             UpdateIslandWidth();
         }
 
+        if (e.PropertyName == nameof(PlayerViewModel.IslandInlineVolume))
+        {
+            // The stock-width island grows (or shrinks) by the slider's room in step with it.
+            AnimateNextIslandWidth();
+            UpdateIslandWidth();
+        }
+
         if (e.PropertyName == nameof(PlayerViewModel.State))
         {
             ScheduleTrackTitleMarqueeUpdate();
@@ -1240,6 +1247,7 @@ public partial class PlaybackBarView : UserControl
         vm.UnmuteForAdjust();
         vm.Volume = Math.Clamp(vm.Volume + delta, 0, 100);
         vm.CommitVolume();
+        if (_volumeInline) return; // the island's own slider already shows the level
         if (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null) OpenVolumeFlyout();
     }
 
@@ -1484,7 +1492,8 @@ public partial class PlaybackBarView : UserControl
         // First click opens the popup without muting; subsequent clicks while it's open
         // toggle mute and keep the popup visible so the user can keep adjusting.
         // A click during the close animation (still IsOpen, but fading out) re-opens it.
-        if (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null)
+        // With the slider on the island there is no pop-up: a click mutes / unmutes.
+        if (!_volumeInline && (!VolumeFlyout.IsOpen || _volumeFlyoutExitTimer != null))
         {
             OpenVolumeFlyout();
             return;
@@ -1663,6 +1672,118 @@ public partial class PlaybackBarView : UserControl
         _volumeFlyoutCloseTimer = null;
     }
 
+    // ── Always-on volume slider (Settings › Player Island, Discord 11-23) ──
+    // The pop-up's VolumePill moves onto the island (InlineVolumeHost) instead of a second copy:
+    // one slider, one set of drag / wheel / mute-look handlers. The compact shape (and the
+    // lyrics page's fixed pill) have no room for it and keep the pop-up.
+
+    /// <summary>Room the inline slider adds to the island: 3 + the 64px track + 5 (the pill's
+    /// inline margins; its readout is hidden there). The host's -5 margin cancels the row
+    /// spacing, so this is all it adds.</summary>
+    private const double InlineVolumeWidth = 72;
+    private static readonly Thickness PopupVolumePillMargin = new(9, 0, 7, 0);
+    private static readonly Thickness InlineVolumePillMargin = new(3, 0, 5, 0);
+    private static readonly TimeSpan InlineVolumeSlideDuration = TimeSpan.FromMilliseconds(280);
+    private static readonly Avalonia.Animation.Easings.Easing InlineVolumeEase = new CubicBezierEase(0.22, 1, 0.36, 1);
+    private bool _volumeInline;
+    private int _inlineVolumeGeneration;
+    private int _islandWidthAnimationGeneration;
+    private bool _islandWidthAnimating;
+    private double _islandWidthTarget;
+    private Avalonia.Animation.Transitions? _inlineVolumeWidthTransitions;
+    private Avalonia.Animation.Transitions? _islandWidthTransitions;
+
+    /// <summary>The setting is on and this is the persistent bar (the lyrics page's pill is
+    /// fixed and compact). Whether the slider shows also needs the full or mid shape.</summary>
+    private bool WantsInlineVolume =>
+        _observedPlayerViewModel?.IslandInlineVolume == true && !CompactWhenLyricsPageActive;
+
+    /// <summary>Test hook: the volume slider is on the island, not in the pop-up.</summary>
+    internal bool IsVolumeInline => _volumeInline;
+
+    private void UpdateInlineVolume(bool animate)
+    {
+        var inline = WantsInlineVolume && !_isWidthCompact;
+        if (inline == _volumeInline) return;
+        _volumeInline = inline;
+        var generation = ++_inlineVolumeGeneration;
+
+        if (animate)
+        {
+            _inlineVolumeWidthTransitions ??= new Avalonia.Animation.Transitions
+            {
+                new Avalonia.Animation.DoubleTransition { Property = WidthProperty, Duration = InlineVolumeSlideDuration, Easing = InlineVolumeEase },
+            };
+            InlineVolumeHost.Transitions = _inlineVolumeWidthTransitions;
+        }
+        else
+        {
+            InlineVolumeHost.Transitions = null;
+        }
+
+        if (inline)
+        {
+            // The pop-up is about to lose its content: shut it at once.
+            CancelVolumeFlyoutClose();
+            CancelVolumeFlyoutExit();
+            VolumeFlyout.IsOpen = false;
+            if (!ReferenceEquals(VolumePill.Parent, InlineVolumeCanvas))
+            {
+                VolumeFlyoutContent.Child = null;
+                VolumePill.Margin = InlineVolumePillMargin;
+                InlineVolumeCanvas.Children.Add(VolumePill);
+            }
+            InlineVolumeHost.IsVisible = true;
+            VolumePill.Opacity = 1; // its own 180 ms fade, under the slide
+            InlineVolumeHost.Width = InlineVolumeWidth;
+            return;
+        }
+
+        InlineVolumeHost.Width = 0;
+        VolumePill.Opacity = 0;
+        if (animate)
+            DispatcherTimer.RunOnce(() =>
+            {
+                if (generation == _inlineVolumeGeneration) ReturnVolumePillToPopup();
+            }, InlineVolumeSlideDuration);
+        else
+            ReturnVolumePillToPopup();
+    }
+
+    /// <summary>Back into the pop-up once the island's slot has slid shut, in the pop-up's
+    /// hidden pose (Opacity 0, set above) ready for its next open.</summary>
+    private void ReturnVolumePillToPopup()
+    {
+        InlineVolumeHost.IsVisible = false;
+        if (!ReferenceEquals(VolumePill.Parent, InlineVolumeCanvas)) return;
+        if (_isVolumeDragging) SetVolumeDragging(false);
+        InlineVolumeCanvas.Children.Remove(VolumePill);
+        VolumePill.Margin = PopupVolumePillMargin;
+        VolumeFlyoutContent.Child = VolumePill;
+    }
+
+    /// <summary>The island's Width is an instant write (see IslandBorder in the XAML); toggling
+    /// the always-on slider is the one change that slides it, in step with the slider's slot.
+    /// The transition is lent for that one write and taken back once it has run.</summary>
+    private void AnimateNextIslandWidth()
+    {
+        if (!IsLoaded) return;
+        _islandWidthTransitions ??= new Avalonia.Animation.Transitions
+        {
+            new Avalonia.Animation.DoubleTransition { Property = WidthProperty, Duration = InlineVolumeSlideDuration, Easing = InlineVolumeEase },
+        };
+        IslandBorder.Transitions = _islandWidthTransitions;
+        _islandWidthAnimating = true;
+        var generation = ++_islandWidthAnimationGeneration;
+        DispatcherTimer.RunOnce(() =>
+        {
+            if (generation != _islandWidthAnimationGeneration) return;
+            IslandBorder.ClearValue(TransitionsProperty);
+            _islandWidthAnimating = false;
+            ApplyIslandShape(IslandBorder.Bounds.Width);
+        }, InlineVolumeSlideDuration + TimeSpan.FromMilliseconds(40));
+    }
+
     // ── Search Lyrics in the lyrics-page island (song with no lyrics) ──
     // The lyrics-page pill (IslandLyricsPageWidth) has room for one more 34px button
     // beside transport + "…" / lyrics / queue / volume (295px of 340, the extras add their
@@ -1776,7 +1897,13 @@ public partial class PlaybackBarView : UserControl
         // SizeChanged only fires when the arranged size actually changes, so re-apply
         // here too: a lyrics-page flip must refresh the track-info visibility even
         // when the width stays put.
-        ApplyIslandShape(IslandBorder.Width);
+        // While the width slides (AnimateNextIslandWidth) the shape follows where it is going:
+        // the in-between widths would otherwise pass for a narrower island and flick the track
+        // box out and back in on the way.
+        // (Width itself reads the running transition's value; the base value is the target.)
+        var target = IslandBorder.GetBaseValue(WidthProperty) is { HasValue: true } set ? set.Value : IslandBorder.Width;
+        if (_islandWidthAnimating) _islandWidthTarget = target;
+        ApplyIslandShape(target);
     }
 
     /// <summary>Width the visible island extras add to the transport cluster.</summary>
@@ -1799,7 +1926,8 @@ public partial class PlaybackBarView : UserControl
                         + (vm.IslandStopButtonVisible ? 1 : 0) // Discord: Stop after Play/Pause
                         // GitHub #183: Lyrics is a stock button; hidden, it hands its 36px back.
                         - (vm.IslandLyricsButtonVisible ? 0 : 1);
-            return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0);
+            return buttons * ExtraTransportButtonWidth + (vm.IslandShowTime ? IslandTimeWidth : 0)
+                 + (WantsInlineVolume ? InlineVolumeWidth : 0);
         }
     }
 
@@ -1832,6 +1960,7 @@ public partial class PlaybackBarView : UserControl
         }
 
         UpdateTrackInfoVisibility();
+        UpdateInlineVolume(animate: IsLoaded);
     }
 
     /// <summary>Replaces the old IsVisible="{Binding !IsLyricsPageActive}" on
@@ -1859,7 +1988,9 @@ public partial class PlaybackBarView : UserControl
     }
 
     private void OnIslandBorderSizeChanged(object? sender, SizeChangedEventArgs e) =>
-        ApplyIslandShape(e.NewSize.Width);
+        ApplyIslandShape(_islandWidthAnimating
+            ? Math.Min(_islandWidthTarget, IslandBorder.MaxWidth)
+            : e.NewSize.Width);
 
     private void OnResizeHostSizeChanged(object? sender, SizeChangedEventArgs e) =>
         UpdateIslandMaxWidth();
