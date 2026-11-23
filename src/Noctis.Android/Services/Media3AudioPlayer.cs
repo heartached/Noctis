@@ -94,6 +94,15 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     /// <summary>Raised for the session's own Previous transport command. See <see cref="SessionNextRequested"/>.</summary>
     public event EventHandler? SessionPreviousRequested;
 
+    /// <summary>
+    /// Raised for the session's Play while nothing is loaded (State Stopped: the queue ran out,
+    /// or was restored after process death). Our Stop() clears ExoPlayer's items, so the
+    /// session's own Play (Util.handlePlayButtonAction: prepare() when IDLE, then play())
+    /// prepared an empty playlist and nothing played while the app still showed the song.
+    /// The ViewModel starts what its own Play button would.
+    /// </summary>
+    public event EventHandler? SessionPlayRequested;
+
     /// <summary>Whether the app queue has a next/previous track, for the media session's
     /// transport buttons. ExoPlayer's own item list holds at most the current track plus a
     /// prepared gapless successor, so it is not the right source: under Repeat One it never
@@ -954,6 +963,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private void RaiseSessionNextRequested() => SessionNextRequested?.Invoke(this, EventArgs.Empty);
     private void RaiseSessionPreviousRequested() => SessionPreviousRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Whether the session's Play goes to the ViewModel (<see cref="SessionPlayRequested"/>)
+    /// instead of ExoPlayer: nothing is loaded and someone listens. Paused stays ExoPlayer's own
+    /// resume, which OnIsPlayingChanged mirrors.</summary>
+    private bool RoutesSessionPlay => !_disposed && State == PlaybackState.Stopped && SessionPlayRequested != null;
+
     /// <summary>Adds the device key header to the signed-in desktop's stream requests; every
     /// other request passes through untouched. Runs on ExoPlayer's loader threads.</summary>
     /// <summary>
@@ -1056,6 +1070,19 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public override void SeekToNextMediaItem() => _owner.RaiseSessionNextRequested();
         public override void SeekToPrevious() => _owner.RaiseSessionPreviousRequested();
         public override void SeekToPreviousMediaItem() => _owner.RaiseSessionPreviousRequested();
+
+        // Nothing loaded: the session's prepare-then-play would only prepare an empty playlist
+        // (straight to ENDED); the ViewModel loads and starts the song instead.
+        public override void Prepare()
+        {
+            if (!_owner.RoutesSessionPlay) base.Prepare();
+        }
+
+        public override void Play()
+        {
+            if (_owner.RoutesSessionPlay) _owner.SessionPlayRequested?.Invoke(_owner, EventArgs.Empty);
+            else base.Play();
+        }
 
         public override bool HasNextMediaItem => _owner.HasNextInQueue?.Invoke() ?? base.HasNextMediaItem;
         public override bool HasPreviousMediaItem => _owner.HasPreviousInQueue?.Invoke() ?? base.HasPreviousMediaItem;

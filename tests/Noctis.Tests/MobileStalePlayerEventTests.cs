@@ -206,4 +206,33 @@ public class MobileStalePlayerEventTests : IDisposable
         Assert.Same(t[1], vm.CurrentTrack);
         Assert.Equal(t[1].FilePath, player.PlayedPaths.Last());
     }
+
+    // ── Lock screen / notification / Bluetooth Play ──
+
+    [Fact]
+    public void SessionPlay_AfterTheQueueRanOut_StartsTheAddedSong()
+    {
+        var (vm, player, t) = RanOut();
+        vm.AddToQueue(t[2]);
+
+        vm.Play();
+
+        Assert.Same(t[2], vm.CurrentTrack);
+        Assert.Equal(t[2].FilePath, player.PlayedPaths.Last());
+        Assert.True(vm.IsPlaying);
+    }
+
+    [Fact]
+    public void SessionPlay_WhilePlaying_DoesNotPause()
+    {
+        var t = Tracks(1);
+        var (vm, player, _) = Make(t);
+        vm.PlayTracks(t, 0);
+
+        vm.Play();
+
+        Assert.Equal(PlaybackState.Playing, player.State);
+        Assert.True(vm.IsPlaying);
+        Assert.Single(player.PlayedPaths);
+    }
 }

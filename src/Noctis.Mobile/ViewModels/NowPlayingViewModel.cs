@@ -348,6 +348,18 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// The media session's Play (lock screen, notification, Bluetooth) while the engine holds no
+    /// song: a queue that ran out, or one restored after process death. Starts what the in-app
+    /// Play would; never pauses, unlike <see cref="TogglePlayPauseCommand"/>, so a Play that
+    /// arrives after playback already started changes nothing.
+    /// </summary>
+    public void Play()
+    {
+        if (_player.State == PlaybackState.Playing) return;
+        TogglePlayPause();
+    }
+
     [RelayCommand]
     private void Next()
     {
