@@ -250,6 +250,10 @@ public interface ILibraryService
     /// <summary>Undoes <see cref="LinkAlbumTracksAsync"/>.</summary>
     Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId) => Task.CompletedTask;
 
+    /// <summary>Replaces every link at once (the phone takes the computer's links at each sync):
+    /// saved, rebuilt, LibraryUpdated; nothing happens when they are the same.</summary>
+    Task SetAlbumLinksAsync(IReadOnlyList<AlbumLink> links) => Task.CompletedTask;
+
     /// <summary>
     /// GitHub #193: switches the automatic album grouping (#178) on or off and rebuilds right
     /// away. Off puts every song the grouping re-keyed back on the album artist and album name

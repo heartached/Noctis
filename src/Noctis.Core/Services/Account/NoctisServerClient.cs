@@ -286,8 +286,10 @@ internal sealed partial class NoctisServerClient : IDisposable
 
     /// <summary>Every album's artist by album id (search3 with an empty query, paged). With
     /// <paramref name="coverVersions"/>, also each album's cover version where the computer says it
-    /// (noctisCover; computers from before it never do).</summary>
-    public async Task<Dictionary<Guid, string>> GetAlbumArtistsAsync(CancellationToken ct, Dictionary<Guid, string>? coverVersions = null)
+    /// (noctisCover; computers from before it never do). With <paramref name="albumLinks"/>, also
+    /// the albums each one lists songs from (noctisLinks, Link Tracks From on the computer).</summary>
+    public async Task<Dictionary<Guid, string>> GetAlbumArtistsAsync(CancellationToken ct, Dictionary<Guid, string>? coverVersions = null,
+        Dictionary<Guid, List<Guid>>? albumLinks = null)
     {
         var result = new Dictionary<Guid, string>();
         for (var page = 0; page < MaxPages; page++)
@@ -305,6 +307,7 @@ internal sealed partial class NoctisServerClient : IDisposable
                 {
                     result.TryAdd(id, Cap(Str(a, "artist"), MaxStringLength) ?? string.Empty);
                     if (coverVersions is not null && ParseCoverVersion(Str(a, "noctisCover")) is { } version) coverVersions.TryAdd(id, version);
+                    if (albumLinks is not null && ParseAlbumLinks(a) is { Count: > 0 } sources) albumLinks.TryAdd(id, sources);
                 }
             }
             if (albums.Count < PageSize) break;
@@ -319,6 +322,22 @@ internal sealed partial class NoctisServerClient : IDisposable
         if (string.IsNullOrEmpty(value) || value.Length > 16 || !value.All(char.IsAsciiHexDigit)) return null;
         return value.ToLowerInvariant();
     }
+
+    /// <summary>A search3 album's noctisLinks: the albums whose songs it lists too, each once (a
+    /// handful at most; junk skipped). Empty when absent (a computer from before it).</summary>
+    internal static List<Guid> ParseAlbumLinks(JsonElement album)
+    {
+        var result = new List<Guid>();
+        if (album.ValueKind != JsonValueKind.Object || !album.TryGetProperty("noctisLinks", out var links)
+            || links.ValueKind != JsonValueKind.Array)
+            return result;
+        foreach (var l in links.EnumerateArray().Take(MaxAlbumLinks))
+            if (l.ValueKind == JsonValueKind.String && NoctisRemoteIds.TryParseServerId(l.GetString(), "al-", out var id) && !result.Contains(id))
+                result.Add(id);
+        return result;
+    }
+
+    private const int MaxAlbumLinks = 50;
 
     /// <summary>When the computer's cover file was last written, from its <see cref="ParseCoverVersion"/> version.</summary>
     internal static DateTime? CoverVersionTime(string version) =>

@@ -2826,6 +2826,10 @@ public class LibraryService : ILibraryService
     public Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId)
         => ChangeAlbumLinksAsync(Services.AlbumLinks.Without(_albumLinks, albumId, sourceAlbumId));
 
+    /// <inheritdoc />
+    public Task SetAlbumLinksAsync(IReadOnlyList<AlbumLink> links)
+        => ChangeAlbumLinksAsync(links.Aggregate(new List<AlbumLink>(), (next, l) => Services.AlbumLinks.With(next, l.AlbumId, l.SourceAlbumId)));
+
     private async Task ChangeAlbumLinksAsync(List<AlbumLink> next)
     {
         if (next.Count == _albumLinks.Count
