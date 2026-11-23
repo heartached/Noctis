@@ -206,6 +206,42 @@
             </Style.Animations>
         </Style>
 
+        <!-- Island time (Discord 11-23): a bare text button — no Fluent fill on hover or press
+             (it keeps the app-wide press scale). Its lower line crossfades between the time
+             left and the total length (.total); Opacity only, so no relayout per swap. -->
+        <Style Selector="Button.island-time-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style Selector="Button.island-time-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.island-time-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.island-time-btn TextBlock.island-time-alt">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.island-time-btn TextBlock#TrackTimeTotal">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Button.island-time-btn.total TextBlock#TrackTimeTotal">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.island-time-btn.total TextBlock#TrackTimeRemaining">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+
         <Style Selector="Button.artist-link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -1120,24 +1156,51 @@
                          right-aligned so the digits tick in place. The island grows by
                          IslandTimeWidth while this is on (see ExtraTransportWidth) so the
                          title/artist viewports keep their full width. -->
-                    <StackPanel Grid.Column="2"
-                                x:Name="TrackTimeStack"
-                                VerticalAlignment="Center"
-                                Margin="0,0,8,0"
-                                MinWidth="36"
-                                IsVisible="{Binding IslandShowTime}">
+                    <!-- Discord 11-23: a click swaps the lower line between the time left and the
+                         song's total length (remembered: AppSettings.PlaybackBarTimeShowsTotal).
+                         Both lines are laid out at once and crossfade, so the column keeps the
+                         wider one's width and never jumps; tabular digits keep each tick in place. -->
+                    <Button Grid.Column="2"
+                            x:Name="TrackTimeButton"
+                            Classes="island-time-btn"
+                            Classes.total="{Binding IslandTimeShowsTotal}"
+                            Command="{Binding ToggleIslandTimeDisplayCommand}"
+                            ToolTip.Tip="{loc:T PlaybackBar.TimeToggleTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.TimeToggleTip}"
+                            Focusable="False"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0"
+                            IsVisible="{Binding IslandShowTime}">
+                    <StackPanel x:Name="TrackTimeStack"
+                                MinWidth="36">
                         <TextBlock Text="{Binding PositionText}"
                                    FontSize="10"
                                    FontWeight="SemiBold"
+                                   FontFeatures="+tnum"
                                    TextAlignment="Right"
                                    HorizontalAlignment="Right"
                                    Foreground="{DynamicResource IslandForeground}" />
-                        <TextBlock Text="{Binding RemainingTimeText, StringFormat='-{0}'}"
-                                   FontSize="10"
-                                   TextAlignment="Right"
-                                   HorizontalAlignment="Right"
-                                   Foreground="{DynamicResource IslandForegroundSecondary}" />
+                        <Panel>
+                            <TextBlock x:Name="TrackTimeRemaining"
+                                       Classes="island-time-alt"
+                                       Text="{Binding RemainingTimeText, StringFormat='-{0}'}"
+                                       FontSize="10"
+                                       FontFeatures="+tnum"
+                                       TextAlignment="Right"
+                                       HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource IslandForegroundSecondary}" />
+                            <TextBlock x:Name="TrackTimeTotal"
+                                       Classes="island-time-alt"
+                                       Text="{Binding DurationText}"
+                                       FontSize="10"
+                                       FontFeatures="+tnum"
+                                       TextAlignment="Right"
+                                       HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource IslandForegroundSecondary}" />
+                        </Panel>
                     </StackPanel>
+                    </Button>
 
                     <!-- Now-playing bars (the same EqVisualizer the album/track rows use,
                          accent-coloured by its default style) + the options button, on the

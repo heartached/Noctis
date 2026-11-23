@@ -1030,6 +1030,10 @@ public class AppSettings : IJsonOnDeserializing
     /// carries no time labels.</summary>
     public bool PlaybackBarShowTime { get; set; }
 
+    /// <summary>Discord 11-23: clicking the island's time swaps its lower line between the time
+    /// left ("-2:41", the default) and the song's total length ("4:05").</summary>
+    public bool PlaybackBarTimeShowsTotal { get; set; }
+
     /// <summary>GitHub #93: the island and mini player seek bars draw the track's waveform
     /// (decoded in the background with ffmpeg, cached under cache/waveforms). Off by
     /// default — when off nothing is decoded and the plain seek line stays.</summary>

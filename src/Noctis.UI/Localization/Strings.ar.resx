@@ -5178,6 +5178,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>خيارات</value>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>عرض الوقت المتبقي أو المدة الكاملة</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve">
     <value>تشغيل</value>
     <comment>Text in PlaybackBarView.axaml</comment>

@@ -5178,6 +5178,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>옵션</value>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>남은 시간 또는 전체 길이 표시</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve">
     <value>재생</value>
     <comment>Text in PlaybackBarView.axaml</comment>

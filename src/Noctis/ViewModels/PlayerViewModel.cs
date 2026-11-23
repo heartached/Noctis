@@ -471,6 +471,19 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     public bool IslandLyricsButtonVisible => IslandShowLyricsButton || IsLyricsPageActive;
     /// <summary>Elapsed / remaining time inside the island's track box (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowTime;
+    /// <summary>The island time's lower line: the song's total length instead of the time left
+    /// (Discord 11-23). Driven by Settings; <see cref="ToggleIslandTimeDisplay"/> flips it.</summary>
+    [ObservableProperty] private bool _islandTimeShowsTotal;
+
+    /// <summary>A click on the island's time swaps its lower line between time left and total
+    /// length. Goes through Settings when attached, which saves it and pushes it back here.</summary>
+    [RelayCommand]
+    private void ToggleIslandTimeDisplay()
+    {
+        var total = !IslandTimeShowsTotal;
+        if (_settings != null) _settings.PlaybackBarTimeShowsTotal = total;
+        else IslandTimeShowsTotal = total;
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IslandSkipLabel))]
