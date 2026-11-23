@@ -677,6 +677,56 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(3, (await svc.SyncNowAsync(ct)).Songs);   // the catalog's count, not the kept rows
     }
 
+    /// <summary>Signed in to another computer (a different library): this computer's downloads are
+    /// not on it, so they stay and play, listed as no longer on the computer, while its streamed
+    /// songs go. Back on the first computer they are ordinary downloads again.</summary>
+    [Fact]
+    public async Task AnotherComputer_ListsTheFirstOnesDownloads_AndTheFirstTakesThemBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+
+        var other = new Track { Id = Guid.NewGuid(), Title = "Delta", Artist = "Zed", AlbumArtist = "Zed", Album = "Third", AlbumId = Guid.NewGuid(),
+            FilePath = _t1.FilePath, Duration = TimeSpan.FromSeconds(30), FileSize = _audio.Length };
+        using var otherPersistence = new DesktopPersistence();
+        var otherDesk = new DesktopLibrary(new[] { other }, Array.Empty<Album>(), Array.Empty<Artist>(), otherPersistence.Playlists,
+            Path.Combine(_dir, "cover.jpg"));
+        var otherSync = new LibrarySyncService(() => _deskSettings, otherPersistence);
+        otherDesk.Sync = otherSync;
+        otherDesk.DataDirectory = otherPersistence.DataDirectory;
+        var otherServer = new NoctisServer(otherDesk, _users, "test", otherSync) { PrivateClientsOnly = true };
+        await otherServer.StartAsync(0, certificate: null);
+        try
+        {
+            var otherUrl = $"http://127.0.0.1:{otherServer.Port}";
+            await svc.SignOutAsync(removeDownloads: false, ct);
+            await svc.SignInAsync(otherUrl, "alice", "correct horse", await svc.ProbeFingerprintAsync(otherUrl, ct), ct);
+            await svc.SyncNowAsync(ct);
+
+            Assert.NotNull(_phoneLibrary.GetTrackById(other.Id));
+            Assert.Null(_phoneLibrary.GetTrackById(_t2.Id));
+            var p1 = Assert.Single(svc.NotOnComputerTracks);
+            Assert.Equal(_t1.Id, p1.Id);
+            Assert.True(svc.IsDownloaded(p1));
+            Assert.NotNull(svc.ResolvePlaybackUri(p1.FilePath));
+            Assert.True(File.Exists(svc.ResolvePlaybackUri(p1.FilePath)));
+        }
+        finally
+        {
+            await otherServer.StopAsync();
+        }
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+        await svc.SignInAsync(_url, "alice", "correct horse", await svc.ProbeFingerprintAsync(_url, ct), ct);
+        await svc.SyncNowAsync(ct);
+        Assert.Empty(svc.NotOnComputerTracks);
+        Assert.True(svc.IsDownloaded(Phone(_t1)));
+        Assert.Null(_phoneLibrary.GetTrackById(other.Id));
+        Assert.Equal(1, svc.DownloadedCount);
+    }
+
     /// <summary>Sign out removing the downloads keeps no song back.</summary>
     [Fact]
     public async Task SignOutRemovingDownloads_KeepsNoSongBack()
