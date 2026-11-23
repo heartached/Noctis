@@ -9418,4 +9418,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>새 폴더</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
   <data name="Sidebar.CreateFolder" xml:space="preserve"><value>만들기</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
   <data name="Sidebar.NoFolder" xml:space="preserve"><value>폴더 없음</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
+  <data name="Playlist.ViewCover" xml:space="preserve"><value>커버 보기</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
+  <data name="Playlist.ChangeCover" xml:space="preserve"><value>커버 변경…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
+  <data name="Playlist.CoverMenu" xml:space="preserve"><value>재생목록 커버</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
 </root>

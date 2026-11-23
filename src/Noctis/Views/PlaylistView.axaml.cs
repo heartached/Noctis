@@ -355,6 +355,15 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         }
     }
 
+    /// <summary>11-23: a click on the hero cover opens its menu (View Cover / Change Cover…),
+    /// the one a right-click opens.</summary>
+    private void OnHeroCoverTapped(object? sender, TappedEventArgs e)
+    {
+        if (HeroCover.ContextMenu is not { } menu) return;
+        e.Handled = true;
+        menu.Open(HeroCover);
+    }
+
     private void OnSelectionClearClick(object? sender, RoutedEventArgs e)
     {
         ClearSelectionState();

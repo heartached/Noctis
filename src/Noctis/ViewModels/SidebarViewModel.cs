@@ -1364,38 +1364,66 @@ public partial class SidebarViewModel : ViewModelBase
         }
         else if (!string.IsNullOrEmpty(dialogVm.PendingCoverArtFile))
         {
-            var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
-            Directory.CreateDirectory(coversDir);
-
-            var ext = Path.GetExtension(dialogVm.PendingCoverArtFile);
-            var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
-
-            // Drop a previous cover with a different extension: replacing a .png with a
-            // .jpg left the .png behind forever, since RemoveCoverArt only deletes the
-            // path currently recorded.
-            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}*"))
-            {
-                if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
-                    try { File.Delete(stale); } catch { }
-            }
-
-            // The picked file can be the cover already in place (the picker opened in
-            // playlist_covers): copying a file onto itself threw, and the rest of the edit
-            // (name, star, folder) was never saved.
-            if (!string.Equals(Path.GetFullPath(dialogVm.PendingCoverArtFile), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
-                File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
-            playlist.CoverArtPath = destPath;
-            // A new picture of the same type lands on the same path (<id>.jpg): drop the
-            // decode of the old one, or every CachedImage on that path keeps drawing it.
-            ArtworkCache.Invalidate(destPath);
+            CopyCoverIn(playlist, dialogVm.PendingCoverArtFile);
         }
 
-        // Rebuild the sidebar nav item with updated info
+        RefreshNavItem(playlist);
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistEdited?.Invoke(this, playlist.Id);
+    }
+
+    /// <summary>
+    /// The playlist page's Change Cover…: <paramref name="file"/> becomes the playlist's custom
+    /// cover (copied into playlist_covers as the Edit Playlist dialog's Save does), and the
+    /// sidebar row, the page and disk follow.
+    /// </summary>
+    public async Task SetPlaylistCoverAsync(Playlist playlist, string file)
+    {
+        CopyCoverIn(playlist, file);
+        playlist.ModifiedAt = DateTime.UtcNow;
+        RefreshNavItem(playlist);
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistEdited?.Invoke(this, playlist.Id);
+    }
+
+    /// <summary>Copies <paramref name="file"/> in as the playlist's cover (playlist_covers/&lt;id&gt;.ext).</summary>
+    private static void CopyCoverIn(Playlist playlist, string file)
+    {
+        var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
+        Directory.CreateDirectory(coversDir);
+
+        var ext = Path.GetExtension(file);
+        var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
+
+        // Drop a previous cover with a different extension: replacing a .png with a
+        // .jpg left the .png behind forever, since RemoveCoverArt only deletes the
+        // path currently recorded.
+        foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}*"))
+        {
+            if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
+                try { File.Delete(stale); } catch { }
+        }
+
+        // The picked file can be the cover already in place (the picker opened in
+        // playlist_covers): copying a file onto itself threw, and the rest of the edit
+        // (name, star, folder) was never saved.
+        if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+            File.Copy(file, destPath, overwrite: true);
+        playlist.CoverArtPath = destPath;
+        // A new picture of the same type lands on the same path (<id>.jpg): drop the
+        // decode of the old one, or every CachedImage on that path keeps drawing it.
+        ArtworkCache.Invalidate(destPath);
+    }
+
+    /// <summary>Rebuilds the playlist's sidebar row from the playlist (name, size, art, star, folder).</summary>
+    private void RefreshNavItem(Playlist playlist)
+    {
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         if (navItem != null)
         {
             var rebuilt = BuildPlaylistNavItem(playlist);
-            navItem.Label = newName;
+            navItem.Label = playlist.Name;
             navItem.TrackCount = rebuilt.TrackCount;
             navItem.MetaText = rebuilt.MetaText;
             navItem.CoverArtPath = rebuilt.CoverArtPath;
@@ -1406,10 +1434,6 @@ public partial class SidebarViewModel : ViewModelBase
             navItem.IsPinned = rebuilt.IsPinned;
             navItem.Folder = rebuilt.Folder;
         }
-
-        RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
-        PlaylistEdited?.Invoke(this, playlist.Id);
     }
 
     /// <summary>Gets a playlist by its ID.</summary>
