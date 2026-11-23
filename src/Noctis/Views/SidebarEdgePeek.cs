@@ -120,7 +120,9 @@ internal sealed class SidebarEdgePeek
             _setExpanded(false);
             return;
         }
-        var expanded = _pinned() || (_rail.IsPointerOver && _hoverExpand());
+        // With hover-expand on, touching the edge brings the expanded sidebar at once (11-23
+        // feedback: the edge brought the icon rail, and only a second hover expanded it).
+        var expanded = _pinned() || ((_edge.IsPointerOver || _rail.IsPointerOver) && _hoverExpand());
         _rail.IsVisible = true;
         _rail.Width = expanded ? ExpandedWidth : RailWidth;
         _setExpanded(expanded);
