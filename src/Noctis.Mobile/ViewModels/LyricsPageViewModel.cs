@@ -175,6 +175,68 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>True while the page should run its per-frame loop.</summary>
     public bool WantsFrames => IsSynced && _nowPlaying.IsPlaying;
 
+    // Some line carries word timing (a sweep, held notes, word float): those move every frame.
+    private bool _hasWordTiming;
+
+    /// <summary>
+    /// Whether the lines move on every frame now: a word-timed song sweeps its words, and the
+    /// "..." intro and interlude dots fill. Plain synced lines (LRC) only change when a line
+    /// starts (or, with a known end, stops overlapping the next), so between those the page needs
+    /// no frames (<see cref="MsToNextChange"/>): S23 (11-22), the render thread ran 63% at
+    /// 120 Hz on an LRC song whose line changed every few seconds.
+    /// </summary>
+    public bool AnimatesEveryFrame
+    {
+        get
+        {
+            if (_hasWordTiming) return true;
+            foreach (var i in _timeline.ActiveIndices)
+                if (i >= 0 && i < Lines.Count && Lines[i].IsIntroPlaceholder) return true;
+            return false;
+        }
+    }
+
+    /// <summary>Plain lines activate this early on the audible clock (the timeline's line lookahead).</summary>
+    private static readonly double LineLookaheadMs = WordLookaheadMs + LineMotion.HalfTravelMs;
+
+    /// <summary>
+    /// Milliseconds of audio until the plain lines next change, at wall time
+    /// <paramref name="nowMs"/>: 0 when the shown line is already stale (a seek, or frames that
+    /// stopped across a start), infinity when nothing is left to change. Estimated from the last
+    /// position poll, without touching the frame clock.
+    /// </summary>
+    public double MsToNextChange(double nowMs)
+    {
+        if (!IsSynced || Lines.Count == 0) return double.PositiveInfinity;
+        var raw = _nowPlaying.Position.TotalMilliseconds;
+        var rawAt = Volatile.Read(ref _polled) is { } polled && polled.Ms == raw ? polled.AtMs : nowMs;
+        var audible = raw + (_nowPlaying.IsPlaying ? Math.Max(0, nowMs - rawAt) : 0) - _player.OutputLatency.TotalMilliseconds;
+        var clock = audible + LineLookaheadMs;
+        // The newest line started on that clock; the timeline shows another one (or none) only
+        // when it has not caught up yet.
+        var started = -1;
+        var next = double.PositiveInfinity;
+        for (var i = 0; i < Lines.Count; i++)
+        {
+            if (Lines[i].Timestamp is not { } start) continue;
+            if (start.TotalMilliseconds <= clock) started = i;
+            else
+            {
+                next = start.TotalMilliseconds - clock;
+                break;
+            }
+        }
+        if (started >= 0 && started != _timeline.ActiveIndex) return 0;
+        // A lit line with a known end leaves the set when it ends (an overlapping voice).
+        foreach (var i in _timeline.ActiveIndices)
+        {
+            if (i < 0 || i >= Lines.Count || LyricsTimeline.SungEnd(Lines[i]) is not { } end) continue;
+            var left = end.TotalMilliseconds - clock;
+            if (left > 0 && left < next) next = left;
+        }
+        return Math.Max(0, next);
+    }
+
     public string StatusText =>
         IsSearchingOnline ? Loc.T("Mobile.Lyrics.Searching")
         : IsLoading ? Loc.T("Mobile.Lyrics.Loading")
@@ -364,6 +426,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         ActiveLineIndex = -1;
         ScrollLineIndex = -1;
         Lines.ReplaceAll(Array.Empty<LyricLine>());
+        _hasWordTiming = false;
         IsSynced = false;
         HasLyrics = false;
         HasTranslations = false;
@@ -431,6 +494,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsLoading = false;
         Source = result.Source;
         Lines.ReplaceAll(result.Lines);
+        _hasWordTiming = result.Lines.Any(l => l.HasWords || l.HasBackgroundWords || l.HasTransliterationWords);
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;
         IsRawFallback = result.Source == LyricsSource.SidecarUnparsed;

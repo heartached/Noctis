@@ -285,6 +285,111 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    private static readonly double LineLookaheadMs = 80 + Noctis.Helpers.LineMotion.HalfTravelMs;
+
+    /// <summary>Plain synced lines change only when a line starts: the view model says how far off
+    /// that is (from the last poll, without the frame clock), and that a shown line is stale after
+    /// a seek. Word-timed lyrics move every frame.</summary>
+    [AvaloniaFact]
+    public async Task PlainLines_SayWhenTheyNextChange_WordTimedOnesMoveEveryFrame()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = MobileLyricsAllocationTests.Lrc(gap: 5);   // lines at 1, 6, 11, ... s
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+        var lyrics = shell.Lyrics;
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(2000));
+        lyrics.OnFrame(LyricsPageViewModel.NowMs());
+        Assert.Equal(0, lyrics.ActiveLineIndex);
+        Assert.False(lyrics.AnimatesEveryFrame);
+        var expected = 6000 - 2000 - LineLookaheadMs;
+        Assert.InRange(lyrics.MsToNextChange(LyricsPageViewModel.NowMs()), expected - 250, expected + 1);
+
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(8000));   // a seek past line 1, no frame yet
+        Assert.Equal(0, lyrics.MsToNextChange(LyricsPageViewModel.NowMs()));
+        lyrics.OnFrame(LyricsPageViewModel.NowMs());
+        Assert.Equal(1, lyrics.ActiveLineIndex);
+        expected = 11000 - 8000 - LineLookaheadMs;
+        Assert.InRange(lyrics.MsToNextChange(LyricsPageViewModel.NowMs()), expected - 250, expected + 1);
+
+        files.Sidecars.Remove(".lrc");
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+        Assert.True(lyrics.AnimatesEveryFrame);
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>S23 11-22: the lyrics of an LRC song kept the render thread at 63% at 120 Hz, a frame
+    /// on every vsync for a line that changes every few seconds. Between plain lines the frame loop
+    /// and the keep-alive rest; a position poll wakes them <see cref="LyricsPage.WakeLeadMs"/> ahead
+    /// of the next line, so the screen is back at full rate before the line glides.</summary>
+    [AvaloniaFact]
+    public async Task PlainLines_TheFrameLoopRests_BetweenLineChanges_AndWakesBeforeTheNext()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = MobileLyricsAllocationTests.Lrc(gap: 5);   // lines at 1, 6, 11, ... s
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+        var start = 6000 - LineLookaheadMs - 300;            // line 1 is 300 ms off
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(start));
+        shell.OpenNowPlayingCommand.Execute(null);
+        Motion.FinishAll();
+        shell.ToggleLyricsCommand.Execute(null);
+        Motion.FinishAll();
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var keepAlive = page.FindControl<RenderKeepAlive>("KeepAlive")!;
+
+        // Play 2.2 s in real time, polled four times a second as on the phone: line 1 starts and
+        // glides, then nothing moves until line 2 (at 11 s).
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var nextPoll = 0.0;
+        var ranBeforeTheLine = false;
+        var ranAfter = false;
+        while (clock.ElapsedMilliseconds < 2200)
+        {
+            var t = clock.Elapsed.TotalMilliseconds;
+            if (t >= nextPoll)
+            {
+                nextPoll = t + 250;
+                player.RaisePositionChanged(TimeSpan.FromMilliseconds(start + t));
+            }
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            if (shell.Lyrics.ActiveLineIndex == 0 && page.IsFrameLoopRunning && keepAlive.IsRunning) ranBeforeTheLine = true;
+            if (shell.Lyrics.ActiveLineIndex == 1 && page.IsFrameLoopRunning) ranAfter = true;
+            Thread.Sleep(8);
+        }
+        Assert.True(ranBeforeTheLine, "awake before line 1 started");
+        Assert.True(ranAfter, "line 1 glided in");
+        Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
+        Assert.False(page.IsFrameLoopRunning);                // resting: line 2 is ~2.5 s off
+        Assert.False(keepAlive.IsRunning);
+
+        // A poll inside the lead wakes both before line 2 starts.
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(11000 - LineLookaheadMs - 400));
+        Assert.True(page.IsFrameLoopRunning);
+        Assert.True(keepAlive.IsRunning);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
+
+        // A seek far ahead wakes it at once and the page follows.
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(21500));
+        Assert.True(page.IsFrameLoopRunning);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(4, shell.Lyrics.ActiveLineIndex);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>Home, task switch or screen off with the lyrics open and playing: the frame loop and
     /// the render keep-alive stop (they kept the render loop ticking in the background: battery),
     /// and start again when the app is back in front.</summary>
