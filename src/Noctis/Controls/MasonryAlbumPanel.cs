@@ -181,9 +181,10 @@ public sealed class MasonryAlbumPanel : Panel
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
-        // The list may have changed while the panel was out of the tree.
+        // An observable list may have changed while the panel was out of the tree (a plain
+        // list is replaced through Albums, so its laid-out titles stay for the way back).
         Observe(_items);
-        ResetItems();
+        if (_observed != null) ResetItems();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
