@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Helpers;
 using Noctis.Models;
 using Noctis.Services;
 using Noctis.ViewModels;
@@ -134,10 +135,13 @@ public class AlbumPageTintProbeTests
         Assert.InRange(block.Bounds.Height - footerBottom, 100, 160); // bar clearance, not mid-page
 
         // With the accent following the cover, an accent-coloured artist name vanished into
-        // the tint; on a tint the credit takes the page text colour.
+        // the tint; on a tint the credit takes the accent moved until it reads on the page
+        // (11-23: the page text colour that replaced it lost the link look).
         var credit = view.GetVisualDescendants().OfType<TextBlock>()
             .First(t => t.Classes.Contains("artist-credit-text") && t.Text == "B");
-        Assert.Equal(dark, ((ISolidColorBrush)credit.Foreground!).Color);
+        var link = ((ISolidColorBrush)credit.Foreground!).Color;
+        Assert.Equal(((ISolidColorBrush)vm.TintLinkBrush).Color, link);
+        Assert.True(AlbumTintPalette.Contrast(link, ((ISolidColorBrush)vm.BackgroundBrush!).Color) >= AlbumTintPalette.MinTextContrast);
     }
 
     /// <summary>GitHub #180: on a light cover the per-track artist line ("GRiZ, Big Gigantic")

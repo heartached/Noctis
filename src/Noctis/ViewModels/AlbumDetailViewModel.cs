@@ -127,6 +127,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private IBrush _tintButtonBorder = Brushes.Transparent;
     [ObservableProperty] private IBrush _tintIconBrush = Brushes.White;
     [ObservableProperty] private IBrush _tintHeartBrush = new SolidColorBrush(AlbumTintPalette.HeartRed);
+    /// <summary>The header's artist links on a tint: the accent, moved lighter or darker until
+    /// it reads on the page (AlbumTintPalette.HeaderColours.Link).</summary>
+    [ObservableProperty] private IBrush _tintLinkBrush = Brushes.White;
     [ObservableProperty] private Guid? _currentPlayingTrackId;
     [ObservableProperty] private bool _isPlayerPlaying;
     [ObservableProperty] private string _albumDescription = string.Empty;
@@ -642,6 +645,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         TintButtonBorder = new SolidColorBrush(c.Border);
         TintIconBrush = new SolidColorBrush(c.Icon);
         TintHeartBrush = new SolidColorBrush(c.Heart);
+        TintLinkBrush = new SolidColorBrush(c.Link);
     }
 
     private void BuildRelatedSections()

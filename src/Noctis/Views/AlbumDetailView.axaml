@@ -188,15 +188,17 @@
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
 
-        <!-- Album artist credits: accent on the plain page. On a cover tint they take the
-             page text colour instead — with "Accent follows album art" the accent IS the
-             cover colour, so the name vanished into the tint (Discord NJZ 09-22). Style
-             setters, not local values: a local Foreground would beat both. -->
+        <!-- Album artist credits: accent on the plain page. On a cover tint the accent is
+             moved lighter or darker until it reads on the tint (4.5:1, TintLinkBrush) — with
+             "Accent follows album art" the accent IS the cover colour, so the plain accent
+             vanished into the tint (Discord NJZ 09-22), and the page text colour that replaced
+             it lost the link look (11-23 feedback). Style setters, not local values: a local
+             Foreground would beat both. -->
         <Style Selector="TextBlock.artist-credit-text">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
         </Style>
         <Style Selector="ItemsControl.on-tint TextBlock.artist-credit-text">
-            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).TintLinkBrush}" />
         </Style>
         <!-- Track rows' artist line: its Button's theme resets the text to the theme colour
              (near-white on a light cover's page, GitHub #180) and hover / press swap the
