@@ -304,6 +304,27 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
     }
 
+    /// <summary>An album with no cover on the computer was remembered as "no cover" for the rest of
+    /// the app's run: a cover added on the computer meanwhile only reached the phone after a restart.</summary>
+    [Fact]
+    public async Task ACoverAddedOnTheComputer_WhileTheAppRuns_ArrivesWithTheNextSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var second = _phonePersistence.GetArtworkPath(AlbumB);
+        Assert.False(File.Exists(second));
+
+        // No cover still: not asked again.
+        lock (_coverSizes) _coverSizes.Clear();
+        await svc.SyncNowAsync(ct);
+        lock (_coverSizes) Assert.Empty(_coverSizes);
+
+        _desk.SecondHasCover = true;
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_art, File.ReadAllBytes(second));
+    }
+
     /// <summary>The album list without cover versions (a computer from before them): the copy on
     /// the phone is kept until it is 30 days old, as before.</summary>
     [Fact]
@@ -2422,7 +2443,9 @@ public class NoctisAccountServiceTests : IAsyncLifetime
                 return Task.FromResult(new LibrarySnapshot(_tracks.ToList(), _albums.ToList(), _artists.ToList(), _playlists.ToList()));
         }
 
-        public string? ArtworkPath(Guid albumId) => albumId == AlbumA ? _art : null;
+        /// <summary>The second album gets a cover on the computer (it has none at first).</summary>
+        public bool SecondHasCover { get; set; }
+        public string? ArtworkPath(Guid albumId) => albumId == AlbumA || (SecondHasCover && albumId == AlbumB) ? _art : null;
 
         /// <summary>The desktop's profile picture (getAvatar); null = none.</summary>
         public string? Avatar { get; set; }

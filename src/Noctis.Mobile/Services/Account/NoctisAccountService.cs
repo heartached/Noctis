@@ -155,8 +155,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         try { return new DriveInfo(path).AvailableFreeSpace; }
         catch (Exception) { return long.MaxValue; }
     }
-    /// <summary>Albums the server had no cover for this process (not re-asked every sync).</summary>
-    private readonly ConcurrentDictionary<Guid, byte> _coverMisses = new();
+    /// <summary>Albums the server had no cover for this process (not re-asked every sync), each with
+    /// the cover version the album list named then ("" = none): a cover added on the computer since
+    /// changes the version, and the next sync asks again instead of waiting for a restart.</summary>
+    private readonly ConcurrentDictionary<Guid, string> _coverMisses = new();
 
     /// <param name="library">The shared library (desktop songs join it as NoctisServer tracks).</param>
     /// <param name="persistence">For covers (GetArtworkPath) and playlists.json.</param>
@@ -1149,7 +1151,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         var now = UtcNow;
         var adopted = false;
         var due = tracks.Select(t => t.AlbumId).Distinct()
-            .Where(id => id != Track.UnknownAlbumBucketId && !_coverMisses.ContainsKey(id))
+            .Where(id => id != Track.UnknownAlbumBucketId
+                         && !(_coverMisses.TryGetValue(id, out var missed) && missed == versions.GetValueOrDefault(id, "")))
             .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, ref adopted))
             .ToList();
         if (adopted) SaveSyncState();
@@ -1187,11 +1190,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                                 lock (_gate) _sync.Covers[albumId.ToString("N")] = version;
                         }
                         else
-                            _coverMisses.TryAdd(albumId, 0);
+                            _coverMisses[albumId] = versions.GetValueOrDefault(albumId, "");
                     }
                     catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
                     {
-                        _coverMisses.TryAdd(albumId, 0);
+                        _coverMisses[albumId] = versions.GetValueOrDefault(albumId, "");
                     }
                     catch (NoctisServerException ex) when (ex.Kind is not (NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged))
                     {
