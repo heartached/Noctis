@@ -936,4 +936,41 @@ public class MobileLyricsPageTests
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
     }
+
+    /// <summary>The diagnostic switches (debug.noctis.lyr.*, off by default) take their layer out
+    /// of the page: no line blur, no fade bands, no wash or Blurred Cover, no dither; off, all
+    /// are there.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DiagnosticSwitches_TakeTheirLayersAway(bool on)
+    {
+        LyricsDiagnostics.NoLineBlur = LyricsDiagnostics.NoBands = LyricsDiagnostics.NoBackdrop = LyricsDiagnostics.NoDither = on;
+        try
+        {
+            var (shell, player, files, _) = MakeShell();
+            files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 20).Select(i => $"[00:{10 + i * 2:00}.00]line {i}"));
+            var (view, window) = Mount(shell);
+            shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+            player.RaisePositionChanged(TimeSpan.FromSeconds(20.5));
+            shell.OpenNowPlayingCommand.Execute(null);
+            shell.ToggleLyricsCommand.Execute(null);
+            for (var i = 0; i < 3; i++)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+            }
+            var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+            foreach (var name in new[] { "TopFade", "BottomFade", "Backdrop", "BlurCover", "WashDither" })
+                Assert.Equal(!on, page.FindControl<Control>(name)!.IsAttachedToVisualTree());
+            Assert.True(shell.Lyrics.ActiveLineIndex > 2);
+            var blurred = shell.Lyrics.Lines.Count(l => l.BlurRadius > 0);
+            Assert.Equal(!on, blurred > 0);
+            window.Close();
+        }
+        finally
+        {
+            LyricsDiagnostics.NoLineBlur = LyricsDiagnostics.NoBands = LyricsDiagnostics.NoBackdrop = LyricsDiagnostics.NoDither = false;
+        }
+    }
 }

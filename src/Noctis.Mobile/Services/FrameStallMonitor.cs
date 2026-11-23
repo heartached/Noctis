@@ -40,6 +40,7 @@ public static class FrameStallMonitor
     private static int _stalls;
     private static int _stallsInMotion;
     private static long _windowAllocated;
+    private static long _windowUiAllocated;
     private static int _windowGen0;
 
     /// <summary>The state that marks visible motion: a stall while it is on is one the user saw.</summary>
@@ -61,6 +62,7 @@ public static class FrameStallMonitor
         _lastTicks = Stopwatch.GetTimestamp();
         _windowStart = _lastTicks;
         _windowAllocated = GC.GetTotalAllocatedBytes(precise: true);
+        _windowUiAllocated = GC.GetAllocatedBytesForCurrentThread();
         _windowGen0 = GC.CollectionCount(0);
         DebugLog.Write("Stalls", $"Frame stall monitor on (threshold {Threshold.TotalMilliseconds:0} ms)");
         top.RequestAnimationFrame(OnFrame);
@@ -155,15 +157,25 @@ public static class FrameStallMonitor
             // 0 KB/s in every window but the one with the GC, then 3-6 MB/s), so it is read
             // precisely here, once a window, not on every frame.
             var allocated = GC.GetTotalAllocatedBytes(precise: true);
+            // Split (11-23): the S23's lyrics allocated 1-1.7 MB/s where the headless tests, which
+            // count the UI thread, saw a fraction of that. This runs on the UI thread, so its own
+            // count is the UI thread's and the rest is every other thread (the render thread
+            // drawing, the player, Java interop). If Mono's per-thread count moves an allocation
+            // buffer at a time (not checked), the UI figure is off by at most a buffer a window.
+            var uiAllocated = GC.GetAllocatedBytesForCurrentThread();
             var gen0 = GC.CollectionCount(0);
+            var kbPerSecond = 1024.0 * window.TotalSeconds;
+            var ui = (uiAllocated - _windowUiAllocated) / kbPerSecond;
+            var all = (allocated - _windowAllocated) / kbPerSecond;
             DebugLog.Write("Stalls", $"{_stalls} stalls in {window.TotalSeconds:0.0} s ({_frames} frames)"
                 + $", frames over 25 ms {_slowFrames}, longest {_maxGap:0} ms"
                 + $", stalls while {MotionState} {_stallsInMotion}"
-                + $", alloc {(allocated - _windowAllocated) / 1024.0 / window.TotalSeconds:0} KB/s, GC0 +{gen0 - _windowGen0}"
+                + $", alloc {all:0} KB/s (UI thread {ui:0}, other threads {Math.Max(0, all - ui):0}), GC0 +{gen0 - _windowGen0}"
                 + string.Concat(WindowStateMs.Select(c => $", {c.Key} on {c.Value / 1000:0.0} s"))
                 + string.Concat(WindowCounts.Select(c => $", {c.Key} {c.Value}"))
                 + string.Concat(WindowTimes.Select(c => $", {c.Key} {c.Value:0} ms")));
             _windowAllocated = allocated;
+            _windowUiAllocated = uiAllocated;
             _windowGen0 = gen0;
             WindowCounts.Clear();
             WindowTimes.Clear();

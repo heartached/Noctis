@@ -25,7 +25,6 @@
         <conv:EmphasisGlowConverter x:Key="EmphasisGlow" />
         <conv:EmphasisGlowBlurConverter x:Key="EmphasisGlowBlur" />
         <conv:WordOverflowPaddingConverter x:Key="WordOverflowPad" />
-        <conv:BlurRadiusToEffectConverter x:Key="BlurToEffect" />
         <conv:LyricVoiceToAlignmentConverter x:Key="VoiceAlign" />
         <conv:LyricVoiceToTextAlignmentConverter x:Key="VoiceTextAlign" />
         <conv:LyricVoiceToItemsAlignmentConverter x:Key="VoiceItemsAlign" />
@@ -86,17 +85,12 @@
         <!-- The desktop's active-line presentation: lines rest at 0.96 and the sung line grows to
              full size on the same spring and over the same second as the scroll glide
              (LineMotion), so size and position arrive together (LineScale, on the compositor);
-             opacity and the depth blur ease. ClipToBounds off: the held-note swell and glow
+             opacity and the depth blur ease (LineFade: the opacity on the compositor, the blur
+             in three steps, no per-frame work). ClipToBounds off: the held-note swell and glow
              spill past the line box. -->
         <Style Selector="Button.lyric-line">
             <Setter Property="RenderTransform" Value="{x:Null}" />
             <Setter Property="ClipToBounds" Value="False" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.5" Easing="CubicEaseInOut" />
-                    <EffectTransition Property="Effect" Duration="0:0:0.4" Easing="CubicEaseOut" />
-                </Transitions>
-            </Setter>
         </Style>
         <!-- No hover/press box and no zoom on a lyric line: Fluent's template selectors beat
              Background="Transparent", Fluent presses to scale(0.98) and Noctis.UI Styles.axaml
@@ -310,8 +304,8 @@
                                     HorizontalAlignment="{Binding Voice, Converter={StaticResource VoiceAlign}}"
                                     HorizontalContentAlignment="Left"
                                     RenderTransformOrigin="{Binding Voice, Converter={StaticResource VoiceOrigin}}"
-                                    Opacity="{Binding LineOpacity}"
-                                    Effect="{Binding BlurRadius, Converter={StaticResource BlurToEffect}}"
+                                    Opacity="{Binding LineOpacity}" views:LineFade.IsEnabled="True"
+                                    views:LineFade.BlurRadius="{Binding BlurRadius}"
                                     AutomationProperties.Name="{Binding Text}"
                                     Command="{Binding $parent[UserControl].((vm:ShellViewModel)DataContext).Lyrics.SeekToLineCommand}"
                                     CommandParameter="{Binding}">

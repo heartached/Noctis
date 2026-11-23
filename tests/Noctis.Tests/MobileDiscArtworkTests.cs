@@ -270,25 +270,45 @@ public class MobileDiscArtworkTests : IDisposable
         // whichever thread runs it, and the whole process, spinning vs still.
         DiscSpinHandler.CountAllocations = true;
         long own;
-        int draws;
+        int draws, updates;
+        bool noGc;
         try
         {
             var start = handler.AllocatedBytes;
             var drawn = handler.CountedDraws;
-            Tick(window, 240);
+            var updated = handler.CountedUpdates;
+            // Counted with no collection possible. 11-23: a run on a loaded machine read 126 B a
+            // tick against 88. Counted per call it was a few draws of 5-8 KB each, inside
+            // SKCanvas.DrawImage (native code that allocates nothing managed), with exactly one
+            // frame update and one draw per tick (240, 240, 240: the app never draws a frame
+            // twice) and no gen0 collection completing during those draws; with no collection
+            // allowed (GC.TryStartNoGCRegion) every run read 88 B a draw, 240 of 240. A
+            // collection running while the thread is in native code (a background one started
+            // by another thread) settles the thread's allocation buffer and the per-thread count
+            // takes in its unused part: a counting artefact, not an allocation of ours.
+            noGc = GC.TryStartNoGCRegion(64L * 1024 * 1024);
+            try
+            {
+                Tick(window, 240);
+            }
+            finally
+            {
+                if (noGc && System.Runtime.GCSettings.LatencyMode == System.Runtime.GCLatencyMode.NoGCRegion) GC.EndNoGCRegion();
+            }
             own = handler.AllocatedBytes - start;
             draws = handler.CountedDraws - drawn;
+            updates = handler.CountedUpdates - updated;
         }
         finally
         {
             DiscSpinHandler.CountAllocations = false;
         }
-        _out.WriteLine($"handler (frame update + draw): {own} B over 240 frames, {draws} draws ({own / (double)Math.Max(1, draws):0.0} B a draw)");
-        // Ours allocate nothing; the Skia lease Avalonia hands the draw is two small objects (24 +
-        // 64 B) a draw. Per draw, not per tick: the headless render loop's own timer may draw a
-        // frame again (a loaded run measured 126 B "a frame" that way, 11-23).
-        Assert.True(draws >= 240, $"{draws} draws");
-        Assert.True(own <= draws * 96L, $"the handler allocated {own / (double)draws:0.0} B a draw");
+        _out.WriteLine($"handler (frame update + draw): {own} B over 240 ticks, {updates} frame updates, {draws} draws ({own / 240.0:0.0} B a tick, no-GC region {noGc})");
+        // One frame update and one draw a tick; ours allocate nothing, the Skia lease Avalonia
+        // hands the draw is two small objects (24 + 64 B).
+        Assert.Equal(240, updates);
+        Assert.Equal(240, draws);
+        Assert.True(own <= 240 * 96L, $"the handler allocated {own / 240.0:0.0} B a tick");
         var spinning = Measure(window, 240, out var spunFrames);
         rig.Shell.Player.TogglePlayPauseCommand.Execute(null);           // pause
         RunFor(window, DiscSpin.SpinDownSeconds + 0.3);                   // eased to a stop

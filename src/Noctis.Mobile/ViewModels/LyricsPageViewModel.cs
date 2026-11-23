@@ -608,7 +608,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
             // the line just sung is a soft ghost under the header.
             if (distance > 0 && i < active) distance++;
             var ramp = distance < OpacityRamp.Length ? OpacityRamp[distance] : 0;
-            var blur = IsBrowsing ? 0 : distance < BlurRamp.Length ? BlurRamp[distance] : FarBlur;
+            var blur = IsBrowsing || Services.LyricsDiagnostics.NoLineBlur ? 0 : distance < BlurRamp.Length ? BlurRamp[distance] : FarBlur;
             Set(line, Math.Max(ramp, floor), blur);
         }
 
