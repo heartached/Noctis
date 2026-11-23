@@ -60,7 +60,7 @@ public static class FrameStallMonitor
         Snapshot();
         _lastTicks = Stopwatch.GetTimestamp();
         _windowStart = _lastTicks;
-        _windowAllocated = GC.GetTotalAllocatedBytes();
+        _windowAllocated = GC.GetTotalAllocatedBytes(precise: true);
         _windowGen0 = GC.CollectionCount(0);
         DebugLog.Write("Stalls", $"Frame stall monitor on (threshold {Threshold.TotalMilliseconds:0} ms)");
         top.RequestAnimationFrame(OnFrame);
@@ -150,8 +150,11 @@ public static class FrameStallMonitor
                 StateSince[state] = now;
             }
             // Every window, also on a quiet page: the allocation rate and collections say how
-            // soon the next nursery collection (a 120-140 ms pause on the S23) comes.
-            var allocated = GC.GetTotalAllocatedBytes();
+            // soon the next nursery collection (a 120-140 ms pause on the S23) comes. Precise: on
+            // the phone's Mono runtime the cheap count moved only at a collection (S23 11-23:
+            // 0 KB/s in every window but the one with the GC, then 3-6 MB/s), so it is read
+            // precisely here, once a window, not on every frame.
+            var allocated = GC.GetTotalAllocatedBytes(precise: true);
             var gen0 = GC.CollectionCount(0);
             DebugLog.Write("Stalls", $"{_stalls} stalls in {window.TotalSeconds:0.0} s ({_frames} frames)"
                 + $", frames over 25 ms {_slowFrames}, longest {_maxGap:0} ms"
@@ -188,6 +191,8 @@ public static class FrameStallMonitor
         }
         parts.Add(anyGc ? $"GC0/1/2 +{gcs[0]}/+{gcs[1]}/+{gcs[2]}" : "no GC");
         var allocated = GC.GetTotalAllocatedBytes();
+        // The cheap count, read every frame: on Mono it moves only at a collection, so it shows
+        // the nursery's worth in a GC stall and 0 otherwise (the summary has the real rate).
         parts.Add($"alloc {(allocated - _lastAllocated) / 1024} KB");
         parts.Add($"heap {GC.GetTotalMemory(false) / (1024 * 1024)} MB");
         if (GapStates.Count > 0) parts.Add("during " + string.Join(" + ", GapStates));
