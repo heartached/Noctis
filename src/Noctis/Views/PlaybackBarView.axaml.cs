@@ -173,6 +173,8 @@ public partial class PlaybackBarView : UserControl
         VolumeSlider.PropertyChanged += OnVolumeSliderPropertyChanged;
         VolumeSlider.SizeChanged += (_, _) => UpdateVolumeSliderVisual();
         UpdateVolumeReadout();
+        // The pop-up's content is attached (with the window's font) each time it opens.
+        VolumeReadout.AttachedToVisualTree += (_, _) => FitVolumeReadoutWidth();
 
         // Keyboard: arrows on the focused speaker button step the volume; Esc closes the pop-up.
         // Tunnel so the keys are ours before any directional focus handling sees them.
@@ -1153,6 +1155,26 @@ public partial class PlaybackBarView : UserControl
     // so every writer — drag, wheel, keys, shortcuts, mini player, Local API — shows here.
     private void UpdateVolumeReadout() =>
         VolumeReadout.Text = $"{(int)Math.Round(VolumeSlider.Value)}%";
+
+    /// <summary>Discord 11-23: "100%" overflowed the readout's fixed 26px. Its width is now the
+    /// widest text it shows, "100%" (tabular digits: every digit is as wide), measured in the
+    /// readout's own font, so 0%..100% all fit and the pill (and the slider in it) never resizes
+    /// as the level changes.</summary>
+    internal void FitVolumeReadoutWidth()
+    {
+        var widest = new TextBlock
+        {
+            Text = "100%",
+            FontFamily = VolumeReadout.FontFamily,
+            FontSize = VolumeReadout.FontSize,
+            FontWeight = VolumeReadout.FontWeight,
+            FontStyle = VolumeReadout.FontStyle,
+            FontFeatures = VolumeReadout.FontFeatures,
+        };
+        widest.Measure(Size.Infinity);
+        var width = Math.Ceiling(widest.DesiredSize.Width) + 1;
+        if (Math.Abs(VolumeReadout.Width - width) > 0.1) VolumeReadout.Width = width;
+    }
 
     private void SetVolumeDragging(bool dragging)
     {

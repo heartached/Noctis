@@ -1976,10 +1976,12 @@
                                                 Margin="0"
                                                 x:Name="VolumeSlider"/>
                                     </Grid>
-                                    <!-- Live level. Fixed width so "5%" → "100%" never resizes the pill. -->
+                                    <!-- Live level. Fixed width so "5%" → "100%" never resizes the pill:
+                                         FitVolumeReadoutWidth sets it to "100%" measured in this font
+                                         (26 clipped it, Discord 11-23); 30 until then. -->
                                     <TextBlock x:Name="VolumeReadout"
                                                Grid.Column="1"
-                                               Width="26"
+                                               Width="30"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center"
                                                TextAlignment="Center"
