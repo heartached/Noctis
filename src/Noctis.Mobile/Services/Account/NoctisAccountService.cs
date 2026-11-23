@@ -55,6 +55,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private const int CoverFailureLimit = 8;
     private const int DownloadConcurrency = 2;
     private static readonly TimeSpan CoverMaxAge = TimeSpan.FromDays(30);
+    /// <summary>The computer's clock is known to whole seconds (Date): a copy this close to its cover's
+    /// change is downloaded again rather than adopted.</summary>
+    private static readonly TimeSpan CoverClockSlack = TimeSpan.FromSeconds(2);
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.Ordinal)
     {
         "mp3", "flac", "m4a", "aac", "ogg", "oga", "opus", "wav", "aiff", "aif", "wma", "ape", "wv", "alac",
@@ -1153,7 +1156,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         var due = tracks.Select(t => t.AlbumId).Distinct()
             .Where(id => id != Track.UnknownAlbumBucketId
                          && !(_coverMisses.TryGetValue(id, out var missed) && missed == versions.GetValueOrDefault(id, "")))
-            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, ref adopted))
+            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, client.ServerClockAhead, ref adopted))
             .ToList();
         if (adopted) SaveSyncState();
         RaiseSyncProgress(NoctisSyncStage.Covers, 0, due.Count);
@@ -1237,8 +1240,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// changed since the phone's copy (a cover corrected there arrives with the next sync). From a
     /// computer that names no version, a copy over 30 days old. A copy saved before the phone kept
     /// versions is current when written after the computer's file (<paramref name="adopted"/>: that
-    /// version is recorded, so an update does not download every cover again).</summary>
-    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, ref bool adopted)
+    /// version is recorded, so an update does not download every cover again). The copy's time is
+    /// put on the computer's clock first (<paramref name="clockAhead"/>, from its responses' Date):
+    /// compared raw, a computer whose clock runs behind made a cover corrected there after the copy
+    /// look older, and the stale copy was kept. Offset unknown: downloaded again, once.</summary>
+    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, TimeSpan? clockAhead, ref bool adopted)
     {
         try
         {
@@ -1248,7 +1254,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             lock (_gate)
             {
                 if (_sync.Covers.TryGetValue(key, out var known)) return known != version;
-                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || File.GetLastWriteTimeUtc(path) < changed) return true;
+                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || clockAhead is not { } ahead
+                    || File.GetLastWriteTimeUtc(path) + ahead < changed + CoverClockSlack) return true;
                 _sync.Covers[key] = version;
             }
             adopted = true;

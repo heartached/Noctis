@@ -325,6 +325,50 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(_art, File.ReadAllBytes(second));
     }
 
+    /// <summary>The computer's responses dated <paramref name="ahead"/> from this machine's clock (a PC
+    /// whose clock is off).</summary>
+    private sealed class SkewedClock(HttpMessageHandler inner, TimeSpan ahead) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var response = await base.SendAsync(request, ct);
+            response.Headers.Date = DateTimeOffset.UtcNow + ahead;
+            return response;
+        }
+    }
+
+    /// <summary>The first sync after the update that brought cover versions: a phone copy is adopted
+    /// as current when written after the computer's cover file. That compared the phone's clock with
+    /// the computer's: with the computer's an hour behind, a cover corrected there after the phone's
+    /// copy still looked older, and the stale copy was kept.</summary>
+    [Fact]
+    public async Task ACoverCorrectedBeforeTheUpdate_OnAComputerWhoseClockIsBehind_IsNotKeptStale()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var behind = TimeSpan.FromHours(-1);
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var phoneCover = _phonePersistence.GetArtworkPath(AlbumA);
+        Assert.Equal(_art, File.ReadAllBytes(phoneCover));
+
+        // Corrected on the computer ten minutes after the phone's copy, stamped by its clock (an hour behind).
+        var corrected = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 9, 8, 7, 6, 5 };
+        var deskCover = Path.Combine(_dir, "cover.jpg");
+        File.WriteAllBytes(deskCover, corrected);
+        File.SetLastWriteTimeUtc(deskCover, File.GetLastWriteTimeUtc(phoneCover).AddMinutes(10) + behind);
+        // A phone from before the versions: none saved.
+        var syncFile = Path.Combine(AccountDir, "sync.json");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(syncFile))!.AsObject();
+        Assert.True(json.Remove("covers"));
+        File.WriteAllText(syncFile, json.ToJsonString());
+
+        var updated = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new SkewedClock(NoctisHandlers.Sockets(accept), behind),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+        await updated.SyncNowAsync(ct);
+
+        Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
+    }
+
     /// <summary>The album list without cover versions (a computer from before them): the copy on
     /// the phone is kept until it is 30 days old, as before.</summary>
     [Fact]
