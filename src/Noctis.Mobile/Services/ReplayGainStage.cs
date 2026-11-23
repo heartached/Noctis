@@ -35,6 +35,7 @@ public sealed class ReplayGainStage
     private const float Headroom = 1f - LimiterThreshold;
 
     private readonly ConcurrentDictionary<string, float> _gains = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _labels = new(StringComparer.Ordinal);
     private int _generation;
     private volatile string? _announced;
 
@@ -50,8 +51,15 @@ public sealed class ReplayGainStage
 
     /// <summary>The level <paramref name="mediaId"/> plays at, from its next stream start (or the
     /// next <see cref="Refresh"/> while it plays).</summary>
-    public void SetGain(string mediaId, double linear) =>
+    public void SetGain(string mediaId, double linear, string? label = null)
+    {
         _gains[mediaId] = double.IsFinite(linear) && linear > 0 ? (float)linear : 1f;
+        if (label != null) _labels[mediaId] = label;
+    }
+
+    /// <summary>The song's name given with its level, for the log; the id when none was.</summary>
+    public string LabelFor(string? mediaId) =>
+        mediaId == null ? "?" : _labels.TryGetValue(mediaId, out var label) ? label : mediaId;
 
     /// <summary>Forgets every level but those of <paramref name="mediaIds"/> (the items still queued).</summary>
     public void Retain(IEnumerable<string> mediaIds)
@@ -59,13 +67,17 @@ public sealed class ReplayGainStage
         var keep = new HashSet<string>(mediaIds, StringComparer.Ordinal);
         foreach (var key in _gains.Keys)
             if (!keep.Contains(key)) _gains.TryRemove(key, out _);
+        foreach (var key in _labels.Keys)
+            if (!keep.Contains(key)) _labels.TryRemove(key, out _);
     }
 
     /// <summary>A setting changed: the playing song glides to its (re-set) level.</summary>
     public void Refresh() => Interlocked.Increment(ref _generation);
 
     /// <summary>The item the player says is playing, for a stream the sink could not name
-    /// (<see cref="BeginStream"/> with null). Late by the AudioTrack's buffer, so only a fallback.</summary>
+    /// (<see cref="BeginStream"/> with null). The player says so when the song is heard, while the
+    /// sink is already the AudioTrack's buffer further on: a fallback only. Its switch glides
+    /// over <see cref="BoundaryRampMs"/> like a stream start.</summary>
     public void Announce(string? mediaId) => _announced = mediaId;
 
     /// <summary>The level set for <paramref name="mediaId"/>; 1 when none is.</summary>
@@ -75,6 +87,9 @@ public sealed class ReplayGainStage
 
     /// <summary>The item whose samples the stage is scaling now.</summary>
     public string? MediaId => _mediaId;
+
+    /// <summary>True while the stage follows <see cref="Announce"/> (the sink did not name the stream).</summary>
+    public bool FollowsPlayer => _followAnnounced;
     public float Gain => _gain;
     public float TargetGain => _target;
 
@@ -109,7 +124,7 @@ public sealed class ReplayGainStage
             {
                 _mediaId = announced;
                 _seenGeneration = Volatile.Read(ref _generation);
-                RampTo(GainFor(announced), SettingsRampMs);
+                RampTo(GainFor(announced), BoundaryRampMs);
             }
         }
         var generation = Volatile.Read(ref _generation);

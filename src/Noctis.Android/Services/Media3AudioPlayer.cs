@@ -658,7 +658,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
         var meta = new MediaMetadata.Builder();
         var track = Lookup(path);
-        _replayGain.SetGain(path, ReplayGainFor(track));
+        _replayGain.SetGain(path, ReplayGainFor(track), track?.Title ?? FallbackTitle(path));
         LogReplayGain(track, path);
         if (track != null)
         {
