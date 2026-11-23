@@ -417,7 +417,7 @@ public sealed class MasonryAlbumPanel : Panel
             {
                 if (!_realized.TryGetValue(i, out var c))
                 {
-                    c = Rent();
+                    c = Rent(_items[i]);
                     if (c == null) break;
                     c.DataContext = _items[i];
                     c.IsVisible = true;
@@ -502,10 +502,14 @@ public sealed class MasonryAlbumPanel : Panel
         else if (double.IsNaN(_twoLine)) _twoLine = height;
     }
 
-    private Control? Rent()
+    /// <summary>A pooled tile, or a new one that joins the panel already holding its album: added
+    /// first, it took the page's view model as its data for a moment and its Command bindings
+    /// (open the album, the cover's Play) stayed null.</summary>
+    private Control? Rent(Album album)
     {
         if (_pool.Count > 0) return _pool.Pop();
-        if (ItemTemplate?.Build(null) is not Control c) return null;
+        if (ItemTemplate?.Build(album) is not Control c) return null;
+        c.DataContext = album;
         Children.Add(c);
         return c;
     }
