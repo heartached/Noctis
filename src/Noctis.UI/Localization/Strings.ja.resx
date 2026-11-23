@@ -9406,4 +9406,12 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="AddToPlaylist.Add" xml:space="preserve"><value>追加</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
   <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>{0:N0} 件のプレイリストに追加</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
   <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>{0:N0} 件のプレイリストに追加しました</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
+  <data name="Settings.PlaylistNewBadgeHintDays" xml:space="preserve"><value>最近プレイリストに追加されたトラックに印を付けます。NEW と表示する期間を選べます。</value><comment>Hint under Settings › Playlist page › NEW badge; the duration picker sits beside it</comment></data>
+  <data name="Settings.PlaylistNewBadgeDuration" xml:space="preserve"><value>NEW を表示する期間</value><comment>Screen-reader name of the NEW badge duration picker in Settings › Playlist page</comment></data>
+  <data name="Settings.NewBadgeDays1" xml:space="preserve"><value>1日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays3" xml:space="preserve"><value>3日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays7" xml:space="preserve"><value>7日</value><comment>NEW badge duration choice in Settings › Playlist page (the default); also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>{0}以内に追加</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
 </root>

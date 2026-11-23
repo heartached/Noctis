@@ -5943,13 +5943,25 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="{loc:T Settings.PlaylistNewBadge}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHint}"
+                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHintDays}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
-                                          IsChecked="{Binding PlaylistShowNewBadge}"
-                                          VerticalAlignment="Center"/>
+                    <!-- 11-23: how long a track stays NEW (was always 7 days); greyed while the badge is off. -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <ComboBox x:Name="PlaylistNewBadgeDaysCombo"
+                                  AutomationProperties.Name="{loc:T Settings.PlaylistNewBadgeDuration}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding PlaylistNewBadgeDayOptions}"
+                                  SelectedItem="{Binding SelectedPlaylistNewBadgeDaysOption}"
+                                  IsEnabled="{Binding PlaylistShowNewBadge}"
+                                  MinWidth="110"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <controls:LottieToggle AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
+                                              IsChecked="{Binding PlaylistShowNewBadge}"
+                                              VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Grid>
             </Border>
             <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->

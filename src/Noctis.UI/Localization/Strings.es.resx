@@ -4416,4 +4416,12 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="AddToPlaylist.Add" xml:space="preserve"><value>Añadir</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
   <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>Añadir a {0:N0} playlists</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
   <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>Añadido a {0:N0} playlists</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
+  <data name="Settings.PlaylistNewBadgeHintDays" xml:space="preserve"><value>Marca las pistas añadidas hace poco a la playlist. Elige cuánto tiempo siguen siendo nuevas.</value><comment>Hint under Settings › Playlist page › NEW badge; the duration picker sits beside it</comment></data>
+  <data name="Settings.PlaylistNewBadgeDuration" xml:space="preserve"><value>Cuánto tiempo siguen siendo NUEVAS</value><comment>Screen-reader name of the NEW badge duration picker in Settings › Playlist page</comment></data>
+  <data name="Settings.NewBadgeDays1" xml:space="preserve"><value>1 día</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays3" xml:space="preserve"><value>3 días</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays7" xml:space="preserve"><value>7 días</value><comment>NEW badge duration choice in Settings › Playlist page (the default); also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 días</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 días</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>Añadida hace menos de {0}</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
 </root>

@@ -862,7 +862,7 @@
                                                     BorderThickness="1.5"
                                                     UseLayoutRounding="True"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
-                                                    ToolTip.Tip="{loc:T Playlist.AddedLast7DaysTip}">
+                                                    ToolTip.Tip="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.PlaylistNewBadgeTip, FallbackValue={x:Null}}">
                                                 <!-- GitHub #74: the badge can be switched off in Settings. -->
                                                 <Border.IsVisible>
                                                     <!-- New to THIS playlist (a suggestion just added counts), else new to the library. -->
@@ -871,6 +871,7 @@
                                                         <Binding Path="DateAdded" />
                                                         <Binding Path="$parent[UserControl].((vm:PlaylistViewModel)DataContext).TrackAddedAt" />
                                                         <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Settings.PlaylistShowNewBadge" FallbackValue="True" />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Settings.PlaylistNewBadgeDays" FallbackValue="7" />
                                                     </MultiBinding>
                                                 </Border.IsVisible>
                                                 <TextBlock Text="{loc:T Playlist.NEW}"
