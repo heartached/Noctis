@@ -11,8 +11,10 @@ namespace Noctis.Tests;
 /// tagged "Rock, Pop, Indie" was one made-up combined genre on the Genres page, album headers,
 /// mixes and Autoplay. Settings › Library › Genre Separators (default ',' on top of the
 /// always-on ';') splits them when the library is read and grouped; the files are never changed.
-/// Process-wide configuration: always restores the defaults.
+/// Process-wide configuration: always restores the defaults, and runs in the non-parallel
+/// collection so no other class reads genres while a test has them changed.
 /// </summary>
+[Collection("GenreSeparators global configuration")]
 public class GenreSeparators260Tests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "NoctisTests", Guid.NewGuid().ToString("N"));
@@ -295,3 +297,8 @@ internal static class GenreTestExtensions
 {
     public static TResult Let<T, TResult>(this T value, Func<T, TResult> f) => f(value);
 }
+
+/// <summary>Tests that change the process-wide <see cref="GenreSeparators"/>: run alone, after the
+/// parallel ones, so a test reading genres under the defaults never sees another's list.</summary>
+[CollectionDefinition("GenreSeparators global configuration", DisableParallelization = true)]
+public class GenreSeparatorsConfigurationCollection { }
