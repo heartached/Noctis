@@ -1,5 +1,7 @@
+using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 
 namespace Noctis.Mobile.Views;
 
@@ -39,6 +41,21 @@ public class RowItemsControl : ItemsControl
     // list scrolls, was already there before the virtualising panel took it.
     private bool _settled, _settling;
 
+    /// <summary>
+    /// A list handed new items (a Reset: Home's Pinned rail after a pin) plays its rows' arrival
+    /// again, as a plain panel's rebuilt rows did, though its rows are kept. Off by default: a
+    /// list without an arrival has nothing to replay.
+    /// </summary>
+    public bool ReplaysArrival { get; set; }
+
+    public RowItemsControl()
+    {
+        ItemsView.CollectionChanged += (_, e) =>
+        {
+            if (ReplaysArrival && e.Action == NotifyCollectionChangedAction.Reset) _settled = _settling = false;
+        };
+    }
+
     protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
     {
         if (container is not RowHost host)
@@ -51,7 +68,7 @@ public class RowItemsControl : ItemsControl
             _settling = true;
             Avalonia.Threading.Dispatcher.UIThread.Post(() => _settled = true, Avalonia.Threading.DispatcherPriority.Loaded);
         }
-        host.Arrives = !_settled && host.Row is null;
+        host.Arrives = !_settled && (host.Row is null || ReplaysArrival);
         if (host.Row is null && ItemTemplate?.Build(item) is { } built)
             host.Row = built;
         if (host.Row is not { } row) return;
@@ -59,6 +76,9 @@ public class RowItemsControl : ItemsControl
         // itself, and before it joins the tree: its commands must never see the page's DataContext.
         row.DataContext = item;
         if (!ReferenceEquals(row.Parent, this)) LogicalChildren.Add(row);
+        // A kept row handed a new list's item may already be in the tree, where joining it no
+        // longer plays the arrival.
+        if (ReplaysArrival && host.Arrives && host.IsAttachedToVisualTree()) Appear.PlayWithin(row);
     }
 
     protected override void ClearContainerForItemOverride(Control container)
