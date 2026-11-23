@@ -312,6 +312,10 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     private bool ShowsCarouselLayout => IsAlbumsCarousel && IsCarouselAvailable;
 
+    /// <summary>GitHub #259: the release grids (Albums, Singles &amp; EPs, Live Albums, Compilations,
+    /// Appears On) stack as Masonry when the Albums page's Masonry setting is on.</summary>
+    public bool UseMasonry => _settings?.AlbumGridMasonry ?? false;
+
     /// <summary>Case style, shared with the Albums page carousel (<see cref="SettingsViewModel.AlbumCarouselStyle"/>).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
 
@@ -335,6 +339,9 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         OnPropertyChanged(nameof(IsCarouselAvailable));
         OnPropertyChanged(nameof(ShowAlbumsGrid));
         OnPropertyChanged(nameof(ShowAlbumsCarousel));
+        OnPropertyChanged(nameof(UseMasonry));
+        OnPropertyChanged(nameof(TileFixedHeight));
+        OnPropertyChanged(nameof(TileMinHeight));
         CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
     }
 
@@ -454,7 +461,16 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private const double TileLabelHeight = 64;
     [ObservableProperty] private double _tileArtworkSize = 184;
     public double TileHeight => TileArtworkSize + TileLabelHeight;
-    partial void OnTileArtworkSizeChanged(double value) => OnPropertyChanged(nameof(TileHeight));
+    /// <summary>The tiles' fixed height in the row grids; Masonry cards size to their caption
+    /// (NaN / 0, GitHub #259). The Overview rows share the template.</summary>
+    public double TileFixedHeight => UseMasonry ? double.NaN : TileHeight;
+    public double TileMinHeight => UseMasonry ? 0 : TileHeight;
+    partial void OnTileArtworkSizeChanged(double value)
+    {
+        OnPropertyChanged(nameof(TileHeight));
+        OnPropertyChanged(nameof(TileFixedHeight));
+        OnPropertyChanged(nameof(TileMinHeight));
+    }
 
     public event EventHandler? BackRequested;
     public event EventHandler<Album>? AlbumOpened;
