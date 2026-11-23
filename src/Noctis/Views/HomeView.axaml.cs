@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
@@ -125,8 +126,7 @@ public partial class HomeView : UserControl, ITrackSelectionSource
         if (MultiSelectHelper.IsRangePress(e))
         {
             e.Handled = true;
-            var rowTiles = tile.FindAncestorOfType<ItemsControl>()?.GetVisualDescendants().OfType<Button>()
-                .Where(b => b.Classes.Contains("album-tile")).ToList() ?? new List<Button> { tile };
+            var rowTiles = SectionTiles(tile);
             var anchor = _rangeAnchor != null && rowTiles.Contains(_rangeAnchor) ? _rangeAnchor : null;
             if (!e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier))
                 MultiSelectHelper.ClearAlbumSelections(_selectedTiles);
@@ -144,6 +144,35 @@ public partial class HomeView : UserControl, ITrackSelectionSource
         // Ensure this view has focus so Ctrl+A reaches OnViewKeyDown
         if (_selectedTiles.Count > 0)
             Focus();
+    }
+
+    /// <summary>The tiles of <paramref name="tile"/>'s album section in album order: a wrapped
+    /// row's in visual order, a Masonry panel's by the album's place in its list (pooled tiles
+    /// sit in the panel in no particular order, GitHub #259).</summary>
+    private static List<Button> SectionTiles(Button tile)
+    {
+        static bool IsTile(Control c) => c is Button b && b.Classes.Contains("album-tile");
+        if (tile.FindAncestorOfType<MasonryAlbumPanel>() is { Albums: { } albums } masonry)
+            return masonry.RealizedElements.OfType<Button>().Where(IsTile)
+                .Select(b => (Tile: b, Index: b.DataContext is Album a ? IndexOf(albums, a) : -1))
+                .Where(x => x.Index >= 0).OrderBy(x => x.Index).Select(x => x.Tile).ToList();
+        return tile.FindAncestorOfType<ItemsControl>()?.GetVisualDescendants().OfType<Button>()
+            .Where(IsTile).ToList() ?? new List<Button> { tile };
+    }
+
+    private static int IndexOf(IReadOnlyList<Album> albums, Album album)
+    {
+        for (var i = 0; i < albums.Count; i++)
+            if (ReferenceEquals(albums[i], album)) return i;
+        return -1;
+    }
+
+    /// <summary>A Masonry tile re-bound to another album (the section refilled) drops the
+    /// selection it showed for the album before.</summary>
+    private void OnMasonryTilePrepared(object? sender, Control element)
+    {
+        if (element is Button tile && _selectedTiles.Remove(tile))
+            MultiSelectHelper.SetSelectedVisual(tile, false, animate: false);
     }
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)

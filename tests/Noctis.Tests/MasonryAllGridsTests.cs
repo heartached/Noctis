@@ -312,4 +312,144 @@ public class MasonryAllGridsTests
         Assert.Single(GridTiles(page).Select(t => Math.Round(t.Bounds.Height)).Distinct());
         win.Close();
     }
+
+    // ── Home: the Albums (recently played) and New in Library sections ──
+
+    private static async Task<(HomeViewModel Vm, HomeView View, Window Win)> MountHome(bool masonry)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        for (var i = 0; i < 20; i++)
+        {
+            var id = Guid.NewGuid();
+            var name = i % 3 == 0 ? $"Album {i} with a much longer title that wraps onto a second line" : $"Album {i}";
+            var t = new Track { Id = Guid.NewGuid(), Title = $"Song {i}", Artist = "Artist", AlbumArtist = "Artist", Album = name, AlbumId = id,
+                Duration = TimeSpan.FromSeconds(176), PlayCount = 3, FilePath = $"C:\\m\\{i}.mp3", DateAdded = DateTime.UtcNow.AddDays(-i) };
+            lib.TrackList.Add(t);
+            ((List<Album>)lib.Albums).Add(new Album { Id = id, Name = name, Artist = t.Artist, Year = 2017, Tracks = new List<Track> { t } });
+            player.History.Add(t);
+        }
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumGridMasonry = masonry;
+        settings.HomeRecentAlbumsCount = 20;
+        settings.HomeNewAlbumsCount = 20;
+        var vm = new HomeViewModel(player, lib, new SidebarViewModel(persistence, lib), settings: settings);
+        await vm.RefreshAsync();
+        var view = new HomeView { DataContext = vm };
+        var win = new Window { Width = 1400, Height = 3200, Content = view };
+        win.Show(); Pump(6);
+        return (vm, view, win);
+    }
+
+    private static List<Button> AlbumTiles(Control root) =>
+        root.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+
+    [AvaloniaFact]
+    public async Task Home_WithMasonryOn_AlbumSectionsUseMasonry()
+    {
+        var (vm, view, win) = await MountHome(masonry: true);
+        Assert.True(vm.UseMasonry);
+        foreach (var (rowName, panelName, albums) in new[]
+                 {
+                     ("AlbumsRow", "AlbumsMasonry", (IReadOnlyList<Album>)vm.RecentlyPlayedAlbums),
+                     ("NewInLibraryRow", "NewInLibraryMasonry", vm.NewInLibraryAlbums),
+                 })
+        {
+            var panel = view.FindControl<MasonryAlbumPanel>(panelName)!;
+            await PumpUntil(() => RealizedTiles(panel).Count == albums.Count && albums.Count > 0);
+            Pump(4);
+            Assert.True(panel.IsEffectivelyVisible, $"{panelName} shown");
+            Assert.True(panel.RealizeAll);
+            Assert.Same(albums, panel.Albums);
+            Assert.Equal(albums.Count, RealizedTiles(panel).Count);
+            Assert.Empty(AlbumTiles(view.FindControl<ItemsControl>(rowName)!));
+            var tiles = RealizedTiles(panel);
+            Assert.Equal(vm.AlbumColumns, tiles.Select(t => Math.Round(t.TranslatePoint(default, panel)!.Value.X)).Distinct().Count());
+            Assert.Equal(5, vm.AlbumColumns);
+            var heights = tiles.Select(t => Math.Round(t.Bounds.Height)).Distinct().ToList();
+            _o.WriteLine($"{panelName}: card heights {string.Join(", ", heights)}, panel {panel.Bounds.Width:0} wide");
+            Assert.True(heights.Count >= 2, "cards should differ in height");
+            // The tile's bindings found the page (no ItemsControl round them any more).
+            Assert.All(tiles, t => Assert.Same(vm.OpenAlbumCommand, t.Command));
+            var cover = tiles[0].GetVisualDescendants().OfType<Border>().First(b => b.ClipToBounds);
+            Assert.InRange(cover.Bounds.Width, vm.AlbumTileSize - 1, vm.AlbumTileSize + 1); // layout rounding
+        }
+        win.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task Home_WithMasonryOff_KeepsTheWrappedRows()
+    {
+        var (vm, view, win) = await MountHome(masonry: false);
+        Assert.False(vm.UseMasonry);
+        var row = view.FindControl<ItemsControl>("AlbumsRow")!;
+        await PumpUntil(() => AlbumTiles(row).Count == vm.RecentlyPlayedAlbums.Count && vm.RecentlyPlayedAlbums.Count > 0);
+        Assert.Equal(vm.RecentlyPlayedAlbums.Count, AlbumTiles(row).Count);
+        Assert.All(AlbumTiles(row), t => Assert.Same(vm.OpenAlbumCommand, t.Command));
+        Assert.False(view.FindControl<MasonryAlbumPanel>("AlbumsMasonry")!.IsEffectivelyVisible);
+        Assert.False(view.FindControl<MasonryAlbumPanel>("NewInLibraryMasonry")!.IsEffectivelyVisible);
+        win.Close();
+    }
+
+    /// <summary>
+    /// A card the Masonry panel built fresh used to join the tree before it had its album: it
+    /// took the page's view model as its data for a moment, and its Command bindings (open the
+    /// album, the cover's Play button) stayed null for good. Clicking a card must open it.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task AlbumsPage_Masonry_ClickingACardOpensTheAlbum()
+    {
+        EnsureAppStyles();
+        var (vm, settings) = AlbumsVm(40);
+        settings.AlbumGridMasonry = true;
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = 1400, Height = 900, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        var panel = view.FindControl<MasonryAlbumPanel>("MasonryPanel")!;
+        await PumpUntil(() => RealizedTiles(panel).Count > 0);
+        Pump(4);
+
+        var tiles = RealizedTiles(panel);
+        Assert.All(tiles, t => Assert.Same(vm.OpenAlbumCommand, t.Command));
+        Assert.All(tiles, t => Assert.Same(vm.TogglePlayAlbumCommand,
+            t.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("tile-play")).Command));
+        Album? opened = null;
+        vm.AlbumOpened += (_, a) => opened = a;
+        var tile = tiles[0];
+        var p = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height - 12), win)!.Value;
+        win.MouseDown(p, Avalonia.Input.MouseButton.Left);
+        win.MouseUp(p, Avalonia.Input.MouseButton.Left);
+        Pump(2);
+        Assert.Same(tile.DataContext, opened);
+        win.Close();
+    }
+
+    /// <summary>Home's Masonry cards keep Ctrl+click and Shift+click: a Shift+click spans the
+    /// section's albums in list order (the panel's pooled tiles sit in no particular order).</summary>
+    [AvaloniaFact]
+    public async Task Home_Masonry_ShiftClick_SelectsTheAlbumsBetween_InListOrder()
+    {
+        var (vm, view, win) = await MountHome(masonry: true);
+        var panel = view.FindControl<MasonryAlbumPanel>("AlbumsMasonry")!;
+        var albums = vm.RecentlyPlayedAlbums;
+        await PumpUntil(() => RealizedTiles(panel).Count == albums.Count && albums.Count > 0);
+        Pump(4);
+        Button TileOf(Album a) => RealizedTiles(panel).First(t => ReferenceEquals(t.DataContext, a));
+        void ClickTile(Button t, Avalonia.Input.RawInputModifiers mods)
+        {
+            var p = t.TranslatePoint(new Point(t.Bounds.Width / 2, 40), win)!.Value;
+            win.MouseDown(p, Avalonia.Input.MouseButton.Left, mods);
+            win.MouseUp(p, Avalonia.Input.MouseButton.Left, mods);
+            Pump(2);
+        }
+        ClickTile(TileOf(albums[1]), Avalonia.Input.RawInputModifiers.Control);
+        ClickTile(TileOf(albums[7]), Avalonia.Input.RawInputModifiers.Shift);
+        var selected = RealizedTiles(panel).Where(t => t.Classes.Contains("ctrl-selected")).Select(t => albums.IndexOf((Album)t.DataContext!)).OrderBy(i => i);
+        Assert.Equal(Enumerable.Range(1, 7), selected);
+        Assert.Equal(7, view.GetSelectedTracks().Count);
+        win.Close();
+    }
 }
