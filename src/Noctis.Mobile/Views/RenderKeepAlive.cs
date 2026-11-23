@@ -67,16 +67,13 @@ public sealed class RenderKeepAlive : Control
     /// asking; the last pulse ends by itself.</summary>
     public void Run(bool on)
     {
-        if (!on)
+        if (!on || ElementComposition.GetElementVisual(this) is not { } visual)
         {
+            if (_running) Services.FrameStallMonitor.SetState("keepalive", false);
             _running = false;
             return;
         }
-        if (ElementComposition.GetElementVisual(this) is not { } visual)
-        {
-            _running = false;
-            return;
-        }
+        if (!_running) Services.FrameStallMonitor.SetState("keepalive", true);
         _running = true;
         var now = Noctis.Mobile.ViewModels.LyricsPageViewModel.NowMs();
         if (now - _pulsedAtMs < RearmMs) return;

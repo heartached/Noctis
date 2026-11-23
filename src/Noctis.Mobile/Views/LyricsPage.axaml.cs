@@ -520,12 +520,14 @@ public partial class LyricsPage : UserControl
         if (_frameLoopRunning || !KeepsFrames) return;
         if (TopLevel.GetTopLevel(this) is not { } top) return;
         _frameLoopRunning = true;
+        Services.FrameStallMonitor.SetState("lyric frame loop", true);
         KeepAlive.Run(true);
         top.RequestAnimationFrame(OnFrame);
     }
 
     private void OnFrame(TimeSpan _)
     {
+        Services.FrameStallMonitor.Count("lyric frames");
         var now = LyricsPageViewModel.NowMs();
         if (_gliding) StepGlide(now);
         if (_lyrics?.WantsFrames == true && IsVisible) _lyrics.OnFrame(now);
@@ -538,6 +540,7 @@ public partial class LyricsPage : UserControl
         else
         {
             _frameLoopRunning = false;
+            Services.FrameStallMonitor.SetState("lyric frame loop", false);
             KeepAlive.Run(false);
         }
     }
@@ -592,6 +595,7 @@ public partial class LyricsPage : UserControl
         _glideDurationMs = Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
         BuildCascade(index, distance);
         _gliding = true;
+        Services.FrameStallMonitor.SetState(Services.FrameStallMonitor.MotionState, true);
         EnsureFrameLoop();
     }
 
@@ -658,6 +662,7 @@ public partial class LyricsPage : UserControl
 
     private void StopGlide()
     {
+        if (_gliding) Services.FrameStallMonitor.SetState(Services.FrameStallMonitor.MotionState, false);
         _gliding = false;
         if (_cascade == null) return;
         foreach (var (control, _) in _cascade) SetLag(control, 0);
