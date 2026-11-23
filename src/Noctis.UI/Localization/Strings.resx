@@ -3557,6 +3557,10 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Cover</value><comment>Now Playing Artwork choice: the plain square cover</comment></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Vinyl</value><comment>Now Playing Artwork choice: the cover as a spinning record's label</comment></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value><comment>Now Playing Artwork choice: the cover printed on a spinning compact disc</comment></data>
+  <data name="Mobile.Settings.AnimatedCovers" xml:space="preserve"><value>Animated Covers</value><comment>Settings row: whether Now Playing plays the album's animated cover (a short muted video loop)</comment></data>
+  <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Off</value><comment>Animated Covers choice: never, the still cover only</comment></data>
+  <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fi Only</value><comment>Animated Covers choice: the computer's loops download on Wi-Fi only</comment></data>
+  <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Always</value><comment>Animated Covers choice: the computer's loops download on mobile data too</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Now Playing Background</value><comment>Settings row: what Now Playing shows behind the cover (Colour Wash or Blurred Cover)</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Now Playing background brightness</value><comment>Screen reader name of the slider</comment></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Darker or brighter colours behind Now Playing</value><comment>Footnote under the slider</comment></data>

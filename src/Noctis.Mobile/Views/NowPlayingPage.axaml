@@ -231,6 +231,10 @@
                                 <PathIcon Data="{DynamicResource SongsIcon}" Width="72" Height="72" Opacity="0.4" />
                                 <controls:CachedImage Name="Artwork" SourcePath="{Binding Player.CurrentTrack.AlbumArtworkPath}"
                                                       DecodeWidth="768" ClearOnSourceChange="False" Stretch="UniformToFill" />
+                                <!-- Settings › Appearance › Animated Covers: the album's loop, a native
+                                     video over the still cover while it is seen and still (the
+                                     code-behind feeds Source and IsSeen; AnimatedCoverPresenter). -->
+                                <views:AnimatedCoverView Name="MotionCover" />
                             </Panel>
                         </Border>
                     </Border>

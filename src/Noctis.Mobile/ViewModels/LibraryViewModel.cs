@@ -382,6 +382,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// thread (see <see cref="RefreshFromLibrary"/>). Off in tests: the sort runs inline.</summary>
     public bool SortOffUiThread { get; init; }
 
+    /// <summary>Test hook: each off-thread sort waits for one release of it before it runs, so a
+    /// test can land an update while a sort is in flight however fast the pool is.</summary>
+    internal SemaphoreSlim? SortGate { get; init; }
+
     /// <summary>The configured roots (SAF tree URIs on Android), mirrored from settings.</summary>
     public ObservableCollection<string> Folders { get; } = new();
 
@@ -1111,7 +1115,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         Track[]? sorted = null;
         try
         {
-            sorted = await Task.Run(() => SortByTitle(source)).ConfigureAwait(false);
+            sorted = await Task.Run(async () =>
+            {
+                if (SortGate is { } gate) await gate.WaitAsync().ConfigureAwait(false);
+                return SortByTitle(source);
+            }).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

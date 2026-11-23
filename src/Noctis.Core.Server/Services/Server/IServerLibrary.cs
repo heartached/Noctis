@@ -26,6 +26,12 @@ public interface IServerLibrary : Sync.ISyncApplier
     /// <summary>Path of the album's cover file, or null.</summary>
     string? ArtworkPath(Guid albumId);
 
+    /// <summary>Path of the album's animated cover (a looping .mp4 or .webm, see
+    /// <see cref="AnimatedCoverLocator"/>), or null (getNoctisAnimatedCover then answers 70).
+    /// <paramref name="albumTracks"/> are the album's songs, the one asked for first. The default:
+    /// none, a host that keeps no animated covers.</summary>
+    string? AnimatedCoverPath(Guid albumId, IReadOnlyList<Track> albumTracks) => null;
+
     /// <summary>Path of <paramref name="userName"/>'s profile picture, or null (getAvatar then answers
     /// 70). The desktop keeps one profile, so every account on it gets the owner's picture.</summary>
     string? AvatarPath(string userName) => null;

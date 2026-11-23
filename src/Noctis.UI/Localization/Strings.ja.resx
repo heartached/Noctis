@@ -8544,6 +8544,10 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>カバー</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>レコード</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.AnimatedCovers" xml:space="preserve"><value>アニメーションカバー</value></data>
+  <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>オフ</value></data>
+  <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fiのみ</value></data>
+  <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>常に</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>再生中の背景</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>再生中の背景の明るさ</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>再生画面の背景を暗くまたは明るく</value></data>

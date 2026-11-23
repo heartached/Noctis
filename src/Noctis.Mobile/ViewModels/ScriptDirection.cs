@@ -29,8 +29,5 @@ public static class ScriptDirection
         return rtl > ltr ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
     }
 
-    internal static bool IsRightToLeftLetter(char c) =>
-        c is >= '֐' and <= 'ࣿ'     // Hebrew, Arabic, Syriac, Arabic Supplement, Thaana, N'Ko, Samaritan, Mandaic, Arabic Extended
-        or >= 'יִ' and <= '﷿'       // Hebrew and Arabic presentation forms A
-        or >= 'ﹰ' and <= '﻿';      // Arabic presentation forms B
+    internal static bool IsRightToLeftLetter(char c) => Noctis.Controls.TextDirection.IsRightToLeftLetter(c);
 }

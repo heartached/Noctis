@@ -122,6 +122,190 @@ public class MobileDownloadProgressTests
         Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
     }
 
+    /// <summary>Signed out, Remove All Downloads or the computer dropping this phone while the
+    /// system has the downloads paused (the job stopped, waiting to be run again): the keeper is
+    /// ended and the card goes at once, not after its 10-minute stale timeout; a later run of the
+    /// job resumes nothing.</summary>
+    [Theory]
+    [InlineData("sign-out")]
+    [InlineData("remove-all")]
+    [InlineData("computer")]
+    public async Task Keeper_PausedBySystem_CalledOff_EndsTheKeeperAndClearsTheCard(string how)
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+        var gate = new TaskCompletionSource();
+        account.OnPause = () => gate.TrySetResult();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a, b }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(2, 0, 0, 0));
+        keeper.Pause();
+        await run.WaitAsync(TimeSpan.FromSeconds(5));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 0, 0, 0));   // the paused batch winding down
+        Assert.Equal(new[] { "begin|0" }, keeper.Calls);
+
+        switch (how)
+        {
+            case "sign-out": await account.SignOutAsync(removeDownloads: false); break;
+            case "remove-all": await account.RemoveAllDownloadsAsync(); break;
+            default:
+                account.Account = null;   // the computer refused the key (signed out locally)
+                account.RaiseStateChanged();
+                break;
+        }
+
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+        Assert.Equal("clear", notifier.Calls.Last());
+        keeper.Resume();
+        await Task.Delay(50);
+        Assert.Empty(account.DownloadCalls);
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+    }
+
+    /// <summary>The same while running: the card goes and the keeper ends once, and a tap after it
+    /// begins a keeper again.</summary>
+    [Fact]
+    public async Task Keeper_Running_SignOut_EndsItOnce_AndANewTapBeginsAgain()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+        var gate = new TaskCompletionSource();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(1, 0, 0, 0));
+        await account.SignOutAsync(removeDownloads: false);
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+        Assert.Equal("clear", notifier.Calls.Last());
+        gate.SetResult();   // the stopped batch's task ends after the call-off
+        await run;
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+
+        account.Account = FakeAccount.SignedInAs();
+        await shell.Downloads.RunAsync("Red Album", new[] { b }, () => Task.CompletedTask);
+        Assert.Equal(new[] { "begin|0", "end", "begin|0", "end" }, keeper.Calls);
+    }
+
+    /// <summary>The app ended mid-download: the next start (after its sync with the computer) resumes
+    /// the songs still asked for, under the keeper (begun at start, with the app on screen) and with
+    /// the usual card, instead of waiting for another tap.</summary>
+    [Fact]
+    public async Task Startup_ResumesUnfinishedDownloads_UnderTheKeeper_WithTheUsualCard()
+    {
+        var a = RemoteSong("A");
+        a.FileSize = 3000;
+        var b = RemoteSong("B");
+        b.FileSize = 4000;
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.Unfinished.AddRange(new[] { a, b });
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+        account.DownloadProgress += (_, _) => { };
+
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => keeper.Calls.Count == 2);
+
+        Assert.Equal(1, account.Syncs);
+        Assert.Equal(new[] { a.Id, b.Id }, account.DownloadCalls.Single().Select(t => t.Id));
+        Assert.Equal(new[] { "begin|7000", "end" }, keeper.Calls);
+    }
+
+    /// <summary>The computer did not answer the startup sync: every song would fail, so they wait
+    /// for the next start (the list stays); signed out, nothing is resumed.</summary>
+    [Fact]
+    public async Task Startup_SyncFailedOrSignedOut_ResumesNothing()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount
+        {
+            Account = FakeAccount.SignedInAs(),
+            SyncError = new NoctisServerException(NoctisErrorKind.Unreachable, "off"),
+        };
+        account.Unfinished.Add(a);
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, keeper: keeper);
+
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Task.Delay(50);
+        Assert.Empty(account.DownloadCalls);
+
+        var signedOut = new FakeAccount();
+        signedOut.Unfinished.Add(a);
+        await ShellWith(rig, signedOut, keeper: keeper).Downloads!.ResumeUnfinishedAsync();
+        Assert.Empty(signedOut.DownloadCalls);
+        Assert.Empty(keeper.Calls);
+    }
+
+    /// <summary>Wi-Fi only on mobile data, or the app not in front (Android 14+ starts a user-initiated
+    /// job only while the app is visible): the resumed songs wait, nothing fails, no keeper is begun;
+    /// the app coming to the front on Wi-Fi resumes them.</summary>
+    [Fact]
+    public async Task ResumeUnfinished_WaitsForWifiAndTheAppInFront()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), WaitsForWifi = true };
+        account.Unfinished.Add(a);
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+
+        await shell.Downloads!.ResumeUnfinishedAsync();
+        Assert.Empty(account.DownloadCalls);
+        Assert.Empty(keeper.Calls);
+        Assert.Empty(notifier.Calls);
+
+        // On Wi-Fi now, but the app went to the background: still waiting.
+        account.WaitsForWifi = false;
+        shell.IsSuspended = true;
+        await Task.Delay(50);
+        Assert.Empty(account.DownloadCalls);
+
+        shell.IsSuspended = false;   // back in front
+        await Until(() => keeper.Calls.Count == 2);
+        Assert.Equal(new[] { a.Id }, account.DownloadCalls.Single().Select(t => t.Id));
+
+        // Once resumed, another return to the front resumes nothing again.
+        shell.IsSuspended = true;
+        shell.IsSuspended = false;
+        await Task.Delay(50);
+        Assert.Single(account.DownloadCalls);
+    }
+
+    /// <summary>Signed out while the resumed songs wait for Wi-Fi: they never go.</summary>
+    [Fact]
+    public async Task ResumeUnfinished_Waiting_ThenSignedOut_NeverResumes()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), WaitsForWifi = true };
+        account.Unfinished.Add(a);
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper());
+
+        await shell.Downloads!.ResumeUnfinishedAsync();
+        await account.SignOutAsync(removeDownloads: false);
+        account.WaitsForWifi = false;
+        shell.IsSuspended = true;
+        shell.IsSuspended = false;
+        await Task.Delay(50);
+
+        Assert.Empty(account.DownloadCalls);
+    }
+
     private static async Task Until(Func<bool> condition)
     {
         var start = Environment.TickCount64;

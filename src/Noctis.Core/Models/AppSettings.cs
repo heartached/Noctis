@@ -211,6 +211,10 @@ public class AppSettings : IJsonOnDeserializing
     /// unknown reads as Cover.</summary>
     public string MobileNowPlayingArtwork { get; set; } = "Cover";
 
+    /// <summary>Phone: Settings › Appearance › Animated Covers, "Off", "WifiOnly" (the default) or
+    /// "Always": when Now Playing's cover moves and the computer's loops may download.</summary>
+    public string MobileAnimatedCovers { get; set; } = "WifiOnly";
+
     /// <summary>Phone: the sort each list was left in, by list ("Nav.Songs", "Nav.Playlists",
     /// "Playlist:{id}"): a sort name, with " desc" when reversed. A list in its own order has no
     /// entry; a name the phone does not know reads as its own order.</summary>

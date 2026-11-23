@@ -580,6 +580,17 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Animated Covers: Off / Wi-Fi Only / Always on the glass menu (Discord beta 11-23). -->
+                                    <Button Name="AnimatedCoversRow" Classes="row" Command="{Binding ShowAnimatedCoversMenuCommand}"
+                                            AutomationProperties.Name="{Binding AnimatedCoversRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconMotion}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.AnimatedCovers}" />
+                                            <TextBlock Grid.Column="2" Name="AnimatedCoversValueLabel" Classes="row-value" Text="{Binding AnimatedCoversValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Language: System (the phone's) or one of the shipped translations, on a page of its own. -->
                                     <Button Name="LanguageRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Language}" AutomationProperties.Name="{Binding LanguageRowName}">

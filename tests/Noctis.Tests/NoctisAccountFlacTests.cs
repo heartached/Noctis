@@ -64,7 +64,7 @@ public class NoctisAccountFlacTests : IAsyncLifetime
             return true;
         });
         _server = new NoctisServer(new DesktopLibrary(_alac, _aac, _flacTrack), _users, "test", sync, flacTranscoder: cache.GetAsync) { PrivateClientsOnly = true };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _url = $"http://127.0.0.1:{_server.Port}";
 
         _phonePersistence = new PersistenceService(Path.Combine(_dir, "phone-files"));

@@ -215,7 +215,8 @@ public sealed partial class ShellViewModel : ObservableObject
 
     /// <summary>Where the downloads from the computer stand (album page row, Account page,
     /// notification); null without an account. Made on first use, after the host's init values.</summary>
-    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper);
+    public DownloadActivity? Downloads => _account == null ? null
+        : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper) { IsInFront = () => !IsSuspended };
 
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
@@ -940,6 +941,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(AnimatedCovers))) AnimatedCovers = AnimatedCoversSettings.Parse(settings.MobileAnimatedCovers);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ReduceGlass))) ReduceGlass = settings.MobileReduceGlass;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
@@ -975,6 +977,7 @@ public sealed partial class ShellViewModel : ObservableObject
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
+        var animatedCovers = AnimatedCovers.ToString();
         var brightness = NowPlayingBrightness;
         var background = NowPlayingBackground.ToString();
         int blur = NowPlayingBlur, dim = NowPlayingDim;
@@ -995,6 +998,7 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileArtworkPageColors = pages;
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
+                    settings.MobileAnimatedCovers = animatedCovers;
                     settings.MobileNowPlayingBrightness = brightness;
                     settings.MobileNowPlayingBackground = background;
                     settings.MobileNowPlayingBlur = blur;
@@ -1833,24 +1837,57 @@ public sealed partial class ShellViewModel : ObservableObject
         // Signed in: pull the desktop's changes and push ours. Fire-and-forget over a loaded
         // library; a failure (the computer is off, another network) is logged and never
         // reaches the UI — Settings → Account shows the next manual sync's error instead.
-        if (Account is { IsSignedIn: true } account) StartupSync = SyncOnStartAsync(account);
+        if (Account is { IsSignedIn: true } account)
+        {
+            var sync = SyncOnStartAsync(account);
+            StartupSync = sync;
+            _ = ResumeUnfinishedDownloadsAsync(sync);
+        }
         // Home's Last.fm sections (cached for 12 h: normally no request).
         _ = LastFm.RefreshAsync(force: false);
     }
 
-    private static async Task SyncOnStartAsync(INoctisAccountService account)
+    /// <returns>Whether the computer answered (a sync already running counts as yes).</returns>
+    private static async Task<bool> SyncOnStartAsync(INoctisAccountService account)
     {
         try
         {
-            if (account.IsSyncing) return;
+            if (account.IsSyncing) return true;
             var result = await account.SyncNowAsync();
             DebugLog.Write("Account", $"Startup sync: {result.Songs} songs, {result.Playlists} playlists, " +
                 $"{result.StateChangesPulled} changes in, {result.StateChangesPushed} out, {result.PlaysSent} plays sent");
+            return true;
         }
         catch (Exception ex)
         {
             DebugLog.Write("Account", $"Startup sync failed: {(ex as NoctisServerException)?.Kind.ToString() ?? ex.GetType().Name}: {ex.Message}");
+            return false;
         }
+    }
+
+    /// <summary>
+    /// Downloads the app ended in the middle of go on by themselves (DownloadActivity.ResumeUnfinishedAsync),
+    /// after the startup sync: long after the first frame, and with the catalog saying which songs the
+    /// computer still has. A computer that did not answer would fail every song: they wait for the
+    /// next start instead.
+    /// </summary>
+    private async Task ResumeUnfinishedDownloadsAsync(Task<bool> sync)
+    {
+        try
+        {
+            if (!await sync || Downloads is not { } downloads) return;
+            await downloads.ResumeUnfinishedAsync();
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Resuming downloads failed: {ex.GetType().Name}");
+        }
+    }
+
+    /// <summary>Back in front: downloads waiting for the app (or for Wi-Fi) are looked at again.</summary>
+    partial void OnIsSuspendedChanged(bool value)
+    {
+        if (!value && _downloads is { } downloads) _ = downloads.ResumeWaitingAsync();
     }
 
     // Set once the saved queue has been read back (InitializeAsync).

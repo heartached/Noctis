@@ -108,6 +108,23 @@ public class MobileLyricsPromotionTests
     /// </summary>
     internal static Survival RunCollecting(Action<double> frame, double seconds, double intervalMs = 1500, double warmSeconds = 1.5)
     {
+        // The idle trim an earlier test's library scan asked for (MemoryTrim, 6 s after the last
+        // request) fires on the pool and runs a full collection, which ended the no-GC region in a
+        // wide run (11-23: reason 17, aggressive). It is held off while the nursery is measured.
+        var trim = MemoryTrim.Collector;
+        MemoryTrim.Collector = trim ?? (_ => { });
+        try
+        {
+            return RunCollectingCore(frame, seconds, intervalMs, warmSeconds);
+        }
+        finally
+        {
+            MemoryTrim.Collector = trim;
+        }
+    }
+
+    private static Survival RunCollectingCore(Action<double> frame, double seconds, double intervalMs, double warmSeconds)
+    {
         var clock = Stopwatch.StartNew();
         double nextFrame = 0;
         void Step(double t)
@@ -125,27 +142,44 @@ public class MobileLyricsPromotionTests
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
         GC.WaitForPendingFinalizers();
         GC.Collect(2, GCCollectionMode.Forced, blocking: true, compacting: true);
+        using var outside = new OutsideCollections();
         HoldNursery();
         var natural0 = GC.CollectionCount(0);
+        var held = outside.LastIndex;
         PhaseJobs = PhaseTick = PhaseAfter = 0;
 
         var start = clock.Elapsed.TotalMilliseconds;
+        var end = start + seconds * 1000;
         var nextGc = start + intervalMs;
+        var voids = 0;
         var frames = 0;
         var promoted = new List<long>();
         long uiBytes = 0;
         var all0 = GC.GetTotalAllocatedBytes(precise: true);
-        while (clock.Elapsed.TotalMilliseconds < start + seconds * 1000)
+        while (clock.Elapsed.TotalMilliseconds < end)
         {
             var t = clock.Elapsed.TotalMilliseconds;
             if (t >= nextGc)
             {
                 nextGc = t + intervalMs;
                 natural0 = GC.CollectionCount(0) - natural0;
-                Assert.True(natural0 == 0, $"{natural0} nursery collections ran inside an interval");
-                promoted.Add(CollectNursery());
+                // Windows told every .NET process memory was low (a loaded machine, other test
+                // runs) and the runtime collected: the interval is not the page's, so it is run
+                // again. Any other collection inside it spent the region's budget and fails.
+                var reasons = "";
+                var voided = natural0 != 0 && outside.AllForLowMemory(held, out reasons);
+                Assert.True(natural0 == 0 || voided, $"{natural0} nursery collections ran inside an interval ({reasons})");
+                var collected = CollectNursery();
+                if (voided)
+                {
+                    Log?.Invoke($"  interval voided: the runtime collected for low memory ({reasons})");
+                    Assert.True(++voids <= 5, "memory stayed low: no interval ran clean");
+                    end += intervalMs;
+                }
+                else promoted.Add(collected);
                 HoldNursery();
                 natural0 = GC.CollectionCount(0);
+                held = outside.LastIndex;
                 continue;
             }
             if (t < nextFrame) { Thread.Sleep(1); continue; }
@@ -160,6 +194,53 @@ public class MobileLyricsPromotionTests
         return new Survival(frames, promoted.Count,
             promoted.Count > 0 ? (long)promoted.Average() : 0, promoted.Count > 0 ? promoted.Max() : 0,
             uiBytes / Math.Max(1, frames), all / Math.Max(1, frames));
+    }
+
+    /// <summary>
+    /// The runtime's own record of why each collection ran (GCStart's reason), for telling a
+    /// collection the page's allocations caused from one Windows forced on every process at once
+    /// when memory ran low: a long run on a busy machine (11-23) ended the no-GC region that way
+    /// in 7 of 20 loaded runs, all seven processes in the same millisecond.
+    /// </summary>
+    internal sealed class OutsideCollections : System.Diagnostics.Tracing.EventListener
+    {
+        // GC reasons (ClrEtwAll.man): LowMemory, InducedLowMemory, LowMemoryHost, LowMemoryHostBlocking.
+        private static readonly HashSet<uint> LowMemory = new() { 2, 9, 11, 13 };
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<long, uint> _reasons = new();
+
+        /// <summary>The index of the last collection the runtime has run.</summary>
+        public long LastIndex => GC.GetGCMemoryInfo(GCKind.Any).Index;
+
+        protected override void OnEventSourceCreated(System.Diagnostics.Tracing.EventSource source)
+        {
+            if (source.Name == "Microsoft-Windows-DotNETRuntime")
+                EnableEvents(source, System.Diagnostics.Tracing.EventLevel.Informational, (System.Diagnostics.Tracing.EventKeywords)0x1);   // GC
+        }
+
+        protected override void OnEventWritten(System.Diagnostics.Tracing.EventWrittenEventArgs e)
+        {
+            if (e.EventName?.StartsWith("GCStart", StringComparison.Ordinal) == true && e.Payload is { Count: > 2 } p)
+                _reasons[Convert.ToInt64(p[0])] = Convert.ToUInt32(p[2]);
+        }
+
+        /// <summary>Whether every collection after <paramref name="after"/> ran for low memory.
+        /// The events arrive on a thread of their own, a little after the collection.</summary>
+        public bool AllForLowMemory(long after, out string reasons)
+        {
+            var last = LastIndex;
+            var deadline = Environment.TickCount64 + 5000;
+            while (Environment.TickCount64 < deadline && !All(after, last, _ => true)) Thread.Sleep(10);
+            reasons = string.Join(", ", Enumerable.Range(1, (int)Math.Max(0, last - after))
+                .Select(i => _reasons.TryGetValue(after + i, out var r) ? $"#{after + i} reason {r}" : $"#{after + i} reason ?"));
+            return last > after && All(after, last, LowMemory.Contains);
+        }
+
+        private bool All(long after, long last, Func<uint, bool> test)
+        {
+            for (var i = after + 1; i <= last; i++)
+                if (!_reasons.TryGetValue(i, out var r) || !test(r)) return false;
+            return true;
+        }
     }
 
     /// <summary>The phone's 32 MB nursery fills every 7-9 s; the desktop runtime's gen0 budget is a

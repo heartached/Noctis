@@ -197,6 +197,129 @@ public class MobileRtlTests
         Assert.Equal(FlowDirection.LeftToRight, ScriptDirection.Of(new[] { "♪", "3:42", "" }));
     }
 
+    // ── Text in its own direction (S23, 11-23: "¿Cuál Es Tu Plan?" in an Arabic layout) ──
+
+    [Fact]
+    public void ALine_ReadsByItsFirstStrongCharacter()
+    {
+        Assert.Equal(FlowDirection.LeftToRight, TextDirection.FirstStrong("¿Cuál Es Tu Plan? - Single"));
+        Assert.Equal(FlowDirection.LeftToRight, TextDirection.FirstStrong("(Remix) Hello"));
+        Assert.Equal(FlowDirection.LeftToRight, TextDirection.FirstStrong("#1 Hits"));
+        Assert.Equal(FlowDirection.LeftToRight, TextDirection.FirstStrong("...Baby One More Time"));
+        Assert.Equal(FlowDirection.RightToLeft, TextDirection.FirstStrong("«قارئة الفنجان»"));
+        Assert.Equal(FlowDirection.RightToLeft, TextDirection.FirstStrong("٣ أغانٍ"));   // Arabic digits are weak
+        Assert.Null(TextDirection.FirstStrong("3:42"));
+        Assert.Null(TextDirection.FirstStrong(""));
+    }
+
+    /// <summary>The title as a row shows it, in a right-to-left layout and back.</summary>
+    [AvaloniaFact]
+    public void ALatinTitle_KeepsItsOrder_AndTheArabicRowsEdge()
+    {
+        var songs = new[] { MobileFixtures.Song("¿Cuál Es Tu Plan?", "Bad Bunny"), MobileFixtures.Song("(Remix) Hello"), MobileFixtures.Song("قارئة الفنجان", "عبد الحليم حافظ") };
+        var rig = MobileFixtures.MakeRig(songs, new[] { MobileFixtures.MakeAlbum("Record", "Band", songs) });
+        using var _ = rig;
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        try
+        {
+            SetLanguage(rig.Shell, "ar");
+            rig.Shell.SelectTabCommand.Execute(MobileTab.Library);
+            rig.Shell.OpenSongsCommand.Execute(null);
+            MobileFixtures.Land(window);
+            TextBlock Row(string text) => view.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == text && t.IsEffectivelyVisible);
+
+            foreach (var latin in new[] { "¿Cuál Es Tu Plan?", "(Remix) Hello" })
+            {
+                var t = Row(latin);
+                Assert.Equal(FlowDirection.LeftToRight, t.FlowDirection);      // "¿" stays in front
+                Assert.Equal(TextAlignment.End, t.TextAlignment);              // …against the row's right edge
+                Assert.True(IsAgainstTheRightEdge(t), $"{latin} is not against the row's right edge");
+            }
+            var arabic = Row("قارئة الفنجان");
+            Assert.Equal(FlowDirection.RightToLeft, arabic.FlowDirection);
+            Assert.Equal(TextAlignment.Start, arabic.TextAlignment);
+            Assert.True(IsAgainstTheRightEdge(arabic));
+
+            // Back to English: the Latin title is an ordinary left-to-right line again.
+            SetLanguage(rig.Shell, "en");
+            MobileFixtures.Land(window);
+            var back = Row("¿Cuál Es Tu Plan?");
+            Assert.Equal(FlowDirection.LeftToRight, back.FlowDirection);
+            Assert.Equal(TextAlignment.Start, back.TextAlignment);
+        }
+        finally
+        {
+            Loc.Instance.SetCulture("en");
+            window.Close();
+        }
+    }
+
+    /// <summary>Where the text's first and last glyphs land in the window: right aligned when its
+    /// ink ends at the box's right edge (the box is mirrored with the layout).</summary>
+    private static bool IsAgainstTheRightEdge(TextBlock t)
+    {
+        var layout = t.TextLayout;
+        var inkRight = layout.TextLines.Max(l => l.Start + l.WidthIncludingTrailingWhitespace);
+        var inkLeft = layout.TextLines.Min(l => l.Start);
+        // A box narrower than its text has nothing to align; otherwise the ink hugs one edge.
+        if (t.Bounds.Width <= inkRight - inkLeft + 1) return true;
+        var start = t.TranslatePoint(new Point(inkLeft, 0), (Visual?)TopLevel.GetTopLevel(t) ?? t)!.Value.X;
+        var end = t.TranslatePoint(new Point(inkRight, 0), (Visual?)TopLevel.GetTopLevel(t) ?? t)!.Value.X;
+        var boxRight = Math.Max(t.TranslatePoint(new Point(0, 0), (Visual?)TopLevel.GetTopLevel(t) ?? t)!.Value.X,
+            t.TranslatePoint(new Point(t.Bounds.Width, 0), (Visual?)TopLevel.GetTopLevel(t) ?? t)!.Value.X);
+        return Math.Abs(Math.Max(start, end) - boxRight) < 1.5;
+    }
+
+    /// <summary>The mini player's ticker in Arabic: a long Latin title showed its head on the right
+    /// and its loop copy's tail on the left at once. At rest only the head shows, at the ticker's
+    /// start; the copy waits past the far edge (right for a Latin title, left for an Arabic one).</summary>
+    [AvaloniaTheory]
+    [InlineData("¿Cuál Es Tu Plan? (feat. DJ Nelson) - a title far too long for the mini player's row", false)]
+    [InlineData("قارئة الفنجان - من حفل قاعة ألبرت هول في لندن عام ألف وتسعمائة وخمسة وسبعين كاملة", true)]
+    public void TheMiniPlayersTicker_ShowsOneCopyAtRest_InItsTextsDirection(string title, bool arabic)
+    {
+        var saved = MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled;
+        var song = MobileFixtures.Song(title, "Bad Bunny, Ñejo & Pj Sin Suela, DJ Nelson");
+        var rig = MobileFixtures.MakeRig(new[] { song }, new[] { MobileFixtures.MakeAlbum("Record", "Band", song) });
+        using var _ = rig;
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        try
+        {
+            MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = true;
+            SetLanguage(rig.Shell, "ar");
+            rig.Shell.Player.PlayTracks(new[] { song }, 0);
+            for (var i = 0; i < 4; i++) { MobileFixtures.Land(window); Dispatcher.UIThread.RunJobs(); }
+            var marquee = view.FindControl<MarqueeTextBlock>("MiniTitle")!;
+            Assert.Equal(arabic ? FlowDirection.RightToLeft : FlowDirection.LeftToRight, marquee.FlowDirection);
+
+            var viewport = (Border)marquee.Content!;
+            var panel = (StackPanel)viewport.Child!;
+            var texts = panel.Children.OfType<TextBlock>().ToList();
+            var original = texts[0];
+            var copy = texts[^1];
+            Assert.True(copy.IsVisible, "the title does not scroll (the test needs it to)");
+            (double L, double R) Span(Visual v) => (v.TranslatePoint(new Point(0, 0), window)!.Value.X, v.TranslatePoint(new Point(v.Bounds.Width, 0), window)!.Value.X) switch
+            {
+                var (a, b) => (Math.Min(a, b), Math.Max(a, b)),
+            };
+            var port = Span(viewport);
+            var head = Span(original);
+            var tail = Span(copy);
+            // The copy is wholly outside the viewport, past the end the text runs towards.
+            if (arabic) Assert.True(tail.R <= port.L + 0.5, $"the loop copy shows at rest ({tail.L:0}-{tail.R:0} in {port.L:0}-{port.R:0})");
+            else Assert.True(tail.L >= port.R - 0.5, $"the loop copy shows at rest ({tail.L:0}-{tail.R:0} in {port.L:0}-{port.R:0})");
+            // The head sits at the text's start: left for a Latin title, right for an Arabic one.
+            if (arabic) Assert.Equal(port.R, head.R, 1);
+            else Assert.Equal(port.L, head.L, 1);
+        }
+        finally
+        {
+            MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = saved;
+            Loc.Instance.SetCulture("en");
+            window.Close();
+        }
+    }
+
     // ── Pictures ──
 
     private static void Pump(int ms)
@@ -235,6 +358,7 @@ public class MobileRtlTests
         var songs = new[]
         {
             MobileFixtures.Song("أنا لحبيبي", "فيروز", plays: 9), MobileFixtures.Song("Hello", "Adele", plays: 4),
+            MobileFixtures.Song("¿Cuál Es Tu Plan? (feat. DJ Nelson)", "Bad Bunny, Ñejo & Pj Sin Suela, DJ Nelson", plays: 8),
             MobileFixtures.Song("قارئة الفنجان", "عبد الحليم حافظ", plays: 7), MobileFixtures.Song("Yesterday", "The Beatles", plays: 2),
         };
         var album = MobileFixtures.MakeAlbum("أغاني الحب", "فيروز", songs);
@@ -257,6 +381,13 @@ public class MobileRtlTests
             Shot("songs");
             rig.Shell.OpenAlbumCommand.Execute(album);
             Shot("album");
+            // Home with the mini player on a long Latin title (S23, 11-23: its ticker showed two copies).
+            var scroll = MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled;
+            MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = true;
+            rig.Shell.Player.PlayTracks(songs, 2);
+            rig.Shell.SelectTabCommand.Execute(MobileTab.Home);
+            Shot("home-miniplayer");
+            MarqueeTextBlock.GlobalMiniPlayerTitleScrollEnabled = scroll;
             rig.Shell.Player.PlayTracks(songs, 0);
             rig.Shell.OpenNowPlayingCommand.Execute(null);
             Shot("nowplaying");

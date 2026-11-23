@@ -419,7 +419,7 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     [RelayCommand]
     private void PlayCard(ArtistCard? card)
     {
-        if (card is { Album.Tracks.Count: > 0 }) Shell.Player.PlayTracks(card.Album.Tracks, 0, card.Album.Name);
+        if (card is { Album.EditionTracks.Count: > 0 }) Shell.Player.PlayTracks(card.Album.EditionTracks, 0, card.Album.Name);
     }
 
     [RelayCommand] private void OpenAlbums() => OpenRail("Nav.Albums", () => Albums);

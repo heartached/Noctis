@@ -136,6 +136,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private readonly List<Task> _downloadRuns = new();
     private CancellationTokenSource _downloadCts = new();
     private int _dlPending, _dlCompleted, _dlFailed, _dlMissing;
+    /// <summary>Songs download runs asked for and have not finished, each with how many running
+    /// batches hold it (0: a paused run's, or one an ended process left, still wanted), kept in
+    /// downloads.json so the next start resumes them (<see cref="UnfinishedDownloadsAsync"/>). Null
+    /// until first used: read then, never on the cold start's path. Under <see cref="_unfinishedGate"/>.</summary>
+    private Dictionary<Guid, int>? _unfinished;
+    private readonly object _unfinishedGate = new();
+    private long _unfinishedSavedAt = long.MinValue / 2;
+    /// <summary>A landed song writes the file at most this often (a Download Everything lists
+    /// thousands); a batch's start and end always write. A song that landed since is found
+    /// downloaded at the next start.</summary>
+    private const long UnfinishedSaveEveryMs = 2000;
 
     /// <summary>Song suffixes from this process's last catalog (download file extensions).</summary>
     private readonly ConcurrentDictionary<Guid, string> _suffixes = new();
@@ -392,6 +403,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             try { await running.ConfigureAwait(false); } catch { /* cancelled or failed: irrelevant now */ }
         }
         await StopDownloadsAsync().ConfigureAwait(false);
+        ClearUnfinishedDownloads();
+        // Now, not after the desktop's answer below (up to 5 s): downloads the system had paused
+        // would otherwise keep their notification and background job.
+        RaiseDownloadProgress(calledOff: true);
         await StopUploadsAsync().ConfigureAwait(false);
 
         NoctisServerClient? client;
@@ -487,6 +502,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             _signedOutByComputer = true;
         }
         ClearAvatar();
+        ClearUnfinishedDownloads();
         DebugLog.Write("Account", "the desktop no longer accepts this phone's key; signed out locally");
         RaiseStateChanged();
     }
@@ -665,9 +681,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
         await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
         var coverVersions = new Dictionary<Guid, string>();
-        var albumArtists = await client.GetAlbumArtistsAsync(ct, coverVersions).ConfigureAwait(false);
+        var albumLinks = new Dictionary<Guid, List<Guid>>();
+        var albumArtists = await client.GetAlbumArtistsAsync(ct, coverVersions, albumLinks).ConfigureAwait(false);
         var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
         var (tracks, linked) = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
+        await ApplyAlbumLinksAsync(albumLinks, keepUnlisted: !settled).ConfigureAwait(false);
         RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count + linked, tracks.Count + linked);
 
         // 2. Covers.
@@ -902,6 +920,20 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (favoriteChanged.Count > 0) await OnUiAsync(() => _library.NotifyFavoritesChanged(favoriteChanged)).ConfigureAwait(false);
         }
         return (tracks, links.Count);
+    }
+
+    /// <summary>
+    /// Discord (Halil): the computer's album links (Link Tracks From, a deluxe edition listing its
+    /// original's songs) become the phone's, so its album pages list the same songs; the phone has
+    /// no links of its own to keep (nothing on it makes one). They key albums by id, so a phone's
+    /// own files of a linked album follow them too. A partial catalog (the computer scanning) only
+    /// adds: the links it left out stay until a full one.
+    /// </summary>
+    private async Task ApplyAlbumLinksAsync(Dictionary<Guid, List<Guid>> albumLinks, bool keepUnlisted)
+    {
+        var links = albumLinks.SelectMany(kv => kv.Value.Select(source => new AlbumLink { AlbumId = kv.Key, SourceAlbumId = source })).ToList();
+        if (keepUnlisted) links.AddRange(_library.AlbumLinks);
+        await _library.SetAlbumLinksAsync(links).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -2128,6 +2160,110 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) =>
         DownloadAsync(tracks.Where(t => !_withdrawn.ContainsKey(t.Id)).ToList(), ct);
 
+    public async Task<bool> DownloadsWaitForWifiAsync() =>
+        IsOnWifi is { } onWifi && !onWifi() && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
+
+    public async Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync()
+    {
+        // The library's rows say which songs the computer still lists.
+        await LibraryReady.ContinueWith(_ => { }, TaskScheduler.Default).ConfigureAwait(false);
+        return await Task.Run(() =>
+        {
+            var tracks = new List<Track>();
+            lock (_unfinishedGate)
+            {
+                var asked = UnfinishedLocked();
+                var before = asked.Count;
+                foreach (var id in asked.Keys.ToList())
+                {
+                    // Signed out, landed, removed, or no longer on the computer (its row went with a sync).
+                    if (_account is null || _downloaded.ContainsKey(id) || _withdrawn.ContainsKey(id)
+                        || _library.GetTrackById(id) is not { } track || !IsRemote(track))
+                        asked.Remove(id);
+                    else tracks.Add(track);
+                }
+                if (asked.Count != before) SaveUnfinishedLocked();
+            }
+            return (IReadOnlyList<Track>)tracks;
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>Under <see cref="_unfinishedGate"/>: the songs still asked for, read from downloads.json
+    /// on first use; a file from another computer (or with nobody signed in) counts as none.</summary>
+    private Dictionary<Guid, int> UnfinishedLocked()
+    {
+        if (_unfinished != null) return _unfinished;
+        _unfinished = new Dictionary<Guid, int>();
+        var saved = _store.LoadUnfinishedDownloads();
+        var account = _account;
+        if (saved != null && account != null && SameIdentity(saved.ServerUrl, saved.UserName, account))
+            foreach (var hex in saved.Songs)
+                if (NoctisRemoteIds.TryParseSyncId(hex, out var id)) _unfinished[id] = 0;
+        return _unfinished;
+    }
+
+    /// <summary>Under <see cref="_unfinishedGate"/>; nothing asked for (or signed out): the file goes.</summary>
+    private void SaveUnfinishedLocked()
+    {
+        _unfinishedSavedAt = Environment.TickCount64;
+        var account = _account;
+        var state = new NoctisUnfinishedDownloads { ServerUrl = account?.ServerUrl ?? string.Empty, UserName = account?.UserName ?? string.Empty };
+        if (account != null && _unfinished != null)
+            foreach (var id in _unfinished.Keys) state.Songs.Add(id.ToString("N"));
+        try { _store.SaveUnfinishedDownloads(state); }
+        catch (Exception ex) { DebugLog.Write("Account", $"unfinished downloads save failed ({ex.GetType().Name})"); }
+    }
+
+    /// <summary>A batch starts: its songs are asked for until they land, are removed, or it ends.</summary>
+    private void HoldUnfinished(List<Guid> ids)
+    {
+        lock (_unfinishedGate)
+        {
+            var asked = UnfinishedLocked();
+            foreach (var id in ids) asked[id] = asked.GetValueOrDefault(id) + 1;
+            SaveUnfinishedLocked();
+        }
+    }
+
+    /// <summary>Landed or removed: no longer asked for, whichever batch holds it.</summary>
+    private void ForgetUnfinished(IEnumerable<Guid> ids, bool saveNow)
+    {
+        lock (_unfinishedGate)
+        {
+            var asked = UnfinishedLocked();
+            var changed = false;
+            foreach (var id in ids) changed |= asked.Remove(id);
+            if (changed && (saveNow || Environment.TickCount64 - _unfinishedSavedAt >= UnfinishedSaveEveryMs)) SaveUnfinishedLocked();
+        }
+    }
+
+    /// <summary>A batch ended: its songs no other batch holds are done with (landed, failed, skipped),
+    /// unless it was stopped (<paramref name="keep"/>): then they stay asked for.</summary>
+    private void ReleaseUnfinished(List<Guid> ids, bool keep)
+    {
+        lock (_unfinishedGate)
+        {
+            var asked = UnfinishedLocked();
+            foreach (var id in ids)
+            {
+                if (!asked.TryGetValue(id, out var holders)) continue;
+                if (holders > 1 || keep) asked[id] = Math.Max(0, holders - 1);
+                else asked.Remove(id);
+            }
+            SaveUnfinishedLocked();
+        }
+    }
+
+    /// <summary>Sign-out, Remove All Downloads, the computer refusing this phone: nothing is asked for.</summary>
+    private void ClearUnfinishedDownloads()
+    {
+        lock (_unfinishedGate)
+        {
+            _unfinished = new Dictionary<Guid, int>();
+            SaveUnfinishedLocked();
+        }
+    }
+
     private Task RunDownloadsAsync(List<Guid> ids, CancellationToken ct)
     {
         if (ids.Count == 0) return Task.CompletedTask;
@@ -2166,6 +2302,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             Interlocked.Exchange(ref _dlFailed, 0);
             Interlocked.Exchange(ref _dlMissing, 0);
         }
+        HoldUnfinished(ids);
         RaiseDownloadProgress();
         NoctisServerException? fatal = null;
         int done = 0, failed = 0, missing = 0;
@@ -2189,6 +2326,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                             if (onWifi != null && !onWifi() && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly)
                                 throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
                             await DownloadOneAsync(client, id, song.Token).ConfigureAwait(false);
+                            ForgetUnfinished(new[] { id }, saveNow: false);
                             Interlocked.Increment(ref _dlCompleted);
                             Interlocked.Increment(ref done);
                         }
@@ -2231,6 +2369,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
 
         await Task.WhenAll(Enumerable.Range(0, DownloadConcurrency).Select(_ => Worker())).ConfigureAwait(false);
+        // Stopped (paused by the system, or a sign-out that clears them next): its songs left stay asked for.
+        ReleaseUnfinished(ids, keep: stop.IsCancellationRequested);
         // Once more with every worker done: two workers' last reports can arrive out of order, the
         // later one read before the other finished (a test saw Pending = 1 as the last report of a
         // finished batch), and the page takes Pending > 0 as "still downloading".
@@ -2349,6 +2489,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     catch (ObjectDisposedException) { /* it just finished */ }
                 }
             }
+            ForgetUnfinished(ids, saveNow: true);
             await DropNotOnComputerAsync(ids).ConfigureAwait(false);
             RaiseDownloadProgress();
             RaiseStateChanged();
@@ -2358,9 +2499,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public async Task RemoveAllDownloadsAsync()
     {
         await StopDownloadsAsync().ConfigureAwait(false);
+        ClearUnfinishedDownloads();
         await Task.Run(DeleteAllDownloadFiles).ConfigureAwait(false);
         await DropNotOnComputerAsync(null).ConfigureAwait(false);
-        RaiseDownloadProgress();
+        RaiseDownloadProgress(calledOff: true);
         RaiseStateChanged();
     }
 
@@ -2473,9 +2615,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private void RaiseSyncProgress(NoctisSyncStage stage, int done, int total) =>
         SyncProgress?.Invoke(this, new NoctisSyncProgress(stage, done, total));
 
-    private void RaiseDownloadProgress() =>
+    private void RaiseDownloadProgress(bool calledOff = false) =>
         DownloadProgress?.Invoke(this, new NoctisDownloadProgress(Math.Max(0, Volatile.Read(ref _dlPending)),
-            Volatile.Read(ref _dlCompleted), Volatile.Read(ref _dlFailed), DownloadedBytes, Volatile.Read(ref _dlMissing)));
+            Volatile.Read(ref _dlCompleted), Volatile.Read(ref _dlFailed), DownloadedBytes, Volatile.Read(ref _dlMissing), calledOff));
 
     private sealed class InlineProgress(Action<int> report) : IProgress<int>
     {

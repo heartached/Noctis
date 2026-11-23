@@ -3557,6 +3557,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Обложка</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Винил</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.AnimatedCovers" xml:space="preserve"><value>Анимированные обложки</value></data>
+  <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Выкл.</value></data>
+  <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Только Wi-Fi</value></data>
+  <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Всегда</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Фон плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Яркость фона плеера</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Темнее или светлее цвета за экраном воспроизведения</value></data>

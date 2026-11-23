@@ -518,6 +518,24 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
     }
 
+    /// <summary>The Animated Covers row's value: Off, Wi-Fi Only or Always.</summary>
+    public string AnimatedCoversValue => AnimatedCoversLabel(Shell.AnimatedCovers);
+
+    internal static string AnimatedCoversLabel(AnimatedCoversSetting setting) => Loc.T("Mobile.AnimatedCovers." + setting);
+
+    public string AnimatedCoversRowName => Named(Loc.T("Mobile.Settings.AnimatedCovers"), AnimatedCoversValue);
+
+    /// <summary>The Animated Covers row: Off / Wi-Fi Only / Always on the glass pop menu, as Now
+    /// Playing Artwork; a pick applies at once.</summary>
+    [RelayCommand]
+    private void ShowAnimatedCoversMenu()
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var setting in AnimatedCoversSettings.All)
+            items.Add(new OptionsMenuItem(Shell, AnimatedCoversLabel(setting), Shell.AnimatedCovers == setting, () => Shell.AnimatedCovers = setting));
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
     /// <summary>The Now Playing Background row's value: Colour Wash or Blurred Cover.</summary>
     public string NowPlayingBackgroundValue => BackgroundStyleLabel(Shell.NowPlayingBackground);
 
@@ -1397,6 +1415,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
         {
             OnPropertyChanged(nameof(NowPlayingArtworkValue));
             OnPropertyChanged(nameof(NowPlayingArtworkRowName));
+        }
+        else if (e.PropertyName == nameof(ShellViewModel.AnimatedCovers))
+        {
+            OnPropertyChanged(nameof(AnimatedCoversValue));
+            OnPropertyChanged(nameof(AnimatedCoversRowName));
         }
         else if (e.PropertyName == nameof(ShellViewModel.NowPlayingBackground))
         {

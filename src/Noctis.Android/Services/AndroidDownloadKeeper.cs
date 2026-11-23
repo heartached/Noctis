@@ -25,10 +25,15 @@ namespace Noctis.Android.Services;
 /// Android 8-13: a dataSync foreground service (<see cref="DownloadForegroundService"/>), started
 /// with the downloads and stopped when they end. Not the media playback service.
 ///
-/// A process that ended mid-download (swiped away and killed, out of memory) leaves no work: a job
-/// the system runs again in a new process finds nothing wanted and finishes at once, the next start
-/// cancels any job left pending and its card (the notifier clears it), and the next tap downloads
-/// what is still missing (finished files are kept, partial ones deleted at start).
+/// A process that ended mid-download (swiped away and killed, out of memory: no onStopJob then) leaves
+/// no job work: a job the system runs again in a new process finds nothing wanted and finishes at
+/// once, and the next start cancels any job left pending and its card (the notifier clears it).
+/// The songs still asked for are the account service's (downloads.json): the next start, with the
+/// app on screen, begins a new job and resumes them (DownloadActivity.ResumeUnfinishedAsync;
+/// finished files are kept, partial ones deleted at start). "Make sure that your app can persist
+/// the data transfer state even if onStopJob() isn't called" and "User initiated jobs must be
+/// scheduled while the application is visible to the user":
+/// https://developer.android.com/develop/background-work/background-tasks/uidt
 /// </summary>
 internal sealed class AndroidDownloadKeeper : IDownloadKeeper
 {

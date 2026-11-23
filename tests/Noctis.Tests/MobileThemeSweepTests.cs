@@ -61,6 +61,27 @@ public class MobileThemeSweepTests
         Dispatcher.UIThread.RunJobs();
     }
 
+    /// <summary>
+    /// Frames until every arrival (Appear: Home's rail tiles) under <paramref name="view"/> has
+    /// landed fully shown. A fixed stretch of wall time was not enough on a loaded machine: a page
+    /// whose first layout took most of it started its tiles' fade at the end, and the sweep read
+    /// a label a third of the way in ("M83" at 2.85:1, 11-23).
+    /// </summary>
+    internal static void SettleArrivals(Window window, Visual view)
+    {
+        bool Arriving() => view.GetVisualDescendants().OfType<Control>()
+            .Any(c => Appear.GetIsEnabled(c) && c.IsEffectivelyVisible && c.Opacity < 1);
+        var deadline = Environment.TickCount64 + 30_000;
+        while (Arriving() && Environment.TickCount64 < deadline)
+        {
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Thread.Sleep(2);
+            MobileFixtures.Land(window);
+        }
+        Assert.False(Arriving(), "an arrival never landed");
+    }
+
     /// <summary>The device's resource and style stack (AndroidApp.axaml), torn down after.</summary>
     internal sealed class PhoneStack : IDisposable
     {
@@ -331,6 +352,7 @@ public class MobileThemeSweepTests
                     // Rail tiles fade in (Appear) and a menu's rows settle one after another: read them landed.
                     Pump(700);
                     MobileFixtures.Land(window);
+                    SettleArrivals(window, view);
                     var page = ((ISolidColorBrush)view.FindResource(view.ActualThemeVariant, "PhoneBackgroundBrush")!).Color;
                     var verbose = Environment.GetEnvironmentVariable("NOCTIS_SWEEP_VERBOSE");
                     foreach (var r in Read(view, page))

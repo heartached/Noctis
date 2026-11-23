@@ -17,7 +17,8 @@ namespace Noctis.Mobile.ViewModels;
 /// With the app in the background and nothing playing, the process runs on under the
 /// <see cref="IDownloadKeeper"/> (Android's user-initiated job / dataSync service), begun with the
 /// first start and ended with the last; when the system stops it, the downloads pause and the songs
-/// left go on when it runs again.
+/// left go on when it runs again. Songs a run left when the app ended go on at the next start
+/// (<see cref="ResumeUnfinishedAsync"/>).
 /// </summary>
 public sealed partial class DownloadActivity : ObservableObject
 {
@@ -35,6 +36,9 @@ public sealed partial class DownloadActivity : ObservableObject
     private List<(string Title, List<Track> Tracks)>? _paused;
     /// <summary>The notification shows a running download, so the next idle report ends it.</summary>
     private bool _notifying;
+    /// <summary>Songs the last run left unfinished, waiting for Wi-Fi (Wi-Fi only on mobile data) or
+    /// for the app to be in front; null when none wait. UI thread.</summary>
+    private List<Track>? _waiting;
 
     public DownloadActivity(INoctisAccountService account, Action<Action> marshal, IDownloadNotifier? notifier, IDownloadKeeper? keeper = null)
     {
@@ -42,12 +46,21 @@ public sealed partial class DownloadActivity : ObservableObject
         _notifier = notifier;
         _keeper = keeper;
         account.DownloadProgress += (_, progress) => marshal(() => Apply(progress));
+        // The computer refused this phone's key (signed out locally): no report says so.
+        account.StateChanged += (_, _) =>
+        {
+            if (!account.IsSignedIn && (_keeping || _notifying || _paused != null)) marshal(CallOff);
+        };
         if (keeper != null)
         {
             keeper.Paused += (_, _) => marshal(() => _ = PauseAsync());
             keeper.Resumed += (_, _) => marshal(ResumePaused);
         }
     }
+
+    /// <summary>Whether the app is on screen (ShellViewModel.IsSuspended); null = always. Android 14+
+    /// starts the keeper's user-initiated job only while the app is visible.</summary>
+    public Func<bool>? IsInFront { get; init; }
 
     /// <summary>The service's last report, null before the first; the Account page starts from it.</summary>
     public NoctisDownloadProgress? Last { get; private set; }
@@ -80,7 +93,10 @@ public sealed partial class DownloadActivity : ObservableObject
             // (the app is on screen, which a new job needs).
             var wasPaused = _paused != null;
             if (wasPaused) ResumePaused();
-            if (first && !_keeping || wasPaused)
+            // Songs waiting for Wi-Fi go on with a tap that downloads.
+            if (_waiting != null) _ = ResumeWaitingAsync();
+            // Not only the first start: one after a call-off may find a stopped start still ending.
+            if (!_keeping || wasPaused)
             {
                 _keeping = true;
                 _keeper?.Begin(pending.Sum(t => Math.Max(0, t.FileSize)));
@@ -124,6 +140,27 @@ public sealed partial class DownloadActivity : ObservableObject
         catch (Exception ex) { DebugLog.Write("Account", $"Pausing downloads failed: {ex.GetType().Name}"); }
     }
 
+    /// <summary>Signed out, Remove All Downloads, or the computer refused this phone: nothing is left
+    /// to download, whatever state the downloads were in. The card goes and the keeper ends now;
+    /// paused, nothing else ended them, and the card stood until its 10-minute stale timeout.</summary>
+    private void CallOff()
+    {
+        _paused = null;
+        _waiting = null;
+        if (_notifying)
+        {
+            _notifying = false;
+            _notifier?.Clear();
+        }
+        // After the clear: the keeper's end puts the card right once nothing holds it.
+        if (_keeping)
+        {
+            _keeping = false;
+            _keeper?.End();
+        }
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>Goes on with the paused songs, each start as before (its title, the album page's row).</summary>
     private void ResumePaused()
     {
@@ -142,6 +179,59 @@ public sealed partial class DownloadActivity : ObservableObject
         catch (Exception ex)
         {
             // Wi-Fi only on mobile data, signed out meanwhile: the songs stay to download with a tap.
+            DebugLog.Write("Account", $"Resumed downloads failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
+        }
+    }
+
+    /// <summary>At start, after the sync with the computer (ShellViewModel): the songs a run left
+    /// unfinished when the app ended go on by themselves, with the usual card and under the keeper,
+    /// begun now that the app is on screen. On mobile data with Wi-Fi only on they wait for Wi-Fi
+    /// instead of failing (<see cref="ResumeWaitingAsync"/>).</summary>
+    public async Task ResumeUnfinishedAsync()
+    {
+        if (!_account.IsSignedIn) return;
+        IReadOnlyList<Track> tracks;
+        try { tracks = await _account.UnfinishedDownloadsAsync(); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Unfinished downloads unreadable: {ex.GetType().Name}");
+            return;
+        }
+        if (tracks.Count == 0 || !_account.IsSignedIn) return;
+        DebugLog.Write("Account", $"Resuming {tracks.Count} unfinished downloads");
+        _waiting = tracks.ToList();
+        await ResumeWaitingAsync();
+    }
+
+    /// <summary>The app came to the front (ShellViewModel.IsSuspended), or a tap downloads: the
+    /// waiting songs go on when the app is in front on Wi-Fi (or with Wi-Fi only off).</summary>
+    public async Task ResumeWaitingAsync()
+    {
+        if (_waiting is not { } waiting) return;
+        if (!_account.IsSignedIn)
+        {
+            _waiting = null;
+            return;
+        }
+        if (IsInFront?.Invoke() == false) return;
+        bool wifiWait;
+        try { wifiWait = await _account.DownloadsWaitForWifiAsync(); }
+        catch (Exception) { wifiWait = false; }
+        if (wifiWait)
+        {
+            DebugLog.Write("Account", "Unfinished downloads wait for Wi-Fi");
+            return;
+        }
+        // Taken meanwhile (another return to the front) or called off.
+        if (!ReferenceEquals(_waiting, waiting)) return;
+        _waiting = null;
+        var left = waiting.Where(t => !_account.IsDownloaded(t)).ToList();
+        try
+        {
+            await RunAsync(null, left, () => _account.ResumeDownloadsAsync(left));
+        }
+        catch (Exception ex)
+        {
             DebugLog.Write("Account", $"Resumed downloads failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
         }
     }
@@ -176,6 +266,7 @@ public sealed partial class DownloadActivity : ObservableObject
 
     private void Apply(NoctisDownloadProgress progress)
     {
+        if (progress.CalledOff) CallOff();
         Last = progress;
         IsActive = progress.Pending > 0;
         if (progress.Pending > 0)

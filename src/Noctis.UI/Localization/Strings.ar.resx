@@ -8544,6 +8544,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>الغلاف</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>أسطوانة</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>قرص CD</value></data>
+  <data name="Mobile.Settings.AnimatedCovers" xml:space="preserve"><value>الأغلفة المتحركة</value></data>
+  <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>إيقاف</value></data>
+  <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Wi-Fi فقط</value></data>
+  <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>دائمًا</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>سطوع خلفية قيد التشغيل</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>ألوان أغمق أو أفتح خلف شاشة «قيد التشغيل»</value></data>
