@@ -95,8 +95,12 @@
                     </Grid>
                     <!-- Subtitle; the heart lands here instead when the title wraps -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
+                        <!-- The artist name(s) at the caption's start open the artist page; the
+                             rest of the caption stays part of the tile (CaptionCreditLink). -->
                         <ctrl:HighlightTextBlock Grid.Column="0"
                                                  DisplayText="{Binding CardCaption}"
+                                                 helpers:CaptionCreditLink.Credit="{Binding ArtistDisplay}"
+                                                 helpers:CaptionCreditLink.Command="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).ViewArtistCommand}"
                                                  HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
                                                  FontSize="12"
                                                  FontWeight="Bold"
