@@ -32,7 +32,7 @@ internal class TestPersistenceService : IPersistenceService, IDisposable
     public Task SaveIndexCacheAsync(LibraryIndexCache cache) => Task.CompletedTask;
 
     public string GetArtworkPath(Guid albumId) => Path.Combine(_root, "artwork", $"{albumId}.jpg");
-    public void SaveArtwork(Guid albumId, byte[] imageData) { }
+    public virtual void SaveArtwork(Guid albumId, byte[] imageData) { }
 
     public string GetAnimatedCoverPath(Guid albumId, Guid? trackId, string extension)
     {
