@@ -160,6 +160,14 @@ public class MobileAccountTests
             return Task.CompletedTask;
         }
 
+        /// <summary>What UnfinishedDownloadsAsync lists (a run the last start left unfinished).</summary>
+        public List<Track> Unfinished { get; } = new();
+        public Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync() => Task.FromResult<IReadOnlyList<Track>>(Unfinished.ToList());
+
+        /// <summary>Wi-Fi only on mobile data (DownloadsWaitForWifiAsync).</summary>
+        public bool WaitsForWifi { get; set; }
+        public Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(WaitsForWifi);
+
         /// <summary>PauseDownloadsAsync calls; <see cref="OnPause"/> runs in each (a test ends its gated run).</summary>
         public int PauseCalls { get; private set; }
         public Action? OnPause { get; set; }

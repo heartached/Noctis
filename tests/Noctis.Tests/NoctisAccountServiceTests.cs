@@ -1093,6 +1093,126 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(1, svc.DownloadedCount);
     }
 
+    /// <summary>A service whose downloads stop at their first step until <paramref name="gate"/> is
+    /// set (the free-space check, which the sync's covers make too: only from the first download
+    /// on), so a test can end "the process" mid-run; <paramref name="entered"/> is set once a song
+    /// got there.</summary>
+    private NoctisAccountService HeldAtFirstSong(ManualResetEventSlim gate, ManualResetEventSlim entered) =>
+        new(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a())
+        {
+            FreeSpace = path =>
+            {
+                if (Path.GetFullPath(path) != Path.GetFullPath(OfflineDir)) return long.MaxValue;
+                entered.Set();
+                gate.Wait(TimeSpan.FromSeconds(10));
+                return long.MaxValue;
+            },
+        };
+
+    /// <summary>The app ended mid-download (swiped away, killed): the next start lists the songs still
+    /// asked for (downloads.json in the account folder), so they go on by themselves instead of
+    /// waiting for another tap. A finished run leaves nothing.</summary>
+    [Fact]
+    public async Task UnfinishedDownloads_AreListedAtTheNextStart_AndNotOnceFinished()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        using var gate = new ManualResetEventSlim();
+        using var entered = new ManualResetEventSlim();
+        var svc = HeldAtFirstSong(gate, entered);
+        await svc.SyncNowAsync(ct);
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+
+        var run = svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2), Phone(_t3) }, cts.Token);
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(10)));
+
+        var restarted = Restart();   // the next start, over the files the ended one left
+        var unfinished = await restarted.UnfinishedDownloadsAsync();
+        Assert.Equal(new[] { _t1.Id, _t2.Id, _t3.Id }.OrderBy(i => i), unfinished.Select(t => t.Id).OrderBy(i => i));
+
+        cts.Cancel();
+        gate.Set();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+
+        // A run that ends (here: cancelled by its caller, not paused) leaves nothing to resume.
+        Assert.Empty(await Restart().UnfinishedDownloadsAsync());
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+        Assert.Empty(await Restart().UnfinishedDownloadsAsync());
+    }
+
+    /// <summary>Downloads the system paused stay listed (the app may end before the job runs again);
+    /// a song removed meanwhile or gone from the computer's catalog is not, and after Remove All
+    /// Downloads nothing is.</summary>
+    [Fact]
+    public async Task UnfinishedDownloads_SkipRemovedAndGoneSongs_AndEndWithRemoveAll()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        using var gate = new ManualResetEventSlim();
+        using var entered = new ManualResetEventSlim();
+        var svc = HeldAtFirstSong(gate, entered);
+        await svc.SyncNowAsync(ct);
+
+        var run = svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2), Phone(_t3) }, ct);
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(10)));
+        var pause = svc.PauseDownloadsAsync();
+        gate.Set();
+        await pause;
+        await run;
+        Assert.Equal(3, (await Restart().UnfinishedDownloadsAsync()).Count);
+
+        await svc.RemoveDownloadsAsync(new[] { Phone(_t2) });
+        Assert.Equal(new[] { _t1.Id, _t3.Id }.OrderBy(i => i), (await Restart().UnfinishedDownloadsAsync()).Select(t => t.Id).OrderBy(i => i));
+
+        // The computer dropped t3 (its row went with a sync): not asked for any more.
+        await _phoneLibrary.RemoveRemoteTracksAsync(new HashSet<Guid> { _t1.Id, _t2.Id });
+        Assert.Equal(new[] { _t1.Id }, (await Restart().UnfinishedDownloadsAsync()).Select(t => t.Id));
+
+        await svc.RemoveAllDownloadsAsync();
+        Assert.Empty(await Restart().UnfinishedDownloadsAsync());
+    }
+
+    [Fact]
+    public async Task UnfinishedDownloads_EndWithSignOut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        using var gate = new ManualResetEventSlim();
+        using var entered = new ManualResetEventSlim();
+        var svc = HeldAtFirstSong(gate, entered);
+        await svc.SyncNowAsync(ct);
+        var run = svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2) }, ct);
+        Assert.True(entered.Wait(TimeSpan.FromSeconds(10)));
+        var pause = svc.PauseDownloadsAsync();
+        gate.Set();
+        await pause;
+        await run;
+        Assert.Equal(2, (await Restart().UnfinishedDownloadsAsync()).Count);
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+
+        Assert.Empty(await svc.UnfinishedDownloadsAsync());
+        Assert.False(File.Exists(Path.Combine(AccountDir, "downloads.json")));
+    }
+
+    /// <summary>Wi-Fi only on mobile data: resumed downloads wait for Wi-Fi instead of failing.</summary>
+    [Fact]
+    public async Task DownloadsWaitForWifi_OnlyWithWifiOnlyOnMobileData()
+    {
+        await SignedInAsync();
+        var onWifi = false;
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a()) { IsOnWifi = () => onWifi };
+
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = true);
+        Assert.True(await svc.DownloadsWaitForWifiAsync());
+        onWifi = true;
+        Assert.False(await svc.DownloadsWaitForWifiAsync());
+        onWifi = false;
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = false);
+        Assert.False(await svc.DownloadsWaitForWifiAsync());
+    }
+
     /// <summary>Sign-out and Remove All Downloads tell the phone's download activity that every
     /// download is called off (DownloadActivity ends the keeper and the card even while paused);
     /// sign-out says so before waiting for the desktop's answer.</summary>

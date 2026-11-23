@@ -193,6 +193,16 @@ public interface INoctisAccountService
     /// removed (Remove Download) while they were paused stays removed.</summary>
     Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) => DownloadAsync(tracks, ct);
 
+    /// <summary>The songs a download run left unfinished (the app ended mid-way, or the system paused
+    /// it) and still asked for: on the computer signed in to now, still listed by it, neither
+    /// downloaded nor removed since. Empty when signed out. The next start resumes them
+    /// (DownloadActivity.ResumeUnfinishedAsync).</summary>
+    Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync() => Task.FromResult<IReadOnlyList<Track>>(Array.Empty<Track>());
+
+    /// <summary>Settings › Downloads › Wi-Fi only is on and the phone is on mobile data: a download
+    /// now would be refused, so resumed downloads wait for Wi-Fi.</summary>
+    Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(false);
+
     /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
     /// or signed out keeping the downloads): its file stays and plays until the user removes it
     /// (<see cref="RemoveDownloadsAsync"/>, which then takes its row too). Never deleted on its own:
