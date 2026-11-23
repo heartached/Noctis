@@ -10,11 +10,11 @@
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
         <Button Name="SelectAddToPlaylist" Classes="icon" Command="{Binding AddToPlaylistCommand}" IsEnabled="{Binding HasSelection}"
                 AutomationProperties.Name="{loc:T Mobile.AddToPlaylist}">
-            <PathIcon Data="{DynamicResource PhAddToPlaylist}" />
+            <PathIcon Classes="dir" Data="{DynamicResource PhAddToPlaylist}" />
         </Button>
         <Button Name="SelectPlayNext" Classes="icon" Command="{Binding PlayNextCommand}" IsEnabled="{Binding HasSelection}"
                 AutomationProperties.Name="{loc:T Mobile.PlayNext}">
-            <PathIcon Data="{DynamicResource PhPlayNext}" />
+            <PathIcon Classes="dir" Data="{DynamicResource PhPlayNext}" />
         </Button>
         <Button Name="SelectAddToQueue" Classes="icon" Command="{Binding AddToQueueCommand}" IsEnabled="{Binding HasSelection}"
                 AutomationProperties.Name="{loc:T Mobile.AddToQueue}">
@@ -33,7 +33,7 @@
         </Button>
         <Button Name="SelectRemoveFromPlaylist" Classes="icon" Command="{Binding RemoveFromPlaylistCommand}" IsEnabled="{Binding CanRemoveFromPlaylist}"
                 IsVisible="{Binding OffersRemoveFromPlaylist}" AutomationProperties.Name="{loc:T Mobile.RemoveFromPlaylist}">
-            <PathIcon Data="{DynamicResource PhPlaylistRemove}" />
+            <PathIcon Classes="dir" Data="{DynamicResource PhPlaylistRemove}" />
         </Button>
     </StackPanel>
 </UserControl>

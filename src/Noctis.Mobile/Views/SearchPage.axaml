@@ -181,7 +181,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Songs}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <views:RowItemsControl Name="SongResults" ItemsSource="{Binding Songs}">
@@ -208,7 +208,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Albums}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <!-- Virtualised sideways (the artist page's rails): every keystroke used to
@@ -264,7 +264,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Artists}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <views:RowItemsControl Name="ArtistResults" ItemsSource="{Binding Artists}">
@@ -299,7 +299,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Playlists}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <views:RowItemsControl Name="PlaylistResults" ItemsSource="{Binding Playlists}">

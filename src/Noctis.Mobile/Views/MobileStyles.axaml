@@ -27,6 +27,17 @@
     <Style Selector="controls|TransportGlyph">
         <Setter Property="FlowDirection" Value="LeftToRight" />
     </Style>
+    <!-- Icons and artwork do not mirror either: a music note, a record box, a speaker, a quote
+         bubble or a cover is an object, not a direction (Material: only icons that point or
+         read a way mirror). Images already draw unmirrored (Avalonia's Image); these draw
+         themselves. The icons that do point a way (back, row and section chevrons, list and
+         queue arrows) carry .dir or a chevron class and follow the shell's direction again. -->
+    <Style Selector="PathIcon, Path, views|GridIcon, controls|MaskIcon, views|DiscArtwork, views|BlurredCoverBackdrop">
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+    </Style>
+    <Style Selector="PathIcon.dir, PathIcon.chevron, PathIcon.list-chevron, PathIcon.row-chevron, views|GridIcon.dir, views|GridIcon.row-chevron">
+        <Setter Property="FlowDirection" Value="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=views:ShellView}}" />
+    </Style>
     <Style Selector="TextBlock.np-time">
         <Setter Property="FlowDirection" Value="LeftToRight" />
     </Style>

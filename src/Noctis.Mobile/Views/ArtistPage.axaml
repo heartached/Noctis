@@ -283,7 +283,7 @@
                     <Button Name="TopSongsHeader" Classes="row artist-section" Command="{Binding OpenAllSongsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Mobile.Artist.TopSongs}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Name="TopSongScroll" Margin="0,4,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
@@ -357,7 +357,7 @@
                     <Button Name="AlbumsHeader" Classes="row artist-section" Command="{Binding OpenAlbumsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Nav.Albums}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -375,7 +375,7 @@
                     <Button Name="SinglesHeader" Classes="row artist-section" Command="{Binding OpenSinglesCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Mobile.Artist.SinglesEps}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -393,7 +393,7 @@
                     <Button Name="AppearsOnHeader" Classes="row artist-section" Command="{Binding OpenAppearsOnCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Mobile.Artist.AppearsOn}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
@@ -418,7 +418,7 @@
         <Grid Name="TopBar" VerticalAlignment="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,6,16,0">
             <controls:GlassPanel Classes="header-glass">
                 <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
-                    <PathIcon Data="{DynamicResource PhBack}" />
+                    <PathIcon Classes="dir" Data="{DynamicResource PhBack}" />
                 </Button>
             </controls:GlassPanel>
             <TextBlock Grid.Column="1" Name="SmallTitle" Text="{Binding Name}" FontSize="17" FontWeight="SemiBold"
