@@ -506,6 +506,193 @@ public class NoctisAccountServiceTests : IAsyncLifetime
 
     // ── Downloads and playback ───────────────────────────────────────────
 
+    /// <summary>A downloaded song the computer no longer has (deleted there, a drive unplugged, or
+    /// another computer signed in to) left the library with the next settled sync while its file
+    /// stayed, counted in Downloaded with no row left to remove it from. Deleting it with the sync
+    /// was rejected (owner 11-23: it takes music saved for offline): the song stays, plays from its
+    /// file under On This Phone and is listed as no longer on the computer. Mid-scan or an empty
+    /// list proves nothing.</summary>
+    [Fact]
+    public async Task ADownloadedSong_TheComputerDropped_StaysAndPlays_ListedAsNoLongerOnTheComputer()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1), Phone(_t3) }, ct);
+        var file3 = Path.GetFullPath(Path.Combine(OfflineDir, _t3.Id.ToString("N") + ".flac"));
+        Assert.True(File.Exists(file3));
+
+        // Mid-scan the list proves nothing.
+        _desk.IsScanning = true;
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        Assert.Empty(svc.NotOnComputerTracks);
+
+        // Nor does an empty list (a computer still loading its library).
+        _desk.IsScanning = false;
+        _desk.Show();
+        await svc.SyncNowAsync(ct);
+        Assert.Empty(svc.NotOnComputerTracks);
+
+        // Settled without _t3: listed, its row, file and place in Downloaded kept; it plays the file.
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        var p3 = Assert.Single(svc.NotOnComputerTracks);
+        Assert.Same(p3, Phone(_t3));
+        Assert.Equal("Gamma", p3.Title);
+        Assert.Equal("Yolanda", p3.Artist);
+        Assert.Equal(TimeSpan.FromSeconds(50), p3.Duration);
+        Assert.True(svc.IsNotOnComputer(p3));
+        Assert.False(svc.IsNotOnComputer(Phone(_t1)));
+        Assert.True(File.Exists(file3));
+        Assert.True(svc.IsDownloaded(p3));
+        Assert.Equal(2, svc.DownloadedCount);
+        Assert.Equal(_audio.Length, svc.NotOnComputerBytes);
+        Assert.Equal(file3, svc.ResolvePlaybackUri(p3.FilePath));
+        Assert.True(LibrarySources.Includes(svc, p3, LibrarySource.Phone));
+        Assert.False(LibrarySources.Includes(svc, p3, LibrarySource.Computer));
+        Assert.True(LibrarySources.Includes(svc, Phone(_t1), LibrarySource.Computer));
+
+        // The app starting again still knows.
+        var again = Restart();
+        Assert.Equal(_t3.Id, Assert.Single(again.NotOnComputerTracks).Id);
+    }
+
+    /// <summary>Remove on a song no longer on the computer deletes its file and, with nothing left
+    /// to stream, its row; Downloaded's count and space follow at once. Remove All the same.</summary>
+    [Fact]
+    public async Task RemovingSongsNoLongerOnTheComputer_DeletesTheirFilesAndRows_AndTheCountsFollow()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2), Phone(_t3) }, ct);
+        _desk.Show(_t1);
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(2, svc.NotOnComputerTracks.Count);
+        Assert.Equal(3, svc.DownloadedCount);
+
+        await svc.RemoveDownloadsAsync(new[] { Phone(_t2) });
+        Assert.False(File.Exists(Path.Combine(OfflineDir, _t2.Id.ToString("N") + ".flac")));
+        Assert.Null(_phoneLibrary.GetTrackById(_t2.Id));
+        Assert.Equal(2, svc.DownloadedCount);
+        Assert.Equal(2L * _audio.Length, svc.DownloadedBytes);
+        Assert.Equal(_t3.Id, Assert.Single(svc.NotOnComputerTracks).Id);
+        Assert.Equal(_audio.Length, svc.NotOnComputerBytes);
+
+        await svc.RemoveDownloadsAsync(svc.NotOnComputerTracks);
+        Assert.Empty(svc.NotOnComputerTracks);
+        Assert.Equal(0, svc.NotOnComputerBytes);
+        Assert.Null(_phoneLibrary.GetTrackById(_t3.Id));
+        Assert.Equal(1, svc.DownloadedCount);
+        Assert.True(svc.IsDownloaded(Phone(_t1)));
+        Assert.Empty(Restart().NotOnComputerTracks);
+    }
+
+    /// <summary>The song comes back on the computer (the drive plugged in again): an ordinary
+    /// downloaded song again, the same row and file, nothing downloaded twice.</summary>
+    [Fact]
+    public async Task ASongBackOnTheComputer_IsAnOrdinaryDownloadAgain()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t3) }, ct);
+        var p3 = Phone(_t3);
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        Assert.True(svc.IsNotOnComputer(p3));
+
+        _desk.Show(_t1, _t2, _t3);
+        await svc.SyncNowAsync(ct);
+
+        Assert.Empty(svc.NotOnComputerTracks);
+        Assert.False(svc.IsNotOnComputer(p3));
+        Assert.Same(p3, Phone(_t3));
+        Assert.Single(_phoneLibrary.AllTracks, t => t.Id == _t3.Id);
+        Assert.True(svc.IsDownloaded(p3));
+        Assert.Equal(1, svc.DownloadedCount);
+        Assert.Single(Directory.GetFiles(OfflineDir));
+        Assert.True(LibrarySources.Includes(svc, p3, LibrarySource.Computer));
+    }
+
+    /// <summary>Sign out keeping the downloads: the downloaded songs stay in the library and play,
+    /// listed as no longer on the computer (there is none now); the rest leave. Signing in to the
+    /// same computer again makes them ordinary downloads again.</summary>
+    [Fact]
+    public async Task SignOutKeepingDownloads_KeepsTheDownloadedSongsPlayable_AndSigningBackInTakesThemBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+
+        var p1 = Phone(_t1);
+        Assert.NotNull(p1);
+        Assert.Null(_phoneLibrary.GetTrackById(_t2.Id));
+        Assert.True(svc.IsNotOnComputer(p1));
+        Assert.Same(p1, Assert.Single(svc.NotOnComputerTracks));
+        Assert.Equal(Path.GetFullPath(Path.Combine(OfflineDir, _t1.Id.ToString("N") + ".flac")), svc.ResolvePlaybackUri(p1.FilePath));
+
+        var again = await SignedInAsync();
+        await again.SyncNowAsync(ct);
+        Assert.Empty(again.NotOnComputerTracks);
+        Assert.True(again.IsDownloaded(Phone(_t1)));
+        Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
+        Assert.Equal(1, again.DownloadedCount);
+    }
+
+    /// <summary>A download an older version left behind with no row (its song gone from the library
+    /// already): the file's own tags tell what it is, so it is listed and plays like the others.</summary>
+    [Fact]
+    public async Task ADownloadWithNoRowLeft_IsShownByItsTags_WhenTheComputerNoLongerHasIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(OfflineDir);
+        var lost = Guid.NewGuid();
+        var file = Path.GetFullPath(Path.Combine(OfflineDir, lost.ToString("N") + ".mp3"));
+        File.WriteAllBytes(file, _audio);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
+            _recorder, marshal: a => a())
+        {
+            ReadFileTags = path => path == file
+                ? new Track { Title = "Lost Song", Artist = "Someone", Album = "Somewhere", Duration = TimeSpan.FromSeconds(42) }
+                : null,
+        };
+        await svc.SignInAsync(_url, "alice", "correct horse", await svc.ProbeFingerprintAsync(_url, ct), ct);
+
+        await svc.SyncNowAsync(ct);
+
+        var row = Assert.Single(svc.NotOnComputerTracks);
+        Assert.Equal(lost, row.Id);
+        Assert.Equal("Lost Song", row.Title);
+        Assert.Equal("Someone", row.Artist);
+        Assert.Equal("Somewhere", row.Album);
+        Assert.Equal(TimeSpan.FromSeconds(42), row.Duration);
+        Assert.Same(row, _phoneLibrary.GetTrackById(lost));
+        Assert.Equal(file, svc.ResolvePlaybackUri(row.FilePath));
+        Assert.Equal(_audio.Length, svc.NotOnComputerBytes);
+        Assert.Equal(3, (await svc.SyncNowAsync(ct)).Songs);   // the catalog's count, not the kept rows
+    }
+
+    /// <summary>Sign out removing the downloads keeps no song back.</summary>
+    [Fact]
+    public async Task SignOutRemovingDownloads_KeepsNoSongBack()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+
+        await svc.SignOutAsync(removeDownloads: true, ct);
+
+        Assert.DoesNotContain(_phoneLibrary.AllTracks, t => t.SourceType == SourceType.NoctisServer);
+        Assert.Empty(svc.NotOnComputerTracks);
+        Assert.Equal(0, svc.DownloadedCount);
+    }
+
     /// <summary>Every download progress report (one per song a batch finishes) reads the space the
     /// downloads take: on a phone with thousands of downloads that copied the whole set into a new
     /// list each time, garbage for the phone's GC through a Download Everything. Measured: bytes
@@ -1561,10 +1748,10 @@ public class NoctisAccountServiceTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Sign out with Also Remove Downloads off: the desktop songs leave the library (the confirm
-    /// card says so) and their files stay for the next sign-in. The song lists still offered the
-    /// Downloaded filter (copies were kept), and it could only empty the list: no song in the
-    /// library was downloaded any more. Offered while signed in, or while a listed song is.
+    /// Sign out with Also Remove Downloads off: the desktop songs leave the library but the
+    /// downloaded ones, which stay and play. The song lists offered the Downloaded filter with no
+    /// downloaded song left in the library, where it could only empty the list. Offered while
+    /// signed in, or while a listed song is.
     /// </summary>
     [Fact]
     public async Task SignOutKeepingDownloads_TheSongListsNoLongerOfferAnAlwaysEmptyDownloadedFilter()
@@ -1592,8 +1779,15 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         await svc.SignOutAsync(removeDownloads: false, ct);
         songs.Refresh();
 
-        Assert.Equal(1, svc.DownloadedCount);       // the file is kept for the next sign-in
-        Assert.Equal(0, songs.TotalCount);           // the desktop's songs left the library
+        Assert.Equal(1, svc.DownloadedCount);       // the file is kept
+        Assert.Equal(1, songs.TotalCount);           // and its song with it; the others left the library
+        Assert.True(songs.CanFilterDownloaded);
+        Assert.Equal(1, songs.SongCount);
+
+        // With the kept download removed too, the filter could only empty the list: it goes.
+        await svc.RemoveDownloadsAsync(svc.NotOnComputerTracks);
+        songs.Refresh();
+        Assert.Equal(0, songs.TotalCount);
         Assert.False(songs.CanFilterDownloaded);
         Assert.False(songs.OnlyDownloaded);          // a filter that is gone does not stay on
     }

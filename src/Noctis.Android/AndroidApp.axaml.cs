@@ -116,7 +116,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
         _volume = new AndroidVolumeControl(context);
         var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history, volume: _volume);
-        var account = CreateAccountService(context, library, persistence, stateRecorder, _libraryLoaded.Task);
+        var account = CreateAccountService(context, library, persistence, metadata, stateRecorder, _libraryLoaded.Task);
         // Desktop songs' lyrics come from the desktop (saved on the phone for offline use); every
         // other song reads its sidecars through SAF as before.
         var remoteLyrics = account is IRemoteLyricsSource source
@@ -238,7 +238,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
     /// then shows no Account section, the sheet no download actions, and the player never streams.
     /// </summary>
     private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library,
-        IPersistenceService persistence, NoctisStateRecorder stateRecorder, Task libraryReady)
+        IPersistenceService persistence, IMetadataService metadata, NoctisStateRecorder stateRecorder, Task libraryReady)
     {
         if (!PhoneAccountFeatures.Enabled) return null;
         // The service's TLS: its pin check wired into AndroidMessageHandler.
@@ -263,6 +263,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 // "Send phone songs to computer" reads the phone's songs as playback does: the SAF
                 // document through its file descriptor, streamed, never copied.
                 LocalFiles = new SafTrackFileAccess(context),
+                // A download the computer no longer has and the library holds no row for: its own tags.
+                ReadFileTags = metadata.ReadTrackMetadata,
             };
         }
         catch (Exception ex)
