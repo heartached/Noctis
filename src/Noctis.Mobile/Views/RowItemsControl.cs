@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.VisualTree;
 
 namespace Noctis.Mobile.Views;
@@ -29,9 +30,12 @@ public class RowItemsControl : ItemsControl
 {
     protected override Type StyleKeyOverride => typeof(ItemsControl);
 
+    // A list of mixed rows (an album's disc headers and songs) has no ItemTemplate but a
+    // DataTemplate per kind: its containers are kept per kind, so a recycled row is always one
+    // built for an item of that kind.
     protected override bool NeedsContainerOverride(object? item, int index, out object? recycleKey)
     {
-        recycleKey = DefaultRecycleKey;
+        recycleKey = ItemTemplate is null && item is not null ? item.GetType() : DefaultRecycleKey;
         return true;
     }
 
@@ -69,7 +73,7 @@ public class RowItemsControl : ItemsControl
             Avalonia.Threading.Dispatcher.UIThread.Post(() => _settled = true, Avalonia.Threading.DispatcherPriority.Loaded);
         }
         host.Arrives = !_settled && (host.Row is null || ReplaysArrival);
-        if (host.Row is null && ItemTemplate?.Build(item) is { } built)
+        if (host.Row is null && (ItemTemplate ?? this.FindDataTemplate(item))?.Build(item) is { } built)
             host.Row = built;
         if (host.Row is not { } row) return;
         // The row inherits from this list, not from its container, so the item is set on the row

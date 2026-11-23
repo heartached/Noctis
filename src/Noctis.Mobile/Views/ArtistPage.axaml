@@ -278,7 +278,8 @@
                      cover, two buttons and the bars) used to be realised as the page opened, and
                      they were the largest part of its first layout; now the column on screen and
                      the one peeking in. VirtualizingStackPanel has no Spacing, so each column
-                     carries the gap as a right margin. -->
+                     carries the gap as a right margin. A column is built once and handed the next
+                     page (RowItemsControl), its rows handed that page's songs (WordItemsControl). -->
                 <StackPanel Name="TopSongsSection" Margin="0,22,0,0" IsVisible="{Binding HasTopSongs}">
                     <Button Name="TopSongsHeader" Classes="row artist-section" Command="{Binding OpenAllSongsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
@@ -288,17 +289,17 @@
                     </Button>
                     <ScrollViewer Name="TopSongScroll" Margin="0,4,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                                   HorizontalSnapPointsType="MandatorySingle" HorizontalSnapPointsAlignment="Near">
-                        <ItemsControl Name="TopSongPages" ItemsSource="{Binding TopSongPages}" Margin="16,0,16,0">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="TopSongPages" ItemsSource="{Binding TopSongPages}" Margin="16,0,16,0">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                            </views:RowItemsControl.ItemsPanel>
+                            <views:RowItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ArtistTopSongPage">
-                                    <ItemsControl ItemsSource="{Binding Rows}" Width="{Binding $parent[views:ArtistPage].TopSongPageWidth}"
+                                    <views:WordItemsControl ItemsSource="{Binding Rows}" Width="{Binding $parent[views:ArtistPage].TopSongPageWidth}"
                                                   Margin="{x:Static views:ArtistPage.ColumnMargin}" VerticalAlignment="Top">
-                                        <ItemsControl.ItemTemplate>
+                                        <views:WordItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ArtistTopSong">
                                                 <Button Classes="row"
                                                         Command="{Binding $parent[views:ArtistPage].((vm:ArtistPageViewModel)DataContext).PlayTopSongCommand}"
@@ -341,18 +342,19 @@
                                                     </Grid>
                                                 </Button>
                                             </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                        </views:WordItemsControl.ItemTemplate>
+                                    </views:WordItemsControl>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemTemplate>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
 
                 <!-- Albums, Singles & EPs, Appears On: Apple's rails of covers with the year under
                      the name; › opens the whole set as a grid. Virtualised sideways (a prolific
-                     artist would otherwise realise every tile at page open); VirtualizingStackPanel
-                     has no Spacing, so each tile carries the gap as a right margin. -->
+                     artist would otherwise realise every tile at page open), each tile built once
+                     and handed the next release (RowItemsControl); VirtualizingStackPanel has no
+                     Spacing, so each tile carries the gap as a right margin. -->
                 <StackPanel Name="AlbumsSection" Margin="0,22,0,0" IsVisible="{Binding HasAlbums}">
                     <Button Name="AlbumsHeader" Classes="row artist-section" Command="{Binding OpenAlbumsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
@@ -361,13 +363,13 @@
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="AlbumRail" ItemsSource="{Binding Albums}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="AlbumRail" ItemsSource="{Binding Albums}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemsPanel>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
 
@@ -379,13 +381,13 @@
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="SingleRail" ItemsSource="{Binding Singles}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="SingleRail" ItemsSource="{Binding Singles}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemsPanel>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
 
@@ -397,13 +399,13 @@
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="AppearsOnRail" ItemsSource="{Binding AppearsOn}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="AppearsOnRail" ItemsSource="{Binding AppearsOn}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemsPanel>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
             </StackPanel>

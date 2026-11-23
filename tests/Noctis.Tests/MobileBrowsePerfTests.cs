@@ -142,4 +142,158 @@ public class MobileBrowsePerfTests
         Assert.Equal(pinnedTiles.Count, glided);
         window.Close();
     }
+
+    /// <summary>A box set: <paramref name="discs"/> discs of <paramref name="perDisc"/> songs.</summary>
+    private static (MobileFixtures.Rig Rig, Noctis.Models.Album Album) BoxSet(int discs, int perDisc)
+    {
+        var tracks = new List<Noctis.Models.Track>();
+        for (var d = 1; d <= discs; d++)
+            for (var n = 1; n <= perDisc; n++)
+            {
+                var t = MobileFixtures.Song($"Song {d}-{n}", "Box Artist");
+                t.DiscNumber = d;
+                t.TrackNumber = n;
+                tracks.Add(t);
+            }
+        var album = MobileFixtures.MakeAlbum("The Box", "Box Artist", tracks.ToArray());
+        return (MobileFixtures.MakeRig(tracks.ToArray(), new[] { album }), album);
+    }
+
+    /// <summary>
+    /// An album page's songs, a box set's 150 over five discs: the list mixes disc headers and
+    /// songs, so it was a plain virtualised ItemsControl, which rebuilt every row that scrolled on
+    /// (its Button, check, number, bars, title, mark, ⋯ and every binding). Rows are now built once
+    /// per kind and handed the next item of that kind.
+    /// </summary>
+    [AvaloniaFact]
+    public void AlbumPage_ReusesItsRows_AsABoxSetScrolls_AndTheyStillPlayTheirSong()
+    {
+        var (rig, album) = BoxSet(5, 30);
+        using var _ = rig;
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        MobileFixtures.Land(window);
+        Dispatcher.UIThread.RunJobs();
+        var vm = Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+        var page = MobileFixtures.Find<AlbumPage>(view);
+        var list = MobileFixtures.Named<ItemsControl>(page, "TrackList");
+        var scroll = MobileFixtures.Named<ScrollViewer>(page, "AlbumScroll");
+        Assert.Equal(155, vm.Rows.Count);
+
+        List<Button> RowButtons() => list.GetVisualDescendants().OfType<Button>()
+            .Where(b => b.Classes.Contains("row") && b.IsEffectivelyVisible).ToList();
+        var built = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        var headers = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        void Watch()
+        {
+            foreach (var b in RowButtons()) built.Add(b);
+            foreach (var t in list.GetVisualDescendants().OfType<TextBlock>().Where(t => t.DataContext is AlbumDiscHeader)) headers.Add(t);
+        }
+        void ScrollTo(double y)
+        {
+            scroll.Offset = new Avalonia.Vector(0, y);
+            window.UpdateLayout();
+            Dispatcher.UIThread.RunJobs();
+        }
+        Watch();
+        for (var y = 0.0; y <= scroll.Extent.Height; y += 100) { ScrollTo(y); Watch(); }   // warm-up pass
+        ScrollTo(0);
+        var alloc = GC.GetAllocatedBytesForCurrentThread();
+        var start = Stopwatch.GetTimestamp();
+        var steps = 0;
+        for (var y = 0.0; y <= scroll.Extent.Height; y += 100, steps++) { ScrollTo(y); Watch(); }
+        var ms = Stopwatch.GetElapsedTime(start).TotalMilliseconds / steps;
+        var perStep = (GC.GetAllocatedBytesForCurrentThread() - alloc) / steps;
+        _out.WriteLine($"box set, 150 songs on 5 discs, scrolled twice: {built.Count} song rows and {headers.Count} disc headers built, {ms:F1} ms and {perStep / 1024} KB a 100 dp step");
+        // Before: 334 song rows and 10 disc headers built, 19.1 ms and 948 KB a step; after: 20, 1, 3.1 ms, 228 KB.
+        Assert.InRange(built.Count, 10, 40);
+        Assert.InRange(headers.Count, 1, 6);
+
+        // At the end the rows on screen are the last songs, in order, and a tap plays its own;
+        // the last disc's header still reads as a header.
+        var shown = list.GetRealizedContainers().OrderBy(list.IndexFromContainer)
+            .Select(c => c.GetVisualDescendants().OfType<Control>().FirstOrDefault(x => x.DataContext is AlbumTrackRow or AlbumDiscHeader)?.DataContext)
+            .ToList();
+        var from = list.IndexFromContainer(list.GetRealizedContainers().OrderBy(list.IndexFromContainer).First());
+        Assert.Equal(vm.Rows.Skip(from).Take(shown.Count), shown);
+        var lastRow = RowButtons().OrderBy(b => b.TranslatePoint(default, page)!.Value.Y).Last();
+        Assert.Same(vm.Rows[^1], lastRow.CommandParameter);
+        Assert.Same(vm.PlayTrackCommand, lastRow.Command);
+        Assert.Equal("Song 5-30", MobileFixtures.Named<TextBlock>(lastRow, "RowTitle").Text);
+        window.Close();
+    }
+
+    /// <summary>
+    /// A prolific artist's page (60 albums, 40 singles, 20 top songs): its rails virtualised
+    /// sideways over a plain ItemsControl, which rebuilt every tile that scrolled on (and every
+    /// Top Songs column, with its four rows). Tiles and columns are now built once and handed the
+    /// next item.
+    /// </summary>
+    [AvaloniaFact]
+    public void ArtistPage_ReusesItsRailTiles_AsTheyScroll_AndTheyStillOpenTheirAlbum()
+    {
+        var tracks = new List<Noctis.Models.Track>();
+        var albums = new List<Noctis.Models.Album>();
+        for (var a = 0; a < 100; a++)
+        {
+            var count = a < 60 ? 10 : 1;
+            var own = Enumerable.Range(1, count).Select(n =>
+            {
+                var t = MobileFixtures.Song($"Song {a}-{n}", "Prolific", plays: (a * 7 + n) % 40);
+                t.TrackNumber = n;
+                return t;
+            }).ToArray();
+            tracks.AddRange(own);
+            var album = MobileFixtures.MakeAlbum($"Release {a}", "Prolific", own);
+            album.Year = 1950 + a;
+            albums.Add(album);
+        }
+        using var rig = MobileFixtures.MakeRig(tracks.ToArray(), albums.ToArray());
+        rig.Library.ArtistList.Add(new Noctis.Models.Artist { Id = Guid.NewGuid(), Name = "Prolific", TrackCount = tracks.Count });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenArtistCommand.Execute("Prolific");
+        MobileFixtures.Land(window);
+        Dispatcher.UIThread.RunJobs();
+        var vm = Assert.IsType<ArtistPageViewModel>(rig.Shell.CurrentPage);
+        Assert.Equal(60, vm.Albums.Count);
+        Assert.Equal(40, vm.Singles.Count);
+        var page = MobileFixtures.Find<ArtistPage>(view);
+
+        var built = new HashSet<Control>(ReferenceEqualityComparer.Instance);
+        void Watch(ItemsControl rail)
+        {
+            foreach (var b in rail.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("row"))) built.Add(b);
+        }
+        long alloc = 0;
+        var steps = 0;
+        foreach (var name in new[] { "AlbumRail", "SingleRail", "TopSongPages", "AlbumRail", "SingleRail", "TopSongPages" })
+        {
+            var rail = MobileFixtures.Named<ItemsControl>(page, name);
+            var scroll = rail.FindAncestorOfType<ScrollViewer>()!;
+            if (steps == 0) alloc = GC.GetAllocatedBytesForCurrentThread();
+            for (var x = 0.0; x <= scroll.Extent.Width; x += 80, steps++)
+            {
+                scroll.Offset = new Vector(x, 0);
+                window.UpdateLayout();
+                Dispatcher.UIThread.RunJobs();
+                Watch(rail);
+            }
+        }
+        var perStep = (GC.GetAllocatedBytesForCurrentThread() - alloc) / steps;
+        _out.WriteLine($"artist page, 60 albums + 40 singles + 20 top songs, each rail scrolled to its end twice: {built.Count} tiles and rows built, {perStep / 1024} KB an 80 dp step");
+        // Before: 161 tiles and rows built, 179 KB a step; after: 17, 49 KB.
+        Assert.InRange(built.Count, 10, 60);
+
+        // At the end the tiles on screen are the last releases, in order, each opening its own.
+        var albumRail = MobileFixtures.Named<ItemsControl>(page, "AlbumRail");
+        var last = albumRail.GetRealizedContainers().OrderBy(albumRail.IndexFromContainer).Last();
+        var tile = last.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("row"));
+        Assert.Same(vm.Albums[^1].Album, tile.CommandParameter);
+        Assert.Same(rig.Shell.OpenAlbumCommand, tile.Command);
+        var songs = MobileFixtures.Named<ItemsControl>(page, "TopSongPages");
+        var column = songs.GetRealizedContainers().OrderBy(songs.IndexFromContainer).Last();
+        var rows = column.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("row")).Select(b => b.CommandParameter).ToList();
+        Assert.Equal(vm.TopSongPages[^1].Rows, rows);
+        window.Close();
+    }
 }
