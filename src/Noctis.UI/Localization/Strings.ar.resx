@@ -5722,7 +5722,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <comment>Header in SidebarView.axaml</comment>
   </data>
   <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>نقل إلى مجلد…</value>
+    <value>نقل إلى مجلد</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
@@ -9414,4 +9414,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 يومًا</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
   <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 يومًا</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
   <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>أضيفت خلال آخر {0}</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>مجلد جديد…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>مجلد جديد</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>إنشاء</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>بلا مجلد</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
 </root>

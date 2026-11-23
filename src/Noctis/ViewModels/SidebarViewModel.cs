@@ -32,6 +32,17 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _foldingFolders = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Folders made with New Folder… (playlist_folders.json). A folder is otherwise
+    /// only the Folder name on its playlists; these show even with no playlist in them, until
+    /// Remove Folder. Local only: the playlist sync carries no folders at all.</summary>
+    private readonly List<string> _savedFolders = new();
+
+    /// <summary>Asks for a line of text (title, initial text, hint, confirm label); null = cancelled.
+    /// The text prompt pop-up; tests answer it.</summary>
+    internal Func<string, string?, string?, string?, Task<string?>> PromptText { get; set; } = Views.TextPromptDialog.ShowAsync;
+
+    /// <summary>Yes/no confirmation pop-up; tests answer it.</summary>
+    internal Func<string, Task<bool>> ConfirmAction { get; set; } = Views.ConfirmationDialog.ShowAsync;
 
     /// <summary>Set by the view: eases a folder's rows shut; the collapse removes them once
     /// the task ends. Null (tests) collapses at once.</summary>
@@ -263,6 +274,7 @@ public partial class SidebarViewModel : ViewModelBase
     public async Task LoadPlaylistsAsync()
     {
         var loadedPlaylists = await _persistence.LoadPlaylistsAsync();
+        SetSavedFolders(await _persistence.LoadPlaylistFoldersAsync());
         // The highlighted playlist keeps its highlight: its row is rebuilt below.
         var selectedPlaylist = SelectedNavItem?.PlaylistId;
         Playlists.Clear();
@@ -300,7 +312,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// </summary>
     public void RebuildSidebarRows()
     {
-        var desired = BuildRows(PlaylistItems, _collapsedFolders, FolderOrders(), SidebarOrders());
+        var desired = BuildRows(PlaylistItems, _collapsedFolders, FolderOrders(), SidebarOrders(), _savedFolders);
 
         // Folder headers are synthesized fresh by BuildRows; swap in the live
         // instances (matched by key) so their ListBox containers survive.
@@ -345,11 +357,14 @@ public partial class SidebarViewModel : ViewModelBase
     /// <paramref name="sidebarOrder"/> maps top-level entries (row keys: "folder:Name",
     /// "playlist:id") the user placed among each other to their position (see
     /// SidebarOrders); the rest follow them in the old layout, folders then loose playlists.
+    /// <paramref name="emptyFolders"/> are folders shown even with no playlist in them (New
+    /// Folder…); one that has playlists is just that folder.
     /// </summary>
     public static List<PlaylistNavItem> BuildRows(
         IEnumerable<PlaylistNavItem> items, ISet<string> collapsedFolders,
         IReadOnlyDictionary<string, int>? folderOrder = null,
-        IReadOnlyDictionary<string, int>? sidebarOrder = null)
+        IReadOnlyDictionary<string, int>? sidebarOrder = null,
+        IEnumerable<string>? emptyFolders = null)
     {
         var rows = new List<PlaylistNavItem>();
         var all = items.ToList();
@@ -365,12 +380,26 @@ public partial class SidebarViewModel : ViewModelBase
 
         // The old layout (folders, then loose playlists), then the placed entries moved to
         // the front in their order. OrderBy is stable, so unplaced ones keep the old layout.
-        var entries = unpinned
+        var folders = unpinned
             .Where(i => !string.IsNullOrWhiteSpace(i.Folder))
             .GroupBy(i => i.Folder.Trim(), StringComparer.OrdinalIgnoreCase)
-            .OrderBy(g => FolderRank(folderOrder, g.Key))
-            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(g => (Key: $"folder:{g.Key}", Folder: (string?)g.Key, Items: g.ToList()))
+            .Select(g => (Name: g.Key, Items: g.ToList()))
+            .ToList();
+        if (emptyFolders != null)
+        {
+            // A pinned playlist leaves its folder's rows, not the folder: it still holds it.
+            var held = new HashSet<string>(all.Select(i => i.Folder.Trim()).Where(f => f.Length > 0), StringComparer.OrdinalIgnoreCase);
+            foreach (var name in emptyFolders)
+            {
+                var folder = name.Trim();
+                if (folder.Length > 0 && held.Add(folder)) folders.Add((folder, new List<PlaylistNavItem>()));
+            }
+        }
+
+        var entries = folders
+            .OrderBy(g => FolderRank(folderOrder, g.Name))
+            .ThenBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (Key: $"folder:{g.Name}", Folder: (string?)g.Name, g.Items))
             .Concat(unpinned
                 .Where(i => string.IsNullOrWhiteSpace(i.Folder))
                 .Select(i => (i.Key, Folder: (string?)null, Items: new List<PlaylistNavItem> { i })))
@@ -395,7 +424,8 @@ public partial class SidebarViewModel : ViewModelBase
                 IsFolder = true,
                 IsExpanded = expanded,
                 TrackCount = members.Count,
-                GroupPosition = expanded ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
+                // An empty folder draws no open tray (nothing under it to hold).
+                GroupPosition = expanded && members.Count > 0 ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
             });
 
             if (!expanded)
@@ -527,6 +557,7 @@ public partial class SidebarViewModel : ViewModelBase
     public IReadOnlyList<string> GetFolderNames() =>
         Playlists
             .Select(p => p.Folder.Trim())
+            .Concat(_savedFolders)
             .Where(f => f.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
@@ -711,9 +742,9 @@ public partial class SidebarViewModel : ViewModelBase
 
     // ── Sidebar context menu + drag-and-drop ──
     // Right-click on a playlist row / folder header, and drops onto the list, come
-    // through here. Folders are just the Folder string on each playlist, so "create a
-    // folder" means "put a playlist in a folder with a new name" and a folder with no
-    // playlists left in it simply disappears.
+    // through here. Folders are just the Folder string on each playlist, so a folder with no
+    // playlists left in it disappears, except one made with New Folder…, which is saved
+    // beside the playlists (_savedFolders) and stays until Remove Folder.
 
     [RelayCommand]
     private async Task EditPlaylistItem(PlaylistNavItem? item)
@@ -735,22 +766,77 @@ public partial class SidebarViewModel : ViewModelBase
         if (item?.PlaylistId is { } id) await DeletePlaylist(id);
     }
 
-    /// <summary>Prompts for a folder name (existing or new) and moves the playlist there.</summary>
-    [RelayCommand]
-    private async Task MoveToFolder(PlaylistNavItem? item)
+    /// <summary>The "Move to Folder" submenu of a playlist row: every folder (the empty ones
+    /// made with New Folder… too), alphabetical, the one it is in marked; then No Folder, then
+    /// New Folder… (the only one that asks for a name).</summary>
+    internal IReadOnlyList<FolderMenuChoice> FolderChoicesFor(PlaylistNavItem item)
     {
-        var playlist = ResolveNavPlaylist(item);
-        if (playlist == null) return;
-
-        var existing = GetFolderNames();
-        var hint = existing.Count > 0
-            ? Loc.T("Sidebar.FolderHintExisting", string.Join(", ", existing))
-            : Loc.T("Sidebar.FolderHint");
-        var name = await Views.TextPromptDialog.ShowAsync(Loc.T("Sidebar.MoveToFolderTitle"), playlist.Folder, hint, Loc.T("SendTo.Move"));
-        if (name == null) return;
-
-        await SetPlaylistFolderAsync(playlist, name);
+        var current = (ResolveNavPlaylist(item)?.Folder ?? item.Folder).Trim();
+        var choices = GetFolderNames()
+            .Select(f => new FolderMenuChoice(item, f, f, IsNew: false,
+                IsCurrent: string.Equals(f, current, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        choices.Add(new FolderMenuChoice(item, null, Loc.T("Sidebar.NoFolder"), IsNew: false, IsCurrent: current.Length == 0));
+        choices.Add(new FolderMenuChoice(item, null, Loc.T("Sidebar.NewFolder"), IsNew: true, IsCurrent: false));
+        return choices;
     }
+
+    /// <summary>A pick in the "Move to Folder" submenu: into that folder, out of any, or into a
+    /// new one named in the prompt.</summary>
+    [RelayCommand]
+    private async Task MoveToFolderChoice(FolderMenuChoice? choice)
+    {
+        var playlist = ResolveNavPlaylist(choice?.Item);
+        if (choice == null || playlist == null) return;
+        var folder = choice.Folder ?? string.Empty;
+        if (choice.IsNew)
+        {
+            var name = await PromptText(Loc.T("Sidebar.NewFolderTitle"), null, null, Loc.T("Sidebar.CreateFolder"));
+            if (string.IsNullOrWhiteSpace(name)) return;
+            folder = name.Trim();
+        }
+        if (string.Equals(playlist.Folder.Trim(), folder, StringComparison.Ordinal)) return;
+        await SetPlaylistFolderAsync(playlist, folder);
+    }
+
+    /// <summary>"New Folder…" (the PLAYLISTS header and the empty part of the list): a folder
+    /// that shows while it is still empty, saved beside the playlists until it is removed.</summary>
+    [RelayCommand]
+    private async Task NewFolder()
+    {
+        var name = (await PromptText(Loc.T("Sidebar.NewFolderTitle"), null, null, Loc.T("Sidebar.CreateFolder")))?.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+        if (GetFolderNames().Contains(name, StringComparer.OrdinalIgnoreCase)) return;
+        _savedFolders.Add(name);
+        _collapsedFolders.Remove(name);
+        RebuildSidebarRows();
+        await SaveFoldersAsync();
+    }
+
+    /// <summary>Takes <paramref name="folders"/> as the saved empty folders (trimmed, once each).</summary>
+    private void SetSavedFolders(IEnumerable<string> folders)
+    {
+        _savedFolders.Clear();
+        foreach (var f in folders)
+        {
+            var name = f?.Trim() ?? string.Empty;
+            if (name.Length > 0 && !_savedFolders.Contains(name, StringComparer.OrdinalIgnoreCase))
+                _savedFolders.Add(name);
+        }
+    }
+
+    /// <summary>Uses <paramref name="folders"/> as the saved folders and shows them (tests).</summary>
+    internal void UseSavedFolders(IEnumerable<string> folders)
+    {
+        SetSavedFolders(folders);
+        RebuildSidebarRows();
+    }
+
+    private Task SaveFoldersAsync() => _persistence.SavePlaylistFoldersAsync(_savedFolders.ToList());
+
+    /// <summary>Drops <paramref name="folder"/> from the saved folders; true when it was there.</summary>
+    private bool ForgetSavedFolder(string folder)
+        => _savedFolders.RemoveAll(f => string.Equals(f, folder.Trim(), StringComparison.OrdinalIgnoreCase)) > 0;
 
     [RelayCommand]
     private async Task RemoveFromFolder(PlaylistNavItem? item)
@@ -765,7 +851,7 @@ public partial class SidebarViewModel : ViewModelBase
     private async Task RenameFolder(PlaylistNavItem? item)
     {
         if (item is not { IsFolder: true }) return;
-        var newName = await Views.TextPromptDialog.ShowAsync(Loc.T("Sidebar.RenameFolderTitle"), item.Label, null, Loc.T("Mobile.Rename"));
+        var newName = await PromptText(Loc.T("Sidebar.RenameFolderTitle"), item.Label, null, Loc.T("Mobile.Rename"));
         if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, item.Label, StringComparison.Ordinal)) return;
 
         var wasCollapsed = _collapsedFolders.Remove(item.Label);
@@ -785,8 +871,14 @@ public partial class SidebarViewModel : ViewModelBase
             var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
             if (nav != null) nav.Folder = newName;
         }
+        // A saved (New Folder…) folder keeps showing under its new name; renamed onto another
+        // folder, it is that folder now.
+        var savedRenamed = ForgetSavedFolder(item.Label);
+        if (savedRenamed && !GetFolderNames().Contains(newName.Trim(), StringComparer.OrdinalIgnoreCase))
+            _savedFolders.Add(newName.Trim());
         RebuildSidebarRows();
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (savedRenamed) await SaveFoldersAsync();
     }
 
     /// <summary>Folder header: the playlists stay, the folder goes.</summary>
@@ -794,20 +886,22 @@ public partial class SidebarViewModel : ViewModelBase
     private async Task DissolveFolder(PlaylistNavItem? item)
     {
         if (item is not { IsFolder: true }) return;
-        var confirmed = await Views.ConfirmationDialog.ShowAsync(
-            Loc.T("Sidebar.RemoveFolderConfirm", item.Label));
-        if (!confirmed) return;
+        var members = Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)).ToList();
+        // An empty folder has nothing to keep: it just goes.
+        if (members.Count > 0 && !await ConfirmAction(Loc.T("Sidebar.RemoveFolderConfirm", item.Label))) return;
 
         _collapsedFolders.Remove(item.Label);
-        foreach (var pl in Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)))
+        foreach (var pl in members)
         {
             pl.Folder = string.Empty;
             pl.ModifiedAt = DateTime.UtcNow;
             var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
             if (nav != null) nav.Folder = string.Empty;
         }
+        var wasSaved = ForgetSavedFolder(item.Label);
         RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (members.Count > 0) await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (wasSaved) await SaveFoldersAsync();
     }
 
     /// <summary>
@@ -1357,3 +1451,7 @@ public partial class SidebarViewModel : ViewModelBase
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
     }
 }
+
+/// <summary>One entry of a playlist row's "Move to Folder" submenu: a folder (<see cref="Folder"/>),
+/// No Folder (null), or New Folder… (<see cref="IsNew"/>).</summary>
+public sealed record FolderMenuChoice(PlaylistNavItem Item, string? Folder, string Label, bool IsNew, bool IsCurrent);

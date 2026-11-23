@@ -46,6 +46,7 @@ public class PersistenceService : IPersistenceService
     private string SettingsPath => Path.Combine(DataDirectory, "settings.json");
     private string LibraryPath => Path.Combine(DataDirectory, "library.json");
     private string PlaylistsPath => Path.Combine(DataDirectory, "playlists.json");
+    private string PlaylistFoldersPath => Path.Combine(DataDirectory, "playlist_folders.json");
     private string QueuePath => Path.Combine(DataDirectory, "queue.json");
     private string QueuePositionPath => Path.Combine(DataDirectory, "queue-position.json");
     private string IndexCachePath => Path.Combine(DataDirectory, "indexes.json");
@@ -464,6 +465,12 @@ public class PersistenceService : IPersistenceService
         }
         await SaveJsonAsync(PlaylistsPath, playlists);
     }
+
+    public async Task<List<string>> LoadPlaylistFoldersAsync()
+        => await LoadJsonAsync<List<string>>(PlaylistFoldersPath) ?? new List<string>();
+
+    public Task SavePlaylistFoldersAsync(List<string> folders)
+        => SaveJsonAsync(PlaylistFoldersPath, folders);
 
     // ── Queue State ───────────────────────────────────────────
 

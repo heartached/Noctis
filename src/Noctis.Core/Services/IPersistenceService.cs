@@ -56,6 +56,12 @@ public interface IPersistenceService
     Task<List<Playlist>> LoadPlaylistsAsync();
     Task SavePlaylistsAsync(List<Playlist> playlists);
 
+    /// <summary>Sidebar folders made with New Folder… (playlist_folders.json): a folder is
+    /// otherwise only the Folder name on its playlists, so one with none in it yet is kept
+    /// here to stay on screen. Local to this data folder; playlist sync carries no folders.</summary>
+    Task<List<string>> LoadPlaylistFoldersAsync() => Task.FromResult(new List<string>());
+    Task SavePlaylistFoldersAsync(List<string> folders) => Task.CompletedTask;
+
     // --- Queue ---
 
     /// <summary>

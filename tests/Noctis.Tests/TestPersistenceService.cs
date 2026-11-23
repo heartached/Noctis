@@ -25,6 +25,10 @@ internal class TestPersistenceService : IPersistenceService, IDisposable
     public Task SaveLibraryAsync(List<Track> tracks) => Task.CompletedTask;
     public virtual Task<List<Playlist>> LoadPlaylistsAsync() => Task.FromResult(new List<Playlist>());
     public virtual Task SavePlaylistsAsync(List<Playlist> playlists) => Task.CompletedTask;
+    /// <summary>The sidebar's saved empty folders (playlist_folders.json), in memory.</summary>
+    public List<string> PlaylistFolders { get; private set; } = new();
+    public Task<List<string>> LoadPlaylistFoldersAsync() => Task.FromResult(PlaylistFolders.ToList());
+    public Task SavePlaylistFoldersAsync(List<string> folders) { PlaylistFolders = folders.ToList(); return Task.CompletedTask; }
     public Task<QueueState?> LoadQueueStateAsync() => Task.FromResult<QueueState?>(null);
     public Task SaveQueueStateAsync(QueueState state) => Task.CompletedTask;
     public Task SaveQueuePositionAsync(Guid? currentTrackId, double positionSeconds) => Task.CompletedTask;

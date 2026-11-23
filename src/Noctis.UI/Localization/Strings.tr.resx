@@ -2121,7 +2121,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Sidebar.EditPlaylist" xml:space="preserve"><value>Çalma Listesini Düzenle…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.StarSidebar" xml:space="preserve"><value>Kenar Çubuğunda Yıldızla</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.UnstarFromSidebar" xml:space="preserve"><value>Kenar Çubuğundan Yıldızı Kaldır</value><comment>Header in SidebarView.axaml</comment></data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Klasöre Taşı…</value><comment>Header in SidebarView.axaml</comment></data>
+  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Klasöre Taşı</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve"><value>Klasörden Kaldır</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.DeletePlaylist" xml:space="preserve"><value>Çalma Listesini Sil</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylistFolder" xml:space="preserve"><value>Klasörde Yeni Çalma Listesi…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -4478,4 +4478,8 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
   <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
   <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>Son {0} içinde eklendi</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>Yeni Klasör…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>Yeni klasör</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>Oluştur</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>Klasör Yok</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
 </root>

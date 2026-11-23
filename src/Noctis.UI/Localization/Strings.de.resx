@@ -2123,7 +2123,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="Sidebar.EditPlaylist" xml:space="preserve"><value>Playlist bearbeiten…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.StarSidebar" xml:space="preserve"><value>In Seitenleiste sternen</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.UnstarFromSidebar" xml:space="preserve"><value>Aus Seitenleiste entsternen</value><comment>Header in SidebarView.axaml</comment></data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>In Ordner verschieben…</value><comment>Header in SidebarView.axaml</comment></data>
+  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>In Ordner verschieben</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve"><value>Aus Ordner entfernen</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.DeletePlaylist" xml:space="preserve"><value>Playlist löschen</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylistFolder" xml:space="preserve"><value>Neue Playlist in Ordner…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -4425,4 +4425,8 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 Tage</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
   <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 Tage</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
   <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>Hinzugefügt, Zeitraum: {0}</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>Neuer Ordner…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>Neuer Ordner</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>Erstellen</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>Kein Ordner</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
 </root>
