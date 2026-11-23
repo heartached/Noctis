@@ -4379,6 +4379,9 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Künstler-Trennzeichen</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Jedes Trennzeichen teilt einen Künstler-Tag in mehrere Künstler: Mit „,“ wird aus „Boys Noize, ABRA“ Boys Noize und ABRA. Deine Künstler werden sofort neu gruppiert.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} entfernen</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>Genre-Trennzeichen</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>Jedes Trennzeichen teilt einen Genre-Tag in mehrere Genres: Mit „,“ zählt ein Song mit „Rock, Pop“ als Rock und als Pop. Semikolons trennen immer. Deine Dateien werden nicht geändert.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>Keine: Nur Semikolons trennen Genres.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Andere Versionen</value></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Songtexte durchsuchen</value></data>

@@ -4378,6 +4378,9 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Separadores de artistas</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Cada separador divide una etiqueta de artista en varios artistas: con «,» la etiqueta «Boys Noize, ABRA» pasa a ser Boys Noize y ABRA. Tus artistas se reagrupan al instante.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>Quitar {0}</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>Separadores de género</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>Cada separador divide una etiqueta de género en varios géneros: con «,» una canción con «Rock, Pop» cuenta como Rock y como Pop. El punto y coma siempre separa. Tus archivos no se modifican.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>Ninguno: solo el punto y coma separa los géneros.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Otras versiones</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Original</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Buscar en las letras</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

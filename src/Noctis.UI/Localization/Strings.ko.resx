@@ -9368,6 +9368,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>아티스트 구분자</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>구분자마다 하나의 아티스트 태그를 여러 아티스트로 나눕니다. “,”가 있으면 “Boys Noize, ABRA” 태그는 Boys Noize와 ABRA가 됩니다. 아티스트는 바로 다시 묶입니다.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} 제거</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>장르 구분자</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>각 구분자는 하나의 장르 태그를 여러 장르로 나눕니다. “,”를 쓰면 “Rock, Pop” 태그가 있는 곡은 Rock과 Pop 모두로 취급됩니다. 세미콜론은 항상 구분합니다. 파일은 변경되지 않습니다.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>없음: 세미콜론만 장르를 구분합니다.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>다른 버전</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>원곡</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>가사 검색</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>

@@ -1,0 +1,120 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="using:Noctis.Localization"
+             xmlns:vm="using:Noctis.Mobile.ViewModels"
+             xmlns:views="using:Noctis.Mobile.Views"
+             x:Class="Noctis.Mobile.Views.GenreSeparatorsPane"
+             x:DataType="vm:GenreSeparatorsViewModel">
+
+    <!-- Settings › Genre Separators, the content of a page pushed inside the Settings sheet (the sheet
+         draws the header and Back): each separator in use besides ';' with Remove (or a line saying
+         only semicolons split), the footnote with an example, a field with Add, then Reset to Default. Shared look: GroupedStyles.axaml. -->
+
+    <UserControl.Styles>
+        <!-- The list's hairlines run the card's width (no row chip); none above the first row. -->
+        <Style Selector="ItemsControl#GenreSeparatorList Border.row-separator">
+            <Setter Property="Margin" Value="16,0" />
+        </Style>
+        <Style Selector="ItemsControl#GenreSeparatorList ContentPresenter:nth-child(1) Border.row-separator">
+            <Setter Property="IsVisible" Value="False" />
+        </Style>
+        <!-- Remove and Add: accent text buttons at the row's end (Settings › Hidden's Unhide). -->
+        <Style Selector="Button.text-action">
+            <Setter Property="MinHeight" Value="44" />
+            <Setter Property="Padding" Value="12,0" />
+            <Setter Property="Margin" Value="8,0,-12,0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="FontSize" Value="16" />
+        </Style>
+        <Style Selector="Button.text-action:pointerover /template/ ContentPresenter#PART_ContentPresenter, Button.text-action:pressed /template/ ContentPresenter#PART_ContentPresenter, Button.text-action:disabled /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+        </Style>
+        <Style Selector="Button.text-action:pressed">
+            <Setter Property="Opacity" Value="0.5" />
+        </Style>
+        <Style Selector="Button.text-action:disabled">
+            <Setter Property="Opacity" Value="0.45" />
+        </Style>
+        <!-- The field: borderless on the card, as the sign-in fields (AccountPage). -->
+        <Style Selector="TextBox.inline-field">
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="0,4" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+        <Style Selector="TextBox.inline-field /template/ Border#PART_BorderElement, TextBox.inline-field:pointerover /template/ Border#PART_BorderElement, TextBox.inline-field:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="TextBox.inline-field:focus">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Classes="grouped-content">
+        <StackPanel>
+            <Border Name="GenreSeparatorsCard" Classes="group-card">
+                <StackPanel>
+                    <!-- None listed (allowed: ';' always splits): one line says so, not an empty card. -->
+                    <views:SettingRow Classes="setting-row" IsVisible="{Binding IsEmpty}">
+                        <!-- A label, not a row-value: values are capped at 170 px for a grey value
+                             beside a label, which wrapped this sentence to three lines. -->
+                        <TextBlock Name="NoGenreSeparatorsLabel" Classes="row-label"
+                                   Foreground="{DynamicResource PhoneSecondaryTextBrush}"
+                                   Text="{loc:T Mobile.GenreSeparators.None}" />
+                    </views:SettingRow>
+                    <ItemsControl Name="GenreSeparatorList" ItemsSource="{Binding Separators}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GenreSeparatorRow">
+                                <StackPanel>
+                                    <Border Classes="row-separator" />
+                                    <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                        <TextBlock Classes="row-label" Text="{Binding Text}" />
+                                        <Button Grid.Column="1" Classes="text-action" Content="{loc:T Settings.Remove}"
+                                                Command="{Binding $parent[ItemsControl].((vm:GenreSeparatorsViewModel)DataContext).RemoveCommand}"
+                                                CommandParameter="{Binding}" AutomationProperties.Name="{Binding RemoveName}" />
+                                    </views:SettingRow>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+            <TextBlock Classes="group-footnote" Text="{loc:T Mobile.GenreSeparators.Hint}" />
+        </StackPanel>
+        <StackPanel>
+            <Border Name="AddGenreSeparatorCard" Classes="group-card">
+                <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                    <TextBox Name="NewGenreSeparatorBox" Classes="inline-field" Text="{Binding NewSeparator}"
+                             PlaceholderText="{loc:T Settings.AddGenreSeparatorEG}" AutomationProperties.Name="{loc:T Settings.AddGenreSeparatorEG}"
+                             TextInputOptions.AutoCapitalization="False" TextInputOptions.ShowSuggestions="False"
+                             TextInputOptions.ReturnKeyType="Done">
+                        <TextBox.KeyBindings>
+                            <KeyBinding Gesture="Enter" Command="{Binding AddCommand}" />
+                        </TextBox.KeyBindings>
+                    </TextBox>
+                    <Button Grid.Column="1" Name="AddGenreSeparatorButton" Classes="text-action" Content="{loc:T Settings.Add}"
+                            Command="{Binding AddCommand}" AutomationProperties.Name="{loc:T Settings.Add}" />
+                </views:SettingRow>
+            </Border>
+        </StackPanel>
+        <StackPanel>
+            <Border Classes="group-card">
+                <Button Name="GenreSeparatorsResetButton" Classes="row accent-row" Command="{Binding ResetCommand}" IsEnabled="{Binding !IsDefault}"
+                        AutomationProperties.Name="{loc:T Mobile.TabBar.Reset}">
+                    <views:SettingRow Classes="setting-row">
+                        <TextBlock Classes="row-label" Text="{loc:T Mobile.TabBar.Reset}" />
+                    </views:SettingRow>
+                </Button>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

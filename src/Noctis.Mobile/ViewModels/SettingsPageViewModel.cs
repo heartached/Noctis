@@ -75,7 +75,7 @@ public sealed record SettingsFolder(string Root, string Name, bool AccessLost)
 public sealed record LicenseEntry(string Name, string License, string Detail);
 
 /// <summary>Settings is one sheet: its top level, or one of the pages pushed inside it.</summary>
-public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme, Hidden, TabBar, ArtistSeparators, ReplayGain }
+public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme, Hidden, TabBar, ArtistSeparators, ReplayGain, GenreSeparators }
 
 /// <summary>One line of Settings › Theme: a small preview of the theme (its page, a card and the
 /// chrome glass on it, its accent when it has one), its name, and a tick on the one in use.</summary>
@@ -176,6 +176,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         History = new ListeningHistoryViewModel(shell);
         TabBar = new TabBarSettingsViewModel(shell);
         ArtistSeparators = new ArtistSeparatorsViewModel(shell);
+        GenreSeparators = new GenreSeparatorsViewModel(shell);
         Shell.Library.Folders.CollectionChanged += OnFoldersChanged;
         Shell.Library.PropertyChanged += OnLibraryChanged;
         Shell.Library.Refreshed += OnLibraryRefreshed;
@@ -186,6 +187,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Scrobbling.PropertyChanged += OnSubPageChanged;
         History.PropertyChanged += OnSubPageChanged;
         ArtistSeparators.PropertyChanged += OnSubPageChanged;
+        GenreSeparators.PropertyChanged += OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged += OnAccountChanged;
         RefreshStats();
     }
@@ -204,6 +206,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>Settings › Artist Separators: what splits one artist tag into several artists.</summary>
     public ArtistSeparatorsViewModel ArtistSeparators { get; }
+
+    /// <summary>Settings › Genre Separators: what splits one genre tag into several genres (GitHub #260).</summary>
+    public GenreSeparatorsViewModel GenreSeparators { get; }
 
     /// <summary>The clock behind the profile row's "Synced 5 min ago"; tests pin it.</summary>
     internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
@@ -224,7 +229,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
         nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
         nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane), nameof(ShowsThemePane),
-        nameof(ShowsHiddenPane), nameof(ShowsTabBarPane), nameof(ShowsArtistSeparatorsPane), nameof(ShowsReplayGainPane), nameof(LanguageListSource))]
+        nameof(ShowsHiddenPane), nameof(ShowsTabBarPane), nameof(ShowsArtistSeparatorsPane), nameof(ShowsReplayGainPane),
+        nameof(ShowsGenreSeparatorsPane), nameof(LanguageListSource))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
@@ -244,6 +250,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowsTabBarPane => ShownSubPane == SettingsPane.TabBar;
     public bool ShowsArtistSeparatorsPane => ShownSubPane == SettingsPane.ArtistSeparators;
     public bool ShowsReplayGainPane => ShownSubPane == SettingsPane.ReplayGain;
+    public bool ShowsGenreSeparatorsPane => ShownSubPane == SettingsPane.GenreSeparators;
 
     /// <summary>The header's title: "Settings", or the pushed page's name.</summary>
     public string HeaderTitle => Pane switch
@@ -264,6 +271,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         SettingsPane.TabBar => Loc.T("Mobile.Settings.TabBar"),
         SettingsPane.ArtistSeparators => Loc.T("Mobile.Settings.ArtistSeparators"),
         SettingsPane.ReplayGain => Loc.T("Settings.ReplayGain"),
+        SettingsPane.GenreSeparators => Loc.T("Mobile.Settings.GenreSeparators"),
         _ => Title,
     };
 
@@ -273,6 +281,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         {
             // The saved separators are applied at start, possibly after this sheet was made.
             if (value == SettingsPane.ArtistSeparators) ArtistSeparators.Sync();
+            else if (value == SettingsPane.GenreSeparators) GenreSeparators.Sync();
             ShownSubPane = value;
         }
         else
@@ -704,6 +713,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public string ScrobblingRowName => Named(Loc.T("Mobile.Settings.Scrobbling"), Scrobbling.Summary);
     public string HistoryRowName => Named(Loc.T("Mobile.Settings.ListeningHistory"), History.Summary);
     public string ArtistSeparatorsRowName => Named(Loc.T("Mobile.Settings.ArtistSeparators"), ArtistSeparators.Summary);
+    public string GenreSeparatorsRowName => Named(Loc.T("Mobile.Settings.GenreSeparators"), GenreSeparators.Summary);
 
     /// <summary>Pick Up on Computer and its footnote: only while signed in (the queue goes to the
     /// account's computer; signed out there is none, though the account service is there).</summary>
@@ -1159,6 +1169,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         History.Relabel();
         TabBar.Relabel();
         ArtistSeparators.Relabel();
+        GenreSeparators.Relabel();
         // The account card's numbers carry the language too ("48 МБ", "5 201" stayed Russian
         // after picking English).
         RefreshStats();
@@ -1402,6 +1413,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         OnPropertyChanged(nameof(ScrobblingRowName));
         OnPropertyChanged(nameof(HistoryRowName));
         OnPropertyChanged(nameof(ArtistSeparatorsRowName));
+        OnPropertyChanged(nameof(GenreSeparatorsRowName));
     }
 
     private void OnAccountChanged(object? sender, EventArgs e)
@@ -1442,6 +1454,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         History.PropertyChanged -= OnSubPageChanged;
         History.Detach();
         ArtistSeparators.PropertyChanged -= OnSubPageChanged;
+        GenreSeparators.PropertyChanged -= OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
     }
 }

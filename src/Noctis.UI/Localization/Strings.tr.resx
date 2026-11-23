@@ -4432,6 +4432,9 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Sanatçı Ayırıcıları</value></data>
   <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Her ayırıcı bir sanatçı etiketini birkaç sanatçıya böler: “,” ile “Boys Noize, ABRA” etiketi Boys Noize ve ABRA olur. Sanatçılarınız hemen yeniden gruplanır.</value></data>
   <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} öğesini kaldır</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>Tür Ayırıcıları</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>Her ayırıcı bir tür etiketini birkaç türe böler: “,” ile “Rock, Pop” etiketli bir şarkı hem Rock hem Pop sayılır. Noktalı virgül her zaman böler. Dosyaların değiştirilmez.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>Yok: türleri yalnızca noktalı virgül böler.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Diğer Sürümler</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Orijinal</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Sözlerde ara</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>
