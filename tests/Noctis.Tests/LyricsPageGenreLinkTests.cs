@@ -53,6 +53,7 @@ public class LyricsPageGenreLinkTests
     public void Facts_line_lists_each_genre_as_a_link_that_opens_it()
     {
         var (vm, player) = MakeLyrics();
+        using var _ = vm; // unsubscribes from the app-wide accent event (see LyricsKeyboardScrollTests)
         var opened = new List<string>();
         vm.SetOpenGenreAction(opened.Add);
 
