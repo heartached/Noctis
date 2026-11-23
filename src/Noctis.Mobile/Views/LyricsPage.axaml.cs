@@ -60,9 +60,12 @@ public partial class LyricsPage : UserControl
     private readonly DispatcherTimer _controlsTimer;
     private readonly DispatcherTimer _controlsOffTimer;
     private readonly DispatcherTimer _holdRelease;
+    // The frame callback, made once: a method group passed per frame is a new delegate per frame.
+    private readonly Action<TimeSpan> _onFrame;
 
     public LyricsPage()
     {
+        _onFrame = OnFrame;
         InitializeComponent();
         LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
@@ -522,7 +525,7 @@ public partial class LyricsPage : UserControl
         _frameLoopRunning = true;
         Services.FrameStallMonitor.SetState("lyric frame loop", true);
         KeepAlive.Run(true);
-        top.RequestAnimationFrame(OnFrame);
+        top.RequestAnimationFrame(_onFrame);
     }
 
     private void OnFrame(TimeSpan _)
@@ -535,7 +538,7 @@ public partial class LyricsPage : UserControl
         if (KeepsFrames && TopLevel.GetTopLevel(this) is { } top)
         {
             KeepAlive.Run(true);   // a page shown this frame has its compositor visual only now
-            top.RequestAnimationFrame(OnFrame);
+            top.RequestAnimationFrame(_onFrame);
         }
         else
         {
