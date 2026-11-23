@@ -2141,9 +2141,11 @@
              rounded clip sits on the content, not on SidebarWrapper: the glass draws its
              own rounded shape, and a clipping ancestor would hide from it the repaints of
              the page beside the rail that its blur reads (see GlassReach). -->
+        <!-- Tint follows Settings › Glass Opacity, like the queue drawer and the islands
+             (it was a fixed 0.55, so sidebar and queue never matched). -->
         <controls:GlassPanel Background="{DynamicResource IslandBackground}"
                              CornerRadius="20"
-                             GlassTintOpacity="0.55">
+                             GlassTintOpacity="{Binding Player.IslandBackgroundOpacity}">
             <Border CornerRadius="20" ClipToBounds="True">
                 <views:SidebarView x:Name="SidebarPane"
                                    HorizontalAlignment="Stretch"
