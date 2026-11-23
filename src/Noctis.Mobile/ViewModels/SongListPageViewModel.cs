@@ -181,6 +181,41 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     /// <summary>The filter button: only with a filter to offer.</summary>
     public bool HasFilters => OffersFavouritesFilter || CanFilterDownloaded;
 
+    // ── Remove (Account › No longer on your computer) ──
+
+    /// <summary>Deletes the songs' files (the list of downloads whose song the computer no longer
+    /// has): each row's Remove, and Remove All in the header after its question. Null on every
+    /// other list, which shows neither.</summary>
+    public Func<IReadOnlyList<Track>, Task>? RemoveSongs { get; init; }
+
+    public bool CanRemoveSongs => RemoveSongs != null;
+
+    [RelayCommand]
+    private async Task RemoveSongAsync(Track? track)
+    {
+        if (track == null || RemoveSongs == null) return;
+        await RemoveSongs(new[] { track });
+        Refresh();
+    }
+
+    /// <summary>Remove All: every song of the list, once the red action confirms.</summary>
+    [RelayCommand]
+    private void AskRemoveAll()
+    {
+        if (RemoveSongs is not { } remove || _all.Count == 0) return;
+        var songs = _all.ToList();
+        Shell.ShowPrompt(new PromptViewModel(Shell, Loc.T("Mobile.NotOnComputer.RemoveQuestion"),
+            Loc.T("Mobile.NotOnComputer.RemoveDetail", Loc.Plural("Mobile.Count.Songs", songs.Count)),
+            new[]
+            {
+                new PromptAction(Loc.T("Mobile.Downloads.RemoveAction"), async _ =>
+                {
+                    await remove(songs);
+                    Refresh();
+                }, isDestructive: true),
+            }));
+    }
+
     // ── Sort ──
 
     public IReadOnlyList<SortChoice> SortChoices { get; }

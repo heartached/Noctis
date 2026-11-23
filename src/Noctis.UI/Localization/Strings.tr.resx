@@ -3926,6 +3926,14 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>Oturumu Kapat</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>Oturumu Kapat ve İndirilenleri Kaldır</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>Oradaki şarkılar bu telefonun kitaplığından çıkar. İstediğin zaman yeniden oturum açabilirsin.</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>Oradaki şarkılar bu telefonun kitaplığından çıkar, indirdiklerin hariç: Onlar kalır ve sen kaldırana kadar çalmaya devam eder. İstediğin zaman yeniden oturum açabilirsin.</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>Artık bilgisayarında yok</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>Artık bilgisayarında yok: {0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>Bu şarkılar artık bilgisayarında yok. Bu telefonda kalır ve sen kaldırana kadar çalmaya devam eder.</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>Tümünü Kaldır</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>Bu şarkılar kaldırılsın mı?</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>{0} bu telefondan kaldırılır. Artık bilgisayarında olmadıkları için yeniden indirilemezler.</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>Oturum kapatılıyor…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>Bir sorun oluştu. Yeniden dene.</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>Eşitleme tamamlandı</value></data>

@@ -15,7 +15,8 @@ public static class LibrarySources
     /// Whether <paramref name="track"/> is in <paramref name="source"/>:
     /// <list type="bullet">
     /// <item>Phone: every song that is not one of the computer's rows, i.e. the phone's own files,
-    /// including a file the sync paired with a computer song (it plays from the phone).</item>
+    /// including a file the sync paired with a computer song (it plays from the phone), and a download
+    /// the computer no longer has (<see cref="INoctisAccountService.IsNotOnComputer"/>).</item>
     /// <item>Computer: every song the computer has: its rows, streamed or downloaded, and the phone's
     /// files the sync paired with one of its songs (the pair is one row, so it shows in both).</item>
     /// </list>
@@ -23,8 +24,8 @@ public static class LibrarySources
     /// </summary>
     public static bool Includes(INoctisAccountService? account, Track track, LibrarySource source) => source switch
     {
-        LibrarySource.Phone => account is null || !account.IsRemote(track),
-        LibrarySource.Computer => account?.DesktopIdOf(track) is not null,
+        LibrarySource.Phone => account is null || !account.IsRemote(track) || account.IsNotOnComputer(track),
+        LibrarySource.Computer => account?.DesktopIdOf(track) is not null && !account.IsNotOnComputer(track),
         _ => true,
     };
 

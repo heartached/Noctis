@@ -3872,6 +3872,14 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>Se déconnecter</value><comment>Prompt button</comment></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>Se déconnecter et supprimer les téléchargements</value><comment>Prompt button</comment></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>Ses morceaux quittent la bibliothèque de ce téléphone. Vous pouvez vous reconnecter à tout moment.</value><comment>Prompt</comment></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>Ses morceaux quittent la bibliothèque de ce téléphone, sauf ceux téléchargés : ils restent et peuvent toujours être lus jusqu'à ce que vous les supprimiez. Vous pouvez vous reconnecter à tout moment.</value><comment>Prompt, with downloads on the phone</comment></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>Plus sur votre ordinateur</value><comment>Account page row and its page's title: downloads whose song the computer no longer has</comment></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>Plus sur votre ordinateur : {0}</value><comment>Account page row's spoken name. {0} = "3 songs · 40 MB"</comment></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>Votre ordinateur n'a plus ces morceaux. Ils restent sur ce téléphone et peuvent toujours être lus jusqu'à ce que vous les supprimiez.</value><comment>Footnote on the No longer on your computer page</comment></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>Supprimer</value><comment>Row button: deletes this song's file from the phone</comment></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>Tout supprimer</value><comment>Page button</comment></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>Supprimer ces morceaux ?</value><comment>Prompt title</comment></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>{0} quittent ce téléphone. Votre ordinateur ne les a plus, ils ne pourront donc pas être téléchargés à nouveau.</value><comment>Prompt. {0} = "3 songs"</comment></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>Déconnexion…</value><comment>Status</comment></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>Une erreur s’est produite. Réessayez.</value><comment>Error</comment></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>Synchronisation terminée</value><comment>Sync status</comment></data>

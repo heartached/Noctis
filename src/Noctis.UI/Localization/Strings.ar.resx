@@ -8862,6 +8862,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>تسجيل الخروج</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>تسجيل الخروج وإزالة التنزيلات</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>ستخرج أغانيه من مكتبة هذا الهاتف. يمكنك تسجيل الدخول مرة أخرى في أي وقت.</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>ستخرج أغانيه من مكتبة هذا الهاتف، باستثناء الأغاني التي نزّلتها: تبقى وتعمل حتى تزيلها. يمكنك تسجيل الدخول مرة أخرى في أي وقت.</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>لم تعد على الكمبيوتر</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>لم تعد على الكمبيوتر: {0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>لم تعد هذه الأغاني على الكمبيوتر. تبقى على هذا الهاتف وتعمل حتى تزيلها.</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>إزالة</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>إزالة الكل</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>هل تريد إزالة هذه الأغاني؟</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>ستُزال {0} من هذا الهاتف. لم تعد على الكمبيوتر، لذا لا يمكن تنزيلها مرة أخرى.</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>جارٍ تسجيل الخروج…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>حدث خطأ ما. حاول مرة أخرى.</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>اكتملت المزامنة</value></data>

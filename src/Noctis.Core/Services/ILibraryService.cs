@@ -153,9 +153,10 @@ public interface ILibraryService
     Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
         => throw new NotSupportedException();
 
-    /// <summary>Phone app sign-out: drops every <see cref="SourceType.NoctisServer"/> track
-    /// (and covers no remaining track uses), rebuilds, saves, raises <see cref="LibraryUpdated"/>.</summary>
-    Task RemoveRemoteTracksAsync() => throw new NotSupportedException();
+    /// <summary>Phone app sign-out: drops every <see cref="SourceType.NoctisServer"/> track but those
+    /// in <paramref name="keep"/> (downloads a sign-out keeps; null = none), and covers no remaining
+    /// track uses; rebuilds, saves, raises <see cref="LibraryUpdated"/>.</summary>
+    Task RemoveRemoteTracksAsync(IReadOnlySet<Guid>? keep = null) => throw new NotSupportedException();
 
     /// <summary>
     /// Updates the on-disk location of tracks that have been moved/renamed, preserving

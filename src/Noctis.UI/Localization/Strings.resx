@@ -3881,6 +3881,14 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>Sign Out</value><comment>Prompt button</comment></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>Sign Out and Remove Downloads</value><comment>Prompt button</comment></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>Its songs leave this phone's library. You can sign in again any time.</value><comment>Prompt</comment></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>Its songs leave this phone's library, except downloaded ones: they stay and still play until you remove them. You can sign in again any time.</value><comment>Prompt, with downloads on the phone</comment></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>No longer on your computer</value><comment>Account page row and its page's title: downloads whose song the computer no longer has</comment></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>No longer on your computer: {0}</value><comment>Account page row's spoken name. {0} = "3 songs · 40 MB"</comment></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>Your computer no longer has these songs. They stay on this phone and still play until you remove them.</value><comment>Footnote on the No longer on your computer page</comment></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>Remove</value><comment>Row button: deletes this song's file from the phone</comment></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>Remove All</value><comment>Page button</comment></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>Remove these songs?</value><comment>Prompt title</comment></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>This removes {0} from this phone. Your computer no longer has them, so they can't be downloaded again.</value><comment>Prompt. {0} = "3 songs"</comment></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>Signing out…</value><comment>Status</comment></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>Something went wrong. Try again.</value><comment>Error</comment></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>Sync finished</value><comment>Sync status</comment></data>

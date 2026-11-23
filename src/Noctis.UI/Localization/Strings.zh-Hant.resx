@@ -8862,6 +8862,14 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>登出</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>登出並移除下載項目</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>來自該電腦的歌曲會從這支手機的資料庫中移除。你隨時可以再次登入。</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>來自該電腦的歌曲會從這支手機的資料庫中移除，但已下載的歌曲會保留，在你移除前仍可播放。你隨時可以再次登入。</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>電腦上已沒有</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>電腦上已沒有：{0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>你的電腦上已沒有這些歌曲。它們仍保留在這支手機上，在你移除前仍可播放。</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>移除</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>全部移除</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>要移除這些歌曲嗎？</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>{0} 將從這支手機上移除。你的電腦上已沒有它們，因此無法再次下載。</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>正在登出…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>發生錯誤。請再試一次。</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>同步完成</value></data>

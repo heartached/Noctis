@@ -241,6 +241,14 @@ public sealed partial class AccountPageViewModel : MobilePage
     /// <summary>The Downloaded row's value: "12 songs · 340 MB".</summary>
     [ObservableProperty] private string _storageValue = string.Empty;
 
+    /// <summary>Downloads whose song the computer no longer has (INoctisAccountService.IsNotOnComputer):
+    /// the row under Downloaded, hidden with none; it opens their list.</summary>
+    [ObservableProperty] private bool _hasNotOnComputer;
+
+    /// <summary>That row's value, "3 songs · 40 MB", and its spoken name.</summary>
+    [ObservableProperty] private string _notOnComputerValue = string.Empty;
+    [ObservableProperty] private string _notOnComputerText = string.Empty;
+
     [ObservableProperty] private bool _isConfirmingSignOut;
     [ObservableProperty] private bool _alsoRemoveDownloads;
     [ObservableProperty]
@@ -519,6 +527,19 @@ public sealed partial class AccountPageViewModel : MobilePage
             cancelled: () => IsConfirmingRemoveDownloads = false));
     }
 
+    /// <summary>The No longer on your computer row: those songs in a list, each with Remove, and
+    /// Remove All (asked first). They play from there as anywhere else.</summary>
+    [RelayCommand]
+    private void OpenNotOnComputer()
+    {
+        var account = _account;
+        Shell.Navigate(new SongListPageViewModel(Shell, "Mobile.Account.NotOnComputer", () => account.NotOnComputerTracks)
+        {
+            OffersDownloadedFilter = false,
+            RemoveSongs = account.RemoveDownloadsAsync,
+        });
+    }
+
     [RelayCommand]
     private void CancelRemoveDownloads()
     {
@@ -555,7 +576,8 @@ public sealed partial class AccountPageViewModel : MobilePage
                 AlsoRemoveDownloads = true;
                 return ConfirmSignOutCommand.ExecuteAsync(null);
             }, isDestructive: true));
-        Ask(new PromptViewModel(Shell, SignOutQuestion, Loc.T("Mobile.Account.SignOutDetail"),
+        // Kept downloads keep their songs (they play on, no longer on a computer).
+        Ask(new PromptViewModel(Shell, SignOutQuestion, Loc.T(HasDownloads ? "Mobile.Account.SignOutDetailKeep" : "Mobile.Account.SignOutDetail"),
             actions, cancelled: () => IsConfirmingSignOut = false));
     }
 
@@ -702,6 +724,12 @@ public sealed partial class AccountPageViewModel : MobilePage
         StorageValue = $"{Loc.Plural("Mobile.Count.Songs", _account.DownloadedCount)} · {FormatBytes(_account.DownloadedBytes)}";
         StorageText = Loc.T("Mobile.Account.DownloadedStorage", StorageValue);
         HasDownloads = _account.DownloadedCount > 0;
+        var notOnComputer = _account.NotOnComputerTracks.Count;
+        HasNotOnComputer = notOnComputer > 0;
+        NotOnComputerValue = HasNotOnComputer
+            ? $"{Loc.Plural("Mobile.Count.Songs", notOnComputer)} · {FormatBytes(_account.NotOnComputerBytes)}"
+            : string.Empty;
+        NotOnComputerText = Loc.T("Mobile.Account.NotOnComputerStorage", NotOnComputerValue);
         var pending = _lastDownload is { Pending: > 0 };
         IsDownloading = _downloadRunning || pending;
         IsDownloadCounted = pending;
