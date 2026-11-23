@@ -1393,6 +1393,11 @@ public partial class MainWindowViewModel : ViewModelBase
         TryScrobblePreviousTrack();
         await FlushPendingScrobblesAsync();
 
+        // Edit Info saves still writing behind their closed windows finish first (the
+        // library save at their end included).
+        try { await MetadataSaveQueue.WhenAllSavedAsync().WaitAsync(TimeSpan.FromSeconds(15)); }
+        catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Edit Info save flush failed: {ex.Message}"); }
+
         // Ratings/lyrics waiting for the quiet period (or for the playing file) go to disk now.
         try
         {
@@ -1415,6 +1420,11 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex) { Debug.WriteLine($"[MainWindowVM] Discord disconnect failed: {ex.Message}"); }
         _loon.Dispose();
     }
+
+    /// <summary>Shows <paramref name="text"/> in the notice pill (as plugin notices and the
+    /// missing-songs notice), clearing itself after <paramref name="duration"/>.</summary>
+    internal void ShowNotice(string text, TimeSpan? duration = null) =>
+        TransientStatus.Show(nameof(PluginNotice), v => PluginNotice = v, text, duration ?? TimeSpan.FromSeconds(4));
 
     /// <summary>
     /// Imports files/folders dropped onto the app window.

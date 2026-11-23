@@ -455,6 +455,11 @@ public static class MetadataHelper
     {
         var load = vm.InitializeAsync();
         await ShowDialogOwned(window);
+        // Save closes the window at once and writes the files behind it (Discord 11-23).
+        if (vm.SaveCommand.ExecutionTask is { IsCompleted: false } save)
+            _ = ReportBackgroundSaveAsync(vm, save);
+        else if (vm.HasSaveError)
+            ShowNotice(vm.SaveErrorMessage, TimeSpan.FromSeconds(8));
         try { await load; }
         catch (Exception ex)
         {
@@ -463,6 +468,39 @@ public static class MetadataHelper
             DebugLogger.Warn(DebugLogger.Category.UI, "Metadata.Load", ex.Message);
         }
     }
+
+    /// <summary>How long a background save runs quietly before the notice pill says it is
+    /// still saving. Most saves (a title, a rating) finish well inside it and say nothing.</summary>
+    internal static readonly TimeSpan SlowSaveNoticeDelay = TimeSpan.FromSeconds(1);
+
+    /// <summary>
+    /// Reports an Edit Info save that is still writing after its window closed: nothing for a
+    /// quick success, "Saving changes…" once it runs longer than <see cref="SlowSaveNoticeDelay"/>
+    /// (then "Changes saved."), and the failure text (logged by the save) when a file could
+    /// not be written — the inline error strip the dialog used to keep open for it is gone
+    /// with the window.
+    /// </summary>
+    private static async Task ReportBackgroundSaveAsync(MetadataViewModel vm, Task save)
+    {
+        var saidSaving = false;
+        if (await Task.WhenAny(save, Task.Delay(SlowSaveNoticeDelay)) != save)
+        {
+            saidSaving = true;
+            ShowNotice(Noctis.Localization.Loc.T("Metadata.SavingInBackground"), TimeSpan.FromMinutes(10));
+        }
+        try { await save; }
+        catch { /* Save catches and reports its own faults in SaveErrorMessage */ }
+        if (vm.HasSaveError)
+        {
+            DebugLog.Write("Metadata", $"Background save: {vm.SaveErrorMessage}");
+            ShowNotice(vm.SaveErrorMessage, TimeSpan.FromSeconds(8));
+        }
+        else if (saidSaving)
+            ShowNotice(Noctis.Localization.Loc.T("Metadata.SavedInBackground"));
+    }
+
+    private static void ShowNotice(string text, TimeSpan? duration = null) =>
+        App.Services?.GetService<MainWindowViewModel>()?.ShowNotice(text, duration);
 
     public static async Task OpenMultiTrackMetadataWindow(IReadOnlyList<Track> tracks)
     {

@@ -4285,6 +4285,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>Выбрано песен: {0}</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>Не удалось записать теги в «{0}». Возможно, файл открыт в другой программе или доступен только для чтения — закройте его там или проверьте файл и попробуйте снова.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>Не удалось записать теги в файлы ({0}), например «{1}». Возможно, они открыты в другой программе или доступны только для чтения — закройте их там или проверьте файлы и попробуйте снова.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>Сохранение изменений…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>Изменения сохранены.</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>Не удалось сохранить изменения: {0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>Найти анимированную обложку для 1 альбома</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>Найти анимированные обложки для альбомов: {0:N0}</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>Нет альбомов для поиска.</value><comment>Find animated artwork in bulk dialog</comment></data>

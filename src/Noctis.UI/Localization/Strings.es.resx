@@ -4276,6 +4276,9 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} canciones seleccionadas</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>No se pudieron escribir las etiquetas en «{0}». Puede que otra app tenga el archivo abierto o que sea de solo lectura: ciérralo allí o revisa el archivo e inténtalo de nuevo.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>No se pudieron escribir las etiquetas en {0} archivos (p. ej., «{1}»). Puede que otra app los tenga abiertos o que sean de solo lectura: ciérralos allí o revisa los archivos e inténtalo de nuevo.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>Guardando los cambios…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>Cambios guardados.</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>No se pudieron guardar los cambios: {0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>Buscar portada animada para 1 álbum</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>Buscar portadas animadas para {0:N0} álbumes</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>No hay álbumes que buscar.</value><comment>Find animated artwork in bulk dialog</comment></data>
