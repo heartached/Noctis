@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Noctis.Mobile.ViewModels;
 using Noctis.Mobile.Views;
+using Noctis.Services;
 using Xunit;
 
 namespace Noctis.Tests;
@@ -295,5 +296,157 @@ public class MobileBrowsePerfTests
         var rows = column.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("row")).Select(b => b.CommandParameter).ToList();
         Assert.Equal(vm.TopSongPages[^1].Rows, rows);
         window.Close();
+    }
+}
+
+/// <summary>
+/// One cover on two surfaces of close sizes (the Albums grid's 180 dp tile, then Search's 140 dp
+/// album row and Home's rail): each tile decodes at exactly the pixels it draws (PixelExact), so
+/// each read and decoded the cover file again. A smaller size is now made from the larger decode
+/// already in memory, resampled as sharply, with no second file decode.
+/// </summary>
+[Collection("ArtworkCache")]   // the decoder seam is process-wide
+public class MobileCoverDecodeTests : IDisposable
+{
+    private readonly ITestOutputHelper _out;
+    private readonly List<(string Path, int Width)> _decodes = new();
+
+    public MobileCoverDecodeTests(ITestOutputHelper output)
+    {
+        _out = output;
+        ArtworkCache.ClearForTests();
+        ArtworkCache.DecoderOverride = (path, width) =>
+        {
+            lock (_decodes) _decodes.Add((path, width));
+            return new Avalonia.Media.Imaging.WriteableBitmap(new PixelSize(width, width), new Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+        };
+    }
+
+    public void Dispose()
+    {
+        ArtworkCache.DecoderOverride = null;
+        ArtworkCache.ClearForTests();
+    }
+
+    private static void Settle(Window window)
+    {
+        var deadline = Environment.TickCount64 + 30_000;
+        var quiet = 0;
+        while (Environment.TickCount64 < deadline && quiet < 10)
+        {
+            Dispatcher.UIThread.RunJobs();
+            Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            window.UpdateLayout();
+            System.Threading.Thread.Sleep(20);
+            quiet = Noctis.Controls.CachedImage.RunningDecodes == 0 ? quiet + 1 : 0;
+        }
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    [AvaloniaFact]
+    public void ACoverShownOnAlbumsThenSearch_IsDecodedFromItsFileOnce()
+    {
+        using var rig = MobileSearchPerfTests.BigLibrary(1_200, 100);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        Settle(window);
+        HashSet<string> early;   // Library's Recently Added rail (built with the shell) decodes its covers first
+        lock (_decodes) early = _decodes.Select(d => d.Path).ToHashSet();
+        rig.Shell.OpenAlbumsCommand.Execute(null);
+        MobileFixtures.Land(window);
+        Settle(window);
+        var onAlbums = MobileFixtures.Find<AlbumGridPage>(view).GetVisualDescendants().OfType<Noctis.Controls.CachedImage>()
+            .Where(i => i.IsEffectivelyVisible && i.SourcePath != null).Select(i => i.SourcePath!).ToHashSet();
+        int albumsDecodes;
+        lock (_decodes) albumsDecodes = _decodes.Count;
+
+        rig.Shell.SelectTabCommand.Execute(MobileTab.Search);
+        MobileFixtures.Land(window);
+        var search = rig.Shell.Search;
+        var shownAlbum = rig.Library.Albums.First(a => onAlbums.Contains(a.ArtworkPath!) && !early.Contains(a.ArtworkPath!));
+        search.Query = shownAlbum.Name;
+        window.UpdateLayout();
+        Settle(window);
+        var onSearch = MobileFixtures.Find<SearchPage>(view).GetVisualDescendants().OfType<Noctis.Controls.CachedImage>()
+            .Where(i => i.IsEffectivelyVisible && i.SourcePath != null).Select(i => i.SourcePath!).ToHashSet();
+        var both = onAlbums.Intersect(onSearch).Where(p => !early.Contains(p)).ToList();
+        List<(string Path, int Width)> decodes;
+        lock (_decodes) decodes = _decodes.ToList();
+        var twice = both.Count(p => decodes.Count(d => d.Path == p) > 1);
+        _out.WriteLine($"Albums then Search: {albumsDecodes} + {decodes.Count - albumsDecodes} file decodes, {both.Count} covers on both, "
+                       + $"{twice} of them decoded twice; cache {ArtworkCache.Count} bitmaps, {ArtworkCache.ResidentBytes / 1024} KB");
+        foreach (var p in both) _out.WriteLine($"  {p}: decoded at {string.Join(", ", decodes.Where(d => d.Path == p).Select(d => d.Width))}");
+        Assert.Contains(shownAlbum.ArtworkPath!, both);
+        // Before: decoded at 180, then again at 140 for Search's album row.
+        Assert.Equal(0, twice);
+        window.Close();
+    }
+
+    /// <summary>
+    /// A size made from a larger decode is as sharp as a decode of the file at that size: a
+    /// detailed 2400 px cover decoded for a 180 dp tile at 2.625x (473 px), then made 368 px for a
+    /// 140 dp tile, against the file decoded at 368 px (SkiaSharp itself; no Avalonia rendering).
+    /// </summary>
+    [Fact]
+    public void ASizeMadeFromALargerDecode_IsAsSharpAsAFileDecode()
+    {
+        var file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"noctis-cover-{Guid.NewGuid():N}.png");
+        try
+        {
+            var rng = new Random(3);
+            using (var art = new SkiaSharp.SKBitmap(2400, 2400))
+            {
+                using (var canvas = new SkiaSharp.SKCanvas(art))
+                {
+                    canvas.Clear(new SkiaSharp.SKColor(30, 60, 120));
+                    using var paint = new SkiaSharp.SKPaint { IsAntialias = true, StrokeWidth = 7 };
+                    for (var i = 0; i < 900; i++)   // thin strokes: cover text and line art
+                    {
+                        paint.Color = new SkiaSharp.SKColor((byte)rng.Next(256), (byte)rng.Next(256), (byte)rng.Next(256));
+                        canvas.DrawLine(rng.Next(2400), rng.Next(2400), rng.Next(2400), rng.Next(2400), paint);
+                    }
+                }
+                using var data = art.Encode(SkiaSharp.SKEncodedImageFormat.Png, 100);
+                System.IO.File.WriteAllBytes(file, data.ToArray());
+            }
+            using var reference = Noctis.Helpers.SkiaArtworkDecoder.DecodeToWidth(file, 368)!;
+            using var larger = Noctis.Helpers.SkiaArtworkDecoder.DecodeToWidth(file, 473)!;
+            using var made = ArtworkCache.Resized(larger, 368);
+            // What drawing the 473 px decode into the 368 px tile would do (the renderer's trilinear).
+            using var drawn = Noctis.Helpers.SkiaArtworkDecoder.Downscale(larger, made.Info);
+            Assert.Equal(reference.Width, made.Width);
+            Assert.Equal(reference.Height, made.Height);
+            double Psnr(SkiaSharp.SKBitmap a)
+            {
+                double sum = 0;
+                for (var y = 0; y < a.Height; y++)
+                    for (var x = 0; x < a.Width; x++)
+                    {
+                        var p = a.GetPixel(x, y);
+                        var q = reference.GetPixel(x, y);
+                        sum += Math.Pow(p.Red - q.Red, 2) + Math.Pow(p.Green - q.Green, 2) + Math.Pow(p.Blue - q.Blue, 2);
+                    }
+                return 10 * Math.Log10(255.0 * 255 / (sum / (a.Width * a.Height * 3)));
+            }
+            double Sharpness(SkiaSharp.SKBitmap a)
+            {
+                double sum = 0;
+                for (var y = 0; y < a.Height; y++)
+                    for (var x = 1; x < a.Width; x++)
+                        sum += Math.Abs(a.GetPixel(x, y).Green - a.GetPixel(x - 1, y).Green);
+                return sum / (a.Height * (a.Width - 1));
+            }
+            var (madePsnr, drawnPsnr) = (Psnr(made), Psnr(drawn));
+            var (madeEdge, drawnEdge, refEdge) = (Sharpness(made), Sharpness(drawn), Sharpness(reference));
+            _out.WriteLine($"368 px from the 473 px decode vs the file decoded at 368: {madePsnr:F1} dB, edge contrast {madeEdge / refEdge:P0}"
+                           + $" (the 473 drawn shrunk: {drawnPsnr:F1} dB, {drawnEdge / refEdge:P0})");
+            // 29.6 dB and 105% of the file decode's edge contrast; drawing the 473 px decode shrunk: 29.2 dB, 90%.
+            Assert.InRange(madeEdge / refEdge, 0.95, 1.15);   // neither softer nor ringing
+            Assert.True(madePsnr >= drawnPsnr, $"{madePsnr:F1} dB");
+        }
+        finally
+        {
+            System.IO.File.Delete(file);
+        }
     }
 }

@@ -106,11 +106,12 @@ public class CachedImageSingleCoverFallbackTests : IDisposable
     [AvaloniaFact]
     public async Task SingleCover_OversizedCrossWidthHit_IsShownRightAway()
     {
-        // 2048 ≥ 768 but more than twice it: not "sufficient", so the own decode still
-        // runs, but it is sharp enough to show meanwhile.
+        // 2048 ≥ 768 but more than twice it: not "sufficient", so the own size is still made
+        // (now from that decode in memory, so it may already be up), but it is sharp enough to
+        // show meanwhile: never the previous cover.
         var r = await SwitchCover(clearOnSourceChange: false, cachedWidthOfB: 2048);
 
-        Assert.Same(r.CachedB, r.MidDecode);
+        Assert.True(ReferenceEquals(r.CachedB, r.MidDecode) || ReferenceEquals(r.RequestedWidthB, r.MidDecode));
         Assert.Same(r.RequestedWidthB, r.Final);
     }
 
