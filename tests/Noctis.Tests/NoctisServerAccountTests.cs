@@ -56,7 +56,7 @@ public class NoctisServerAccountTests : IAsyncLifetime
     private async Task StartAsync()
     {
         _server = new NoctisServer(_lib, _users, "test", sync: null, coverResizer: (a, p, s, ct) => _resizer!(a, p, s, ct)) { PrivateClientsOnly = true };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
     }
 
@@ -301,7 +301,7 @@ public class NoctisServerAccountTests : IAsyncLifetime
         _http.Dispose();
         await _server.StopAsync();
         _server = new NoctisServer(_lib, _users, "test", sync: null) { PrivateClientsOnly = true, DeviceSignInEnabled = false };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
 
         var (r, _) = await SignIn(deviceId: "phone-0003");

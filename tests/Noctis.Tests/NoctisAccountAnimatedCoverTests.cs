@@ -59,7 +59,7 @@ public class NoctisAccountAnimatedCoverTests : IAsyncLifetime
         var settings = new AppSettings { SyncEnabled = true, SyncDeviceId = "desktop-test", SyncDeviceName = "Test PC" };
         var sync = new LibrarySyncService(() => settings, _deskPersistence);
         _server = new NoctisServer(new MotionDesk(new List<Track> { motion, still }, _deskPersistence), _users, "test", sync) { PrivateClientsOnly = true };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _url = $"http://127.0.0.1:{_server.Port}";
 
         _phonePersistence = new PersistenceService(Path.Combine(_dir, "phone-files"));

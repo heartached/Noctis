@@ -36,7 +36,7 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         _users = new ServerUserStore(Path.Combine(_root, "A", "users.db"));
         _users.Create("alice", "correct horse", isAdmin: true);
         _server = new NoctisServer(_a.Adapter, _users, "test", _a.Ledger) { PrivateClientsOnly = true };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _url = $"http://127.0.0.1:{_server.Port}";
     }
 
@@ -459,7 +459,7 @@ public class ComputerLinkServiceTests : IAsyncLifetime
 
         // A back on the same address.
         _server = new NoctisServer(_a.Adapter, _users, "test", _a.Ledger) { PrivateClientsOnly = true };
-        await _server.StartAsync(new Uri(_url).Port, certificate: null);
+        await _server.StartAsync(new Uri(_url).Port, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         await link.SyncNowAsync(ct);
 
         Assert.True(_a.Song("One").IsFavorite);

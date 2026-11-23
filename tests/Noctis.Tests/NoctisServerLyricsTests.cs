@@ -84,7 +84,7 @@ public class NoctisServerLyricsTests : IAsyncLifetime
 
         var lib = new LyricsDesk(new List<Track> { _sidecars, _stored, _cachedSynced, _cachedPlain, _oversize });
         _server = new NoctisServer(lib, _users, "test") { LyricsCacheDirectory = Cache };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _http = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_server.Port}/") };
     }
 

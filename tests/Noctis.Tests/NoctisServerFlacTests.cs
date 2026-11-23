@@ -69,7 +69,7 @@ public class NoctisServerFlacTests : IAsyncLifetime
     private async Task<HttpClient> StartAsync(Func<Guid, string, CancellationToken, Task<string?>>? flac)
     {
         var server = new NoctisServer(_lib, _users, "test", flacTranscoder: flac) { PrivateClientsOnly = true };
-        await server.StartAsync(0, certificate: null);
+        await server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _servers.Add(server);
         return new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{server.Port}/") };
     }

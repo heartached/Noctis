@@ -90,7 +90,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
             lock (_coverSizes) _coverSizes.Add(size);
             return Task.FromResult<string?>(path);
         }) { PrivateClientsOnly = true };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _url = $"http://127.0.0.1:{_server.Port}";
 
         _phonePersistence = new PersistenceService(Path.Combine(_dir, "phone-files"));
@@ -911,7 +911,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         otherDesk.Sync = otherSync;
         otherDesk.DataDirectory = otherPersistence.DataDirectory;
         var otherServer = new NoctisServer(otherDesk, _users, "test", otherSync) { PrivateClientsOnly = true };
-        await otherServer.StartAsync(0, certificate: null);
+        await otherServer.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         try
         {
             var otherUrl = $"http://127.0.0.1:{otherServer.Port}";
@@ -2337,7 +2337,7 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         await using var https = new NoctisServer(_desk, _users, "test", _sync);
         var authenticated = 0;
         https.ClientAuthenticated += (_, _) => Interlocked.Increment(ref authenticated);
-        await https.StartAsync(0, cert, TestContext.Current.CancellationToken);
+        await https.StartAsync(0, cert, TestContext.Current.CancellationToken, System.Net.IPAddress.Loopback);
         var url = $"https://127.0.0.1:{https.Port}";
         var svc = Restart();
 
