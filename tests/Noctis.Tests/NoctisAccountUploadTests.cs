@@ -194,6 +194,35 @@ public class NoctisAccountUploadTests : IAsyncLifetime
         Assert.Equal(3, Received().Length);
     }
 
+    /// <summary>The sent-songs record was rewritten after every song: N songs, N writes of a record
+    /// that grows with each one (N² bytes). It is written every few songs now, and at the end; what a
+    /// batch remembered is on disk before the next song goes, so an app killed mid-send re-sends at
+    /// most one batch (the desktop then finds those by their bytes: "already there").</summary>
+    [Fact]
+    public async Task Send_RemembersWhatWasSent_InBatches_NotOneWriteAfterEverySong()
+    {
+        await SignedInAsync();
+        var recordWrites = 0;
+        var onDiskAfterTwo = -1;
+        var batched = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new Spy(NoctisHandlers.Sockets(accept), this),
+            AccountDir, OfflineDir, "Galaxy S23", _recorder, marshal: a => a()) { UploadSaveEvery = 2 };
+        batched.UploadRecordSaved += () => recordWrites++;
+        batched.UploadProgress += (_, p) =>
+        {
+            if (p.Done == 2) onDiskAfterTwo = SentOnDisk();
+        };
+
+        Assert.Equal(3, (await batched.SendLocalSongsAsync(Ct)).Sent);
+
+        Assert.Equal(2, onDiskAfterTwo);         // the first batch was written before the third song went
+        Assert.Equal(2, recordWrites);           // after two songs, then at the end: not after each of three
+        Assert.Equal(3, SentOnDisk());
+    }
+
+    /// <summary>How many songs uploads.json remembers as sent.</summary>
+    private int SentOnDisk() =>
+        System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(Path.Combine(AccountDir, "uploads.json")))!["sent"]!.AsArray().Count;
+
     [Fact]
     public async Task Send_ASecondCallWhileOneRuns_GetsThatOne_AndItsTokenStopsIt()
     {

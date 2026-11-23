@@ -26,6 +26,17 @@ public sealed partial class NoctisAccountService
 
     public bool IsUploading => _isUploading;
 
+    /// <summary>Songs sent between writes of the sent-songs record (tests shorten it). Writing it after
+    /// every song rewrote a record that grows with each one: N songs, N² bytes written.</summary>
+    internal int UploadSaveEvery { get; init; } = 25;
+
+    /// <summary>The record is also written once this long has passed since the last write, so a slow
+    /// send (large files) loses no more than this much to an app that is killed.</summary>
+    private static readonly TimeSpan UploadSaveInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>Tests: each write of the sent-songs record.</summary>
+    internal event Action? UploadRecordSaved;
+
     public event EventHandler<NoctisUploadProgress>? UploadProgress;
 
     /// <summary>A song of the phone's own library: a scanned file, not a desktop song.</summary>
@@ -121,34 +132,51 @@ public sealed partial class NoctisAccountService
         if (already > 0) SaveUploads(record);
 
         // 2. The rest, one at a time. A song that fails is not remembered: the next press retries it.
+        // What was sent is written in batches (every UploadSaveEvery songs or UploadSaveInterval), and
+        // whatever is left when the send ends, fails or is stopped: an app killed mid-send sends at
+        // most the last batch again, which the desktop finds by its bytes ("already there").
         var sent = 0;
         var failed = 0;
         var done = 0;
+        var unsaved = 0;
+        var lastSave = Environment.TickCount64;
         RaiseUploadProgress(0, toSend.Count);
-        foreach (var track in toSend)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            try
+            foreach (var track in toSend)
             {
-                if (await UploadOneAsync(client, track, ct).ConfigureAwait(false) == UploadOutcome.AlreadyThere) already++;
-                else sent++;
-                record.Sent.Add(Hex(track));
-                SaveUploads(record);
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    if (await UploadOneAsync(client, track, ct).ConfigureAwait(false) == UploadOutcome.AlreadyThere) already++;
+                    else sent++;
+                    record.Sent.Add(Hex(track));
+                    if (++unsaved >= UploadSaveEvery || Environment.TickCount64 - lastSave >= UploadSaveInterval.TotalMilliseconds)
+                    {
+                        SaveUploads(record);
+                        unsaved = 0;
+                        lastSave = Environment.TickCount64;
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged
+                                                           or NoctisErrorKind.SyncDisabled or NoctisErrorKind.Unreachable)
+                {
+                    // Every other song would fail the same way; what was sent stays remembered.
+                    DebugLog.Write("Account", $"send songs: {sent} sent, {already} already there, {failed} failed, stopped ({ex.Kind})");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failed++;
+                    DebugLog.Write("Account", $"send song failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
+                }
+                RaiseUploadProgress(++done, toSend.Count);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged
-                                                       or NoctisErrorKind.SyncDisabled or NoctisErrorKind.Unreachable)
-            {
-                // Every other song would fail the same way; what was sent stays remembered.
-                DebugLog.Write("Account", $"send songs: {sent} sent, {already} already there, {failed} failed, stopped ({ex.Kind})");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                failed++;
-                DebugLog.Write("Account", $"send song failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
-            }
-            RaiseUploadProgress(++done, toSend.Count);
+        }
+        finally
+        {
+            if (unsaved > 0) SaveUploads(record);
         }
         DebugLog.Write("Account", $"send songs: {sent} sent, {already} already there, {failed} failed, {previously} sent before");
         return new NoctisUploadResult(sent, already, failed, previously);
@@ -187,7 +215,11 @@ public sealed partial class NoctisAccountService
 
     private void SaveUploads(NoctisUploadState record)
     {
-        try { _store.SaveUploads(record); }
+        try
+        {
+            _store.SaveUploads(record);
+            UploadRecordSaved?.Invoke();
+        }
         catch (Exception ex) { DebugLog.Write("Account", $"uploads record save failed ({ex.GetType().Name})"); }
     }
 
