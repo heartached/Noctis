@@ -4,11 +4,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Interactivity;
 using Avalonia.Animation.Easings;
 using Avalonia.Media;
 using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Mobile.ViewModels;
 
@@ -93,6 +95,7 @@ public partial class LyricsPage : UserControl
         LyricsList.AddHandler(Button.ClickEvent, (_, _) => EndBrowse(scrollBack: false), RoutingStrategies.Bubble);
         LyricsScroll.AddHandler(PointerPressedEvent, OnScrollPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         LyricsScroll.AddHandler(PointerReleasedEvent, OnScrollPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        LyricsScroll.AddHandler(PointerMovedEvent, OnScrollPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
         Backdrop.PropertyChanged += (_, e) => { if (e.Property == Image.SourceProperty) UpdateFades(); };
         BlurCover.ImageChanged += (_, _) => UpdateFades();
         TopFade.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) UpdateFades(); };
@@ -477,16 +480,69 @@ public partial class LyricsPage : UserControl
     private void OnScrollPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         _fingerDown = true;
-        // A finger on the lines stops a compositor glide where it stands, so a drag carries
-        // on from what is on screen (the scroller's offset is already the glide's target).
-        if (IsGlidingOnCompositor) StopGlide();
+        _pressedAt = e.GetPosition(this);
+        _pressedPointer = e.Pointer;
+        // A finger landing stops nothing: a tap seeks (and the seek glides on from where the
+        // lines are). Only a drag takes the lines over (OnScrollPointerMoved).
         if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();   // a touch while reading holds the lines
+    }
+
+    // Where the finger landed (page coordinates), and which one.
+    private Point _pressedAt;
+    private IPointer? _pressedPointer;
+
+    /// <summary>
+    /// Beta 5 (11-23): stopping a compositor glide as the finger landed froze the lines under
+    /// every tap. A drag must still take over from what is on screen: the scroller's offset is
+    /// already the glide's target, so its first scroll step would otherwise jump the lines by
+    /// what the glide had left. The glide stops just before the scroller's own gesture starts
+    /// (a tunnel handler runs ahead of its recognizer), once the finger has moved as far as
+    /// that recognizer needs to start scrolling.
+    /// </summary>
+    private void OnScrollPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_fingerDown || e.Pointer != _pressedPointer || e.Pointer.Type == PointerType.Mouse || !_gliding || !_onCompositor) return;
+        var moved = e.GetPosition(this) - _pressedAt;
+        if (Math.Abs(moved.Y) > ScrollStartDistance() || Math.Abs(moved.X) > ScrollStartDistance())
+            StopGlide();
+    }
+
+    /// <summary>The lyric line on screen under <paramref name="at"/> (page coordinates; the hit
+    /// test is the compositor's, so it is what is shown).</summary>
+    private Button? LineButtonUnder(Point at)
+    {
+        for (var v = this.InputHitTest(at) as Visual; v != null && v != LyricsScroll; v = v.GetVisualParent())
+            if (v is Button b && b.Classes.Contains("lyric-line")) return b;
+        return null;
+    }
+
+    /// <summary>How far a finger moves before the scroller's gesture starts (its recognizer's own
+    /// setting, half the platform's tap size).</summary>
+    private double ScrollStartDistance()
+    {
+        if (LyricsScroll.Presenter is Control presenter)
+            foreach (var recognizer in presenter.GestureRecognizers)
+                if (recognizer is ScrollGestureRecognizer scroll) return scroll.ScrollStartDistance;
+        return 5;
     }
 
     private void OnScrollPointerReleased(object? sender, PointerEventArgs e)
     {
         if (!_fingerDown) return;
         _fingerDown = false;
+        // A tap on a line during a compositor glide: the line Button would decide it was clicked
+        // from where the finger is in its laid-out place, which is already the glide's target,
+        // while the line is shown (and was touched) where the glide still has it: most taps
+        // missed. The page takes such a tap itself: the glide stops on the lines as shown and
+        // the line under the finger (the compositor's hit test: what is shown) seeks, which
+        // glides on from there. The Button, its release handled, lets go when the pointer does.
+        if (_gliding && _onCompositor && LineButtonUnder(e.GetPosition(this)) is { } line)
+        {
+            StopGlide();
+            e.Handled = true;
+            EndBrowse(scrollBack: false);
+            if (line.Command is { } command && command.CanExecute(line.CommandParameter)) command.Execute(line.CommandParameter);
+        }
         _fingerUpMs = LyricsPageViewModel.NowMs();
         // The wait counts from the lift (the last touch), not from the drag's last movement.
         if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();

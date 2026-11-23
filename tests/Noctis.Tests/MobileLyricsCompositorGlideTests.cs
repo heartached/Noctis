@@ -165,9 +165,12 @@ public class MobileLyricsCompositorGlideTests
     }
 
     /// <summary>A tap mid-glide seeks to the line under the finger (what is on screen, not where
-    /// the layout already put it), and the glide stops where it stands without a jump.</summary>
+    /// the layout already put it). The finger landing does not stop the glide (beta 5 regression,
+    /// 11-23: a touch froze the lines where they stood, for as long as it rested); the lift does,
+    /// on the line as shown, so the line Button sees the tap where the finger is and the seek
+    /// glides on from there.</summary>
     [AvaloniaFact]
-    public async Task ATapDuringTheGlide_SeeksToTheLineUnderTheFinger()
+    public async Task ATapDuringTheGlide_SeeksToTheLineUnderTheFinger_AndTheGlideRunsOn()
     {
         var rig = await Open();
         try
@@ -179,17 +182,79 @@ public class MobileLyricsCompositorGlideTests
             Frames(rig, 1);
             RunUntil(rig, clock, 80);
             // The finger lands on line 13 where it is on screen now, well short of its new place.
-            var shown = delta * (1 - LineMotion.Ease(clock.Elapsed.TotalMilliseconds / LineMotion.DurationMs));
+            var shown = ShownTranslationY(rig);
             Assert.True(shown > delta * 0.2, $"{shown:0} of {delta:0} px still to go");
             var at = LaidOutCentre(rig, 13) + new Point(0, shown);
             Assert.Equal(13, LineAt(rig, at));
-            rig.Window.MouseDown(at, MouseButton.Left);
-            Assert.False(rig.Page.IsGlidingOnCompositor);   // the finger stopped the glide...
+            var finger = rig.Window.TouchBegin(at);
             Frames(rig, 1);
-            Assert.Equal(13, LineAt(rig, at));              // ...where it stood
-            rig.Window.MouseUp(at, MouseButton.Left);
+            Assert.True(rig.Page.IsGlidingOnCompositor);    // the finger alone stops nothing
+            var before = ShownTranslationY(rig);
+            Frames(rig, 2);
+            Thread.Sleep(10);
+            Frames(rig, 1);
+            Assert.True(ShownTranslationY(rig) < before);   // still moving
+            var underFinger = LaidOutCentre(rig, 13).Y + ShownTranslationY(rig);
+            rig.Window.TouchEnd(finger, at);
             Frames(rig, 1);
             Assert.Equal(rig.Shell.Lyrics.Lines[13].Timestamp, rig.Player.Seeks.LastOrDefault());
+            Assert.False(rig.Shell.Lyrics.IsBrowsing);
+            // The lift stopped the glide on the line as shown (the seek's own glide goes on from
+            // there): no jump under the finger. The lift falls between two frames, so the lines
+            // stop where the glide has them at that moment: at most a frame's motion on from the
+            // last frame shown (the hand-over itself is exact, AnInterruptedGlide_...).
+            Assert.InRange(LaidOutCentre(rig, 13).Y + ShownTranslationY(rig) - underFinger, -3, 3);
+            Assert.DoesNotContain(":pressed", LineButton(rig, 13).Classes);   // the Button let go
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
+    /// <summary>A drag mid-glide takes the lines over: the glide stops where they stand once the
+    /// finger has moved far enough to scroll, and the list follows the finger from there (the
+    /// line under it stays under it), browsing.</summary>
+    [AvaloniaFact]
+    public async Task ADragDuringTheGlide_StopsItWhereTheLinesStand_AndTheListFollowsTheFinger()
+    {
+        var rig = await Open();
+        try
+        {
+            var startOffset = rig.Scroll.Offset.Y;
+            var clock = Stopwatch.StartNew();
+            rig.Page.ScrollToLine(11, animate: true);
+            var delta = rig.Scroll.Offset.Y - startOffset;
+            Frames(rig, 1);
+            RunUntil(rig, clock, 100);
+            var at = LaidOutCentre(rig, 13) + new Point(0, ShownTranslationY(rig));
+            Assert.Equal(13, LineAt(rig, at));
+            var finger = rig.Window.TouchBegin(at);
+            Frames(rig, 1);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            // Small moves (a shaky tap) do not take over.
+            rig.Window.TouchMove(finger, at + new Point(0, 2));
+            Frames(rig, 1);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            // A real drag does: 60 px down in steps. The glide runs on until the finger has moved
+            // far enough for the scroller to start (it then moves the list by the finger's travel
+            // past that start distance: 55 px here), and stops on the lines as shown.
+            var startLine = LaidOutCentre(rig, 13).Y + ShownTranslationY(rig);
+            for (var y = 10; y <= 60; y += 10)
+            {
+                rig.Window.TouchMove(finger, at + new Point(0, y));
+                Frames(rig, 1);
+            }
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.True(rig.Shell.Lyrics.IsBrowsing);
+            Assert.Equal(0, ShownTranslationY(rig), 3);
+            var moved = LaidOutCentre(rig, 13).Y + ShownTranslationY(rig) - startLine;
+            rig.Window.TouchEnd(finger, at + new Point(0, 60));
+            Frames(rig, 1);
+            _o.WriteLine($"finger moved 60 px: line 13 moved {moved:0.0} px (55 by the scroller, less what the glide still moved it up before the take-over)");
+            // No jump at the take-over: the glide's last bit up (a few px at most) and the drag.
+            Assert.InRange(moved, 55 - 5, 55.5);
+            _o.WriteLine($"glide of {delta:0} px taken over by a drag");
         }
         finally
         {
@@ -277,6 +342,18 @@ public class MobileLyricsCompositorGlideTests
         {
             rig.Window.Close();
         }
+    }
+
+    /// <summary>The render thread's Translation of the lyric list (what is on screen).</summary>
+    private static double ShownTranslationY(Rig rig)
+    {
+        var visual = Avalonia.Rendering.Composition.ElementComposition.GetElementVisual(rig.List)!;
+        var server = typeof(Avalonia.Rendering.Composition.CompositionVisual)
+            .GetProperty("Server", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly)!
+            .GetValue(visual)!;
+        var serverVisual = typeof(Avalonia.Rendering.Composition.CompositionVisual).Assembly
+            .GetType("Avalonia.Rendering.Composition.Server.ServerCompositionVisual")!;
+        return ((Vector3D)serverVisual.GetProperty("Translation")!.GetValue(server)!).Y;
     }
 
     /// <summary>A jump longer than the realised buffer (a seek far off) still glides, frame by
