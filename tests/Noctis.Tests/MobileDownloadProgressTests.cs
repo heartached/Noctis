@@ -25,6 +25,17 @@ public class MobileDownloadProgressTests
         public void Clear() => Calls.Add("clear");
     }
 
+    private sealed class FakeKeeper : IDownloadKeeper
+    {
+        public List<string> Calls { get; } = new();
+        public void Begin(long estimatedBytes) => Calls.Add($"begin|{estimatedBytes}");
+        public void End() => Calls.Add("end");
+        public event EventHandler? Paused;
+        public event EventHandler? Resumed;
+        public void Pause() => Paused?.Invoke(this, EventArgs.Empty);
+        public void Resume() => Resumed?.Invoke(this, EventArgs.Empty);
+    }
+
     private static Track RemoteSong(string title)
     {
         var t = MobileFixtures.Song(title);
@@ -32,14 +43,94 @@ public class MobileDownloadProgressTests
         return t;
     }
 
-    private static ShellViewModel ShellWith(MobileFixtures.Rig rig, INoctisAccountService account, IDownloadNotifier? notifier = null) =>
+    private static ShellViewModel ShellWith(MobileFixtures.Rig rig, INoctisAccountService account, IDownloadNotifier? notifier = null,
+        IDownloadKeeper? keeper = null) =>
         new(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
         {
             Account = account,
             Marshal = a => a(),
             TintFactory = rig.Shell.TintFactory,
             DownloadNotifier = notifier,
+            DownloadKeeper = keeper,
         };
+
+    /// <summary>Downloads stopped with the app in the background and nothing playing (Android froze
+    /// or ended the process): the keeper (a user-initiated job / dataSync service) is begun once when
+    /// the first start runs, with what the songs weigh, and ended once when the last one ends.</summary>
+    [Fact]
+    public async Task Keeper_BegunOnceForTheFirstStart_EndedWithTheLast()
+    {
+        var a = RemoteSong("A");
+        a.FileSize = 3000;
+        var b = RemoteSong("B");
+        b.FileSize = 4000;
+        var c = RemoteSong("C");
+        c.FileSize = 9000;
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.DownloadedIds.Add(c.Id);   // already on the phone: not fetched, not counted
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, keeper: keeper);
+        var gate1 = new TaskCompletionSource();
+        var gate2 = new TaskCompletionSource();
+
+        var first = shell.Downloads!.RunAsync("One", new[] { a, c }, () => gate1.Task);
+        var second = shell.Downloads.RunAsync("Two", new[] { b }, () => gate2.Task);
+        Assert.Equal(new[] { "begin|3000" }, keeper.Calls);
+        gate1.SetResult();
+        await first;
+        Assert.Equal(new[] { "begin|3000" }, keeper.Calls);
+        gate2.SetException(new InvalidOperationException("failed"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => second);
+        Assert.Equal(new[] { "begin|3000", "end" }, keeper.Calls);
+    }
+
+    /// <summary>The system stopped the job mid-run (network gone, too hot): the downloads pause
+    /// instead of failing song after song, the card stays (no "Downloaded" while paused), the keeper
+    /// is not ended; when the system runs the job again the songs left go on, without a new begin
+    /// (the job is already running), and the keeper ends with them.</summary>
+    [Fact]
+    public async Task Keeper_StoppedBySystem_PausesTheDownloads_ThenResumesTheRest()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var keeper = new FakeKeeper();
+        var shell = ShellWith(rig, account, notifier, keeper);
+        var gate = new TaskCompletionSource();
+        account.OnPause = () => gate.TrySetResult();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a, b, c }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 0, 0, 0));
+        account.DownloadedIds.Add(a.Id);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(2, 1, 0, 0));
+        keeper.Pause();
+        await run.WaitAsync(TimeSpan.FromSeconds(5));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 0, 0, 0));   // the paused batch winding down
+
+        Assert.Equal(1, account.PauseCalls);
+        Assert.Equal(new[] { "begin|0" }, keeper.Calls);
+        Assert.DoesNotContain(notifier.Calls, c => c.StartsWith("finished") || c == "clear");
+
+        keeper.Resume();
+        await Until(() => keeper.Calls.Count == 2);
+
+        Assert.Equal(new[] { b.Id, c.Id }, account.DownloadCalls.Single().Select(t => t.Id));
+        Assert.Equal(new[] { "begin|0", "end" }, keeper.Calls);
+    }
+
+    private static async Task Until(Func<bool> condition)
+    {
+        var start = Environment.TickCount64;
+        while (!condition())
+        {
+            if (Environment.TickCount64 - start > 5000) throw new TimeoutException("condition never became true");
+            await Task.Delay(10);
+        }
+    }
 
     [Fact]
     public async Task Notification_NamesTheAlbum_CountsUp_ThenSaysHowManyLanded()

@@ -2049,6 +2049,19 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public Task DownloadAllAsync(CancellationToken ct = default) => DownloadAsync(_library.Tracks.ToList(), ct);
 
+    /// <summary>The system stopped the background job: the running batches stop where they are (the
+    /// song in flight is cancelled, its .part deleted), nothing counts as failed.</summary>
+    public async Task PauseDownloadsAsync()
+    {
+        await StopDownloadsAsync().ConfigureAwait(false);
+        DebugLog.Write("Account", "downloads paused (the system stopped their background job)");
+    }
+
+    /// <summary>As <see cref="DownloadAsync"/>, but a song removed while paused (<see cref="_withdrawn"/>)
+    /// stays removed: DownloadAsync takes a song asked for again back from it.</summary>
+    public Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) =>
+        DownloadAsync(tracks.Where(t => !_withdrawn.ContainsKey(t.Id)).ToList(), ct);
+
     private Task RunDownloadsAsync(List<Guid> ids, CancellationToken ct)
     {
         if (ids.Count == 0) return Task.CompletedTask;
@@ -2074,9 +2087,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
         var token = linked.Token;
         // Wi-Fi only holds for the whole batch, not only when it was asked for: a Download All
-        // that loses Wi-Fi stops rather than carrying on over mobile data.
+        // that loses Wi-Fi, or has Wi-Fi only turned on while it runs over mobile data (a batch
+        // kept running in the background, so the setting can change under it), stops rather than
+        // carrying on. The setting is read per song, but only off Wi-Fi, where it matters.
         var onWifi = IsOnWifi;
-        var wifiOnly = onWifi != null && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
         var queue = new ConcurrentQueue<Guid>(ids);
         // With no other batch running, this one counts from zero: "Downloading 3 of 22" and
         // "1 failed" are about this run, not every run since the app started.
@@ -2106,7 +2120,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         await _downloadSlots.WaitAsync(song.Token).ConfigureAwait(false);
                         try
                         {
-                            if (wifiOnly && !onWifi!())
+                            if (onWifi != null && !onWifi() && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly)
                                 throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
                             await DownloadOneAsync(client, id, song.Token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);

@@ -160,6 +160,17 @@ public class MobileAccountTests
             return Task.CompletedTask;
         }
 
+        /// <summary>PauseDownloadsAsync calls; <see cref="OnPause"/> runs in each (a test ends its gated run).</summary>
+        public int PauseCalls { get; private set; }
+        public Action? OnPause { get; set; }
+
+        public Task PauseDownloadsAsync()
+        {
+            PauseCalls++;
+            OnPause?.Invoke();
+            return Task.CompletedTask;
+        }
+
         public Task DownloadAllAsync(CancellationToken ct = default)
         {
             DownloadAllCalls++;

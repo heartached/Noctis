@@ -183,6 +183,14 @@ public interface INoctisAccountService
     Task RemoveDownloadsAsync(IEnumerable<Track> tracks);
     Task RemoveAllDownloadsAsync();
 
+    /// <summary>The system stopped the background job the downloads ran under (IDownloadKeeper.Paused):
+    /// the running downloads stop, their partial files go, nothing is removed or counted as failed.</summary>
+    Task PauseDownloadsAsync() => Task.CompletedTask;
+
+    /// <summary>Goes on with paused downloads: as <see cref="DownloadAsync"/>, except that a song
+    /// removed (Remove Download) while they were paused stays removed.</summary>
+    Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) => DownloadAsync(tracks, ct);
+
     /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
     /// or signed out keeping the downloads): its file stays and plays until the user removes it
     /// (<see cref="RemoveDownloadsAsync"/>, which then takes its row too). Never deleted on its own:

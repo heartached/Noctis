@@ -976,6 +976,58 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(svc.IsSignedIn);
     }
 
+    /// <summary>Download on Wi-Fi Only turned on while a batch runs over mobile data: the setting was
+    /// read once when the batch started, so the rest still came over mobile data. Each song now
+    /// heeds the setting as it stands (read only off Wi-Fi, where it matters).</summary>
+    [Fact]
+    public async Task Downloads_StopMidBatch_WhenWifiOnlyIsTurnedOnOnMobileData()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = false);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            IsOnWifi = () => false,
+        };
+        await svc.SyncNowAsync(ct);
+        var gate = new object();
+        var turnedOn = false;
+        svc.DownloadProgress += (_, p) =>
+        {
+            if (p.Completed == 0) return;
+            lock (gate)
+            {
+                if (turnedOn) return;
+                _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = true).GetAwaiter().GetResult();
+                turnedOn = true;
+            }
+        };
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2), Phone(_t3) }, ct));
+
+        Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
+        Assert.InRange(svc.DownloadedCount, 1, 2);   // two were already under way, the third never started
+    }
+
+    /// <summary>Downloads paused by the system and resumed: a song the user removed meanwhile is not
+    /// fetched again (DownloadAsync would take it back as asked for again); the rest are.</summary>
+    [Fact]
+    public async Task ResumedDownloads_SkipASongRemovedWhilePaused()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.PauseDownloadsAsync();
+        await svc.RemoveDownloadsAsync(new[] { Phone(_t2) });
+
+        await svc.ResumeDownloadsAsync(new[] { Phone(_t1), Phone(_t2) }, ct);
+
+        Assert.True(svc.IsDownloaded(Phone(_t1)));
+        Assert.False(svc.IsDownloaded(Phone(_t2)));
+        Assert.Equal(1, svc.DownloadedCount);
+    }
+
     [Fact]
     public async Task Covers_AreNotFetched_WhenThePhoneHasNoRoomLeft()
     {
