@@ -572,7 +572,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
         return user is null ? (null, null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password") : (user, null, 0, "");
     }
 
-    // ── Binary endpoints: stream / download / getCoverArt / getNoctisPlaylistCover / getAvatar
+    // ── Binary endpoints: stream / download / getCoverArt / getNoctisPlaylistCover / getNoctisAnimatedCover / getAvatar
 
     private async Task<bool> TryHandleBinaryAsync(HttpContext ctx, string method, Params p)
     {
@@ -643,6 +643,9 @@ public sealed partial class NoctisServer : IAsyncDisposable
             }
             case "getnoctisplaylistcover":
                 await ServePlaylistCoverAsync(ctx, p).ConfigureAwait(false);
+                return true;
+            case "getnoctisanimatedcover":
+                await ServeAnimatedCoverAsync(ctx, p).ConfigureAwait(false);
                 return true;
             case "getavatar":
             {

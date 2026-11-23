@@ -155,6 +155,13 @@ public interface INoctisAccountService
     /// fetched, else fetched now into the same place. Null when the computer has none.</summary>
     Task<string?> GetComputerCoverAsync(Guid albumId, CancellationToken ct = default) => Task.FromResult<string?>(null);
 
+    /// <summary>getNoctisAnimatedCover: the computer's animated cover of <paramref name="albumId"/> into
+    /// <paramref name="destination"/>, or NotModified when <paramref name="etag"/> is still its version.
+    /// None when signed out, or the computer has none (or is older than the call). Throws
+    /// NoctisServerException when the computer cannot be reached.</summary>
+    Task<AnimatedCoverDownload> FetchAnimatedCoverAsync(Guid albumId, string destination, string? etag, CancellationToken ct) =>
+        Task.FromResult(new AnimatedCoverDownload(AnimatedCoverFetch.None, null));
+
     /// <summary>One of the computer's playlists (synced, not made on the phone).</summary>
     bool IsSyncedPlaylist(Guid playlistId) => false;
 
