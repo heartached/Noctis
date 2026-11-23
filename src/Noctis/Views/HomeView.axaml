@@ -108,15 +108,23 @@
                                                 Margin="6,0,0,0" VerticalAlignment="Center"
                                                 IsFavorite="{Binding Track.IsFavorite}" />
                                         </Grid>
-                                        <TextBlock Grid.Column="3"
-                                                   Classes="chart-artist"
-                                                   Text="{Binding Track.ArtistDisplay}"
-                                                   FontSize="13"
-                                                   Opacity="0.7"
-                                                   VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxLines="1"
-                                                   Margin="0,0,16,0" />
+                                        <!-- Each artist opens their page (the Songs rows' per-name link);
+                                             a double-click beside the name still plays the row. -->
+                                        <Button Grid.Column="3"
+                                                Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                                Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                Margin="0,0,16,0"
+                                                helpers:ArtistCreditLink.IsEnabled="True"
+                                                Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).ViewArtistCommand}"
+                                                CommandParameter="{Binding Track.Artist}">
+                                            <TextBlock Classes="chart-artist"
+                                                       Text="{Binding Track.ArtistDisplay}"
+                                                       FontSize="13"
+                                                       Opacity="0.7"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxLines="1" />
+                                        </Button>
                                         <TextBlock Grid.Column="4"
                                                    Classes="chart-duration"
                                                    Text="{Binding Track.DurationFormatted}"
@@ -351,6 +359,26 @@
         <Style Selector="Button.home-empty-link:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ChipBackground}"/>
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}"/>
+        </Style>
+        <!-- Continue listening's artwork and title open the album: the artist page's
+             genre-link recipe (no hover box or zoom; the title underlines under the pointer). -->
+        <Style Selector="Button.home-hero-link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.home-hero-link:pointerover, Button.home-hero-link:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)"/>
+        </Style>
+        <Style Selector="Button.home-hero-link:pointerover /template/ ContentPresenter, Button.home-hero-link:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.home-hero-link:pointerover > TextBlock">
+            <Setter Property="TextDecorations" Value="Underline"/>
         </Style>
         <Style Selector="Ellipse.loading-spinner">
             <Setter Property="Width" Value="22"/>
@@ -628,8 +656,14 @@
                         IsVisible="{Binding ContinueTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
                     <Panel>
                         <Grid ColumnDefinitions="150,22,*,22,Auto" Margin="22">
-                            <Border Grid.Column="0"
-                                    Width="150" Height="150"
+                            <!-- Artwork and title open the album, scrolled to this song. -->
+                            <Button Grid.Column="0"
+                                    x:Name="ContinueArtButton"
+                                    Classes="home-hero-link"
+                                    AutomationProperties.Name="{Binding ContinueTrack.Album, FallbackValue=''}"
+                                    ToolTip.Tip="{loc:T ArtistDetail.OpenAlbumTip}"
+                                    Command="{Binding OpenContinueAlbumCommand}">
+                            <Border Width="150" Height="150"
                                     CornerRadius="10"
                                     ClipToBounds="True"
                                     Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
@@ -648,6 +682,7 @@
                                                           IsVisible="{Binding ContinueTrack.AlbumArtworkPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" />
                                 </Panel>
                             </Border>
+                            </Button>
 
                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                                 <TextBlock Text="{loc:T Home.ContinueListening}"
@@ -655,6 +690,11 @@
                                            FontWeight="SemiBold"
                                            Opacity="0.65"
                                            Margin="0,0,0,4" />
+                                <Button x:Name="ContinueTitleButton"
+                                        Classes="home-hero-link"
+                                        AutomationProperties.Name="{Binding ContinueTrack.Title, FallbackValue=''}"
+                                        ToolTip.Tip="{loc:T ArtistDetail.OpenAlbumTip}"
+                                        Command="{Binding OpenContinueAlbumCommand}">
                                 <TextBlock FontSize="28"
                                            FontWeight="Bold"
                                            TextTrimming="CharacterEllipsis"
@@ -672,14 +712,27 @@
                                         </Border>
                                     </InlineUIContainer>
                                 </TextBlock>
-                                <!-- "Artist · Album · Year" -->
-                                <TextBlock FontSize="14"
-                                           Opacity="0.72"
-                                           TextTrimming="CharacterEllipsis"
-                                           MaxLines="1">
-                                    <Run Text="{Binding ContinueTrack.ArtistDisplay, FallbackValue=''}" />
-                                    <Run Text="{Binding ContinueDetail}" />
-                                </TextBlock>
+                                </Button>
+                                <!-- "Artist · Album · Year": each artist opens their page. -->
+                                <DockPanel Opacity="0.72">
+                                    <Button x:Name="ContinueArtistButton"
+                                            DockPanel.Dock="Left"
+                                            Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                            Cursor="Hand" VerticalAlignment="Center"
+                                            helpers:ArtistCreditLink.IsEnabled="True"
+                                            Command="{Binding ViewArtistCommand}"
+                                            CommandParameter="{Binding ContinueTrack.Artist, FallbackValue=''}">
+                                        <TextBlock FontSize="14"
+                                                   Text="{Binding ContinueTrack.ArtistDisplay, FallbackValue=''}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxLines="1" />
+                                    </Button>
+                                    <TextBlock FontSize="14"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding ContinueDetail}"
+                                               TextTrimming="CharacterEllipsis"
+                                               MaxLines="1" />
+                                </DockPanel>
                             </StackPanel>
 
                             <StackPanel Grid.Column="4" VerticalAlignment="Center" Spacing="8" MinWidth="128">
