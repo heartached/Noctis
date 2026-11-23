@@ -291,7 +291,7 @@
                                                        IsPlaying="{Binding IsAnimating}" IsVisible="{Binding IsCurrent}" />
                                     <!-- Left-aligned, so the star column is the title's own width up to the
                                          room left, and the badge follows the title, not the row's end. -->
-                                    <Grid Grid.Column="2" Name="RowTitleCell" ColumnDefinitions="*,Auto" HorizontalAlignment="Left"
+                                    <Grid Grid.Column="2" Name="RowTitleCell" ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left"
                                           VerticalAlignment="Center" Margin="4,0,8,0">
                                         <TextBlock Name="RowTitle" FontSize="16" Text="{Binding Track.Title}" MaxLines="1"
                                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -299,6 +299,10 @@
                                                 IsVisible="{Binding Track.IsExplicit}">
                                             <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
                                         </Border>
+                                        <!-- No longer on the computer: SongRow's mark (Track.IsNotOnComputer). -->
+                                        <views:GridIcon Grid.Column="2" Name="RowNotOnComputer" Classes="row-not-on-computer"
+                                                        Data="{DynamicResource PhComputer}" IsVisible="{Binding Track.IsNotOnComputer}"
+                                                        AutomationProperties.Name="{loc:T Mobile.Account.NotOnComputer}" />
                                     </Grid>
                                     <!-- The song's stars or heart (Settings › Library › Show in Song Rows), right-aligned before ⋯. -->
                                     <views:RowMark Grid.Column="3" Name="RowMark" DataContext="{Binding Track}" Margin="0,0,4,0" />

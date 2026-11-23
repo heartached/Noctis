@@ -306,6 +306,13 @@ public partial class Track : ObservableObject
     [property: System.Text.Json.Serialization.JsonIgnore]
     private bool _isFileMissing;
 
+    /// <summary>Transient flag (phone): a song downloaded from a computer that no longer has it
+    /// (Account › No longer on your computer). Song rows show a small mark for it. Stamped by the
+    /// phone's account service once per change, so rows never look it up. Not persisted.</summary>
+    [ObservableProperty]
+    [property: System.Text.Json.Serialization.JsonIgnore]
+    private bool _isNotOnComputer;
+
     /// <summary>Transient 1-based position within the list view currently displaying this track
     /// (set by the Folders pane). Drives the leading row-number column. Not persisted.</summary>
     [ObservableProperty]

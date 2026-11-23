@@ -198,6 +198,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         stateRecorder?.Attach(this);
         _recorder = stateRecorder;
         _library.TracksAdded += OnLibraryTracksAdded;
+        // Every load, sync and removal can bring rows (new instances) or take the state away.
+        _library.LibraryUpdated += (_, _) => RefreshNotOnComputerMarks();
     }
 
     private readonly NoctisStateRecorder? _recorder;
@@ -1029,6 +1031,43 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             try { _store.SaveOffline(state); }
             catch (Exception ex) { DebugLog.Write("Account", $"offline state save failed ({ex.GetType().Name})"); }
         }
+        RefreshNotOnComputerMarks();
+    }
+
+    private int _marksQueued;
+    /// <summary>The songs stamped <see cref="Track.IsNotOnComputer"/>: a row the library dropped
+    /// (its download removed) is unstamped too, though no walk of the library finds it.</summary>
+    private readonly ConcurrentDictionary<Track, byte> _marked = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Stamps <see cref="Track.IsNotOnComputer"/> (song rows' mark) to agree with
+    /// <see cref="IsNotOnComputer"/>: one walk of the library on a worker per change, coalesced, and
+    /// only the songs that flip are set, on the UI thread. Rows read the flag, never the sets. A phone
+    /// that never had such a song skips the walk.</summary>
+    private void RefreshNotOnComputerMarks()
+    {
+        if (_notOnComputer.IsEmpty && _marked.IsEmpty) return;
+        if (_recorder is not null && !_recorder.IsAttached(this)) return;
+        if (Interlocked.Exchange(ref _marksQueued, 1) == 1) return;
+        _ = Task.Run(() =>
+        {
+            Interlocked.Exchange(ref _marksQueued, 0);
+            var live = new HashSet<Track>(_library.AllTracks, ReferenceEqualityComparer.Instance);
+            var flip = new List<Track>();
+            foreach (var t in live.Concat(_marked.Keys.Where(m => !live.Contains(m))))
+                if (t.IsNotOnComputer != (IsNotOnComputer(t) && live.Contains(t))) flip.Add(t);
+            if (flip.Count == 0) return;
+            _marshal(() =>
+            {
+                foreach (var t in flip)
+                {
+                    // Read again here: a later change may have come since the walk (its own walk follows).
+                    var mark = IsNotOnComputer(t) && live.Contains(t);
+                    t.IsNotOnComputer = mark;
+                    if (mark) _marked[t] = 0;
+                    else _marked.TryRemove(t, out _);
+                }
+            });
+        });
     }
 
     /// <summary>A desktop song that now plays from a file on the phone has no use for its download.</summary>

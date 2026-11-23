@@ -558,6 +558,40 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(_t3.Id, Assert.Single(again.NotOnComputerTracks).Id);
     }
 
+    /// <summary>Song lists mark a song no longer on the computer: Track.IsNotOnComputer, stamped by
+    /// the service once per change (never looked up per row), on that song only, and taken off when
+    /// the computer has it again or its download goes.</summary>
+    [Fact]
+    public async Task SongsNoLongerOnTheComputer_CarryTheRowMark_OnlyWhileTheyAre()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1), Phone(_t3) }, ct);
+        Assert.DoesNotContain(_phoneLibrary.AllTracks, t => t.IsNotOnComputer);
+
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        var p3 = Phone(_t3);
+        await Until(() => p3.IsNotOnComputer);
+        Assert.False(Phone(_t1).IsNotOnComputer);
+        Assert.False(Phone(_t2).IsNotOnComputer);
+
+        _desk.Show(_t1, _t2, _t3);
+        await svc.SyncNowAsync(ct);
+        await Until(() => !p3.IsNotOnComputer);
+
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        await Until(() => Phone(_t3).IsNotOnComputer);
+        await svc.SignOutAsync(removeDownloads: false, ct);
+        await Until(() => Phone(_t1).IsNotOnComputer);   // signed out: no computer has any of them
+        Assert.True(Phone(_t3).IsNotOnComputer);
+        var p1 = Phone(_t1);
+        await svc.RemoveDownloadsAsync(new[] { p1 });
+        await Until(() => !p1.IsNotOnComputer);
+    }
+
     /// <summary>Remove on a song no longer on the computer deletes its file and, with nothing left
     /// to stream, its row; Downloaded's count and space follow at once. Remove All the same.</summary>
     [Fact]
