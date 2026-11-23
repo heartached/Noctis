@@ -436,7 +436,7 @@ public partial class PopMenu : UserControl
         var height = Math.Min(Card.DesiredSize.Height, bottom - top);
 
         double x, y;
-        if (Anchor is { } anchor && host != null && anchor.TranslatePoint(default, host) is { } at)
+        if (Anchor is { } anchor && host != null && LaidOutAt(anchor, host) is { } at)
         {
             var a = new Rect(at, anchor.Bounds.Size);
             x = a.Center.X >= size.Width / 2 ? a.Right - width : a.Left;
@@ -473,6 +473,15 @@ public partial class PopMenu : UserControl
         Card.Margin = new Thickness(x, y, 0, 0);
     }
 
+    /// <summary>
+    /// Where <paramref name="anchor"/> is laid out in <paramref name="host"/>, without its own
+    /// render transform: a ⋯ shrinks while pressed (scale 0.96, MobileStyles), and placed from its
+    /// shrunk box the card landed up to a pixel off the button, by how far the press had got when
+    /// the finger lifted (a loaded headless run: origin 701.52 for a button at 701, card 284 for 283).
+    /// </summary>
+    private static Point? LaidOutAt(Visual anchor, Visual host) =>
+        anchor.GetVisualParent() is { } parent ? parent.TranslatePoint(anchor.Bounds.Position, host) : anchor.TranslatePoint(default, host);
+
     /// <summary>How far down the card may reach: above the tab bar and mini player on a page or
     /// the Queue (whose tab bar stays up), above the gesture bar over Now Playing and Lyrics.</summary>
     private double BottomLimit(double height)
@@ -487,7 +496,7 @@ public partial class PopMenu : UserControl
     private RelativePoint Origin()
     {
         var card = new Rect(Card.Margin.Left, Card.Margin.Top, Card.Width, Card.Bounds.Height > 0 ? Card.Bounds.Height : Card.DesiredSize.Height);
-        if (Anchor is not { } anchor || this.GetVisualParent() is not { } host || anchor.TranslatePoint(default, host) is not { } at || card.Width <= 0)
+        if (Anchor is not { } anchor || this.GetVisualParent() is not { } host || LaidOutAt(anchor, host) is not { } at || card.Width <= 0)
             return RelativePoint.Center;
         var x = at.X + anchor.Bounds.Width / 2 - card.X;
         var y = at.Y + anchor.Bounds.Height / 2 - card.Y;
