@@ -108,6 +108,23 @@ public class MobileLyricsPromotionTests
     /// </summary>
     internal static Survival RunCollecting(Action<double> frame, double seconds, double intervalMs = 1500, double warmSeconds = 1.5)
     {
+        // The idle trim an earlier test's library scan asked for (MemoryTrim, 6 s after the last
+        // request) fires on the pool and runs a full collection, which ended the no-GC region in a
+        // wide run (11-23: reason 17, aggressive). It is held off while the nursery is measured.
+        var trim = MemoryTrim.Collector;
+        MemoryTrim.Collector = trim ?? (_ => { });
+        try
+        {
+            return RunCollectingCore(frame, seconds, intervalMs, warmSeconds);
+        }
+        finally
+        {
+            MemoryTrim.Collector = trim;
+        }
+    }
+
+    private static Survival RunCollectingCore(Action<double> frame, double seconds, double intervalMs, double warmSeconds)
+    {
         var clock = Stopwatch.StartNew();
         double nextFrame = 0;
         void Step(double t)
