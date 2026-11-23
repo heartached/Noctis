@@ -119,10 +119,17 @@ public partial class FavoritesView : UserControl, ITrackSelectionSource
     {
         if (sender is not Button tile) return;
         MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedItems);
+        // Album Hover Zoom (GitHub #218): Loaded can fire again on re-attach, so re-subscribe.
+        HoverZoom.Attach(tile);
         // A grid row re-used for other favorites (TileRow) re-binds its tiles instead of loading them.
         tile.DataContextChanged -= OnAlbumTileRebound;
         tile.DataContextChanged += OnAlbumTileRebound;
     }
+
+    private TileHoverZoom? _hoverZoom;
+    private TileHoverZoom HoverZoom => _hoverZoom ??= new TileHoverZoom(
+        () => (DataContext as FavoritesViewModel)?.IsHoverZoom == true,
+        () => FavoritesList.FindDescendantOfType<ScrollViewer>());
 
     private void OnAlbumTileRebound(object? sender, EventArgs e)
     {

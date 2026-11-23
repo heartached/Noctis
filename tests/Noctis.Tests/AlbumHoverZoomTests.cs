@@ -355,4 +355,75 @@ public class AlbumHoverZoomTests
         Assert.Equal(0, Glow(corner).Opacity, 2);
         win.Close();
     }
+
+    /// <summary>Discord 11-23 ("the hover thingy for albums doesn't apply for songs here"): the
+    /// same zoom on the Favorites grid, songs and albums alike. Only the hovered cover grows,
+    /// round its own centre, with its glow; the title lines stay put; no other tile moves; a
+    /// Ctrl-selected tile's plate does not grow with it. Off, nothing.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Favorites_HoveredCover_GrowsAndGlows_TextStays_OnlyWhenOn(bool on)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 20; i++)
+            lib.TrackList.Add(new Track
+            {
+                Id = Guid.NewGuid(), Title = $"Song {i:00}", Artist = "Artist", Album = $"Single {i}", AlbumArtist = "Artist",
+                FilePath = $"/music/{i}.mp3", Duration = TimeSpan.FromMinutes(3), IsFavorite = true, AlbumId = Guid.NewGuid(),
+            });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumHoverZoom = on;
+        var vm = new FavoritesViewModel(player, lib, persistence, new SidebarViewModel(persistence, lib), settings);
+        vm.Refresh();
+        var view = new FavoritesView { DataContext = vm };
+        var win = new Window { Width = 1400, Height = 1000, Content = view };
+        win.Show(); Pump();
+        List<Button> Tiles() => view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && Tiles().Count < 15) { Pump(1); await Task.Delay(5); }
+        Pump(4);
+        var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
+        var cols = vm.GridColumns;
+
+        Border Cover(Button t) => t.GetVisualDescendants().OfType<Border>().First(b => b.ClipToBounds);
+        Point Centre(Visual v) => v.TranslatePoint(new Point(v.Bounds.Width / 2, v.Bounds.Height / 2), view)!.Value;
+        List<Point> TextAt(Button t) => t.GetVisualDescendants().OfType<Noctis.Controls.HighlightTextBlock>()
+            .Select(x => x.TranslatePoint(default, view)!.Value).ToList();
+
+        // Ctrl-select the tile, then hover it: a middle tile of the second row.
+        var mid = tiles[cols + 1];
+        var bounds = tiles.Select(t => t.Bounds).ToList();
+        var centre = Centre(Cover(mid));
+        var text = TextAt(mid);
+        var p = mid.TranslatePoint(new Point(mid.Bounds.Width / 2, 40), win)!.Value;
+        win.MouseDown(p, Avalonia.Input.MouseButton.Left, Avalonia.Input.RawInputModifiers.Control);
+        win.MouseUp(p, Avalonia.Input.MouseButton.Left, Avalonia.Input.RawInputModifiers.Control);
+        win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
+        Assert.Contains("ctrl-selected", mid.Classes);
+
+        var ring = mid.GetVisualDescendants().OfType<Border>().First(b => b.Classes.Contains("select-ring"));
+        _o.WriteLine($"on={on}: scale={Scale(Art(mid)):0.###} glow={Glow(mid).Opacity:0.##} ring={Scale(ring):0.###} others=[{string.Join(",", Transformed(tiles, mid))}]");
+        if (on)
+        {
+            Assert.Equal(1.04, Scale(Art(mid)), 2);
+            Assert.Equal(1, Glow(mid).Opacity, 2);
+            var grown = Centre(Cover(mid));
+            Assert.True(Math.Abs(grown.X - centre.X) < 0.5 && Math.Abs(grown.Y - centre.Y) < 0.5, $"cover centre moved {centre} -> {grown}");
+        }
+        else
+        {
+            Assert.Equal(1, Scale(Art(mid)), 2);
+            Assert.Equal(0, Glow(mid).Opacity, 2);
+        }
+        Assert.True(IsIdentity(mid), "the whole tile was transformed");
+        Assert.Equal(1, Scale(ring), 2);        // the selection plate keeps its size
+        Assert.Equal(text, TextAt(mid));        // the title lines stay put
+        Assert.Empty(Transformed(tiles, mid));  // no other tile moves
+        Assert.Equal(bounds, tiles.Select(t => t.Bounds).ToList());
+        win.Close();
+    }
 }
