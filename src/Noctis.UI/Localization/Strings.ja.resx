@@ -9114,6 +9114,10 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>登録しました。設定 → アプリ → 既定のアプリで Noctis を選ぶか、曲を右クリック → プログラムから開くを選んでください。</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>ファイルの種類を更新できませんでした: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>アーティストを再グループ化中…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>ジャンルタグの区切り文字</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>1つのジャンルタグを複数のジャンルに分けます。「Rock, Pop」のタグが付いた曲は Rock と Pop の両方に表示されます。セミコロンは常に区切り文字です。ファイルは変更されません。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>区切り文字を追加 (例: /)</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>ジャンルを再グループ化中…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>元のアーティスト表記を復元中…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>アーティスト表記を更新できませんでした。</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>アーティスト表記はすでに最新です。</value><comment>Settings status line</comment></data>

@@ -9114,6 +9114,10 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>已註冊。在「設定 → 應用程式 → 預設應用程式」中選擇 Noctis，或在歌曲上按右鍵 → 開啟檔案。</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>無法更新檔案類型：{0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>正在重新分組藝人…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>曲風標籤分隔符號</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>將一個曲風標籤拆分為多個曲風，標為「Rock, Pop」的歌曲會同時出現在 Rock 和 Pop 下。分號一律用作分隔。不會變更你的檔案。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>新增分隔符號，例如 /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>正在重新分組曲風…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>正在還原原始藝人資訊…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>無法更新藝人資訊。</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>藝人資訊已是最新。</value><comment>Settings status line</comment></data>

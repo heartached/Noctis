@@ -4133,6 +4133,10 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registered. Pick Noctis under Settings → Apps → Default apps, or right-click a song → Open with.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Couldn't update file types: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Regrouping artists…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Genre Tag Separators</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Splits one genre tag into several, so a song tagged &quot;Rock, Pop&quot; is listed under Rock and under Pop. Semicolons always split. Your files are not changed.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Add a separator, e.g. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Regrouping genres…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Restoring original artist credits…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Couldn't update artist credits.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Artist credits already up to date.</value><comment>Settings status line</comment></data>

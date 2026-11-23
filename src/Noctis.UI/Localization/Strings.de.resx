@@ -4124,6 +4124,10 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registriert. Wähle Noctis unter Einstellungen → Apps → Standard-Apps, oder klicke mit rechts auf einen Song → Öffnen mit.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Dateitypen konnten nicht aktualisiert werden: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Künstler werden neu gruppiert…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Genre-Tag-Trennzeichen</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Trennt einen Genre-Tag in mehrere, sodass ein Song mit „Rock, Pop“ unter Rock und unter Pop erscheint. Semikolons trennen immer. Deine Dateien werden nicht geändert.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Trennzeichen hinzufügen, z. B. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Genres werden neu gruppiert…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Ursprüngliche Künstlerangaben werden wiederhergestellt…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Künstlerangaben konnten nicht aktualisiert werden.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Künstlerangaben sind bereits aktuell.</value><comment>Settings status line</comment></data>

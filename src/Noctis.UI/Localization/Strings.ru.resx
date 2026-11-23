@@ -4133,6 +4133,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Зарегистрировано. Выберите Noctis в «Параметры → Приложения → Приложения по умолчанию» или щёлкните песню правой кнопкой → «Открыть с помощью».</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Не удалось обновить типы файлов: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Перегруппировка исполнителей…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Разделители в теге жанра</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Делит один тег жанра на несколько: песня с тегом «Rock, Pop» появится и в Rock, и в Pop. Точка с запятой разделяет всегда. Ваши файлы не изменяются.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Добавьте разделитель, например /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Перегруппировка жанров…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Восстановление исходных исполнителей…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Не удалось обновить исполнителей.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Исполнители уже актуальны.</value><comment>Settings status line</comment></data>

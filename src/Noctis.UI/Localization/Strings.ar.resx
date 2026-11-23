@@ -9114,6 +9114,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>تم التسجيل. اختر Noctis من الإعدادات → التطبيقات → التطبيقات الافتراضية، أو انقر بزر الماوس الأيمن على أغنية → فتح باستخدام.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>تعذّر تحديث أنواع الملفات: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>جارٍ إعادة تجميع الفنانين…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>فواصل وسم النوع</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>يقسم وسم النوع الواحد إلى عدة أنواع، فتظهر الأغنية الموسومة بـ "Rock, Pop" ضمن Rock وضمن Pop. الفاصلة المنقوطة تفصل دائمًا. لا تتغير ملفاتك.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>أضف فاصلًا، مثل /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>جارٍ إعادة تجميع الأنواع…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>جارٍ استعادة بيانات الفنانين الأصلية…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>تعذّر تحديث بيانات الفنانين.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>بيانات الفنانين محدّثة بالفعل.</value><comment>Settings status line</comment></data>
