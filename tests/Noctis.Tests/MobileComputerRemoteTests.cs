@@ -210,6 +210,39 @@ public class MobileComputerRemoteTests
         Assert.True(page.ShowsPlayer);
     }
 
+    /// <summary>A computer that answered, but with an HTTP error or something unreadable, read as
+    /// "Can't reach Studio PC … check that Noctis is open and on the same Wi-Fi": it was reached,
+    /// and the Wi-Fi advice sent people the wrong way. Now it says the computer answered with an
+    /// error (a mismatched update, most often) and keeps asking slowly, as for unreachable.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AnErrorAnswer_IsNotCalledUnreachable(bool serverError)
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount
+        {
+            Account = FakeAccount.SignedInAs(),
+            PlaybackError = serverError ? new NoctisServerException(NoctisErrorKind.Server, "The server answered HTTP 500.") : new InvalidOperationException("bad json"),
+        };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
+        var clock = new Clock();
+        var page = new ComputerRemotePageViewModel(shell, account, clock.Delay);
+        shell.Navigate(page);
+
+        Assert.Equal(RemoteStatus.ServerError, page.Status);
+        Assert.Equal("Something went wrong talking to Studio PC", page.MessageTitle);
+        Assert.Equal("Studio PC answered with an error. Update Noctis on it, then try again.", page.MessageText);
+        Assert.True(page.CanRetry);
+        Assert.Equal(ComputerRemotePageViewModel.RetryInterval, clock.Waits[^1]);
+        Assert.True(page.IsRunning);
+
+        account.PlaybackError = null;
+        account.Playback = Playing();
+        clock.Tick();
+        Assert.Equal(RemoteStatus.Ready, page.Status);
+    }
+
     [AvaloniaTheory]
     [InlineData(NoctisErrorKind.RemoteNotAllowed, RemoteStatus.NotAllowed)]
     [InlineData(NoctisErrorKind.Outdated, RemoteStatus.Outdated)]
@@ -223,6 +256,8 @@ public class MobileComputerRemoteTests
         Assert.Equal(status, page.Status);
         Assert.False(page.IsRunning);
         Assert.Contains("Studio PC", page.MessageText);
+        if (status == RemoteStatus.NotAllowed)   // what to do, not just what is refused
+            Assert.Equal("Only the main account on Studio PC can control what it plays. Sign out here, then scan the QR code in Noctis on Studio PC to sign in with that account.", page.MessageText);
         var asks = account.PlaybackAsks.Count;
 
         account.PlaybackError = null;
@@ -327,7 +362,9 @@ public class MobileComputerRemoteTests
         var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
         shell.OpenAccountCommand.Execute(null);
         var accountPage = Assert.IsType<AccountPageViewModel>(shell.CurrentPage);
-        Assert.Equal("Play, pause and skip on Studio PC", accountPage.RemoteHint);
+        // Who may use it, said before the first try (a phone of another account learned it only
+        // from the Remote page's refusal).
+        Assert.Equal("Play and skip on Studio PC. Main account only.", accountPage.RemoteHint);
 
         shell.OpenComputerRemoteCommand.Execute(null);
         var remote = Assert.IsType<ComputerRemotePageViewModel>(shell.CurrentPage);

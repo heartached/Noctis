@@ -9,7 +9,9 @@ using Noctis.Mobile.Services.Account;
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>Where the remote stands with the computer.</summary>
-public enum RemoteStatus { Connecting, Ready, Unreachable, NotAllowed, Outdated, SignedOut, CertificateChanged }
+/// <remarks><see cref="ServerError"/>: the computer answered, but with an HTTP error or a reply the
+/// phone could not read (not "can't reach": it was reached).</remarks>
+public enum RemoteStatus { Connecting, Ready, Unreachable, NotAllowed, Outdated, SignedOut, CertificateChanged, ServerError }
 
 /// <summary>One of the computer's Up Next songs; a tap plays it there.</summary>
 public sealed record ComputerQueueRow(int Index, Guid Id, string Title, string Artist);
@@ -85,12 +87,14 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     /// <summary>The hero in place of the player: connecting, or why it cannot be reached.</summary>
     public bool ShowsMessage => Status != RemoteStatus.Ready;
 
-    public bool CanRetry => Status is RemoteStatus.Unreachable or RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.CertificateChanged;
+    public bool CanRetry => Status is RemoteStatus.Unreachable or RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.CertificateChanged
+        or RemoteStatus.ServerError;
 
     public string MessageTitle => Status switch
     {
         RemoteStatus.Connecting => Loc.T("Mobile.Remote.Connecting", ComputerName),
         RemoteStatus.SignedOut => Loc.T("Mobile.Remote.Title"),
+        RemoteStatus.ServerError => Loc.T("Mobile.Remote.ServerErrorTitle", ComputerName),
         _ => Loc.T("Mobile.Remote.CantReach", ComputerName),
     };
 
@@ -101,6 +105,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
         RemoteStatus.Outdated => Loc.T("Mobile.Remote.Outdated", ComputerName),
         RemoteStatus.CertificateChanged => Loc.T("Mobile.Account.Error.CertificateChanged"),
         RemoteStatus.SignedOut => Loc.T("Mobile.Account.Error.SignedOut"),
+        RemoteStatus.ServerError => Loc.T("Mobile.Remote.ServerError", ComputerName),
         _ => string.Empty,
     };
 
@@ -266,7 +271,9 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     /// moment" (a refused jump, a busy computer) leave a showing player as it is.</summary>
     private RemoteStatus Fail(Exception ex)
     {
-        var kind = ex is NoctisServerException n ? n.Kind : NoctisErrorKind.Unreachable;
+        // Anything but the service's own errors is a reply it could not make sense of (the
+        // service turns every failure to connect into Unreachable): not "can't reach".
+        var kind = ex is NoctisServerException n ? n.Kind : NoctisErrorKind.Server;
         if (ex is not NoctisServerException) DebugLog.Write("Remote", $"Ask failed: {ex.GetType().Name}");
         Status = kind switch
         {
@@ -277,6 +284,8 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
             // the pinned computer): only a new sign-in trusts a new security code.
             NoctisErrorKind.CertificateChanged => RemoteStatus.CertificateChanged,
             NoctisErrorKind.Server when Status == RemoteStatus.Ready => RemoteStatus.Ready,
+            // It answered: an HTTP error or a reply that could not be read.
+            NoctisErrorKind.Server => RemoteStatus.ServerError,
             _ => RemoteStatus.Unreachable,
         };
         return Status;
