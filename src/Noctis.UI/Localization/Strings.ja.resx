@@ -870,7 +870,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>イコライザー</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>シャッフルの後ろにイコライザーのオン/オフボタンを表示します。</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>再生時間</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>トラック表示欄に、再生中の曲の経過時間と残り時間を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>トラック表示欄に、再生中の曲の経過時間と残り時間を表示します。時間をクリックすると、代わりに全体の長さを表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>音量スライダーを常に表示</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>音量スライダーをポップアップではなく音量ボタンの横に表示します。ボタンをクリックするとミュートします。幅の狭いアイランドではポップアップを使います。</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>波形シークバー</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>シークバーに曲の波形を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
@@ -935,6 +937,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>広くするとシークバーが長くなります。リセットするにはノブをダブルクリックします。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>プレイヤーアイランドの幅をリセット</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>狭く</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1345,6 +1348,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>再生済みの曲を、キュー内の再生中の曲の上に残します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>シャッフルをオンのままにする</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>シャッフルがオンのとき、アルバム、プレイリスト、曲を再生してもオンのままで、新しい音楽をシャッフルします。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>見つからない曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>キュー内の曲のファイルがなくなっている場合、Noctis はその曲をスキップします。その曲の扱いを選んでください。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>見つからないとマーク</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -5176,6 +5181,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>オプション</value>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>残り時間と全体の長さを切り替え</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve">
     <value>再生</value>
     <comment>Text in PlaybackBarView.axaml</comment>

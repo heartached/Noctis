@@ -788,7 +788,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (Tracks.Count == 0) return;
         var tracks = InAlbumOrder(Tracks);
         DebugLogger.Info(DebugLogger.Category.Queue, "Album.Play", $"tracks={tracks.Count}, startIdx=0");
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -1219,7 +1219,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(InAlbumOrder(album.EditionTracks), 0);
+        _player.PlayAll(InAlbumOrder(album.EditionTracks));
     }
 
     /// <summary>Related tile hover button: Pause/resume when this album is the loaded one,

@@ -389,6 +389,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// panel and the mini player list what played above Now Playing, and the last song stays
     /// loaded when the queue runs out, so Previous still has somewhere to go. Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
+    /// <summary>Keep Shuffle On (Settings > Playback, Discord 11-23): while Shuffle is on, starting
+    /// an album, playlist or song list keeps it on and plays the new list shuffled (see
+    /// <see cref="ReplaceQueueAndPlay(IList{Track}, int)"/> and <see cref="PlayAll"/>). Off by default:
+    /// a new list starts in its own order and turns Shuffle off.</summary>
+    [ObservableProperty] private bool _keepShuffleOn;
 
     /// <summary>Discord (Luwi): the Queue panel's History chip, a shortcut to Keep Played Songs
     /// so what just played shows above Now Playing without a trip to Settings. Goes through
@@ -466,6 +471,22 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     public bool IslandLyricsButtonVisible => IslandShowLyricsButton || IsLyricsPageActive;
     /// <summary>Elapsed / remaining time inside the island's track box (Settings → Player).</summary>
     [ObservableProperty] private bool _islandShowTime;
+    /// <summary>The island time's lower line: the song's total length instead of the time left
+    /// (Discord 11-23). Driven by Settings; <see cref="ToggleIslandTimeDisplay"/> flips it.</summary>
+    [ObservableProperty] private bool _islandTimeShowsTotal;
+    /// <summary>The island shows its volume slider inline beside the Volume button instead of
+    /// the pop-up (Settings › Player Island, Discord 11-23); the button then mutes on click.</summary>
+    [ObservableProperty] private bool _islandInlineVolume;
+
+    /// <summary>A click on the island's time swaps its lower line between time left and total
+    /// length. Goes through Settings when attached, which saves it and pushes it back here.</summary>
+    [RelayCommand]
+    private void ToggleIslandTimeDisplay()
+    {
+        var total = !IslandTimeShowsTotal;
+        if (_settings != null) _settings.PlaybackBarTimeShowsTotal = total;
+        else IslandTimeShowsTotal = total;
+    }
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IslandSkipLabel))]
@@ -1750,7 +1771,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         var queue = new List<Track> { seed };
         queue.AddRange(batch);
         // ReplaceQueueAndPlay clears IsRadioActive/_radioSeed; re-arm radio afterward.
-        ReplaceQueueAndPlay(queue, 0);
+        // Radio plays its own order, Keep Shuffle On or not.
+        ReplaceQueueAndPlay(queue, 0, unshuffled: null);
         _radioSeed = seed;
         IsRadioActive = true;
         IsShuffleEnabled = false;
@@ -1918,8 +1940,33 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     /// Replaces the entire queue and starts playing from the given index.
     /// Called when the user double-clicks a track in any library view.
     /// </summary>
-    public void ReplaceQueueAndPlay(IList<Track> tracks, int startIndex) =>
+    /// <remarks>With Keep Shuffle On and Shuffle on, the picked song plays first and the rest of
+    /// <paramref name="tracks"/> follows shuffled, Shuffle staying on (as <see cref="PlayFromRow"/>).</remarks>
+    public void ReplaceQueueAndPlay(IList<Track> tracks, int startIndex)
+    {
+        if (KeepsShuffle(tracks))
+        {
+            if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
+            PlayShuffled(tracks, first: tracks[startIndex], avoidRecentlyPlayed: true);
+            return;
+        }
         ReplaceQueueAndPlay(tracks, startIndex, unshuffled: null);
+    }
+
+    /// <summary>
+    /// A Play button for a whole list (album, playlist, folder, genre, artist): plays it from its
+    /// first song in order. With Keep Shuffle On and Shuffle on, the Shuffle toggle says shuffle,
+    /// so it plays the list shuffled from a random song instead and Shuffle stays on.
+    /// </summary>
+    public void PlayAll(IList<Track> tracks)
+    {
+        if (KeepsShuffle(tracks))
+            PlayShuffled(tracks, avoidRecentlyPlayed: true);
+        else
+            ReplaceQueueAndPlay(tracks, 0, unshuffled: null);
+    }
+
+    private bool KeepsShuffle(IList<Track> tracks) => KeepShuffleOn && IsShuffleEnabled && tracks.Count > 0;
 
     /// <summary>
     /// A song row double-clicked in a list. With Shuffle on it plays that song, then the rest of

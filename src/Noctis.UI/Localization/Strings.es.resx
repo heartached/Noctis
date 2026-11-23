@@ -320,7 +320,9 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Ecualizador</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Un botón para activar o desactivar el ecualizador después de Aleatorio.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Tiempo de reproducción</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Tiempo transcurrido y restante de la canción actual en el cuadro de la pista.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Tiempo transcurrido y restante de la canción actual en el cuadro de la pista. Haz clic en el tiempo para ver la duración total.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Mostrar siempre el control de volumen</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>El control de volumen aparece junto al botón de volumen en lugar de en una ventana emergente. Haz clic en el botón para silenciar. Una isla estrecha sigue usando la ventana emergente.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Barra de progreso con forma de onda</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Muestra la forma de onda de la canción en la barra de progreso.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Opacidad del recuadro de la canción</value><comment>Text in SettingsView.axaml</comment></data>
@@ -361,6 +363,7 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Muestra una pequeña píldora de Cola cuando no suena nada.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Anchura de la isla de reproducción</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Más ancha da más espacio a la barra de progreso. Haz doble clic en el control para restablecer.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Restablecer la anchura de la isla de reproducción</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Más estrecha</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Más ancha</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Progreso de la canción en la barra de tareas</value><comment>Text in SettingsView.axaml</comment></data>
@@ -513,6 +516,8 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Cuando la cola termine, sigue reproduciendo canciones similares.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Conservar canciones reproducidas</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Las canciones reproducidas se quedan en la cola, encima de la que suena.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Mantener el modo aleatorio</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Si el modo aleatorio está activado, sigue activado al reproducir un álbum, una lista o una canción, y mezcla la nueva música.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Canciones que faltan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Si el archivo de una canción en cola ya no está, Noctis la salta. Elige qué pasa con ella.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Marcar como no encontrada</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1926,6 +1931,7 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   <data name="PlaybackBar.ViewNamedArtistTip" xml:space="preserve"><value>Ver {0}</value><comment>Island artist link tooltip while the pointer is over one name of a multi-artist credit; {0} = that artist's name</comment></data>
   <data name="PlaybackBar.FavoriteTip" xml:space="preserve"><value>Favorita</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.OptionsTip" xml:space="preserve"><value>Opciones</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>Mostrar tiempo restante o duración total</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve"><value>Reproducir</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pause" xml:space="preserve"><value>Pausa</value><comment>Play/pause button tooltip and accessible name while playing</comment></data>
   <data name="PlaybackBar.PlayNext" xml:space="preserve"><value>Reproducir a continuación</value><comment>Header in PlaybackBarView.axaml</comment></data>

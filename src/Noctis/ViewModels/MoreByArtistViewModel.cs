@@ -78,7 +78,7 @@ public partial class MoreByArtistViewModel : ViewModelBase, ISearchable
         if (_player == null) return;
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.PlayAll(tracks);
     }
 
     [RelayCommand]

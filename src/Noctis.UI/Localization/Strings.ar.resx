@@ -870,7 +870,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>معادل الصوت</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>زر لتشغيل معادل الصوت وإيقافه بعد زر التشغيل العشوائي.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>وقت التشغيل</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>الوقت المنقضي والمتبقي للمقطع الحالي في مربع المقطع.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>الوقت المنقضي والمتبقي للمقطع الحالي في مربع المقطع. انقر على الوقت لعرض المدة الكاملة بدلًا منه.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>إظهار شريط مستوى الصوت دائمًا</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>يظهر شريط مستوى الصوت بجانب زر الصوت بدلًا من النافذة المنبثقة. انقر على الزر لكتم الصوت. الجزيرة الضيقة تستخدم النافذة المنبثقة.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>شريط تقدم بشكل موجي</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>يعرض الشكل الموجي للأغنية في شريط التقدم.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
@@ -935,6 +937,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>العرض الأكبر يمنح شريط التقدم مساحة أكبر. انقر نقرًا مزدوجًا على المقبض لإعادة الضبط.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>إعادة تعيين عرض جزيرة التشغيل</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>أضيق</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1345,6 +1348,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>تبقى الأغاني التي شُغّلت في قائمة الانتظار فوق الأغنية قيد التشغيل.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>إبقاء التشغيل العشوائي مفعّلًا</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>عندما يكون التشغيل العشوائي مفعّلًا، يبقى مفعّلًا عند تشغيل ألبوم أو قائمة تشغيل أو أغنية، وتُشغَّل الموسيقى الجديدة عشوائيًا.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>الأغاني المفقودة</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>إذا اختفى ملف أغنية في قائمة الانتظار، يتخطاها Noctis. اختر ما يحدث لها.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>وضع علامة «مفقودة»</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -5176,6 +5181,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>خيارات</value>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>عرض الوقت المتبقي أو المدة الكاملة</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve">
     <value>تشغيل</value>
     <comment>Text in PlaybackBarView.axaml</comment>

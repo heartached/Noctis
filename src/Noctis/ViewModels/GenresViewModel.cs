@@ -141,7 +141,7 @@ public partial class GenresViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (row == null) return;
         var tracks = TracksInGenre(_library.Albums, row.Name);
-        if (tracks.Count > 0) _player.ReplaceQueueAndPlay(tracks, 0);
+        if (tracks.Count > 0) _player.PlayAll(tracks);
     }
 
     [RelayCommand]

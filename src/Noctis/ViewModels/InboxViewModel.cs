@@ -118,7 +118,7 @@ public partial class InboxViewModel : ViewModelBase, ISearchable
     [RelayCommand(CanExecute = nameof(HasWaiting))]
     private void PlayAll()
     {
-        if (Tracks.Count > 0) _player.ReplaceQueueAndPlay(Tracks.ToList(), 0);
+        if (Tracks.Count > 0) _player.PlayAll(Tracks.ToList());
     }
 
     [RelayCommand(CanExecute = nameof(HasWaiting))]

@@ -3716,6 +3716,17 @@
                                               IsChecked="{Binding PlaybackBarShowTime}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Discord 11-23: the volume slider stays on the island (PlaybackBarView.UpdateInlineVolume). -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.InlineVolumeSlider}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.InlineVolumeSliderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.InlineVolumeSlider}"
+                                              IsChecked="{Binding PlaybackBarInlineVolume}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
             <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->
@@ -3762,11 +3773,41 @@
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="{loc:T Settings.PlayerIslandWidth}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.HowWidePlayerIsland}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.PlayerIslandWidth}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.HowWidePlayerIsland}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <!-- Discord 11-23: shown (faded in) only while the width is the user's own.
+                             Always laid out, so the row never reflows as it comes and goes. -->
+                        <Button Grid.Column="1" x:Name="IslandWidthResetButton"
+                                Classes="pill island-width-reset"
+                                Classes.custom="{Binding IsPlaybackBarWidthCustom}"
+                                Content="{loc:T Settings.Reset}" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Top" Margin="12,0,0,0"
+                                AutomationProperties.Name="{loc:T Settings.ResetPlayerIslandWidth}"
+                                IsEnabled="{Binding IsPlaybackBarWidthCustom}"
+                                Command="{Binding ResetPlaybackBarWidthCommand}">
+                            <Button.Styles>
+                                <Style Selector="Button.island-width-reset">
+                                    <Setter Property="Opacity" Value="0"/>
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                                                <DoubleTransition.Easing>
+                                                    <CubicEaseOut/>
+                                                </DoubleTransition.Easing>
+                                            </DoubleTransition>
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Button.island-width-reset.custom">
+                                    <Setter Property="Opacity" Value="1"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                    </Grid>
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.Narrower}"
                                    FontSize="12" Opacity="0.7"
@@ -5174,6 +5215,20 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.KeepPlayedInQueue}"
                                           IsChecked="{Binding KeepPlayedInQueue}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord 11-23: starting new music keeps Shuffle on (PlayerViewModel.KeepShuffleOn). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.KeepShuffleOn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.KeepShuffleOnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.KeepShuffleOn}"
+                                          IsChecked="{Binding KeepShuffleOn}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>

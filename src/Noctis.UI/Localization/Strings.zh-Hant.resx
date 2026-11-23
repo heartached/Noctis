@@ -870,7 +870,9 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>等化器</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>在隨機播放後加入一個 EQ 開關按鈕。</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>播放時間</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>在曲目框中顯示目前曲目的已播放時間和剩餘時間。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>在曲目框中顯示目前曲目的已播放時間和剩餘時間。點擊時間可改為顯示總長度。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>永遠顯示音量滑桿</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>音量滑桿顯示在音量按鈕旁邊，而不是彈出。點擊按鈕可靜音。播放島較窄時仍使用彈出視窗。</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>波形進度列</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>在進度列中顯示歌曲的波形。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
@@ -935,6 +937,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>越寬，進度列的空間越大。按兩下滑桿可重設。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>重設播放島寬度</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve">
     <value>更窄</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1345,6 +1348,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>已播放的歌曲會保留在佇列中目前歌曲的上方。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>保持隨機播放</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>隨機播放開啟時，播放專輯、播放清單或歌曲會保持開啟，並隨機播放新的音樂。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>遺失的歌曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>如果佇列中某首歌曲的檔案已不存在，Noctis 會略過它。選擇如何處理該歌曲。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>標示為遺失</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -5176,6 +5181,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
     <value>選項</value>
     <comment>ToolTip.Tip in PlaybackBarView.axaml</comment>
   </data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>顯示剩餘時間或總長度</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve">
     <value>播放</value>
     <comment>Text in PlaybackBarView.axaml</comment>

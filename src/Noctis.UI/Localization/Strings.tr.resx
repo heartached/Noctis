@@ -317,7 +317,9 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Ekolayzer</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Karıştır'ın ardından bir EQ açma/kapama düğmesi.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Çalma süresi</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Parça kutusunda geçerli parçanın geçen ve kalan süresi.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Parça kutusunda geçerli parçanın geçen ve kalan süresi. Bunun yerine toplam uzunluğu göstermek için süreye tıklayın.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Ses Kaydırıcısını Her Zaman Göster</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ses kaydırıcısı açılır pencere yerine Ses düğmesinin yanında durur. Sesi kapatmak için düğmeye tıklayın. Dar bir ada yine açılır pencereyi kullanır.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Dalga formlu ilerleme çubuğu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Şarkının dalga formunu ilerleme çubuğunda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Parça Kutusu Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
@@ -358,6 +360,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Hiçbir şey çalmazken küçük bir Kuyruk kapsülü gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Oynatıcı Adası Genişliği</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Daha geniş olunca ilerleme çubuğuna daha çok yer kalır. Sıfırlamak için kaydırıcıya çift tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Oynatıcı Adası Genişliğini Sıfırla</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Daha dar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Daha geniş</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Görev Çubuğunda Şarkı İlerlemesi</value><comment>Text in SettingsView.axaml</comment></data>
@@ -516,6 +519,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
     <value>Çalınan şarkılar kuyrukta çalan şarkının üstünde kalır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Karıştırmayı Açık Tut</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Karıştırma açıkken bir albüm, çalma listesi veya şarkı çalmak onu açık tutar ve yeni müziği karıştırır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Eksik Şarkılar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Kuyruktaki bir şarkının dosyası yoksa Noctis onu atlar. Ona ne olacağını seç.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Eksik Olarak İşaretle</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1926,6 +1931,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="PlaybackBar.ViewNamedArtistTip" xml:space="preserve"><value>{0} sayfasına git</value><comment>Island artist link tooltip while the pointer is over one name of a multi-artist credit; {0} = that artist's name</comment></data>
   <data name="PlaybackBar.FavoriteTip" xml:space="preserve"><value>Favori</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.OptionsTip" xml:space="preserve"><value>Seçenekler</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>Kalan süreyi veya toplam uzunluğu göster</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve"><value>Çal</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pause" xml:space="preserve"><value>Duraklat</value><comment>Play/pause button tooltip and accessible name while playing</comment></data>
   <data name="PlaybackBar.PlayNext" xml:space="preserve"><value>Sonraki Çal</value><comment>Header in PlaybackBarView.axaml</comment></data>

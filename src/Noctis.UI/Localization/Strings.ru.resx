@@ -323,7 +323,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Эквалайзер</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Кнопка включения эквалайзера после кнопки «Перемешать».</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Время воспроизведения</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Прошедшее и оставшееся время текущего трека в блоке трека.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Прошедшее и оставшееся время текущего трека в блоке трека. Нажмите на время, чтобы вместо этого показать общую длительность.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Всегда показывать ползунок громкости</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ползунок громкости находится рядом с кнопкой громкости, а не во всплывающем окне. Нажатие на кнопку выключает звук. Узкий островок по-прежнему использует всплывающее окно.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Волновая форма на полосе перемотки</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Показывать волновую форму песни на полосе перемотки островка плеера и мини-плеера. Она рассчитывается в фоне для текущей и следующей песни и затем запоминается.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Непрозрачность блока трека</value><comment>Text in SettingsView.axaml</comment></data>
@@ -366,6 +368,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Когда ничего не играет, вместо плеера показывать небольшую капсулу «Ничего не играет · Очередь».</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Ширина островка плеера</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Чем шире, тем больше места для полосы перемотки. Края островка можно также перетаскивать. Дважды щёлкните по ползунку, чтобы сбросить.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Сбросить ширину островка плеера</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Уже</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Шире</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Прогресс песни на панели задач</value><comment>Text in SettingsView.axaml</comment></data>
@@ -518,6 +521,8 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Когда очередь закончится, продолжать похожими песнями.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Сохранять прослушанные песни</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Прослушанные песни остаются в списке очереди над текущей, а последняя песня остаётся загруженной, когда очередь закончится.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Не выключать перемешивание</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Если перемешивание включено, оно остаётся включённым при запуске альбома, плейлиста или песни, и новая музыка перемешивается.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Отсутствующие песни</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Если файл песни в очереди перемещён или удалён, воспроизведение переходит к следующей песне, которую можно воспроизвести. Выберите, что делать с отсутствующей песней.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Отмечать как отсутствующие</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1933,6 +1938,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="PlaybackBar.ViewNamedArtistTip" xml:space="preserve"><value>Перейти: {0}</value><comment>Island artist link tooltip while the pointer is over one name of a multi-artist credit; {0} = that artist's name</comment></data>
   <data name="PlaybackBar.FavoriteTip" xml:space="preserve"><value>В избранное</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.OptionsTip" xml:space="preserve"><value>Параметры</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>Показать оставшееся время или общую длительность</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve"><value>Воспроизвести</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pause" xml:space="preserve"><value>Пауза</value><comment>Play/pause button tooltip and accessible name while playing</comment></data>
   <data name="PlaybackBar.PlayNext" xml:space="preserve"><value>Играть следующим</value><comment>Header in PlaybackBarView.axaml</comment></data>

@@ -240,7 +240,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
             .ThenBy(t => t.TrackNumber)
             .ToList();
-        _player.ReplaceQueueAndPlay(ordered, 0);
+        _player.PlayAll(ordered);
     }
 
     // ── Time-aware rows (local play history) ──
@@ -1245,7 +1245,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
+        _player.PlayAll(album.EditionTracks);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1257,7 +1257,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
         var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
-        _player.ReplaceQueueAndPlay(ordered, 0);
+        _player.PlayAll(ordered);
     }
 
     [RelayCommand]

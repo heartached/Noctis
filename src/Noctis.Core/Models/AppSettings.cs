@@ -420,6 +420,11 @@ public class AppSettings : IJsonOnDeserializing
     /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
     public bool KeepPlayedInQueue { get; set; }
 
+    /// <summary>Keep Shuffle On (Discord 11-23): while Shuffle is on, playing an album, playlist or
+    /// song list keeps it on and shuffles the new music. Off by default (a new list plays in order
+    /// and turns Shuffle off).</summary>
+    public bool KeepShuffleOn { get; set; }
+
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when playback passes over it; off (the default) keeps it there, marked missing.</summary>
     public bool RemoveMissingFromQueue { get; set; }
@@ -1024,6 +1029,14 @@ public class AppSettings : IJsonOnDeserializing
     /// the island's track box, stacked beside the title. Off by default — the stock LCD
     /// carries no time labels.</summary>
     public bool PlaybackBarShowTime { get; set; }
+
+    /// <summary>Discord 11-23: clicking the island's time swaps its lower line between the time
+    /// left ("-2:41", the default) and the song's total length ("4:05").</summary>
+    public bool PlaybackBarTimeShowsTotal { get; set; }
+
+    /// <summary>Discord 11-23: the island shows a small volume slider next to its Volume button
+    /// all the time instead of popping one up (the button then mutes on click). Off by default.</summary>
+    public bool PlaybackBarInlineVolume { get; set; }
 
     /// <summary>GitHub #93: the island and mini player seek bars draw the track's waveform
     /// (decoded in the background with ffmpeg, cached under cache/waveforms). Off by

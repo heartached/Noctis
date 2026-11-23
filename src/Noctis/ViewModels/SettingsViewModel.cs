@@ -1364,6 +1364,11 @@ public partial class SettingsViewModel : ViewModelBase
     }
     [ObservableProperty] private bool _playbackBarShowIdlePill;
     [ObservableProperty] private bool _playbackBarShowTime;
+    /// <summary>The island time's lower line shows the total length instead of the time left
+    /// (a click on the time swaps it, Discord 11-23).</summary>
+    [ObservableProperty] private bool _playbackBarTimeShowsTotal;
+    /// <summary>Always show the volume slider on the island (Discord 11-23). Off by default.</summary>
+    [ObservableProperty] private bool _playbackBarInlineVolume;
     /// <summary>GitHub #93: waveform in the island / mini player seek bars (off by default).</summary>
     [ObservableProperty] private bool _waveformSeekBarEnabled;
     /// <summary>GitHub #181: waveform in the lyrics page's progress bar (off by default).</summary>
@@ -2497,8 +2502,20 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
     /// <summary>Player island width in DIPs (GitHub #50): the Player page slider and the
     /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
-    [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPlaybackBarWidthCustom))]
+    private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarDefaultWidth = 536;
+
+    /// <summary>The island has a width of the user's own (slider or edge-grip drag): shows the
+    /// Reset button beside the Player Island Width slider (Discord 11-23; the only way back was
+    /// double-clicking the island's invisible edge grip).</summary>
+    public bool IsPlaybackBarWidthCustom => Math.Abs(PlaybackBarIslandWidth - PlaybackBarDefaultWidth) >= 0.5;
+
+    /// <summary>Player Island Width ▸ Reset: back to the stock width, saved and pushed to the bar
+    /// like a slider move (the bar adds the extra buttons' room to the stock width itself).</summary>
+    [RelayCommand]
+    private void ResetPlaybackBarWidth() => PlaybackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarMinWidth = AppSettings.PlaybackBarMinWidth;
     public const double PlaybackBarMaxWidth = AppSettings.PlaybackBarMaxWidth;
 
@@ -2803,6 +2820,9 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Keep played songs in the queue (GitHub #124). Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
+
+    /// <summary>Keep Shuffle On (Discord 11-23): starting new music leaves Shuffle on. Off by default.</summary>
+    [ObservableProperty] private bool _keepShuffleOn;
 
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when it is passed over, instead of staying in it marked. Off by default.</summary>
@@ -3788,6 +3808,8 @@ public partial class SettingsViewModel : ViewModelBase
             SetQuickPlaylistSlots(_settings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
+            PlaybackBarTimeShowsTotal = _settings.PlaybackBarTimeShowsTotal;
+            PlaybackBarInlineVolume = _settings.PlaybackBarInlineVolume;
             WaveformSeekBarEnabled = _settings.WaveformSeekBarEnabled;
             LyricsWaveformSeekBarEnabled = _settings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
@@ -3958,6 +3980,7 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
+            KeepShuffleOn = _settings.KeepShuffleOn;
             RemoveMissingFromQueue = _settings.RemoveMissingFromQueue;
             var queueRows = QueueRowLayout.FromSettings(_settings);
             QueueRowLine1 = queueRows.Line1.ToString();
@@ -4412,6 +4435,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarQuickPlaylistIds = _quickPlaylistSlots.ToList();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
+        _settings.PlaybackBarTimeShowsTotal = PlaybackBarTimeShowsTotal;
+        _settings.PlaybackBarInlineVolume = PlaybackBarInlineVolume;
         _settings.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _settings.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
@@ -4560,6 +4585,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
+        _settings.KeepShuffleOn = KeepShuffleOn;
         _settings.RemoveMissingFromQueue = RemoveMissingFromQueue;
         var queueRows = CurrentQueueRowLayout;
         _settings.QueueRowLine1 = queueRows.Line1.ToString();
@@ -4788,6 +4814,7 @@ public partial class SettingsViewModel : ViewModelBase
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
+        _player.KeepShuffleOn = KeepShuffleOn;
         _player.RemoveMissingFromQueue = RemoveMissingFromQueue;
         _player.QueueRowLayout = CurrentQueueRowLayout;
         _player.QueuePanelWidth = QueuePanelWidth;
@@ -4817,6 +4844,8 @@ public partial class SettingsViewModel : ViewModelBase
         _player.ExclusiveModeEnabled = ExclusiveAudioEnabled;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
+        _player.IslandTimeShowsTotal = PlaybackBarTimeShowsTotal;
+        _player.IslandInlineVolume = PlaybackBarInlineVolume;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -6456,6 +6485,18 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnPlaybackBarInlineVolumeChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarTimeShowsTotalChanged(bool value)
+    {
+        if (_player != null) _player.IslandTimeShowsTotal = value;
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnWaveformSeekBarEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
@@ -7018,6 +7059,13 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnKeepPlayedInQueueChanged(bool value)
     {
         if (_player != null) _player.KeepPlayedInQueue = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnKeepShuffleOnChanged(bool value)
+    {
+        if (_player != null) _player.KeepShuffleOn = value;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -8897,6 +8945,8 @@ public partial class SettingsViewModel : ViewModelBase
             SetQuickPlaylistSlots(defaultSettings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
+            PlaybackBarTimeShowsTotal = defaultSettings.PlaybackBarTimeShowsTotal;
+            PlaybackBarInlineVolume = defaultSettings.PlaybackBarInlineVolume;
             WaveformSeekBarEnabled = defaultSettings.WaveformSeekBarEnabled;
             LyricsWaveformSeekBarEnabled = defaultSettings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
@@ -9042,6 +9092,7 @@ public partial class SettingsViewModel : ViewModelBase
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
+            KeepShuffleOn = defaultSettings.KeepShuffleOn;
             RemoveMissingFromQueue = defaultSettings.RemoveMissingFromQueue;
             QueueRowLine1 = defaultSettings.QueueRowLine1;
             QueueRowLine1Extra = defaultSettings.QueueRowLine1Extra;

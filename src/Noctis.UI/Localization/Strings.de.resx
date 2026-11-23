@@ -322,7 +322,9 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Equalizer</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Eine EQ-An/Aus-Schaltfläche nach Zufällig.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Wiedergabezeit</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Verstrichene und restliche Zeit des aktuellen Titels in der Titelbox.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Verstrichene und restliche Zeit des aktuellen Titels in der Titelbox. Klicke auf die Zeit, um stattdessen die Gesamtlänge zu sehen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Lautstärkeregler immer anzeigen</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Der Lautstärkeregler sitzt neben der Lautstärke-Taste, statt aufzuklappen. Ein Klick auf die Taste schaltet stumm. Eine schmale Insel nutzt weiter das Pop-up.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Wellenform-Suchleiste</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Zeigt die Wellenform des Songs in Player-Insel und Mini-Player. Wird im Hintergrund für aktuelle und nächste Songs berechnet und dann gemerkt.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Titelbox-Deckkraft</value><comment>Text in SettingsView.axaml</comment></data>
@@ -365,6 +367,7 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Solange nichts spielt, eine kleine „Nichts spielt · Warteschlange“-Pille statt des Players zeigen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Player-Insel-Breite</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Breiter gibt der Suchleiste mehr Raum. Du kannst auch an den Inselrändern ziehen. Doppelklick auf den Regler setzt zurück.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Player-Insel-Breite zurücksetzen</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Schmaler</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Breiter</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Songfortschritt in der Taskleiste</value><comment>Text in SettingsView.axaml</comment></data>
@@ -517,6 +520,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.WhenQueueEndsKeep" xml:space="preserve"><value>Wenn die Warteschlange endet, ähnliche Songs weiterspielen.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueue" xml:space="preserve"><value>Gespielte Songs behalten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Gespielte Songs bleiben oben in der Warteschlange, über dem laufenden Song, und der letzte Song bleibt geladen, wenn die Warteschlange endet.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Zufallswiedergabe beibehalten</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Wenn die Zufallswiedergabe an ist, bleibt sie beim Abspielen eines Albums, einer Playlist oder eines Songs an und mischt die neue Musik.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Fehlende Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Wenn die Datei eines angereihten Songs verschoben oder gelöscht wurde, springt die Wiedergabe zum nächsten abspielbaren Song. Wähle, was mit dem fehlenden Song passiert.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Als fehlend markieren</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1928,6 +1933,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="PlaybackBar.ViewNamedArtistTip" xml:space="preserve"><value>{0} ansehen</value><comment>Island artist link tooltip while the pointer is over one name of a multi-artist credit; {0} = that artist's name</comment></data>
   <data name="PlaybackBar.FavoriteTip" xml:space="preserve"><value>Favorit</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.OptionsTip" xml:space="preserve"><value>Optionen</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>Restzeit oder Gesamtlänge anzeigen</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve"><value>Abspielen</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pause" xml:space="preserve"><value>Pause</value><comment>Play/pause button tooltip and accessible name while playing</comment></data>
   <data name="PlaybackBar.PlayNext" xml:space="preserve"><value>Als Nächstes abspielen</value><comment>Header in PlaybackBarView.axaml</comment></data>
