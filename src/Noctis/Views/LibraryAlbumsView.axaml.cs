@@ -698,7 +698,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         var clamped = new Point(Math.Clamp(inViewport.X, 0, sv.Viewport.Width), Math.Clamp(inViewport.Y, 0, sv.Viewport.Height));
         if (sv.TranslatePoint(clamped, band.Content) is not { } end) return;
 
-        var hits = band.Masonry ? MasonryPanel.AlbumsIn(Between(band.Start, end).Inflate(0.5)) : RowGridHits(band, end);
+        var hits = band.Masonry ? MasonryHits(band, end) : RowGridHits(band, end);
         _selectedAlbums.Clear();
         _selectedAlbums.UnionWith(band.Base);
         _selectedAlbums.UnionWith(hits);
@@ -715,6 +715,14 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             BandRect.Height = Math.Max(1, r.Height);
             BandRect.IsVisible = true;
         }
+    }
+
+    /// <summary>The Masonry cards the band meets. The panel takes its own coordinates, and a
+    /// genre page's Songs section sits above it in the scroller's content (GitHub #259).</summary>
+    private List<Album> MasonryHits(BandState band, Point end)
+    {
+        var offset = MasonryPanel.TranslatePoint(default, band.Content) ?? default;
+        return MasonryPanel.AlbumsIn(Between(band.Start - offset, end - offset).Inflate(0.5));
     }
 
     /// <summary>Albums of the rows and columns between the band's two ends. The start's row and

@@ -970,6 +970,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>벽돌형 앨범 그리드</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>커버가 실제 높이에 따라 열마다 쌓여 짧은 캡션에도 빈틈이 생기지 않습니다.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>앨범 카드에 곡 수 표시</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>앨범마다 설명에 곡 수도 함께 표시합니다.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>앨범 간격 넓게</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>커버 사이 간격을 넓힙니다. 각 행은 캡션에 맞춰 높이가 정해집니다.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>마우스 오버 시 앨범 확대</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -9114,6 +9116,10 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>등록되었습니다. 설정 → 앱 → 기본 앱에서 Noctis를 선택하거나 노래를 마우스 오른쪽 버튼으로 클릭 → 연결 프로그램을 선택하세요.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>파일 형식을 업데이트할 수 없습니다: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>아티스트 다시 묶는 중…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>장르 태그 구분자</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>하나의 장르 태그를 여러 장르로 나눕니다. "Rock, Pop" 태그가 있는 곡은 Rock과 Pop 모두에 표시됩니다. 세미콜론은 항상 구분합니다. 파일은 변경되지 않습니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>구분자 추가 (예: /)</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>장르 다시 묶는 중…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>원래 아티스트 정보 복원 중…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>아티스트 정보를 업데이트할 수 없습니다.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>아티스트 정보가 이미 최신입니다.</value><comment>Settings status line</comment></data>

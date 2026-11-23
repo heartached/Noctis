@@ -970,6 +970,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>メイソンリー形式のアルバムグリッド</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>カバーを実際の高さに合わせて列ごとに積み重ねるので、短いキャプションでも隙間ができません。</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>アルバムカードに曲数を表示</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>各アルバムの説明に曲数も表示します。</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>アルバムの間隔を広げる</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>カバーの間隔を広げます。各行の高さはキャプションに合わせて調整されます。</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>ホバー時にアルバムを拡大</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -9114,6 +9116,10 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>登録しました。設定 → アプリ → 既定のアプリで Noctis を選ぶか、曲を右クリック → プログラムから開くを選んでください。</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>ファイルの種類を更新できませんでした: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>アーティストを再グループ化中…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>ジャンルタグの区切り文字</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>1つのジャンルタグを複数のジャンルに分けます。「Rock, Pop」のタグが付いた曲は Rock と Pop の両方に表示されます。セミコロンは常に区切り文字です。ファイルは変更されません。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>区切り文字を追加 (例: /)</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>ジャンルを再グループ化中…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>元のアーティスト表記を復元中…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>アーティスト表記を更新できませんでした。</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>アーティスト表記はすでに最新です。</value><comment>Settings status line</comment></data>

@@ -372,6 +372,8 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Cinco portadas por fila. Desactívalo para elegir tu propio tamaño de portada.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Cuadrícula de álbumes tipo mosaico</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Las portadas se apilan por columna según su altura real, así los títulos cortos no dejan huecos.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>Mostrar el número de canciones en los álbumes</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>El texto bajo cada álbum indica también cuántas canciones tiene.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Más espacio entre álbumes</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>Más espacio entre portadas. Cada fila se ajusta a sus propios títulos.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Zoom al pasar el cursor sobre álbumes</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -4124,6 +4126,10 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registrado. Elige Noctis en Configuración → Aplicaciones → Aplicaciones predeterminadas, o haz clic derecho en una canción → Abrir con.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>No se pudieron actualizar los tipos de archivo: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Reagrupando artistas…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Separadores de la etiqueta de género</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Divide una etiqueta de género en varios, así una canción con «Rock, Pop» aparece en Rock y en Pop. El punto y coma siempre separa. Tus archivos no se modifican.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Añade un separador, p. ej. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Reagrupando géneros…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Restaurando los créditos de artista originales…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>No se pudieron actualizar los créditos de artista.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Los créditos de artista ya están al día.</value><comment>Settings status line</comment></data>

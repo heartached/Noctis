@@ -970,6 +970,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>瀑布流专辑网格</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>封面按实际高度逐列堆叠，较短的标题不会留下空隙。</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>在专辑卡片上显示歌曲数</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>每张专辑的说明文字也会显示歌曲数。</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>加大专辑间距</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>封面之间留出更多空间。每行高度随其标题自适应。</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>悬停放大专辑</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -9114,6 +9116,10 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>已注册。在“设置 → 应用 → 默认应用”中选择 Noctis，或右键单击歌曲 → 打开方式。</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>无法更新文件类型：{0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>正在重新分组艺人…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>流派标签分隔符</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>将一个流派标签拆分为多个流派，标为“Rock, Pop”的歌曲会同时出现在 Rock 和 Pop 下。分号始终用作分隔。不会更改你的文件。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>添加分隔符，例如 /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>正在重新分组流派…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>正在恢复原始艺人信息…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>无法更新艺人信息。</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>艺人信息已是最新。</value><comment>Settings status line</comment></data>

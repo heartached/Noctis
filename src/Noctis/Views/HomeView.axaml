@@ -248,16 +248,16 @@
                     VerticalContentAlignment="Top"
                     helpers:DragFileBehavior.EnableFileDrag="True"
                     ContextRequested="OnRecentAlbumContextRequested"
-                    Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
+                    Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).OpenAlbumCommand}"
                     CommandParameter="{Binding}">
                 <!-- Tile chrome: Button.home-album-tile styles (1.6.9's 4px a side by default; 3 margin
                      + 6 padding with wide spacing, GitHub #210, where the rows sit 5px outside the
                      section so the covers still line up). Width pinned to the cover: the WrapPanel measures tiles unbounded, so
                      without it a long title never wraps and the tile grows past the cover. -->
                 <StackPanel Spacing="0"
-                            Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}">
-                    <Border Width="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
-                            Height="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
+                            Width="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AlbumTileSize}">
+                    <Border Width="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
+                            Height="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).AlbumTileSize}"
                             CornerRadius="6"
                             ClipToBounds="True"
                             Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
@@ -276,7 +276,7 @@
                             <!-- Hover overlay (09-13): dim + Play/Pause + dots; styles in Styles.axaml -->
                             <Border Classes="tile-dim" />
                             <Button Classes="tile-play"
-                                    Command="{Binding $parent[ItemsControl].((vm:HomeViewModel)DataContext).TogglePlayAlbumCommand}"
+                                    Command="{Binding $parent[UserControl].((vm:HomeViewModel)DataContext).TogglePlayAlbumCommand}"
                                     CommandParameter="{Binding}">
                                 <Panel>
                                     <Viewbox Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="1,0,0,0" IsVisible="{Binding !IsNowPlaying}"><Path Data="{StaticResource PlayIcon}" Fill="White" /></Viewbox>
@@ -318,7 +318,7 @@
                     <!-- Subtitle; the heart lands here instead when the title wraps -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
                         <TextBlock Grid.Column="0"
-                                   Text="{Binding TileSubtitle}"
+                                   Text="{Binding CardCaption}"
                                    FontSize="12"
                                    FontWeight="Bold"
                                    Opacity="0.55"
@@ -420,10 +420,10 @@
             <Setter Property="Margin" Value="3"/>
             <Setter Property="Padding" Value="6"/>
         </Style>
-        <Style Selector="ItemsControl.home-album-row">
+        <Style Selector=":is(Control).home-album-row">
             <Setter Property="Margin" Value="0,14,0,0"/>
         </Style>
-        <Style Selector=".wide-album-gap ItemsControl.home-album-row">
+        <Style Selector=".wide-album-gap :is(Control).home-album-row">
             <Setter Property="Margin" Value="-5,9,-5,0"/>
         </Style>
         <Style Selector="Button.home-album-tile">
@@ -959,17 +959,37 @@
                         </Button>
                     </Grid>
                     <controls:CollapsibleContent IsOpen="{Binding IsRecentlyPlayedExpanded}" Lift="10" Motion="Glide">
+                        <!-- Masonry (GitHub #259): the row hands its albums to the panel below. -->
+                        <Panel>
                         <ItemsControl x:Name="AlbumsRow"
-                                      ItemsSource="{Binding RecentlyPlayedAlbums}"
                                       ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
                                       Classes="home-album-row"
+                                      IsVisible="{Binding !UseMasonry}"
                                       SizeChanged="OnAlbumsRowSizeChanged">
+                            <ItemsControl.ItemsSource>
+                                <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                                    <Binding Path="UseMasonry" />
+                                    <Binding Path="RecentlyPlayedAlbums" />
+                                </MultiBinding>
+                            </ItemsControl.ItemsSource>
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
+                        <!-- Every card realized: the page tracks the selection by tile. -->
+                        <controls:MasonryAlbumPanel x:Name="AlbumsMasonry"
+                                                    Classes="home-album-row"
+                                                    IsVisible="{Binding UseMasonry}"
+                                                    RealizeAll="True"
+                                                    Albums="{Binding RecentlyPlayedAlbums}"
+                                                    Columns="{Binding AlbumColumns}"
+                                                    ArtworkSize="{Binding AlbumTileSize}"
+                                                    ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
+                                                    ElementPrepared="OnMasonryTilePrepared"
+                                                    SizeChanged="OnAlbumsRowSizeChanged" />
+                        </Panel>
                     </controls:CollapsibleContent>
                 </StackPanel>
 
@@ -1015,17 +1035,37 @@
                         </Button>
                     </Grid>
                     <controls:CollapsibleContent IsOpen="{Binding IsNewInLibraryExpanded}" Lift="10" Motion="Glide">
+                        <!-- Masonry (GitHub #259): the row hands its albums to the panel below. -->
+                        <Panel>
                         <ItemsControl x:Name="NewInLibraryRow"
-                                      ItemsSource="{Binding NewInLibraryAlbums}"
                                       ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
                                       Classes="home-album-row"
+                                      IsVisible="{Binding !UseMasonry}"
                                       SizeChanged="OnAlbumsRowSizeChanged">
+                            <ItemsControl.ItemsSource>
+                                <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                                    <Binding Path="UseMasonry" />
+                                    <Binding Path="NewInLibraryAlbums" />
+                                </MultiBinding>
+                            </ItemsControl.ItemsSource>
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
+                        <!-- Every card realized: the page tracks the selection by tile. -->
+                        <controls:MasonryAlbumPanel x:Name="NewInLibraryMasonry"
+                                                    Classes="home-album-row"
+                                                    IsVisible="{Binding UseMasonry}"
+                                                    RealizeAll="True"
+                                                    Albums="{Binding NewInLibraryAlbums}"
+                                                    Columns="{Binding AlbumColumns}"
+                                                    ArtworkSize="{Binding AlbumTileSize}"
+                                                    ItemTemplate="{StaticResource HomeAlbumTileTemplate}"
+                                                    ElementPrepared="OnMasonryTilePrepared"
+                                                    SizeChanged="OnAlbumsRowSizeChanged" />
+                        </Panel>
                     </controls:CollapsibleContent>
                 </StackPanel>
 

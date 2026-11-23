@@ -2538,6 +2538,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Wider spacing between albums (GitHub #210's 18px gaps, rows fit their captions);
     /// off is 1.6.9's close grid. The album grid view models watch this property.</summary>
     [ObservableProperty] private bool _albumGridWideSpacing;
+    /// <summary>GitHub #258: album cards show the song count on their caption (default on).</summary>
+    [ObservableProperty] private bool _showAlbumSongCount = true;
     /// <summary>GitHub #218: hover zoom in the Albums grid.</summary>
     [ObservableProperty] private bool _albumHoverZoom;
     [ObservableProperty] private double _albumTileTargetSize = 220;
@@ -2687,6 +2689,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Text of the "add separator" box on the Library tab.</summary>
     [ObservableProperty] private string _newArtistSeparator = string.Empty;
+
+    /// <summary>GitHub #260: separators that split a genre tag into several genres, on top of
+    /// ';' (always on, so not listed). Edited as chips; every change regroups at once.</summary>
+    public ObservableCollection<string> GenreTagSeparators { get; } = new(GenreSeparators.Defaults);
+
+    /// <summary>Text of the "add genre separator" box on the Library tab.</summary>
+    [ObservableProperty] private string _newGenreSeparator = string.Empty;
 
     /// <summary>"Keep these names together": names the separators never cut apart
     /// ("Tyler, The Creator"). Edited as chips. Starts on the built-ins so a regroup that
@@ -3908,6 +3917,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
             AlbumGridMasonry = _settings.AlbumGridMasonry;
             AlbumGridWideSpacing = _settings.AlbumGridWideSpacing;
+            ShowAlbumSongCount = _settings.ShowAlbumSongCount;
             AlbumHoverZoom = _settings.AlbumHoverZoom;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -3927,6 +3937,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(_settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+            ReplaceGenreTagSeparators(_settings.GenreTagSeparators ?? GenreSeparators.Defaults.ToList());
             IgnoreLeadingWordsInArtistSort = _settings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(_settings.ArtistSortIgnoredWords);
 
@@ -4517,6 +4528,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
         _settings.AlbumGridMasonry = AlbumGridMasonry;
         _settings.AlbumGridWideSpacing = AlbumGridWideSpacing;
+        _settings.ShowAlbumSongCount = ShowAlbumSongCount;
         _settings.AlbumHoverZoom = AlbumHoverZoom;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -4535,6 +4547,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
         _settings.ArtistProtectedNames = ArtistProtectedNames.ToList();
+        _settings.GenreTagSeparators = GenreTagSeparators.ToList();
         _settings.IgnoreLeadingWordsInArtistSort = IgnoreLeadingWordsInArtistSort;
         _settings.ArtistSortIgnoredWords = ArtistSortIgnoredWords.ToList();
         _settings.LrcLibEnabled = LrcLibEnabled;
@@ -5832,6 +5845,21 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
     }
 
+    partial void OnShowAlbumSongCountChanged(bool value)
+    {
+        // GitHub #258: the captions are plain Album properties reading this switch; the shown
+        // cards are the library's Album objects, so re-raising theirs updates every grid at once.
+        Album.ShowSongCountOnCards = value;
+        RefreshAlbumCardCaptions();
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    /// <summary>Re-raises the album card captions (song count switch, language switch).</summary>
+    public void RefreshAlbumCardCaptions()
+    {
+        foreach (var album in _library.Albums) album.NotifyCaptionChanged();
+    }
+
     partial void OnAlbumTileTargetSizeChanged(double value)
     {
         var clamped = double.IsFinite(value)
@@ -5957,6 +5985,69 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void ResetArtistSeparators() => ReplaceArtistTagSeparators(ArtistCredit.DefaultSeparators);
+
+    // ── Genre separators (GitHub #260) ──
+
+    /// <summary>Swaps the genre separator chips with one regroup at the end.</summary>
+    private void ReplaceGenreTagSeparators(IEnumerable<string>? separators)
+    {
+        var normalized = GenreSeparators.Normalize(separators);
+        if (normalized.SequenceEqual(GenreTagSeparators, StringComparer.Ordinal))
+        {
+            ApplyGenreSeparators(); // the process-wide list may still differ (settings load)
+            return;
+        }
+        GenreTagSeparators.Clear();
+        foreach (var s in normalized)
+            GenreTagSeparators.Add(s);
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void AddGenreSeparator()
+    {
+        var value = NewGenreSeparator?.Trim() ?? string.Empty;
+        NewGenreSeparator = string.Empty;
+        if (!GenreSeparators.IsAddable(value, GenreTagSeparators)) return;
+        GenreTagSeparators.Add(value);
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void RemoveGenreSeparator(string separator)
+    {
+        // Unlike the artist separators an empty list is fine: ';' still splits.
+        if (!GenreTagSeparators.Remove(separator)) return;
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void ResetGenreSeparators() => ReplaceGenreTagSeparators(GenreSeparators.Defaults);
+
+    /// <summary>
+    /// Pushes the genre separators into the process-wide splitter. They apply when genres are
+    /// read (no rescan, files untouched), so a change only needs the library indexes rebuilt
+    /// (every genre list listens to LibraryUpdated) and the visible genre lines raised.
+    /// </summary>
+    private void ApplyGenreSeparators()
+    {
+        var before = GenreSeparators.Version;
+        GenreSeparators.Configure(GenreTagSeparators);
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        if (GenreSeparators.Version == before) return;
+        _library.NotifyMetadataChanged();
+        NotifyGenreLines();
+        SetScanStatus(Loc.T("Settings.RegroupingGenres"), autoClear: true);
+    }
+
+    private void NotifyGenreLines()
+    {
+        var seen = new HashSet<Track>(ReferenceEqualityComparer.Instance);
+        foreach (var track in _library.AllTracks)
+            if (seen.Add(track)) track.NotifyGenreDisplayChanged();
+        if (_player?.CurrentTrack is { } current && seen.Add(current)) current.NotifyGenreDisplayChanged();
+    }
 
     /// <summary>Swaps the "keep together" chips with one regroup at the end.</summary>
     private void ReplaceArtistProtectedNames(IEnumerable<string>? names)
@@ -8769,6 +8860,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(defaultSettings.ArtistProtectedNames);
+            ReplaceGenreTagSeparators(defaultSettings.GenreTagSeparators);
             IgnoreLeadingWordsInArtistSort = defaultSettings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(defaultSettings.ArtistSortIgnoredWords);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
@@ -8859,6 +8951,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
             AlbumGridMasonry = defaultSettings.AlbumGridMasonry;
             AlbumGridWideSpacing = defaultSettings.AlbumGridWideSpacing;
+            ShowAlbumSongCount = defaultSettings.ShowAlbumSongCount;
             AlbumHoverZoom = defaultSettings.AlbumHoverZoom;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings

@@ -156,6 +156,13 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
     public bool IsWideAlbumSpacing => _settings?.AlbumGridWideSpacing ?? false;
 
+    /// <summary>GitHub #259: the album sections stack as Masonry when the Albums page's Masonry
+    /// setting is on.</summary>
+    public bool UseMasonry => _settings?.AlbumGridMasonry ?? false;
+
+    /// <summary>Covers per row in the album sections (the Masonry columns).</summary>
+    [ObservableProperty] private int _albumColumns = 5;
+
     /// <summary>Sizes the covers so <c>columns</c> tiles fit the row's measured width at the
     /// view's layout scale (the rows wrap, so rounding must never push the last one down, #242).</summary>
     public void UpdateAlbumTileSize(double usableWidth, double layoutScale = 1)
@@ -168,6 +175,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var columns = AlbumGridMetrics.ComputeColumns(usableWidth, auto, target);
         var size = AlbumGridMetrics.ComputeWrappedTileSize(usableWidth, columns, IsWideAlbumSpacing, layoutScale);
         if (Math.Abs(size - AlbumTileSize) >= 0.5) AlbumTileSize = size;
+        AlbumColumns = columns;
     }
 
     private void UpdateContinue()
@@ -380,6 +388,8 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
                     OnPropertyChanged(nameof(IsWideAlbumSpacing));
                     UpdateAlbumTileSize(_lastAlbumUsableWidth, _lastAlbumLayoutScale);
                 }
+                else if (e.PropertyName == nameof(SettingsViewModel.AlbumGridMasonry))
+                    OnPropertyChanged(nameof(UseMasonry));
                 else if (e.PropertyName == nameof(SettingsViewModel.IsScanning))
                     UpdateEmptyLibraryState();
                 else if (e.PropertyName == nameof(SettingsViewModel.HomeRecentAlbumsCount))

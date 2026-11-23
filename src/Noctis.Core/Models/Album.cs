@@ -399,7 +399,51 @@ public class Album : ObservableObject
     /// <summary>Album-page related tile caption: "1982 · 8 songs"; the count alone when the year is unknown.</summary>
     public string YearSongsLine => Year > 0 ? $"{Year} · {SongCountText}" : SongCountText;
 
-    private string SongCountText => TrackCount == 1 ? "1 song" : $"{TrackCount} songs";
+    private string SongCountText => SongCountFor(TrackCount);
+
+    /// <summary>Album card caption (Albums grid, Home, More By Artist; GitHub #258):
+    /// <see cref="TileSubtitle"/> plus the song count, "Artist · 1982 · 12 songs", on the same
+    /// one line so tile heights stay put. The count is <see cref="TrackCount"/>: the songs the
+    /// album page lists, not the tags' track total.</summary>
+    public string CardCaption => WithSongCount(TileSubtitle);
+
+    /// <summary>Artist-page card caption: <see cref="ReleaseKindYearLine"/> plus the song count,
+    /// "Album · 1982 · 12 songs" (GitHub #258).</summary>
+    public string KindCardCaption => WithSongCount(ReleaseKindYearLine);
+
+    private string WithSongCount(string line)
+        => ShowSongCountOnCards ? $"{line} · {SongCountText}" : line;
+
+    /// <summary>Settings "Show song count on album cards" (GitHub #258), set by the app; on by
+    /// default. Changing it calls <see cref="NotifyCaptionChanged"/> on the shown albums.</summary>
+    public static bool ShowSongCountOnCards { get; set; } = true;
+
+    private static Func<int, string> s_songCountFormat = DefaultSongCount;
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, string> s_songCountTexts = new();
+
+    private static string DefaultSongCount(int n) => n == 1 ? "1 song" : $"{n} songs";
+
+    /// <summary>How a song count reads ("12 songs" in the user's language); the app passes
+    /// its localized plural, and sets it again on a language switch to drop the texts made in
+    /// the old language. Null restores the English default.</summary>
+    public static void SetSongCountFormat(Func<int, string>? format)
+    {
+        s_songCountFormat = format ?? DefaultSongCount;
+        s_songCountTexts.Clear();
+    }
+
+    /// <summary>The song count text for <paramref name="count"/>, made once per count: card
+    /// captions are read on every realized tile, so they only look a ready string up.</summary>
+    public static string SongCountFor(int count) => s_songCountTexts.GetOrAdd(count, s_songCountFormat);
+
+    /// <summary>Re-raises the caption properties after <see cref="ShowSongCountOnCards"/> or
+    /// the language changes, so shown cards update in place.</summary>
+    public void NotifyCaptionChanged()
+    {
+        OnPropertyChanged(nameof(CardCaption));
+        OnPropertyChanged(nameof(KindCardCaption));
+        OnPropertyChanged(nameof(YearSongsLine));
+    }
 
     /// <summary>
     /// Album year from its tracks in album order: the first track's, or the first dated

@@ -916,6 +916,10 @@ public class AppSettings : IJsonOnDeserializing
     /// is 1.6.9's look: 8px between covers and one row height for every Albums row.</summary>
     public bool AlbumGridWideSpacing { get; set; }
 
+    /// <summary>GitHub #258: album cards (Albums grid, Home, artist page, More By Artist) end
+    /// their caption with the album's song count ("Artist · 1982 · 12 songs"). On by default.</summary>
+    public bool ShowAlbumSongCount { get; set; } = true;
+
     /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
     /// glow; no other album moves (GitHub #250). Off by default.</summary>
     public bool AlbumHoverZoom { get; set; }
@@ -1141,6 +1145,12 @@ public class AppSettings : IJsonOnDeserializing
     /// ("Tyler, The Creator", "AC/DC"). Settings saved before the list existed load the
     /// built-ins (ArtistCredit.DefaultProtectedNames); an emptied list stays empty.</summary>
     public List<string> ArtistProtectedNames { get; set; } = ArtistCredit.DefaultProtectedNames.ToList();
+
+    /// <summary>GitHub #260: separators that split one genre tag into several genres ("Rock, Pop"),
+    /// on top of ';', which always splits. Read-time only (grouping and display); files keep their
+    /// genre text. Settings saved before the list existed load GenreSeparators.Defaults (","); an
+    /// emptied list stays empty.</summary>
+    public List<string> GenreTagSeparators { get; set; } = GenreSeparators.Defaults.ToList();
 
     /// <summary>The join (ArtistCredit.JoinText) the indexed artist credits were read with —
     /// multi-value artist tags are joined with it. Every build before GitHub #117 used ", ".

@@ -245,6 +245,65 @@ public class MultiGenreTagTests : IDisposable
         Assert.Equal(string.Empty, track.Genre);
     }
 
+    /// <summary>GitHub #260: "Rock, Pop" shows as two genres (the ',' genre separator), but
+    /// that is a read-time split only. A save that leaves the genre box alone keeps the file's
+    /// one "Rock, Pop" value byte for byte, and a real genre edit splits on ';' only, as typed.</summary>
+    [Theory]
+    [InlineData("flac")]
+    [InlineData("mp3")]
+    [InlineData("m4a")]
+    public async Task EditorSave_CommaGenre_IsNeverRewrittenInSplitForm(string format)
+    {
+        GenreSeparators.ResetToDefaults();
+        var path = Create(format, "Rock, Pop");
+        var before = RawGenres(path);
+        Assert.Equal(new[] { "Rock, Pop" }, before);
+        var (vm, track) = await OpenEditor(path);
+        Assert.Equal("Rock, Pop", vm.Genre);
+        Assert.Equal(new[] { "Rock", "Pop" }, Track.SplitGenres(track.Genre));
+
+        vm.Title = "Renamed";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(string.Empty, vm.SaveErrorMessage);
+        Assert.Equal("Renamed", new MetadataService().ReadTrackMetadata(path)!.Title);
+        Assert.Equal(before, RawGenres(path));
+        Assert.Equal("Rock, Pop", track.Genre);
+
+        // Outside the editor too (lyrics, ratings).
+        track.Lyrics = "la la";
+        Assert.True(new MetadataService().WriteTrackMetadata(track));
+        Assert.Equal(before, RawGenres(path));
+
+        (vm, track) = await OpenEditor(path);
+        vm.Genre = "Rock, Pop; Jazz";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { "Rock, Pop", "Jazz" }, Genres(path)); // TagLib maps an ID3 "Jazz" to "8"
+        Assert.Equal("Rock, Pop; Jazz", track.Genre);
+    }
+
+    [Fact]
+    public async Task AlbumEditor_CommaGenre_UntouchedSaveKeepsIt()
+    {
+        GenreSeparators.ResetToDefaults();
+        var paths = new[] { Create("flac", "Rock, Pop"), Create("mp3", "Rock, Pop") };
+        var svc = new MetadataService();
+        var tracks = paths.Select(p => svc.ReadTrackMetadata(p)!).ToList();
+        foreach (var t in tracks) { t.Album = "Album"; t.AlbumArtist = "Artist"; }
+        var lib = new FakeLibraryService();
+        lib.TrackList.AddRange(tracks);
+        var vm = new MetadataViewModel(tracks[0], svc, lib, new TestPersistenceService(),
+            new FakeAnimatedCoverService(), albumScoped: true, albumTracks: tracks);
+        await vm.InitializeAsync();
+        Assert.Equal("Rock, Pop", vm.Genre);
+
+        vm.Year = "1999";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(string.Empty, vm.SaveErrorMessage);
+        foreach (var p in paths) Assert.Equal(new[] { "Rock, Pop" }, RawGenres(p));
+        Assert.All(tracks, t => Assert.Equal("Rock, Pop", t.Genre));
+    }
+
     /// <summary>The user cuts "Rock; Pop" down to "Rock": a real edit, written even though the
     /// result is the file's first genre.</summary>
     [Theory]

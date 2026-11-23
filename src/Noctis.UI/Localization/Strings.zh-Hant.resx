@@ -970,6 +970,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>瀑布流專輯格狀檢視</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>封面依實際高度逐欄堆疊，較短的標題不會留下空隙。</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>在專輯卡片上顯示歌曲數</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>每張專輯的說明文字也會顯示歌曲數。</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>加大專輯間距</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>封面之間留出更多空間。每列高度隨其標題自動調整。</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>暫留時放大專輯</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -9114,6 +9116,10 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>已註冊。在「設定 → 應用程式 → 預設應用程式」中選擇 Noctis，或在歌曲上按右鍵 → 開啟檔案。</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>無法更新檔案類型：{0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>正在重新分組藝人…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>曲風標籤分隔符號</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>將一個曲風標籤拆分為多個曲風，標為「Rock, Pop」的歌曲會同時出現在 Rock 和 Pop 下。分號一律用作分隔。不會變更你的檔案。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>新增分隔符號，例如 /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>正在重新分組曲風…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>正在還原原始藝人資訊…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>無法更新藝人資訊。</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>藝人資訊已是最新。</value><comment>Settings status line</comment></data>

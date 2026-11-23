@@ -970,6 +970,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>شبكة ألبومات متراصّة</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>تتراص الأغلفة في كل عمود حسب ارتفاعها الفعلي، فلا تترك العناوين القصيرة فراغات.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>إظهار عدد الأغاني على بطاقات الألبومات</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>يذكر تعليق كل ألبوم عدد أغانيه أيضًا.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>تباعد أوسع بين الألبومات</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>مساحة أكبر بين الأغلفة. يتكيّف كل صف مع عناوينه.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>تكبير الألبوم عند التمرير</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -9114,6 +9116,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>تم التسجيل. اختر Noctis من الإعدادات → التطبيقات → التطبيقات الافتراضية، أو انقر بزر الماوس الأيمن على أغنية → فتح باستخدام.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>تعذّر تحديث أنواع الملفات: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>جارٍ إعادة تجميع الفنانين…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>فواصل وسم النوع</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>يقسم وسم النوع الواحد إلى عدة أنواع، فتظهر الأغنية الموسومة بـ "Rock, Pop" ضمن Rock وضمن Pop. الفاصلة المنقوطة تفصل دائمًا. لا تتغير ملفاتك.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>أضف فاصلًا، مثل /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>جارٍ إعادة تجميع الأنواع…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>جارٍ استعادة بيانات الفنانين الأصلية…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>تعذّر تحديث بيانات الفنانين.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>بيانات الفنانين محدّثة بالفعل.</value><comment>Settings status line</comment></data>

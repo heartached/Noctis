@@ -376,6 +376,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Fünf Cover pro Zeile. Aus schaltet auf deine eigene Covergröße.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Albumraster als Mauerwerk</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Cover stapeln sich spaltenweise nach ihrer echten Höhe, kurze Titel lassen keine Lücken.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>Songanzahl auf Albumkarten anzeigen</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>Die Bildunterschrift jedes Albums nennt auch, wie viele Songs es hat.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Mehr Abstand zwischen Alben</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>Mehr Platz zwischen den Covern. Jede Reihe passt sich ihren Beschriftungen an.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Album-Zoom beim Überfahren</value><comment>Settings toggle (GitHub #218)</comment></data>
@@ -4124,6 +4126,10 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Registriert. Wähle Noctis unter Einstellungen → Apps → Standard-Apps, oder klicke mit rechts auf einen Song → Öffnen mit.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Dateitypen konnten nicht aktualisiert werden: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Künstler werden neu gruppiert…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Genre-Tag-Trennzeichen</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Trennt einen Genre-Tag in mehrere, sodass ein Song mit „Rock, Pop“ unter Rock und unter Pop erscheint. Semikolons trennen immer. Deine Dateien werden nicht geändert.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Trennzeichen hinzufügen, z. B. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Genres werden neu gruppiert…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Ursprüngliche Künstlerangaben werden wiederhergestellt…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Künstlerangaben konnten nicht aktualisiert werden.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Künstlerangaben sind bereits aktuell.</value><comment>Settings status line</comment></data>
