@@ -329,10 +329,20 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
                 _consecutiveErrors = 0;
                 _computerUnreachable = false;
                 // A queue that ran out keeps its last track for the mini bar only (the queue has
-                // none current, it is the newest in History): take it back, or Previous restarted
-                // it and the queue saved meanwhile had no song to restore.
+                // none current, it is the newest in History).
                 if (_queue.Current == null && _queue.History.Count > 0 && ReferenceEquals(_queue.History[0], CurrentTrack))
+                {
+                    // Songs added since (Play Next, Add to Queue) are what Play is for: the first
+                    // of them starts, not the song that already finished.
+                    if (_queue.UpNext.Count > 0 && _queue.Advance(QueueAdvance.UserSkip) is { } added)
+                    {
+                        StartTrack(added, fromPosition: null);
+                        break;
+                    }
+                    // Nothing added: take the last song back, or Previous restarted it and the
+                    // queue saved meanwhile had no song to restore.
                     _queue.Back();
+                }
                 StartTrack(CurrentTrack, fromPosition: Position);
                 break;
         }

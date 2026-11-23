@@ -149,4 +149,61 @@ public class MobileStalePlayerEventTests : IDisposable
         Assert.Same(t[1], vm.CurrentTrack);
         Assert.Equal(TimeSpan.Zero, vm.Position);
     }
+
+    // ── Bug: Play Next / Add to Queue after the queue ran out ──
+
+    private (NowPlayingViewModel Vm, FakeAudioPlayer Player, Track[] Tracks) RanOut()
+    {
+        var t = Tracks(4);
+        var (vm, player, _) = Make(t);
+        vm.PlayTracks(t.Take(2).ToArray(), 0);
+        player.RaiseTrackEnded();
+        player.RaiseTrackEnded();                // last song ended, Repeat off
+        Assert.False(vm.IsPlaying);
+        Assert.Same(t[1], vm.CurrentTrack);
+        return (vm, player, t);
+    }
+
+    [Fact]
+    public void PlayNext_AfterTheQueueRanOut_DoesNotStart_ThenPlayStartsTheAddedSong()
+    {
+        var (vm, player, t) = RanOut();
+
+        vm.PlayNext(new[] { t[2], t[3] });
+
+        Assert.False(vm.IsPlaying);              // no playback without a tap
+        Assert.Equal(2, player.PlayedPaths.Count);
+        Assert.Equal(new[] { t[2], t[3] }, vm.UpNext);
+
+        vm.TogglePlayPauseCommand.Execute(null);
+
+        Assert.Same(t[2], vm.CurrentTrack);
+        Assert.Equal(t[2].FilePath, player.PlayedPaths.Last());
+        Assert.Equal(-1, player.PendingSeekMs);
+        Assert.Equal(new[] { t[3] }, vm.UpNext);
+    }
+
+    [Fact]
+    public void AddToQueue_AfterTheQueueRanOut_PlayStartsTheAddedSong()
+    {
+        var (vm, player, t) = RanOut();
+
+        vm.AddToQueue(t[3]);
+        vm.TogglePlayPauseCommand.Execute(null);
+
+        Assert.Same(t[3], vm.CurrentTrack);
+        Assert.Equal(t[3].FilePath, player.PlayedPaths.Last());
+        Assert.Empty(vm.UpNext);
+    }
+
+    [Fact]
+    public void Play_AfterTheQueueRanOut_WithNothingAdded_StillReplaysTheLastSong()
+    {
+        var (vm, player, t) = RanOut();
+
+        vm.TogglePlayPauseCommand.Execute(null);
+
+        Assert.Same(t[1], vm.CurrentTrack);
+        Assert.Equal(t[1].FilePath, player.PlayedPaths.Last());
+    }
 }
