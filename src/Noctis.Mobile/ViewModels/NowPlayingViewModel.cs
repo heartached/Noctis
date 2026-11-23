@@ -731,9 +731,18 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasPlayedSongs));
     }
 
-    private void OnPlayerPosition(object? sender, TimeSpan position) => _marshal(() =>
+    private void OnPlayerPosition(object? sender, TimeSpan position)
+    {
+        var generation = _playGeneration;
+        _marshal(() => HandlePlayerPosition(generation, position));
+    }
+
+    private void HandlePlayerPosition(int generation, TimeSpan position)
     {
         if (_disposed) return;
+        // A tick of a song that was stopped or replaced since: it put a stopped song back at its
+        // old place (Play then resumed it mid-song) and moved a new song to the old one's time.
+        if (IsStale(generation)) return;
         // Lock-screen pause, audio-focus loss and headphone unplug pause the engine
         // without going through TogglePlayPause; the tick is where the UI catches up.
         var playing = _player.State == PlaybackState.Playing;
@@ -777,7 +786,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
             FlushListened();
         }
         OnSleepPositionTick();
-    });
+    }
 
     /// <summary>Adds what was heard since the previous tick (see <see cref="MaxListenStepSeconds"/>).</summary>
     private void AccumulateListened(TimeSpan position, bool playing)

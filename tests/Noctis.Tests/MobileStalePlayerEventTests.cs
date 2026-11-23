@@ -115,4 +115,38 @@ public class MobileStalePlayerEventTests : IDisposable
         Assert.Same(t[1], vm.CurrentTrack);
         Assert.Equal(new[] { t[0].FilePath, t[1].FilePath }, player.PlayedPaths);
     }
+
+    // ── Bug: a late position tick puts a stopped song back mid-song ──
+
+    [Fact]
+    public void PositionTick_AfterNextStoppedTheQueue_DoesNotMoveTheStoppedSong()
+    {
+        var t = Tracks(1);
+        var (vm, player, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(50));
+
+        vm.NextCommand.Execute(null);            // end of the queue: stops, back to 00:00
+        player.RaisePositionChanged(TimeSpan.FromSeconds(50));   // late tick of the old song
+
+        Assert.Equal(TimeSpan.Zero, vm.Position);
+        vm.TogglePlayPauseCommand.Execute(null);
+        Assert.Equal(-1, player.PendingSeekMs);  // from the start, not 00:50
+    }
+
+    [Fact]
+    public void PositionTick_PostedBeforeNext_DoesNotLandOnTheNewSong()
+    {
+        var t = Tracks(2);
+        var (vm, player, marshal) = Make(t);
+        vm.PlayTracks(t, 0);
+
+        marshal.Hold = true;
+        player.RaisePositionChanged(TimeSpan.FromSeconds(50));   // t0's tick, posted
+        vm.NextCommand.Execute(null);
+        marshal.Flush();
+
+        Assert.Same(t[1], vm.CurrentTrack);
+        Assert.Equal(TimeSpan.Zero, vm.Position);
+    }
 }
