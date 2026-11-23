@@ -274,11 +274,14 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     internal static TimeSpan SliderSaveDelay { get; set; } = TimeSpan.FromMilliseconds(350);
 
     /// <summary>Settings first (layer toggles, opacity floor, split-word joining), then the current track.</summary>
-    public async Task InitializeAsync()
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    /// <param name="saved">The start's one read (ShellViewModel.InitializeAsync); null = read here.</param>
+    public async Task InitializeAsync(AppSettings? saved)
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
+            var settings = saved ?? await _persistence.LoadSettingsAsync();
             // A switch flipped while this load ran keeps the user's value, not the file's: the
             // load used to put the saved value back, and the flip was lost (never saved either).
             _applyingSaved = true;

@@ -55,6 +55,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private const int CoverFailureLimit = 8;
     private const int DownloadConcurrency = 2;
     private static readonly TimeSpan CoverMaxAge = TimeSpan.FromDays(30);
+    /// <summary>The computer's clock is known to whole seconds (Date): a copy this close to its cover's
+    /// change is downloaded again rather than adopted.</summary>
+    private static readonly TimeSpan CoverClockSlack = TimeSpan.FromSeconds(2);
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.Ordinal)
     {
         "mp3", "flac", "m4a", "aac", "ogg", "oga", "opus", "wav", "aiff", "aif", "wma", "ape", "wv", "alac",
@@ -84,7 +87,40 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private CancellationTokenSource? _syncCts;
     private volatile bool _isSyncing;
 
-    private sealed record DownloadedFile(string Path, long Size, DateTime SavedUtc);
+    /// <summary>A download on disk. Its size and date are read on first use: the start lists the
+    /// names only (IndexDownloads), so thousands of downloads cost no file reads before the first
+    /// frame, and a pool pass reads them afterwards (<see cref="ReadDownloadDetails"/>).</summary>
+    private sealed class DownloadedFile
+    {
+        private long _size = -1;   // -1 = not read yet; written last, after _savedUtc
+        private DateTime _savedUtc;
+
+        public DownloadedFile(string path) => Path = path;
+
+        public DownloadedFile(string path, long size, DateTime savedUtc)
+        {
+            Path = path;
+            _savedUtc = savedUtc;
+            _size = size;
+        }
+
+        public string Path { get; }
+        public bool IsRead => Volatile.Read(ref _size) >= 0;
+        public long Size { get { Read(); return _size; } }
+        public DateTime SavedUtc { get { Read(); return _savedUtc; } }
+
+        private void Read()
+        {
+            if (IsRead) return;
+            try
+            {
+                var info = new FileInfo(Path);
+                _savedUtc = info.LastWriteTimeUtc;
+                Volatile.Write(ref _size, info.Exists ? info.Length : 0);
+            }
+            catch (Exception) { Volatile.Write(ref _size, 0); }
+        }
+    }
     private readonly ConcurrentDictionary<Guid, DownloadedFile> _downloaded = new();
     /// <summary>Songs downloading now, each with its own stop (Remove Download on it).</summary>
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _inFlight = new();
@@ -155,8 +191,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         try { return new DriveInfo(path).AvailableFreeSpace; }
         catch (Exception) { return long.MaxValue; }
     }
-    /// <summary>Albums the server had no cover for this process (not re-asked every sync).</summary>
-    private readonly ConcurrentDictionary<Guid, byte> _coverMisses = new();
+    /// <summary>Albums the server had no cover for this process (not re-asked every sync), each with
+    /// the cover version the album list named then ("" = none): a cover added on the computer since
+    /// changes the version, and the next sync asks again instead of waiting for a restart.</summary>
+    private readonly ConcurrentDictionary<Guid, string> _coverMisses = new();
 
     /// <param name="library">The shared library (desktop songs join it as NoctisServer tracks).</param>
     /// <param name="persistence">For covers (GetArtworkPath) and playlists.json.</param>
@@ -198,6 +236,18 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         stateRecorder?.Attach(this);
         _recorder = stateRecorder;
         _library.TracksAdded += OnLibraryTracksAdded;
+        foreach (var (_, file) in _downloaded) if (file.IsRead) DownloadsReadAtStart++;
+        _ = Task.Run(ReadDownloadDetails);
+    }
+
+    /// <summary>Tests: downloads whose size and date the constructor read (the cold start's file reads).</summary>
+    internal int DownloadsReadAtStart { get; private set; }
+
+    /// <summary>After the start, off the UI thread: every download's size and date, so the Downloads
+    /// page and the progress card do not read them on first show.</summary>
+    private void ReadDownloadDetails()
+    {
+        foreach (var (_, file) in _downloaded) _ = file.Size;
     }
 
     private readonly NoctisStateRecorder? _recorder;
@@ -941,6 +991,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 if (!now.TryGetValue(p.Id, out var mine)) continue;               // deleted on the phone meanwhile
                 if (Newer(mine.ModifiedAt, at)) { result.Add(mine); continue; }  // edited on the phone meanwhile
+                // Pin/Unpin leaves ModifiedAt alone (the pin is the phone's own, never synced): the
+                // file's current pin wins, or a pin made meanwhile was written back unpinned.
+                p.IsPinned = mine.IsPinned;
             }
             result.Add(p);
         }
@@ -1154,8 +1207,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         var now = UtcNow;
         var adopted = false;
         var due = tracks.Select(t => t.AlbumId).Distinct()
-            .Where(id => id != Track.UnknownAlbumBucketId && !_coverMisses.ContainsKey(id))
-            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, ref adopted))
+            .Where(id => id != Track.UnknownAlbumBucketId
+                         && !(_coverMisses.TryGetValue(id, out var missed) && missed == versions.GetValueOrDefault(id, "")))
+            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, client.ServerClockAhead, ref adopted))
             .ToList();
         if (adopted) SaveSyncState();
         RaiseSyncProgress(NoctisSyncStage.Covers, 0, due.Count);
@@ -1192,11 +1246,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                                 lock (_gate) _sync.Covers[albumId.ToString("N")] = version;
                         }
                         else
-                            _coverMisses.TryAdd(albumId, 0);
+                            _coverMisses[albumId] = versions.GetValueOrDefault(albumId, "");
                     }
                     catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
                     {
-                        _coverMisses.TryAdd(albumId, 0);
+                        _coverMisses[albumId] = versions.GetValueOrDefault(albumId, "");
                     }
                     catch (NoctisServerException ex) when (ex.Kind is not (NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged))
                     {
@@ -1239,8 +1293,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// changed since the phone's copy (a cover corrected there arrives with the next sync). From a
     /// computer that names no version, a copy over 30 days old. A copy saved before the phone kept
     /// versions is current when written after the computer's file (<paramref name="adopted"/>: that
-    /// version is recorded, so an update does not download every cover again).</summary>
-    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, ref bool adopted)
+    /// version is recorded, so an update does not download every cover again). The copy's time is
+    /// put on the computer's clock first (<paramref name="clockAhead"/>, from its responses' Date):
+    /// compared raw, a computer whose clock runs behind made a cover corrected there after the copy
+    /// look older, and the stale copy was kept. Offset unknown: downloaded again, once.</summary>
+    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, TimeSpan? clockAhead, ref bool adopted)
     {
         try
         {
@@ -1250,7 +1307,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             lock (_gate)
             {
                 if (_sync.Covers.TryGetValue(key, out var known)) return known != version;
-                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || File.GetLastWriteTimeUtc(path) < changed) return true;
+                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || clockAhead is not { } ahead
+                    || File.GetLastWriteTimeUtc(path) + ahead < changed + CoverClockSlack) return true;
                 _sync.Covers[key] = version;
             }
             adopted = true;
@@ -2236,7 +2294,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         catch { /* best effort */ }
     }
 
-    /// <summary>What is on disk: "&lt;32 hex&gt;.&lt;allowed ext|bin&gt;" files; leftover .part files are removed.</summary>
+    /// <summary>What is on disk: "&lt;32 hex&gt;.&lt;allowed ext|bin&gt;" files; leftover .part files are removed.
+    /// One directory listing, no per-file reads: this runs in the constructor, on the cold start's UI thread.</summary>
     private void IndexDownloads()
     {
         try
@@ -2251,8 +2310,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 var ext = name[(dot + 1)..];
                 if (!(AllowedExtensions.Contains(ext) || ext == "bin")) continue;
                 if (!NoctisRemoteIds.IsLowerHex32(name.AsSpan(0, 32)) || !Guid.TryParseExact(name.AsSpan(0, 32), "N", out var id)) continue;
-                var info = new FileInfo(file);
-                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file), info.Length, info.LastWriteTimeUtc);
+                // The name is enough to play it (ResolvePlaybackUri): a song the queue restores plays
+                // this file from the first second. Size and date wait (DownloadedFile).
+                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file));
             }
         }
         catch (Exception ex) { DebugLog.Write("Account", $"offline folder unreadable ({ex.GetType().Name})"); }

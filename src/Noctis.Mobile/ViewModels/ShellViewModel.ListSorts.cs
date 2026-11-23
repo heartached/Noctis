@@ -1,3 +1,4 @@
+using Noctis.Models;
 using Noctis.Services;
 
 namespace Noctis.Mobile.ViewModels;
@@ -63,11 +64,11 @@ public sealed partial class ShellViewModel
         ListSortChanged?.Invoke(this, key);
     }
 
-    private async Task LoadListSortsAsync()
+    private async Task LoadListSortsAsync(AppSettings? saved = null)
     {
         try
         {
-            var settings = await Library.Persistence.LoadSettingsAsync();
+            var settings = saved ?? await Library.Persistence.LoadSettingsAsync();
             foreach (var (key, value) in settings.MobileListSorts ?? new())
                 if (!_listSortSetBeforeLoad.Contains(key) && !string.IsNullOrWhiteSpace(value)) _listSorts[key] = value;
         }

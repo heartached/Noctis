@@ -428,12 +428,12 @@ public sealed partial class SearchPageViewModel : ObservableObject, ISortable
         }, TaskScheduler.Default).Unwrap();
     }
 
-    /// <summary>Reads the saved Recent Searches (the shell's start).</summary>
-    internal async Task LoadRecentSearchesAsync()
+    /// <summary>Reads the saved Recent Searches (the shell's start; <paramref name="settings"/>: the start's read).</summary>
+    internal async Task LoadRecentSearchesAsync(AppSettings? settings = null)
     {
         try
         {
-            var saved = WithRecent((await Shell.Library.Persistence.LoadSettingsAsync()).MobileRecentSearches ?? new(), null);
+            var saved = WithRecent((settings ?? await Shell.Library.Persistence.LoadSettingsAsync()).MobileRecentSearches ?? new(), null);
             if (!_recentChangedBeforeLoad)
             {
                 RecentSearches.ReplaceAll(saved);

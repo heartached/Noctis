@@ -304,6 +304,71 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
     }
 
+    /// <summary>An album with no cover on the computer was remembered as "no cover" for the rest of
+    /// the app's run: a cover added on the computer meanwhile only reached the phone after a restart.</summary>
+    [Fact]
+    public async Task ACoverAddedOnTheComputer_WhileTheAppRuns_ArrivesWithTheNextSync()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var second = _phonePersistence.GetArtworkPath(AlbumB);
+        Assert.False(File.Exists(second));
+
+        // No cover still: not asked again.
+        lock (_coverSizes) _coverSizes.Clear();
+        await svc.SyncNowAsync(ct);
+        lock (_coverSizes) Assert.Empty(_coverSizes);
+
+        _desk.SecondHasCover = true;
+        await svc.SyncNowAsync(ct);
+        Assert.Equal(_art, File.ReadAllBytes(second));
+    }
+
+    /// <summary>The computer's responses dated <paramref name="ahead"/> from this machine's clock (a PC
+    /// whose clock is off).</summary>
+    private sealed class SkewedClock(HttpMessageHandler inner, TimeSpan ahead) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var response = await base.SendAsync(request, ct);
+            response.Headers.Date = DateTimeOffset.UtcNow + ahead;
+            return response;
+        }
+    }
+
+    /// <summary>The first sync after the update that brought cover versions: a phone copy is adopted
+    /// as current when written after the computer's cover file. That compared the phone's clock with
+    /// the computer's: with the computer's an hour behind, a cover corrected there after the phone's
+    /// copy still looked older, and the stale copy was kept.</summary>
+    [Fact]
+    public async Task ACoverCorrectedBeforeTheUpdate_OnAComputerWhoseClockIsBehind_IsNotKeptStale()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var behind = TimeSpan.FromHours(-1);
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var phoneCover = _phonePersistence.GetArtworkPath(AlbumA);
+        Assert.Equal(_art, File.ReadAllBytes(phoneCover));
+
+        // Corrected on the computer ten minutes after the phone's copy, stamped by its clock (an hour behind).
+        var corrected = new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 9, 8, 7, 6, 5 };
+        var deskCover = Path.Combine(_dir, "cover.jpg");
+        File.WriteAllBytes(deskCover, corrected);
+        File.SetLastWriteTimeUtc(deskCover, File.GetLastWriteTimeUtc(phoneCover).AddMinutes(10) + behind);
+        // A phone from before the versions: none saved.
+        var syncFile = Path.Combine(AccountDir, "sync.json");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(syncFile))!.AsObject();
+        Assert.True(json.Remove("covers"));
+        File.WriteAllText(syncFile, json.ToJsonString());
+
+        var updated = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new SkewedClock(NoctisHandlers.Sockets(accept), behind),
+            AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+        await updated.SyncNowAsync(ct);
+
+        Assert.Equal(corrected, File.ReadAllBytes(phoneCover));
+    }
+
     /// <summary>The album list without cover versions (a computer from before them): the copy on
     /// the phone is kept until it is 30 days old, as before.</summary>
     [Fact]
@@ -2291,6 +2356,36 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(PngA, File.ReadAllBytes(after.Single(p => p.Id == _deskMixId).CoverArtPath!));   // the sync's own change still lands
     }
 
+    /// <summary>A pin made on the phone while the sync fetches covers: pinning does not move the
+    /// playlist's ModifiedAt (it is the phone's own, never sent), so the re-read before the write did
+    /// not see it as an edit and the write put the playlist back unpinned.</summary>
+    [Fact]
+    public async Task APlaylistPinnedWhileTheSyncFetchesCovers_StaysPinned()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        var gym = new Playlist { Name = "Gym", ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        var pinnedBefore = new Playlist { Name = "Pinned", IsPinned = true, ModifiedAt = DateTime.UtcNow.AddHours(-1) };
+        await _phonePersistence.SavePlaylistsAsync(new List<Playlist> { gym, pinnedBefore });
+        DeskSetsCover(PngA);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, accept => new HookHandler(NoctisHandlers.Sockets(accept), async r =>
+        {
+            if (!r.RequestUri!.AbsolutePath.EndsWith("getNoctisPlaylistCover.view", StringComparison.Ordinal)) return;
+            // Meanwhile on the phone: Pin on one, Unpin on the other (LibraryViewModel.SetPlaylistPinnedAsync).
+            var lists = await _phonePersistence.LoadPlaylistsAsync();
+            lists.Single(p => p.Id == gym.Id).IsPinned = true;
+            lists.Single(p => p.Id == pinnedBefore.Id).IsPinned = false;
+            await _phonePersistence.SavePlaylistsAsync(lists);
+        }), AccountDir, OfflineDir, "Test Phone", _recorder, marshal: a => a());
+
+        await svc.SyncNowAsync(ct);
+
+        var after = await _phonePersistence.LoadPlaylistsAsync();
+        Assert.True(after.Single(p => p.Id == gym.Id).IsPinned);
+        Assert.False(after.Single(p => p.Id == pinnedBefore.Id).IsPinned);
+        Assert.Equal(PngA, File.ReadAllBytes(after.Single(p => p.Id == _deskMixId).CoverArtPath!));   // the sync's own change still lands
+    }
+
     private async Task<Playlist> PhoneMixAsync() => (await _phonePersistence.LoadPlaylistsAsync()).Single(p => p.Id == _deskMixId);
 
     private Playlist DeskMix => _deskPersistence.Playlists.Single(p => p.Id == _deskMixId);
@@ -2433,7 +2528,9 @@ public class NoctisAccountServiceTests : IAsyncLifetime
                 return Task.FromResult(new LibrarySnapshot(_tracks.ToList(), _albums.ToList(), _artists.ToList(), _playlists.ToList()));
         }
 
-        public string? ArtworkPath(Guid albumId) => albumId == AlbumA ? _art : null;
+        /// <summary>The second album gets a cover on the computer (it has none at first).</summary>
+        public bool SecondHasCover { get; set; }
+        public string? ArtworkPath(Guid albumId) => albumId == AlbumA || (SecondHasCover && albumId == AlbumB) ? _art : null;
 
         /// <summary>The desktop's profile picture (getAvatar); null = none.</summary>
         public string? Avatar { get; set; }
