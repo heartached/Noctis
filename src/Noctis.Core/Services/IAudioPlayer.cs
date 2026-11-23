@@ -113,6 +113,12 @@ public interface IAudioPlayer : IDisposable
     void ApplyReplayGain(string mode, double preampDb);
 
     /// <summary>
+    /// <see cref="ApplyReplayGain(string, double)"/> plus Prevent Clipping (a boost stops at the
+    /// song's peak headroom). The phone's player reads it; the desktop's ignores it.
+    /// </summary>
+    void ApplyReplayGain(string mode, double preampDb, bool preventClipping) => ApplyReplayGain(mode, preampDb);
+
+    /// <summary>
     /// Drops any cached ReplayGain tags and re-applies the current mode, after a scan
     /// rewrote the tags of files that may be playing or staged.
     /// </summary>
