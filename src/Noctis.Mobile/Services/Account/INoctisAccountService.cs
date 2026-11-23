@@ -46,7 +46,15 @@ public sealed record NoctisSyncProgress(NoctisSyncStage Stage, int Done, int Tot
 public sealed record NoctisSyncResult(int Songs, int Playlists, int StateChangesPulled, int StateChangesPushed, int PlaysSent);
 
 /// <param name="Missing">Of <paramref name="Failed"/>, the songs whose file is missing on the computer.</param>
-public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0);
+public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0)
+{
+    /// <summary>The songs asked for: a failed one stays counted ("Downloading 1 of 3 · 1 failed"),
+    /// where Completed + Pending shrank the total with every failure.</summary>
+    public int Total => Pending + Completed + Failed;
+
+    /// <summary>The songs handled so far, landed or failed: how far the bar has come.</summary>
+    public int Handled => Completed + Failed;
+}
 
 /// <summary>Sending the phone's own songs to the computer: <paramref name="Done"/> of <paramref name="Total"/> handled.</summary>
 public sealed record NoctisUploadProgress(int Done, int Total);
@@ -174,6 +182,14 @@ public interface INoctisAccountService
     Task DownloadAllAsync(CancellationToken ct = default);
     Task RemoveDownloadsAsync(IEnumerable<Track> tracks);
     Task RemoveAllDownloadsAsync();
+
+    /// <summary>The system stopped the background job the downloads ran under (IDownloadKeeper.Paused):
+    /// the running downloads stop, their partial files go, nothing is removed or counted as failed.</summary>
+    Task PauseDownloadsAsync() => Task.CompletedTask;
+
+    /// <summary>Goes on with paused downloads: as <see cref="DownloadAsync"/>, except that a song
+    /// removed (Remove Download) while they were paused stays removed.</summary>
+    Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) => DownloadAsync(tracks, ct);
 
     /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
     /// or signed out keeping the downloads): its file stays and plays until the user removes it

@@ -207,11 +207,15 @@ public sealed partial class ShellViewModel : ObservableObject
     /// unless injected, and the in-app progress still shows.</summary>
     public IDownloadNotifier? DownloadNotifier { get; init; }
 
+    /// <summary>Keeps the process running while downloads run in the background (Android); null in
+    /// tests unless injected, and downloads then run only while the process does.</summary>
+    public IDownloadKeeper? DownloadKeeper { get; init; }
+
     private DownloadActivity? _downloads;
 
     /// <summary>Where the downloads from the computer stand (album page row, Account page,
     /// notification); null without an account. Made on first use, after the host's init values.</summary>
-    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier);
+    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper);
 
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);

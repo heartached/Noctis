@@ -105,6 +105,14 @@
         <Setter Property="HeartBrush" Value="{DynamicResource AccentTextExactBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <!-- A song row's mark for a song no longer on the computer: the stars' size and grey. -->
+    <Style Selector="views|GridIcon.row-not-on-computer">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
+    </Style>
 
     <!-- A list row's hairline, from the text to the edge (Apple's inset separator), and its
          small grey chevron. -->

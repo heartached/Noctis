@@ -131,6 +131,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // by title, artist and length only (Settings → Lyrics → Find Lyrics Online).
             Online = LrcLibOnlineLyricsSource.Create(persistence.DataDirectory, new HttpClient()),
         };
+        // Downloads from the computer: an ongoing progress card, then "Downloaded 12 songs"; the
+        // keeper keeps the process running under that card while they run in the background.
+        var downloadNotifier = account != null ? new AndroidDownloadNotifier(context) : null;
         var shell = new ShellViewModel(
             // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history)
@@ -153,8 +156,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             PlaylistFiles = new AndroidPlaylistFilePicker(context),
             VersionText = DescribeVersion(context),
             Account = account,
-            // Downloads from the computer: an ongoing progress card, then "Downloaded 12 songs".
-            DownloadNotifier = account != null ? new AndroidDownloadNotifier(context) : null,
+            DownloadNotifier = downloadNotifier,
+            DownloadKeeper = downloadNotifier != null ? new AndroidDownloadKeeper(context, downloadNotifier) : null,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
             // Without an account there is no computer to send plays through: the phone sends them.
             Scrobbler = new PhoneScrobbler(persistence, new HttpClient()) { HasComputerRoute = account != null },

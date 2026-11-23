@@ -569,6 +569,39 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(3, _phoneLibrary.Tracks.Count(t => t.SourceType == SourceType.NoctisServer));
     }
 
+    /// <summary>An album the computer dropped kept its cover on the phone after the sync took its
+    /// songs (only sign-out cleaned covers). A settled sync now removes the cover of an album no
+    /// song on the phone is in any more; mid-scan or an empty list proves nothing, so it stays.</summary>
+    [Fact]
+    public async Task ASettledSync_RemovesTheCoversOfAlbumsNoSongIsInAnyMore()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        var cover = _phonePersistence.GetArtworkPath(AlbumA);
+        Assert.True(File.Exists(cover));
+
+        _desk.IsScanning = true;
+        _desk.Show(_t3);
+        await svc.SyncNowAsync(ct);
+        Assert.True(File.Exists(cover));
+
+        _desk.IsScanning = false;
+        _desk.Show();
+        await svc.SyncNowAsync(ct);
+        Assert.True(File.Exists(cover));
+
+        // One of the album's songs left: the album is still here, so is its cover.
+        _desk.Show(_t1, _t3);
+        await svc.SyncNowAsync(ct);
+        Assert.True(File.Exists(cover));
+
+        _desk.Show(_t3);
+        await svc.SyncNowAsync(ct);
+        Assert.Null(_phoneLibrary.GetTrackById(_t1.Id));
+        Assert.False(File.Exists(cover));
+    }
+
     // ── Downloads and playback ───────────────────────────────────────────
 
     /// <summary>A downloaded song the computer no longer has (deleted there, a drive unplugged, or
@@ -621,6 +654,40 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         // The app starting again still knows.
         var again = Restart();
         Assert.Equal(_t3.Id, Assert.Single(again.NotOnComputerTracks).Id);
+    }
+
+    /// <summary>Song lists mark a song no longer on the computer: Track.IsNotOnComputer, stamped by
+    /// the service once per change (never looked up per row), on that song only, and taken off when
+    /// the computer has it again or its download goes.</summary>
+    [Fact]
+    public async Task SongsNoLongerOnTheComputer_CarryTheRowMark_OnlyWhileTheyAre()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1), Phone(_t3) }, ct);
+        Assert.DoesNotContain(_phoneLibrary.AllTracks, t => t.IsNotOnComputer);
+
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        var p3 = Phone(_t3);
+        await Until(() => p3.IsNotOnComputer);
+        Assert.False(Phone(_t1).IsNotOnComputer);
+        Assert.False(Phone(_t2).IsNotOnComputer);
+
+        _desk.Show(_t1, _t2, _t3);
+        await svc.SyncNowAsync(ct);
+        await Until(() => !p3.IsNotOnComputer);
+
+        _desk.Show(_t1, _t2);
+        await svc.SyncNowAsync(ct);
+        await Until(() => Phone(_t3).IsNotOnComputer);
+        await svc.SignOutAsync(removeDownloads: false, ct);
+        await Until(() => Phone(_t1).IsNotOnComputer);   // signed out: no computer has any of them
+        Assert.True(Phone(_t3).IsNotOnComputer);
+        var p1 = Phone(_t1);
+        await svc.RemoveDownloadsAsync(new[] { p1 });
+        await Until(() => !p1.IsNotOnComputer);
     }
 
     /// <summary>Remove on a song no longer on the computer deletes its file and, with nothing left
@@ -740,6 +807,42 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(file, svc.ResolvePlaybackUri(row.FilePath));
         Assert.Equal(_audio.Length, svc.NotOnComputerBytes);
         Assert.Equal(3, (await svc.SyncNowAsync(ct)).Songs);   // the catalog's count, not the kept rows
+    }
+
+    /// <summary>Sign-out keeping downloads gave a download an older version left with no row none:
+    /// it stayed uncounted in No longer on your computer until some later complete sync. Sign-out
+    /// now builds its row from the file's tags, so the list is right at once.</summary>
+    [Fact]
+    public async Task SignOutKeepingDownloads_GivesADownloadWithNoRowItsRow_FromItsTags()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(OfflineDir);
+        var lost = Guid.NewGuid();
+        var file = Path.GetFullPath(Path.Combine(OfflineDir, lost.ToString("N") + ".mp3"));
+        File.WriteAllBytes(file, _audio);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir, "Test Phone",
+            _recorder, marshal: a => a())
+        {
+            ReadFileTags = path => path == file
+                ? new Track { Title = "Lost Song", Artist = "Someone", Album = "Somewhere", Duration = TimeSpan.FromSeconds(42) }
+                : null,
+        };
+        await svc.SignInAsync(_url, "alice", "correct horse", await svc.ProbeFingerprintAsync(_url, ct), ct);
+        await svc.SyncNowAsync(ct);
+        await svc.DownloadAsync(new[] { Phone(_t1) }, ct);
+        // An unsettled sync (the computer scanning) left the old download without a row.
+        await _phoneLibrary.RemoveRemoteTracksAsync(new HashSet<Guid> { _t1.Id, _t2.Id, _t3.Id });
+        Assert.Null(_phoneLibrary.GetTrackById(lost));
+
+        await svc.SignOutAsync(removeDownloads: false, ct);
+
+        Assert.Equal(new[] { _t1.Id, lost }.OrderBy(g => g), svc.NotOnComputerTracks.Select(t => t.Id).OrderBy(g => g));
+        var row = _phoneLibrary.GetTrackById(lost)!;
+        Assert.Equal("Lost Song", row.Title);
+        Assert.Equal("Someone", row.Artist);
+        Assert.Equal(file, svc.ResolvePlaybackUri(row.FilePath));
+        Assert.Equal(2L * _audio.Length, svc.NotOnComputerBytes);
+        Assert.Same(Phone(_t1), svc.NotOnComputerTracks.Single(t => t.Id == _t1.Id));
     }
 
     /// <summary>Signed in to another computer (a different library): this computer's downloads are
@@ -936,6 +1039,58 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
         Assert.Equal(0, svc.DownloadedCount);
         Assert.True(svc.IsSignedIn);
+    }
+
+    /// <summary>Download on Wi-Fi Only turned on while a batch runs over mobile data: the setting was
+    /// read once when the batch started, so the rest still came over mobile data. Each song now
+    /// heeds the setting as it stands (read only off Wi-Fi, where it matters).</summary>
+    [Fact]
+    public async Task Downloads_StopMidBatch_WhenWifiOnlyIsTurnedOnOnMobileData()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = false);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            IsOnWifi = () => false,
+        };
+        await svc.SyncNowAsync(ct);
+        var gate = new object();
+        var turnedOn = false;
+        svc.DownloadProgress += (_, p) =>
+        {
+            if (p.Completed == 0) return;
+            lock (gate)
+            {
+                if (turnedOn) return;
+                _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = true).GetAwaiter().GetResult();
+                turnedOn = true;
+            }
+        };
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2), Phone(_t3) }, ct));
+
+        Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
+        Assert.InRange(svc.DownloadedCount, 1, 2);   // two were already under way, the third never started
+    }
+
+    /// <summary>Downloads paused by the system and resumed: a song the user removed meanwhile is not
+    /// fetched again (DownloadAsync would take it back as asked for again); the rest are.</summary>
+    [Fact]
+    public async Task ResumedDownloads_SkipASongRemovedWhilePaused()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        await svc.PauseDownloadsAsync();
+        await svc.RemoveDownloadsAsync(new[] { Phone(_t2) });
+
+        await svc.ResumeDownloadsAsync(new[] { Phone(_t1), Phone(_t2) }, ct);
+
+        Assert.True(svc.IsDownloaded(Phone(_t1)));
+        Assert.False(svc.IsDownloaded(Phone(_t2)));
+        Assert.Equal(1, svc.DownloadedCount);
     }
 
     [Fact]

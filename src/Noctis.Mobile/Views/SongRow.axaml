@@ -4,6 +4,7 @@
              xmlns:controls="using:Noctis.Controls"
              xmlns:vm="using:Noctis.Mobile.ViewModels"
              xmlns:views="using:Noctis.Mobile.Views"
+             xmlns:loc="using:Noctis.Localization"
              x:Class="Noctis.Mobile.Views.SongRow"
              x:DataType="models:Track">
     <!-- One song: cover, title, artist, explicit badge, then the overflow button. No heart button
@@ -26,10 +27,16 @@
                 </Border>
             </Grid>
             <!-- The artist, and at the line's end the song's stars or heart (Settings › Library ›
-                 Show in Song Rows); without one the mark takes no room. -->
-            <Grid ColumnDefinitions="*,Auto">
+                 Show in Song Rows); without one the mark takes no room. Before it, a song the
+                 computer no longer has (Account › No longer on your computer) shows that row's
+                 computer glyph, small and grey (Track.IsNotOnComputer, stamped by the account
+                 service, so no row looks anything up). -->
+            <Grid ColumnDefinitions="*,Auto,Auto">
                 <TextBlock Classes="row-sub" Text="{Binding Artist}" />
-                <views:RowMark Grid.Column="1" Name="RowMark" Margin="6,0,0,0" />
+                <views:GridIcon Grid.Column="1" Name="NotOnComputerMark" Classes="row-not-on-computer"
+                                Data="{DynamicResource PhComputer}" IsVisible="{Binding IsNotOnComputer}"
+                                AutomationProperties.Name="{loc:T Mobile.Account.NotOnComputer}" />
+                <views:RowMark Grid.Column="2" Name="RowMark" Margin="6,0,0,0" />
             </Grid>
         </StackPanel>
         <Button Grid.Column="2" Name="MoreButton" Classes="icon" Width="36" Height="36"

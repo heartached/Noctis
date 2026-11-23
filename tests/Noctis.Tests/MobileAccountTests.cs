@@ -160,6 +160,17 @@ public class MobileAccountTests
             return Task.CompletedTask;
         }
 
+        /// <summary>PauseDownloadsAsync calls; <see cref="OnPause"/> runs in each (a test ends its gated run).</summary>
+        public int PauseCalls { get; private set; }
+        public Action? OnPause { get; set; }
+
+        public Task PauseDownloadsAsync()
+        {
+            PauseCalls++;
+            OnPause?.Invoke();
+            return Task.CompletedTask;
+        }
+
         public Task DownloadAllAsync(CancellationToken ct = default)
         {
             DownloadAllCalls++;
@@ -873,7 +884,7 @@ public class MobileAccountTests
         Assert.Equal("Downloads finished · 77 missing on your computer", page.DownloadText);
 
         account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 1, 3, 0, Missing: 2));
-        Assert.Equal("Downloading 1 of 4 · 2 missing on your computer · 1 failed", page.DownloadText);
+        Assert.Equal("Downloading 1 of 7 · 2 missing on your computer · 1 failed", page.DownloadText);   // the failed stay in the total
         Assert.Equal("This song's file is missing on your computer.", AccountPageViewModel.Describe(NoctisErrorKind.FileMissing, true));
     }
 
