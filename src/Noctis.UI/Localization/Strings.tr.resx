@@ -2129,7 +2129,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Sidebar.EditPlaylist" xml:space="preserve"><value>Çalma Listesini Düzenle…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.StarSidebar" xml:space="preserve"><value>Kenar Çubuğunda Yıldızla</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.UnstarFromSidebar" xml:space="preserve"><value>Kenar Çubuğundan Yıldızı Kaldır</value><comment>Header in SidebarView.axaml</comment></data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Klasöre Taşı…</value><comment>Header in SidebarView.axaml</comment></data>
+  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Klasöre Taşı</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve"><value>Klasörden Kaldır</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.DeletePlaylist" xml:space="preserve"><value>Çalma Listesini Sil</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylistFolder" xml:space="preserve"><value>Klasörde Yeni Çalma Listesi…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -4478,4 +4478,22 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} ile yeni “{1}” albümü başlatılacak. Dosyaların albüm etiketleri (albüm, albüm sanatçısı, parça ve disk numarası) değiştirilir.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Taşı</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Noctis'te taşındı, ancak bazı dosyalar ({0}) kaydedilemedi (salt okunur veya başka bir uygulamada açık). Böyle bir dosya değişirse sonraki taramada eski albümüne döner.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>Ekle</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>{0:N0} çalma listesine ekle</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>{0:N0} çalma listesine eklendi</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
+  <data name="Settings.PlaylistNewBadgeHintDays" xml:space="preserve"><value>Çalma listesine yakın zamanda eklenen parçaları işaretle. Ne kadar süre yeni sayılacaklarını seç.</value><comment>Hint under Settings › Playlist page › NEW badge; the duration picker sits beside it</comment></data>
+  <data name="Settings.PlaylistNewBadgeDuration" xml:space="preserve"><value>Parçalar ne kadar YENİ kalır</value><comment>Screen-reader name of the NEW badge duration picker in Settings › Playlist page</comment></data>
+  <data name="Settings.NewBadgeDays1" xml:space="preserve"><value>1 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays3" xml:space="preserve"><value>3 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays7" xml:space="preserve"><value>7 gün</value><comment>NEW badge duration choice in Settings › Playlist page (the default); also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>Son {0} içinde eklendi</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>Yeni Klasör…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>Yeni klasör</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>Oluştur</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>Klasör Yok</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
+  <data name="Playlist.ViewCover" xml:space="preserve"><value>Kapağı Görüntüle</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
+  <data name="Playlist.ChangeCover" xml:space="preserve"><value>Kapağı Değiştir…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
+  <data name="Playlist.CoverMenu" xml:space="preserve"><value>Çalma listesi kapağı</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
 </root>

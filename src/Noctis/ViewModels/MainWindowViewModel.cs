@@ -423,6 +423,8 @@ public partial class MainWindowViewModel : ViewModelBase
         Sidebar = new SidebarViewModel(persistence, library);
         TopBar = new TopBarViewModel();
         Sidebar.TopBar = TopBar;
+        // Add to Playlist's "Added to Gym" / "Added to 3 playlists", in the island's pill.
+        Sidebar.ToastRequested += (_, t) => QueueToast.Show(t.Headline, t.Detail);
         Settings = new SettingsViewModel(persistence, library, playHistory, mediaServer);
         Settings.SetAudioPlayer(audioPlayer);
         Settings.SetPlayer(Player);

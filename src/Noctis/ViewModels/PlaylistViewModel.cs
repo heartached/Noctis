@@ -276,7 +276,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         LoadTracks();
     }
 
-    private static readonly string[] ReloadedArtProperties = { nameof(Art1), nameof(Art2), nameof(Art3), nameof(Art4) };
+    private static readonly string[] ReloadedArtProperties = { nameof(Art1), nameof(Art2), nameof(Art3), nameof(Art4), nameof(CanViewCover) };
 
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
@@ -294,7 +294,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         nameof(PlaylistColor), nameof(PlaylistCoverArtPath), nameof(HasCustomArt), nameof(HasCollageArt),
         nameof(HasSingleArt), nameof(ShowFallbackIcon), nameof(BackdropArtPath), nameof(IsPinned),
-        nameof(StarTip), nameof(ModifiedDateDisplay), nameof(ModifiedDateValue),
+        nameof(StarTip), nameof(ModifiedDateDisplay), nameof(ModifiedDateValue), nameof(CanViewCover),
     };
 
     /// <summary>
@@ -1185,6 +1185,35 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         // The header refreshes from the sidebar's PlaylistEdited (OnPlaylistEdited).
         await _sidebar.EditPlaylistAsync(_playlist);
+    }
+
+    // ── Hero cover menu (11-23): a click on the cover, View Cover / Change Cover… ──
+
+    /// <summary>The full-size viewer (the album page's); tests swap it.</summary>
+    internal Func<Views.ArtworkViewerRequest, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
+
+    /// <summary>The cover picker (the Edit Playlist dialog's); null = cancelled. Tests swap it.</summary>
+    internal Func<Avalonia.Visual?, Task<string?>> PickCoverFile { get; set; } = EditPlaylistDialogViewModel.PickCoverFileAsync;
+
+    /// <summary>The one picture the cover shows: the custom cover, else a single album's art.
+    /// A collage or the plain colour tile has none to open full size.</summary>
+    private string? ViewableCoverPath => HasCustomArt ? PlaylistCoverArtPath : HasSingleArt ? Art1 : null;
+
+    public bool CanViewCover => ViewableCoverPath != null;
+
+    /// <summary>The async command stays disabled while the viewer is up, so a double click
+    /// on the menu row opens one viewer, not two.</summary>
+    [RelayCommand]
+    private Task ViewCover()
+        => ViewableCoverPath is { } path ? ShowArtworkViewer(new Views.ArtworkViewerRequest(path)) : Task.CompletedTask;
+
+    /// <summary>Picks a picture and makes it the cover now (as the Edit Playlist dialog's
+    /// Change cover + Save would); the header refreshes from PlaylistEdited.</summary>
+    [RelayCommand]
+    private async Task ChangeCover(Avalonia.Visual? anchor)
+    {
+        if (await PickCoverFile(anchor) is not { } file) return;
+        await _sidebar.SetPlaylistCoverAsync(_playlist, file);
     }
 
     [RelayCommand]

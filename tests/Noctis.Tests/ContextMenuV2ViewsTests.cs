@@ -33,7 +33,7 @@ public class ContextMenuV2ViewsTests
 {
     public ContextMenuV2ViewsTests() => ArtistCredit.ResetToDefaults();
 
-    private static void EnsureAppStyles()
+    internal static void EnsureAppStyles()
     {
         var app = Application.Current!;
         if (!app.Resources.TryGetResource("HeartFillIcon", null, out _))
@@ -715,7 +715,7 @@ public class ContextMenuV2ViewsTests
             Assert.Contains(MenuV2.MenuClass, menu.Classes);
             Assert.Equal(new[] { Loc.T("Sidebar.EditPlaylist"), Loc.T("Sidebar.StarSidebar"), Loc.T("Sidebar.MoveFolder"), Loc.T("Sidebar.DeletePlaylist") }, Visible(menu));
             var reachable = Reachable(menu.Items);
-            foreach (var command in new ICommand[] { vm.EditPlaylistItemCommand, vm.TogglePinItemCommand, vm.MoveToFolderCommand, vm.DeletePlaylistItemCommand })
+            foreach (var command in new ICommand[] { vm.EditPlaylistItemCommand, vm.TogglePinItemCommand, vm.MoveToFolderChoiceCommand, vm.DeletePlaylistItemCommand })
                 Assert.Contains(command, reachable);
             Assert.All(menu.Items.OfType<MenuItem>().Where(i => i.IsVisible), i =>
             {
@@ -744,15 +744,15 @@ public class ContextMenuV2ViewsTests
             AssertSeparatorsClean(menu.Items);
             menu.Close();
 
-            // The PLAYLISTS header: New Playlist / New Smart Playlist.
-            var header = view.GetVisualDescendants().OfType<TextBlock>().First(t => t.ContextMenu is { Items.Count: 2 });
+            // The PLAYLISTS header: New Playlist / New Smart Playlist / New Folder.
+            var header = view.GetVisualDescendants().OfType<TextBlock>().First(t => t.ContextMenu is { Items.Count: 3 });
             Assert.Contains(MenuV2.MenuClass, header.ContextMenu!.Classes);
             header.ContextMenu.Open(header);
             Pump();
-            Assert.Equal(new ICommand[] { vm.CreatePlaylistCommand, vm.CreateSmartPlaylistFromSidebarCommand },
+            Assert.Equal(new ICommand[] { vm.CreatePlaylistCommand, vm.CreateSmartPlaylistFromSidebarCommand, vm.NewFolderCommand },
                 header.ContextMenu.Items.OfType<MenuItem>().Select(i => i.Command!).ToArray());
             Assert.All(header.ContextMenu.Items.OfType<MenuItem>(), i => Assert.NotNull(MenuV2.IconPath(i.Icon)?.Data));
-            Assert.Same(MenuV2.FindGeometry(view, "MenuLineSmartPlaylist"), MenuV2.IconPath(header.ContextMenu.Items.OfType<MenuItem>().Last().Icon)!.Data);
+            Assert.Same(MenuV2.FindGeometry(view, "MenuLineSmartPlaylist"), MenuV2.IconPath(header.ContextMenu.Items.OfType<MenuItem>().ElementAt(1).Icon)!.Data);
             header.ContextMenu.Close();
         }
         finally

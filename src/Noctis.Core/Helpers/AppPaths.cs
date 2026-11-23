@@ -99,7 +99,7 @@ public static class AppPaths
             foreach (var name in new[]
             {
                 "settings.json", "library.json", "library.db", "library.db-wal",
-                "library.db-shm", "playlists.json", "queue.json", "indexes.json",
+                "library.db-shm", "playlists.json", "playlist_folders.json", "queue.json", "indexes.json",
                 "play_history.json", "play_history.recent.json"
             })
             {

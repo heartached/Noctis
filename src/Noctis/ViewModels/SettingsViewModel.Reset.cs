@@ -18,7 +18,7 @@ namespace Noctis.ViewModels;
 /// CLEARED (user data, caches, resume ledgers)
 ///   library.json, library.db: tracks, track_user_state (ratings, favorites, play counts,
 ///     snoozes, badges, saved positions: a rescan restored them all), track_analysis (BPM/key)
-///   playlists.json, queue.json, queue-position.json (dropped by the empty queue save)
+///   playlists.json, playlist_folders.json (the empty sidebar folders), queue.json, queue-position.json (dropped by the empty queue save)
 ///   play_history.json + play_history.recent.json (Stats, Wrapped, Home), wrap_archive.json
 ///   favorite_artists.json, phone_handoff.json
 ///   artwork/ (artists/, similar/), animated_covers/, playlist_covers/, artist_info/ (incl.
@@ -63,7 +63,7 @@ public partial class SettingsViewModel
     private static readonly string[] ResetClearedFiles =
     {
         "indexes.json", "crash.log", "play_history.json", "play_history.recent.json",
-        "wrap_archive.json", "favorite_artists.json", "phone_handoff.json",
+        "wrap_archive.json", "favorite_artists.json", "phone_handoff.json", "playlist_folders.json",
         "queue-position.json", "queue-position.json.tmp",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json",
         "mp3_decoder_fallback.txt", "musixmatch_token", "computers.json",

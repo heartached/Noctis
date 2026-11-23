@@ -2137,7 +2137,7 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Sidebar.EditPlaylist" xml:space="preserve"><value>Edit Playlist…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.StarSidebar" xml:space="preserve"><value>Star in Sidebar</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.UnstarFromSidebar" xml:space="preserve"><value>Unstar from Sidebar</value><comment>Header in SidebarView.axaml</comment></data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Move to Folder…</value><comment>Header in SidebarView.axaml</comment></data>
+  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Move to Folder</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve"><value>Remove from Folder</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.DeletePlaylist" xml:space="preserve"><value>Delete Playlist</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylistFolder" xml:space="preserve"><value>New Playlist in Folder…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -4434,4 +4434,22 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} will start the new album “{1}”. The files' album tags (album, album artist, track and disc number) are changed.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Move</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Moved in Noctis, but some files ({0}) could not be saved (read-only or open in another app). If such a file changes, it goes back to its old album on the next scan.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>Add</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>Add to {0:N0} Playlists</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>Added to {0:N0} playlists</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
+  <data name="Settings.PlaylistNewBadgeHintDays" xml:space="preserve"><value>Mark tracks recently added to the playlist. Choose how long they stay new.</value><comment>Hint under Settings › Playlist page › NEW badge; the duration picker sits beside it</comment></data>
+  <data name="Settings.PlaylistNewBadgeDuration" xml:space="preserve"><value>How long tracks stay NEW</value><comment>Screen-reader name of the NEW badge duration picker in Settings › Playlist page</comment></data>
+  <data name="Settings.NewBadgeDays1" xml:space="preserve"><value>1 day</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays3" xml:space="preserve"><value>3 days</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays7" xml:space="preserve"><value>7 days</value><comment>NEW badge duration choice in Settings › Playlist page (the default); also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 days</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 days</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>Added in the last {0}</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>New Folder…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>New folder</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>Create</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>No Folder</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
+  <data name="Playlist.ViewCover" xml:space="preserve"><value>View Cover</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
+  <data name="Playlist.ChangeCover" xml:space="preserve"><value>Change Cover…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
+  <data name="Playlist.CoverMenu" xml:space="preserve"><value>Playlist cover</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
 </root>

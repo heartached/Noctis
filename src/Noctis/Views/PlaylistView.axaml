@@ -289,6 +289,20 @@
         <Style Selector="Button.suggest-add:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+
+        <!-- 11-23 hero cover: under the pointer it dims and shows the picture glyph (the
+             track rows' art-play-overlay recipe, an eased opacity), a click opens its menu. -->
+        <Style Selector="Border.hero-cover-dim">
+            <Setter Property="Opacity" Value="0" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border#HeroCover:pointerover Border.hero-cover-dim">
+            <Setter Property="Opacity" Value="1" />
+        </Style>
     </UserControl.Styles>
 
     <Panel>
@@ -363,13 +377,36 @@
                 <!-- Hero content, bottom-left: the playlist's cover (the same custom > collage >
                      single > colour tile the grid shows, 09-14) beside the name block. -->
                 <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Bottom" Margin="28,0,28,18">
-                <Border Grid.Column="0"
+                <!-- 11-23: a click (or right-click) opens View Cover / Change Cover… (OnHeroCoverTapped). -->
+                <Border x:Name="HeroCover"
+                        Grid.Column="0"
                         Width="156" Height="156"
                         CornerRadius="10"
                         ClipToBounds="True"
                         VerticalAlignment="Bottom"
                         Margin="0,0,24,0"
+                        Cursor="Hand"
+                        AutomationProperties.Name="{loc:T Playlist.CoverMenu}"
+                        Tapped="OnHeroCoverTapped"
                         BoxShadow="0 10 30 0 #66000000">
+                    <Border.ContextMenu>
+                        <ContextMenu Classes="v2">
+                            <MenuItem Header="{loc:T Playlist.ViewCover}"
+                                      IsVisible="{Binding CanViewCover}"
+                                      Command="{Binding ViewCoverCommand}">
+                                <MenuItem.Icon>
+                                    <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineImage}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="{loc:T Playlist.ChangeCover}"
+                                      Command="{Binding ChangeCoverCommand}"
+                                      CommandParameter="{Binding $parent[UserControl]}">
+                                <MenuItem.Icon>
+                                    <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineEdit}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </Border.ContextMenu>
                     <Panel>
                         <Border Background="{Binding PlaylistColor, Converter={StaticResource HexColorConverter}}" />
                         <PathIcon Data="{StaticResource PlaylistsIcon}"
@@ -400,6 +437,16 @@
                         <controls:CachedImage SourcePath="{Binding PlaylistCoverArtPath}"
                                               Stretch="UniformToFill"
                                               IsVisible="{Binding HasCustomArt}" />
+                        <!-- Hover: a soft dim and the picture glyph (styles above). -->
+                        <Border x:Name="HeroCoverDim" Classes="hero-cover-dim"
+                                Background="#59000000" IsHitTestVisible="False">
+                            <Viewbox Width="30" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource MenuLineImage}" Stroke="White"
+                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                </Canvas>
+                            </Viewbox>
+                        </Border>
                     </Panel>
                 </Border>
                 <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
@@ -862,7 +909,7 @@
                                                     BorderThickness="1.5"
                                                     UseLayoutRounding="True"
                                                     BorderBrush="{DynamicResource AccentTextExactBrush}"
-                                                    ToolTip.Tip="{loc:T Playlist.AddedLast7DaysTip}">
+                                                    ToolTip.Tip="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.PlaylistNewBadgeTip, FallbackValue={x:Null}}">
                                                 <!-- GitHub #74: the badge can be switched off in Settings. -->
                                                 <Border.IsVisible>
                                                     <!-- New to THIS playlist (a suggestion just added counts), else new to the library. -->
@@ -871,6 +918,7 @@
                                                         <Binding Path="DateAdded" />
                                                         <Binding Path="$parent[UserControl].((vm:PlaylistViewModel)DataContext).TrackAddedAt" />
                                                         <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Settings.PlaylistShowNewBadge" FallbackValue="True" />
+                                                        <Binding Path="$parent[Window].((vm:MainWindowViewModel)DataContext).Settings.PlaylistNewBadgeDays" FallbackValue="7" />
                                                     </MultiBinding>
                                                 </Border.IsVisible>
                                                 <TextBlock Text="{loc:T Playlist.NEW}"

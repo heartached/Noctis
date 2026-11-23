@@ -5736,7 +5736,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Header in SidebarView.axaml</comment>
   </data>
   <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>フォルダーへ移動…</value>
+    <value>フォルダーへ移動</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
@@ -9420,4 +9420,22 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2}で新しいアルバム「{1}」を作成します。ファイルのアルバムタグ (アルバム、アルバムアーティスト、トラック番号とディスク番号) が変更されます。</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>移動</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Noctis 内では移動しましたが、一部のファイル ({0}) を保存できませんでした (読み取り専用か、別のアプリで開かれています)。そのファイルが変更されると、次回のスキャンで元のアルバムに戻ります。</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>追加</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>{0:N0} 件のプレイリストに追加</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>{0:N0} 件のプレイリストに追加しました</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
+  <data name="Settings.PlaylistNewBadgeHintDays" xml:space="preserve"><value>最近プレイリストに追加されたトラックに印を付けます。NEW と表示する期間を選べます。</value><comment>Hint under Settings › Playlist page › NEW badge; the duration picker sits beside it</comment></data>
+  <data name="Settings.PlaylistNewBadgeDuration" xml:space="preserve"><value>NEW を表示する期間</value><comment>Screen-reader name of the NEW badge duration picker in Settings › Playlist page</comment></data>
+  <data name="Settings.NewBadgeDays1" xml:space="preserve"><value>1日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays3" xml:space="preserve"><value>3日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays7" xml:space="preserve"><value>7日</value><comment>NEW badge duration choice in Settings › Playlist page (the default); also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30日</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>{0}以内に追加</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>新規フォルダー…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>新規フォルダー</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>作成</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>フォルダーなし</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
+  <data name="Playlist.ViewCover" xml:space="preserve"><value>カバーを表示</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
+  <data name="Playlist.ChangeCover" xml:space="preserve"><value>カバーを変更…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
+  <data name="Playlist.CoverMenu" xml:space="preserve"><value>プレイリストのカバー</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
 </root>

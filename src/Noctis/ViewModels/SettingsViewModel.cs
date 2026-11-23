@@ -1485,6 +1485,7 @@ public partial class SettingsViewModel : ViewModelBase
         RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
+        RelabelPlaylistNewBadgeDays();
         RebuildArtworkClickOptions();
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
@@ -3760,6 +3761,7 @@ public partial class SettingsViewModel : ViewModelBase
             ImportDroppedMedia = _settings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = _settings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = _settings.PlaylistShowNewBadge;
+            PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(_settings.PlaylistNewBadgeDays);
             PlaylistShowAddedColumn = _settings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = _settings.PlaylistShowFavoriteColumn;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
@@ -4390,6 +4392,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ImportDroppedMedia = ImportDroppedMedia;
         _settings.PlaylistShowAlbumHeaders = PlaylistShowAlbumHeaders;
         _settings.PlaylistShowNewBadge = PlaylistShowNewBadge;
+        _settings.PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(PlaylistNewBadgeDays);
         _settings.PlaylistShowAddedColumn = PlaylistShowAddedColumn;
         _settings.PlaylistShowFavoriteColumn = PlaylistShowFavoriteColumn;
         _settings.TransitionStyle = TransitionStyle ?? "Crossfade";
@@ -9025,6 +9028,7 @@ public partial class SettingsViewModel : ViewModelBase
             ImportDroppedMedia = defaultSettings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = defaultSettings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = defaultSettings.PlaylistShowNewBadge;
+            PlaylistNewBadgeDays = defaultSettings.PlaylistNewBadgeDays;
             PlaylistShowAddedColumn = defaultSettings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = defaultSettings.PlaylistShowFavoriteColumn;
             ShowArtworkColumn = defaultSettings.ShowArtworkColumn;

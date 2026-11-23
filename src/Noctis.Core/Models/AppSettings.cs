@@ -51,6 +51,17 @@ public class AppSettings : IJsonOnDeserializing
     /// and the Added / Favorite columns.</summary>
     public bool PlaylistShowAlbumHeaders { get; set; } = true;
     public bool PlaylistShowNewBadge { get; set; } = true;
+
+    /// <summary>How many days a track stays NEW on a playlist page (11-23; it was always 7).
+    /// One of <see cref="PlaylistNewBadgeDayChoices"/>.</summary>
+    public int PlaylistNewBadgeDays { get; set; } = 7;
+
+    /// <summary>The NEW badge lengths Settings offers, in days.</summary>
+    public static IReadOnlyList<int> PlaylistNewBadgeDayChoices { get; } = new[] { 1, 3, 7, 14, 30 };
+
+    /// <summary>The nearest of <see cref="PlaylistNewBadgeDayChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapPlaylistNewBadgeDays(int days) =>
+        PlaylistNewBadgeDayChoices.MinBy(c => Math.Abs((long)c - days));
     public bool PlaylistShowAddedColumn { get; set; } = true;
     public bool PlaylistShowFavoriteColumn { get; set; } = true;
 

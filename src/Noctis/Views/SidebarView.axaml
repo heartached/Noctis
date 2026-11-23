@@ -117,7 +117,7 @@
              Folder headers: [New Playlist in Folder, Rename] · [Remove Folder]. -->
         <Style Selector="ListBox#PlaylistList ListBoxItem">
             <Setter Property="ContextMenu">
-                <ContextMenu x:DataType="m:PlaylistNavItem" Classes="v2">
+                <ContextMenu x:DataType="m:PlaylistNavItem" Classes="v2" Opened="OnPlaylistMenuOpened">
                     <!-- Playlist rows -->
                     <MenuItem Header="{loc:T Sidebar.EditPlaylist}"
                               IsVisible="{Binding !IsFolder}"
@@ -154,9 +154,11 @@
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator IsVisible="{Binding !IsFolder}" />
+                    <!-- 11-23: a submenu of the folders, No Folder and New Folder… (only that one
+                         asks for a name), filled as the menu opens (OnPlaylistMenuOpened). -->
                     <MenuItem Header="{loc:T Sidebar.MoveFolder}"
+                              Classes="move-to-folder"
                               IsVisible="{Binding !IsFolder}"
-                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).MoveToFolderCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
@@ -572,7 +574,10 @@
             <!-- Scrollable content fills remaining space. Scrollbar stays hidden
                  (wheel/touch still scroll) so it never cuts through the 60px
                  collapsed rail when many playlists overflow the viewport. -->
-            <ScrollViewer VerticalScrollBarVisibility="Hidden"
+            <!-- Transparent so the empty space under the playlists takes a right-click. -->
+            <ScrollViewer x:Name="NavScroller"
+                          Background="Transparent"
+                          VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
 
@@ -744,8 +749,10 @@
                                 Margin="8,2,8,8" />
                     </StackPanel>
 
-                    <!-- Playlists header (only visible when expanded) -->
-                    <TextBlock Margin="18,4,12,4"
+                    <!-- Playlists header (only visible when expanded). Its menu also opens on a
+                         right-click in the empty part of the playlist area (OnNavScrollerPointerPressed). -->
+                    <TextBlock x:Name="PlaylistsHeader"
+                               Margin="18,4,12,4"
                                IsVisible="{Binding IsExpanded}"
                                Text="{loc:T Sidebar.PLAYLISTS}"
                                FontSize="12"
@@ -764,6 +771,11 @@
                                 <MenuItem Header="{loc:T Sidebar.NewSmartPlaylist}" Command="{Binding CreateSmartPlaylistFromSidebarCommand}">
                                     <MenuItem.Icon>
                                         <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSmartPlaylist}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T Sidebar.NewFolder}" Command="{Binding NewFolderCommand}">
+                                    <MenuItem.Icon>
+                                        <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>

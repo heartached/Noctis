@@ -159,6 +159,7 @@ public class SettingsResetTests : IDisposable
         [nameof(AppSettings.QueueRowLine2Extra)] = _ => nameof(QueueRowField.Title),
         [nameof(AppSettings.QueueRowRight)] = _ => nameof(QueueRowSide.Duration),
         [nameof(AppSettings.AnimatedArtworkCacheMb)] = _ => 2048,
+        [nameof(AppSettings.PlaylistNewBadgeDays)] = _ => 14,
         [nameof(AppSettings.AnimatedArtworkQuality)] = _ => AnimatedArtworkQualities.P2160,
         [nameof(AppSettings.AlbumPageTintStrength)] = _ => 50,
         [nameof(AppSettings.UpmixMode)] = _ => "Surround",
