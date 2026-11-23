@@ -8590,6 +8590,12 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>調整「{0}」的順序</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>在佇列中顯示已播放歌曲</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>已播放的歌曲保留在目前歌曲上方</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>單曲</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>專輯</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>前級增益</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>防止削波</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>提升不會超過歌曲的最高峰值</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>用歌曲的 ReplayGain 標籤統一響度（包括電腦上的歌曲）。「單曲」讓每首歌響度相同；「專輯」保留專輯中輕柔與響亮歌曲的差別。沒有 ReplayGain 的歌曲按原樣播放。</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>已使用的儲存空間</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>移除所有下載項目</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>它們仍在電腦上並可繼續串流播放</value></data>
@@ -8858,6 +8864,14 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>登出</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>登出並移除下載項目</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>來自該電腦的歌曲會從這支手機的資料庫中移除。你隨時可以再次登入。</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>來自該電腦的歌曲會從這支手機的資料庫中移除，但已下載的歌曲會保留，在你移除前仍可播放。你隨時可以再次登入。</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>電腦上已沒有</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>電腦上已沒有：{0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>你的電腦上已沒有這些歌曲。它們仍保留在這支手機上，在你移除前仍可播放。</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>移除</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>全部移除</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>要移除這些歌曲嗎？</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>{0} 將從這支手機上移除。你的電腦上已沒有它們，因此無法再次下載。</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>正在登出…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>發生錯誤。請再試一次。</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>同步完成</value></data>

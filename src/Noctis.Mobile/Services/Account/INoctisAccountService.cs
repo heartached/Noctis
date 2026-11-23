@@ -100,7 +100,8 @@ public interface INoctisAccountService
     Task SignInWithPairingAsync(Noctis.Services.Server.PairingPayload pairing, CancellationToken ct = default);
 
     /// <summary>Revokes this device's key on the server (best effort), forgets the account,
-    /// removes the desktop's songs from the phone library and, if asked, the downloads.</summary>
+    /// removes the desktop's songs from the phone library and, if asked, the downloads (kept, their
+    /// songs stay and play, <see cref="IsNotOnComputer"/>).</summary>
     Task SignOutAsync(bool removeDownloads, CancellationToken ct = default);
 
     /// <summary>Full sync: catalog, covers, favorites/ratings, playlists, queued plays.</summary>
@@ -173,6 +174,19 @@ public interface INoctisAccountService
     Task DownloadAllAsync(CancellationToken ct = default);
     Task RemoveDownloadsAsync(IEnumerable<Track> tracks);
     Task RemoveAllDownloadsAsync();
+
+    /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
+    /// or signed out keeping the downloads): its file stays and plays until the user removes it
+    /// (<see cref="RemoveDownloadsAsync"/>, which then takes its row too). Never deleted on its own:
+    /// a drive unplugged on the computer, or another computer signed in to, would take music saved
+    /// for offline. The song coming back on the computer makes it an ordinary download again.</summary>
+    bool IsNotOnComputer(Track track) => false;
+
+    /// <summary>The songs <see cref="IsNotOnComputer"/> holds for (Account › Downloads lists them).</summary>
+    IReadOnlyList<Track> NotOnComputerTracks => Array.Empty<Track>();
+
+    /// <summary>The space their files take.</summary>
+    long NotOnComputerBytes => 0;
 
     // ── The phone's own songs → the computer ──
 

@@ -60,9 +60,12 @@ public partial class LyricsPage : UserControl
     private readonly DispatcherTimer _controlsTimer;
     private readonly DispatcherTimer _controlsOffTimer;
     private readonly DispatcherTimer _holdRelease;
+    // The frame callback, made once: a method group passed per frame is a new delegate per frame.
+    private readonly Action<TimeSpan> _onFrame;
 
     public LyricsPage()
     {
+        _onFrame = OnFrame;
         InitializeComponent();
         LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
@@ -143,6 +146,9 @@ public partial class LyricsPage : UserControl
         FeedTimeline();
         if (!IsVisible)
         {
+            // The keep-alive stops asking now (the frame loop ends at its next frame): its frames
+            // redraw the screen even under a hidden page.
+            KeepAlive?.Run(false);
             EndBrowse(scrollBack: false);
             _controlsTimer.Stop();
             _controlsOffTimer.Stop();
@@ -258,6 +264,9 @@ public partial class LyricsPage : UserControl
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying) && IsVisible) ShowControls();
+        // Between plain lines the frame loop rests; each position poll (4 a second) wakes it
+        // once the next line is near (KeepsFrames), or at once after a seek.
+        else if (e.PropertyName == nameof(NowPlayingViewModel.Position) && !_frameLoopRunning && IsVisible) EnsureFrameLoop();
     }
 
     /// <summary>A new track's lyrics start at the top.</summary>
@@ -491,22 +500,37 @@ public partial class LyricsPage : UserControl
 
     // ── Frames ──
 
+    /// <summary>The page's frame loop is running (tests read it).</summary>
+    internal bool IsFrameLoopRunning => _frameLoopRunning;
+
+    /// <summary>How far ahead of a plain line's start the frame loop (and with it the keep-alive)
+    /// wakes. Between lines nothing is drawn, and the S23's panel drops to 24 Hz after a moment
+    /// without frames; its way back to 120 Hz takes 75-85 ms (RenderKeepAlive). Woken this early,
+    /// on a position poll (every 250 ms), it is back at full rate before the line glides.</summary>
+    internal const double WakeLeadMs = 600;
+
     // Not while the app is in the background (home, task switch, screen off): the frame loop and
     // the keep-alive kept the render loop ticking there for as long as the song played.
     private bool KeepsFrames => IsVisible && !_heldForMenu && _shell is not { IsSuspended: true }
-                                && (_gliding || _lyrics?.WantsFrames == true);
+                                && (_gliding || (_lyrics?.WantsFrames == true && LinesMoveSoon()));
+
+    /// <summary>A word-timed song (or the dots) moves every frame; plain lines only around a change.</summary>
+    private bool LinesMoveSoon() =>
+        _lyrics is { } lyrics && (lyrics.AnimatesEveryFrame || lyrics.MsToNextChange(LyricsPageViewModel.NowMs()) <= WakeLeadMs);
 
     private void EnsureFrameLoop()
     {
         if (_frameLoopRunning || !KeepsFrames) return;
         if (TopLevel.GetTopLevel(this) is not { } top) return;
         _frameLoopRunning = true;
+        Services.FrameStallMonitor.SetState("lyric frame loop", true);
         KeepAlive.Run(true);
-        top.RequestAnimationFrame(OnFrame);
+        top.RequestAnimationFrame(_onFrame);
     }
 
     private void OnFrame(TimeSpan _)
     {
+        Services.FrameStallMonitor.Count("lyric frames");
         var now = LyricsPageViewModel.NowMs();
         if (_gliding) StepGlide(now);
         if (_lyrics?.WantsFrames == true && IsVisible) _lyrics.OnFrame(now);
@@ -514,11 +538,12 @@ public partial class LyricsPage : UserControl
         if (KeepsFrames && TopLevel.GetTopLevel(this) is { } top)
         {
             KeepAlive.Run(true);   // a page shown this frame has its compositor visual only now
-            top.RequestAnimationFrame(OnFrame);
+            top.RequestAnimationFrame(_onFrame);
         }
         else
         {
             _frameLoopRunning = false;
+            Services.FrameStallMonitor.SetState("lyric frame loop", false);
             KeepAlive.Run(false);
         }
     }
@@ -573,6 +598,7 @@ public partial class LyricsPage : UserControl
         _glideDurationMs = Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
         BuildCascade(index, distance);
         _gliding = true;
+        Services.FrameStallMonitor.SetState(Services.FrameStallMonitor.MotionState, true);
         EnsureFrameLoop();
     }
 
@@ -639,6 +665,7 @@ public partial class LyricsPage : UserControl
 
     private void StopGlide()
     {
+        if (_gliding) Services.FrameStallMonitor.SetState(Services.FrameStallMonitor.MotionState, false);
         _gliding = false;
         if (_cascade == null) return;
         foreach (var (control, _) in _cascade) SetLag(control, 0);

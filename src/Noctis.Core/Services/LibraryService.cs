@@ -1832,15 +1832,16 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc />
-    public async Task RemoveRemoteTracksAsync()
+    public async Task RemoveRemoteTracksAsync(IReadOnlySet<Guid>? keep = null)
     {
         await _scanGate.WaitAsync().ConfigureAwait(false);
         try
         {
             var current = _tracks;
-            var removed = current.Where(IsServerTrack).ToList();
+            bool Removes(Track t) => IsServerTrack(t) && keep?.Contains(t.Id) != true;
+            var removed = current.Where(Removes).ToList();
             if (removed.Count == 0) return;
-            _tracks = current.Where(t => !IsServerTrack(t)).ToList();
+            _tracks = current.Where(t => !Removes(t)).ToList();
             // Covers fetched for the desktop's albums go with them (a phone album sharing the
             // AlbumId keeps its cover). No exclusion list: these were never files.
             DeleteOrphanedArtwork(removed);
@@ -1860,7 +1861,10 @@ public class LibraryService : ILibraryService
         && a.AlbumId == b.AlbumId && a.Duration == b.Duration && a.TrackNumber == b.TrackNumber
         && a.DiscNumber == b.DiscNumber && a.Year == b.Year && a.Genre == b.Genre && a.Bitrate == b.Bitrate
         && a.SampleRate == b.SampleRate && a.FileSize == b.FileSize && a.Codec == b.Codec
-        && a.FilePath == b.FilePath;
+        && a.FilePath == b.FilePath
+        // A ReplayGain scan on the desktop changes nothing else: the new values must still land.
+        && a.ReplayGainTrackDb == b.ReplayGainTrackDb && a.ReplayGainTrackPeak == b.ReplayGainTrackPeak
+        && a.ReplayGainAlbumDb == b.ReplayGainAlbumDb;
 
     /// <summary>
     /// Deletes cached covers for albums that no longer have any tracks after a

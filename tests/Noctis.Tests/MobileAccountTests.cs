@@ -185,6 +185,12 @@ public class MobileAccountTests
             return Task.CompletedTask;
         }
 
+        /// <summary>Downloaded songs the computer no longer has (shown while their id is downloaded).</summary>
+        public List<Track> NotOnComputer { get; } = new();
+        public bool IsNotOnComputer(Track track) => NotOnComputer.Contains(track) && DownloadedIds.Contains(track.Id);
+        public IReadOnlyList<Track> NotOnComputerTracks => NotOnComputer.Where(t => DownloadedIds.Contains(t.Id)).ToList();
+        public long NotOnComputerBytes => NotOnComputerTracks.Count * 5L * 1024 * 1024;
+
         public string? ResolvePlaybackUri(string filePath) => null;
 
         public void RaiseDownloadProgress(NoctisDownloadProgress progress) => DownloadProgress?.Invoke(this, progress);
@@ -1065,6 +1071,80 @@ public class MobileAccountTests
         await page.ConfirmRemoveDownloadsCommand.ExecuteAsync(null);
         Assert.False(page.CanRemoveDownloads);                             // nothing left
         Assert.Equal(string.Empty, page.DownloadText);                     // not "Downloads finished" over none
+    }
+
+    /// <summary>Downloads whose song the computer no longer has: a row under Downloaded ("No longer on
+    /// your computer", hidden with none) opens their list; each row's Remove deletes that one, Remove
+    /// All asks first (red) and then deletes the rest; the row follows.</summary>
+    [Fact]
+    public async Task NotOnComputer_RowOpensTheList_RemoveAndRemoveAll()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        foreach (var t in new[] { a, b, c }) account.DownloadedIds.Add(t.Id);
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+        Assert.False(page.HasNotOnComputer);
+
+        account.NotOnComputer.AddRange(new[] { a, b });
+        account.RaiseStateChanged();
+        Assert.True(page.HasNotOnComputer);
+        Assert.Equal("2 songs · 10 MB", page.NotOnComputerValue);
+        Assert.Equal("No longer on your computer: 2 songs · 10 MB", page.NotOnComputerText);
+
+        page.OpenNotOnComputerCommand.Execute(null);
+        var list = Assert.IsType<SongListPageViewModel>(shell.CurrentPage);
+        Assert.Equal("No longer on your computer", list.Title);
+        Assert.True(list.CanRemoveSongs);
+        Assert.Equal(new[] { a, b }, list.Songs);
+
+        await list.RemoveSongCommand.ExecuteAsync(a);
+        Assert.Equal(new[] { a }, Assert.Single(account.RemoveCalls));
+        Assert.Equal(new[] { b }, list.Songs);
+
+        list.AskRemoveAllCommand.Execute(null);
+        var prompt = Assert.IsType<PromptViewModel>(shell.Prompt);
+        Assert.Equal("Remove these songs?", prompt.Title);
+        Assert.Equal("This removes 1 song from this phone. Your computer no longer has them, so they can't be downloaded again.", prompt.Message);
+        Assert.Single(account.RemoveCalls);                                // nothing removed before the answer
+        var remove = Assert.Single(prompt.Actions);
+        Assert.True(remove.IsDestructive);
+        await remove.RunCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { b }, account.RemoveCalls[1]);
+        Assert.Empty(list.Songs);
+        Assert.True(account.IsDownloaded(c));                               // an ordinary download stays
+
+        account.RaiseStateChanged();
+        Assert.False(page.HasNotOnComputer);
+    }
+
+    /// <summary>Other lists offer neither Remove nor Remove All.</summary>
+    [Fact]
+    public void OtherSongLists_OfferNoRemove()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { RemoteSong("A") });
+        var list = new SongListPageViewModel(rig.Shell, "Nav.Songs", () => rig.Shell.Library.Songs);
+        Assert.False(list.CanRemoveSongs);
+    }
+
+    /// <summary>Sign out with downloads on the phone says they stay (they play on).</summary>
+    [Fact]
+    public async Task SignOutQuestion_SaysKeptDownloadsStay()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+        page.AskSignOutCommand.Execute(null);
+        Assert.Equal("Its songs leave this phone's library. You can sign in again any time.", Assert.IsType<PromptViewModel>(shell.Prompt).Message);
+        page.CancelSignOutCommand.Execute(null);
+
+        await page.DownloadAllCommand.ExecuteAsync(null);
+        page.AskSignOutCommand.Execute(null);
+        Assert.StartsWith("Its songs leave this phone's library, except downloaded ones", Assert.IsType<PromptViewModel>(shell.Prompt).Message);
     }
 
     /// <summary>Settings' profile card said "Synced 5 min ago" for as long as the sheet stayed

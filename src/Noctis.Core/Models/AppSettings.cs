@@ -1596,6 +1596,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;
 
+    /// <summary>The phone's Prevent Clipping (Settings › Listening › ReplayGain): a boost stops at
+    /// the song's peak headroom (ReplayGainLevel). The desktop does not read it.</summary>
+    public bool ReplayGainPreventClipping { get; set; } = true;
+
     /// <summary>GitHub #148: measure new files (found by the folder watcher or a library scan)
     /// and write ReplayGain tags into them once their album has finished copying. Off by
     /// default: it rewrites the user's files.</summary>

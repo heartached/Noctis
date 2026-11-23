@@ -8590,6 +8590,12 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} 순서 변경</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>재생한 곡을 대기열에 표시</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>재생한 곡이 현재 곡 위에 남습니다</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>트랙</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>앨범</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>프리앰프</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>클리핑 방지</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>곡의 최대 피크를 넘지 않게 증폭합니다</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>곡의 ReplayGain 태그로 음량을 맞춥니다(컴퓨터의 곡 포함). 트랙은 모든 곡을 같은 음량으로, 앨범은 앨범 안의 조용한 곡과 큰 곡을 그대로 둡니다. ReplayGain이 없는 곡은 그대로 재생됩니다.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>사용 중인 저장 공간</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>모든 다운로드 제거</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>컴퓨터에 남아 있고 계속 스트리밍됩니다</value></data>
@@ -8858,6 +8864,14 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>로그아웃</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>로그아웃 및 다운로드 제거</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>해당 컴퓨터의 노래가 이 휴대폰의 라이브러리에서 빠집니다. 언제든지 다시 로그인할 수 있습니다.</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>해당 컴퓨터의 노래가 이 휴대폰의 라이브러리에서 빠지지만, 다운로드한 노래는 남아 있으며 제거할 때까지 재생할 수 있습니다. 언제든지 다시 로그인할 수 있습니다.</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>컴퓨터에 더 이상 없음</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>컴퓨터에 더 이상 없음: {0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>컴퓨터에 더 이상 이 노래들이 없습니다. 이 휴대폰에 남아 있으며 제거할 때까지 재생할 수 있습니다.</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>제거</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>모두 제거</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>이 노래들을 제거할까요?</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>이 휴대폰에서 {0}이(가) 제거됩니다. 컴퓨터에 더 이상 없으므로 다시 다운로드할 수 없습니다.</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>로그아웃 중…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>문제가 발생했습니다. 다시 시도하세요.</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>동기화 완료</value></data>

@@ -75,7 +75,7 @@ public sealed record SettingsFolder(string Root, string Name, bool AccessLost)
 public sealed record LicenseEntry(string Name, string License, string Detail);
 
 /// <summary>Settings is one sheet: its top level, or one of the pages pushed inside it.</summary>
-public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme, Hidden, TabBar, ArtistSeparators }
+public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme, Hidden, TabBar, ArtistSeparators, ReplayGain }
 
 /// <summary>One line of Settings › Theme: a small preview of the theme (its page, a card and the
 /// chrome glass on it, its accent when it has one), its name, and a tick on the one in use.</summary>
@@ -181,6 +181,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.Library.Refreshed += OnLibraryRefreshed;
         Shell.Lyrics.PropertyChanged += OnLyricsChanged;
         Shell.PropertyChanged += OnShellChanged;
+        Shell.Player.PropertyChanged += OnPlayerChanged;
         Background.PropertyChanged += OnSubPageChanged;
         Scrobbling.PropertyChanged += OnSubPageChanged;
         History.PropertyChanged += OnSubPageChanged;
@@ -223,7 +224,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
         nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
         nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane), nameof(ShowsThemePane),
-        nameof(ShowsHiddenPane), nameof(ShowsTabBarPane), nameof(ShowsArtistSeparatorsPane), nameof(LanguageListSource))]
+        nameof(ShowsHiddenPane), nameof(ShowsTabBarPane), nameof(ShowsArtistSeparatorsPane), nameof(ShowsReplayGainPane), nameof(LanguageListSource))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
@@ -242,6 +243,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowsThemePane => ShownSubPane == SettingsPane.Theme;
     public bool ShowsTabBarPane => ShownSubPane == SettingsPane.TabBar;
     public bool ShowsArtistSeparatorsPane => ShownSubPane == SettingsPane.ArtistSeparators;
+    public bool ShowsReplayGainPane => ShownSubPane == SettingsPane.ReplayGain;
 
     /// <summary>The header's title: "Settings", or the pushed page's name.</summary>
     public string HeaderTitle => Pane switch
@@ -261,6 +263,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         SettingsPane.Hidden => Loc.T("Mobile.Settings.Hidden"),
         SettingsPane.TabBar => Loc.T("Mobile.Settings.TabBar"),
         SettingsPane.ArtistSeparators => Loc.T("Mobile.Settings.ArtistSeparators"),
+        SettingsPane.ReplayGain => Loc.T("Settings.ReplayGain"),
         _ => Title,
     };
 
@@ -661,6 +664,40 @@ public sealed partial class SettingsPageViewModel : MobilePage
     };
 
     public string LyricsRowName => Named(Loc.T("Tab.Lyrics"), LyricsValue);
+
+    // ── ReplayGain ──
+
+    /// <summary>The ReplayGain row's value and the pane's Mode row: Off, Track or Album
+    /// (the choices live on <see cref="NowPlayingViewModel"/>, which hands them to the player).</summary>
+    public string ReplayGainValue => ReplayGainModeLabel(Shell.Player.ReplayGainMode);
+
+    internal static string ReplayGainModeLabel(ReplayGainMode mode) => mode switch
+    {
+        ReplayGainMode.Track => Loc.T("Mobile.ReplayGain.Track"),
+        ReplayGainMode.Album => Loc.T("Mobile.ReplayGain.Album"),
+        _ => Loc.T("Mobile.Off"),
+    };
+
+    public string ReplayGainRowName => Named(Loc.T("Settings.ReplayGain"), ReplayGainValue);
+    public string ReplayGainModeRowName => Named(Loc.T("Settings.Mode"), ReplayGainValue);
+
+    /// <summary>Settings › ReplayGain › Mode: Off, Track or Album on the glass menu.</summary>
+    [RelayCommand]
+    private void ShowReplayGainModeMenu()
+    {
+        var items = Enum.GetValues<ReplayGainMode>()
+            .Select(mode => new OptionsMenuItem(Shell, ReplayGainModeLabel(mode), Shell.Player.ReplayGainMode == mode, () => Shell.Player.ReplayGainMode = mode))
+            .ToList();
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
+    private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(NowPlayingViewModel.ReplayGainMode)) return;
+        OnPropertyChanged(nameof(ReplayGainValue));
+        OnPropertyChanged(nameof(ReplayGainRowName));
+        OnPropertyChanged(nameof(ReplayGainModeRowName));
+    }
 
     // ── Listening ──
 
@@ -1397,6 +1434,7 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.Library.Refreshed -= OnLibraryRefreshed;
         Shell.Lyrics.PropertyChanged -= OnLyricsChanged;
         Shell.PropertyChanged -= OnShellChanged;
+        Shell.Player.PropertyChanged -= OnPlayerChanged;
         Background.PropertyChanged -= OnSubPageChanged;
         Background.Detach();
         Scrobbling.PropertyChanged -= OnSubPageChanged;

@@ -8590,6 +8590,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>إعادة ترتيب {0}</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>الأغاني المشغّلة في قائمة الانتظار</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>تبقى الأغاني التي شغّلتها فوق الأغنية الحالية</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>المقطع</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>الألبوم</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>التضخيم المسبق</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>منع التشويه</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>لا يتجاوز التضخيم أعلى ذروة في الأغنية</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>يوازن مستوى الصوت باستخدام وسوم ReplayGain في أغانيك، بما فيها أغاني الكمبيوتر. «المقطع» يجعل كل الأغاني بنفس العلو؛ «الألبوم» يُبقي الأغاني الهادئة والصاخبة في الألبوم كما هي. الأغاني بلا ReplayGain تُشغَّل كما هي.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>مساحة التخزين المستخدمة</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>إزالة كل التنزيلات</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>تبقى على الكمبيوتر ويمكن بثها</value></data>
@@ -8858,6 +8864,14 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>تسجيل الخروج</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>تسجيل الخروج وإزالة التنزيلات</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>ستخرج أغانيه من مكتبة هذا الهاتف. يمكنك تسجيل الدخول مرة أخرى في أي وقت.</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>ستخرج أغانيه من مكتبة هذا الهاتف، باستثناء الأغاني التي نزّلتها: تبقى وتعمل حتى تزيلها. يمكنك تسجيل الدخول مرة أخرى في أي وقت.</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>لم تعد على الكمبيوتر</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>لم تعد على الكمبيوتر: {0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>لم تعد هذه الأغاني على الكمبيوتر. تبقى على هذا الهاتف وتعمل حتى تزيلها.</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>إزالة</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>إزالة الكل</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>هل تريد إزالة هذه الأغاني؟</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>ستُزال {0} من هذا الهاتف. لم تعد على الكمبيوتر، لذا لا يمكن تنزيلها مرة أخرى.</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>جارٍ تسجيل الخروج…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>حدث خطأ ما. حاول مرة أخرى.</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>اكتملت المزامنة</value></data>

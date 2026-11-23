@@ -282,6 +282,25 @@ public class NoctisAccountLibraryTests : IDisposable
         Assert.Single(library.Tracks);
     }
 
+    [Fact]
+    public async Task Replace_TakesTheDesktopsNewReplayGain_ForAKnownSong()
+    {
+        // A ReplayGain scan on the computer changes nothing else about the song: the phone must still
+        // take the new values (the phone's player levels desktop songs by them).
+        var library = NewLibrary(out _);
+        var song = Remote(Guid.NewGuid(), "Quiet one");
+        await library.ReplaceRemoteTracksAsync(new[] { song });
+        var scanned = Remote(song.Id, "Quiet one");
+        scanned.ReplayGainTrackDb = -7.25;
+        scanned.ReplayGainTrackPeak = 0.97;
+        scanned.ReplayGainAlbumDb = -6.5;
+        await library.ReplaceRemoteTracksAsync(new[] { scanned });
+        var now = library.GetTrackById(song.Id)!;
+        Assert.Equal(-7.25, now.ReplayGainTrackDb);
+        Assert.Equal(0.97, now.ReplayGainTrackPeak);
+        Assert.Equal(-6.5, now.ReplayGainAlbumDb);
+    }
+
     /// <summary>Holds the scan at one audit event until released.</summary>
     private sealed class GateAudit(string eventType, TaskCompletionSource reached, Task release) : IAuditTrailService
     {

@@ -91,6 +91,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// <summary>Songs whose download was removed: a batch that still holds one skips it, and one
     /// that finishes it throws the file away. Cleared when the song is asked for again.</summary>
     private readonly ConcurrentDictionary<Guid, byte> _withdrawn = new();
+    /// <summary>Downloads whose song the computer no longer has (<see cref="IsNotOnComputer"/>), kept in offline.json.</summary>
+    private readonly ConcurrentDictionary<Guid, byte> _notOnComputer = new();
     /// <summary>A finished download joins <see cref="_downloaded"/> and a removal withdraws it under this,
     /// so a removal can never land between the check and the add.</summary>
     private readonly object _downloadCommit = new();
@@ -128,6 +130,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// already on the phone are left as they are.
     /// </summary>
     public bool PreferFlacForAlac { get; init; }
+
+    /// <summary>Reads a file's own tags (MetadataService.ReadTrackMetadata): a download the computer
+    /// no longer has, with no row left in the library to tell what it is (one an older version left
+    /// behind), is shown by them. Null = "Unknown Title".</summary>
+    public Func<string, Track?>? ReadFileTags { get; init; }
 
     private static bool MayBeAlac(string suffix) => suffix is "m4a" or "mp4" or "m4b" or "alac";
 
@@ -185,6 +192,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (_pending.Plays[i].Scrobble == PlayScrobbleWire.Pending)
                 _pending.Plays[i] = _pending.Plays[i] with { Scrobble = PlayScrobbleWire.Of(PlayScrobble.No) };
         IndexDownloads();
+        foreach (var hex in _store.LoadOffline().NotOnComputer)
+            if (NoctisRemoteIds.TryParseSyncId(hex, out var id)) _notOnComputer[id] = 0;
         LoadCachedAvatar();
         stateRecorder?.Attach(this);
         _recorder = stateRecorder;
@@ -377,7 +386,13 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             // Before the library has loaded there is nothing to remove yet, and the load would
             // bring the desktop's songs back. A failed load: remove what there is.
             await LibraryReady.ContinueWith(_ => { }, TaskScheduler.Default).ConfigureAwait(false);
-            await _library.RemoveRemoteTracksAsync().ConfigureAwait(false);
+            // Downloads kept: their songs stay and play, no longer on a computer (IsNotOnComputer)
+            // until a sign-in to one that has them.
+            var kept = removeDownloads ? null : new HashSet<Guid>(_downloaded.Keys);
+            await _library.RemoveRemoteTracksAsync(kept).ConfigureAwait(false);
+            _notOnComputer.Clear();
+            foreach (var id in kept ?? new HashSet<Guid>()) _notOnComputer[id] = 0;
+            SaveOfflineState();
             var removed = false;
             if (syncedPlaylists.Count > 0)
             {
@@ -756,8 +771,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (unlisted.Count > 0) DebugLog.Write("Account", $"catalog: keeping {unlisted.Count} songs the desktop did not list this time");
             tracks.AddRange(unlisted);
         }
+        var notOnComputer = SortDownloadsNotListed(songs, links, keepUnlisted);
         SaveSyncState();
-        await _library.ReplaceRemoteTracksAsync(tracks, ct).ConfigureAwait(false);
+        await _library.ReplaceRemoteTracksAsync(notOnComputer.Count > 0 ? tracks.Concat(notOnComputer).ToList() : tracks, ct).ConfigureAwait(false);
         if (links.Count > 0) DiscardDownloadsOf(links.Keys);
         if (redate) await RedateKnownSongsAsync(arriving, known).ConfigureAwait(false);
 
@@ -935,6 +951,86 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         return null;
     }
 
+    /// <summary>
+    /// Downloads of songs the catalog does not list are never deleted on their own (owner 11-23: a
+    /// drive unplugged on the computer, or another computer signed in to, would take music saved for
+    /// offline). A settled, non-empty catalog proves the computer no longer has them: they become
+    /// <see cref="IsNotOnComputer"/>, and their rows (else one made from the file's tags) stay in the
+    /// library and play from the file. Any catalog that lists one takes it back. Returns the rows to
+    /// keep beside the catalog's (empty unless settled: a partial catalog keeps every row anyway).
+    /// </summary>
+    private List<Track> SortDownloadsNotListed(List<RemoteSong> songs, Dictionary<Guid, Track> links, bool keepUnlisted)
+    {
+        var listed = new HashSet<Guid>(songs.Select(s => s.Id));
+        var rows = new List<Track>();
+        var changed = false;
+        foreach (var id in _notOnComputer.Keys)
+            if (listed.Contains(id) && _notOnComputer.TryRemove(id, out _)) changed = true;
+        if (!keepUnlisted && songs.Count > 0)
+        {
+            var known = new Dictionary<Guid, Track>();
+            foreach (var t in _library.AllTracks)
+                if (t.SourceType == SourceType.NoctisServer) known.TryAdd(t.Id, t);
+            foreach (var (id, file) in _downloaded)
+            {
+                if (listed.Contains(id) || links.ContainsKey(id)) continue;
+                rows.Add(known.TryGetValue(id, out var row) ? row : RowFromFile(id, file));
+                if (_notOnComputer.TryAdd(id, 0)) changed = true;
+            }
+            foreach (var id in _notOnComputer.Keys)
+                if (!_downloaded.ContainsKey(id) && _notOnComputer.TryRemove(id, out _)) changed = true;
+            if (rows.Count > 0) DebugLog.Write("Account", $"catalog: {rows.Count} downloaded songs are no longer on the computer; kept");
+        }
+        if (changed) SaveOfflineState();
+        return rows;
+    }
+
+    /// <summary>A row for a download with none left in the library: the file's own tags, as far as they go.</summary>
+    private Track RowFromFile(Guid id, DownloadedFile file)
+    {
+        Track? tags = null;
+        try { tags = ReadFileTags?.Invoke(file.Path); }
+        catch (Exception ex) { DebugLog.Write("Account", $"download tags unreadable ({ex.GetType().Name})"); }
+        var artist = string.IsNullOrWhiteSpace(tags?.Artist) ? "Unknown Artist" : tags.Artist;
+        var albumArtist = string.IsNullOrWhiteSpace(tags?.AlbumArtist) ? artist : tags.AlbumArtist;
+        var album = string.IsNullOrWhiteSpace(tags?.Album) ? "Unknown Album" : tags.Album;
+        var now = UtcNow;
+        return new Track
+        {
+            Id = id,
+            FilePath = NoctisRemoteIds.ToPath(id),
+            SourceType = SourceType.NoctisServer,
+            SourceTrackId = NoctisRemoteIds.ToServerTrackId(id),
+            Title = string.IsNullOrWhiteSpace(tags?.Title) ? "Unknown Title" : tags.Title,
+            Artist = artist,
+            AlbumArtist = albumArtist,
+            Album = album,
+            AlbumId = Track.ComputeAlbumId(albumArtist, album),
+            Duration = tags?.Duration ?? TimeSpan.Zero,
+            TrackNumber = tags?.TrackNumber ?? 0,
+            DiscNumber = tags is { DiscNumber: > 0 } ? tags.DiscNumber : 1,
+            Year = tags?.Year ?? 0,
+            Genre = tags?.Genre ?? string.Empty,
+            Bitrate = tags?.Bitrate ?? 0,
+            SampleRate = tags?.SampleRate ?? 0,
+            FileSize = file.Size,
+            Codec = tags?.Codec ?? string.Empty,
+            DateAdded = now,
+            LastModified = now,
+        };
+    }
+
+    private void SaveOfflineState()
+    {
+        lock (_saveGate)
+        {
+            var state = new NoctisOfflineState();
+            foreach (var id in _notOnComputer.Keys) state.NotOnComputer.Add(id.ToString("N"));
+            try { _store.SaveOffline(state); }
+            catch (Exception ex) { DebugLog.Write("Account", $"offline state save failed ({ex.GetType().Name})"); }
+        }
+    }
+
     /// <summary>A desktop song that now plays from a file on the phone has no use for its download.</summary>
     private void DiscardDownloadsOf(IEnumerable<Guid> ids)
     {
@@ -1013,6 +1109,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             SampleRate = s.SamplingRate,
             FileSize = s.Size,
             Codec = CodecFor(s.Suffix, s.BitRate),
+            // The desktop file's ReplayGain (an older desktop sends none): the player levels by it.
+            ReplayGainTrackDb = s.TrackGainDb,
+            ReplayGainTrackPeak = s.TrackPeak,
+            ReplayGainAlbumDb = s.AlbumGainDb,
             // The computer's date: the order a sync's new songs are dated in (StampArrivals).
             DateAdded = created,
             LastModified = created,
@@ -1798,6 +1898,48 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public int DownloadedCount => _downloaded.Count;
 
+    public bool IsNotOnComputer(Track track) =>
+        _notOnComputer.ContainsKey(track.Id) && _downloaded.ContainsKey(track.Id) && IsRemote(track);
+
+    public IReadOnlyList<Track> NotOnComputerTracks
+    {
+        get
+        {
+            if (_notOnComputer.IsEmpty) return Array.Empty<Track>();
+            // AllTracks: a hidden song's file takes the space all the same.
+            var rows = new List<Track>();
+            var seen = new HashSet<Guid>();
+            foreach (var t in _library.AllTracks)
+                if (IsNotOnComputer(t) && seen.Add(t.Id)) rows.Add(t);
+            return rows;
+        }
+    }
+
+    public long NotOnComputerBytes
+    {
+        get
+        {
+            long total = 0;
+            foreach (var t in NotOnComputerTracks)
+                if (_downloaded.TryGetValue(t.Id, out var file)) total += file.Size;
+            return total;
+        }
+    }
+
+    /// <summary>Songs no longer on the computer whose downloads went: with nothing left to play or
+    /// stream, their rows leave the library too. Null = all of them.</summary>
+    private async Task DropNotOnComputerAsync(IReadOnlyCollection<Guid>? ids)
+    {
+        var dropped = new HashSet<Guid>();
+        foreach (var id in ids ?? _notOnComputer.Keys.ToList())
+            if (_notOnComputer.TryRemove(id, out _)) dropped.Add(id);
+        if (dropped.Count == 0) return;
+        SaveOfflineState();
+        var keep = new HashSet<Guid>(_library.AllTracks
+            .Where(t => t.SourceType == SourceType.NoctisServer && !dropped.Contains(t.Id)).Select(t => t.Id));
+        await _library.RemoveRemoteTracksAsync(keep).ConfigureAwait(false);
+    }
+
     /// <summary>Whether the phone is on an unmetered network (Wi-Fi). Null = unknown, which never blocks
     /// a download. With Settings → Downloads → Wi-Fi only on, a download asked for on mobile data is refused.</summary>
     public Func<bool>? IsOnWifi { get; init; }
@@ -2015,7 +2157,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public Task RemoveDownloadsAsync(IEnumerable<Track> tracks)
     {
         var ids = tracks.Where(IsRemote).Select(t => t.Id).ToList();
-        return Task.Run(() =>
+        return Task.Run(async () =>
         {
             foreach (var id in ids)
             {
@@ -2034,6 +2176,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     catch (ObjectDisposedException) { /* it just finished */ }
                 }
             }
+            await DropNotOnComputerAsync(ids).ConfigureAwait(false);
             RaiseDownloadProgress();
             RaiseStateChanged();
         });
@@ -2043,6 +2186,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     {
         await StopDownloadsAsync().ConfigureAwait(false);
         await Task.Run(DeleteAllDownloadFiles).ConfigureAwait(false);
+        await DropNotOnComputerAsync(null).ConfigureAwait(false);
         RaiseDownloadProgress();
         RaiseStateChanged();
     }
