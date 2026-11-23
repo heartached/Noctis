@@ -1011,6 +1011,7 @@ public partial class PlaybackBarView : UserControl
         if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
 
         _isSeekDragging = true;
+        UpdateSeekHover();
         vm.BeginSeek();
         e.Pointer.Capture(slider);
         var position = e.GetPosition(slider);
@@ -1033,6 +1034,7 @@ public partial class PlaybackBarView : UserControl
     {
         if (!_isSeekDragging) return;
         _isSeekDragging = false;
+        UpdateSeekHover();
 
         e.Pointer.Capture(null);
 
@@ -1046,6 +1048,7 @@ public partial class PlaybackBarView : UserControl
     {
         if (!_isSeekDragging) return;
         _isSeekDragging = false;
+        UpdateSeekHover();
 
         if (DataContext is PlayerViewModel vm)
             vm.EndSeek();
@@ -1053,12 +1056,23 @@ public partial class PlaybackBarView : UserControl
 
     private void OnSeekSliderPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
+        if (e.Property == InputElement.IsPointerOverProperty)
+        {
+            UpdateSeekHover();
+            return;
+        }
         if (e.Property == Slider.ValueProperty ||
             e.Property.Name is nameof(Bounds) or nameof(IsEnabled))
         {
             UpdateSeekSliderVisual();
         }
     }
+
+    /// <summary>The thumb fades in while the pointer is over the seek hit strip or a seek drag
+    /// runs. The strip reaches below the card, outside the seek row, so the row's own
+    /// :pointerover no longer sees it.</summary>
+    private void UpdateSeekHover() =>
+        SeekRow.Classes.Set("seek-hover", _isSeekDragging || SeekSlider.IsPointerOver);
 
     private void UpdateSeekSliderVisual()
     {
