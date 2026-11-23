@@ -207,11 +207,15 @@ public sealed partial class ShellViewModel : ObservableObject
     /// unless injected, and the in-app progress still shows.</summary>
     public IDownloadNotifier? DownloadNotifier { get; init; }
 
+    /// <summary>Keeps the process running while downloads run in the background (Android); null in
+    /// tests unless injected, and downloads then run only while the process does.</summary>
+    public IDownloadKeeper? DownloadKeeper { get; init; }
+
     private DownloadActivity? _downloads;
 
     /// <summary>Where the downloads from the computer stand (album page row, Account page,
     /// notification); null without an account. Made on first use, after the host's init values.</summary>
-    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier);
+    public DownloadActivity? Downloads => _account == null ? null : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper);
 
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
@@ -415,6 +419,10 @@ public sealed partial class ShellViewModel : ObservableObject
         foreach (var page in Pages) page.Relabel();
         OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
         OnPropertyChanged(nameof(QueueHistoryToggleText));
+        OnPropertyChanged(nameof(IsRightToLeft));
+        OnPropertyChanged(nameof(FlowDirection));
+        OnPropertyChanged(nameof(TopSafePadding));
+        OnPropertyChanged(nameof(BottomSafePadding));
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
@@ -516,9 +524,34 @@ public sealed partial class ShellViewModel : ObservableObject
     }
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
-    // right, and without them the content drew under it.
-    public Thickness TopSafePadding => new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
-    public Thickness BottomSafePadding => new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
+    // right, and without them the content drew under it. The insets are the screen's own sides:
+    // under a right-to-left layout a margin's Left is the screen's right, so they swap.
+    public Thickness TopSafePadding => IsRightToLeft
+        ? new(SafeArea.Right, SafeArea.Top, SafeArea.Left, 0)
+        : new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
+    public Thickness BottomSafePadding => IsRightToLeft
+        ? new(SafeArea.Right, 0, SafeArea.Left, SafeArea.Bottom)
+        : new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
+
+    /// <summary>
+    /// The phone reads right to left when the strings it shows are a right-to-left language
+    /// (Arabic): the setting, or the phone's own language when it ships, as <see cref="Loc.Resolve"/>
+    /// picks it. A Hebrew phone shows the English strings, so it stays left to right. The shell
+    /// sets it at its root (ShellView), so every page, sheet and menu mirrors with it, live on a
+    /// language change (<see cref="Relabel"/>); what must not mirror (media transport, times)
+    /// sets LeftToRight itself. The desktop is not touched.
+    /// </summary>
+    public bool IsRightToLeft => IsRightToLeftLanguage(Loc.Instance.Culture.Name);
+
+    public Avalonia.Media.FlowDirection FlowDirection =>
+        IsRightToLeft ? Avalonia.Media.FlowDirection.RightToLeft : Avalonia.Media.FlowDirection.LeftToRight;
+
+    /// <summary>Whether the translation <paramref name="cultureName"/> resolves to is written right to left.</summary>
+    internal static bool IsRightToLeftLanguage(string cultureName)
+    {
+        try { return System.Globalization.CultureInfo.GetCultureInfo(Loc.Resolve(cultureName)).TextInfo.IsRightToLeft; }
+        catch (System.Globalization.CultureNotFoundException) { return false; }
+    }
 
     /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it;
     /// a song list's Select mode puts its action bar in the pill's place.</summary>
@@ -890,11 +923,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void ToggleQueueHistoryCollapsed() => IsQueueHistoryCollapsed = !IsQueueHistoryCollapsed;
 
-    private async Task LoadPlayerBarSettingsAsync()
+    private async Task LoadPlayerBarSettingsAsync(AppSettings? saved = null)
     {
         try
         {
-            var settings = await Library.Persistence.LoadSettingsAsync();
+            var settings = saved ?? await Library.Persistence.LoadSettingsAsync();
             // A switch flipped while this load ran keeps the user's value: the load used to put
             // the saved one back, and the flip was never saved either.
             _applyingPlayerBar = true;
@@ -1765,19 +1798,30 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
-    public async Task InitializeAsync()
+    /// <param name="settings">The settings the host read and applied at start (AndroidApp.StartAsync):
+    /// every part below takes its values from them instead of reading settings.json once more each
+    /// (it was read eight times per cold launch). Null = read here, once. A value changed since that
+    /// read is kept all the same: each part keeps what the user set before its load.</param>
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    public async Task InitializeAsync(AppSettings? settings)
     {
-        await Library.InitializeAsync();
-        await LoadPlayerBarSettingsAsync();
-        await LoadListSortsAsync();
-        await Search.LoadRecentSearchesAsync();
-        await Background.LoadAsync();
-        await LoadHistoryPrefsAsync();
+        if (settings == null)
+        {
+            try { settings = await Library.Persistence.LoadSettingsAsync(); }
+            catch (Exception ex) { DebugLog.Write("Settings", $"Start settings load failed: {ex.Message}"); }   // each part reads its own
+        }
+        await Library.InitializeAsync(settings);
+        await LoadPlayerBarSettingsAsync(settings);
+        await LoadListSortsAsync(settings);
+        await Search.LoadRecentSearchesAsync(settings);
+        await Background.LoadAsync(settings);
+        await LoadHistoryPrefsAsync(settings);
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
-        await Lyrics.InitializeAsync();
+        await Lyrics.InitializeAsync(settings);
         // ReplayGain before the queue restore too: the restored song's level is set as it loads.
-        await Player.LoadReplayGainAsync();
+        await Player.LoadReplayGainAsync(settings);
         try
         {
             await Player.RestoreStateAsync();

@@ -286,12 +286,15 @@ public sealed class PhoneBackground : ObservableObject
         ChoiceChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public async Task LoadAsync()
+    /// <param name="settings">The start's read (ShellViewModel.InitializeAsync). Already applied at
+    /// start (AndroidApp calls ApplySettings before the first page paints): nothing is read again.</param>
+    public async Task LoadAsync(AppSettings? settings = null)
     {
+        if (_loaded) return;
         if (_persistence == null) { _loaded = true; return; }
         try
         {
-            ApplySettings(await _persistence.LoadSettingsAsync());
+            ApplySettings(settings ?? await _persistence.LoadSettingsAsync());
         }
         catch (Exception ex)
         {

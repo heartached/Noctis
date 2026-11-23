@@ -432,7 +432,7 @@
                 <Grid Classes="sheet-header settings-header" ColumnDefinitions="46,*,46">
                     <Button Name="BackButton" Classes="sheet-close" AutomationProperties.Name="{loc:T Mobile.BackToSettings}"
                             IsVisible="{Binding IsSubPane}" Command="{Binding ShowMainCommand}">
-                        <views:GridIcon Data="{DynamicResource PhBack}" />
+                        <views:GridIcon Classes="dir" Data="{DynamicResource PhBack}" />
                     </Button>
                     <TextBlock Grid.Column="1" Name="SettingsTitle" Classes="sheet-title" Text="{Binding HeaderTitle}" />
                     <Button Grid.Column="2" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="{loc:T Common.Close}"

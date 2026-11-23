@@ -17,6 +17,35 @@
         <Setter Property="RenderTransform" Value="scale(1)" />
     </Style>
 
+    <!-- Right to left (Arabic, ShellViewModel.FlowDirection): the shell mirrors at its root, and
+         with it every row, chevron, tab, swipe and list arrow. Media playback does not: Material's
+         bidirectionality guidance keeps playback controls and the playback timeline left to right
+         (they show the direction of the tape, not of reading), as Android's media apps do. So the
+         transport glyphs never mirror, and the timelines (seek bar and times) and transport rows
+         keep their left-to-right order on every player screen. The times read "3:42" and
+         "-1:05" in any language (np-time). Volume is an ordinary slider and mirrors. -->
+    <Style Selector="controls|TransportGlyph">
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+    </Style>
+    <!-- Icons and artwork do not mirror either: a music note, a record box, a speaker, a quote
+         bubble or a cover is an object, not a direction (Material: only icons that point or
+         read a way mirror). Images already draw unmirrored (Avalonia's Image); these draw
+         themselves. The icons that do point a way (back, row and section chevrons, list and
+         queue arrows) carry .dir or a chevron class and follow the shell's direction again. -->
+    <Style Selector="PathIcon, Path, views|GridIcon, controls|MaskIcon, views|DiscArtwork, views|BlurredCoverBackdrop">
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+    </Style>
+    <Style Selector="PathIcon.dir, PathIcon.chevron, PathIcon.list-chevron, PathIcon.row-chevron, views|GridIcon.dir, views|GridIcon.row-chevron">
+        <Setter Property="FlowDirection" Value="{Binding FlowDirection, RelativeSource={RelativeSource AncestorType=views:ShellView}}" />
+    </Style>
+    <Style Selector="TextBlock.np-time">
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+    </Style>
+    <!-- Now Playing's timeline and transport, the Lyrics screen's controls, the Queue's pill. -->
+    <Style Selector="Grid#TimelineRow, Grid#TransportRow, StackPanel#Controls, controls|GlassPanel#ControlPill">
+        <Setter Property="FlowDirection" Value="LeftToRight" />
+    </Style>
+
     <!-- Overlay scroll bars. Noctis.UI's Styles.axaml pins every ScrollViewer and ScrollBar to
          AllowAutoHide=False for the desktop's persistent bars, and a bar that never hides
          reserves its width: every phone page stopped ~16 dp short of the right edge, heroes
@@ -75,6 +104,14 @@
         <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
         <Setter Property="HeartBrush" Value="{DynamicResource AccentTextExactBrush}" />
         <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- A song row's mark for a song no longer on the computer: the stars' size and grey. -->
+    <Style Selector="views|GridIcon.row-not-on-computer">
+        <Setter Property="Width" Value="12" />
+        <Setter Property="Height" Value="12" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
     </Style>
 
     <!-- A list row's hairline, from the text to the edge (Apple's inset separator), and its

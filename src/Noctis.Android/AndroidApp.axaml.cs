@@ -131,6 +131,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // by title, artist and length only (Settings → Lyrics → Find Lyrics Online).
             Online = LrcLibOnlineLyricsSource.Create(persistence.DataDirectory, new HttpClient()),
         };
+        // Downloads from the computer: an ongoing progress card, then "Downloaded 12 songs"; the
+        // keeper keeps the process running under that card while they run in the background.
+        var downloadNotifier = account != null ? new AndroidDownloadNotifier(context) : null;
         var shell = new ShellViewModel(
             // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history)
@@ -153,8 +156,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             PlaylistFiles = new AndroidPlaylistFilePicker(context),
             VersionText = DescribeVersion(context),
             Account = account,
-            // Downloads from the computer: an ongoing progress card, then "Downloaded 12 songs".
-            DownloadNotifier = account != null ? new AndroidDownloadNotifier(context) : null,
+            DownloadNotifier = downloadNotifier,
+            DownloadKeeper = downloadNotifier != null ? new AndroidDownloadKeeper(context, downloadNotifier) : null,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
             // Without an account there is no computer to send plays through: the phone sends them.
             Scrobbler = new PhoneScrobbler(persistence, new HttpClient()) { HasComputerRoute = account != null },
@@ -197,6 +200,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // through PlaybackQueue; they arrive on a Java binder thread, hence the dispatcher hop.
         _player.SessionNextRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.NextCommand.Execute(null));
         _player.SessionPreviousRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.PreviousCommand.Execute(null));
+        // Play with nothing loaded (the queue ran out, or a restored queue): what the in-app Play does.
+        _player.SessionPlayRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.Play());
         // Whether those buttons are drawn enabled. Read synchronously from the same Java
         // thread, so they stay plain field reads on the ViewModel (see NowPlayingViewModel.
         // HasNext/HasPrevious) — ExoPlayer's own item list is the wrong source because it
@@ -372,7 +377,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             await history.PreloadAsync();
             await library.LoadAsync();
             _libraryLoaded.TrySetResult();
-            await _shell!.InitializeAsync();
+            // The settings read above, handed along: the start reads settings.json once.
+            await _shell!.InitializeAsync(settings);
             // Scan on Startup (desktop parity): new songs in the folders show up on their own.
             _ = _shell.Library.ScanAtStartupAsync();
         }

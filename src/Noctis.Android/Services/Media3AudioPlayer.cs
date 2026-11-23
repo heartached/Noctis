@@ -94,6 +94,15 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     /// <summary>Raised for the session's own Previous transport command. See <see cref="SessionNextRequested"/>.</summary>
     public event EventHandler? SessionPreviousRequested;
 
+    /// <summary>
+    /// Raised for the session's Play while nothing is loaded (State Stopped: the queue ran out,
+    /// or was restored after process death). Our Stop() clears ExoPlayer's items, so the
+    /// session's own Play (Util.handlePlayButtonAction: prepare() when IDLE, then play())
+    /// prepared an empty playlist and nothing played while the app still showed the song.
+    /// The ViewModel starts what its own Play button would.
+    /// </summary>
+    public event EventHandler? SessionPlayRequested;
+
     /// <summary>Whether the app queue has a next/previous track, for the media session's
     /// transport buttons. ExoPlayer's own item list holds at most the current track plus a
     /// prepared gapless successor, so it is not the right source: under Repeat One it never
@@ -524,13 +533,27 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         // Audio focus loss, headphone unplug and lock-screen Pause all land here without a
         // Pause() call from us. Mirror it so the ViewModel's next toggle does the right thing.
-        // No PlayWhenReady check: Media3 only clears it for a PERMANENT focus loss. A
-        // transient loss (e.g. an incoming call) is signalled as a playback-suppression
-        // reason with PlayWhenReady left true — requiring it false here would miss that case
-        // and leave State stuck on Playing over a frozen clock. StateReady is still required:
-        // it is what stops our own Stop() (which drives the state to Idle) from re-entering
-        // here and being misread as an external pause.
-        if (!isPlaying && State == PlaybackState.Playing && _player.PlaybackState == BasePlayer.InterfaceConsts.StateReady)
+        // No PlayWhenReady check, and StateReady required for the pause: see PlayerStateMirror.
+        MirrorState(PlayerStateMirror.OnIsPlayingChanged(State, isPlaying,
+            _player.PlaybackState == BasePlayer.InterfaceConsts.StateReady));
+    }
+
+    /// <summary>
+    /// A permanent focus loss or a session Pause while a stream is still buffering clears
+    /// PlayWhenReady with no IsPlaying change (buffering made it false already), so
+    /// OnIsPlayingChanged never saw it and State stayed Playing over a paused player.
+    /// </summary>
+    private void OnPlayWhenReadyChanged(bool playWhenReady, int reason)
+    {
+        var next = PlayerStateMirror.OnPlayWhenReadyChanged(State, playWhenReady);
+        if (next != State) DebugLog.Write("Audio", $"Paused from outside the app (reason {reason}, playback state {_player.PlaybackState})");
+        MirrorState(next);
+    }
+
+    private void MirrorState(PlaybackState next)
+    {
+        if (next == State) return;
+        if (next == PlaybackState.Paused)
         {
             // Deliberately do NOT stop the poll timer here (unlike our own Pause()): it must
             // keep ticking through an external pause, because PollPosition's tick is the only
@@ -538,7 +561,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // state change happened at all.
             State = PlaybackState.Paused;
         }
-        else if (isPlaying && State == PlaybackState.Paused)
+        else if (next == PlaybackState.Playing)
         {
             // Mirror image of our own Resume(): a session Play (notification, lock screen,
             // Bluetooth) reaches ExoPlayer directly — SessionForwardingPlayer only intercepts
@@ -940,6 +963,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private void RaiseSessionNextRequested() => SessionNextRequested?.Invoke(this, EventArgs.Empty);
     private void RaiseSessionPreviousRequested() => SessionPreviousRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Whether the session's Play goes to the ViewModel (<see cref="SessionPlayRequested"/>)
+    /// instead of ExoPlayer: nothing is loaded and someone listens. Paused stays ExoPlayer's own
+    /// resume, which OnIsPlayingChanged mirrors.</summary>
+    private bool RoutesSessionPlay => !_disposed && State == PlaybackState.Stopped && SessionPlayRequested != null;
+
     /// <summary>Adds the device key header to the signed-in desktop's stream requests; every
     /// other request passes through untouched. Runs on ExoPlayer's loader threads.</summary>
     /// <summary>
@@ -996,6 +1024,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public void OnPlayerError(PlaybackException error) => _owner.OnPlayerError(error);
         public void OnTracksChanged(Tracks tracks) => _owner.OnTracksChanged(tracks);
         public void OnIsPlayingChanged(bool isPlaying) => _owner.OnIsPlayingChanged(isPlaying);
+        public void OnPlayWhenReadyChanged(bool playWhenReady, int reason) => _owner.OnPlayWhenReadyChanged(playWhenReady, reason);
 
         /// <summary>
         /// Unused, but Java calls it after every batch of player events and the binding wraps
@@ -1041,6 +1070,19 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public override void SeekToNextMediaItem() => _owner.RaiseSessionNextRequested();
         public override void SeekToPrevious() => _owner.RaiseSessionPreviousRequested();
         public override void SeekToPreviousMediaItem() => _owner.RaiseSessionPreviousRequested();
+
+        // Nothing loaded: the session's prepare-then-play would only prepare an empty playlist
+        // (straight to ENDED); the ViewModel loads and starts the song instead.
+        public override void Prepare()
+        {
+            if (!_owner.RoutesSessionPlay) base.Prepare();
+        }
+
+        public override void Play()
+        {
+            if (_owner.RoutesSessionPlay) _owner.SessionPlayRequested?.Invoke(_owner, EventArgs.Empty);
+            else base.Play();
+        }
 
         public override bool HasNextMediaItem => _owner.HasNextInQueue?.Invoke() ?? base.HasNextMediaItem;
         public override bool HasPreviousMediaItem => _owner.HasPreviousInQueue?.Invoke() ?? base.HasPreviousMediaItem;

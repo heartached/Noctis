@@ -9,6 +9,7 @@
              x:DataType="vm:ShellViewModel"
              views:RowMark.Mode="{Binding SongRowMark}"
              controls:GlassPanel.ReduceGlass="{Binding ReduceGlass}"
+             FlowDirection="{Binding FlowDirection}"
              Background="{DynamicResource PhoneBackgroundBrush}">
 
     <UserControl.Styles>
@@ -331,8 +332,9 @@
                                  edge along the bottom: progress at a glance, as the full player shows it.
                                  Each is a Settings › Appearance › Player Bar switch, both off by default:
                                  then the capsule is plain glass, as Apple's. -->
+                            <!-- Left to right in Arabic too: a playback timeline (MobileStyles). -->
                             <Border Name="MiniProgress" CornerRadius="26" ClipToBounds="True" IsHitTestVisible="False"
-                                    IsVisible="{Binding ShowsMiniProgress}">
+                                    IsVisible="{Binding ShowsMiniProgress}" FlowDirection="LeftToRight">
                                 <views:FractionPanel Fraction="{Binding Player.ProgressFraction}">
                                     <Border Name="MiniProgressFill" Background="{Binding MiniProgressFill}" IsVisible="{Binding ShowMiniProgressFill}" />
                                     <Border Name="MiniProgressLine" Background="{Binding MiniProgressLine}" Height="2"
@@ -340,7 +342,7 @@
                                 </views:FractionPanel>
                             </Border>
                             <Border Background="{DynamicResource GlassBarSheen}" CornerRadius="26" IsHitTestVisible="False" />
-                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="10,0,6,0">
+                            <Grid ColumnDefinitions="*,Auto" Margin="10,0,6,0">
                                 <!-- Stretch both ways: Fluent sets Left/Center, which shrank the tap target
                                      to the title text on device (MiniBar_TitleButton_FillsTheWholeRow). -->
                                 <!-- Swipe sideways for the next (left) or previous (right) song: the row
@@ -400,15 +402,18 @@
                                     </StackPanel>
                                 </Grid>
                                 </Panel>
-                                <Button Grid.Column="1" Name="MiniPlayButton" Classes="icon mini tx" Command="{Binding Player.TogglePlayPauseCommand}">
-                                    <controls:TransportGlyph Name="MiniPlayGlyph" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
-                                </Button>
-                                <!-- Expanded only, like Apple's: the folded row has room for Play alone.
-                                     Greyed when there is nothing to skip to. -->
-                                <Button Grid.Column="2" Name="MiniNextButton" Classes="icon mini tx" Classes.unavailable="{Binding !Player.HasNext}"
-                                        IsEnabled="{Binding Player.HasNext}" Command="{Binding Player.NextCommand}">
-                                    <controls:TransportGlyph Name="MiniNextGlyph" Classes="forward" Kind="Next" />
-                                </Button>
+                                <!-- Play, then Next, left to right in Arabic too: media transport keeps its order. -->
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" FlowDirection="LeftToRight">
+                                    <Button Name="MiniPlayButton" Classes="icon mini tx" Command="{Binding Player.TogglePlayPauseCommand}">
+                                        <controls:TransportGlyph Name="MiniPlayGlyph" Kind="PlayPause" IsPlaying="{Binding Player.IsPlaying}" />
+                                    </Button>
+                                    <!-- Expanded only, like Apple's: the folded row has room for Play alone.
+                                         Greyed when there is nothing to skip to. -->
+                                    <Button Name="MiniNextButton" Classes="icon mini tx" Classes.unavailable="{Binding !Player.HasNext}"
+                                            IsEnabled="{Binding Player.HasNext}" Command="{Binding Player.NextCommand}">
+                                        <controls:TransportGlyph Name="MiniNextGlyph" Classes="forward" Kind="Next" />
+                                    </Button>
+                                </StackPanel>
                             </Grid>
                         </Panel>
                     </controls:GlassPanel>

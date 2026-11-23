@@ -182,11 +182,16 @@ public static class Motion
             foreach (var run in Runs.Values.ToList()) Complete(run);
     }
 
+    /// <summary>Test hook: when set, <see cref="After"/> schedules on it instead of a pool timer,
+    /// so a test that also steps the animation clock runs every curve on its own time.</summary>
+    internal static Func<TimeSpan, Action, IDisposable>? Timers;
+
     /// <summary>Runs <paramref name="action"/> on the UI thread after <paramref name="delay"/>,
     /// unless disposed first. A pool timer posting back rather than a DispatcherTimer, which the
     /// headless test platform never fires.</summary>
     private static IDisposable After(TimeSpan delay, Action action)
     {
+        if (Timers is { } timers) return timers(delay, action);
         var cancel = new Cancel();
         _ = Task.Delay(delay).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
         {

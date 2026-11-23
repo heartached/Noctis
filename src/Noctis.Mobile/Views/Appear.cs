@@ -39,6 +39,15 @@ public static class Appear
         if (sender is Control control && control.FindAncestorOfType<RowHost>() is not { Arrives: false }) Play(control);
     }
 
+    /// <summary>Runs the arrival now on <paramref name="root"/> and every control below it that has
+    /// it enabled.</summary>
+    public static void PlayWithin(Control root)
+    {
+        if (GetIsEnabled(root)) Play(root);
+        foreach (var control in root.GetVisualDescendants().OfType<Control>())
+            if (GetIsEnabled(control)) Play(control);
+    }
+
     /// <summary>Runs the arrival on <paramref name="control"/> now.</summary>
     public static void Play(Control control)
     {

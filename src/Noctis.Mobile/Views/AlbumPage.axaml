@@ -171,7 +171,7 @@
                             </Border>
                             <TextBlock Name="ArtistName" Text="{Binding Album.Artist}" FontSize="19" MaxWidth="280"
                                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Margin="-5,1,0,0"
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="20" Height="20" Margin="-5,1,0,0"
                                       VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -205,11 +205,11 @@
                 <!-- Apple's row: shuffle, the Play pill and the album heart as one tight centred group. -->
                 <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="14" Margin="0,18,0,0">
                     <Button Name="ShuffleButton" Classes="round album-round" Command="{Binding ShuffleCommand}">
-                        <PathIcon Data="{DynamicResource PhShuffle}" />
+                        <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" />
                     </Button>
                     <Button Name="PlayButton" Classes="album-play" Command="{Binding PlayCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="4">
-                            <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
+                            <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhPlayFill}" Width="20" Height="20" VerticalAlignment="Center" />
                             <TextBlock Text="{loc:T Mobile.Play}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -260,14 +260,16 @@
 
                 <!-- Virtualised like the other lists: a box set would otherwise realise every row at
                      page open. The panel still virtualises under the header, inside AlbumScroll,
-                     because VirtualizingStackPanel works from the effective viewport. -->
-                <ItemsControl Name="TrackList" ItemsSource="{Binding Rows}" Margin="0,14,0,0">
-                    <ItemsControl.ItemsPanel>
+                     because VirtualizingStackPanel works from the effective viewport. Rows are built
+                     once per kind (disc header, song) and handed the next item of that kind
+                     (RowItemsControl): a plain list rebuilt every row that scrolled on. -->
+                <views:RowItemsControl Name="TrackList" ItemsSource="{Binding Rows}" Margin="0,14,0,0">
+                    <views:RowItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel />
                         </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.DataTemplates>
+                    </views:RowItemsControl.ItemsPanel>
+                    <views:RowItemsControl.DataTemplates>
                         <DataTemplate DataType="vm:AlbumDiscHeader">
                             <TextBlock Classes="album-subtle" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
                                        Margin="24,16,24,4" />
@@ -291,7 +293,7 @@
                                                        IsPlaying="{Binding IsAnimating}" IsVisible="{Binding IsCurrent}" />
                                     <!-- Left-aligned, so the star column is the title's own width up to the
                                          room left, and the badge follows the title, not the row's end. -->
-                                    <Grid Grid.Column="2" Name="RowTitleCell" ColumnDefinitions="*,Auto" HorizontalAlignment="Left"
+                                    <Grid Grid.Column="2" Name="RowTitleCell" ColumnDefinitions="*,Auto,Auto" HorizontalAlignment="Left"
                                           VerticalAlignment="Center" Margin="4,0,8,0">
                                         <TextBlock Name="RowTitle" FontSize="16" Text="{Binding Track.Title}" MaxLines="1"
                                                    TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -299,6 +301,10 @@
                                                 IsVisible="{Binding Track.IsExplicit}">
                                             <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
                                         </Border>
+                                        <!-- No longer on the computer: SongRow's mark (Track.IsNotOnComputer). -->
+                                        <views:GridIcon Grid.Column="2" Name="RowNotOnComputer" Classes="row-not-on-computer"
+                                                        Data="{DynamicResource PhComputer}" IsVisible="{Binding Track.IsNotOnComputer}"
+                                                        AutomationProperties.Name="{loc:T Mobile.Account.NotOnComputer}" />
                                     </Grid>
                                     <!-- The song's stars or heart (Settings › Library › Show in Song Rows), right-aligned before ⋯. -->
                                     <views:RowMark Grid.Column="3" Name="RowMark" DataContext="{Binding Track}" Margin="0,0,4,0" />
@@ -313,8 +319,8 @@
                                 </Grid>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.DataTemplates>
-                </ItemsControl>
+                    </views:RowItemsControl.DataTemplates>
+                </views:RowItemsControl>
 
                 <!-- Apple's footer: the quality with the desktop's waveform, the release date, the song
                      count and length, the copyright line, then the record label; a line the tags cannot
@@ -357,7 +363,7 @@
               IsVisible="{Binding !Selection.IsActive}">
             <controls:GlassPanel Classes="header-glass">
                 <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
-                    <PathIcon Data="{DynamicResource PhBack}" />
+                    <PathIcon Classes="dir" Data="{DynamicResource PhBack}" />
                 </Button>
             </controls:GlassPanel>
             <TextBlock Grid.Column="1" Name="SmallTitle" Text="{Binding Album.Name}" FontSize="17" FontWeight="SemiBold"

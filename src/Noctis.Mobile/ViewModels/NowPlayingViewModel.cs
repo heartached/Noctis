@@ -47,6 +47,13 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     private bool _computerUnreachable;
     private bool _seeking;
     private int _seekIdleTicks;
+    // Bumped whenever a song is started or playback stopped. Player events are posted to the UI
+    // thread (_marshal), so one raised for a song can arrive after that song was replaced or
+    // dropped (sign-out, Next at the end): the generation it was raised in tells it is stale.
+    private int _playGeneration;
+    // Whether the engine holds a song we started (StartTrack until StopPlayback): an event that
+    // arrives while it does not belongs to nothing playing.
+    private bool _engineLoaded;
     private bool _disposed;
     // The started track whose play is not in the log yet, and the position it started from.
     // See OnPlayerPosition: a track counts as played once its audio moves past that start.
@@ -115,12 +122,16 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(PositionSeconds))]
     private TimeSpan _position;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
     private TimeSpan _duration;
+
+    partial void OnPositionChanged(TimeSpan value) => UpdateTimeTexts();
+
+    partial void OnDurationChanged(TimeSpan value) => UpdateTimeTexts();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRepeatOn), nameof(IsRepeatOne), nameof(HasNext))]
@@ -220,10 +231,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// <summary>0..1 for the seek bar.</summary>
     public double ProgressFraction => Duration > TimeSpan.Zero ? Math.Clamp(Position / Duration, 0, 1) : 0;
 
-    public string ElapsedText => FormatTime(Position);
+    /// <summary>The seek bar's value. A binding to Position.TotalSeconds took the TimeSpan as a
+    /// new source object on every tick (boxed) and built its property reader for it again.</summary>
+    public double PositionSeconds => Position.TotalSeconds;
+
+    /// <summary>The left-hand seek label. It and <see cref="RemainingText"/> are made, and
+    /// announced, only when the second they show changes: they were formatted again by every
+    /// binding on every one of the player's four ticks a second, each a new string and a pass
+    /// through every binding listening (S23, 11-23: Now Playing ~15 KB a tick with its render).</summary>
+    public string ElapsedText { get; private set; } = FormatTime(TimeSpan.Zero);
 
     /// <summary>The right-hand seek label, counting down as in the mockup ("-2:04").</summary>
-    public string RemainingText => "-" + FormatTime(Duration > Position ? Duration - Position : TimeSpan.Zero);
+    public string RemainingText { get; private set; } = "-" + FormatTime(TimeSpan.Zero);
+
+    // The whole seconds the labels show (FormatTime drops the fraction).
+    private long _elapsedShown, _remainingShown;
+
+    private void UpdateTimeTexts()
+    {
+        var elapsed = Position.Ticks / TimeSpan.TicksPerSecond;
+        if (elapsed != _elapsedShown)
+        {
+            _elapsedShown = elapsed;
+            ElapsedText = FormatTime(Position);
+            OnPropertyChanged(nameof(ElapsedText));
+        }
+        var left = Duration > Position ? Duration - Position : TimeSpan.Zero;
+        var remaining = left.Ticks / TimeSpan.TicksPerSecond;
+        if (remaining != _remainingShown)
+        {
+            _remainingShown = remaining;
+            RemainingText = "-" + FormatTime(left);
+            OnPropertyChanged(nameof(RemainingText));
+        }
+    }
 
     /// <summary>mm:ss, or h:mm:ss past an hour (the previous labels' format, so 1:30 still reads "01:30").</summary>
     public static string FormatTime(TimeSpan time) =>
@@ -322,13 +363,35 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
                 _consecutiveErrors = 0;
                 _computerUnreachable = false;
                 // A queue that ran out keeps its last track for the mini bar only (the queue has
-                // none current, it is the newest in History): take it back, or Previous restarted
-                // it and the queue saved meanwhile had no song to restore.
+                // none current, it is the newest in History).
                 if (_queue.Current == null && _queue.History.Count > 0 && ReferenceEquals(_queue.History[0], CurrentTrack))
+                {
+                    // Songs added since (Play Next, Add to Queue) are what Play is for: the first
+                    // of them starts, not the song that already finished.
+                    if (_queue.UpNext.Count > 0 && _queue.Advance(QueueAdvance.UserSkip) is { } added)
+                    {
+                        StartTrack(added, fromPosition: null);
+                        break;
+                    }
+                    // Nothing added: take the last song back, or Previous restarted it and the
+                    // queue saved meanwhile had no song to restore.
                     _queue.Back();
+                }
                 StartTrack(CurrentTrack, fromPosition: Position);
                 break;
         }
+    }
+
+    /// <summary>
+    /// The media session's Play (lock screen, notification, Bluetooth) while the engine holds no
+    /// song: a queue that ran out, or one restored after process death. Starts what the in-app
+    /// Play would; never pauses, unlike <see cref="TogglePlayPauseCommand"/>, so a Play that
+    /// arrives after playback already started changes nothing.
+    /// </summary>
+    public void Play()
+    {
+        if (_player.State == PlaybackState.Playing) return;
+        TogglePlayPause();
     }
 
     [RelayCommand]
@@ -637,6 +700,9 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StartTrack(Track track, TimeSpan? fromPosition)
     {
+        // First: an error the player raises from inside Play below belongs to this song.
+        _playGeneration++;
+        _engineLoaded = true;
         // Not recorded yet: a file that fails to load (broken.mp3, a revoked grant) must not
         // land in Last Played / On Repeat. The first tick that proves audio is moving records it.
         FlushListened();
@@ -687,6 +753,8 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
 
     private void StopPlayback()
     {
+        _playGeneration++;
+        _engineLoaded = false;
         FlushListened();
         _player.Stop();
         IsPlaying = false;
@@ -719,9 +787,18 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasPlayedSongs));
     }
 
-    private void OnPlayerPosition(object? sender, TimeSpan position) => _marshal(() =>
+    private void OnPlayerPosition(object? sender, TimeSpan position)
+    {
+        var generation = _playGeneration;
+        _marshal(() => HandlePlayerPosition(generation, position));
+    }
+
+    private void HandlePlayerPosition(int generation, TimeSpan position)
     {
         if (_disposed) return;
+        // A tick of a song that was stopped or replaced since: it put a stopped song back at its
+        // old place (Play then resumed it mid-song) and moved a new song to the old one's time.
+        if (IsStale(generation)) return;
         // Lock-screen pause, audio-focus loss and headphone unplug pause the engine
         // without going through TogglePlayPause; the tick is where the UI catches up.
         var playing = _player.State == PlaybackState.Playing;
@@ -765,7 +842,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
             FlushListened();
         }
         OnSleepPositionTick();
-    });
+    }
 
     /// <summary>Adds what was heard since the previous tick (see <see cref="MaxListenStepSeconds"/>).</summary>
     private void AccumulateListened(TimeSpan position, bool playing)
@@ -844,9 +921,21 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         Duration = duration;
     });
 
-    private void OnPlayerTrackEnded(object? sender, EventArgs e) => _marshal(() =>
+    /// <summary>Whether an event raised in <paramref name="generation"/> is about a song that was
+    /// since replaced or stopped (see <see cref="_playGeneration"/>).</summary>
+    private bool IsStale(int generation) => generation != _playGeneration || !_engineLoaded;
+
+    private void OnPlayerTrackEnded(object? sender, EventArgs e)
+    {
+        var generation = _playGeneration;
+        _marshal(() => HandleTrackEnded(generation));
+    }
+
+    private void HandleTrackEnded(int generation)
     {
         if (_disposed) return;
+        // A late end of a song that was dropped or skipped must not start an Up Next song.
+        if (IsStale(generation)) return;
         if (TryStopAfterSong()) return;
         var next = AdvancePlayable(QueueAdvance.Natural, out var heldBack);
         if (next != null)
@@ -856,11 +945,22 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         }
         StopPlayback();
         if (heldBack) ShowProblem(ComputerUnreachableStopped);
-    });
+    }
 
-    private void OnPlayerError(object? sender, string message) => _marshal(() =>
+    private void OnPlayerError(object? sender, string message)
+    {
+        var generation = _playGeneration;
+        _marshal(() => HandlePlayerError(generation, message));
+    }
+
+    private void HandlePlayerError(int generation, string message)
     {
         if (_disposed) return;
+        if (IsStale(generation))
+        {
+            DebugLog.Write("Audio", $"Ignored a late playback error for a song no longer playing: {message}");
+            return;
+        }
         DebugLog.Write("Audio", $"Playback error: {message} — track: {CurrentTrack?.Title ?? "(none)"}");
         // Only the computer's streams reach the network, so a connection error is the computer's
         // even while a song on the phone plays: the player loads the next song ahead (gapless),
@@ -898,7 +998,7 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
         // After the skip: StartTrack clears the line, so setting it first never showed it.
         if (heldBack) ShowProblem(ComputerUnreachableStopped);
         else ErrorText = message;
-    });
+    }
 
     /// <summary>Media3's network failures (ERROR_CODE_IO_NETWORK_CONNECTION_FAILED / _TIMEOUT):
     /// the host did not answer, as opposed to answering with an error or sending a bad file.</summary>

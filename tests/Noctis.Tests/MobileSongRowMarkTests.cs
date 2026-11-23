@@ -87,6 +87,55 @@ public class MobileSongRowMarkTests
         window.Close();
     }
 
+    /// <summary>A song no longer on the computer (Account › No longer on your computer) carries the
+    /// computer glyph that list's row shows, named for screen readers, in every song list; the
+    /// others take no room for it. It follows the song's flag live.</summary>
+    [AvaloniaFact]
+    public void SongRows_MarkSongsNoLongerOnTheComputer_Only()
+    {
+        var (rated, loved, plain) = Songs();
+        loved.IsNotOnComputer = true;
+        using var rig = MobileFixtures.MakeRig(new[] { rated, loved, plain });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenSongsCommand.Execute(null);
+        MobileFixtures.Land(window);
+        var page = MobileFixtures.Find<SongListPage>(view);
+
+        Control MarkerOf(Track t) => page.GetVisualDescendants().OfType<SongRow>().Single(r => ReferenceEquals(r.DataContext, t))
+            .GetVisualDescendants().OfType<Control>().Single(c => c.Name == "NotOnComputerMark");
+        var marker = MarkerOf(loved);
+        Assert.True(marker.IsEffectivelyVisible);
+        Assert.True(marker.Bounds.Width > 0);
+        Assert.Equal(Noctis.Localization.Loc.T("Mobile.Account.NotOnComputer"), Avalonia.Automation.AutomationProperties.GetName(marker));
+        Assert.False(MarkerOf(plain).IsVisible);
+        Assert.False(MarkerOf(rated).IsVisible);
+
+        plain.IsNotOnComputer = true;
+        loved.IsNotOnComputer = false;
+        window.UpdateLayout();
+        Assert.True(MarkerOf(plain).IsVisible);
+        Assert.False(MarkerOf(loved).IsVisible);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void AlbumTrackRows_MarkSongsNoLongerOnTheComputer_Too()
+    {
+        var (rated, _, plain) = Songs();
+        rated.IsNotOnComputer = true;
+        var album = MobileFixtures.MakeAlbum("Record", "Adele", rated, plain);
+        using var rig = MobileFixtures.MakeRig(new[] { rated, plain }, new[] { album });
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.OpenAlbumCommand.Execute(album);
+        MobileFixtures.Land(window);
+        var page = MobileFixtures.Find<AlbumPage>(view);
+        var marks = page.GetVisualDescendants().OfType<Control>().Where(c => c.Name == "RowNotOnComputer").ToList();
+        Assert.Equal(2, marks.Count);
+        Assert.Single(marks, m => m.IsVisible);
+        Assert.Equal(Noctis.Localization.Loc.T("Mobile.Account.NotOnComputer"), Avalonia.Automation.AutomationProperties.GetName(marks[0]));
+        window.Close();
+    }
+
     [AvaloniaFact]
     public void AlbumTrackRows_ShowTheMarkBeforeTheMoreButton()
     {

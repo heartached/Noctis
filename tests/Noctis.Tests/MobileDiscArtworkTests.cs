@@ -270,19 +270,25 @@ public class MobileDiscArtworkTests : IDisposable
         // whichever thread runs it, and the whole process, spinning vs still.
         DiscSpinHandler.CountAllocations = true;
         long own;
+        int draws;
         try
         {
             var start = handler.AllocatedBytes;
+            var drawn = handler.CountedDraws;
             Tick(window, 240);
             own = handler.AllocatedBytes - start;
+            draws = handler.CountedDraws - drawn;
         }
         finally
         {
             DiscSpinHandler.CountAllocations = false;
         }
-        _out.WriteLine($"handler (frame update + draw): {own} B over 240 frames ({own / 240.0:0.0} B a frame)");
-        // Ours allocate nothing; the Skia lease Avalonia hands the draw is two small objects a frame.
-        Assert.True(own <= 240 * 96, $"the handler allocated {own / 240.0:0.0} B a frame");
+        _out.WriteLine($"handler (frame update + draw): {own} B over 240 frames, {draws} draws ({own / (double)Math.Max(1, draws):0.0} B a draw)");
+        // Ours allocate nothing; the Skia lease Avalonia hands the draw is two small objects (24 +
+        // 64 B) a draw. Per draw, not per tick: the headless render loop's own timer may draw a
+        // frame again (a loaded run measured 126 B "a frame" that way, 11-23).
+        Assert.True(draws >= 240, $"{draws} draws");
+        Assert.True(own <= draws * 96L, $"the handler allocated {own / (double)draws:0.0} B a draw");
         var spinning = Measure(window, 240, out var spunFrames);
         rig.Shell.Player.TogglePlayPauseCommand.Execute(null);           // pause
         RunFor(window, DiscSpin.SpinDownSeconds + 0.3);                   // eased to a stop

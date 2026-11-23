@@ -84,6 +84,15 @@ internal sealed partial class NoctisServerClient : IDisposable
 
     public string BaseUrl => _baseUrl;
 
+    // Ticks; long.MinValue = no response has named its date yet. Responses land on several threads.
+    private long _serverClockAheadTicks = long.MinValue;
+
+    /// <summary>How far the computer's clock runs ahead of this device's (negative: behind), from the
+    /// Date header of its last response; to a second or so (Date has whole seconds). Null until one
+    /// named its date.</summary>
+    public TimeSpan? ServerClockAhead =>
+        Interlocked.Read(ref _serverClockAheadTicks) is var t && t != long.MinValue ? TimeSpan.FromTicks(t) : null;
+
     /// <summary>A download that receives nothing for this long has lost its link (a dropped Wi-Fi
     /// delivers nothing and raises nothing): it fails as Unreachable instead of waiting forever.</summary>
     public TimeSpan StallTimeout { get; init; } = DefaultStallTimeout;
@@ -794,6 +803,8 @@ internal sealed partial class NoctisServerClient : IDisposable
                     "The desktop's certificate changed. Sign out and sign in again to trust the new one."), what, 0);
             throw Log(Unreachable(), what, 0);
         }
+        if (response.Headers.Date is { } date)
+            Interlocked.Exchange(ref _serverClockAheadTicks, (date - DateTimeOffset.UtcNow).Ticks);
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             var retry = response.Headers.RetryAfter?.Delta;

@@ -12,19 +12,19 @@ namespace Noctis.Android.Services;
 /// pop-up), an ongoing card with a determinate bar while songs download, then a short "Downloaded
 /// 12 songs" that dismisses itself. A tap brings the (single-task) activity back.
 ///
-/// Only a notification, not a foreground service: the downloads run in the app's process, which
-/// keeps running while the app is on screen or while music plays (the mediaPlayback service holds
-/// it in the foreground). With the app in the background and nothing playing, Android may freeze or
-/// end the process; then the card would say "3 of 12" over a download that is not moving, so each
-/// progress card times out on its own after <see cref="StaleAfterMs"/> without an update, and one
-/// left by an ended process is cleared at the next start (the constructor).
+/// While downloads run, AndroidDownloadKeeper keeps the process alive under this same card (a
+/// user-initiated job's or a dataSync service's notification, same id): posts go through the job
+/// while one holds it (<see cref="PostThrough"/>). Should the process still end (killed for memory),
+/// the card would say "3 of 12" over a download that is not moving, so each progress card times out
+/// on its own after <see cref="StaleAfterMs"/> without an update, and one left by an ended process
+/// is cleared at the next start (the constructor).
 /// POST_NOTIFICATIONS (Android 13+) is the permission MainActivity already asks for the media
 /// notification; refused, NotificationManager drops these silently and the in-app progress remains.
 /// </summary>
 internal sealed class AndroidDownloadNotifier : IDownloadNotifier
 {
     private const string ChannelId = "downloads";
-    private const int NotificationId = 4301;
+    internal const int NotificationId = 4301;
     /// <summary>Android drops a package's updates past ~5 a second, the last one included: progress
     /// is posted at most this often, the latest held back until then.</summary>
     private const long MinUpdateMs = 1000;
@@ -42,6 +42,16 @@ internal sealed class AndroidDownloadNotifier : IDownloadNotifier
     /// <summary>Bumped by every finish or clear: a delayed progress post queued before it is dropped.</summary>
     private int _generation;
     private bool _channelMade;
+    /// <summary>The newest progress card built, which the keeper's job or service shows when it starts.</summary>
+    private Notification? _lastProgress;
+    /// <summary>The card as it should stand: a finished card (to post again), cleared (null, and
+    /// <see cref="_cleared"/>), or the progress (both unset).</summary>
+    private Notification? _finished;
+    private bool _cleared = true;
+
+    /// <summary>Set by AndroidDownloadKeeper: posts a card through the job that holds it (true), else
+    /// the card is posted as usual.</summary>
+    internal Func<Notification, bool>? PostThrough { get; set; }
 
     public AndroidDownloadNotifier(Context context)
     {
@@ -84,7 +94,8 @@ internal sealed class AndroidDownloadNotifier : IDownloadNotifier
             var builder = Builder(title, text)
                 .SetAutoCancel(true)
                 .SetTimeoutAfter(FinishedShownMs)!;
-            Post(builder);
+            _finished = Post(builder);
+            _cleared = false;
         }
     }
 
@@ -94,7 +105,46 @@ internal sealed class AndroidDownloadNotifier : IDownloadNotifier
         {
             _generation++;
             _pending = null;
+            _finished = null;
+            _cleared = true;
             Cancel();
+        }
+    }
+
+    /// <summary>The card the keeper's job or service starts with: the newest progress, else "Starting
+    /// downloads…" (it starts before the first report).</summary>
+    internal Notification CurrentNotification()
+    {
+        lock (_gate)
+        {
+            if (_lastProgress != null) return _lastProgress;
+            var builder = Builder(Loc.T("Mobile.Download.FromComputer"), Loc.T("Mobile.Account.StartingDownloads"))
+                .SetOngoing(true)
+                .SetOnlyAlertOnce(true)
+                .SetProgress(0, 0, true)!;
+            return Decorate(builder, progress: true).Build()!;
+        }
+    }
+
+    /// <summary>A bare card for a service started with no notifier around (it stops at once).</summary>
+    internal static Notification Placeholder(Context context)
+    {
+        var manager = context.GetSystemService(Context.NotificationService) as NotificationManager;
+        if (manager != null) EnsureChannel(manager);
+        return new Notification.Builder(context, ChannelId)
+            .SetContentTitle(Loc.T("Mobile.Download.FromComputer"))!
+            .SetSmallIcon(global::Android.Resource.Drawable.StatSysDownload)!
+            .Build()!;
+    }
+
+    /// <summary>The job or service let go of the card (it stays as last posted): a finished card is
+    /// posted again and a cleared one cancelled, which the job may have kept from happening.</summary>
+    internal void Reassert()
+    {
+        lock (_gate)
+        {
+            if (_finished != null) Notify(_finished);
+            else if (_cleared) Cancel();
         }
     }
 
@@ -109,7 +159,9 @@ internal sealed class AndroidDownloadNotifier : IDownloadNotifier
             .SetOnlyAlertOnce(true)
             .SetProgress(Math.Max(1, p.Total), Math.Clamp(p.Done, 0, Math.Max(1, p.Total)), false)!
             .SetTimeoutAfter(StaleAfterMs)!;
-        Post(builder, progress: true);
+        _finished = null;
+        _cleared = false;
+        _lastProgress = Post(builder, progress: true);
     }
 
     private Notification.Builder Builder(string title, string text)
@@ -125,19 +177,39 @@ internal sealed class AndroidDownloadNotifier : IDownloadNotifier
         return builder;
     }
 
-    private void Post(Notification.Builder builder, bool progress = false)
+    private static Notification.Builder Decorate(Notification.Builder builder, bool progress)
+    {
+        builder.SetSmallIcon(progress ? global::Android.Resource.Drawable.StatSysDownload : global::Android.Resource.Drawable.StatSysDownloadDone);
+        builder.SetCategory(progress ? Notification.CategoryProgress : Notification.CategoryStatus);
+        return builder;
+    }
+
+    /// <summary>Under <see cref="_gate"/>. The card built, null when building failed.</summary>
+    private Notification? Post(Notification.Builder builder, bool progress = false)
     {
         try
         {
-            builder.SetSmallIcon(progress ? global::Android.Resource.Drawable.StatSysDownload : global::Android.Resource.Drawable.StatSysDownloadDone);
-            builder.SetCategory(progress ? Notification.CategoryProgress : Notification.CategoryStatus);
-            _manager?.Notify(NotificationId, builder.Build());
+            var notification = Decorate(builder, progress).Build()!;
+            Notify(notification);
+            return notification;
         }
         catch (Exception ex)
         {
             // Never fail a download over its notification.
             DebugLog.Write("Android", $"Download notification failed: {ex.GetType().Name}");
+            return null;
         }
+    }
+
+    /// <summary>Through the keeper's job when one holds the card, else to the manager.</summary>
+    private void Notify(Notification notification)
+    {
+        try
+        {
+            if (PostThrough?.Invoke(notification) == true) return;
+            _manager?.Notify(NotificationId, notification);
+        }
+        catch (Exception ex) { DebugLog.Write("Android", $"Download notification failed: {ex.GetType().Name}"); }
     }
 
     private void Cancel()
@@ -151,9 +223,14 @@ internal sealed class AndroidDownloadNotifier : IDownloadNotifier
     private void EnsureChannel()
     {
         if (_channelMade || _manager == null) return;
+        EnsureChannel(_manager);
+        _channelMade = true;
+    }
+
+    private static void EnsureChannel(NotificationManager manager)
+    {
         var channel = new NotificationChannel(ChannelId, Loc.T("Mobile.Settings.Downloads"), NotificationImportance.Low);
         channel.SetShowBadge(false);
-        _manager.CreateNotificationChannel(channel);
-        _channelMade = true;
+        manager.CreateNotificationChannel(channel);
     }
 }

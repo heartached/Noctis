@@ -55,6 +55,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private const int CoverFailureLimit = 8;
     private const int DownloadConcurrency = 2;
     private static readonly TimeSpan CoverMaxAge = TimeSpan.FromDays(30);
+    /// <summary>The computer's clock is known to whole seconds (Date): a copy this close to its cover's
+    /// change is downloaded again rather than adopted.</summary>
+    private static readonly TimeSpan CoverClockSlack = TimeSpan.FromSeconds(2);
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.Ordinal)
     {
         "mp3", "flac", "m4a", "aac", "ogg", "oga", "opus", "wav", "aiff", "aif", "wma", "ape", "wv", "alac",
@@ -84,7 +87,40 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private CancellationTokenSource? _syncCts;
     private volatile bool _isSyncing;
 
-    private sealed record DownloadedFile(string Path, long Size, DateTime SavedUtc);
+    /// <summary>A download on disk. Its size and date are read on first use: the start lists the
+    /// names only (IndexDownloads), so thousands of downloads cost no file reads before the first
+    /// frame, and a pool pass reads them afterwards (<see cref="ReadDownloadDetails"/>).</summary>
+    private sealed class DownloadedFile
+    {
+        private long _size = -1;   // -1 = not read yet; written last, after _savedUtc
+        private DateTime _savedUtc;
+
+        public DownloadedFile(string path) => Path = path;
+
+        public DownloadedFile(string path, long size, DateTime savedUtc)
+        {
+            Path = path;
+            _savedUtc = savedUtc;
+            _size = size;
+        }
+
+        public string Path { get; }
+        public bool IsRead => Volatile.Read(ref _size) >= 0;
+        public long Size { get { Read(); return _size; } }
+        public DateTime SavedUtc { get { Read(); return _savedUtc; } }
+
+        private void Read()
+        {
+            if (IsRead) return;
+            try
+            {
+                var info = new FileInfo(Path);
+                _savedUtc = info.LastWriteTimeUtc;
+                Volatile.Write(ref _size, info.Exists ? info.Length : 0);
+            }
+            catch (Exception) { Volatile.Write(ref _size, 0); }
+        }
+    }
     private readonly ConcurrentDictionary<Guid, DownloadedFile> _downloaded = new();
     /// <summary>Songs downloading now, each with its own stop (Remove Download on it).</summary>
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _inFlight = new();
@@ -155,8 +191,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         try { return new DriveInfo(path).AvailableFreeSpace; }
         catch (Exception) { return long.MaxValue; }
     }
-    /// <summary>Albums the server had no cover for this process (not re-asked every sync).</summary>
-    private readonly ConcurrentDictionary<Guid, byte> _coverMisses = new();
+    /// <summary>Albums the server had no cover for this process (not re-asked every sync), each with
+    /// the cover version the album list named then ("" = none): a cover added on the computer since
+    /// changes the version, and the next sync asks again instead of waiting for a restart.</summary>
+    private readonly ConcurrentDictionary<Guid, string> _coverMisses = new();
 
     /// <param name="library">The shared library (desktop songs join it as NoctisServer tracks).</param>
     /// <param name="persistence">For covers (GetArtworkPath) and playlists.json.</param>
@@ -198,6 +236,20 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         stateRecorder?.Attach(this);
         _recorder = stateRecorder;
         _library.TracksAdded += OnLibraryTracksAdded;
+        foreach (var (_, file) in _downloaded) if (file.IsRead) DownloadsReadAtStart++;
+        _ = Task.Run(ReadDownloadDetails);
+        // Every load, sync and removal can bring rows (new instances) or take the state away.
+        _library.LibraryUpdated += (_, _) => RefreshNotOnComputerMarks();
+    }
+
+    /// <summary>Tests: downloads whose size and date the constructor read (the cold start's file reads).</summary>
+    internal int DownloadsReadAtStart { get; private set; }
+
+    /// <summary>After the start, off the UI thread: every download's size and date, so the Downloads
+    /// page and the progress card do not read them on first show.</summary>
+    private void ReadDownloadDetails()
+    {
+        foreach (var (_, file) in _downloaded) _ = file.Size;
     }
 
     private readonly NoctisStateRecorder? _recorder;
@@ -390,6 +442,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             // until a sign-in to one that has them.
             var kept = removeDownloads ? null : new HashSet<Guid>(_downloaded.Keys);
             await _library.RemoveRemoteTracksAsync(kept).ConfigureAwait(false);
+            if (kept is not null) await AddRowsForDownloadsWithoutAsync(kept).ConfigureAwait(false);
             _notOnComputer.Clear();
             foreach (var id in kept ?? new HashSet<Guid>()) _notOnComputer[id] = 0;
             SaveOfflineState();
@@ -547,15 +600,16 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// <summary>
     /// The address the phone signed in through stopped answering, or something else answers
     /// there now (another network, the computer's other adapter, an address handed to another
-    /// device): the computer's other addresses from its QR code are tried, and the first where
-    /// the same pinned computer answers becomes the account's address (the old one joins the
-    /// others). Before, the only way back was to sign out and in again. True when it moved.
+    /// device): the computer's other addresses from its QR code are tried, then the nearby ones
+    /// (<see cref="FindNearbyAsync"/>), and the first where the same pinned computer answers
+    /// becomes the account's address (the old one joins the others). Before, the only way back
+    /// was to sign out and in again. True when it moved.
     /// </summary>
     private async Task<bool> TryOtherAddressAsync(CancellationToken ct)
     {
         NoctisAccount? account;
         lock (_gate) account = _account;
-        if (account is null || account.OtherServerUrls.Count == 0) return false;
+        if (account is null) return false;
         foreach (var url in account.OtherServerUrls)
         {
             string seen;
@@ -568,29 +622,36 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 continue;
             }
             if (PinHex(seen) != PinHex(account.Fingerprint)) continue;
-            lock (_gate)
-            {
-                if (!ReferenceEquals(_account, account)) return false;   // signed out or in meanwhile
-                var moved = account with
-                {
-                    ServerUrl = url,
-                    OtherServerUrls = account.OtherServerUrls.Where(u => u != url).Prepend(account.ServerUrl).ToList(),
-                };
-                // The checkpoint and the unsent edits belong to the same computer: they follow it.
-                if (SameIdentity(_sync.ServerUrl, _sync.UserName, account)) _sync.ServerUrl = url;
-                if (SameIdentity(_pending.ServerUrl, _pending.UserName, account)) _pending.ServerUrl = url;
-                _store.SaveSyncState(_sync);
-                _store.SavePending(_pending);
-                _store.SaveAccount(moved);
-                _client?.Dispose();
-                _client = null;
-                _account = moved;
-            }
-            DebugLog.Write("Account", "the desktop answers at another of its addresses now; moved there");
-            RaiseStateChanged();
-            return true;
+            return MoveTo(account, url);
         }
-        return false;
+        // A new address on the same network (the router handed the computer another one).
+        return await FindNearbyAsync(account, ct).ConfigureAwait(false) is { } nearby && MoveTo(account, nearby);
+    }
+
+    /// <summary>The pinned computer answers at <paramref name="url"/>: the account moves there.</summary>
+    private bool MoveTo(NoctisAccount account, string url)
+    {
+        lock (_gate)
+        {
+            if (!ReferenceEquals(_account, account)) return false;   // signed out or in meanwhile
+            var moved = account with
+            {
+                ServerUrl = url,
+                OtherServerUrls = account.OtherServerUrls.Where(u => u != url).Prepend(account.ServerUrl).ToList(),
+            };
+            // The checkpoint and the unsent edits belong to the same computer: they follow it.
+            if (SameIdentity(_sync.ServerUrl, _sync.UserName, account)) _sync.ServerUrl = url;
+            if (SameIdentity(_pending.ServerUrl, _pending.UserName, account)) _pending.ServerUrl = url;
+            _store.SaveSyncState(_sync);
+            _store.SavePending(_pending);
+            _store.SaveAccount(moved);
+            _client?.Dispose();
+            _client = null;
+            _account = moved;
+        }
+        DebugLog.Write("Account", "the desktop answers at another of its addresses now; moved there");
+        RaiseStateChanged();
+        return true;
     }
 
     private static string PinHex(string? fingerprint) =>
@@ -773,7 +834,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
         var notOnComputer = SortDownloadsNotListed(songs, links, keepUnlisted);
         SaveSyncState();
+        var albumsBefore = !keepUnlisted && songs.Count > 0
+            ? _library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).Select(t => t.AlbumId).ToHashSet()
+            : null;
         await _library.ReplaceRemoteTracksAsync(notOnComputer.Count > 0 ? tracks.Concat(notOnComputer).ToList() : tracks, ct).ConfigureAwait(false);
+        if (albumsBefore is not null) DeleteDroppedAlbumCovers(albumsBefore);
         if (links.Count > 0) DiscardDownloadsOf(links.Keys);
         if (redate) await RedateKnownSongsAsync(arriving, known).ConfigureAwait(false);
 
@@ -933,6 +998,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             {
                 if (!now.TryGetValue(p.Id, out var mine)) continue;               // deleted on the phone meanwhile
                 if (Newer(mine.ModifiedAt, at)) { result.Add(mine); continue; }  // edited on the phone meanwhile
+                // Pin/Unpin leaves ModifiedAt alone (the pin is the phone's own, never synced): the
+                // file's current pin wins, or a pin made meanwhile was written back unpinned.
+                p.IsPinned = mine.IsPinned;
             }
             result.Add(p);
         }
@@ -985,6 +1053,55 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         return rows;
     }
 
+    /// <summary>
+    /// The covers of the computer's albums that a settled sync left with no song on the phone (none
+    /// of the computer's, none of the phone's own files): sign-out cleaned them, a sync left them on
+    /// disk for good. Only after a settled, non-empty catalog (the caller's rule), so a scan or an
+    /// empty list never takes one. The cover's version goes too: an album back later fetches it again.
+    /// </summary>
+    private void DeleteDroppedAlbumCovers(HashSet<Guid> albumsBefore)
+    {
+        var live = _library.AllTracks.Select(t => t.AlbumId).ToHashSet();
+        var removed = 0;
+        foreach (var albumId in albumsBefore)
+        {
+            if (live.Contains(albumId) || albumId == Track.UnknownAlbumBucketId) continue;
+            try
+            {
+                var path = _persistence.GetArtworkPath(albumId);
+                if (File.Exists(path))
+                {
+                    File.Delete(path);
+                    removed++;
+                }
+            }
+            catch (Exception ex) { DebugLog.Write("Account", $"cover not removed ({ex.GetType().Name})"); }
+            lock (_gate) _sync.Covers.Remove(albumId.ToString("N"));
+        }
+        if (removed == 0) return;
+        SaveSyncState();
+        DebugLog.Write("Account", $"covers: {removed} removed with their albums");
+    }
+
+    /// <summary>Sign-out keeping downloads: a download an older version left with no row (its song
+    /// gone from the library already) gets one from its file's tags, as a settled sync gives it
+    /// (<see cref="SortDownloadsNotListed"/>), so No longer on your computer counts it at once.</summary>
+    private async Task AddRowsForDownloadsWithoutAsync(HashSet<Guid> kept)
+    {
+        var rows = _library.AllTracks.Where(t => t.SourceType == SourceType.NoctisServer).ToList();
+        var have = rows.Select(t => t.Id).ToHashSet();
+        var added = 0;
+        foreach (var id in kept)
+        {
+            if (have.Contains(id) || !_downloaded.TryGetValue(id, out var file)) continue;
+            rows.Add(RowFromFile(id, file));
+            added++;
+        }
+        if (added == 0) return;
+        await _library.ReplaceRemoteTracksAsync(rows).ConfigureAwait(false);
+        DebugLog.Write("Account", $"sign-out: {added} downloads without a row got one from their tags");
+    }
+
     /// <summary>A row for a download with none left in the library: the file's own tags, as far as they go.</summary>
     private Track RowFromFile(Guid id, DownloadedFile file)
     {
@@ -1029,6 +1146,43 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             try { _store.SaveOffline(state); }
             catch (Exception ex) { DebugLog.Write("Account", $"offline state save failed ({ex.GetType().Name})"); }
         }
+        RefreshNotOnComputerMarks();
+    }
+
+    private int _marksQueued;
+    /// <summary>The songs stamped <see cref="Track.IsNotOnComputer"/>: a row the library dropped
+    /// (its download removed) is unstamped too, though no walk of the library finds it.</summary>
+    private readonly ConcurrentDictionary<Track, byte> _marked = new(ReferenceEqualityComparer.Instance);
+
+    /// <summary>Stamps <see cref="Track.IsNotOnComputer"/> (song rows' mark) to agree with
+    /// <see cref="IsNotOnComputer"/>: one walk of the library on a worker per change, coalesced, and
+    /// only the songs that flip are set, on the UI thread. Rows read the flag, never the sets. A phone
+    /// that never had such a song skips the walk.</summary>
+    private void RefreshNotOnComputerMarks()
+    {
+        if (_notOnComputer.IsEmpty && _marked.IsEmpty) return;
+        if (_recorder is not null && !_recorder.IsAttached(this)) return;
+        if (Interlocked.Exchange(ref _marksQueued, 1) == 1) return;
+        _ = Task.Run(() =>
+        {
+            Interlocked.Exchange(ref _marksQueued, 0);
+            var live = new HashSet<Track>(_library.AllTracks, ReferenceEqualityComparer.Instance);
+            var flip = new List<Track>();
+            foreach (var t in live.Concat(_marked.Keys.Where(m => !live.Contains(m))))
+                if (t.IsNotOnComputer != (IsNotOnComputer(t) && live.Contains(t))) flip.Add(t);
+            if (flip.Count == 0) return;
+            _marshal(() =>
+            {
+                foreach (var t in flip)
+                {
+                    // Read again here: a later change may have come since the walk (its own walk follows).
+                    var mark = IsNotOnComputer(t) && live.Contains(t);
+                    t.IsNotOnComputer = mark;
+                    if (mark) _marked[t] = 0;
+                    else _marked.TryRemove(t, out _);
+                }
+            });
+        });
     }
 
     /// <summary>A desktop song that now plays from a file on the phone has no use for its download.</summary>
@@ -1146,8 +1300,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         var now = UtcNow;
         var adopted = false;
         var due = tracks.Select(t => t.AlbumId).Distinct()
-            .Where(id => id != Track.UnknownAlbumBucketId && !_coverMisses.ContainsKey(id))
-            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, ref adopted))
+            .Where(id => id != Track.UnknownAlbumBucketId
+                         && !(_coverMisses.TryGetValue(id, out var missed) && missed == versions.GetValueOrDefault(id, "")))
+            .Where(id => CoverIsDue(id, _persistence.GetArtworkPath(id), now, versions, client.ServerClockAhead, ref adopted))
             .ToList();
         if (adopted) SaveSyncState();
         RaiseSyncProgress(NoctisSyncStage.Covers, 0, due.Count);
@@ -1184,11 +1339,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                                 lock (_gate) _sync.Covers[albumId.ToString("N")] = version;
                         }
                         else
-                            _coverMisses.TryAdd(albumId, 0);
+                            _coverMisses[albumId] = versions.GetValueOrDefault(albumId, "");
                     }
                     catch (NoctisServerException ex) when (ex.Kind == NoctisErrorKind.Server)
                     {
-                        _coverMisses.TryAdd(albumId, 0);
+                        _coverMisses[albumId] = versions.GetValueOrDefault(albumId, "");
                     }
                     catch (NoctisServerException ex) when (ex.Kind is not (NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged))
                     {
@@ -1231,8 +1386,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     /// changed since the phone's copy (a cover corrected there arrives with the next sync). From a
     /// computer that names no version, a copy over 30 days old. A copy saved before the phone kept
     /// versions is current when written after the computer's file (<paramref name="adopted"/>: that
-    /// version is recorded, so an update does not download every cover again).</summary>
-    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, ref bool adopted)
+    /// version is recorded, so an update does not download every cover again). The copy's time is
+    /// put on the computer's clock first (<paramref name="clockAhead"/>, from its responses' Date):
+    /// compared raw, a computer whose clock runs behind made a cover corrected there after the copy
+    /// look older, and the stale copy was kept. Offset unknown: downloaded again, once.</summary>
+    private bool CoverIsDue(Guid albumId, string path, DateTime now, Dictionary<Guid, string> versions, TimeSpan? clockAhead, ref bool adopted)
     {
         try
         {
@@ -1242,7 +1400,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             lock (_gate)
             {
                 if (_sync.Covers.TryGetValue(key, out var known)) return known != version;
-                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || File.GetLastWriteTimeUtc(path) < changed) return true;
+                if (NoctisServerClient.CoverVersionTime(version) is not { } changed || clockAhead is not { } ahead
+                    || File.GetLastWriteTimeUtc(path) + ahead < changed + CoverClockSlack) return true;
                 _sync.Covers[key] = version;
             }
             adopted = true;
@@ -1956,6 +2115,19 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public Task DownloadAllAsync(CancellationToken ct = default) => DownloadAsync(_library.Tracks.ToList(), ct);
 
+    /// <summary>The system stopped the background job: the running batches stop where they are (the
+    /// song in flight is cancelled, its .part deleted), nothing counts as failed.</summary>
+    public async Task PauseDownloadsAsync()
+    {
+        await StopDownloadsAsync().ConfigureAwait(false);
+        DebugLog.Write("Account", "downloads paused (the system stopped their background job)");
+    }
+
+    /// <summary>As <see cref="DownloadAsync"/>, but a song removed while paused (<see cref="_withdrawn"/>)
+    /// stays removed: DownloadAsync takes a song asked for again back from it.</summary>
+    public Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) =>
+        DownloadAsync(tracks.Where(t => !_withdrawn.ContainsKey(t.Id)).ToList(), ct);
+
     private Task RunDownloadsAsync(List<Guid> ids, CancellationToken ct)
     {
         if (ids.Count == 0) return Task.CompletedTask;
@@ -1981,9 +2153,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, stop);
         var token = linked.Token;
         // Wi-Fi only holds for the whole batch, not only when it was asked for: a Download All
-        // that loses Wi-Fi stops rather than carrying on over mobile data.
+        // that loses Wi-Fi, or has Wi-Fi only turned on while it runs over mobile data (a batch
+        // kept running in the background, so the setting can change under it), stops rather than
+        // carrying on. The setting is read per song, but only off Wi-Fi, where it matters.
         var onWifi = IsOnWifi;
-        var wifiOnly = onWifi != null && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
         var queue = new ConcurrentQueue<Guid>(ids);
         // With no other batch running, this one counts from zero: "Downloading 3 of 22" and
         // "1 failed" are about this run, not every run since the app started.
@@ -2013,7 +2186,7 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         await _downloadSlots.WaitAsync(song.Token).ConfigureAwait(false);
                         try
                         {
-                            if (wifiOnly && !onWifi!())
+                            if (onWifi != null && !onWifi() && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly)
                                 throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
                             await DownloadOneAsync(client, id, song.Token).ConfigureAwait(false);
                             Interlocked.Increment(ref _dlCompleted);
@@ -2228,7 +2401,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         catch { /* best effort */ }
     }
 
-    /// <summary>What is on disk: "&lt;32 hex&gt;.&lt;allowed ext|bin&gt;" files; leftover .part files are removed.</summary>
+    /// <summary>What is on disk: "&lt;32 hex&gt;.&lt;allowed ext|bin&gt;" files; leftover .part files are removed.
+    /// One directory listing, no per-file reads: this runs in the constructor, on the cold start's UI thread.</summary>
     private void IndexDownloads()
     {
         try
@@ -2243,8 +2417,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 var ext = name[(dot + 1)..];
                 if (!(AllowedExtensions.Contains(ext) || ext == "bin")) continue;
                 if (!NoctisRemoteIds.IsLowerHex32(name.AsSpan(0, 32)) || !Guid.TryParseExact(name.AsSpan(0, 32), "N", out var id)) continue;
-                var info = new FileInfo(file);
-                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file), info.Length, info.LastWriteTimeUtc);
+                // The name is enough to play it (ResolvePlaybackUri): a song the queue restores plays
+                // this file from the first second. Size and date wait (DownloadedFile).
+                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file));
             }
         }
         catch (Exception ex) { DebugLog.Write("Account", $"offline folder unreadable ({ex.GetType().Name})"); }

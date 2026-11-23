@@ -1,5 +1,8 @@
+using System.Collections.Specialized;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using Avalonia.VisualTree;
 
 namespace Noctis.Mobile.Views;
 
@@ -27,9 +30,12 @@ public class RowItemsControl : ItemsControl
 {
     protected override Type StyleKeyOverride => typeof(ItemsControl);
 
+    // A list of mixed rows (an album's disc headers and songs) has no ItemTemplate but a
+    // DataTemplate per kind: its containers are kept per kind, so a recycled row is always one
+    // built for an item of that kind.
     protected override bool NeedsContainerOverride(object? item, int index, out object? recycleKey)
     {
-        recycleKey = DefaultRecycleKey;
+        recycleKey = ItemTemplate is null && item is not null ? item.GetType() : DefaultRecycleKey;
         return true;
     }
 
@@ -38,6 +44,21 @@ public class RowItemsControl : ItemsControl
     // The rows realised as the list first comes up arrive (Appear); a row realised later, as the
     // list scrolls, was already there before the virtualising panel took it.
     private bool _settled, _settling;
+
+    /// <summary>
+    /// A list handed new items (a Reset: Home's Pinned rail after a pin) plays its rows' arrival
+    /// again, as a plain panel's rebuilt rows did, though its rows are kept. Off by default: a
+    /// list without an arrival has nothing to replay.
+    /// </summary>
+    public bool ReplaysArrival { get; set; }
+
+    public RowItemsControl()
+    {
+        ItemsView.CollectionChanged += (_, e) =>
+        {
+            if (ReplaysArrival && e.Action == NotifyCollectionChangedAction.Reset) _settled = _settling = false;
+        };
+    }
 
     protected override void PrepareContainerForItemOverride(Control container, object? item, int index)
     {
@@ -51,14 +72,17 @@ public class RowItemsControl : ItemsControl
             _settling = true;
             Avalonia.Threading.Dispatcher.UIThread.Post(() => _settled = true, Avalonia.Threading.DispatcherPriority.Loaded);
         }
-        host.Arrives = !_settled && host.Row is null;
-        if (host.Row is null && ItemTemplate?.Build(item) is { } built)
+        host.Arrives = !_settled && (host.Row is null || ReplaysArrival);
+        if (host.Row is null && (ItemTemplate ?? this.FindDataTemplate(item))?.Build(item) is { } built)
             host.Row = built;
         if (host.Row is not { } row) return;
         // The row inherits from this list, not from its container, so the item is set on the row
         // itself, and before it joins the tree: its commands must never see the page's DataContext.
         row.DataContext = item;
         if (!ReferenceEquals(row.Parent, this)) LogicalChildren.Add(row);
+        // A kept row handed a new list's item may already be in the tree, where joining it no
+        // longer plays the arrival.
+        if (ReplaysArrival && host.Arrives && host.IsAttachedToVisualTree()) Appear.PlayWithin(row);
     }
 
     protected override void ClearContainerForItemOverride(Control container)

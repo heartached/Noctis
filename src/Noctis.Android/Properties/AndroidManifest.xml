@@ -15,6 +15,14 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 	<uses-permission android:name="android.permission.WAKE_LOCK" />
+	<!-- Downloads from the computer keep running in the background with nothing playing
+	     (AndroidDownloadKeeper): on Android 14+ as a user-initiated data transfer job
+	     (DownloadJobService), which needs RUN_USER_INITIATED_JOBS (normal-level, no prompt) and
+	     is started only from a tap; on Android 8-13 as a dataSync foreground service
+	     (DownloadForegroundService), started with the downloads and stopped when they end. The
+	     service never starts on 14+; its type's permission is declared with the type all the same. -->
+	<uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS" />
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 	<!-- Settings > Music Folders > Find All Music Automatically (opt-in, asked at runtime when it
 	     is turned on; privacy policy, "The folders you choose"): the phone's songs through
 	     MediaStore.Audio (AndroidFileSystemSource, DeviceMusicScan.Root). READ_MEDIA_AUDIO from

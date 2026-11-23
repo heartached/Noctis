@@ -18,14 +18,93 @@ namespace Noctis.Tests;
 /// <summary>
 /// The phone's navigation motion (Motion), sampled over time: every open, close, push, pop and
 /// tab switch records where its pages sit on screen (their origin in window coordinates, so any
-/// RenderTransform counts) and how opaque they show, frame by frame of the real-time headless
-/// clock. A snap goes from start to end in one frame; a glide passes through many states, one
+/// RenderTransform counts) and how opaque they show, frame by frame of a stepped clock
+/// (<see cref="FrameClock"/>). A snap goes from start to end in one frame; a glide passes through many states, one
 /// way, with no jump. With NOCTIS_MOTION_OUT set, each curve is written there as CSV.
 /// Interruptions (Back mid-push, a double tap, Back mid-open) must land in a clean state.
 /// </summary>
-public class MobileMotionTests
+public class MobileMotionTests : IDisposable
 {
     private const double W = 412, H = 915;
+
+    public MobileMotionTests() => FrameClock.Install();
+
+    public void Dispose() => FrameClock.Uninstall();
+
+    // ── Clock ──
+
+    /// <summary>
+    /// The time every curve here runs on, stepped one frame per <see cref="Pump"/>. Real time made
+    /// the tests measure the machine: a loaded 17-minute run drew a 180 ms fade's last frame at
+    /// 455 ms. Two clocks move the motion: Avalonia's transitions read the media context's
+    /// stopwatch on each render tick, and Motion's start and end timers (<see cref="Motion.Timers"/>).
+    /// Installed, the stopwatch stands still between steps and the timers fire when the steps
+    /// reach them, so a frame is always <see cref="FrameMs"/> of the curve however long the machine
+    /// takes to draw it.
+    /// </summary>
+    private static class FrameClock
+    {
+        public const double FrameMs = 16;
+
+        private static System.Diagnostics.Stopwatch? _media;
+        private static System.Reflection.FieldInfo? _elapsed;
+        private static readonly List<(double Due, Action Act, Cancel Cancel)> Timers = new();
+        public static double Now { get; private set; }
+
+        public static void Install()
+        {
+            var context = typeof(Avalonia.Media.IImage).Assembly.GetType("Avalonia.Media.MediaContext", throwOnError: true)!;
+            var instance = context.GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)!.GetValue(null);
+            _media = (System.Diagnostics.Stopwatch)context.GetField("_time", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(instance)!;
+            _elapsed = typeof(System.Diagnostics.Stopwatch).GetField("_elapsed", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Stopwatch._elapsed is gone: the frame clock cannot step Avalonia's animation time");
+            _media.Stop();
+            Now = 0;
+            Timers.Clear();
+            Motion.Timers = Schedule;
+        }
+
+        public static void Uninstall()
+        {
+            Motion.Timers = null;
+            Timers.Clear();
+            // Nothing is left waiting on a timer that will never fire.
+            Motion.FinishAll();
+            _media?.Start();   // real time carries on from where the steps left it
+        }
+
+        public static void Step()
+        {
+            Now += FrameMs;
+            if (_media != null) _elapsed!.SetValue(_media, (long)_elapsed.GetValue(_media)! + (long)(System.Diagnostics.Stopwatch.Frequency * FrameMs / 1000));
+            while (Timers.Where(t => t.Due <= Now).OrderBy(t => t.Due).FirstOrDefault() is { Act: not null } due)
+            {
+                Timers.Remove(due);
+                if (!due.Cancel.IsCancelled) due.Act();
+            }
+        }
+
+        private static IDisposable Schedule(TimeSpan delay, Action action)
+        {
+            var cancel = new Cancel();
+            Timers.Add((Now + delay.TotalMilliseconds, action, cancel));
+            return cancel;
+        }
+
+        public static Since StartNew() => new(Now);
+
+        public readonly record struct Since(double Start)
+        {
+            public double ElapsedMilliseconds => Now - Start;
+            public TimeSpan Elapsed => TimeSpan.FromMilliseconds(Now - Start);
+        }
+
+        private sealed class Cancel : IDisposable
+        {
+            public bool IsCancelled { get; private set; }
+            public void Dispose() => IsCancelled = true;
+        }
+    }
 
     // ── Recorder ──
 
@@ -43,8 +122,8 @@ public class MobileMotionTests
         return new Sample(ms, name, true, origin.X, origin.Y, opacity, (far.X - origin.X) / 100);
     }
 
-    /// <summary>Runs <paramref name="act"/>, then the headless clock in real time for
-    /// <paramref name="ms"/>, probing each target every frame.</summary>
+    /// <summary>Runs <paramref name="act"/>, then <paramref name="ms"/> of frames, probing each
+    /// target every frame.</summary>
     private static List<Sample> Record(string scenario, Window window, Action act, int ms, params (string Name, Func<Visual?> Find)[] targets)
     {
         var samples = new List<Sample>();
@@ -53,7 +132,7 @@ public class MobileMotionTests
             foreach (var (name, find) in targets) samples.Add(Probe(t, name, find(), window));
         }
         ProbeAll(-1);
-        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var clock = FrameClock.StartNew();
         act();
         window.UpdateLayout();
         ProbeAll(clock.Elapsed.TotalMilliseconds);
@@ -66,18 +145,20 @@ public class MobileMotionTests
         return samples;
     }
 
+    /// <summary>One frame: the clock steps <see cref="FrameClock.FrameMs"/>, then the dispatcher,
+    /// a render tick and a layout pass run.</summary>
     private static void Pump(Window window)
     {
+        FrameClock.Step();
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         window.UpdateLayout();
-        System.Threading.Thread.Sleep(12);
     }
 
-    /// <summary>Real time passes, then whatever still moves lands.</summary>
+    /// <summary>The frames of <paramref name="ms"/> pass, then whatever still moves lands.</summary>
     private static void Settle(Window window, int ms = 700)
     {
-        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var clock = FrameClock.StartNew();
         while (clock.ElapsedMilliseconds < ms) Pump(window);
         MobileFixtures.Land(window);
     }
@@ -458,7 +539,7 @@ public class MobileMotionTests
         var s = Record("19_back_mid_push", window, () =>
         {
             rig.Shell.OpenSongsCommand.Execute(null);
-            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var clock = FrameClock.StartNew();
             // Until the page is on its way, as BackMidSheet waits: a loaded runner's slow frames
             // had not started the slide by 140 ms ("Back came at 411").
             while (clock.ElapsedMilliseconds < 140 || Probe(0, "songs", Find<SongListPage>(view), window) is not { Opacity: > 0.01, X: < W - 50 })
@@ -487,7 +568,7 @@ public class MobileMotionTests
         var s = Record("20_back_mid_settings_open", window, () =>
         {
             rig.Shell.OpenSettingsCommand.Execute(null);
-            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var clock = FrameClock.StartNew();
             while (clock.ElapsedMilliseconds < 120 || Find<SettingsPage>(view) is not { } p || p.TranslatePoint(default, window)!.Value.Y > H - 50)
             {
                 Pump(window);

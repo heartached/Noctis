@@ -169,7 +169,9 @@ public sealed partial class AccountPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(SignOutQuestion))]
     private string _computerName = string.Empty;
 
-    /// <summary>The Remote row's grey line: "Play, pause and skip on Studio PC".</summary>
+    /// <summary>The Remote row's grey line: "Play and skip on Studio PC. Main account only." Said
+    /// before the first try: only the computer's main account may drive its player, and a phone
+    /// signed in with another one learned that only from the Remote page's refusal.</summary>
     [ObservableProperty] private string _remoteHint = string.Empty;
 
     /// <summary>The sign-out card's question: "Sign out of Studio PC?".</summary>
@@ -698,7 +700,7 @@ public sealed partial class AccountPageViewModel : MobilePage
             ? account.UserName : string.Empty;
         ServerText = account == null ? string.Empty : Loc.T("Mobile.Account.OnServer", ServerLabel(account));
         ComputerName = account == null ? string.Empty : ServerLabel(account);
-        RemoteHint = account == null ? string.Empty : Loc.T("Mobile.Remote.Hint", ServerLabel(account));
+        RemoteHint = account == null ? string.Empty : Loc.T("Mobile.Remote.HintMain", ServerLabel(account));
         Initials = InitialsOf(shownName);
         AvatarPath = IsSignedIn ? _account.AvatarPath : null;
         RefreshSyncTime();
@@ -733,11 +735,11 @@ public sealed partial class AccountPageViewModel : MobilePage
         var pending = _lastDownload is { Pending: > 0 };
         IsDownloading = _downloadRunning || pending;
         IsDownloadCounted = pending;
-        DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Completed / (double)(d.Completed + d.Pending) : 0;
+        DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Handled / (double)d.Total : 0;
         if (_lastDownload is not { } p) return;
         var failed = DownloadActivity.FailureParts(p);
         DownloadText = pending
-            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Completed + p.Pending, failed)
+            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Total, failed)
             : _downloadRunning ? DownloadText : Loc.T("Mobile.Account.DownloadsFinished", failed);
     }
 

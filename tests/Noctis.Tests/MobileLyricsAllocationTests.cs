@@ -92,11 +92,11 @@ public class MobileLyricsAllocationTests
     }
 
     internal readonly record struct FrameCost(long BytesPerFrame, long MedianBytes, int Frames, int RowsPrepared, long RowFramesBytes,
-        double MedianMs, double P95Ms)
+        double MedianMs, double P95Ms, long BytesPerSecond = 0)
     {
         public override string ToString() =>
             $"frames={Frames} bytes/frame mean={BytesPerFrame} median={MedianBytes} rows prepared={RowsPrepared} ({RowFramesBytes / 1024} KB in those frames)"
-            + $" frame ms median={MedianMs:F2} p95={P95Ms:F2}";
+            + $" frame ms median={MedianMs:F2} p95={P95Ms:F2} {BytesPerSecond / 1024} KB a second";
     }
 
     /// <summary>
@@ -105,7 +105,7 @@ public class MobileLyricsAllocationTests
     /// clock), and counts the UI thread's allocations per frame. The first second (the page
     /// opening, the first glide) is not counted.
     /// </summary>
-    internal static async Task<FrameCost> Measure(string ext, string text, double seconds)
+    internal static async Task<FrameCost> Measure(string ext, string text, double seconds, double fps = 60, Action<LyricsPage>? setup = null)
     {
         var (shell, player, view, win) = Mount(ext, text);
         try
@@ -123,6 +123,7 @@ public class MobileLyricsAllocationTests
             Assert.True(shell.Player.IsPlaying);
             var page = view.GetVisualDescendants().OfType<LyricsPage>().Single();
             page.HideControlsIfPlaying();
+            setup?.Invoke(page);
             var prepared = 0;
             page.FindControl<ItemsControl>("LyricsList")!.ContainerPrepared += (_, _) => prepared++;
 
@@ -135,8 +136,13 @@ public class MobileLyricsAllocationTests
             while (clock.Elapsed.TotalMilliseconds < seconds * 1000)
             {
                 var t = clock.Elapsed.TotalMilliseconds;
-                if (t < nextFrame) { Thread.Sleep(1); continue; }
-                nextFrame = t + 1000.0 / 60;
+                if (t < nextFrame)
+                {
+                    // Sleep(1) on Windows can take 15 ms: spin the last stretch to hold the rate.
+                    if (nextFrame - t > 3) Thread.Sleep(1); else Thread.SpinWait(100);
+                    continue;
+                }
+                nextFrame = Math.Max(nextFrame + 1000.0 / fps, t);
                 if (t >= nextPoll)
                 {
                     nextPoll = t + 250;
@@ -162,7 +168,8 @@ public class MobileLyricsAllocationTests
             times.Sort();
             return new FrameCost(bytes / Math.Max(1, perFrame.Count), perFrame.Count > 0 ? perFrame[perFrame.Count / 2] : 0,
                 perFrame.Count, rows, rowBytes,
-                times.Count > 0 ? times[times.Count / 2] : 0, times.Count > 0 ? times[times.Count * 95 / 100] : 0);
+                times.Count > 0 ? times[times.Count / 2] : 0, times.Count > 0 ? times[times.Count * 95 / 100] : 0,
+                (long)(bytes / Math.Max(0.001, seconds - 1)));
         }
         finally
         {
@@ -174,7 +181,8 @@ public class MobileLyricsAllocationTests
     /// A word-timed line sweeping (no line change in the window): only the moving words' brush
     /// stops, their float and the bindings that drive them. Measured 29 KB a frame before the
     /// sweep stopped redrawing every word every frame, 11 KB after that and the held-note glow
-    /// being built under held notes only (11-14).
+    /// being built under held notes only (11-14), 9.1 KB before and 5.7 KB after the cells
+    /// followed their words instead of binding them and floated on the compositor (11-23).
     /// </summary>
     [AvaloniaFact]
     public async Task WordSweep_AllocatesLittlePerFrame()
@@ -184,7 +192,7 @@ public class MobileLyricsAllocationTests
         Assert.InRange(cost.BytesPerFrame, 0, WordSweepBudget);
     }
 
-    internal const long WordSweepBudget = 14 * 1024;
+    internal const long WordSweepBudget = 8 * 1024;
 
     /// <summary>Plain synced lines between line changes: nothing moves, nothing allocates.</summary>
     [AvaloniaFact]

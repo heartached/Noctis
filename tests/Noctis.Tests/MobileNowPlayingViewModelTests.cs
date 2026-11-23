@@ -30,6 +30,33 @@ public class MobileNowPlayingViewModelTests : IDisposable
         return (vm, player, library, persistence);
     }
 
+    /// <summary>The seek labels are made and announced only when the second they show changes:
+    /// every binding formatted them again on each of the player's four ticks a second (a new
+    /// string and a pass through every listening binding). The seek bar reads PositionSeconds.</summary>
+    [Fact]
+    public void TimeLabels_ChangeOnlyWhenTheShownSecondDoes()
+    {
+        var tracks = Tracks(1);
+        var (vm, player, _, _) = Make(tracks);
+        vm.PlayTracks(tracks, 0);
+        vm.Duration = TimeSpan.FromSeconds(100.5);
+        var shown = new System.Collections.Generic.List<string>();
+        var seconds = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(NowPlayingViewModel.PositionSeconds)) seconds++;
+            if (e.PropertyName == nameof(NowPlayingViewModel.ElapsedText)) shown.Add(vm.ElapsedText);
+            if (e.PropertyName == nameof(NowPlayingViewModel.RemainingText)) shown.Add(vm.RemainingText);
+        };
+        for (var i = 0; i < 8; i++) player.RaisePositionChanged(TimeSpan.FromSeconds(10 + i * 0.25));
+        Assert.Equal(8, seconds);
+        // 10.0-11.75 s of 100.5: elapsed 00:10, 00:11; remaining -01:30, -01:29, -01:28.
+        Assert.Equal(new[] { "00:10", "-01:30", "-01:29", "00:11", "-01:28" }, shown);
+        Assert.Equal(11.75, vm.PositionSeconds);
+        vm.Duration = TimeSpan.FromSeconds(200);
+        Assert.Equal("-" + NowPlayingViewModel.FormatTime(TimeSpan.FromSeconds(200 - 11.75)), vm.RemainingText);
+    }
+
     [Fact]
     public void PlayTracks_StartsTheChosenTrack_AndPreparesTheNextOneForGapless()
     {

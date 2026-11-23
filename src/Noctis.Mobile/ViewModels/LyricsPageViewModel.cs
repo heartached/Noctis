@@ -95,6 +95,10 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     /// <summary>The lines the page shows: synced, or plain (pre-activated, never swept).</summary>
     public BulkObservableCollection<LyricLine> Lines { get; } = new();
 
+    /// <summary>The way the lines read, by their own letters (<see cref="ScriptDirection"/>): an
+    /// Arabic song's lines sit right, an English song's left, whatever the phone's language.</summary>
+    [ObservableProperty] private Avalonia.Media.FlowDirection _linesFlowDirection;
+
     [ObservableProperty, NotifyPropertyChangedFor(nameof(WantsFrames))] private bool _isSynced;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _hasLyrics;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(StatusText), nameof(ShowsEmptyState))] private bool _isLoading;
@@ -270,11 +274,14 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
     internal static TimeSpan SliderSaveDelay { get; set; } = TimeSpan.FromMilliseconds(350);
 
     /// <summary>Settings first (layer toggles, opacity floor, split-word joining), then the current track.</summary>
-    public async Task InitializeAsync()
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    /// <param name="saved">The start's one read (ShellViewModel.InitializeAsync); null = read here.</param>
+    public async Task InitializeAsync(AppSettings? saved)
     {
         try
         {
-            var settings = await _persistence.LoadSettingsAsync();
+            var settings = saved ?? await _persistence.LoadSettingsAsync();
             // A switch flipped while this load ran keeps the user's value, not the file's: the
             // load used to put the saved value back, and the flip was lost (never saved either).
             _applyingSaved = true;
@@ -494,6 +501,7 @@ public sealed partial class LyricsPageViewModel : ObservableObject, IDisposable
         IsLoading = false;
         Source = result.Source;
         Lines.ReplaceAll(result.Lines);
+        LinesFlowDirection = ScriptDirection.Of(result.Lines.Select(l => l.Text));
         _hasWordTiming = result.Lines.Any(l => l.HasWords || l.HasBackgroundWords || l.HasTransliterationWords);
         IsSynced = result.IsSynced;
         HasLyrics = result.Lines.Count > 0;

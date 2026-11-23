@@ -299,10 +299,12 @@ public static class ArtworkCache
                 return hit.Bitmap;
             }
 
-            Bitmap? bitmap;
-            if (DecoderOverride is { } decoder)
+            // A size of a cover already decoded larger (an Albums tile, then Search's smaller tile
+            // or a song row) is made from that decode: the file is not read and decoded again.
+            var bitmap = FromLargerDecode(path, width);
+            if (bitmap is null && DecoderOverride is { } decoder)
                 bitmap = decoder(path, width);
-            else
+            else if (bitmap is null)
             {
                 // Not Bitmap.DecodeToWidth(Stream): that path rents a file-sized buffer
                 // from ArrayPool<byte>.Shared per decode, and the pool kept 224 MB of
@@ -358,6 +360,67 @@ public static class ArtworkCache
         {
             return null;
         }
+    }
+
+    /// <summary>
+    /// <paramref name="width"/> pixels of <paramref name="path"/> resampled from the smallest
+    /// cached decode at least that wide, or null when there is none (or it went meanwhile). Close
+    /// sizes (half to full width: a 180 dp tile's decode for a 140 dp one) take a Catmull-Rom cubic,
+    /// which needs no more than its 4×4 taps there and keeps the edges a file decode at that size
+    /// has (105% of its edge contrast on a detailed cover, where drawing the larger decode shrunk
+    /// keeps 90%: MobileCoverDecodeTests); stronger shrinks take the decoder's own trilinear
+    /// (mipmapped) downscale. Either way the result is drawn 1:1 like a decode of its own, so a
+    /// PixelExact surface stays sharp.
+    /// </summary>
+    private static Bitmap? FromLargerDecode(string path, int width)
+    {
+        CacheEntry? larger = null;
+        foreach (var observed in _observedWidths.Keys)
+        {
+            if (observed <= width || !Cache.TryGetValue($"{observed}|{path}", out var entry)) continue;
+            if (larger is null || observed < larger.Width) larger = entry;
+        }
+        if (larger is null) return null;
+        var source = larger.Bitmap;
+        Acquire(source);
+        try
+        {
+            if (!EntryByBitmap.ContainsKey(source) || Volatile.Read(ref larger.State) == 2) return null;
+            var size = source.PixelSize;
+            if (size.Width < width || size.Height <= 0) return null;
+            using var pixels = new SkiaSharp.SKBitmap(new SkiaSharp.SKImageInfo(size.Width, size.Height,
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul));
+            source.CopyPixels(new Avalonia.PixelRect(size), pixels.GetPixels(), pixels.ByteCount, pixels.RowBytes);
+            using var resized = Resized(pixels, width);
+            var made = new WriteableBitmap(new Avalonia.PixelSize(resized.Width, resized.Height), new Avalonia.Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+            using (var target = made.Lock())
+                resized.PeekPixels().ReadPixels(resized.Info, target.Address, target.RowBytes);
+            return made;
+        }
+        catch
+        {
+            return null;   // the file decode below still runs
+        }
+        finally
+        {
+            Release(source);
+        }
+    }
+
+    /// <summary><paramref name="from"/> shrunk to <paramref name="width"/> (see <see cref="FromLargerDecode"/>).
+    /// The caller owns the result. Internal for tests.</summary>
+    internal static SkiaSharp.SKBitmap Resized(SkiaSharp.SKBitmap from, int width)
+    {
+        var info = new SkiaSharp.SKImageInfo(width, Math.Max(1, (int)Math.Round(from.Height * (width / (double)from.Width))),
+            SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        if (width * 2 < from.Width) return Helpers.SkiaArtworkDecoder.Downscale(from, info);
+        var result = new SkiaSharp.SKBitmap(info);
+        using var canvas = new SkiaSharp.SKCanvas(result);
+        using var image = SkiaSharp.SKImage.FromBitmap(from);
+        canvas.DrawImage(image, new SkiaSharp.SKRect(0, 0, info.Width, info.Height),
+            new SkiaSharp.SKSamplingOptions(SkiaSharp.SKCubicResampler.CatmullRom));
+        return result;
     }
 
     private static void EvictOldest()
