@@ -733,11 +733,11 @@ public sealed partial class AccountPageViewModel : MobilePage
         var pending = _lastDownload is { Pending: > 0 };
         IsDownloading = _downloadRunning || pending;
         IsDownloadCounted = pending;
-        DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Completed / (double)(d.Completed + d.Pending) : 0;
+        DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Handled / (double)d.Total : 0;
         if (_lastDownload is not { } p) return;
         var failed = DownloadActivity.FailureParts(p);
         DownloadText = pending
-            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Completed + p.Pending, failed)
+            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Total, failed)
             : _downloadRunning ? DownloadText : Loc.T("Mobile.Account.DownloadsFinished", failed);
     }
 

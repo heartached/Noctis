@@ -96,9 +96,8 @@ public sealed partial class DownloadActivity : ObservableObject
         if (progress.Pending > 0)
         {
             _notifying = true;
-            var total = progress.Completed + progress.Pending;
             _notifier?.ShowProgress(NotificationTitle(),
-                Loc.T("Mobile.Account.Downloading", progress.Completed, total, FailureParts(progress)), progress.Completed, total);
+                Loc.T("Mobile.Account.Downloading", progress.Completed, progress.Total, FailureParts(progress)), progress.Handled, progress.Total);
         }
         else if (_notifying)
         {

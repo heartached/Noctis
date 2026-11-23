@@ -69,6 +69,37 @@ public class MobileDownloadProgressTests
         Assert.False(shell.Downloads.IsActive);
     }
 
+    /// <summary>Before, a failed song left the total ("Downloading 1 of 3" became "1 of 2"): the
+    /// total stays the number asked for and the failure is counted apart, on the notification and
+    /// the Account page alike; the bar counts the failed song as handled.</summary>
+    [Fact]
+    public async Task FailedSong_KeepsTheTotal_AndIsCountedApart()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var shell = ShellWith(rig, account, notifier);
+        var gate = new TaskCompletionSource();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a, b, c }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 0, 0, 0));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(2, 0, 1, 0));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(1, 1, 1, 0));
+        shell.OpenAccountCommand.Execute(null);
+        var page = Assert.IsType<AccountPageViewModel>(shell.CurrentPage);
+
+        var failed = " · " + Loc.T("Mobile.Account.Failed", 1);
+        Assert.Equal("progress|Blue Album|" + Loc.T("Mobile.Account.Downloading", 0, 3, failed) + "|1/3", notifier.Calls[1]);
+        Assert.Equal("progress|Blue Album|" + Loc.T("Mobile.Account.Downloading", 1, 3, failed) + "|2/3", notifier.Calls[2]);
+        Assert.Equal(Loc.T("Mobile.Account.Downloading", 1, 3, failed), page.DownloadText);
+        Assert.Equal(2 / 3.0, page.DownloadFraction, 3);
+        gate.SetResult();
+        await run;
+    }
+
     [Fact]
     public async Task Notification_TwoStartsAtOnce_SaysFromYourComputer()
     {

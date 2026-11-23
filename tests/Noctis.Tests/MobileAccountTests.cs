@@ -873,7 +873,7 @@ public class MobileAccountTests
         Assert.Equal("Downloads finished · 77 missing on your computer", page.DownloadText);
 
         account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 1, 3, 0, Missing: 2));
-        Assert.Equal("Downloading 1 of 4 · 2 missing on your computer · 1 failed", page.DownloadText);
+        Assert.Equal("Downloading 1 of 7 · 2 missing on your computer · 1 failed", page.DownloadText);   // the failed stay in the total
         Assert.Equal("This song's file is missing on your computer.", AccountPageViewModel.Describe(NoctisErrorKind.FileMissing, true));
     }
 
