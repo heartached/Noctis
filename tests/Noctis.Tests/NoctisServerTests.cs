@@ -42,7 +42,7 @@ public class NoctisServerTests : IAsyncLifetime
         var art = Path.Combine(_dir, "cover.jpg");
         File.WriteAllBytes(art, new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3 });
 
-        var t1 = new Track { Id = Guid.NewGuid(), Title = "Alpha", Artist = "The Xylophones", AlbumArtist = "The Xylophones", Album = "First", AlbumId = AlbumA, FilePath = audio, Duration = TimeSpan.FromSeconds(200), TrackNumber = 1, Year = 2001, Genre = "Rock", FileSize = 5000, Bitrate = 320 };
+        var t1 = new Track { Id = Guid.NewGuid(), Title = "Alpha", Artist = "The Xylophones", AlbumArtist = "The Xylophones", Album = "First", AlbumId = AlbumA, FilePath = audio, Duration = TimeSpan.FromSeconds(200), TrackNumber = 1, Year = 2001, Genre = "Rock", FileSize = 5000, Bitrate = 320, ReplayGainTrackDb = -7.5, ReplayGainTrackPeak = 0.98, ReplayGainAlbumDb = -6.25 };
         var t2 = new Track { Id = Guid.NewGuid(), Title = "Beta", Artist = "The Xylophones", AlbumArtist = "The Xylophones", Album = "First", AlbumId = AlbumA, FilePath = audio, Duration = TimeSpan.FromSeconds(100), TrackNumber = 2, Year = 2001, Genre = "Rock", FileSize = 5000 };
         var t3 = new Track { Id = Guid.NewGuid(), Title = "Gamma", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB, FilePath = audio, Duration = TimeSpan.FromSeconds(50), TrackNumber = 1, Year = 2010, Genre = "Jazz; Rock", FileSize = 5000, IsFavorite = true };
         _lib = new FakeServerLibrary(
@@ -147,6 +147,18 @@ public class NoctisServerTests : IAsyncLifetime
 
         var missing = await Get("getSong", "id=tr-00000000000000000000000000000000");
         Assert.Equal(70, missing.GetProperty("error").GetProperty("code").GetInt32());
+    }
+
+    [Fact]
+    public async Task Songs_CarryTheirReplayGain_OnlyWhenTagged()
+    {
+        // OpenSubsonic's replayGain object: the phone levels a desktop song by it.
+        var songs = (await Get("search3", "query=&songCount=500")).GetProperty("searchResult3").GetProperty("song").EnumerateArray().ToList();
+        var alpha = songs.Single(s => s.GetProperty("title").GetString() == "Alpha").GetProperty("replayGain");
+        Assert.Equal(-7.5, alpha.GetProperty("trackGain").GetDouble());
+        Assert.Equal(0.98, alpha.GetProperty("trackPeak").GetDouble());
+        Assert.Equal(-6.25, alpha.GetProperty("albumGain").GetDouble());
+        Assert.False(songs.Single(s => s.GetProperty("title").GetString() == "Beta").TryGetProperty("replayGain", out _));
     }
 
     [Fact]

@@ -1410,7 +1410,20 @@ internal sealed class LibraryView
         if (t.Rating > 0) obj["userRating"] = t.Rating;
         if (t.IsFavorite) obj["starred"] = DateTime.UtcNow.ToString("O");
         if (_artistsByName.TryGetValue(t.Artist ?? "", out var artist)) obj["artistId"] = Ids.ArtistId(artist);
+        if (ReplayGainObject(t) is { } rg) obj["replayGain"] = rg;
         return obj;
+    }
+
+    /// <summary>OpenSubsonic's replayGain for a song whose file has ReplayGain tags (Track's copy of
+    /// them), null otherwise: the phone levels a desktop song by it. Additive; older phones ignore it.</summary>
+    private static JsonObject? ReplayGainObject(Track t)
+    {
+        if (t.ReplayGainTrackDb is null && t.ReplayGainAlbumDb is null && t.ReplayGainTrackPeak is null) return null;
+        var rg = new JsonObject();
+        if (t.ReplayGainTrackDb is { } track) rg["trackGain"] = track;
+        if (t.ReplayGainAlbumDb is { } album) rg["albumGain"] = album;
+        if (t.ReplayGainTrackPeak is { } peak) rg["trackPeak"] = peak;
+        return rg;
     }
 
     public JsonObject PlaylistObject(Playlist p, ServerUser owner)

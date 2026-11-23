@@ -78,7 +78,10 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void SetExclusiveMode(bool enabled) => ExclusiveRequests.Add(enabled);
     public bool ExclusiveModePaused { get; set; }
     public void RaiseOutputModeChanged(string status) => OutputModeChanged?.Invoke(this, status);
-    public void ApplyReplayGain(string mode, double preampDb) { }
+    public void ApplyReplayGain(string mode, double preampDb) => ReplayGainCalls.Add((mode, preampDb, true));
+    /// <summary>Every ApplyReplayGain call, in order (the two-argument one records Prevent Clipping on).</summary>
+    public List<(string Mode, double Preamp, bool PreventClipping)> ReplayGainCalls { get; } = new();
+    public void ApplyReplayGain(string mode, double preampDb, bool preventClipping) => ReplayGainCalls.Add((mode, preampDb, preventClipping));
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public bool GaplessEnabled { get; private set; } = true;
     public void SetGapless(bool enabled) => GaplessEnabled = enabled;

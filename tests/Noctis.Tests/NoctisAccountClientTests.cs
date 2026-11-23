@@ -374,6 +374,33 @@ public class NoctisAccountClientTests
     }
 
     [Fact]
+    public void CatalogEntries_CarryTheDesktopsReplayGain_Validated()
+    {
+        var id = Guid.NewGuid();
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(new
+        {
+            id = "tr-" + id.ToString("N"), title = "x",
+            replayGain = new { trackGain = -7.5, trackPeak = 0.98, albumGain = -6.25 },
+        }));
+        var song = NoctisServerClient.ParseSong(doc.RootElement)!;
+        Assert.Equal(-7.5, song.TrackGainDb);
+        Assert.Equal(0.98, song.TrackPeak);
+        Assert.Equal(-6.25, song.AlbumGainDb);
+
+        // An older desktop sends none; nonsense is dropped, never applied.
+        using var none = JsonDocument.Parse(JsonSerializer.Serialize(new { id = "tr-" + id.ToString("N"), title = "x" }));
+        var plain = NoctisServerClient.ParseSong(none.RootElement)!;
+        Assert.Null(plain.TrackGainDb);
+        Assert.Null(plain.TrackPeak);
+        Assert.Null(plain.AlbumGainDb);
+        using var bad = JsonDocument.Parse("{\"id\":\"tr-" + id.ToString("N") + "\",\"replayGain\":{\"trackGain\":900,\"trackPeak\":-1,\"albumGain\":\"loud\"}}");
+        var junk = NoctisServerClient.ParseSong(bad.RootElement)!;
+        Assert.Null(junk.TrackGainDb);
+        Assert.Null(junk.TrackPeak);
+        Assert.Null(junk.AlbumGainDb);
+    }
+
+    [Fact]
     public void PulledStates_AreClamped()
     {
         var now = new DateTime(2026, 9, 28, 12, 0, 0, DateTimeKind.Utc);

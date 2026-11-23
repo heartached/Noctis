@@ -1013,6 +1013,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             SampleRate = s.SamplingRate,
             FileSize = s.Size,
             Codec = CodecFor(s.Suffix, s.BitRate),
+            // The desktop file's ReplayGain (an older desktop sends none): the player levels by it.
+            ReplayGainTrackDb = s.TrackGainDb,
+            ReplayGainTrackPeak = s.TrackPeak,
+            ReplayGainAlbumDb = s.AlbumGainDb,
             // The computer's date: the order a sync's new songs are dated in (StampArrivals).
             DateAdded = created,
             LastModified = created,

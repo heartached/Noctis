@@ -3598,6 +3598,12 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Reordenar {0}</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Canciones reproducidas en la cola</value><comment>Setting switch: Queue page shows played songs</comment></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Las canciones que ya sonaron quedan encima de la actual</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>Canción</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>Álbum</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>Preamplificación</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>Evitar saturación</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>El realce se detiene antes del pico más alto de la canción</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>Iguala el volumen con las etiquetas ReplayGain de tus canciones, también las del ordenador. Canción da a todas el mismo volumen; Álbum respeta las canciones suaves y fuertes de cada álbum. Las canciones sin ReplayGain suenan tal cual.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Almacenamiento usado</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Eliminar todas las descargas</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Se quedan en tu ordenador y se siguen pudiendo escuchar en streaming</value><comment>Footnote</comment></data>

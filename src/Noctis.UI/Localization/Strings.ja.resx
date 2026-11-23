@@ -8588,6 +8588,12 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0}を並べ替え</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>再生済みの曲をキューに表示</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>再生した曲を再生中の曲の上に残します</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>トラック</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>アルバム</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>プリアンプ</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>クリッピングを防ぐ</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>曲の最大ピークを超えて持ち上げません</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>曲の ReplayGain タグで音量をそろえます（コンピュータの曲も対象）。「トラック」はすべての曲を同じ音量に、「アルバム」はアルバム内の静かな曲と大きな曲をそのまま保ちます。ReplayGain のない曲はそのまま再生されます。</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>使用済みストレージ</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>すべてのダウンロードを削除</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>コンピューターには残り、引き続きストリーミングできます</value></data>

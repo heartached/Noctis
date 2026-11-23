@@ -3607,6 +3607,12 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Reorder {0}</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Played Songs in Queue</value><comment>Setting switch: Queue page shows played songs</comment></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Songs you've played stay above the current one</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>Track</value><comment>ReplayGain mode: the track's own gain</comment></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>Album</value><comment>ReplayGain mode: the album's gain</comment></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>Pre-amp</value><comment>ReplayGain pre-amp slider</comment></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>Prevent Clipping</value><comment>ReplayGain switch: cap a boost at the song's peak</comment></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>A boost stops short of the song's loudest peak</value><comment>Under Prevent Clipping</comment></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>Evens out loudness with your songs' ReplayGain tags, your computer's songs too. Track gives every song the same loudness; Album keeps an album's quiet and loud songs as they are. Songs without ReplayGain play as they are.</value><comment>Under the ReplayGain card</comment></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Storage Used</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Remove All Downloads</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>They stay on your computer and still stream</value><comment>Footnote</comment></data>
