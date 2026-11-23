@@ -32,4 +32,6 @@
     <StreamGeometry x:Key="SetIconHidden">M2.8 12C4.7 8 8 5.8 12 5.8C16 5.8 19.3 8 21.2 12C19.3 16 16 18.2 12 18.2C8 18.2 4.7 16 2.8 12ZM12 14.8a2.8 2.8 0 1 0 0-5.6a2.8 2.8 0 0 0 0 5.6ZM4.5 4.5l15 15</StreamGeometry>
     <!-- Library › Artist Separators: two artists with a dividing line between them. -->
     <StreamGeometry x:Key="SetIconSeparators">M4.2 9a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0Z M2.5 18c0-2.5 1.8-4.3 4-4.3s4 1.8 4 4.3 M15.2 9a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0Z M13.5 18c0-2.5 1.8-4.3 4-4.3s4 1.8 4 4.3 M12 4v16</StreamGeometry>
+    <!-- Library › Genre Separators: one genre tag split in two, a tag each side of the dividing line. -->
+    <StreamGeometry x:Key="SetIconGenreSeparators">M2.5 6H7.8L10.3 9L7.8 12H2.5Z M13.7 12H19L21.5 15L19 18H13.7Z M12 4v16</StreamGeometry>
 </ResourceDictionary>
