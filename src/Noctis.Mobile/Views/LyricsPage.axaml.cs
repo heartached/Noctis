@@ -70,6 +70,7 @@ public partial class LyricsPage : UserControl
     {
         _onFrame = OnFrame;
         InitializeComponent();
+        ApplyDiagnostics();
         LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
         LyricsScroll.PropertyChanged += OnScrollPropertyChanged;
@@ -281,6 +282,21 @@ public partial class LyricsPage : UserControl
         StopGlide();
         EndBrowse(scrollBack: false);
         ApplyOffset(0);
+    }
+
+    /// <summary>DIAGNOSTIC ONLY (<see cref="Services.LyricsDiagnostics"/>, off by default): takes
+    /// the switched-off layers out of the page. The fades skip a band that is not in the tree.</summary>
+    private void ApplyDiagnostics()
+    {
+        if (Services.LyricsDiagnostics.NoBands) Remove(TopFade, BottomFade);
+        if (Services.LyricsDiagnostics.NoBackdrop) Remove(Backdrop, BlurCover);
+        if (Services.LyricsDiagnostics.NoDither) Remove(WashDither);
+
+        static void Remove(params Control[] controls)
+        {
+            foreach (var c in controls)
+                if (c.Parent is Panel panel) panel.Children.Remove(c);
+        }
     }
 
     /// <summary>Top and bottom room so the first and last lines can reach the anchor

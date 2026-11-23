@@ -217,6 +217,16 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 Dispatcher.UIThread.Post(() => _player.NotifyQueueCommandsChanged());
         };
 
+        // DIAGNOSTIC ONLY, off unless set: lyrics layers taken away to bisect the phone's cost
+        // (`adb shell setprop debug.noctis.lyr.noblur 1` etc., then restart; LyricsDiagnostics).
+        LyricsDiagnostics.NoLineBlur = ReadSystemProperty("debug.noctis.lyr.noblur") == "1";
+        LyricsDiagnostics.NoBands = ReadSystemProperty("debug.noctis.lyr.nobands") == "1";
+        LyricsDiagnostics.NoBackdrop = ReadSystemProperty("debug.noctis.lyr.nobackdrop") == "1";
+        LyricsDiagnostics.NoDither = ReadSystemProperty("debug.noctis.lyr.nodither") == "1";
+        if (LyricsDiagnostics.Any)
+            DebugLog.Write("Stalls", $"Lyrics diagnostics: noblur={LyricsDiagnostics.NoLineBlur} nobands={LyricsDiagnostics.NoBands}"
+                + $" nobackdrop={LyricsDiagnostics.NoBackdrop} nodither={LyricsDiagnostics.NoDither}");
+
         if (ApplicationLifetime is IActivityApplicationLifetime activity)
             activity.MainViewFactory = () =>
             {
