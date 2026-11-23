@@ -164,10 +164,11 @@ public class CachedImagePixelExactTests : IDisposable
         var shown = Assert.IsAssignableFrom<Bitmap>(image.Source);
         Assert.Equal(440, shown.PixelSize.Width);
 
-        // Shrinking re-decodes too: a bigger bitmap than the slot is a resample again.
+        // Shrinking takes its own size too (a bigger bitmap than the slot is a resample again),
+        // made from the 440 px decode in memory: the file is not decoded again.
         image.Width = image.Height = 260;
         await PumpUntil(() => ShownWidth(image) == 260);
-        Assert.Equal(new[] { 300, 440, 260 }, Requested());
+        Assert.Equal(new[] { 300, 440 }, Requested());
         window.Close();
     }
 

@@ -260,14 +260,16 @@
 
                 <!-- Virtualised like the other lists: a box set would otherwise realise every row at
                      page open. The panel still virtualises under the header, inside AlbumScroll,
-                     because VirtualizingStackPanel works from the effective viewport. -->
-                <ItemsControl Name="TrackList" ItemsSource="{Binding Rows}" Margin="0,14,0,0">
-                    <ItemsControl.ItemsPanel>
+                     because VirtualizingStackPanel works from the effective viewport. Rows are built
+                     once per kind (disc header, song) and handed the next item of that kind
+                     (RowItemsControl): a plain list rebuilt every row that scrolled on. -->
+                <views:RowItemsControl Name="TrackList" ItemsSource="{Binding Rows}" Margin="0,14,0,0">
+                    <views:RowItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <VirtualizingStackPanel />
                         </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.DataTemplates>
+                    </views:RowItemsControl.ItemsPanel>
+                    <views:RowItemsControl.DataTemplates>
                         <DataTemplate DataType="vm:AlbumDiscHeader">
                             <TextBlock Classes="album-subtle" Text="{Binding Label}" FontSize="13" FontWeight="SemiBold"
                                        Margin="24,16,24,4" />
@@ -317,8 +319,8 @@
                                 </Grid>
                             </Button>
                         </DataTemplate>
-                    </ItemsControl.DataTemplates>
-                </ItemsControl>
+                    </views:RowItemsControl.DataTemplates>
+                </views:RowItemsControl>
 
                 <!-- Apple's footer: the quality with the desktop's waveform, the release date, the song
                      count and length, the copyright line, then the record label; a line the tags cannot

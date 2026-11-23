@@ -94,13 +94,14 @@ public sealed class BlurredCoverBackdrop : Control
     /// whole percent, that brings the cover's brightest spot under the stock shade down far enough
     /// for white text to keep <see cref="MinTextContrast"/> there; 0 for a cover that needs none.
     /// Higher up the shade is lighter, but the title's large bold type needs only 3:1 (it gets 3.3:1
-    /// or more at the top of a landscape screen).
+    /// or more at the top of a landscape screen). <paramref name="shadeOpacity"/> is the shade's
+    /// as drawn: BlurShade's here, the Colour Wash's at its Brightness (<see cref="WashContrast"/>).
     /// </summary>
-    internal static double ContrastDimFor(Color brightest)
+    internal static double ContrastDimFor(Color brightest, double shadeOpacity = ShadeOpacity)
     {
         for (var percent = 0; percent < 100; percent++)
         {
-            var keep = (1 - ShadeAtTransport * ShadeOpacity) * (1 - percent / 100.0);
+            var keep = (1 - ShadeAtTransport * shadeOpacity) * (1 - percent / 100.0);
             var under = Color.FromRgb(Scale(brightest.R, keep), Scale(brightest.G, keep), Scale(brightest.B, keep));
             if (Services.MobileTheme.ContrastRatio(Colors.White, under) >= MinTextContrast) return percent / 100.0;
         }

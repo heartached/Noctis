@@ -465,7 +465,17 @@ public sealed partial class LibraryViewModel : ObservableObject
         playlist.TrackIds.Count(id => _library.GetTrackById(id) != null);
 
     public static bool HasCustomCover(Playlist playlist) =>
-        !string.IsNullOrEmpty(playlist.CoverArtPath) && File.Exists(playlist.CoverArtPath);
+        !string.IsNullOrEmpty(playlist.CoverArtPath) && CoverFileExists.GetOrAdd(playlist.CoverArtPath, File.Exists);
+
+    /// <summary>
+    /// Whether each playlist cover file exists, as last asked. Every refresh (a heart, a download
+    /// landing) asked the file system once per playlist; with 300 playlists that was most of the
+    /// Playlists page's refresh. Forgotten whenever the playlists are read again or a cover is set
+    /// or removed (a new cover is a new file name, PlaylistCovers.Store).
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> CoverFileExists = new(StringComparer.Ordinal);
+
+    private static void ForgetCoverChecks() => CoverFileExists.Clear();
 
     /// <summary>Pin or unpin an album on the Pinned rail (AppSettings.PinnedAlbumIds).</summary>
     public async Task SetAlbumPinnedAsync(Guid albumId, bool pinned)
@@ -560,6 +570,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         await EditPlaylistsAsync(list => list.RemoveAll(p => p.Id == playlist.Id));
         PlaylistCovers.DeleteOthers(playlist.Id, PlaylistCoversDirectory, except: null);
+        ForgetCoverChecks();
     }
 
     private string PlaylistCoversDirectory => PlaylistCovers.CoversDirectory(_persistence.DataDirectory);
@@ -595,6 +606,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             try { if (File.Exists(temp)) File.Delete(temp); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         if (path is null) return false;
+        ForgetCoverChecks();
         var now = DateTime.UtcNow;
         playlist.CoverArtPath = path;
         await EditPlaylistAsync(playlist, p =>
@@ -617,6 +629,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             p.ModifiedAt = now;
         });
         PlaylistCovers.DeleteOthers(playlist.Id, PlaylistCoversDirectory, except: null);
+        ForgetCoverChecks();
     }
 
     /// <summary>Desktop parity (PlaylistViewModel.RemoveTrack): the songs leave the playlist with
@@ -667,6 +680,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         try
         {
             _playlists = await _persistence.LoadPlaylistsAsync();
+            ForgetCoverChecks();
         }
         catch (Exception ex)
         {
@@ -1017,6 +1031,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             DebugLog.Write("Library", $"Playlist load failed: {ex.Message}");
             _playlists = new List<Playlist>();
         }
+        ForgetCoverChecks();
         PlaylistCount = _playlists.Count;
     }
 

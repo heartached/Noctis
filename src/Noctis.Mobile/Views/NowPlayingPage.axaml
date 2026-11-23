@@ -182,7 +182,15 @@
             <views:DitherLayer Name="WashDither" IsHitTestVisible="False" />
             <!-- Settings › Appearance › Now Playing Background: darker lays black over the wash
                  (ShellViewModel.NowPlayingDimOpacity), brighter thins the shade itself. -->
-            <Border Name="WashDim" Background="Black" IsHitTestVisible="False" Opacity="{Binding NowPlayingDimOpacity}" />
+            <Border Name="WashDim" Background="Black" IsHitTestVisible="False">
+                <Border.Opacity>
+                    <MultiBinding Converter="{x:Static views:WashContrast.Dim}">
+                        <Binding Path="NowPlayingDimOpacity" />
+                        <Binding Path="NowPlayingShadeOpacity" />
+                        <Binding ElementName="Backdrop" Path="Source" />
+                    </MultiBinding>
+                </Border.Opacity>
+            </Border>
         </Panel>
         <!-- Now Playing Background › Blurred Cover (Discord #mobile-beta): the cover itself, blurred
              once per cover off the UI thread (BlurredCoverBackdrop) and filling the screen, the
