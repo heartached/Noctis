@@ -1891,10 +1891,13 @@ public partial class PlaybackBarView : UserControl
 
         if (e.ClickCount == 2)
         {
-            // Double-click a grip: back to the stock width, persisted like a drag.
+            // Double-click a grip: back to the stock width, persisted like a drag. Through
+            // UpdateIslandWidth, which adds the extra buttons' room to the stock width: writing
+            // IslandBaseWidth straight onto the island left it that much too narrow (squeezed
+            // into the mid shape) whenever the stored width already was the stock one.
             _isResizeDragging = false;
-            IslandBorder.Width = IslandBaseWidth;
             PersistIslandWidth(IslandBaseWidth);
+            UpdateIslandWidth();
             e.Handled = true;
             return;
         }
