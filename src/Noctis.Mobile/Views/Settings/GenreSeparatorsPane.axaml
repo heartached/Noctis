@@ -65,8 +65,11 @@
                 <StackPanel>
                     <!-- None listed (allowed: ';' always splits): one line says so, not an empty card. -->
                     <views:SettingRow Classes="setting-row" IsVisible="{Binding IsEmpty}">
-                        <TextBlock Name="NoGenreSeparatorsLabel" Classes="row-value" HorizontalAlignment="Left"
-                                   TextWrapping="Wrap" Text="{loc:T Mobile.GenreSeparators.None}" />
+                        <!-- A label, not a row-value: values are capped at 170 px for a grey value
+                             beside a label, which wrapped this sentence to three lines. -->
+                        <TextBlock Name="NoGenreSeparatorsLabel" Classes="row-label"
+                                   Foreground="{DynamicResource PhoneSecondaryTextBrush}"
+                                   Text="{loc:T Mobile.GenreSeparators.None}" />
                     </views:SettingRow>
                     <ItemsControl Name="GenreSeparatorList" ItemsSource="{Binding Separators}">
                         <ItemsControl.ItemTemplate>

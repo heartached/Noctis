@@ -223,7 +223,13 @@ public class MobileGenreSeparatorsTests : IDisposable
             removes[0].Command!.Execute(removes[0].CommandParameter);   // ","
             Pump(window);
             Assert.Empty(RemoveButtons(pane));
-            Assert.True(MobileFixtures.Named<TextBlock>(pane, "NoGenreSeparatorsLabel").IsEffectivelyVisible);
+            var none = MobileFixtures.Named<TextBlock>(pane, "NoGenreSeparatorsLabel");
+            Assert.True(none.IsEffectivelyVisible);
+            // Emulator check 11-23: styled as a row value it was capped at 170 px and wrapped to
+            // three lines past the card; the sentence gets the row's width (two lines at most even
+            // in the wider headless test font, one on the phone).
+            Assert.True(none.Bounds.Width > 200, $"'None' line is {none.Bounds.Width:0} px wide");
+            Assert.True(none.Bounds.Height < none.FontSize * 3.5, $"'None' line is {none.Bounds.Height:0} px tall");
             Assert.True(MobileFixtures.Named<Button>(pane, "GenreSeparatorsResetButton").IsEnabled);
 
             MobileFixtures.Named<TextBox>(pane, "NewGenreSeparatorBox").Text = " / ";
