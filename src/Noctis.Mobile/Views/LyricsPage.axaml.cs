@@ -145,35 +145,16 @@ public partial class LyricsPage : UserControl
             _shell.PropertyChanged += OnShellChanged;
         }
         UpdateMenuHold();
-        OnShownChanged();
         if (_lyrics != null && LyricsScroll.Bounds.Width > 0) _lyrics.ViewWidth = LyricsScroll.Bounds.Width;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == IsVisibleProperty) OnShownChanged();
-    }
-
-    /// <summary>
-    /// What the user sees: the page shown and the lyrics open. S23 (11-23, round 4): toggled
-    /// back to Now Playing with the Lyrics button, the page kept gliding, restyling and pulsing
-    /// the keep-alive under Now Playing (render thread 55%, 1.2-1.9 MB/s, against 7% before
-    /// Lyrics was opened), the page itself still visible to Avalonia. Closed is now the moment
-    /// the lyrics close (the fade out is the page's last look, held), whatever the views do.
-    /// </summary>
-    internal bool Shown => IsVisible && _shell is not { IsLyricsOpen: false };
-
-    private bool _shown;
-
-    private void OnShownChanged()
-    {
-        var shown = Shown;
-        if (shown == _shown) return;
-        _shown = shown;
+        if (change.Property != IsVisibleProperty) return;
         UpdateMenuHold();
         FeedTimeline();
-        if (!shown)
+        if (!IsVisible)
         {
             // The keep-alive stops asking now (the frame loop ends at its next frame): its frames
             // redraw the screen even under a hidden page.
@@ -204,20 +185,19 @@ public partial class LyricsPage : UserControl
     {
         if (e.PropertyName == nameof(LyricsPageViewModel.WantsFrames))
             EnsureFrameLoop();
-        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && Shown && !_heldForMenu)
+        else if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && IsVisible && !_heldForMenu)
         {
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             ScrollToLine(_lyrics!.ScrollLineIndex, animate: true);
             Services.FrameStallMonitor.AddTime("lyric scroll start", System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         }
-        else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && Shown)
+        else if (e.PropertyName == nameof(LyricsPageViewModel.HasLyrics) && IsVisible)
             ShowControls();   // (re)starts the hide timer once there is something to read
     }
 
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ShellViewModel.IsMenuOpen) or nameof(ShellViewModel.IsSheetOpen)) UpdateMenuHold();
-        else if (e.PropertyName == nameof(ShellViewModel.IsLyricsOpen)) OnShownChanged();
         // Android may report the insets after the resize, and the page's size does not change
         // when only they do: the landscape layout is placed from them, so it follows them too.
         else if (e.PropertyName == nameof(ShellViewModel.SafeArea)) ApplyOrientation(Bounds.Size);
@@ -228,7 +208,7 @@ public partial class LyricsPage : UserControl
             // used to glide there from wherever the page left off, in front of the user), then
             // the frames run again.
             if (_shell is { IsSuspended: true }) KeepAlive.Run(false);
-            else if (Shown)
+            else if (IsVisible)
             {
                 _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
                 if (!_heldForMenu) ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: false);
@@ -262,7 +242,7 @@ public partial class LyricsPage : UserControl
         // Released at the tap (S23, 11-17), the first frames of every close drew each blurred line
         // live under the closing glass: 3-4 frames of 24-34 ms. The lines stay held under it and
         // come back once it has gone.
-        if (Shown && HoldReleaseDelay > TimeSpan.Zero)
+        if (IsVisible && HoldReleaseDelay > TimeSpan.Zero)
         {
             if (!_holdRelease.IsEnabled)
             {
@@ -274,7 +254,7 @@ public partial class LyricsPage : UserControl
         ReleaseHold();
     }
 
-    private bool WantsHold => Shown && _shell is { } shell && (shell.IsMenuOpen || shell.IsSheetOpen);
+    private bool WantsHold => IsVisible && _shell is { } shell && (shell.IsMenuOpen || shell.IsSheetOpen);
 
     /// <summary>How long the lines stay held after a menu or sheet closes: its close pop.</summary>
     internal static TimeSpan HoldReleaseDelay { get; set; } = TimeSpan.FromMilliseconds(PopMenu.PopCloseMs);
@@ -285,7 +265,7 @@ public partial class LyricsPage : UserControl
         if (!_heldForMenu) return;
         _heldForMenu = false;
         LyricsScroll.CacheMode = null;
-        if (!Shown) return;
+        if (!IsVisible) return;
         _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
         EnsureFrameLoop();
         ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: true);
@@ -296,10 +276,10 @@ public partial class LyricsPage : UserControl
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying) && Shown) ShowControls();
+        if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying) && IsVisible) ShowControls();
         // Between plain lines the frame loop rests; each position poll (4 a second) wakes it
         // once the next line is near (KeepsFrames), or at once after a seek.
-        else if (e.PropertyName == nameof(NowPlayingViewModel.Position) && !_frameLoopRunning && Shown) EnsureFrameLoop();
+        else if (e.PropertyName == nameof(NowPlayingViewModel.Position) && !_frameLoopRunning && IsVisible) EnsureFrameLoop();
     }
 
     /// <summary>A new track's lyrics start at the top.</summary>
@@ -426,7 +406,7 @@ public partial class LyricsPage : UserControl
         ControlsLayer.Opacity = 1;
         ControlsLayer.IsHitTestVisible = true;
         _controlsTimer.Stop();
-        if (Shown && _shell?.Player.IsPlaying == true && _lyrics?.HasLyrics == true)
+        if (IsVisible && _shell?.Player.IsPlaying == true && _lyrics?.HasLyrics == true)
             _controlsTimer.Start();
     }
 
@@ -435,7 +415,7 @@ public partial class LyricsPage : UserControl
     internal void HideControlsIfPlaying()
     {
         _controlsTimer.Stop();
-        if (!Shown || _shell?.Player.IsPlaying != true || _lyrics?.HasLyrics != true || SeekBar.IsPointerOver) return;
+        if (!IsVisible || _shell?.Player.IsPlaying != true || _lyrics?.HasLyrics != true || SeekBar.IsPointerOver) return;
         ControlsLayer.Opacity = 0;
         ControlsLayer.IsHitTestVisible = false;
         _controlsOffTimer.Stop();
@@ -461,7 +441,7 @@ public partial class LyricsPage : UserControl
     private void FeedTimeline()
     {
         if (SeekBar is null) return;   // before InitializeComponent
-        var seen = Shown && ControlsLayer.IsVisible;
+        var seen = IsVisible && ControlsLayer.IsVisible;
         NowPlayingPage.FeedTimeline(SeekBar, SeekBar, seen);
         NowPlayingPage.FeedTimeline(TimeRow, SeekBar, seen);
     }
@@ -599,7 +579,7 @@ public partial class LyricsPage : UserControl
         _browseTimer.Stop();
         if (_lyrics is not { IsBrowsing: true }) return;
         _lyrics.IsBrowsing = false;
-        if (scrollBack && Shown) ScrollToLine(_lyrics.ScrollLineIndex, animate: true);
+        if (scrollBack && IsVisible) ScrollToLine(_lyrics.ScrollLineIndex, animate: true);
     }
 
     // ── Frames ──
@@ -615,7 +595,7 @@ public partial class LyricsPage : UserControl
 
     // Not while the app is in the background (home, task switch, screen off): the frame loop and
     // the keep-alive kept the render loop ticking there for as long as the song played.
-    private bool KeepsFrames => Shown && !_heldForMenu && _shell is not { IsSuspended: true }
+    private bool KeepsFrames => IsVisible && !_heldForMenu && _shell is not { IsSuspended: true }
                                 && ((_gliding && !_onCompositor) || (_lyrics?.WantsFrames == true && LinesMoveSoon()));
 
     /// <summary>A word-timed song (or the dots) moves every frame; plain lines only around a change.</summary>
@@ -637,7 +617,7 @@ public partial class LyricsPage : UserControl
         Services.FrameStallMonitor.Count("lyric frames");
         var now = LyricsPageViewModel.NowMs();
         if (_gliding && !_onCompositor) StepGlide(now);
-        if (_lyrics?.WantsFrames == true && Shown) _lyrics.OnFrame(now);
+        if (_lyrics?.WantsFrames == true && IsVisible) _lyrics.OnFrame(now);
 
         if (KeepsFrames && TopLevel.GetTopLevel(this) is { } top)
         {

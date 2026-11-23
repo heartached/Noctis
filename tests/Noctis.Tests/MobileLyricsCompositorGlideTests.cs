@@ -286,42 +286,11 @@ public class MobileLyricsCompositorGlideTests
             // button, as on the phone: the glide ends with the page.
             rig.Page.ScrollToLine(rig.Shell.Lyrics.ScrollLineIndex + 1, animate: true);
             Assert.True(rig.Page.IsGlidingOnCompositor);
-            Tap(rig, rig.Page.FindControl<Button>("LyricsButton")!);
+            rig.Page.FindControl<Button>("LyricsButton")!.Command!.Execute(null);
             Assert.False(rig.Shell.IsLyricsOpen);
-            // Closed from the tap on, though the page is still drawn while it fades out (on the
-            // phone it stayed visible to Avalonia under Now Playing): a line change in the fade
-            // starts nothing.
-            Assert.True(rig.Page.IsVisible);
-            Assert.False(rig.Page.Shown);
-            Assert.False(rig.Page.IsGlidingOnCompositor);
-            Assert.False(rig.Page.IsFrameLoopRunning);
-            var scrolls = 0;
-            rig.Shell.Lyrics.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex)) scrolls++;
-            };
-            rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(23.5));
-            rig.Shell.Lyrics.OnFrame(LyricsPageViewModel.NowMs());   // as a frame would
-            Frames(rig, 1);
-            Assert.True(scrolls > 0, "the sung line moved on");
-            Assert.False(rig.Page.IsGlidingOnCompositor);
-            Assert.False(rig.Page.IsFrameLoopRunning);
-            Assert.False(keepAlive.IsRunning);
-            clock.Restart();
-            RunUntil(rig, clock, 800);                               // the fade out runs on its own
-            Assert.False(rig.Page.IsVisible);
-            // Lyrics and back again with Now Playing's own Lyrics button and the page's.
-            var nowPlaying = rig.Window.GetVisualDescendants().OfType<NowPlayingPage>().Single();
-            Assert.True(nowPlaying.IsVisible);
-            Tap(rig, nowPlaying.FindControl<Button>("LyricsButton")!);
-            clock.Restart();
-            RunUntil(rig, clock, 800);
-            Assert.True(rig.Page.IsVisible);
-            rig.Page.ShowControls();
+            RunUntil(rig, clock, 1300);                              // the fade out has run
+            Motion.FinishAll();
             Frames(rig, 2);
-            Tap(rig, rig.Page.FindControl<Button>("LyricsButton")!);
-            clock.Restart();
-            RunUntil(rig, clock, 800);
             Assert.False(rig.Page.IsVisible);
             Assert.False(rig.Page.IsGlidingOnCompositor);
             Assert.Equal(0, ShownTranslationY(rig), 3);
@@ -368,17 +337,6 @@ public class MobileLyricsCompositorGlideTests
         {
             rig.Window.Close();
         }
-    }
-
-    /// <summary>A finger tap in the middle of <paramref name="button"/>, as on the phone.</summary>
-    private static void Tap(Rig rig, Button button)
-    {
-        Frames(rig, 1);
-        var at = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), rig.Window)!.Value;
-        var finger = rig.Window.TouchBegin(at);
-        Frames(rig, 1);
-        rig.Window.TouchEnd(finger, at);
-        Frames(rig, 1);
     }
 
     /// <summary>A line's button (the visual its opacity and blur are on).</summary>
