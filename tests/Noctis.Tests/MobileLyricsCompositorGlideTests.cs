@@ -356,6 +356,52 @@ public class MobileLyricsCompositorGlideTests
         return ((Vector3D)serverVisual.GetProperty("Translation")!.GetValue(server)!).Y;
     }
 
+    /// <summary>
+    /// A glide stopped mid-way (here by browsing) hands over to the scroll offset without a jump,
+    /// even when its first frame came late: the glide's clock starts when the compositor's does
+    /// (at the commit that carries it), not when it was asked for. Measured on screen: the active
+    /// line's place in the frame before the stop and the frame after. Before (11-23) the page's
+    /// clock ran up to a frame ahead of the render thread's, a jump of up to ~3 px on the phone.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData(0)]
+    [InlineData(12)]
+    public async Task AnInterruptedGlide_HandsOverWithoutAJump(int lateMs)
+    {
+        var rig = await Open();
+        try
+        {
+            var clock = Stopwatch.StartNew();
+            rig.Page.ScrollToLine(11, animate: true);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            Thread.Sleep(lateMs);                            // the first frame comes late
+            Frames(rig, 1);
+            RunUntil(rig, clock, 150 + lateMs);
+            Dispatcher.UIThread.RunJobs();
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            var tick = LyricsPageViewModel.NowMs();
+            // Where the content is shown, as a scroll offset (the layout rounds the list to whole
+            // pixels wherever it stops; that is not the hand-over's).
+            var target = rig.Scroll.Offset.Y;
+            var before = target - ShownTranslationY(rig);
+            rig.Page.BeginBrowse();
+            var gap = LyricsPageViewModel.NowMs() - tick;
+            var after = rig.Scroll.Offset.Y;
+            Frames(rig, 2);
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.Equal(0, ShownTranslationY(rig), 6);
+            // The stop falls a moment after the last frame shown: the lines may have moved on by
+            // the glide's speed over that moment (at most ~0.4 px/ms on this travel).
+            var slack = 0.5 + 0.4 * gap;
+            _o.WriteLine($"first frame {lateMs} ms late: shown at {before:0.00} before the stop, {after:0.00} after ({after - before:+0.00;-0.00} px, stop {gap:0.0} ms after the frame)");
+            Assert.InRange(after - before, -slack, slack);
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
     /// <summary>A jump longer than the realised buffer (a seek far off) still glides, frame by
     /// frame as before, and lands.</summary>
     [AvaloniaFact]

@@ -87,6 +87,7 @@ public partial class LyricsPage : UserControl
         _holdRelease.Tick += (_, _) => { if (!WantsHold) ReleaseHold(); };
         _glideDone = new DispatcherTimer();
         _glideDone.Tick += (_, _) => OnCompositorGlideDone();
+        _onGlideCommitted = OnGlideCommitted;
 
         // Any touch brings the transport back (and keeps it up a while), even one a line or
         // the scroller handles; a tap on a line also ends browsing, as the seek it makes
@@ -673,6 +674,7 @@ public partial class LyricsPage : UserControl
         _glideFrom = LyricsScroll.Offset.Y;
         _glideTo = target;
         _glideStartMs = LyricsPageViewModel.NowMs();
+        _glideCommitted = false;
         var distance = Math.Abs(target - _glideFrom);
         // A line-to-line advance runs exactly LineMotion.DurationMs, landing with the line's
         // own scale transition; only seek-sized jumps stretch a little (the desktop's rule).
@@ -817,7 +819,28 @@ public partial class LyricsPage : UserControl
         _glideDone.Stop();
         _glideDone.Interval = TimeSpan.FromMilliseconds(totalMs);
         _glideDone.Start();
+        // The render thread starts the animation at the commit that carries it (Avalonia stamps
+        // the batch with its clock as it is sent), up to a frame after this call when it comes
+        // from a timer or a tap. The glide's own clock restarts there, so where the page thinks
+        // the lines are (VisualOffset) is where the compositor shows them: stopped mid-way, the
+        // hand-over used to jump by that frame's motion (up to ~3 px on the S23, 11-23).
+        list.Compositor.RequestCompositionUpdate(_onGlideCommitted);
         return true;
+    }
+
+    // Whether the running glide's clock has been set at its commit.
+    private bool _glideCommitted;
+    private readonly Action _onGlideCommitted;
+
+    /// <summary>Runs just before the commit that sends the glide (Compositor.RequestCompositionUpdate).</summary>
+    private void OnGlideCommitted()
+    {
+        if (!_gliding || !_onCompositor || _glideCommitted) return;
+        _glideCommitted = true;
+        _glideStartMs = LyricsPageViewModel.NowMs();
+        _glideDone.Stop();
+        _glideDone.Interval = TimeSpan.FromMilliseconds(_glideDurationMs + _cascadeMaxDelayMs);
+        _glideDone.Start();
     }
 
     /// <summary>Off: every glide runs frame by frame (tests compare the two).</summary>
@@ -900,8 +923,8 @@ public partial class LyricsPage : UserControl
     }
 
     /// <summary>Where the lines stand on screen as a scroll offset: the layout's offset, less
-    /// what a compositor glide still displaces them by (on the glide's own clock; the render
-    /// thread's starts with the next frame, at most a frame later).</summary>
+    /// what a compositor glide still displaces them by (on the glide's own clock, which starts
+    /// with the render thread's: OnGlideCommitted).</summary>
     private double VisualOffset() =>
         _gliding && _onCompositor
             ? GlideAt(LyricsPageViewModel.NowMs() - _glideStartMs, null)
