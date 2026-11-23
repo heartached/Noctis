@@ -48,13 +48,7 @@ public static class AlbumLinks
             }
             if (sources.Count == 0) continue;
 
-            var own = new HashSet<Track>(album.Tracks, ReferenceEqualityComparer.Instance);
-            var edition = album.Tracks.Concat(linked)
-                .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
-                .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
-                .ThenBy(t => own.Contains(t) ? 0 : 1)
-                .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var edition = InAlbumOrder(album.Tracks, linked);
 
             album.LinkedTracks = linked;
             album.LinkedAlbumIds = sources;
@@ -62,6 +56,20 @@ public static class AlbumLinks
             album.TrackCount = edition.Count;
             album.TotalDuration = TimeSpan.FromTicks(edition.Sum(t => t.Duration.Ticks));
         }
+    }
+
+    /// <summary>An edition's list: its own songs and the linked ones by disc and track number, the
+    /// own file first on a tie (the rules above). The phone server lists a linked album the same way.</summary>
+    public static List<Track> InAlbumOrder(IEnumerable<Track> own, IEnumerable<Track> linked)
+    {
+        var ownList = own.ToList();
+        var owned = new HashSet<Track>(ownList, ReferenceEqualityComparer.Instance);
+        return ownList.Concat(linked)
+            .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
+            .ThenBy(t => t.TrackNumber <= 0 ? int.MaxValue : t.TrackNumber)
+            .ThenBy(t => owned.Contains(t) ? 0 : 1)
+            .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <summary>

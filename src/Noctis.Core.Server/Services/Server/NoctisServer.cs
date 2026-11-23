@@ -1308,7 +1308,14 @@ internal sealed class LibraryView
             .OrderBy(a => a.Year).ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
 
     public IEnumerable<Track> SongsOf(Album album)
-        => _tracksByAlbum[album.Id].OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
+        => LinkedSongsOf(album) is { Count: > 0 } linked
+            ? Noctis.Services.AlbumLinks.InAlbumOrder(_tracksByAlbum[album.Id], linked)
+            : _tracksByAlbum[album.Id].OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The songs <paramref name="album"/> lists from other albums (Link Tracks From, Discord
+    /// 11-11), as the desktop album page shows them: those this snapshot still has.</summary>
+    private List<Track> LinkedSongsOf(Album album)
+        => album.LinkedTracks.Select(t => TrackById(t.Id)).OfType<Track>().Where(t => t.AlbumId != album.Id).ToList();
 
     public IEnumerable<Track> SongsOf(Playlist playlist)
         => playlist.TrackIds.Select(id => _tracks.TryGetValue(id, out var t) ? t : null).Where(t => t is not null)!;
@@ -1359,6 +1366,8 @@ internal sealed class LibraryView
     public JsonObject AlbumObject(Album a)
     {
         var songs = _tracksByAlbum[a.Id].ToList();
+        // A linked album's count, length and heart cover the linked songs too, as on the desktop.
+        var listed = a.HasLinkedTracks ? SongsOf(a).ToList() : songs;
         var obj = new JsonObject
         {
             ["id"] = Ids.AlbumId(a.Id),
@@ -1368,15 +1377,19 @@ internal sealed class LibraryView
             ["artist"] = a.Artist,
             ["isDir"] = true,
             ["coverArt"] = Ids.AlbumId(a.Id),
-            ["songCount"] = songs.Count > 0 ? songs.Count : a.TrackCount,
-            ["duration"] = (int)(songs.Count > 0 ? songs.Sum(t => t.Duration.TotalSeconds) : a.TotalDuration.TotalSeconds),
+            ["songCount"] = listed.Count > 0 ? listed.Count : a.TrackCount,
+            ["duration"] = (int)(listed.Count > 0 ? listed.Sum(t => t.Duration.TotalSeconds) : a.TotalDuration.TotalSeconds),
             ["playCount"] = songs.Sum(t => (long)t.PlayCount), // long: an int Sum throws on overflow
             ["created"] = (songs.Count > 0 ? songs.Min(t => t.DateAdded) : DateTime.UtcNow).ToString("O"),
         };
         if (ArtistIdOf(a) is { } artistId) { obj["artistId"] = artistId; obj["parent"] = artistId; }
         if (a.Year > 0) obj["year"] = a.Year;
         if (!string.IsNullOrWhiteSpace(a.Genre) && a.Genre != "Unknown") obj["genre"] = a.Genre;
-        if (songs.Count > 0 && songs.All(t => t.IsFavorite)) obj["starred"] = DateTime.UtcNow.ToString("O");
+        if (listed.Count > 0 && listed.All(t => t.IsFavorite)) obj["starred"] = DateTime.UtcNow.ToString("O");
+        // The albums it lists songs from (additive; older phones ignore it): the phone links the
+        // same albums, so its album page lists the same songs.
+        if (a.HasLinkedTracks && a.LinkedAlbumIds.Count > 0)
+            obj["noctisLinks"] = new JsonArray(a.LinkedAlbumIds.Select(id => (JsonNode)Ids.AlbumId(id)).ToArray());
         return obj;
     }
 
