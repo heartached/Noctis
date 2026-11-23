@@ -885,6 +885,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up "View Artist" from lyrics view
         _lyricsVm.SetViewArtistAction(ViewArtistFromLyrics);
         _lyricsVm.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
+        _lyricsVm.SetOpenGenreAction(OpenGenre);
 
         // Wire up search
         TopBar.SearchTextChanged += OnSearchTextChanged;
