@@ -35,6 +35,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
+    /// <summary>The song the page was opened for (the playing song's title in the island,
+    /// View Album on a song): the page glides it into view and washes it once. Taken by the
+    /// view on first show, so Back to this page restores its scroll instead.</summary>
+    public Guid? RevealTrackId { get; set; }
+
+    /// <summary>Returns <see cref="RevealTrackId"/> and clears it.</summary>
+    public Guid? TakeRevealTrackId()
+    {
+        var id = RevealTrackId;
+        RevealTrackId = null;
+        return id;
+    }
+
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
 
@@ -114,6 +127,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private IBrush _tintButtonBorder = Brushes.Transparent;
     [ObservableProperty] private IBrush _tintIconBrush = Brushes.White;
     [ObservableProperty] private IBrush _tintHeartBrush = new SolidColorBrush(AlbumTintPalette.HeartRed);
+    /// <summary>The header's artist links on a tint: the accent, moved lighter or darker until
+    /// it reads on the page (AlbumTintPalette.HeaderColours.Link).</summary>
+    [ObservableProperty] private IBrush _tintLinkBrush = Brushes.White;
     [ObservableProperty] private Guid? _currentPlayingTrackId;
     [ObservableProperty] private bool _isPlayerPlaying;
     [ObservableProperty] private string _albumDescription = string.Empty;
@@ -629,6 +645,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         TintButtonBorder = new SolidColorBrush(c.Border);
         TintIconBrush = new SolidColorBrush(c.Icon);
         TintHeartBrush = new SolidColorBrush(c.Heart);
+        TintLinkBrush = new SolidColorBrush(c.Link);
     }
 
     private void BuildRelatedSections()

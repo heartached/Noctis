@@ -885,6 +885,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up "View Artist" from lyrics view
         _lyricsVm.SetViewArtistAction(ViewArtistFromLyrics);
         _lyricsVm.SetViewAlbumAction(track => OnViewAlbumFromTrack(this, track));
+        _lyricsVm.SetOpenGenreAction(OpenGenre);
+        _lyricsVm.AutoReturnToCurrentLine = Settings.LyricsAutoReturnToLine;
 
         // Wire up search
         TopBar.SearchTextChanged += OnSearchTextChanged;
@@ -936,6 +938,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // Wire up View Artist action on ViewModels that display artist names
         _homeVm.SetViewArtistAction(ViewArtistByName);
         _songsVm.SetViewArtistAction(ViewArtistByName);
+        _songsVm.SetOpenGenreAction(OpenGenre);
         _favoritesVm.SetViewArtistAction(ViewArtistByName);
         _foldersVm.SetViewArtistAction(ViewArtistByName);
         Player.SetViewArtistAction(ViewArtistByName);
@@ -962,6 +965,8 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             if (e.PropertyName == nameof(SettingsViewModel.CoverFlowLayout))
                 _coverFlowVm.Layout = Settings.CoverFlowLayoutMode;
+            else if (e.PropertyName == nameof(SettingsViewModel.LyricsAutoReturnToLine))
+                _lyricsVm.AutoReturnToCurrentLine = Settings.LyricsAutoReturnToLine;
             else if (e.PropertyName is nameof(SettingsViewModel.AlbumPageTintWholeWindow)
                      or nameof(SettingsViewModel.AlbumPageTintEnabled))
                 UpdateWindowTint();
@@ -2839,10 +2844,12 @@ public partial class MainWindowViewModel : ViewModelBase
         var album = _library.Albums.FirstOrDefault(a => a.Id == track.AlbumId);
         if (album == null) return;
 
-        OpenAlbumDetail(album);
+        // The album page scrolls to this song and washes it once (11-23 feedback: the
+        // island title opened the album at its top, the playing song out of sight).
+        OpenAlbumDetail(album, revealTrackId: track.Id);
     }
 
-    public void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null)
+    public void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null, Guid? revealTrackId = null)
     {
         if (pushHistory)
             PushCurrentViewToHistory();
@@ -2853,7 +2860,10 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.IsCoverFlowMode = false;
         _preCoverFlowView = null;
 
-        var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
+        var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings)
+        {
+            RevealTrackId = revealTrackId,
+        };
         // Only the page the user is actually looking at may navigate. Album-detail
         // view-models kept for back-navigation are deliberately left undisposed
         // (DisposeViewIfTransient skips anything still in history), so they stay

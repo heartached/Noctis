@@ -471,6 +471,8 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (plugin off)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Center the Player When a Song Has No Lyrics</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Moves the artwork and controls to the middle when a song has no lyrics.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Return to the Current Line Automatically</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>After you scroll the lyrics, they go back to the line being sung a few seconds later. Off: they stay where you scrolled until you press Follow.</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Background Behind the Sidebar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Lets the lyrics background reach behind the sidebar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Waveform Progress Bar</value><comment>Text in SettingsView.axaml</comment></data>

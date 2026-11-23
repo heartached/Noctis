@@ -1080,6 +1080,16 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         ViewAlbumRequested?.Invoke(this, track);
     }
 
+    /// <summary>Continue listening's artwork and title: the hero song's album, scrolled to that
+    /// song (the album page reveals the track it was opened for). No CanExecute, so the hero
+    /// never greys out; a song whose album left the library just does nothing.</summary>
+    [RelayCommand]
+    private void OpenContinueAlbum()
+    {
+        if (ContinueTrack is { } track && CanViewAlbumFromTrack(track))
+            ViewAlbumRequested?.Invoke(this, track);
+    }
+
     [RelayCommand]
     private async Task RemoveTrackFromLibrary(Track track)
     {

@@ -21,6 +21,9 @@ public static class AlbumTintPalette
     /// whichever reads better (always 4.5:1 or more).</summary>
     public const double MinLabelContrast = 3.0;
 
+    /// <summary>WCAG AA body-text contrast (1.4.3): the header's artist name links.</summary>
+    public const double MinTextContrast = 4.5;
+
     /// <summary>The app's heart red (HeartIcon.OnBrush default).</summary>
     public static readonly Color HeartRed = Color.FromRgb(0xE7, 0x48, 0x56);
 
@@ -125,7 +128,9 @@ public static class AlbumTintPalette
     /// <param name="Border">Pill rim (the accent's own rim while the accent is kept).</param>
     /// <param name="Icon">The "…" glyph beside the heart.</param>
     /// <param name="Heart">The favourite heart while on.</param>
-    public readonly record struct HeaderColours(Color Fill, Color Label, Color Border, Color Icon, Color Heart);
+    /// <param name="Link">The artist name links under the title: the accent text colour where it
+    /// reads as text on the page (4.5:1), else its hue moved lighter or darker until it does.</param>
+    public readonly record struct HeaderColours(Color Fill, Color Label, Color Border, Color Icon, Color Heart, Color Link);
 
     /// <summary>
     /// Header colours for a tinted page. The accent fill is kept whenever it already clears
@@ -147,6 +152,7 @@ public static class AlbumTintPalette
             label,
             kept ? accentBorder : Colors.Transparent,
             EnsureContrast(accentText, page),
-            EnsureContrast(HeartRed, page));
+            EnsureContrast(HeartRed, page),
+            EnsureContrast(accentText, page, MinTextContrast));
     }
 }

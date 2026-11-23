@@ -300,6 +300,7 @@ public class AlbumPageTintStrengthTests : IDisposable
                     Assert.True(AlbumTintPalette.Contrast(c.Label, c.Fill) >= 4.5, $"swapped label {c.Label} on {c.Fill}: {where}");
                 Assert.True(AlbumTintPalette.Contrast(c.Icon, page) >= AlbumTintPalette.MinFillContrast, $"dots {c.Icon}: {where}");
                 Assert.True(AlbumTintPalette.Contrast(c.Heart, page) >= AlbumTintPalette.MinFillContrast, $"heart {c.Heart}: {where}");
+                Assert.True(AlbumTintPalette.Contrast(c.Link, page) >= AlbumTintPalette.MinTextContrast, $"artist link {c.Link}: {where}");
             }
         }
     }
@@ -332,6 +333,25 @@ public class AlbumPageTintStrengthTests : IDisposable
         Assert.True(AlbumTintPalette.Contrast(c.Fill, page) >= 3.0);
         Assert.True(c.Fill.R > c.Fill.G && c.Fill.R > c.Fill.B, $"expected a red/pink pill, got {c.Fill}");
         Assert.Equal(Colors.Transparent, c.Border);
+    }
+
+    /// <summary>11-23 feedback: on a tint the album artist links lost the accent and took the
+    /// page text colour. They keep the accent where it reads as text on the page, else the
+    /// accent's hue moved until it does; with the accent taken from the same cover the link
+    /// is still the cover's hue, not plain white.</summary>
+    [Fact]
+    public void ArtistLink_KeepsAnAccentHueThatReadsOnTheTint()
+    {
+        var dark = Color.FromRgb(0x08, 0x08, 0x0A);
+        var teal = Color.Parse("#0FA3B1");
+        Assert.Equal(teal, AlbumTintPalette.ForPage(dark, teal, Colors.White, Colors.Transparent, teal).Link);
+
+        var page = Color.FromRgb(0xA6, 0x33, 0x4E);
+        var accent = Color.FromRgb(0xBA, 0x1C, 0x4B);
+        var link = AlbumTintPalette.ForPage(page, accent, Colors.White, Colors.Transparent, accent).Link;
+        Assert.True(AlbumTintPalette.Contrast(link, page) >= AlbumTintPalette.MinTextContrast);
+        Assert.NotEqual(Colors.White, link);
+        Assert.True(link.R > link.G && link.R > link.B, $"expected a red/pink link, got {link}");
     }
 
     // ── Mounted view ──

@@ -1067,7 +1067,13 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             () => vm.IsSidebarHidden,
                             () => vm.Settings.SidebarHoverExpand,
                             () => vm.Settings.SidebarAlwaysExpanded,
-                            expanded => vm.Sidebar.IsExpanded = expanded)
+                            expanded =>
+                            {
+                                vm.Sidebar.IsExpanded = expanded;
+                                // The peeking rail always slides over the page: the same opaque
+                                // backing as the hover-expanded rail when it is wide.
+                                _sidebarWrapper.Background = expanded ? SidebarOverPageBacking(vm) : null;
+                            })
                         {
                             // A short grace before tucking away, so overshooting the rail by a
                             // few pixels does not snap it shut (GitHub #233 auto-hide).

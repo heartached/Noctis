@@ -4669,6 +4669,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- 11-23 feedback: off keeps a scrolled-away lyrics view where it is until Follow. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsAutoReturn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsAutoReturnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsAutoReturn}"
+                                          IsChecked="{Binding LyricsAutoReturnToLine}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #184: the page's background reaches under the sidebar rail (off by default). -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

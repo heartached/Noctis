@@ -411,16 +411,23 @@
                                                          TextTrimming="CharacterEllipsis"
                                                          VerticalAlignment="Center" />
                         </Button>
-                        <Border controls:ColumnsPanel.Column="Genre">
+                        <!-- Each genre opens its page, like the album page's genre links; the
+                             per-name hit test and hover box are the Artist cell's (Separator). -->
+                        <Button controls:ColumnsPanel.Column="Genre"
+                                Background="Transparent" BorderThickness="0" Padding="0" MinHeight="0"
+                                Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                helpers:ArtistCreditLink.IsEnabled="True"
+                                helpers:ArtistCreditLink.Separator=" · "
+                                Command="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).OpenGenreCommand}"
+                                CommandParameter="{Binding GenreDisplay}">
                             <controls:HighlightTextBlock Classes="accent-link"
                                                          DisplayText="{Binding GenreDisplay}"
                                                          HighlightText="{Binding $parent[UserControl].((vm:LibrarySongsViewModel)DataContext).SearchText}"
                                                          FontSize="12"
                                                          FontWeight="SemiBold"
                                                          TextTrimming="CharacterEllipsis"
-                                                         HorizontalAlignment="Left"
                                                          VerticalAlignment="Center" />
-                        </Border>
+                        </Button>
                         <Border controls:ColumnsPanel.Column="Favorite">
                             <!-- One-click favorite (Discord, Reuben Strides 2026-08-25): red when
                                  favorited, faint on row hover otherwise, invisible at rest so the

@@ -463,6 +463,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (eklenti kapalı)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Sözü Olmayan Şarkıda Oynatıcıyı Ortala</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Şarkının sözü yoksa kapağı ve kontrolleri ortaya taşır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Geçerli Satıra Otomatik Dön</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>Sözleri kaydırdıktan birkaç saniye sonra söylenen satıra geri döner. Kapalı: Takip et'e basana kadar kaydırdığınız yerde kalır.</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Kenar Çubuğunun Arkasında Arka Plan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Söz arka planının kenar çubuğunun arkasına kadar uzanmasını sağlar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Dalga Formlu İlerleme Çubuğu</value><comment>Text in SettingsView.axaml</comment></data>

@@ -675,11 +675,20 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Artist discography: shuffle icon + Play (primary). -->
+                    <!-- Artist discography (and genre pages): Shuffle + Play, the Songs page's accent
+                         Shuffle pill (11-23 feedback: an icon-only grey Shuffle here read as a
+                         different control). -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding HasArtistActions}">
-                        <Button Classes="corner-icon" Command="{Binding PageShuffleArtistCommand}" ToolTip.Tip="{loc:T Main.ShuffleAllTip}">
-                            <PathIcon Data="{StaticResource ShuffleIcon}"/>
+                        <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
+                                Command="{Binding PageShuffleArtistCommand}"
+                                ToolTip.Tip="{loc:T Main.ShuffleAllTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Main.ShuffleTip}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayArtistCommand}" ToolTip.Tip="{loc:T Main.PlayAllTip}">
@@ -778,11 +787,18 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Favorites: shuffle icon + Play (primary). -->
+                    <!-- Favorites: Shuffle + Play, accent pills like the Songs page's Shuffle. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FavoritesActionsVisible}">
-                        <Button Classes="corner-icon" Command="{Binding PageShuffleFavoritesCommand}" ToolTip.Tip="{loc:T Main.ShuffleTip}">
-                            <PathIcon Data="{StaticResource ShuffleIcon}"/>
+                        <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
+                                Command="{Binding PageShuffleFavoritesCommand}"
+                                ToolTip.Tip="{loc:T Main.ShuffleTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Main.ShuffleTip}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayFavoritesCommand}" ToolTip.Tip="{loc:T Main.PlayTip}">
@@ -796,7 +812,7 @@
                     </StackPanel>
 
                     <!-- Folders: manage folders (page option, opens Settings > Library) · sort popover ·
-                         shuffle icon · Play (primary). Same shuffle-icon + Play pair as Favorites. -->
+                         Shuffle · Play. Same accent Shuffle + Play pair as Favorites. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FoldersActionsVisible}">
                         <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
@@ -825,8 +841,15 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsFoldersSortActive}"/>
                         </Panel>
-                        <Button Classes="corner-icon" Command="{Binding PageShuffleFolderCommand}" ToolTip.Tip="{loc:T Main.ShuffleFolderTip}">
-                            <PathIcon Data="{StaticResource ShuffleIcon}"/>
+                        <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
+                                Command="{Binding PageShuffleFolderCommand}"
+                                ToolTip.Tip="{loc:T Main.ShuffleFolderTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Main.ShuffleTip}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayFolderCommand}" ToolTip.Tip="{loc:T Main.PlayFolderTip}">
@@ -2141,9 +2164,11 @@
              rounded clip sits on the content, not on SidebarWrapper: the glass draws its
              own rounded shape, and a clipping ancestor would hide from it the repaints of
              the page beside the rail that its blur reads (see GlassReach). -->
+        <!-- Tint follows Settings › Glass Opacity, like the queue drawer and the islands
+             (it was a fixed 0.55, so sidebar and queue never matched). -->
         <controls:GlassPanel Background="{DynamicResource IslandBackground}"
                              CornerRadius="20"
-                             GlassTintOpacity="0.55">
+                             GlassTintOpacity="{Binding Player.IslandBackgroundOpacity}">
             <Border CornerRadius="20" ClipToBounds="True">
                 <views:SidebarView x:Name="SidebarPane"
                                    HorizontalAlignment="Stretch"
