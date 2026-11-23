@@ -35,6 +35,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
+    /// <summary>The song the page was opened for (the playing song's title in the island,
+    /// View Album on a song): the page glides it into view and washes it once. Taken by the
+    /// view on first show, so Back to this page restores its scroll instead.</summary>
+    public Guid? RevealTrackId { get; set; }
+
+    /// <summary>Returns <see cref="RevealTrackId"/> and clears it.</summary>
+    public Guid? TakeRevealTrackId()
+    {
+        var id = RevealTrackId;
+        RevealTrackId = null;
+        return id;
+    }
+
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
 

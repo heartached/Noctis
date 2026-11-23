@@ -2831,10 +2831,12 @@ public partial class MainWindowViewModel : ViewModelBase
         var album = _library.Albums.FirstOrDefault(a => a.Id == track.AlbumId);
         if (album == null) return;
 
-        OpenAlbumDetail(album);
+        // The album page scrolls to this song and washes it once (11-23 feedback: the
+        // island title opened the album at its top, the playing song out of sight).
+        OpenAlbumDetail(album, revealTrackId: track.Id);
     }
 
-    public void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null)
+    public void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null, Guid? revealTrackId = null)
     {
         if (pushHistory)
             PushCurrentViewToHistory();
@@ -2845,7 +2847,10 @@ public partial class MainWindowViewModel : ViewModelBase
         TopBar.IsCoverFlowMode = false;
         _preCoverFlowView = null;
 
-        var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings);
+        var detail = new AlbumDetailViewModel(album, Player, _persistence, _library, Sidebar, _lastFm, Settings)
+        {
+            RevealTrackId = revealTrackId,
+        };
         // Only the page the user is actually looking at may navigate. Album-detail
         // view-models kept for back-navigation are deliberately left undisposed
         // (DisposeViewIfTransient skips anything still in history), so they stay
