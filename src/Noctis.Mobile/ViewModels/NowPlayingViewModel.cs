@@ -115,12 +115,16 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     }
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(PositionSeconds))]
     private TimeSpan _position;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ProgressFraction), nameof(ElapsedText), nameof(RemainingText))]
+    [NotifyPropertyChangedFor(nameof(ProgressFraction))]
     private TimeSpan _duration;
+
+    partial void OnPositionChanged(TimeSpan value) => UpdateTimeTexts();
+
+    partial void OnDurationChanged(TimeSpan value) => UpdateTimeTexts();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsRepeatOn), nameof(IsRepeatOne), nameof(HasNext))]
@@ -220,10 +224,40 @@ public sealed partial class NowPlayingViewModel : ObservableObject, IDisposable
     /// <summary>0..1 for the seek bar.</summary>
     public double ProgressFraction => Duration > TimeSpan.Zero ? Math.Clamp(Position / Duration, 0, 1) : 0;
 
-    public string ElapsedText => FormatTime(Position);
+    /// <summary>The seek bar's value. A binding to Position.TotalSeconds took the TimeSpan as a
+    /// new source object on every tick (boxed) and built its property reader for it again.</summary>
+    public double PositionSeconds => Position.TotalSeconds;
+
+    /// <summary>The left-hand seek label. It and <see cref="RemainingText"/> are made, and
+    /// announced, only when the second they show changes: they were formatted again by every
+    /// binding on every one of the player's four ticks a second, each a new string and a pass
+    /// through every binding listening (S23, 11-23: Now Playing ~15 KB a tick with its render).</summary>
+    public string ElapsedText { get; private set; } = FormatTime(TimeSpan.Zero);
 
     /// <summary>The right-hand seek label, counting down as in the mockup ("-2:04").</summary>
-    public string RemainingText => "-" + FormatTime(Duration > Position ? Duration - Position : TimeSpan.Zero);
+    public string RemainingText { get; private set; } = "-" + FormatTime(TimeSpan.Zero);
+
+    // The whole seconds the labels show (FormatTime drops the fraction).
+    private long _elapsedShown, _remainingShown;
+
+    private void UpdateTimeTexts()
+    {
+        var elapsed = Position.Ticks / TimeSpan.TicksPerSecond;
+        if (elapsed != _elapsedShown)
+        {
+            _elapsedShown = elapsed;
+            ElapsedText = FormatTime(Position);
+            OnPropertyChanged(nameof(ElapsedText));
+        }
+        var left = Duration > Position ? Duration - Position : TimeSpan.Zero;
+        var remaining = left.Ticks / TimeSpan.TicksPerSecond;
+        if (remaining != _remainingShown)
+        {
+            _remainingShown = remaining;
+            RemainingText = "-" + FormatTime(left);
+            OnPropertyChanged(nameof(RemainingText));
+        }
+    }
 
     /// <summary>mm:ss, or h:mm:ss past an hour (the previous labels' format, so 1:30 still reads "01:30").</summary>
     public static string FormatTime(TimeSpan time) =>
