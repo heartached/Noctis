@@ -226,4 +226,90 @@ public class MasonryAllGridsTests
         Assert.False(view.FindControl<ScrollViewer>("MasonryScroller")!.IsVisible);
         win.Close();
     }
+
+    // ── Artist page (Artists › an artist): the release tabs ──
+
+    private static Album ArtistAlbum(string name, string artist, int year, ReleaseType type = ReleaseType.Album)
+    {
+        var id = Guid.NewGuid();
+        var album = new Album { Id = id, Name = name, Artist = artist, Year = year };
+        album.Tracks = Enumerable.Range(1, type == ReleaseType.Single ? 1 : 8).Select(i => new Track
+        {
+            Id = Guid.NewGuid(), Title = $"{name} {i}", Artist = artist, AlbumArtist = artist, Album = name, AlbumId = id,
+            TrackNumber = i, DiscNumber = 1, Year = year, Duration = TimeSpan.FromMinutes(3),
+            ReleaseType = type, ReleaseTypeFromTag = true,
+        }).ToList();
+        album.TrackCount = album.Tracks.Count;
+        return album;
+    }
+
+    private static (ArtistDetailViewModel Vm, ArtistDetailView View, Window Win) MountArtist(bool masonry)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        var albums = (List<Album>)lib.Albums;
+        for (var i = 0; i < 14; i++)
+            albums.Add(ArtistAlbum(i % 3 == 0 ? $"Album {i} with a much longer title that wraps onto a second line" : $"Album {i}", "Band", 1990 + i));
+        for (var i = 0; i < 9; i++)
+            albums.Add(ArtistAlbum(i % 2 == 0 ? $"Single {i} and its long, long title that wraps" : $"Single {i}", "Band", 2000 + i, ReleaseType.Single));
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumGridMasonry = masonry;
+        var vm = new ArtistDetailViewModel("Band", lib, player, settings: settings);
+        var view = new ArtistDetailView { DataContext = vm };
+        var win = new Window { Width = 1400, Height = 900, Content = view };
+        win.Show(); Pump();
+        return (vm, view, win);
+    }
+
+    private static List<Button> GridTiles(Control panel) =>
+        panel.GetVisualDescendants().OfType<Button>()
+            .Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible && b.FindAncestorOfType<MasonryAlbumPanel>() == null).ToList();
+
+    [AvaloniaFact]
+    public async Task ArtistPage_WithMasonryOn_ReleaseTabsUseMasonry()
+    {
+        var (vm, view, win) = MountArtist(masonry: true);
+        Assert.True(vm.UseMasonry);
+
+        foreach (var (tab, panelName, masonryName) in new[] { ("albums", "AlbumsPanel", "AlbumsMasonry"), ("singles", "SinglesPanel", "SinglesMasonry") })
+        {
+            vm.SelectTabCommand.Execute(tab);
+            var masonry = view.FindControl<MasonryAlbumPanel>(masonryName)!;
+            var expected = tab == "albums" ? vm.AlbumReleases : vm.SingleReleases;
+            await PumpUntil(() => RealizedTiles(masonry).Count == expected.Count && expected.Count > 0);
+            Pump(4);
+            var page = view.FindControl<StackPanel>(panelName)!;
+            Assert.True(masonry.IsEffectivelyVisible, $"{tab}: Masonry panel shown");
+            Assert.Same(expected, masonry.Albums);
+            Assert.Equal(expected.Count, RealizedTiles(masonry).Count);
+            Assert.Empty(GridTiles(page)); // the row grid builds no second set of tiles
+
+            // Cards are as tall as their caption: a one-line title's card is shorter than a
+            // two-line one's (the row grid gives every tile the two-line height).
+            var heights = RealizedTiles(masonry).Select(t => Math.Round(t.Bounds.Height)).Distinct().ToList();
+            _o.WriteLine($"{tab}: card heights {string.Join(", ", heights)}");
+            Assert.True(heights.Count >= 2, $"{tab}: cards should differ in height");
+            // Columns stay the grid's.
+            var columns = RealizedTiles(masonry).Select(t => Math.Round(t.TranslatePoint(default, masonry)!.Value.X)).Distinct().Count();
+            Assert.Equal(vm.GridColumns, columns);
+        }
+        win.Close();
+    }
+
+    [AvaloniaFact]
+    public async Task ArtistPage_WithMasonryOff_KeepsTheUniformGrid()
+    {
+        var (vm, view, win) = MountArtist(masonry: false);
+        Assert.False(vm.UseMasonry);
+        vm.SelectTabCommand.Execute("albums");
+        var page = view.FindControl<StackPanel>("AlbumsPanel")!;
+        await PumpUntil(() => GridTiles(page).Count == vm.AlbumReleases.Count && vm.AlbumReleases.Count > 0);
+        Assert.Equal(vm.AlbumReleases.Count, GridTiles(page).Count);
+        Assert.False(view.FindControl<MasonryAlbumPanel>("AlbumsMasonry")!.IsEffectivelyVisible);
+        // Every tile keeps the fixed two-line height.
+        Assert.Single(GridTiles(page).Select(t => Math.Round(t.Bounds.Height)).Distinct());
+        win.Close();
+    }
 }

@@ -5,6 +5,7 @@
              xmlns:m="using:Noctis.Models"
              xmlns:svc="using:Noctis.Services"
              xmlns:ctrl="using:Noctis.Controls"
+             xmlns:conv="using:Noctis.Converters"
              xmlns:helpers="using:Noctis.Helpers"
              x:Class="Noctis.Views.ArtistDetailView"
              x:DataType="vm:ArtistDetailViewModel"
@@ -417,7 +418,7 @@
             <Button Classes="album-tile"
                     AutomationProperties.Name="{Binding Name}"
                     Focusable="False"
-                    MinHeight="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileHeight}"
+                    MinHeight="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileMinHeight}"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Top"
                     Command="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).OpenAlbumCommand}"
@@ -425,9 +426,11 @@
                     ContextRequested="OnAlbumTileContextRequested">
                 <!-- Right-click / dots: one shared v2 menu built in code (OnAlbumTileContextRequested). -->
 
-                <Grid RowDefinitions="Auto,64"
+                <!-- A fixed two-line height in the row grids; with Masonry (GitHub #259) the card is
+                     as tall as its caption (TileFixedHeight = NaN). -->
+                <Grid RowDefinitions="Auto,Auto"
                       Width="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileArtworkSize}"
-                      Height="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileHeight}">
+                      Height="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileFixedHeight}">
                     <Border Width="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileArtworkSize}"
                             Height="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).TileArtworkSize}"
                             CornerRadius="6"
@@ -1311,13 +1314,26 @@
                 <!-- Appears On: albums the artist is only featured on -->
                 <StackPanel Margin="32,26,32,0" Spacing="8" IsVisible="{Binding HasAppearsOn}">
                     <TextBlock Text="{loc:T ArtistDetail.Appears}" Classes="section-title" Margin="2,0,0,2" />
-                    <ItemsControl ItemsSource="{Binding AppearsOn}" ItemTemplate="{StaticResource AlbumTile}">
+                    <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding !UseMasonry}">
+                        <ItemsControl.ItemsSource>
+                            <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                                <Binding Path="UseMasonry" />
+                                <Binding Path="AppearsOn" />
+                            </MultiBinding>
+                        </ItemsControl.ItemsSource>
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
+                    <ctrl:MasonryAlbumPanel x:Name="AppearsOnMasonry"
+                                            IsVisible="{Binding UseMasonry}"
+                                            Albums="{Binding AppearsOn}"
+                                            Columns="{Binding GridColumns}"
+                                            ArtworkSize="{Binding TileArtworkSize}"
+                                            Spacing="2"
+                                            ItemTemplate="{StaticResource AlbumTile}" />
                 </StackPanel>
             </StackPanel>
 
@@ -1381,13 +1397,33 @@
                                     CaseStyle="{Binding CarouselStyle}"
                                     CenterAlbum="{Binding CarouselCenterAlbum}"
                                     OpenCommand="{Binding OpenAlbumCommand}" />
-                <ItemsControl ItemsSource="{Binding AlbumReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding ShowAlbumsGrid}">
+                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding ShowAlbumsGrid}">
+                    <ItemsControl.ItemsSource>
+                        <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                            <Binding Path="UseMasonry" />
+                            <Binding Path="AlbumReleases" />
+                        </MultiBinding>
+                    </ItemsControl.ItemsSource>
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
+                <!-- Masonry (GitHub #259): the same releases stacked by their real height. -->
+                <ctrl:MasonryAlbumPanel x:Name="AlbumsMasonry"
+                                        Albums="{Binding AlbumReleases}"
+                                        Columns="{Binding GridColumns}"
+                                        ArtworkSize="{Binding TileArtworkSize}"
+                                        Spacing="2"
+                                        ItemTemplate="{StaticResource AlbumTile}">
+                    <ctrl:MasonryAlbumPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="ShowAlbumsGrid" />
+                            <Binding Path="UseMasonry" />
+                        </MultiBinding>
+                    </ctrl:MasonryAlbumPanel.IsVisible>
+                </ctrl:MasonryAlbumPanel>
                 <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasAlbums}" />
             </StackPanel>
 
@@ -1423,13 +1459,32 @@
                         </Button.Flyout>
                     </Button>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding SingleReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasSingles}">
+                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasSingles}">
+                    <ItemsControl.ItemsSource>
+                        <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                            <Binding Path="UseMasonry" />
+                            <Binding Path="SingleReleases" />
+                        </MultiBinding>
+                    </ItemsControl.ItemsSource>
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
+                <ctrl:MasonryAlbumPanel x:Name="SinglesMasonry"
+                                        Albums="{Binding SingleReleases}"
+                                        Columns="{Binding GridColumns}"
+                                        ArtworkSize="{Binding TileArtworkSize}"
+                                        Spacing="2"
+                                        ItemTemplate="{StaticResource AlbumTile}">
+                    <ctrl:MasonryAlbumPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="HasSingles" />
+                            <Binding Path="UseMasonry" />
+                        </MultiBinding>
+                    </ctrl:MasonryAlbumPanel.IsVisible>
+                </ctrl:MasonryAlbumPanel>
                 <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasSingles}" />
             </StackPanel>
 
@@ -1464,13 +1519,32 @@
                         </Button.Flyout>
                     </Button>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding LiveReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasLive}">
+                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasLive}">
+                    <ItemsControl.ItemsSource>
+                        <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                            <Binding Path="UseMasonry" />
+                            <Binding Path="LiveReleases" />
+                        </MultiBinding>
+                    </ItemsControl.ItemsSource>
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
+                <ctrl:MasonryAlbumPanel x:Name="LiveMasonry"
+                                        Albums="{Binding LiveReleases}"
+                                        Columns="{Binding GridColumns}"
+                                        ArtworkSize="{Binding TileArtworkSize}"
+                                        Spacing="2"
+                                        ItemTemplate="{StaticResource AlbumTile}">
+                    <ctrl:MasonryAlbumPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="HasLive" />
+                            <Binding Path="UseMasonry" />
+                        </MultiBinding>
+                    </ctrl:MasonryAlbumPanel.IsVisible>
+                </ctrl:MasonryAlbumPanel>
                 <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasLive}" />
             </StackPanel>
 
@@ -1505,13 +1579,32 @@
                         </Button.Flyout>
                     </Button>
                 </StackPanel>
-                <ItemsControl ItemsSource="{Binding CompilationReleases}" ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasCompilations}">
+                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasCompilations}">
+                    <ItemsControl.ItemsSource>
+                        <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
+                            <Binding Path="UseMasonry" />
+                            <Binding Path="CompilationReleases" />
+                        </MultiBinding>
+                    </ItemsControl.ItemsSource>
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="{Binding $parent[UserControl].((vm:ArtistDetailViewModel)DataContext).GridColumns}" />
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                 </ItemsControl>
+                <ctrl:MasonryAlbumPanel x:Name="CompilationsMasonry"
+                                        Albums="{Binding CompilationReleases}"
+                                        Columns="{Binding GridColumns}"
+                                        ArtworkSize="{Binding TileArtworkSize}"
+                                        Spacing="2"
+                                        ItemTemplate="{StaticResource AlbumTile}">
+                    <ctrl:MasonryAlbumPanel.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.And}">
+                            <Binding Path="HasCompilations" />
+                            <Binding Path="UseMasonry" />
+                        </MultiBinding>
+                    </ctrl:MasonryAlbumPanel.IsVisible>
+                </ctrl:MasonryAlbumPanel>
                 <TextBlock Text="{loc:T ArtistDetail.NoReleasesMatch}" FontSize="13" Opacity="0.5" Margin="2,4,0,0" IsVisible="{Binding !HasCompilations}" />
             </StackPanel>
 
