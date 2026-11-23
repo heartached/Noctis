@@ -87,7 +87,40 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private CancellationTokenSource? _syncCts;
     private volatile bool _isSyncing;
 
-    private sealed record DownloadedFile(string Path, long Size, DateTime SavedUtc);
+    /// <summary>A download on disk. Its size and date are read on first use: the start lists the
+    /// names only (IndexDownloads), so thousands of downloads cost no file reads before the first
+    /// frame, and a pool pass reads them afterwards (<see cref="ReadDownloadDetails"/>).</summary>
+    private sealed class DownloadedFile
+    {
+        private long _size = -1;   // -1 = not read yet; written last, after _savedUtc
+        private DateTime _savedUtc;
+
+        public DownloadedFile(string path) => Path = path;
+
+        public DownloadedFile(string path, long size, DateTime savedUtc)
+        {
+            Path = path;
+            _savedUtc = savedUtc;
+            _size = size;
+        }
+
+        public string Path { get; }
+        public bool IsRead => Volatile.Read(ref _size) >= 0;
+        public long Size { get { Read(); return _size; } }
+        public DateTime SavedUtc { get { Read(); return _savedUtc; } }
+
+        private void Read()
+        {
+            if (IsRead) return;
+            try
+            {
+                var info = new FileInfo(Path);
+                _savedUtc = info.LastWriteTimeUtc;
+                Volatile.Write(ref _size, info.Exists ? info.Length : 0);
+            }
+            catch (Exception) { Volatile.Write(ref _size, 0); }
+        }
+    }
     private readonly ConcurrentDictionary<Guid, DownloadedFile> _downloaded = new();
     /// <summary>Songs downloading now, each with its own stop (Remove Download on it).</summary>
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _inFlight = new();
@@ -203,6 +236,18 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         stateRecorder?.Attach(this);
         _recorder = stateRecorder;
         _library.TracksAdded += OnLibraryTracksAdded;
+        foreach (var (_, file) in _downloaded) if (file.IsRead) DownloadsReadAtStart++;
+        _ = Task.Run(ReadDownloadDetails);
+    }
+
+    /// <summary>Tests: downloads whose size and date the constructor read (the cold start's file reads).</summary>
+    internal int DownloadsReadAtStart { get; private set; }
+
+    /// <summary>After the start, off the UI thread: every download's size and date, so the Downloads
+    /// page and the progress card do not read them on first show.</summary>
+    private void ReadDownloadDetails()
+    {
+        foreach (var (_, file) in _downloaded) _ = file.Size;
     }
 
     private readonly NoctisStateRecorder? _recorder;
@@ -2241,7 +2286,8 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         catch { /* best effort */ }
     }
 
-    /// <summary>What is on disk: "&lt;32 hex&gt;.&lt;allowed ext|bin&gt;" files; leftover .part files are removed.</summary>
+    /// <summary>What is on disk: "&lt;32 hex&gt;.&lt;allowed ext|bin&gt;" files; leftover .part files are removed.
+    /// One directory listing, no per-file reads: this runs in the constructor, on the cold start's UI thread.</summary>
     private void IndexDownloads()
     {
         try
@@ -2256,8 +2302,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                 var ext = name[(dot + 1)..];
                 if (!(AllowedExtensions.Contains(ext) || ext == "bin")) continue;
                 if (!NoctisRemoteIds.IsLowerHex32(name.AsSpan(0, 32)) || !Guid.TryParseExact(name.AsSpan(0, 32), "N", out var id)) continue;
-                var info = new FileInfo(file);
-                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file), info.Length, info.LastWriteTimeUtc);
+                // The name is enough to play it (ResolvePlaybackUri): a song the queue restores plays
+                // this file from the first second. Size and date wait (DownloadedFile).
+                _downloaded[id] = new DownloadedFile(Path.GetFullPath(file));
             }
         }
         catch (Exception ex) { DebugLog.Write("Account", $"offline folder unreadable ({ex.GetType().Name})"); }
