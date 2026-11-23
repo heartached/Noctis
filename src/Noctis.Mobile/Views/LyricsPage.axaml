@@ -36,21 +36,13 @@
              Built for held notes only (HeldNoteTemplate); on any other word it was hidden yet
              took every frame's progress and float. -->
         <DataTemplate x:Key="WordGlow" x:DataType="m:WordTiming">
-            <controls:KaraokeWordText Text="{Binding Text}"
-                                      Classes="word-glow"
+            <controls:KaraokeWordText Classes="word-glow"
                                       Padding="40"
                                       FontWeight="Bold"
                                       Foreground="{StaticResource LyricsFg}"
                                       BaseOpacity="0"
                                       Effect="{Binding $self.FontSize, Converter={StaticResource EmphasisGlowBlur}}"
-                                      Progress="{Binding Progress}"
-                                      LeadIn="{Binding SweepLeadIn}"
-                                      TrailOut="{Binding SweepTrailOut}"
-                                      IsEmphasis="{Binding IsEmphasis}"
-                                      EmphasisMs="{Binding EmphasisMs}"
-                                      HeldDurationMs="{Binding HeldDurationMs}"
-                                      IsLastInLine="{Binding IsLastInLine}"
-                                      Lift="{Binding Lift}">
+                                      Word="{Binding}">
                 <controls:KaraokeWordText.Opacity>
                     <MultiBinding Converter="{StaticResource EmphasisGlow}">
                         <Binding Path="EmphasisMs" />
@@ -67,7 +59,8 @@
              blurred glow of the sung letters, and the word itself, unsung and sung text in one
              draw split by the soft edge at Progress, sung words floating up (Lift) and held
              notes swelling letter by letter. LyricsTimeline writes Progress, Lift and the
-             held-note clock per frame. -->
+             held-note clock per frame; the cells follow the word itself (Word: its text and
+             flags once, those values as they change), with no binding listening to it. -->
         <DataTemplate x:Key="WordCell" x:DataType="m:WordTiming">
             <Panel Classes="word-cell">
                 <Viewbox Stretch="Uniform" StretchDirection="DownOnly" ClipToBounds="False">
@@ -78,19 +71,11 @@
                             <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource WordGlowIfHeld}"
                                               Canvas.Left="-40" Canvas.Top="-40" />
                         </Canvas>
-                        <controls:KaraokeWordText Text="{Binding Text}"
-                                                  Classes="word-sweep"
+                        <controls:KaraokeWordText Classes="word-sweep"
                                                   Padding="{Binding Converter={StaticResource WordOverflowPad}}"
                                                   FontWeight="Bold"
                                                   Foreground="{StaticResource LyricsFg}"
-                                                  Progress="{Binding Progress}"
-                                                  LeadIn="{Binding SweepLeadIn}"
-                                                  TrailOut="{Binding SweepTrailOut}"
-                                                  IsEmphasis="{Binding IsEmphasis}"
-                                                  EmphasisMs="{Binding EmphasisMs}"
-                                                  HeldDurationMs="{Binding HeldDurationMs}"
-                                                  IsLastInLine="{Binding IsLastInLine}"
-                                                  Lift="{Binding Lift}" />
+                                                  Word="{Binding}" />
                     </Panel>
                 </Viewbox>
             </Panel>

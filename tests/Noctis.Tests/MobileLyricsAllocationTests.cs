@@ -181,7 +181,8 @@ public class MobileLyricsAllocationTests
     /// A word-timed line sweeping (no line change in the window): only the moving words' brush
     /// stops, their float and the bindings that drive them. Measured 29 KB a frame before the
     /// sweep stopped redrawing every word every frame, 11 KB after that and the held-note glow
-    /// being built under held notes only (11-14).
+    /// being built under held notes only (11-14), 9.1 KB before and 5.7 KB after the cells
+    /// followed their words instead of binding them and floated on the compositor (11-23).
     /// </summary>
     [AvaloniaFact]
     public async Task WordSweep_AllocatesLittlePerFrame()
@@ -191,7 +192,7 @@ public class MobileLyricsAllocationTests
         Assert.InRange(cost.BytesPerFrame, 0, WordSweepBudget);
     }
 
-    internal const long WordSweepBudget = 14 * 1024;
+    internal const long WordSweepBudget = 8 * 1024;
 
     /// <summary>Plain synced lines between line changes: nothing moves, nothing allocates.</summary>
     [AvaloniaFact]
