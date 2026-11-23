@@ -970,6 +970,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>شبكة ألبومات متراصّة</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>تتراص الأغلفة في كل عمود حسب ارتفاعها الفعلي، فلا تترك العناوين القصيرة فراغات.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>إظهار عدد الأغاني على بطاقات الألبومات</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>يذكر تعليق كل ألبوم عدد أغانيه أيضًا.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>تباعد أوسع بين الألبومات</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>مساحة أكبر بين الأغلفة. يتكيّف كل صف مع عناوينه.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>تكبير الألبوم عند التمرير</value><comment>Settings toggle (GitHub #218)</comment></data>

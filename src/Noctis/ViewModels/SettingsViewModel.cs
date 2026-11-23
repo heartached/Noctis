@@ -2538,6 +2538,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Wider spacing between albums (GitHub #210's 18px gaps, rows fit their captions);
     /// off is 1.6.9's close grid. The album grid view models watch this property.</summary>
     [ObservableProperty] private bool _albumGridWideSpacing;
+    /// <summary>GitHub #258: album cards show the song count on their caption (default on).</summary>
+    [ObservableProperty] private bool _showAlbumSongCount = true;
     /// <summary>GitHub #218: hover zoom in the Albums grid.</summary>
     [ObservableProperty] private bool _albumHoverZoom;
     [ObservableProperty] private double _albumTileTargetSize = 220;
@@ -3908,6 +3910,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
             AlbumGridMasonry = _settings.AlbumGridMasonry;
             AlbumGridWideSpacing = _settings.AlbumGridWideSpacing;
+            ShowAlbumSongCount = _settings.ShowAlbumSongCount;
             AlbumHoverZoom = _settings.AlbumHoverZoom;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -4517,6 +4520,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
         _settings.AlbumGridMasonry = AlbumGridMasonry;
         _settings.AlbumGridWideSpacing = AlbumGridWideSpacing;
+        _settings.ShowAlbumSongCount = ShowAlbumSongCount;
         _settings.AlbumHoverZoom = AlbumHoverZoom;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
@@ -5830,6 +5834,21 @@ public partial class SettingsViewModel : ViewModelBase
     {
         // The album grid view models watch this property.
         if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    partial void OnShowAlbumSongCountChanged(bool value)
+    {
+        // GitHub #258: the captions are plain Album properties reading this switch; the shown
+        // cards are the library's Album objects, so re-raising theirs updates every grid at once.
+        Album.ShowSongCountOnCards = value;
+        RefreshAlbumCardCaptions();
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    /// <summary>Re-raises the album card captions (song count switch, language switch).</summary>
+    public void RefreshAlbumCardCaptions()
+    {
+        foreach (var album in _library.Albums) album.NotifyCaptionChanged();
     }
 
     partial void OnAlbumTileTargetSizeChanged(double value)
@@ -8859,6 +8878,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
             AlbumGridMasonry = defaultSettings.AlbumGridMasonry;
             AlbumGridWideSpacing = defaultSettings.AlbumGridWideSpacing;
+            ShowAlbumSongCount = defaultSettings.ShowAlbumSongCount;
             AlbumHoverZoom = defaultSettings.AlbumHoverZoom;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings

@@ -970,6 +970,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>メイソンリー形式のアルバムグリッド</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>カバーを実際の高さに合わせて列ごとに積み重ねるので、短いキャプションでも隙間ができません。</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>アルバムカードに曲数を表示</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>各アルバムの説明に曲数も表示します。</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>アルバムの間隔を広げる</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>カバーの間隔を広げます。各行の高さはキャプションに合わせて調整されます。</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>ホバー時にアルバムを拡大</value><comment>Settings toggle (GitHub #218)</comment></data>

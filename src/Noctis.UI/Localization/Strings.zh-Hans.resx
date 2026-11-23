@@ -970,6 +970,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>瀑布流专辑网格</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>封面按实际高度逐列堆叠，较短的标题不会留下空隙。</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>在专辑卡片上显示歌曲数</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>每张专辑的说明文字也会显示歌曲数。</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>加大专辑间距</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>封面之间留出更多空间。每行高度随其标题自适应。</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>悬停放大专辑</value><comment>Settings toggle (GitHub #218)</comment></data>

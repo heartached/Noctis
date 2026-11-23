@@ -3314,6 +3314,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #258: song count on the album cards' caption. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.ShowAlbumSongCount}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowAlbumSongCountDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ShowAlbumSongCount}"
+                                          IsChecked="{Binding ShowAlbumSongCount}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Album grid spacing: off = 1.6.9 (8px gaps, one row height), on = GitHub #210. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

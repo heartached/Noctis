@@ -970,6 +970,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   </data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>벽돌형 앨범 그리드</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>커버가 실제 높이에 따라 열마다 쌓여 짧은 캡션에도 빈틈이 생기지 않습니다.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>앨범 카드에 곡 수 표시</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>앨범마다 설명에 곡 수도 함께 표시합니다.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>앨범 간격 넓게</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>커버 사이 간격을 넓힙니다. 각 행은 캡션에 맞춰 높이가 정해집니다.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>마우스 오버 시 앨범 확대</value><comment>Settings toggle (GitHub #218)</comment></data>

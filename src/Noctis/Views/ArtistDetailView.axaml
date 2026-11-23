@@ -493,7 +493,7 @@
                                                            Opacity="0.55"
                                                            TextTrimming="CharacterEllipsis"
                                                            MaxLines="1"
-                                                           Text="{Binding ReleaseKindYearLine}" />
+                                                           Text="{Binding KindCardCaption}" />
                                                 <Panel Grid.Column="1" Classes="heart-sub" VerticalAlignment="Center" Margin="6,0,0,0">
                                                     <ctrl:HeartIcon Size="14" ShowWhenOff="False" IsFavorite="{Binding HasFavoriteTrack}" />
                                                 </Panel>

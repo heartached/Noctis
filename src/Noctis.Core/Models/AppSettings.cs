@@ -916,6 +916,10 @@ public class AppSettings : IJsonOnDeserializing
     /// is 1.6.9's look: 8px between covers and one row height for every Albums row.</summary>
     public bool AlbumGridWideSpacing { get; set; }
 
+    /// <summary>GitHub #258: album cards (Albums grid, Home, artist page, More By Artist) end
+    /// their caption with the album's song count ("Artist · 1982 · 12 songs"). On by default.</summary>
+    public bool ShowAlbumSongCount { get; set; } = true;
+
     /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
     /// glow; no other album moves (GitHub #250). Off by default.</summary>
     public bool AlbumHoverZoom { get; set; }

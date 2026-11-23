@@ -96,7 +96,7 @@
                     <!-- Subtitle; the heart lands here instead when the title wraps -->
                     <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
                         <ctrl:HighlightTextBlock Grid.Column="0"
-                                                 DisplayText="{Binding TileSubtitle}"
+                                                 DisplayText="{Binding CardCaption}"
                                                  HighlightText="{Binding $parent[UserControl].((vm:LibraryAlbumsViewModel)DataContext).SearchText}"
                                                  FontSize="12"
                                                  FontWeight="Bold"

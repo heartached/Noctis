@@ -108,7 +108,7 @@
                                             <!-- Subtitle; the heart lands here instead when the title wraps -->
                                             <Grid ColumnDefinitions="*,Auto" Margin="0,1,0,0">
                                                 <TextBlock Grid.Column="0"
-                                                           Text="{Binding TileSubtitle}"
+                                                           Text="{Binding CardCaption}"
                                                            FontSize="12"
                                                            FontWeight="Bold"
                                                            Opacity="0.55"

@@ -570,10 +570,15 @@ public partial class MainWindowViewModel : ViewModelBase
             }, DispatcherPriority.Background);
         if (Settings.IsSettingsLoaded) ShowNewerVersionNotice();
         else Settings.SettingsLoaded += (_, _) => ShowNewerVersionNotice();
+        // GitHub #258: album card captions write the song count in the user's language; a
+        // language switch makes the counts again and re-raises the shown captions.
+        Album.SetSongCountFormat(n => Loc.Plural("Count.Songs", n));
         Loc.Instance.CultureChanged += (_, _) =>
         {
             TopBar.RefreshLocalizedTitles();
             RefreshBackButton();
+            Album.SetSongCountFormat(n => Loc.Plural("Count.Songs", n));
+            Settings.RefreshAlbumCardCaptions();
         };
         Sidebar.SetAudioCdSectionVisible(audioCd.HasDrive);
         audioCd.DriveStateChanged += (_, _) => Dispatcher.UIThread.Post(() =>
