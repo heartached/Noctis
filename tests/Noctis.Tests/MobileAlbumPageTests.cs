@@ -108,6 +108,42 @@ public class MobileAlbumPageTests : IDisposable
         Assert.True(rig.Shell.Player.IsShuffleEnabled);
     }
 
+    /// <summary>Discord (Halil, "deluxe track linking"): a deluxe edition linked to its original
+    /// (Link Tracks From, on the computer) lists the original's songs at their places with its own
+    /// bonus track after them, as the desktop album page does; Play, the heart and the album menu
+    /// act on that same list. The original album keeps its own songs.</summary>
+    [Fact]
+    public async Task LinkedAlbum_ListsPlaysAndFavouritesTheLinkedSongs_InAlbumOrder()
+    {
+        var (original, tracks) = Sample();
+        var bonus = MobileFixtures.Song("Bonus");
+        bonus.TrackNumber = 3;
+        var deluxe = MobileFixtures.MakeAlbum("Night Drive (Deluxe)", "The Band", bonus);
+        Noctis.Services.AlbumLinks.Attach(new Dictionary<Guid, Album> { [original.Id] = original, [deluxe.Id] = deluxe },
+            new[] { new AlbumLink { AlbumId = deluxe.Id, SourceAlbumId = original.Id } });
+        var all = new[] { tracks[0], tracks[1], bonus };
+        using var rig = MobileFixtures.MakeRig(all, new[] { original, deluxe });
+
+        rig.Shell.OpenAlbumCommand.Execute(deluxe);
+        var page = Assert.IsType<AlbumPageViewModel>(rig.Shell.CurrentPage);
+
+        Assert.Equal(all, page.Tracks.Select(r => r.Track));
+        Assert.Equal(new[] { 1, 2, 3 }, page.Tracks.Select(r => r.Number));
+        page.PlayCommand.Execute(null);
+        Assert.Same(tracks[0], rig.Shell.Player.CurrentTrack);
+        Assert.Equal(new[] { tracks[1], bonus }, rig.Shell.Player.UpNext);
+        page.PlayTrackCommand.Execute(page.Tracks[2]);
+        Assert.Same(bonus, rig.Shell.Player.CurrentTrack);
+
+        Assert.Equal(all, ContextSheetViewModel.ForAlbum(rig.Shell, deluxe).Tracks);
+
+        await page.ToggleFavouriteCommand.ExecuteAsync(null);
+        Assert.True(page.IsFavourite);
+        Assert.All(all, t => Assert.True(t.IsFavorite));
+
+        Assert.Equal(new[] { tracks[0], tracks[1] }, original.EditionTracks);
+    }
+
     /// <summary>Review Focus #3: no cover, genre "Unknown", year 0, no codec.</summary>
     [AvaloniaFact]
     public void AlbumWithoutArtwork_HasNoTint_AndACleanMetaLine()

@@ -34,8 +34,9 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         new(shell, Loc.Plural("Mobile.Count.Songs", tracks.Count), string.Empty,
             tracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.AlbumArtworkPath))?.AlbumArtworkPath, tracks);
 
+    /// <summary>An album's sheet: its songs as its page lists them, linked ones included (Link Tracks From).</summary>
     public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album, TrackSelection? selection = null) =>
-        new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album, SelectIn = selection };
+        new(shell, album.Name, album.Artist, album.ArtworkPath, album.EditionTracks.ToList()) { Album = album, SelectIn = selection };
 
     /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
     /// <paramref name="artworkPath"/> (the cover the row showed).</summary>

@@ -380,6 +380,52 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.Equal("8de1a2b3c4d5e6f", NoctisServerClient.ParseCoverVersion("8DE1A2B3C4D5E6F"));
     }
 
+    // ── Albums linked on the computer (Link Tracks From) ─────────────────
+
+    /// <summary>Discord (Halil, "deluxe track linking ... doesn't reflect on mobile"): an album
+    /// linked on the computer lists the linked songs on the phone too, at their disc and track
+    /// places; the original album keeps its own songs. Unlinking on the computer undoes it at the
+    /// next sync.</summary>
+    [Fact]
+    public async Task AnAlbumLinkedOnTheComputer_ListsTheLinkedSongsOnThePhone_AndUnlinkingThereUndoesIt()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var second = _desk.Albums.Single(a => a.Id == AlbumB);
+        AlbumLinks.Attach(_desk.Albums.ToDictionary(a => a.Id), new[] { new AlbumLink { AlbumId = AlbumB, SourceAlbumId = AlbumA } });
+        var svc = await SignedInAsync();
+
+        await svc.SyncNowAsync(ct);
+
+        var edition = _phoneLibrary.GetAlbumById(AlbumB)!;
+        Assert.Equal(new[] { _t3.Id, _t1.Id, _t2.Id }, edition.EditionTracks.Select(t => t.Id));
+        Assert.Equal(3, edition.TrackCount);
+        Assert.Equal(new[] { _t1.Id, _t2.Id }, _phoneLibrary.GetAlbumById(AlbumA)!.EditionTracks.Select(t => t.Id));
+        Assert.Equal((AlbumB, AlbumA), _phoneLibrary.AlbumLinks.Select(l => (l.AlbumId, l.SourceAlbumId)).Single());
+
+        second.LinkedTracks = new();
+        second.LinkedAlbumIds = new();
+        second.EditionTracks = second.Tracks;
+        await svc.SyncNowAsync(ct);
+
+        Assert.Empty(_phoneLibrary.AlbumLinks);
+        Assert.Equal(new[] { _t3.Id }, _phoneLibrary.GetAlbumById(AlbumB)!.EditionTracks.Select(t => t.Id));
+    }
+
+    /// <summary>An album's noctisLinks (the albums it lists songs from): album ids only, each once,
+    /// anything else skipped; none from a computer from before it.</summary>
+    [Fact]
+    public void AnAlbumsLinks_ParseAsAlbumIds_AndJunkIsSkipped()
+    {
+        var a = Guid.NewGuid();
+        var b = Guid.NewGuid();
+        using var doc = System.Text.Json.JsonDocument.Parse(
+            $"[{{\"noctisLinks\":[\"al-{a:N}\",\"tr-{b:N}\",\"al-{a:N}\",7,\"al-{b:N}\"]}},{{\"noctisLinks\":\"al-{a:N}\"}},{{}}]");
+        var albums = doc.RootElement.EnumerateArray().ToList();
+        Assert.Equal(new[] { a, b }, NoctisServerClient.ParseAlbumLinks(albums[0]));
+        Assert.Empty(NoctisServerClient.ParseAlbumLinks(albums[1]));
+        Assert.Empty(NoctisServerClient.ParseAlbumLinks(albums[2]));
+    }
+
     // ── The desktop's profile picture ────────────────────────────────────
 
     private string DeskAvatar(string name, byte[] bytes)
@@ -2810,6 +2856,8 @@ public class NoctisAccountServiceTests : IAsyncLifetime
 
         /// <summary>Runs before every request reads the library (a scan moving along).</summary>
         public Action? BeforeSnapshot { get; set; }
+
+        public IReadOnlyList<Album> Albums => _albums;
 
         /// <summary>What the desktop's library lists from now on.</summary>
         public void Show(params Track[] tracks)

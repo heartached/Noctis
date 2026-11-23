@@ -681,9 +681,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         RaiseSyncProgress(NoctisSyncStage.Catalog, 0, 0);
         await LibraryReady.WaitAsync(ct).ConfigureAwait(false);
         var coverVersions = new Dictionary<Guid, string>();
-        var albumArtists = await client.GetAlbumArtistsAsync(ct, coverVersions).ConfigureAwait(false);
+        var albumLinks = new Dictionary<Guid, List<Guid>>();
+        var albumArtists = await client.GetAlbumArtistsAsync(ct, coverVersions, albumLinks).ConfigureAwait(false);
         var (songs, settled) = await FetchCatalogAsync(client, ct).ConfigureAwait(false);
         var (tracks, linked) = await ImportCatalogAsync(songs, albumArtists, keepUnlisted: !settled, ct).ConfigureAwait(false);
+        await ApplyAlbumLinksAsync(albumLinks, keepUnlisted: !settled).ConfigureAwait(false);
         RaiseSyncProgress(NoctisSyncStage.Catalog, tracks.Count + linked, tracks.Count + linked);
 
         // 2. Covers.
@@ -918,6 +920,20 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
             if (favoriteChanged.Count > 0) await OnUiAsync(() => _library.NotifyFavoritesChanged(favoriteChanged)).ConfigureAwait(false);
         }
         return (tracks, links.Count);
+    }
+
+    /// <summary>
+    /// Discord (Halil): the computer's album links (Link Tracks From, a deluxe edition listing its
+    /// original's songs) become the phone's, so its album pages list the same songs; the phone has
+    /// no links of its own to keep (nothing on it makes one). They key albums by id, so a phone's
+    /// own files of a linked album follow them too. A partial catalog (the computer scanning) only
+    /// adds: the links it left out stay until a full one.
+    /// </summary>
+    private async Task ApplyAlbumLinksAsync(Dictionary<Guid, List<Guid>> albumLinks, bool keepUnlisted)
+    {
+        var links = albumLinks.SelectMany(kv => kv.Value.Select(source => new AlbumLink { AlbumId = kv.Key, SourceAlbumId = source })).ToList();
+        if (keepUnlisted) links.AddRange(_library.AlbumLinks);
+        await _library.SetAlbumLinksAsync(links).ConfigureAwait(false);
     }
 
     /// <summary>
