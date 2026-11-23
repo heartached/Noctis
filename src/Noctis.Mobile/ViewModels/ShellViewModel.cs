@@ -415,6 +415,10 @@ public sealed partial class ShellViewModel : ObservableObject
         foreach (var page in Pages) page.Relabel();
         OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
         OnPropertyChanged(nameof(QueueHistoryToggleText));
+        OnPropertyChanged(nameof(IsRightToLeft));
+        OnPropertyChanged(nameof(FlowDirection));
+        OnPropertyChanged(nameof(TopSafePadding));
+        OnPropertyChanged(nameof(BottomSafePadding));
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
@@ -516,9 +520,34 @@ public sealed partial class ShellViewModel : ObservableObject
     }
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
-    // right, and without them the content drew under it.
-    public Thickness TopSafePadding => new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
-    public Thickness BottomSafePadding => new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
+    // right, and without them the content drew under it. The insets are the screen's own sides:
+    // under a right-to-left layout a margin's Left is the screen's right, so they swap.
+    public Thickness TopSafePadding => IsRightToLeft
+        ? new(SafeArea.Right, SafeArea.Top, SafeArea.Left, 0)
+        : new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
+    public Thickness BottomSafePadding => IsRightToLeft
+        ? new(SafeArea.Right, 0, SafeArea.Left, SafeArea.Bottom)
+        : new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
+
+    /// <summary>
+    /// The phone reads right to left when the strings it shows are a right-to-left language
+    /// (Arabic): the setting, or the phone's own language when it ships, as <see cref="Loc.Resolve"/>
+    /// picks it. A Hebrew phone shows the English strings, so it stays left to right. The shell
+    /// sets it at its root (ShellView), so every page, sheet and menu mirrors with it, live on a
+    /// language change (<see cref="Relabel"/>); what must not mirror (media transport, times)
+    /// sets LeftToRight itself. The desktop is not touched.
+    /// </summary>
+    public bool IsRightToLeft => IsRightToLeftLanguage(Loc.Instance.Culture.Name);
+
+    public Avalonia.Media.FlowDirection FlowDirection =>
+        IsRightToLeft ? Avalonia.Media.FlowDirection.RightToLeft : Avalonia.Media.FlowDirection.LeftToRight;
+
+    /// <summary>Whether the translation <paramref name="cultureName"/> resolves to is written right to left.</summary>
+    internal static bool IsRightToLeftLanguage(string cultureName)
+    {
+        try { return System.Globalization.CultureInfo.GetCultureInfo(Loc.Resolve(cultureName)).TextInfo.IsRightToLeft; }
+        catch (System.Globalization.CultureNotFoundException) { return false; }
+    }
 
     /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it;
     /// a song list's Select mode puts its action bar in the pill's place.</summary>

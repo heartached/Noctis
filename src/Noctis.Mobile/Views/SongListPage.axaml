@@ -53,13 +53,13 @@
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0,20,8">
                 <Button Classes="pill-accent" Command="{Binding PlayAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" />
+                        <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhPlayFill}" Width="20" Height="20" />
                         <TextBlock Text="{loc:T Mobile.Play}" />
                     </StackPanel>
                 </Button>
                 <Button Classes="pill" Command="{Binding ShuffleAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
+                        <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
                         <TextBlock Text="{loc:T Mobile.Shuffle}" />
                     </StackPanel>
                 </Button>

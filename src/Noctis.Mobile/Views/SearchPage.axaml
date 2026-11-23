@@ -145,10 +145,10 @@
                             </Button>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                 <Button Name="FeaturedShuffle" Classes="icon" Command="{Binding ShuffleFeaturedCommand}">
-                                    <PathIcon Data="{DynamicResource PhShuffle}" />
+                                    <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" />
                                 </Button>
                                 <Button Name="FeaturedPlay" Classes="pill-accent" Padding="14,0" Command="{Binding PlayFeaturedCommand}">
-                                    <PathIcon Data="{DynamicResource PhPlayFill}" />
+                                    <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhPlayFill}" />
                                 </Button>
                             </StackPanel>
                         </Grid>
