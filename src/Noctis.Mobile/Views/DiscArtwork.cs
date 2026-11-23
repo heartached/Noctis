@@ -280,6 +280,10 @@ internal sealed class DiscSpinHandler : CompositionCustomVisualHandler
     /// <summary>Managed bytes allocated inside the frame update and the draw, while counted.</summary>
     internal long AllocatedBytes { get; private set; }
 
+    /// <summary>Draws while counted (tests: the render loop may draw a frame more than once, so
+    /// the cost is per draw).</summary>
+    internal int CountedDraws { get; private set; }
+
     public override void OnMessage(object message)
     {
         if (ReferenceEquals(message, Play)) _spin.Playing = true;
@@ -350,6 +354,7 @@ internal sealed class DiscSpinHandler : CompositionCustomVisualHandler
         var before = GC.GetAllocatedBytesForCurrentThread();
         Draw(context);
         AllocatedBytes += GC.GetAllocatedBytesForCurrentThread() - before;
+        CountedDraws++;
     }
 
     private void Draw(ImmediateDrawingContext context)
