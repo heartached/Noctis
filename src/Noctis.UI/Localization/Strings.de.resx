@@ -3598,6 +3598,12 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} verschieben</value><comment>Screen reader name of a tab row's drag handle; {0} = the tab</comment></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Gespielte Titel in der Warteschlange</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Gespielte Titel bleiben über dem aktuellen</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>Titel</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>Album</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>Vorverstärkung</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>Übersteuerung verhindern</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>Eine Anhebung stoppt vor der lautesten Stelle des Titels</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>Gleicht die Lautstärke mit den ReplayGain-Tags deiner Titel aus, auch bei Titeln vom Computer. Titel gibt jedem Titel dieselbe Lautstärke; Album lässt leise und laute Titel eines Albums, wie sie sind. Titel ohne ReplayGain spielen unverändert.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Belegter Speicher</value><comment>Row</comment></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Alle Downloads entfernen</value><comment>Button</comment></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Sie bleiben auf deinem Computer und lassen sich weiter streamen</value><comment>Footnote</comment></data>

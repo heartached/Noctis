@@ -767,7 +767,7 @@
                             <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
                         </StackPanel>
 
-                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Played Songs in Queue and Pick Up on Computer switches. -->
+                        <!-- Listening: Lyrics, Scrobbling, Listening History and ReplayGain are pages; Played Songs in Queue and Pick Up on Computer switches. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Listening}" />
                             <Border Name="ListeningCard" Classes="group-card">
@@ -798,6 +798,16 @@
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconHistory}" /></Border>
                                             <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.ListeningHistory}" />
                                             <TextBlock Grid.Column="2" Name="HistoryValueLabel" Classes="row-value" Text="{Binding History.Summary}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ReplayGainRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.ReplayGain}" AutomationProperties.Name="{Binding ReplayGainRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconReplayGain}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Settings.ReplayGain}" />
+                                            <TextBlock Grid.Column="2" Name="ReplayGainValueLabel" Classes="row-value" Text="{Binding ReplayGainValue}" />
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
@@ -1264,6 +1274,42 @@
                                 <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.LicenseFootnote}" />
                             </StackPanel>
                         </StackPanel>
+                        <!-- ReplayGain (the desktop's model): Mode on the glass menu (Off, Track, Album), the
+                             pre-amp, Prevent Clipping. All live: the playing song glides to its new level. -->
+                        <StackPanel Name="ReplayGainPane" Classes="grouped-content" IsVisible="{Binding ShowsReplayGainPane}">
+                            <StackPanel>
+                                <Border Name="ReplayGainCard" Classes="group-card">
+                                    <StackPanel>
+                                        <Button Name="ReplayGainModeRow" Classes="row" Command="{Binding ShowReplayGainModeMenuCommand}"
+                                                AutomationProperties.Name="{Binding ReplayGainModeRowName}">
+                                            <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto,Auto">
+                                                <TextBlock Classes="row-label" Text="{loc:T Settings.Mode}" />
+                                                <TextBlock Grid.Column="1" Name="ReplayGainModeLabel" Classes="row-value" Text="{Binding ReplayGainValue}" />
+                                                <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                            </views:SettingRow>
+                                        </Button>
+                                        <Border Classes="row-separator plain" />
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.ReplayGain.Preamp}" />
+                                            <TextBlock Grid.Column="1" Name="ReplayGainPreampLabel" Classes="row-value" Text="{Binding Shell.Player.ReplayGainPreampLabel}" />
+                                        </views:SettingRow>
+                                        <controls:SmoothSlider Name="ReplayGainPreampSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                               Minimum="-12" Maximum="12" Step="0.5" SteppedValue="{Binding Shell.Player.ReplayGainPreampDb}"
+                                                               AutomationProperties.Name="{loc:T Mobile.ReplayGain.Preamp}" />
+                                        <Border Classes="row-separator plain" />
+                                        <ToggleButton Name="ReplayGainClippingSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.ReplayGain.PreventClipping}"
+                                                      IsChecked="{Binding Shell.Player.ReplayGainPreventClipping}">
+                                            <StackPanel VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.ReplayGain.PreventClipping}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.ReplayGain.PreventClippingHint}" />
+                                            </StackPanel>
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.ReplayGain.Footnote}" />
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- Lyrics: the desktop's lyrics display settings that the phone's lyrics
                              page honours: the extra lines, the text size and the dimmed lines'
                              floor, joining split words, then the desktop's first online source

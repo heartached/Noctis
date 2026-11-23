@@ -3607,6 +3607,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>Переместить: {0}</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Прослушанные песни в очереди</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Прослушанные песни остаются над текущей</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>Трек</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>Альбом</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>Предусиление</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>Без перегрузки</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>Усиление не превышает самый громкий пик трека</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>Выравнивает громкость по тегам ReplayGain, в том числе у песен с компьютера. «Трек» делает все песни одинаково громкими; «Альбом» сохраняет тихие и громкие песни альбома как есть. Песни без ReplayGain звучат как есть.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Занято</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Удалить все загрузки</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Они останутся на компьютере и будут стримиться</value></data>

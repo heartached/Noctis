@@ -1776,6 +1776,8 @@ public sealed partial class ShellViewModel : ObservableObject
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
         await Lyrics.InitializeAsync();
+        // ReplayGain before the queue restore too: the restored song's level is set as it loads.
+        await Player.LoadReplayGainAsync();
         try
         {
             await Player.RestoreStateAsync();

@@ -3652,6 +3652,12 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} öğesini taşı</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Kuyrukta çalınan şarkılar</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Çaldığın şarkılar çalanın üstünde kalır</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>Parça</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>Albüm</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>Ön yükseltme</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>Kırpılmayı önle</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>Yükseltme, şarkının en yüksek tepesinin altında kalır</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>Şarkılarının ReplayGain etiketleriyle ses yüksekliğini dengeler, bilgisayarındaki şarkılar dahil. Parça her şarkıyı aynı yükseklikte çalar; Albüm bir albümün sessiz ve yüksek şarkılarını olduğu gibi bırakır. ReplayGain'i olmayan şarkılar olduğu gibi çalar.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Kullanılan Alan</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Tüm İndirilenleri Kaldır</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Bilgisayarında kalır ve akışla çalmaya devam eder</value></data>
