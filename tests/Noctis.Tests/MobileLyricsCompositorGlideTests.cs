@@ -262,6 +262,83 @@ public class MobileLyricsCompositorGlideTests
         }
     }
 
+    /// <summary>
+    /// S23 (11-23, round 4 build): after Lyrics was opened and closed again with its Lyrics
+    /// button, Now Playing ran at 1.2-1.4 MB/s and 56% render thread (6% before Lyrics was ever
+    /// opened), the stall monitor showing the lyrics' glide, frame loop and keep-alive still
+    /// running under it. Closed, the lyrics page does nothing: through line changes no glide
+    /// starts, no line's look animates, the frame loop and keep-alive are off; opened again, it
+    /// stands on the sung line at once.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task ClosedAgain_TheLyricsDoNothingThroughLineChanges_AndOpenOnTheSungLine()
+    {
+        var rig = await Open();
+        try
+        {
+            var keepAlive = rig.Page.FindControl<RenderKeepAlive>("KeepAlive")!;
+            rig.Shell.Player.TogglePlayPauseCommand.Execute(null);   // playing
+            Assert.True(rig.Shell.Player.IsPlaying);
+            rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(21.5));
+            var clock = Stopwatch.StartNew();
+            RunUntil(rig, clock, 300);
+            // A glide in flight, then back to Now Playing with the lyrics page's own Lyrics
+            // button, as on the phone: the glide ends with the page.
+            rig.Page.ScrollToLine(rig.Shell.Lyrics.ScrollLineIndex + 1, animate: true);
+            Assert.True(rig.Page.IsGlidingOnCompositor);
+            rig.Page.FindControl<Button>("LyricsButton")!.Command!.Execute(null);
+            Assert.False(rig.Shell.IsLyricsOpen);
+            RunUntil(rig, clock, 1300);                              // the fade out has run
+            Motion.FinishAll();
+            Frames(rig, 2);
+            Assert.False(rig.Page.IsVisible);
+            Assert.False(rig.Page.IsGlidingOnCompositor);
+            Assert.Equal(0, ShownTranslationY(rig), 3);
+
+            var pulses = keepAlive.Pulses;
+            var glides = 0;
+            rig.Shell.Lyrics.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(LyricsPageViewModel.ScrollLineIndex) && rig.Page.IsGlidingOnCompositor) glides++;
+            };
+            var looks = 0;
+            foreach (var c in rig.List.GetRealizedContainers())
+                c.GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line")).PropertyChanged += (_, e) =>
+                {
+                    if (e.Property == Visual.OpacityProperty || e.Property == Visual.EffectProperty) looks++;
+                };
+            // Three line changes while closed (a line a second from 0:10).
+            for (var s = 22; s <= 24; s++)
+            {
+                rig.Player.RaisePositionChanged(TimeSpan.FromSeconds(s + 0.5));
+                clock.Restart();
+                RunUntil(rig, clock, 400);
+                Assert.False(rig.Page.IsGlidingOnCompositor);
+                Assert.False(rig.Page.IsFrameLoopRunning);
+                Assert.False(keepAlive.IsRunning);
+            }
+            Assert.Equal(0, glides);
+            Assert.Equal(pulses, keepAlive.Pulses);
+            _o.WriteLine($"closed: {looks} line look changes, {keepAlive.Pulses - pulses} keep-alive pulses");
+
+            // Opened again: on the sung line at once, no glide to it.
+            rig.Shell.ToggleLyricsCommand.Execute(null);
+            Frames(rig, 3);
+            rig.Window.UpdateLayout();
+            Frames(rig, 2);
+            var sung = rig.Shell.Lyrics.ScrollLineIndex;
+            Assert.True(sung >= 13, $"sung line {sung}");
+            var row = Row(rig, sung);
+            var top = row.TranslatePoint(default, rig.Scroll)!.Value.Y;
+            var expected = rig.Scroll.Viewport.Height * LyricsPage.AnchorRatio - row.Bounds.Height / 2;
+            Assert.InRange(top, expected - 2, expected + 2);
+        }
+        finally
+        {
+            rig.Window.Close();
+        }
+    }
+
     /// <summary>A line's button (the visual its opacity and blur are on).</summary>
     private static Button LineButton(Rig rig, int index) =>
         Row(rig, index).GetVisualDescendants().OfType<Button>().First(b => b.Classes.Contains("lyric-line"));

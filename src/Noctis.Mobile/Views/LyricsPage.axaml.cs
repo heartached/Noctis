@@ -159,6 +159,9 @@ public partial class LyricsPage : UserControl
             // The keep-alive stops asking now (the frame loop ends at its next frame): its frames
             // redraw the screen even under a hidden page.
             KeepAlive?.Run(false);
+            // A glide in flight ends now (its compositor animation with it): nothing of the page
+            // runs while it is closed, and on open it stands on the sung line at once.
+            StopGlide();
             EndBrowse(scrollBack: false);
             _controlsTimer.Stop();
             _controlsOffTimer.Stop();
