@@ -76,8 +76,10 @@ public sealed partial class NowPlayingMotion : ObservableObject
     private async System.Threading.Tasks.Task LookUpAsync(Track track, AnimatedCoversSetting setting, CancellationTokenSource cts)
     {
         var path = await _source.ResolveAsync(track, setting, cts.Token);
-        if (cts.IsCancellationRequested || !ReferenceEquals(_shell.Player.CurrentTrack, track)) return;
+        // Ended: no longer running, also when the song changed meanwhile (left set, that song
+        // coming back was never looked up again and kept its still cover).
         if (ReferenceEquals(_lookup, cts)) _lookup = null;
+        if (cts.IsCancellationRequested || !ReferenceEquals(_shell.Player.CurrentTrack, track)) return;
         Path = path;
     }
 

@@ -102,9 +102,13 @@ public sealed class AnimatedCoverPresenter
     {
         _pendingShow = null;
         if (_source is not { } source || !_seen) return;
-        _player.Play(source);
-        if (_loaded != source) DebugLog.Write("AnimatedCover", "playing the loop");
+        var fresh = _loaded != source;
+        // Named before Play: a loop that fails at once (Failed raised inside Play) is the one
+        // OnFailed marks and lets go, and it is not then shown.
         _loaded = source;
+        _player.Play(source);
+        if (_loaded != source) return;
+        if (fresh) DebugLog.Write("AnimatedCover", "playing the loop");
         SetShown(true);
     }
 
