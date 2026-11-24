@@ -174,11 +174,14 @@ public static class LibraryColumns
         settings.PropertyChanged += onSettings;
         layout.VisibilityRequested += onRequest;
         layout.Committed += onCommit;
+        // Stars hidden: the header menu doesn't offer a Rating column it couldn't show.
+        layout.IsLeftOutOfMenu = key => key == "Rating" && !settings.ShowStarRatings;
         return new Unbind(() =>
         {
             settings.PropertyChanged -= onSettings;
             layout.VisibilityRequested -= onRequest;
             layout.Committed -= onCommit;
+            layout.IsLeftOutOfMenu = null;
         });
     }
 

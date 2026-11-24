@@ -83,6 +83,27 @@ public class ShowStarRatingsTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task HeaderMenu_LeavesOutRating_WhileStarsAreOff()
+    {
+        var settings = NewSettings();
+        await settings.LoadAsync();
+        var layout = LibraryColumns.CreateSongs();
+        using (LibraryColumns.BindSongs(layout, settings))
+        {
+            Assert.Contains(layout.MenuColumns, s => s.Key == "Rating");
+            settings.ShowStarRatings = false;
+            Assert.DoesNotContain(layout.MenuColumns, s => s.Key == "Rating");
+            Assert.Contains(layout.MenuColumns, s => s.Key == "Genre");
+            settings.ShowStarRatings = true;
+            Assert.Contains(layout.MenuColumns, s => s.Key == "Rating");
+            settings.ShowStarRatings = false;
+        }
+        // Unbound, the layout offers every column again.
+        Assert.Contains(layout.MenuColumns, s => s.Key == "Rating");
+        Assert.DoesNotContain(layout.MenuColumns, s => s.Pinned);
+    }
+
+    [AvaloniaFact]
     public async Task RateMenuItem_HidesWithTheSetting()
     {
         var settings = NewSettings();
