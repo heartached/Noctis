@@ -127,6 +127,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             src = src.Parent as Control;
         if (src is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
+        // The row heart favorites that song only; its press leaves the selection alone.
+        if (IsRowHeartPress(e.Source)) return;
 
         // GitHub #226: Shift+click spans from the last clicked row, in album order (across discs).
         if (MultiSelectHelper.IsRangePress(e) && DataContext is AlbumDetailViewModel vm)
@@ -145,6 +147,17 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
         if (_selectedTracks.Count > 0)
             Focus();
+    }
+
+    /// <summary>Whether a press landed on a song row's heart button (Heart on every song).</summary>
+    internal static bool IsRowHeartPress(object? source)
+    {
+        for (var c = source as StyledElement; c != null; c = c.Parent)
+        {
+            if (c is Button b && b.Classes.Contains("row-heart")) return true;
+            if (c is ListBoxItem) return false;
+        }
+        return false;
     }
 
     /// <summary>GitHub #114: a click on the header cover opens it full size; no cover, no viewer.</summary>

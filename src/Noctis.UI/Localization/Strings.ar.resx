@@ -332,6 +332,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>الصفحة التي يُفتح عليها Noctis. إذا كانت الصفحة مخفية فسيُفتح على الرئيسية.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>الصفحات</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>أظهر الصفحات في الشريط الجانبي أو أخفها أو أعد ترتيبها. تظهر الإعدادات دائمًا.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>موضع قوائم التشغيل والمجلدات الجديدة</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>مكان ظهور قوائم التشغيل والمجلدات الجديدة في قائمة الشريط الجانبي.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>في الأعلى</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>في الأسفل</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>إزالة المجلدات الفارغة</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>أزل المجلد عند نقل آخر قائمة تشغيل فيه أو حذفها. يبقى المجلد الجديد حتى يحتوي على قائمة تشغيل.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>نقل لأعلى</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>نقل لأسفل</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">
@@ -1358,6 +1364,16 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>إبقاء التشغيل العشوائي مفعّلًا</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>عندما يكون التشغيل العشوائي مفعّلًا، يبقى مفعّلًا عند تشغيل ألبوم أو قائمة تشغيل أو أغنية، وتُشغَّل الموسيقى الجديدة عشوائيًا.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>تخطي الصمت</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>تبدأ كل أغنية من أول صوت فيها وتنتقل إلى التالية بعد آخر صوت. لا تتغير ملفاتك، وتبقى أوقات البدء والإيقاف التي تحددها لأغنية هي الأولى.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>يتطلب ffmpeg: ثبّته أو حدّد مساره في البرامج المساعدة.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>مستوى الصمت</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>كل ما هو أهدأ من هذا يُعدّ صمتًا. القيمة الأدنى تُبقي التلاشي الهادئ، والأعلى تقطع أكثر مثل التشويش.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>يُشغَّل من {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>إظهار مصدر تشغيل الموسيقى</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>تعرض قائمة الانتظار الألبوم أو قائمة التشغيل أو الصفحة التي بدأت منها الموسيقى. انقر عليه للعودة إلى الأغنية هناك.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>عنوان الأغنية يفتح مصدر التشغيل</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>النقر على عنوان الأغنية في جزيرة التشغيل ينقلك إلى الأغنية في الصفحة التي تُشغَّل منها، بدلًا من ألبومها.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>الأغاني المفقودة</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>إذا اختفى ملف أغنية في قائمة الانتظار، يتخطاها Noctis. اختر ما يحدث لها.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>وضع علامة «مفقودة»</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1815,6 +1831,9 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>يعرض تاريخ إضافة كل مقطع.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>عمود «المفضلة»</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>يعرض قلبًا في كل صف.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>صفحة الألبوم</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>قلب على كل أغنية</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>انقر على قلب الأغنية لإضافتها إلى المفضلة أو إزالتها منها. عند الإيقاف: تظهر القلوب على المفضلة فقط.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve">
     <value>فحص المكتبة</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -9136,6 +9155,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>اختر «كل الفنانين» من قائمة الفلتر، أو ابحث عن اسم</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>إخفاء الفنانين الصغار</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>يخفي الفنانين الذين لديهم أغانٍ قليلة من صفحة الفنانين. يظل البحث يعثر عليهم.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>إظهار التقييم بالنجوم</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>أوقفه إذا كنت لا تقيّم الأغاني. يخفي النجوم من صفحات الألبومات وقوائم الأغاني والقوائم المنبثقة. تبقى تقييماتك محفوظة.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>إخفاء الفنانين الذين لديهم أقل من</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>إخفاء الشريط الجانبي حتى التمرير</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>يخفي الشريط الجانبي تمامًا لتستخدم الصفحات العرض الكامل. حرّك المؤشر إلى الحافة اليسرى للنافذة لإظهاره.</value><comment>Description under Hide sidebar until hover</comment></data>

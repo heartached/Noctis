@@ -84,6 +84,16 @@ public sealed class ColumnLayout
 
     public ColumnSpec? Find(string key) => _byKey.GetValueOrDefault(key);
 
+    /// <summary>
+    /// Columns the header menu leaves out right now (asked on each open), e.g. the Songs page
+    /// Rating column while Show Star Ratings is off (Discord 11-24, Halil).
+    /// </summary>
+    public Func<string, bool>? IsLeftOutOfMenu { get; set; }
+
+    /// <summary>The header menu's columns, in the user's order (no pinned or left-out ones).</summary>
+    public IEnumerable<ColumnSpec> MenuColumns =>
+        Ordered.Where(s => !s.Pinned && IsLeftOutOfMenu?.Invoke(s.Key) != true);
+
     /// <summary>Shown columns, left to right, the pinned ones last.</summary>
     public IReadOnlyList<ColumnSpec> Visible =>
         _visible ??= _order.Select(k => _byKey[k]).Where(s => !_hidden.Contains(s.Key)).ToArray();

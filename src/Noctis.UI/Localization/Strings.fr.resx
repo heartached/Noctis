@@ -147,6 +147,12 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>La page à l'ouverture de Noctis. Une page masquée revient à Accueil.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Pages</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Affichez, masquez et réorganisez les pages de la barre latérale. Paramètres reste toujours affiché.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>Position des nouvelles playlists et dossiers</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Où les nouvelles playlists et les nouveaux dossiers apparaissent dans la liste de la barre latérale.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>En haut</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>En bas</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Supprimer les dossiers vides</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Supprime un dossier quand sa dernière playlist en est retirée ou supprimée. Un nouveau dossier reste tant qu'il n'a pas contenu de playlist.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Monter</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Descendre</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Regrouper les éditions d'albums</value><comment>Text in SettingsView.axaml</comment></data>
@@ -520,6 +526,16 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Les titres écoutés restent dans la file d'attente, au-dessus du titre en cours.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Garder la lecture aléatoire</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Quand la lecture aléatoire est activée, elle le reste en lançant un album, une playlist ou un titre, et mélange la nouvelle musique.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>Ignorer les silences</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Commence chaque titre à son premier son et passe au suivant après le dernier. Vos fichiers ne sont pas modifiés, et les temps de début ou de fin définis pour un titre restent prioritaires.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>Nécessite ffmpeg : installez-le ou indiquez son chemin dans Programmes d'aide.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>Niveau de silence</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Tout ce qui est plus faible compte comme du silence. Plus bas garde les fondus discrets ; plus haut coupe davantage, comme le souffle.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Lecture depuis {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Afficher d'où vient la musique</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>La file d'attente indique l'album, la playlist ou la page d'où la musique a été lancée. Cliquez dessus pour retrouver le titre à cet endroit.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Le titre du morceau ouvre sa source</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Un clic sur le titre dans l'îlot de lecture vous emmène au titre sur la page d'où il est lu, au lieu de son album.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Titres manquants</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Si le fichier d'un titre de la file d'attente a disparu, Noctis le saute. Choisissez ce qu'il en advient.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Marquer comme manquant</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -689,6 +705,9 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Affiche la date d'ajout de chaque titre.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Colonne Favori</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Affiche un cœur sur chaque ligne.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>Page d'album</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>Cœur sur chaque titre</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>Cliquez sur le cœur d'un titre pour l'ajouter aux Favoris ou l'en retirer. Désactivé : seuls les favoris affichent un cœur.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Analyse de la bibliothèque</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Trouve les nouveaux titres et met à jour la recherche.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Analyser la bibliothèque</value><comment>Text in SettingsView.axaml</comment></data>
@@ -4140,6 +4159,8 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Choisissez Tous les artistes dans le menu du filtre, ou recherchez un nom</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Masquer les petits artistes</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Masque de la page Artistes les artistes qui n'ont que quelques titres. La recherche les trouve toujours.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>Afficher les notes en étoiles</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>Désactivez si vous ne notez pas vos morceaux. Masque les étoiles sur les pages d'album, dans les listes de morceaux et les menus. Vos notes sont conservées.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Masquer les artistes avec moins de</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Masquer la barre latérale jusqu’au survol</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Masque complètement la barre latérale pour que les pages occupent toute la largeur. Amenez le pointeur au bord gauche de la fenêtre pour la faire apparaître.</value><comment>Description under Hide sidebar until hover</comment></data>

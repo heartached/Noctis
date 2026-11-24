@@ -332,6 +332,12 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Noctis 開啟時顯示的頁面。如果該頁面已隱藏，則改為顯示首頁。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>頁面</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>顯示、隱藏側邊欄中的頁面並調整順序。設定一律顯示。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>新播放清單和資料夾的位置</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>新播放清單和資料夾在側邊欄清單中出現的位置。</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>頂部</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>底部</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>移除空資料夾</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>當資料夾中的最後一個播放清單被移出或刪除時，一併移除該資料夾。新增的資料夾會保留，直到其中放入過播放清單。</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>上移</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>下移</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">
@@ -1358,6 +1364,16 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   </data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>保持隨機播放</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>隨機播放開啟時，播放專輯、播放清單或歌曲會保持開啟，並隨機播放新的音樂。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>略過靜音</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>每首歌從第一個聲音開始播放，在最後一個聲音之後切到下一首。不會修改你的檔案，為歌曲設定的開始或停止時間優先。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>需要 ffmpeg：請安裝它，或在「輔助程式」中設定其路徑。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>靜音音量</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>低於此音量的部分都視為靜音。調低會保留輕柔的淡出，調高會剪掉更多，例如底噪。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>播放來源：{0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>顯示音樂的播放來源</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>佇列會顯示開始播放音樂的專輯、播放清單或頁面。按一下即可回到該處的這首歌曲。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>按一下歌曲標題開啟播放來源</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>按一下播放島中的歌曲標題時，會前往播放來源頁面中的這首歌曲，而不是它的專輯。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>遺失的歌曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>如果佇列中某首歌曲的檔案已不存在，Noctis 會略過它。選擇如何處理該歌曲。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>標示為遺失</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1815,6 +1831,9 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>顯示每首曲目的加入日期。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>「收藏」欄</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>在每一列顯示愛心。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>專輯頁面</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>每首歌曲顯示愛心</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>點按歌曲的愛心即可將其加入或移出收藏。關閉時，只有已收藏的歌曲顯示愛心。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve">
     <value>資料庫掃描</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -9136,6 +9155,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>在篩選選單中選擇「所有藝人」，或搜尋名稱</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>隱藏小眾藝人</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>在藝人頁面中隱藏歌曲很少的藝人。搜尋仍能找到他們。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>顯示星級評分</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>如果你不為歌曲評分，可以關閉此項。將隱藏專輯頁面、歌曲清單和選單中的星星。你的評分會保留。</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>隱藏歌曲少於以下數量的藝人</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>懸停前隱藏側邊欄</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>完全隱藏側邊欄，讓頁面使用全部寬度。將指標移到視窗左邊緣即可滑出。</value><comment>Description under Hide sidebar until hover</comment></data>

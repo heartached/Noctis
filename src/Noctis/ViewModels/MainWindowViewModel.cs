@@ -406,6 +406,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Create long-lived ViewModels
         Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence), metadata);
+        // Skip Silence measures with the same ffmpeg the converter and BPM analysis use.
+        Player.SilenceScanner = new Noctis.Services.AudioAnalysis.SilenceScanService(
+            () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath());
         QueueToast.Attach(Player);
         if (App.Services?.GetService<PhoneHandoffInbox>() is { } handoffInbox)
         {
@@ -581,6 +584,7 @@ public partial class MainWindowViewModel : ViewModelBase
             RefreshBackButton();
             Album.SetSongCountFormat(n => Loc.Plural("Count.Songs", n));
             Settings.RefreshAlbumCardCaptions();
+            Player.RefreshPlaySourceText();
         };
         Sidebar.SetAudioCdSectionVisible(audioCd.HasDrive);
         audioCd.DriveStateChanged += (_, _) => Dispatcher.UIThread.Post(() =>
@@ -716,6 +720,7 @@ public partial class MainWindowViewModel : ViewModelBase
         void SyncVisualizerSection()
         {
             TopBar.AlbumCarouselAvailable = Settings.AlbumCarouselEnabled;
+            TopBar.ShowStarRatings = Settings.ShowStarRatings;
             Sidebar.SetVisualizerSectionVisible(Settings.VisualizerEnabled);
             if (ReferenceEquals(CurrentView, _visualizerVm) && !Settings.VisualizerEnabled)
                 Navigate("home");
@@ -728,8 +733,23 @@ public partial class MainWindowViewModel : ViewModelBase
                 Dispatcher.UIThread.Post(SyncVisualizerSection);
             else if (e.PropertyName == nameof(SettingsViewModel.AlbumCarouselEnabled))
                 TopBar.AlbumCarouselAvailable = Settings.AlbumCarouselEnabled;
+            else if (e.PropertyName == nameof(SettingsViewModel.ShowStarRatings))
+                TopBar.ShowStarRatings = Settings.ShowStarRatings;
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
+        };
+        // Settings › General › Sidebar (Discord 11-24, sina): where new playlists and folders go,
+        // and whether a folder goes when its last playlist leaves. Plain flags the sidebar reads.
+        void SyncPlaylistFolderSettings()
+        {
+            Sidebar.NewPlaylistsAtTop = Settings.NewPlaylistsAtTop;
+            Sidebar.RemoveEmptyFolders = Settings.RemoveEmptyPlaylistFolders;
+        }
+        SyncPlaylistFolderSettings();
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SettingsViewModel.NewPlaylistsAtTop) or nameof(SettingsViewModel.RemoveEmptyPlaylistFolders))
+                SyncPlaylistFolderSettings();
         };
         // Settings › General › Sidebar (GitHub #199): the pages the user hid and their order.
         // A hidden page is only off the rail: Navigate still opens it from shortcuts and links.
@@ -883,6 +903,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Wire up playlist access for playback bar
         Player.SetSidebar(Sidebar);
+
+        // "Playing from …" link and the island title's "where it plays from" (Discord 11-24, sina)
+        Player.SetOpenPlaySourceAction(OpenPlaySource);
 
         // Wire up "View Artist" from lyrics view
         _lyricsVm.SetViewArtistAction(ViewArtistFromLyrics);
@@ -2849,6 +2872,54 @@ public partial class MainWindowViewModel : ViewModelBase
         // The album page scrolls to this song and washes it once (11-23 feedback: the
         // island title opened the album at its top, the playing song out of sight).
         OpenAlbumDetail(album, revealTrackId: track.Id);
+    }
+
+    /// <summary>
+    /// The "Playing from …" link (Discord 11-24, sina 4.3.7 / 4.3.4): opens the page the queue was
+    /// started from. Album, Songs and playlist pages glide to <paramref name="track"/> and wash it;
+    /// the Folders page selects it when its folder is still the selected one; the others open at
+    /// their top. A source that is gone (album or playlist deleted) falls back to the song's album.
+    /// </summary>
+    private void OpenPlaySource(PlaySource source, Track track)
+    {
+        switch (source.Kind)
+        {
+            case PlaySourceKind.Album:
+                var album = Guid.TryParse(source.Id, out var albumId)
+                    ? _library.Albums.FirstOrDefault(a => a.Id == albumId)
+                    : null;
+                if (album == null) break;
+                OpenAlbumDetail(album, revealTrackId: track.Id);
+                TopBar.IsPageTitleVisible = false; // as the island title's View Album
+                return;
+            case PlaySourceKind.Playlist:
+                if (!Guid.TryParse(source.Id, out var playlistId) || Sidebar.GetPlaylist(playlistId) == null) break;
+                Navigate($"playlist:{playlistId}");
+                if (CurrentView is PlaylistViewModel playlistVm) playlistVm.RevealTrackId = track.Id;
+                return;
+            case PlaySourceKind.Artist when !string.IsNullOrWhiteSpace(source.Id):
+                OpenArtistDiscography(source.Id);
+                return;
+            case PlaySourceKind.Genre when !string.IsNullOrWhiteSpace(source.Id):
+                OpenGenre(source.Id);
+                return;
+            case PlaySourceKind.Songs:
+                Navigate("songs");
+                _songsVm.RevealTrackId = track.Id;
+                return;
+            case PlaySourceKind.Folder:
+                Navigate("folders");
+                // After the page is shown, so its view hears the scroll request.
+                Dispatcher.UIThread.Post(() => _foldersVm.RevealTrack(track), DispatcherPriority.Background);
+                return;
+            case PlaySourceKind.Albums: Navigate("albums"); return;
+            case PlaySourceKind.Favorites: Navigate("favorites"); return;
+            case PlaySourceKind.Inbox: Navigate("inbox"); return;
+            case PlaySourceKind.AudioCd: Navigate("cd"); return;
+            case PlaySourceKind.Server: Navigate("server"); return;
+            case PlaySourceKind.Home: Navigate("home"); return;
+        }
+        OnViewAlbumFromTrack(this, track);
     }
 
     public void OpenAlbumDetail(Album album, bool pushHistory = true, string? backButtonText = null, Guid? revealTrackId = null)

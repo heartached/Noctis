@@ -70,6 +70,13 @@ public class AppSettings : IJsonOnDeserializing
     /// suggestion scan; the track list takes the width.</summary>
     public bool PlaylistShowSideRail { get; set; } = true;
 
+    /// <summary>Album pages show a clickable heart on every song row, faint until favorited
+    /// (Discord 11-24, sina: favoriting from an album took the "..." menu). Off shows the
+    /// heart only on favorited songs and it can't be clicked, the old look. On for a new
+    /// install; a settings.json saved before the setting existed keeps it off
+    /// (<see cref="OnDeserializing"/>).</summary>
+    public bool AlbumShowSongHearts { get; set; } = true;
+
     /// <summary>File paths explicitly removed from the library. Skipped during rescans.</summary>
     public List<string> ExcludedFilePaths { get; set; } = new();
 
@@ -385,6 +392,19 @@ public class AppSettings : IJsonOnDeserializing
 
     public int PlayPauseFadeMs { get; set; } = 300;
 
+    /// <summary>Skip Silence (Discord, Spark 11-23): a song starts at its first sound and ends
+    /// after its last one; the silence at both ends is measured in the background (ffmpeg),
+    /// files are never changed. Off by default.</summary>
+    public bool SkipSilenceEnabled { get; set; }
+
+    /// <summary>Skip Silence level in dBFS: anything quieter counts as silence
+    /// (<see cref="SkipSilenceThresholdMin"/> to <see cref="SkipSilenceThresholdMax"/>).</summary>
+    public int SkipSilenceThresholdDb { get; set; } = SkipSilenceThresholdDefault;
+
+    public const int SkipSilenceThresholdDefault = -50;
+    public const int SkipSilenceThresholdMin = -80;
+    public const int SkipSilenceThresholdMax = -20;
+
     /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
     /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
     /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>. Half the song on a
@@ -439,6 +459,14 @@ public class AppSettings : IJsonOnDeserializing
     /// song list keeps it on and shuffles the new music. Off by default (a new list plays in order
     /// and turns Shuffle off).</summary>
     public bool KeepShuffleOn { get; set; }
+
+    /// <summary>Show Where Music Plays From (Discord 11-24, sina): the queue drawer's "Playing from …"
+    /// link to the page the queue was started from. On by default (it is not on the island).</summary>
+    public bool ShowPlaySource { get; set; } = true;
+
+    /// <summary>Song Title Opens Where It Plays From (Discord 11-24, sina): the island title's click
+    /// opens the page the song plays from at the song, instead of its album. Off by default.</summary>
+    public bool TitleOpensPlaySource { get; set; }
 
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when playback passes over it; off (the default) keeps it there, marked missing.</summary>
@@ -665,6 +693,10 @@ public class AppSettings : IJsonOnDeserializing
     public bool ShowArtworkColumn { get; set; } = true;
     public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
+    /// <summary>Settings › Library › Show Star Ratings (Discord 11-24, Halil): off hides the stars on
+    /// album rows, the Songs page Rating column and the Rate menu item for people who never rate.
+    /// Ratings stay in the library and in Edit Info. ShowRatingColumn keeps its own value.</summary>
+    public bool ShowStarRatings { get; set; } = true;
     public bool ShowBpmColumn { get; set; }
     public bool ShowBitrateColumn { get; set; }
     public bool ShowSampleRateColumn { get; set; }
@@ -1084,6 +1116,14 @@ public class AppSettings : IJsonOnDeserializing
     /// default. Settings greys it out while <see cref="SidebarAlwaysExpanded"/> is on, and
     /// the other way round.</summary>
     public bool SidebarAutoHide { get; set; }
+
+    /// <summary>New Playlist and Folder Position (Discord 11-24, sina): new playlists and New
+    /// Folder… folders go first in the sidebar list instead of last. Off (Bottom) by default.</summary>
+    public bool NewPlaylistsAtTop { get; set; }
+
+    /// <summary>Remove Empty Folders (Discord 11-24, sina): a sidebar folder whose last playlist is
+    /// moved out or deleted is removed too, instead of staying empty. Off by default.</summary>
+    public bool RemoveEmptyPlaylistFolders { get; set; }
 
     /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
     /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
@@ -1675,6 +1715,7 @@ public class AppSettings : IJsonOnDeserializing
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        SkipSilenceThresholdDb = Math.Clamp(SkipSilenceThresholdDb, SkipSilenceThresholdMin, SkipSilenceThresholdMax);
         AudioBalance = Math.Clamp(AudioBalance, -100, 100);
         SleepTimerFadeSeconds = SnapSleepTimerFadeSeconds(SleepTimerFadeSeconds);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
@@ -1730,6 +1771,8 @@ public class AppSettings : IJsonOnDeserializing
         // New-install defaults of 2026-11-14: plays counted at the start, drops moved in.
         PlayCountThresholdPercent = 0;
         ImportDroppedMedia = true;
+        // Album song-row hearts (2026-11-24): favorited songs only, not clickable.
+        AlbumShowSongHearts = false;
     }
 
     // ── One data folder, several Noctis versions (GitHub #230) ──

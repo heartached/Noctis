@@ -18,8 +18,8 @@ public static class AutoMixTransitionPlanner
         Track next,
         AutoMixPlannerOptions options)
     {
-        var currentSilence = EstimateSilenceProfile(current);
-        var nextSilence = EstimateSilenceProfile(next);
+        var currentSilence = EstimateSilenceProfile(current, options.DetectedSilence?.Invoke(current));
+        var nextSilence = EstimateSilenceProfile(next, options.DetectedSilence?.Invoke(next));
 
         if (options.Mode == AutoMixTransitionMode.Off)
             return AutoMixTransitionPlan.None("AutoMix skipped: transition mode is off", currentSilence, nextSilence);
@@ -205,7 +205,9 @@ public static class AutoMixTransitionPlanner
         return TimeSpan.FromSeconds(Math.Clamp(requested.TotalSeconds, 1, safeMax));
     }
 
-    public static AudioSilenceProfile EstimateSilenceProfile(Track track)
+    /// <param name="detected">The silence Skip Silence measured in the file, if known: used for
+    /// an end that has no start or stop time set by hand (those always win).</param>
+    public static AudioSilenceProfile EstimateSilenceProfile(Track track, AudioSilenceProfile? detected = null)
     {
         // StartTimeMs is a user-set trim point, not an estimate — it must not be capped.
         // The 5s clamp made AutoMix start a track with a 20s trimmed intro at 5s, playing
@@ -222,8 +224,16 @@ public static class AutoMixTransitionPlanner
                 end = TimeSpan.FromMilliseconds(Math.Min(trailingMs, 5000));
         }
 
-        // TODO: Replace this metadata-only estimate with waveform/PCM analysis when
-        // Noctis has a background audio analysis cache. The planner treats this as
+        // Skip Silence (Discord 11-24) measures the file: its trailing silence is the region
+        // after the last sound, the same meaning EndSilence has after a hand-set stop time.
+        if (detected != null)
+        {
+            if (track.StartTimeMs <= 0 && detected.StartSilence > TimeSpan.Zero) start = detected.StartSilence;
+            if (track.StopTimeMs <= 0 && detected.EndSilence > TimeSpan.Zero) end = detected.EndSilence;
+            if (track.StartTimeMs <= 0 && track.StopTimeMs <= 0) return new AudioSilenceProfile(start, end, false);
+        }
+
+        // Without Skip Silence this is a metadata-only estimate; the planner treats it as
         // advisory so playback remains safe without exact silence data.
         return new AudioSilenceProfile(start, end, true);
     }

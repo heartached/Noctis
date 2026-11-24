@@ -150,6 +150,12 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>The page Noctis opens on. A hidden page falls back to Home.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Pages</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Show, hide and reorder the pages in the sidebar. Settings always shows.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>New Playlist and Folder Position</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Where new playlists and folders appear in the sidebar list.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Top</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Bottom</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Remove Empty Folders</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Remove a folder when its last playlist is moved out or deleted. A new folder stays until it has held a playlist.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Move up</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Move down</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Collapse Album Editions</value><comment>Text in SettingsView.axaml</comment></data>
@@ -525,6 +531,16 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue above the one playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Keep Shuffle On</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>When Shuffle is on, playing an album, playlist or song keeps it on and shuffles the new music.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>Skip Silence</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Starts each song at its first sound and moves on after its last one. Your files aren't changed, and start or stop times you set for a song come first.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>Needs ffmpeg: install it, or set its path under Helper programs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>Silence Level</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Anything quieter than this counts as silence. Lower keeps quiet fade-outs; higher cuts more, like hiss or room noise.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Playing from {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Show Where Music Plays From</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>The queue shows the album, playlist or page the music was started from. Click it to go back to the song there.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Song Title Opens Where It Plays From</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Clicking the song title in the player island takes you to the song on the page it plays from, instead of its album.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>If a queued song's file is gone, Noctis skips it. Choose what happens to it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -695,6 +711,9 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Show the date each track was added.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Favorite column</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Shows a heart on each row.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>Album page</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>Heart on every song</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>Click a song's heart to add it to Favorites or remove it. Off: hearts show only on favorites.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Library Scan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Find new tracks and update search.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Scan Library</value><comment>Text in SettingsView.axaml</comment></data>
@@ -4149,6 +4168,8 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Choose All Artists in the filter menu, or search for a name</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Hide small artists</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Hides artists with only a few songs from the Artists page. Search still finds them.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>Show star ratings</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>Turn off if you don't rate songs. Hides the stars on album pages, song lists and menus. Your ratings are kept.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Hide artists with fewer than</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Hide sidebar until hover</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Hides the sidebar completely so pages use the full width. Move the pointer to the left edge of the window to slide it in.</value><comment>Description under Hide sidebar until hover</comment></data>

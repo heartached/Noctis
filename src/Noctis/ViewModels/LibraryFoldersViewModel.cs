@@ -318,18 +318,30 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         return null;
     }
 
+    /// <summary>"Playing from …" (Discord 11-24, sina): the folder's name; its path finds it again.</summary>
+    private static PlaySource FolderSource(FolderNode? node) =>
+        new(PlaySourceKind.Folder, node?.DisplayName, node?.FullPath);
+
+    /// <summary>The "Playing from …" link: scrolls to and selects <paramref name="track"/> when it
+    /// is in the selected folder (the search's ScrollToTrackRequested).</summary>
+    public void RevealTrack(Track track)
+    {
+        var match = SelectedFolderTracks.FirstOrDefault(t => t.Id == track.Id);
+        if (match != null) ScrollToTrackRequested?.Invoke(this, match);
+    }
+
     [RelayCommand]
     private void PlayFolder()
     {
         if (SelectedFolderTracks.Count == 0) return;
-        _player.PlayAll(SelectedFolderTracks.ToList());
+        _player.WithSource(FolderSource(SelectedNode)).PlayAll(SelectedFolderTracks.ToList());
     }
 
     [RelayCommand]
     private void ShuffleFolder()
     {
         if (SelectedFolderTracks.Count == 0) return;
-        _player.PlayShuffled(SelectedFolderTracks.ToList());
+        _player.WithSource(FolderSource(SelectedNode)).PlayShuffled(SelectedFolderTracks.ToList());
     }
 
     [RelayCommand]
@@ -344,7 +356,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
         var list = SelectedFolderTracks.ToList();
         var index = list.IndexOf(track);
         if (index < 0) index = 0;
-        _player.ReplaceQueueAndPlay(list, index);
+        _player.WithSource(FolderSource(SelectedNode)).ReplaceQueueAndPlay(list, index);
     }
 
     // ── Folder context-menu commands (right-click on a folder in the tree) ──
@@ -363,7 +375,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     {
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
-        _player.PlayAll(tracks);
+        _player.WithSource(FolderSource(node)).PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -371,7 +383,7 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     {
         var tracks = CollectTracks(node);
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(FolderSource(node)).PlayShuffled(tracks);
     }
 
     [RelayCommand]

@@ -942,7 +942,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 {
                     // No track loaded — shuffle entire library, in the bar's Shuffle mode
                     // so every shuffle indicator reports On and Shuffle off can undo it.
-                    PlayShuffled(_library.Tracks.ToList(), avoidRecentlyPlayed: true);
+                    WithSource(Models.PlaySource.Section(PlaySourceKind.Songs))
+                        .PlayShuffled(_library.Tracks.ToList(), avoidRecentlyPlayed: true);
                 }
                 break;
         }
@@ -1115,6 +1116,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             _audioPlayer.Seek(target);
         _lastSeekTime = DateTime.UtcNow;
         _lastCommittedSeekTarget = target;
+        _silenceSeekGeneration = _silencePlayGeneration; // Skip Silence: no late jump after a seek
         Seeked?.Invoke(this, target);
     }
 
@@ -1754,7 +1756,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
         // No recency weighting here: the user explicitly chose to shuffle this one album,
         // so every track on it should stay equally likely even if just played.
-        PlayShuffled(album.Tracks);
+        WithSource(Models.PlaySource.ForAlbum(album)).PlayShuffled(album.Tracks);
     }
 
     /// <summary>
@@ -2069,7 +2071,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             shuffled.Insert(0, first);
             start = 0;
         }
-        if (start < 0) return; // nothing on the list may play (e.g. all blocked explicit)
+        if (start < 0) { DropPendingPlaySource(); return; } // nothing on the list may play (e.g. all blocked explicit)
         if (start > 0)
         {
             var lead = shuffled[start];
@@ -2085,7 +2087,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private void ReplaceQueueAndPlay(IList<Track> tracks, int startIndex, IList<Track>? unshuffled)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceQueueAndPlay", $"tracks={tracks.Count}, startIdx={startIndex}");
-        if (tracks.Count == 0) return;
+        if (tracks.Count == 0) { DropPendingPlaySource(); return; }
         if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
         // Any non-radio queue replacement (album/playlist/shuffle/etc.) ends radio so
         // it stops refilling. StartRadio re-enables IsRadioActive after calling this.
@@ -2106,6 +2108,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             TrimHistory();
         }
         _queueHistoryDepth = 0; // that entry belongs to what played before this queue
+        // "Playing from …" (Discord 11-24, sina): the page that started this queue, if it said.
+        ApplyPendingPlaySource(unshuffled ?? tracks);
 
         // Clear stale shuffle state — a new queue replaces whatever was shuffled. A shuffled
         // start is in Shuffle mode from the outset, before its first track starts.
@@ -2403,6 +2407,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _originalQueue.Clear();
         _parkedExplicit.Clear();
         _repeatCycleTracks.Clear(); // a queue started on the emptied player is not this cycle
+        ClearPlaySource();
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         PositionFraction = 0;
@@ -2645,7 +2650,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
             OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
             ExternalTrackPaths = BuildExternalTrackPaths(),
-            CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
+            CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null,
+            PlaySource = PlaySource
         };
         await _persistence.SaveQueueStateAsync(state);
     }
@@ -2706,7 +2712,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
                 OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
                 ExternalTrackPaths = BuildExternalTrackPaths(),
-                CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
+                CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null,
+                PlaySource = PlaySource
             };
         }
         catch
@@ -2815,6 +2822,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _originalQueue = state.IsShuffleEnabled
             ? state.OriginalOrderIds.Select(Resolve).OfType<Track>().ToList()
             : new List<Track>();
+
+        // "Playing from …" (Discord 11-24): which songs it started is not saved, so every
+        // restored song counts as from it.
+        _playSourceTrackIds = null;
+        PlaySource = state.PlaySource;
 
         // Restore current track (paused, not auto-playing)
         var usedUpNextFallback = false;
@@ -3001,6 +3013,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         OnPropertyChanged(nameof(CurrentArtistLine));
         OnPropertyChanged(nameof(CanEditLyrics));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+        RaisePlaySourceState();
         OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();
         ResolveMusicVideo();
@@ -3509,6 +3522,15 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         // Apply per-track volume adjustment
         _audioPlayer.VolumeAdjust = track.VolumeAdjust;
 
+        // Music video audio: decided here, once per song start. A staged next song keeps the
+        // choice it was staged with (a clip: that exact path); a lyric-authoring request only
+        // covers its own song. Before the start position: Skip Silence measured the song file.
+        if (_originalAudioTrackId != track.Id) _originalAudioTrackId = Guid.Empty;
+        var playPath = prepared != null && prepared.TrackId == track.Id && prepared.PlayPath != null
+            ? (string.Equals(prepared.PlayPath, prepared.FilePath, StringComparison.Ordinal) ? track.FilePath : prepared.PlayPath)
+            : ResolvePlayPath(track, _resolvedMusicVideoPath);
+        var silenceStartMs = string.Equals(playPath, track.FilePath, StringComparison.Ordinal) ? SilenceStartMs(track) : 0;
+
         // Set pending seek position BEFORE Play() so VlcAudioPlayer applies it
         // inside PlayInternal after the media is loaded (avoids race condition).
         long seekMs = -1;
@@ -3532,6 +3554,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             seekMs = track.StartTimeMs;
             seekSource = "startTime";
         }
+        else if (silenceStartMs > 0 && TimeSpan.FromMilliseconds(silenceStartMs) < track.Duration)
+        {
+            seekMs = silenceStartMs;
+            seekSource = "silence";
+        }
         else if (track.RememberPlaybackPosition && track.SavedPositionMs > 0
                  && TimeSpan.FromMilliseconds(track.SavedPositionMs) < track.Duration)
         {
@@ -3554,13 +3581,6 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 : 0;
         }
 
-        // Music video audio: decided here, once per song start. A staged next song keeps the
-        // choice it was staged with (a clip: that exact path); a lyric-authoring request only
-        // covers its own song.
-        if (_originalAudioTrackId != track.Id) _originalAudioTrackId = Guid.Empty;
-        var playPath = prepared != null && prepared.TrackId == track.Id && prepared.PlayPath != null
-            ? (string.Equals(prepared.PlayPath, prepared.FilePath, StringComparison.Ordinal) ? track.FilePath : prepared.PlayPath)
-            : ResolvePlayPath(track, _resolvedMusicVideoPath);
         _musicVideoAudioPath = string.Equals(playPath, track.FilePath, StringComparison.Ordinal) ? null : playPath;
         MusicVideoAudioLengthDiffers = false;
 
@@ -3570,6 +3590,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         else
             _audioPlayer.Play(_musicVideoAudioPath, track.FilePath);
         RefreshMusicVideoAudio();
+        OnSilenceTrackStarted(track, seekSource);
 
         // Apply per-track EQ preset (or restore global)
         _settings?.ApplyEqPresetByName(
@@ -4350,12 +4371,16 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
 
             ScheduleNaturalEndFallbackIfNeeded(newPosition, effectiveDuration);
 
-            // Check per-track stop time
-            if (CurrentTrack?.StopTimeMs > 0)
+            // Check per-track stop time (set by hand, or Skip Silence's end of the last sound)
+            if (CurrentTrack != null)
             {
-                var stopTime = TimeSpan.FromMilliseconds(CurrentTrack.StopTimeMs);
-                if (newPosition >= stopTime)
+                if (SkipSilenceEnabled) EnsureNextSilenceScan();
+                var stopTime = EffectiveStopTime(CurrentTrack, effectiveDuration);
+                if (stopTime > TimeSpan.Zero && newPosition >= stopTime)
                 {
+                    if (CurrentTrack.StopTimeMs <= 0)
+                        DebugLogger.Info(DebugLogger.Category.Playback, "SkipSilence.End",
+                            $"title={CurrentTrack.Title}, positionMs={newPosition.TotalMilliseconds:F0}, durationMs={effectiveDuration.TotalMilliseconds:F0}");
                     AdvanceQueue();
                     return;
                 }
@@ -4479,7 +4504,10 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 transitionEnd = stopTime;
         }
 
-        if (plan.UseSilenceTrim && plan.CurrentSilence.EndSilence > TimeSpan.Zero)
+        // EndSilence is the region after a hand-set stop time, which transitionEnd already
+        // stops at: subtracting it again cut the kept music short (the planner's own end got
+        // this fix; this copy did not). Only an end without one loses its trailing silence.
+        if (plan.UseSilenceTrim && plan.CurrentSilence.EndSilence > TimeSpan.Zero && CurrentTrack.StopTimeMs <= 0)
             transitionEnd -= plan.CurrentSilence.EndSilence;
 
         if (transitionEnd <= TimeSpan.Zero)
@@ -4585,13 +4613,14 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         new(
             AutoMixTransitionMode,
             AutoMixStrength,
-            AutoMixRemoveSilence && !musicVideoAudio,
+            (AutoMixRemoveSilence || SkipSilenceEnabled) && !musicVideoAudio,
             AutoMixAvoidAlbums,
             AutoMixBeatMatch && !musicVideoAudio,
             RepeatMode,
             IsShuffleEnabled,
             false,
-            _settings?.CrossfadeDuration ?? 6);
+            _settings?.CrossfadeDuration ?? 6,
+            musicVideoAudio || !SkipSilenceEnabled ? null : DetectedSilenceProfile);
 
     // Gapless timing: pre-roll the next track on the standby player well before
     // the end (input opened paused on its first frame), then advance ahead of the
@@ -4643,7 +4672,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             CurrentTrack == null ||
             UpNext.Count == 0 ||
             RepeatMode == RepeatMode.One ||
-            CurrentTrack.StopTimeMs > 0)
+            EffectiveStopTime(CurrentTrack, duration) > TimeSpan.Zero)
             return false;
 
         if (State != PlaybackState.Playing || _isSeeking)
@@ -4698,9 +4727,12 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 AutoMixTransitionMode,
                 _audioPlayer.CurrentSessionId,
                 nextPlayPath);
+            var nextStartMs = nextTrack.StartTimeMs > 0
+                ? nextTrack.StartTimeMs
+                : string.Equals(nextPlayPath, nextTrack.FilePath, StringComparison.Ordinal) ? SilenceStartMs(nextTrack) : 0;
             _audioPlayer.PrepareNext(
                 nextPlayPath,
-                nextTrack.StartTimeMs > 0 ? nextTrack.StartTimeMs : -1);
+                nextStartMs > 0 ? nextStartMs : -1);
             // Prepared inside the handoff lead (a song shorter than it): the prepare runs
             // off this thread, so the advance waits for a later tick.
             return false;
@@ -5056,6 +5088,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
 
             // The playing track's album may have just been imported (or removed).
             ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+            OpenTitleTargetCommand.NotifyCanExecuteChanged();
             if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done");
         });
     }

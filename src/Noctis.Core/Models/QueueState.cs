@@ -75,6 +75,12 @@ public class QueueState
     /// files and on the phone.
     /// </summary>
     public bool CurrentClearedFromQueue { get; set; }
+
+    /// <summary>
+    /// Desktop, Discord 11-24 (sina): the page the queue was started from, for "Playing from …"
+    /// and the island title's click. Null when unknown, in older files and on the phone.
+    /// </summary>
+    public PlaySource? PlaySource { get; set; }
 }
 
 /// <summary>

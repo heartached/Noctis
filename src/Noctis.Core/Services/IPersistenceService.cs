@@ -62,6 +62,12 @@ public interface IPersistenceService
     Task<List<string>> LoadPlaylistFoldersAsync() => Task.FromResult(new List<string>());
     Task SavePlaylistFoldersAsync(List<string> folders) => Task.CompletedTask;
 
+    /// <summary>Sidebar place (as Playlist.SidebarOrder) of each saved folder while it is empty
+    /// (playlist_folder_order.json): an empty folder has no playlist to carry its place, so a
+    /// New Folder… put at the top (Discord 11-24, sina) or dragged stays there.</summary>
+    Task<Dictionary<string, int>> LoadPlaylistFolderOrderAsync() => Task.FromResult(new Dictionary<string, int>());
+    Task SavePlaylistFolderOrderAsync(Dictionary<string, int> order) => Task.CompletedTask;
+
     // --- Queue ---
 
     /// <summary>

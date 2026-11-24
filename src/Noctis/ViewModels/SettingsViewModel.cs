@@ -769,6 +769,16 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playPauseFadeEnabled;
     [ObservableProperty] private double _playPauseFadeMs = 300;
 
+    /// <summary>Skip Silence (Discord, Spark 11-23): songs start at their first sound and end
+    /// after their last one. The level is in dBFS.</summary>
+    [ObservableProperty] private bool _skipSilenceEnabled;
+    [ObservableProperty] private double _skipSilenceThresholdDb = AppSettings.SkipSilenceThresholdDefault;
+
+    /// <summary>Skip Silence measures with ffmpeg: without it (Linux builds don't bundle it) the
+    /// row says so instead of silently doing nothing.</summary>
+    public bool SkipSilenceNeedsFfmpeg =>
+        App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath() == null;
+
     /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
     /// (0 = as soon as it starts). The player reads it on every position tick, so a change
     /// also applies to the rest of the song playing now.</summary>
@@ -1105,6 +1115,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playlistShowNewBadge = true;
     [ObservableProperty] private bool _playlistShowAddedColumn = true;
     [ObservableProperty] private bool _playlistShowFavoriteColumn = true;
+    /// <summary>Album page song rows: clickable heart on every row (Discord 11-24, sina).</summary>
+    [ObservableProperty] private bool _albumShowSongHearts = true;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowMarqueeEnabled = true;
@@ -1480,6 +1492,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
         MissingSongsOptions = BuildMissingSongsOptions();
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
+        NewPlaylistPositionOptions = BuildNewPlaylistPositionOptions();
+        OnPropertyChanged(nameof(SelectedNewPlaylistPositionOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
         RelabelAnimatedArtworkStrings();
@@ -1675,6 +1689,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showArtworkColumn = true;
     [ObservableProperty] private bool _showGenreColumn = true;
     [ObservableProperty] private bool _showRatingColumn = true;
+    /// <summary>AppSettings.ShowStarRatings (Discord 11-24, Halil).</summary>
+    [ObservableProperty] private bool _showStarRatings = true;
     [ObservableProperty] private bool _showBpmColumn;
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
@@ -1703,6 +1719,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowStarRatingsChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -2568,6 +2585,40 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>GitHub #233: hide the sidebar until the pointer reaches the left window edge
     /// (MainWindow.UpdateSidebarHidden, SidebarEdgePeek).</summary>
     [ObservableProperty] private bool _sidebarAutoHide;
+    /// <summary>Discord 11-24 (sina): new playlists and folders go first in the sidebar list.</summary>
+    [ObservableProperty] private bool _newPlaylistsAtTop;
+    /// <summary>Discord 11-24 (sina): a folder whose last playlist leaves is removed too.</summary>
+    [ObservableProperty] private bool _removeEmptyPlaylistFolders;
+
+    /// <summary>One row of the New Playlist and Folder Position picker.</summary>
+    public sealed record NewPlaylistPositionOption(bool Top, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<NewPlaylistPositionOption> NewPlaylistPositionOptions
+    {
+        get => _newPlaylistPositionOptions;
+        private set => SetProperty(ref _newPlaylistPositionOptions, value);
+    }
+    private IReadOnlyList<NewPlaylistPositionOption> _newPlaylistPositionOptions = BuildNewPlaylistPositionOptions();
+
+    private static IReadOnlyList<NewPlaylistPositionOption> BuildNewPlaylistPositionOptions() => new[]
+    {
+        new NewPlaylistPositionOption(true, Loc.T("Settings.NewPlaylistPositionTop")),
+        new NewPlaylistPositionOption(false, Loc.T("Settings.NewPlaylistPositionBottom")),
+    };
+
+    public NewPlaylistPositionOption? SelectedNewPlaylistPositionOption
+    {
+        get => NewPlaylistPositionOptions.FirstOrDefault(o => o.Top == NewPlaylistsAtTop);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            NewPlaylistsAtTop = value.Top;
+        }
+    }
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
     /// (issue #26), so the Settings card is hidden there (same pattern as
@@ -2826,6 +2877,13 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Keep Shuffle On (Discord 11-23): starting new music leaves Shuffle on. Off by default.</summary>
     [ObservableProperty] private bool _keepShuffleOn;
+
+    /// <summary>Discord 11-24 (sina): "Playing from …" in the queue drawer (PlayerViewModel.ShowPlaySource).</summary>
+    [ObservableProperty] private bool _showPlaySource = true;
+
+    /// <summary>Discord 11-24 (sina): the island title opens where the song plays from
+    /// (PlayerViewModel.TitleOpensPlaySource).</summary>
+    [ObservableProperty] private bool _titleOpensPlaySource;
 
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when it is passed over, instead of staying in it marked. Off by default.</summary>
@@ -3757,6 +3815,8 @@ public partial class SettingsViewModel : ViewModelBase
             MigrateTransitionSettings(_settings);
             PlayPauseFadeEnabled = _settings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = Math.Clamp(_settings.PlayPauseFadeMs, 100, 2000);
+            SkipSilenceEnabled = _settings.SkipSilenceEnabled;
+            SkipSilenceThresholdDb = Math.Clamp(_settings.SkipSilenceThresholdDb, AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax);
             PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(_settings.PlayCountThresholdPercent);
             ImportDroppedMedia = _settings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = _settings.PlaylistShowAlbumHeaders;
@@ -3764,6 +3824,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(_settings.PlaylistNewBadgeDays);
             PlaylistShowAddedColumn = _settings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = _settings.PlaylistShowFavoriteColumn;
+            AlbumShowSongHearts = _settings.AlbumShowSongHearts;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SongTransitionsEnabled = _settings.SongTransitionsEnabled;
             TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
@@ -3877,6 +3938,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
+            ShowStarRatings = _settings.ShowStarRatings;
             ShowBpmColumn = _settings.ShowBpmColumn;
             ShowBitrateColumn = _settings.ShowBitrateColumn;
             ShowSampleRateColumn = _settings.ShowSampleRateColumn;
@@ -3951,6 +4013,8 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
             SidebarAutoHide = _settings.SidebarAutoHide;
+            NewPlaylistsAtTop = _settings.NewPlaylistsAtTop;
+            RemoveEmptyPlaylistFolders = _settings.RemoveEmptyPlaylistFolders;
             LoadSidebarLayout(_settings);
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
@@ -3986,6 +4050,8 @@ public partial class SettingsViewModel : ViewModelBase
             AutoplayEnabled = _settings.AutoplayEnabled;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
             KeepShuffleOn = _settings.KeepShuffleOn;
+            ShowPlaySource = _settings.ShowPlaySource;
+            TitleOpensPlaySource = _settings.TitleOpensPlaySource;
             RemoveMissingFromQueue = _settings.RemoveMissingFromQueue;
             var queueRows = QueueRowLayout.FromSettings(_settings);
             QueueRowLine1 = queueRows.Line1.ToString();
@@ -4388,6 +4454,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
+        _settings.SkipSilenceEnabled = SkipSilenceEnabled;
+        _settings.SkipSilenceThresholdDb = (int)Math.Round(Math.Clamp(SkipSilenceThresholdDb, AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax));
         _settings.PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(PlayCountThresholdPercent);
         _settings.ImportDroppedMedia = ImportDroppedMedia;
         _settings.PlaylistShowAlbumHeaders = PlaylistShowAlbumHeaders;
@@ -4395,6 +4463,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(PlaylistNewBadgeDays);
         _settings.PlaylistShowAddedColumn = PlaylistShowAddedColumn;
         _settings.PlaylistShowFavoriteColumn = PlaylistShowFavoriteColumn;
+        _settings.AlbumShowSongHearts = AlbumShowSongHearts;
         _settings.TransitionStyle = TransitionStyle ?? "Crossfade";
         _settings.SongTransitionStrength = SongTransitionStrength ?? "Balanced";
         _settings.SongTransitionBeatMatch = SongTransitionBeatMatch;
@@ -4494,6 +4563,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowArtworkColumn = ShowArtworkColumn;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
+        _settings.ShowStarRatings = ShowStarRatings;
         _settings.ShowBpmColumn = ShowBpmColumn;
         _settings.ShowBitrateColumn = ShowBitrateColumn;
         _settings.ShowSampleRateColumn = ShowSampleRateColumn;
@@ -4567,6 +4637,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
         _settings.SidebarAutoHide = SidebarAutoHide;
+        _settings.NewPlaylistsAtTop = NewPlaylistsAtTop;
+        _settings.RemoveEmptyPlaylistFolders = RemoveEmptyPlaylistFolders;
         SaveSidebarLayout();
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
@@ -4593,6 +4665,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
         _settings.KeepShuffleOn = KeepShuffleOn;
+        _settings.ShowPlaySource = ShowPlaySource;
+        _settings.TitleOpensPlaySource = TitleOpensPlaySource;
         _settings.RemoveMissingFromQueue = RemoveMissingFromQueue;
         var queueRows = CurrentQueueRowLayout;
         _settings.QueueRowLine1 = queueRows.Line1.ToString();
@@ -4822,6 +4896,10 @@ public partial class SettingsViewModel : ViewModelBase
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
         _player.KeepShuffleOn = KeepShuffleOn;
+        _player.SkipSilenceThresholdDb = SkipSilenceThresholdDb;
+        _player.SkipSilenceEnabled = SkipSilenceEnabled;
+        _player.ShowPlaySource = ShowPlaySource;
+        _player.TitleOpensPlaySource = TitleOpensPlaySource;
         _player.RemoveMissingFromQueue = RemoveMissingFromQueue;
         _player.QueueRowLayout = CurrentQueueRowLayout;
         _player.QueuePanelWidth = QueuePanelWidth;
@@ -5521,6 +5599,24 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnSkipSilenceEnabledChanged(bool value)
+    {
+        if (_player != null) _player.SkipSilenceEnabled = value;
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSkipSilenceThresholdDbChanged(double value)
+    {
+        var clamped = Math.Clamp(Math.Round(value), AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax);
+        if (clamped != value)
+        {
+            SkipSilenceThresholdDb = clamped;
+            return;
+        }
+        if (_player != null) _player.SkipSilenceThresholdDb = value;
+        if (_settingsLoaded) QueueSettingsSave();
+    }
+
     partial void OnPlayPauseFadeMsChanged(double value)
     {
         var clamped = Math.Clamp(value, 100, 2000);
@@ -5570,6 +5666,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPlaylistShowNewBadgeChanged(bool value) { _settings.PlaylistShowNewBadge = value; if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnPlaylistShowAddedColumnChanged(bool value) { _settings.PlaylistShowAddedColumn = value; if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnPlaylistShowFavoriteColumnChanged(bool value) { _settings.PlaylistShowFavoriteColumn = value; if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumShowSongHeartsChanged(bool value) { _settings.AlbumShowSongHearts = value; if (_settingsLoaded) _ = SaveAsync(); }
 
     partial void OnSongTransitionsEnabledChanged(bool value)
     {
@@ -7076,9 +7173,36 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnNewPlaylistsAtTopChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SelectedNewPlaylistPositionOption));
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnRemoveEmptyPlaylistFoldersChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnKeepShuffleOnChanged(bool value)
     {
         if (_player != null) _player.KeepShuffleOn = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnShowPlaySourceChanged(bool value)
+    {
+        if (_player != null) _player.ShowPlaySource = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnTitleOpensPlaySourceChanged(bool value)
+    {
+        if (_player != null) _player.TitleOpensPlaySource = value;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -9024,6 +9148,8 @@ public partial class SettingsViewModel : ViewModelBase
             _playbackBarWidth = null;
             PlayPauseFadeEnabled = defaultSettings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = defaultSettings.PlayPauseFadeMs;
+            SkipSilenceEnabled = defaultSettings.SkipSilenceEnabled;
+            SkipSilenceThresholdDb = defaultSettings.SkipSilenceThresholdDb;
             PlayCountThresholdPercent = defaultSettings.PlayCountThresholdPercent;
             ImportDroppedMedia = defaultSettings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = defaultSettings.PlaylistShowAlbumHeaders;
@@ -9031,9 +9157,11 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistNewBadgeDays = defaultSettings.PlaylistNewBadgeDays;
             PlaylistShowAddedColumn = defaultSettings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = defaultSettings.PlaylistShowFavoriteColumn;
+            AlbumShowSongHearts = defaultSettings.AlbumShowSongHearts;
             ShowArtworkColumn = defaultSettings.ShowArtworkColumn;
             ShowGenreColumn = defaultSettings.ShowGenreColumn;
             ShowRatingColumn = defaultSettings.ShowRatingColumn;
+            ShowStarRatings = defaultSettings.ShowStarRatings;
             ShowBpmColumn = defaultSettings.ShowBpmColumn;
             ShowBitrateColumn = defaultSettings.ShowBitrateColumn;
             ShowSampleRateColumn = defaultSettings.ShowSampleRateColumn;
@@ -9108,6 +9236,8 @@ public partial class SettingsViewModel : ViewModelBase
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
             KeepShuffleOn = defaultSettings.KeepShuffleOn;
+            ShowPlaySource = defaultSettings.ShowPlaySource;
+            TitleOpensPlaySource = defaultSettings.TitleOpensPlaySource;
             RemoveMissingFromQueue = defaultSettings.RemoveMissingFromQueue;
             QueueRowLine1 = defaultSettings.QueueRowLine1;
             QueueRowLine1Extra = defaultSettings.QueueRowLine1Extra;
@@ -9132,6 +9262,8 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             SidebarAutoHide = defaultSettings.SidebarAutoHide;
+            NewPlaylistsAtTop = defaultSettings.NewPlaylistsAtTop;
+            RemoveEmptyPlaylistFolders = defaultSettings.RemoveEmptyPlaylistFolders;
             LoadSidebarLayout(defaultSettings);
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;

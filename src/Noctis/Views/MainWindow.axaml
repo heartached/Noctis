@@ -501,7 +501,8 @@
                                         <MenuItem Header="{loc:T Main.Favorite}" Command="{Binding PageSortCommand}" CommandParameter="IsFavorite">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=IsFavorite}"/></MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="{loc:T Main.Rating}" Command="{Binding PageSortCommand}" CommandParameter="Rating">
+                                        <MenuItem Header="{loc:T Main.Rating}" Command="{Binding PageSortCommand}" CommandParameter="Rating"
+                                                  IsVisible="{Binding ShowStarRatings}">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Rating}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Year}" Command="{Binding PageSortCommand}" CommandParameter="Year">
@@ -1213,6 +1214,30 @@
                                        IsVisible="{Binding !!Player.UpNext.Count}" />
                         </StackPanel>
                         </DockPanel>
+
+                        <!-- Discord 11-24 (sina): "Playing from …", the page the queue was started
+                             from, as a link back to it (the song shown there). Here and not on the
+                             island, which has no room for a third line. Settings › Player ›
+                             Show Where Music Plays From. -->
+                        <Button DockPanel.Dock="Top"
+                                x:Name="QueuePlayingFromButton"
+                                Classes="queue-link"
+                                Margin="17,-4,16,8"
+                                HorizontalAlignment="Left"
+                                Command="{Binding Player.OpenPlaySourceCommand}"
+                                IsVisible="{Binding Player.HasPlaySource}"
+                                ToolTip.Tip="{Binding Player.PlayingFromText}"
+                                AutomationProperties.Name="{Binding Player.PlayingFromAccessibleName, FallbackValue={x:Static vm:PlayerViewModel.PlayingFromFallbackName}}">
+                            <Border Classes="artist-text-hover" CornerRadius="3" Padding="3,1">
+                                <TextBlock Text="{Binding Player.PlayingFromText}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Opacity="0.6"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1"
+                                           Foreground="{DynamicResource QueueDrawerForeground}" />
+                            </Border>
+                        </Button>
 
                         <!-- Accent action pills: Close dismisses the popup, Clear empties the
                              queue (same confirm-guarded handler the old ghost button used).

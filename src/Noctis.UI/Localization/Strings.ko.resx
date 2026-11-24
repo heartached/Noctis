@@ -332,6 +332,12 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Noctis를 열 때 표시되는 페이지입니다. 숨긴 페이지를 고르면 홈이 열립니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>페이지</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>사이드바의 페이지를 표시하거나 숨기고 순서를 바꿉니다. 설정은 항상 표시됩니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>새 재생목록 및 폴더 위치</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>사이드바 목록에서 새 재생목록과 폴더가 표시될 위치입니다.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>맨 위</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>맨 아래</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>빈 폴더 제거</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>마지막 재생목록을 다른 곳으로 옮기거나 삭제하면 폴더도 제거합니다. 새 폴더는 재생목록이 한 번 들어갈 때까지 유지됩니다.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>위로 이동</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>아래로 이동</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">
@@ -1358,6 +1364,16 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   </data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>셔플 유지</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>셔플이 켜져 있으면 앨범, 재생목록, 곡을 재생해도 켜진 상태로 새 음악을 섞어서 재생합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>무음 건너뛰기</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>각 곡을 첫 소리부터 재생하고 마지막 소리 뒤에 다음 곡으로 넘어갑니다. 파일은 바뀌지 않으며, 곡에 설정한 시작·정지 시간이 우선합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>ffmpeg가 필요합니다. 설치하거나 보조 프로그램에서 경로를 지정하세요.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>무음 기준</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>이보다 작은 소리는 무음으로 봅니다. 낮추면 조용한 페이드아웃을 남기고, 높이면 잡음 등 더 많이 잘라냅니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0}에서 재생 중</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>재생 위치 표시</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>대기열에 음악을 재생하기 시작한 앨범, 재생목록 또는 페이지가 표시됩니다. 클릭하면 그곳의 노래로 돌아갑니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>노래 제목을 누르면 재생 위치 열기</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>플레이어 아일랜드에서 노래 제목을 클릭하면 앨범 대신 노래가 재생되는 페이지의 해당 노래로 이동합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>없는 노래</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>대기열에 있는 노래의 파일이 없으면 Noctis가 건너뜁니다. 그 노래를 어떻게 처리할지 선택하세요.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>없음으로 표시</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1815,6 +1831,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>각 트랙이 추가된 날짜를 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>즐겨찾기 열</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>각 행에 하트를 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>앨범 페이지</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>모든 곡에 하트 표시</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>곡의 하트를 클릭해 즐겨찾기에 추가하거나 제거합니다. 끄면 즐겨찾기한 곡에만 하트가 표시됩니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve">
     <value>라이브러리 스캔</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -9136,6 +9155,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>필터 메뉴에서 모든 아티스트를 선택하거나 이름을 검색하세요</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>작은 아티스트 숨기기</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>곡이 몇 개뿐인 아티스트를 아티스트 페이지에서 숨깁니다. 검색으로는 계속 찾을 수 있습니다.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>별점 표시</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>곡에 별점을 매기지 않는다면 끄세요. 앨범 페이지, 곡 목록, 메뉴에서 별을 숨깁니다. 매긴 별점은 그대로 유지됩니다.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>다음보다 곡이 적은 아티스트 숨기기</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>마우스를 올릴 때까지 사이드바 숨기기</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>사이드바를 완전히 숨겨 페이지가 전체 너비를 사용합니다. 포인터를 창의 왼쪽 가장자리로 옮기면 나타납니다.</value><comment>Description under Hide sidebar until hover</comment></data>

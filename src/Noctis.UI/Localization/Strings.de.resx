@@ -149,6 +149,12 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Die Seite, mit der Noctis öffnet. Eine ausgeblendete Seite fällt auf Start zurück.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Seiten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Seiten in der Seitenleiste ein- und ausblenden und neu anordnen. Einstellungen bleibt immer sichtbar.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>Position neuer Playlists und Ordner</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Wo neue Playlists und Ordner in der Liste der Seitenleiste erscheinen.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Oben</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Unten</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Leere Ordner entfernen</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Einen Ordner entfernen, wenn seine letzte Playlist herausverschoben oder gelöscht wird. Ein neuer Ordner bleibt, bis er eine Playlist enthalten hat.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Nach oben</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Nach unten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Album-Editionen zusammenfassen</value><comment>Text in SettingsView.axaml</comment></data>
@@ -524,6 +530,16 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Gespielte Songs bleiben oben in der Warteschlange, über dem laufenden Song, und der letzte Song bleibt geladen, wenn die Warteschlange endet.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Zufallswiedergabe beibehalten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Wenn die Zufallswiedergabe an ist, bleibt sie beim Abspielen eines Albums, einer Playlist oder eines Songs an und mischt die neue Musik.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>Stille überspringen</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Startet jeden Song beim ersten Ton und geht nach dem letzten Ton weiter. Deine Dateien bleiben unverändert, und Start- oder Stoppzeiten, die du für einen Song festgelegt hast, haben Vorrang.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>Benötigt ffmpeg: installiere es oder gib den Pfad unter „Hilfsprogramme“ an.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>Stillepegel</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Alles, was leiser ist, gilt als Stille. Niedriger behält leise Ausblendungen, höher schneidet mehr weg, etwa Rauschen.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Wiedergabe aus {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Anzeigen, woher die Musik kommt</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Die Warteschlange zeigt das Album, die Playlist oder die Seite, von der die Musik gestartet wurde. Ein Klick darauf führt dort zurück zum Song.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Songtitel öffnet die Wiedergabequelle</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Ein Klick auf den Songtitel in der Player-Insel führt zum Song auf der Seite, von der er abgespielt wird, statt zu seinem Album.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Fehlende Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Wenn die Datei eines angereihten Songs verschoben oder gelöscht wurde, springt die Wiedergabe zum nächsten abspielbaren Song. Wähle, was mit dem fehlenden Song passiert.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Als fehlend markieren</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -694,6 +710,9 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Datum zeigen, an dem jeder Titel hinzukam.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Favoriten-Spalte</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Das Herz an jeder Zeile zeigen. Aus: Über Zeilenmenü oder Songseite favorisieren.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>Albumseite</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>Herz an jedem Song</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>Klicke auf das Herz eines Songs, um ihn zu den Favoriten hinzuzufügen oder daraus zu entfernen. Aus: Herzen nur bei Favoriten.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Bibliotheksscan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Neue Titel finden und Suche aktualisieren.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Bibliothek scannen</value><comment>Text in SettingsView.axaml</comment></data>
@@ -4140,6 +4159,8 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Wähle im Filtermenü „Alle Künstler“ oder suche nach einem Namen</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Kleine Künstler ausblenden</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Blendet Künstler mit nur wenigen Songs auf der Künstlerseite aus. Die Suche findet sie weiterhin.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>Sternebewertungen anzeigen</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>Ausschalten, wenn du keine Songs bewertest. Blendet die Sterne auf Albumseiten, in Songlisten und Menüs aus. Deine Bewertungen bleiben erhalten.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Künstler ausblenden mit weniger als</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Seitenleiste bis zum Überfahren ausblenden</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Blendet die Seitenleiste ganz aus, damit Seiten die volle Breite nutzen. Bewege den Zeiger an den linken Fensterrand, um sie einzublenden.</value><comment>Description under Hide sidebar until hover</comment></data>
