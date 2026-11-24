@@ -1445,8 +1445,11 @@
 
             <!-- (Source / Save / Alternate buttons moved to left panel bottom) -->
 
-            <!-- Follow Button -->
-            <Button Classes="pill-btn"
+            <!-- Follow Button. Its bottom margin is set in code (UpdateFollowPillMargin): the
+                 wide-mode 1.1x zoom grows this panel from its top-left corner (the origin
+                 "0.5,0.5" is half a pixel, not the centre), which pushed a 30px margin past the
+                 window's bottom edge, so the pill never showed. -->
+            <Button x:Name="FollowButton" Classes="pill-btn"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Margin="0,0,0,30"
