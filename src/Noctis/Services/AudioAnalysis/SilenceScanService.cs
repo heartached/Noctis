@@ -65,7 +65,7 @@ public static class SilenceEdges
 /// <summary>
 /// Skip Silence (Discord, Spark 11-23: "many of my songs have unnecessary blank starts and
 /// ends"): finds the silence at both ends of a song by decoding its first and last
-/// <see cref="EdgeSeconds"/> seconds with ffmpeg, out of process and at below-normal priority
+/// <see cref="EdgeSeconds"/> seconds with ffmpeg (or libVLC without it), out of process and at below-normal priority
 /// (the same idiom as the BPM/key analysis). Files are never changed. Results are kept in
 /// memory per file (size + modified time) and threshold, so a song is scanned once per session.
 /// </summary>
@@ -81,6 +81,8 @@ public sealed class SilenceScanService
     private const int MaxEntries = 4096;
 
     private readonly Func<string?> _ffmpegPath;
+    // Without ffmpeg (Linux builds don't bundle it): libVLC, which every build ships.
+    private readonly Func<string, TimeSpan, bool, CancellationToken, Task<List<float>?>>? _fallbackDecoder;
     private readonly object _gate = new();
     private readonly Dictionary<string, SilenceBounds> _cache = new(StringComparer.Ordinal);
     private readonly Queue<string> _order = new();
@@ -88,9 +90,18 @@ public sealed class SilenceScanService
     // One ffmpeg at a time: the scans are tiny, and a burst (a queue change) must not fan out.
     private readonly SemaphoreSlim _decodeGate = new(1, 1);
 
-    public SilenceScanService(Func<string?> ffmpegPath) => _ffmpegPath = ffmpegPath;
+    public SilenceScanService(Func<string?> ffmpegPath,
+        Func<string, TimeSpan, bool, CancellationToken, Task<List<float>?>>? fallbackDecoder = null)
+    {
+        _ffmpegPath = ffmpegPath;
+        _fallbackDecoder = fallbackDecoder;
+    }
 
-    public bool IsAvailable => _ffmpegPath() != null;
+    /// <summary>The app's own decoder: libVLC writing the song's ends to a temporary WAV.</summary>
+    public static Task<List<float>?> DecodeWithVlc(string path, TimeSpan duration, bool fromEnd, CancellationToken ct) =>
+        VlcEdgeDecoder.DecodePeaksAsync(path, duration, fromEnd, EdgeSeconds, ct);
+
+    public bool IsAvailable => _ffmpegPath() != null || _fallbackDecoder != null;
 
     /// <summary>A file the scan can read: a local song file that exists.</summary>
     public static bool CanScan(Track track) =>
@@ -115,13 +126,14 @@ public sealed class SilenceScanService
         lock (_gate)
         {
             if (_inFlight.TryGetValue(flightKey, out var running)) return running;
-            var task = Task.Run(() => RunScanAsync(path, flightKey, thresholdDb, urgent, ct), ct);
+            var duration = track.Duration;
+            var task = Task.Run(() => RunScanAsync(path, duration, flightKey, thresholdDb, urgent, ct), ct);
             _inFlight[flightKey] = task;
             return task;
         }
     }
 
-    private async Task<SilenceBounds> RunScanAsync(string path, string flightKey, double thresholdDb, bool urgent, CancellationToken ct)
+    private async Task<SilenceBounds> RunScanAsync(string path, TimeSpan duration, string flightKey, double thresholdDb, bool urgent, CancellationToken ct)
     {
         try
         {
@@ -136,20 +148,24 @@ public sealed class SilenceScanService
             try
             {
                 var ffmpeg = _ffmpegPath();
-                if (ffmpeg != null)
+                if (ffmpeg != null || _fallbackDecoder != null)
                 {
                     if (!urgent) await _decodeGate.WaitAsync(ct).ConfigureAwait(false);
                     try
                     {
                         var threshold = SilenceEdges.ThresholdToLinear(thresholdDb);
                         var sw = Stopwatch.StartNew();
-                        var head = await DecodePeaksAsync(ffmpeg, path, fromEnd: false, ct).ConfigureAwait(false);
-                        var tail = await DecodePeaksAsync(ffmpeg, path, fromEnd: true, ct).ConfigureAwait(false);
+                        var head = ffmpeg != null
+                            ? await DecodePeaksAsync(ffmpeg, path, fromEnd: false, ct).ConfigureAwait(false)
+                            : await _fallbackDecoder!(path, duration, false, ct).ConfigureAwait(false);
+                        var tail = ffmpeg != null
+                            ? await DecodePeaksAsync(ffmpeg, path, fromEnd: true, ct).ConfigureAwait(false)
+                            : await _fallbackDecoder!(path, duration, true, ct).ConfigureAwait(false);
                         result = new SilenceBounds(
                             head is null ? TimeSpan.Zero : SilenceEdges.Leading(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(head), threshold),
                             tail is null ? TimeSpan.Zero : SilenceEdges.Trailing(System.Runtime.InteropServices.CollectionsMarshal.AsSpan(tail), threshold));
                         DebugLogger.Info(DebugLogger.Category.Playback, "SkipSilence.Scan",
-                            $"file={Path.GetFileName(path)}, thresholdDb={thresholdDb:0}, leadingMs={result.Leading.TotalMilliseconds:F0}, " +
+                            $"file={Path.GetFileName(path)}, decoder={(ffmpeg != null ? "ffmpeg" : "vlc")}, thresholdDb={thresholdDb:0}, leadingMs={result.Leading.TotalMilliseconds:F0}, " +
                             $"trailingMs={result.Trailing.TotalMilliseconds:F0}, headWindows={head?.Count ?? -1}, tailWindows={tail?.Count ?? -1}, ms={sw.ElapsedMilliseconds}");
                     }
                     finally

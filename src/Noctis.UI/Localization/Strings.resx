@@ -533,7 +533,6 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>When Shuffle is on, playing an album, playlist or song keeps it on and shuffles the new music.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>Skip Silence</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Starts each song at its first sound and moves on after its last one. Your files aren't changed, and start or stop times you set for a song come first.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>Needs ffmpeg: install it, or set its path under Helper programs.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Silence Level</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Anything quieter than this counts as silence. Lower keeps quiet fade-outs; higher cuts more, like hiss or room noise.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Playing from {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>

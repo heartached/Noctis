@@ -1366,7 +1366,6 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>عندما يكون التشغيل العشوائي مفعّلًا، يبقى مفعّلًا عند تشغيل ألبوم أو قائمة تشغيل أو أغنية، وتُشغَّل الموسيقى الجديدة عشوائيًا.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>تخطي الصمت</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>تبدأ كل أغنية من أول صوت فيها وتنتقل إلى التالية بعد آخر صوت. لا تتغير ملفاتك، وتبقى أوقات البدء والإيقاف التي تحددها لأغنية هي الأولى.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>يتطلب ffmpeg: ثبّته أو حدّد مساره في البرامج المساعدة.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>مستوى الصمت</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>كل ما هو أهدأ من هذا يُعدّ صمتًا. القيمة الأدنى تُبقي التلاشي الهادئ، والأعلى تقطع أكثر مثل التشويش.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>يُشغَّل من {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>

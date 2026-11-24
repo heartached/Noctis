@@ -5222,9 +5222,6 @@
                             <TextBlock Text="{loc:T Settings.SkipSilence}" FontSize="15" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.SkipSilenceHint}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                            <TextBlock Text="{loc:T Settings.SkipSilenceNeedsFfmpeg}"
-                                       IsVisible="{Binding SkipSilenceNeedsFfmpeg}"
-                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
                         </StackPanel>
                         <controls:LottieToggle Grid.Column="1"
                                               AutomationProperties.Name="{loc:T Settings.SkipSilence}"

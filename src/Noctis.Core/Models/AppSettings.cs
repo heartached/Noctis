@@ -393,7 +393,7 @@ public class AppSettings : IJsonOnDeserializing
     public int PlayPauseFadeMs { get; set; } = 300;
 
     /// <summary>Skip Silence (Discord, Spark 11-23): a song starts at its first sound and ends
-    /// after its last one; the silence at both ends is measured in the background (ffmpeg),
+    /// after its last one; the silence at both ends is measured in the background (ffmpeg or libVLC),
     /// files are never changed. Off by default.</summary>
     public bool SkipSilenceEnabled { get; set; }
 
