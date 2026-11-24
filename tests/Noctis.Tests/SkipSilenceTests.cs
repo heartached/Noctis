@@ -301,6 +301,33 @@ public class SkipSilenceTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task ALateScan_WaitsForThePlayerToKnowTheLength_BeforeJumping()
+    {
+        // Live 11-24: a fast scan landed while the song was still opening; the player drops a
+        // seek it can't place yet, so the song jumped to 2.9 s and went back to 0:00.
+        var (player, vm) = NewPlayer();
+        var a = FileTrack("a");
+        Play(vm, a);
+        player.Duration = TimeSpan.Zero; // still opening
+        var generation = (int)typeof(PlayerViewModel)
+            .GetField("_silencePlayGeneration", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(vm)!;
+        var scanned = typeof(PlayerViewModel).GetMethod("OnSilenceScanned", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        scanned.Invoke(vm, new object[] { a, generation, true, vm.SkipSilenceThresholdDb,
+            new SilenceBounds(TimeSpan.FromSeconds(2.5), TimeSpan.Zero) });
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(player.Seeks);
+
+        player.Duration = a.Duration; // opened
+        for (var i = 0; i < 20 && player.Seeks.Count == 0; i++)
+        {
+            await Task.Delay(50);
+            Dispatcher.UIThread.RunJobs();
+        }
+        Assert.Equal(new[] { TimeSpan.FromSeconds(2.5) }, player.Seeks);
+    }
+
+    [AvaloniaFact]
     public void AStartTimeSetByHand_Wins()
     {
         var (player, vm) = NewPlayer();
