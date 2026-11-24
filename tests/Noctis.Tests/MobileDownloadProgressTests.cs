@@ -36,6 +36,20 @@ public class MobileDownloadProgressTests
         public void Resume() => Resumed?.Invoke(this, EventArgs.Empty);
     }
 
+    private sealed class FakeWakeup : IDownloadWakeup
+    {
+        public List<string> Calls { get; } = new();
+        public void Schedule(bool wifiOnly, TimeSpan delay) => Calls.Add($"schedule|{(wifiOnly ? "wifi" : "any")}|{delay.TotalMinutes}");
+        public void Finish() => Calls.Add("finish");
+        public void Cancel() => Calls.Add("cancel");
+        public event EventHandler? Due;
+        public event EventHandler? Stopped;
+        /// <summary>The system runs the job (network up).</summary>
+        public void Run() => Due?.Invoke(this, EventArgs.Empty);
+        /// <summary>The system stops the job (time limit, network gone).</summary>
+        public void Stop() => Stopped?.Invoke(this, EventArgs.Empty);
+    }
+
     private static Track RemoteSong(string title)
     {
         var t = MobileFixtures.Song(title);
@@ -44,7 +58,7 @@ public class MobileDownloadProgressTests
     }
 
     private static ShellViewModel ShellWith(MobileFixtures.Rig rig, INoctisAccountService account, IDownloadNotifier? notifier = null,
-        IDownloadKeeper? keeper = null) =>
+        IDownloadKeeper? keeper = null, IDownloadWakeup? wakeup = null) =>
         new(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
         {
             Account = account,
@@ -52,6 +66,7 @@ public class MobileDownloadProgressTests
             TintFactory = rig.Shell.TintFactory,
             DownloadNotifier = notifier,
             DownloadKeeper = keeper,
+            DownloadWakeup = wakeup,
         };
 
     /// <summary>Downloads stopped with the app in the background and nothing playing (Android froze
@@ -304,6 +319,219 @@ public class MobileDownloadProgressTests
         await Task.Delay(50);
 
         Assert.Empty(account.DownloadCalls);
+    }
+
+    /// <summary>Wi-Fi only on mobile data with the app in the background: the songs left wait for a
+    /// run on Wi-Fi (scheduled, nothing fails). When the system runs it, the app syncs and resumes
+    /// the songs still asked for, read again (one removed meanwhile is left out), in the background
+    /// under the run, which ends with them; nothing waits, so nothing stays scheduled.</summary>
+    [Fact]
+    public async Task Wakeup_WaitingForWifiInTheBackground_RunOnWifiResumesTheSongsLeft()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), WaitsForWifi = true, WifiOnly = true };
+        account.Unfinished.AddRange(new[] { a, b });
+        var keeper = new FakeKeeper();
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), keeper, wakeup);
+        shell.IsSuspended = true;   // a process the job started: no activity on screen
+
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => wakeup.Calls.Count == 1);
+        Assert.Equal(new[] { "schedule|wifi|0" }, wakeup.Calls);
+        Assert.Empty(account.DownloadCalls);
+
+        account.WaitsForWifi = false;   // on Wi-Fi
+        account.Unfinished.Remove(b);   // removed meanwhile
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 3);
+
+        Assert.Equal(2, account.Syncs);
+        Assert.Equal(new[] { a.Id }, account.DownloadCalls.Single().Select(t => t.Id));
+        Assert.Equal(new[] { "schedule|wifi|0", "finish", "cancel" }, wakeup.Calls);
+    }
+
+    /// <summary>A run that still finds mobile data (the setting turned on meanwhile) resumes nothing
+    /// and asks for one on Wi-Fi.</summary>
+    [Fact]
+    public async Task Wakeup_RunOnMobileDataWithWifiOnly_FinishesAndWaitsForWifi()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        account.Unfinished.Add(a);
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        shell.IsSuspended = true;
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => wakeup.Calls.Count == 1);
+        Assert.Equal("schedule|any|0", wakeup.Calls[0]);
+
+        account.WaitsForWifi = true;
+        account.WifiOnly = true;
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 3);
+
+        Assert.Empty(account.DownloadCalls);
+        Assert.Equal(new[] { "schedule|any|0", "finish", "schedule|wifi|0" }, wakeup.Calls);
+    }
+
+    /// <summary>Downloads started from a tap schedule a watch run (an ended process has them resumed
+    /// then); a watch run that finds them still going under the keeper ends and watches again; all
+    /// landed, nothing stays scheduled.</summary>
+    [Fact]
+    public async Task Wakeup_WatchesRunningDownloads_CancelledWhenAllLanded()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        var gate = new TaskCompletionSource();
+
+        var run = shell.Downloads!.RunAsync("One", new[] { a }, () => gate.Task);
+        await Until(() => wakeup.Calls.Count == 1);
+        Assert.Equal(new[] { "schedule|any|15" }, wakeup.Calls);
+
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 3);
+        Assert.Equal(new[] { "schedule|any|15", "finish", "schedule|any|15" }, wakeup.Calls);
+
+        gate.SetResult();
+        await run;
+        Assert.Equal("cancel", wakeup.Calls.Last());
+        Assert.Equal(4, wakeup.Calls.Count);
+    }
+
+    /// <summary>The system stops a run mid-way (its time limit, Wi-Fi gone): the downloads it held
+    /// pause (finished files kept), the songs left are scheduled again, and the next run goes on
+    /// with them.</summary>
+    [Fact]
+    public async Task Wakeup_StoppedMidRun_PausesAndSchedulesTheRest()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), DownloadGate = new TaskCompletionSource() };
+        account.Unfinished.AddRange(new[] { a, b, c });
+        account.OnPause = () => account.DownloadGate?.TrySetResult();
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        shell.IsSuspended = true;
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => wakeup.Calls.Count == 1);
+
+        wakeup.Run();
+        await Until(() => account.DownloadCalls.Count == 1);
+        account.DownloadedIds.Add(a.Id);   // landed before the stop
+        wakeup.Stop();
+        await Until(() => wakeup.Calls.Count == 2);
+
+        Assert.Equal(1, account.PauseCalls);
+        Assert.Equal(new[] { "schedule|any|0", "schedule|any|0" }, wakeup.Calls);
+
+        account.DownloadGate = null;
+        account.Unfinished.Remove(a);
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 4);
+
+        Assert.Equal(new[] { b.Id, c.Id }, account.DownloadCalls[1].Select(t => t.Id));
+        Assert.Equal(new[] { "finish", "cancel" }, wakeup.Calls.Skip(2));
+    }
+
+    /// <summary>Signed out while songs wait: the run is cancelled and nothing is scheduled again; a
+    /// run the system had started already resumes nothing; a start signed out cancels a left one.</summary>
+    [Fact]
+    public async Task Wakeup_SignedOut_NothingScheduled()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), WaitsForWifi = true, WifiOnly = true };
+        account.Unfinished.Add(a);
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => wakeup.Calls.Count == 1);
+
+        await account.SignOutAsync(removeDownloads: false);
+        account.WaitsForWifi = false;
+        wakeup.Run();
+        await Task.Delay(50);
+
+        Assert.Empty(account.DownloadCalls);
+        Assert.DoesNotContain(wakeup.Calls.Skip(1), c => c.StartsWith("schedule"));
+        Assert.Equal("cancel", wakeup.Calls.Last());
+
+        var otherWakeup = new FakeWakeup();
+        await ShellWith(rig, new FakeAccount(), wakeup: otherWakeup).InitializeAsync();
+        Assert.Equal(new[] { "cancel" }, otherWakeup.Calls);
+    }
+
+    /// <summary>Away from home: the tap's download cannot reach the computer. Nothing fails: the
+    /// banner says it waits for the computer, and the wakeup is scheduled for Wi-Fi (the phone is on
+    /// mobile data). A run on Wi-Fi whose sync still finds no computer checks again in 15 minutes;
+    /// once it answers the song downloads and nothing stays scheduled.</summary>
+    [Fact]
+    public async Task Wakeup_ComputerUnreachable_SongsWait_RetriedOnWifiThenEvery15Minutes()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), IsOnWifiNow = false };
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+
+        account.DownloadError = new NoctisServerException(NoctisErrorKind.Unreachable, "away");
+        await shell.DownloadTracksAsync(new[] { a });
+        await Until(() => wakeup.Calls.Count == 2);
+
+        Assert.Equal(Loc.T("Mobile.Download.WaitingForComputer"), shell.Player.Notice);
+        Assert.Equal(new[] { "schedule|any|15", "schedule|wifi|0" }, wakeup.Calls);
+        shell.IsSuspended = true;   // Home key
+
+        // Home Wi-Fi, but the computer is asleep.
+        account.IsOnWifiNow = true;
+        account.SyncError = new NoctisServerException(NoctisErrorKind.Unreachable, "asleep");
+        account.Unfinished.Add(a);
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 4);
+        Assert.Equal(new[] { "finish", "schedule|any|15" }, wakeup.Calls.Skip(2));
+
+        account.SyncError = null;
+        account.DownloadError = null;
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 6);
+
+        Assert.Equal(2, account.DownloadCalls.Count);
+        Assert.True(account.IsDownloaded(a));
+        Assert.Equal(new[] { "finish", "cancel" }, wakeup.Calls.Skip(4));
+    }
+
+    /// <summary>The batch's last report says songs wait (the computer out of reach, or Wi-Fi gone with
+    /// Wi-Fi only on): the card says so instead of "Downloaded" or a failure.</summary>
+    [Theory]
+    [InlineData(false, "Mobile.Download.WaitingForComputer")]
+    [InlineData(true, "Mobile.Download.WaitingForWifi")]
+    public void Notification_SongsWaiting_SaysWhatTheyWaitFor(bool forWifi, string key)
+    {
+        using var rig = MobileFixtures.MakeRig(Array.Empty<Track>());
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var shell = ShellWith(rig, account, notifier);
+        _ = shell.Downloads;
+
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 0, 0, 0));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 1, 0, 0, Waiting: 2, WaitsForWifi: forWifi));
+
+        Assert.Equal($"finished|{Loc.T(key)}|{Loc.Plural("Mobile.Download.Done", 1)}", notifier.Calls.Last());
     }
 
     private static async Task Until(Func<bool> condition)

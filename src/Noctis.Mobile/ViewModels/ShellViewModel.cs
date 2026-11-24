@@ -211,18 +211,30 @@ public sealed partial class ShellViewModel : ObservableObject
     /// tests unless injected, and downloads then run only while the process does.</summary>
     public IDownloadKeeper? DownloadKeeper { get; init; }
 
+    /// <summary>Runs the app again for downloads left waiting, even in the background (Android: a
+    /// JobScheduler job); null in tests unless injected, and they then wait for the app in front.</summary>
+    public IDownloadWakeup? DownloadWakeup { get; init; }
+
     private DownloadActivity? _downloads;
 
     /// <summary>Where the downloads from the computer stand (album page row, Account page,
     /// notification); null without an account. Made on first use, after the host's init values.</summary>
     public DownloadActivity? Downloads => _account == null ? null
-        : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper) { IsInFront = () => !IsSuspended };
+        : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper, DownloadWakeup)
+        {
+            IsInFront = () => !IsSuspended,
+            ResumeAfterSync = ResumeForWakeupAsync,
+        };
 
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
 
     /// <summary>The sync started by <see cref="InitializeAsync"/> when signed in; tests await it.</summary>
     internal Task StartupSync { get; private set; } = Task.CompletedTask;
+
+    /// <summary>The start's resume of unfinished downloads (done at once when signed out), set by
+    /// <see cref="InitializeAsync"/>: a wakeup run in a process the job started waits for it.</summary>
+    private readonly TaskCompletionSource<Task> _startupResume = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
@@ -1790,8 +1802,11 @@ public sealed partial class ShellViewModel : ObservableObject
         catch (NoctisServerException ex)
         {
             DebugLog.Write("Account", $"Download failed: {ex.Kind}");
-            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen.
-            Player.Notice = AccountPageViewModel.Describe(ex.Kind, signedIn: true);
+            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen. Out
+            // of the computer's reach the songs wait for it (DownloadActivity), not failed.
+            Player.Notice = ex.Kind == NoctisErrorKind.Unreachable
+                ? Loc.T("Mobile.Download.WaitingForComputer")
+                : AccountPageViewModel.Describe(ex.Kind, signedIn: true);
         }
         catch (Exception ex)
         {
@@ -1855,7 +1870,13 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             var sync = SyncOnStartAsync(account);
             StartupSync = sync;
-            _ = ResumeUnfinishedDownloadsAsync(sync);
+            _startupResume.TrySetResult(ResumeUnfinishedDownloadsAsync(sync));
+        }
+        else
+        {
+            _startupResume.TrySetResult(Task.CompletedTask);
+            // Signed out: a run left scheduled has nothing to resume.
+            DownloadWakeup?.Cancel();
         }
         // Home's Last.fm sections (cached for 12 h: normally no request).
         _ = LastFm.RefreshAsync(force: false);
@@ -1882,20 +1903,39 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>
     /// Downloads the app ended in the middle of go on by themselves (DownloadActivity.ResumeUnfinishedAsync),
     /// after the startup sync: long after the first frame, and with the catalog saying which songs the
-    /// computer still has. A computer that did not answer would fail every song: they wait for the
-    /// next start instead.
+    /// computer still has. A computer that did not answer would fail every song: they wait for it
+    /// instead (DownloadActivity.WaitForComputerAsync).
     /// </summary>
     private async Task ResumeUnfinishedDownloadsAsync(Task<bool> sync)
     {
         try
         {
-            if (!await sync || Downloads is not { } downloads) return;
-            await downloads.ResumeUnfinishedAsync();
+            if (Downloads is not { } downloads) return;
+            // Not answering: the songs wait for it (a run on Wi-Fi, or every 15 minutes there).
+            if (!await sync) await downloads.WaitForComputerAsync();
+            else await downloads.ResumeUnfinishedAsync();
         }
         catch (Exception ex)
         {
             DebugLog.Write("Account", $"Resuming downloads failed: {ex.GetType().Name}");
         }
+    }
+
+    /// <summary>
+    /// The wakeup ran with nothing downloading (DownloadActivity): in a process the job itself started,
+    /// the start's own sync and resume (the app is not on screen, so the downloads it resumes run under
+    /// the job); later, a sync now, so the catalog says which songs the computer still has, then the
+    /// songs still asked for. A computer that does not answer resumes nothing: they wait for it, as at start.
+    /// </summary>
+    private async Task ResumeForWakeupAsync()
+    {
+        var startup = await _startupResume.Task;
+        if (!startup.IsCompleted)
+        {
+            await startup;
+            return;
+        }
+        if (Account is { IsSignedIn: true } account) await ResumeUnfinishedDownloadsAsync(SyncOnStartAsync(account));
     }
 
     /// <summary>Back in front: downloads waiting for the app (or for Wi-Fi) are looked at again.</summary>

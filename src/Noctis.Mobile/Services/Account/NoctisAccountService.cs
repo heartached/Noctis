@@ -2138,10 +2138,14 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public async Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
     {
         var ids = tracks.Where(IsRemote).Select(t => t.Id).Distinct().Where(id => !_downloaded.ContainsKey(id)).ToList();
+        foreach (var id in ids) _withdrawn.TryRemove(id, out _);   // asked for again: no longer removed
         if (ids.Count > 0 && IsOnWifi is { } onWifi && !onWifi()
             && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly)
+        {
+            // Asked for all the same: they wait for Wi-Fi and go on by themselves there (DownloadActivity).
+            KeepAskedFor(ids);
             throw new NoctisServerException(NoctisErrorKind.WifiRequired, "Downloads are set to Wi-Fi only.");
-        foreach (var id in ids) _withdrawn.TryRemove(id, out _);   // asked for again: no longer removed
+        }
         await RunDownloadsAsync(ids, ct).ConfigureAwait(false);
     }
 
@@ -2162,6 +2166,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
 
     public async Task<bool> DownloadsWaitForWifiAsync() =>
         IsOnWifi is { } onWifi && !onWifi() && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
+
+    public bool IsOnWifiNow => IsOnWifi?.Invoke() ?? true;
+
+    public async Task<bool> DownloadsWifiOnlyAsync() =>
+        (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
 
     public async Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync()
     {
@@ -2221,6 +2230,17 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         {
             var asked = UnfinishedLocked();
             foreach (var id in ids) asked[id] = asked.GetValueOrDefault(id) + 1;
+            SaveUnfinishedLocked();
+        }
+    }
+
+    /// <summary>Asked for but not started (Wi-Fi only on mobile data): listed for the run on Wi-Fi.</summary>
+    private void KeepAskedFor(List<Guid> ids)
+    {
+        lock (_unfinishedGate)
+        {
+            var asked = UnfinishedLocked();
+            foreach (var id in ids) asked.TryAdd(id, 0);
             SaveUnfinishedLocked();
         }
     }
@@ -2305,6 +2325,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         HoldUnfinished(ids);
         RaiseDownloadProgress();
         NoctisServerException? fatal = null;
+        // The computer out of reach, or Wi-Fi gone with Wi-Fi only on: the batch waits, nobody failed.
+        NoctisServerException? waitFor = null;
+        var dropped = new ConcurrentDictionary<Guid, byte>();
         int done = 0, failed = 0, missing = 0;
 
         async Task Worker()
@@ -2335,7 +2358,26 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                     catch (OperationCanceledException) when (token.IsCancellationRequested) { }
                     // Remove Download on this song mid-transfer: stopped, neither done nor failed.
                     catch (Exception) when (song.IsCancellationRequested || _withdrawn.ContainsKey(id)) { }
-                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull or NoctisErrorKind.WifiRequired)
+                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.Unreachable or NoctisErrorKind.WifiRequired)
+                    {
+                        if (ex.Kind == NoctisErrorKind.Unreachable && await ComputerAnswersAsync(client, token).ConfigureAwait(false))
+                        {
+                            // The computer answers: this song alone stalled. It fails, the batch carries on.
+                            dropped.TryAdd(id, 0);
+                            Interlocked.Increment(ref _dlFailed);
+                            Interlocked.Increment(ref failed);
+                            DebugLog.Write("Account", "download failed: stalled");
+                        }
+                        else
+                        {
+                            // Away from home, the computer asleep, the connection gone, Wi-Fi gone: not this
+                            // song's failure. The batch stops, its songs left stay asked for (downloads.json),
+                            // and the next run (the wakeup, the app's next start or return) goes on with them.
+                            Interlocked.CompareExchange(ref waitFor, ex, null);
+                            try { linked.Cancel(); } catch (ObjectDisposedException) { }
+                        }
+                    }
+                    catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.SignedOut or NoctisErrorKind.CertificateChanged or NoctisErrorKind.StorageFull)
                     {
                         // Every other song would fail the same way.
                         Interlocked.CompareExchange(ref fatal, ex, null);
@@ -2351,9 +2393,11 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
                         Interlocked.Increment(ref _dlFailed);
                         Interlocked.Increment(ref missing);
                         Interlocked.Increment(ref failed);
+                        dropped.TryAdd(id, 0);
                     }
                     catch (Exception ex)
                     {
+                        dropped.TryAdd(id, 0);
                         Interlocked.Increment(ref _dlFailed);
                         Interlocked.Increment(ref failed);
                         DebugLog.Write("Account", $"download failed: {(ex is NoctisServerException n ? n.Kind.ToString() : ex.GetType().Name)}");
@@ -2369,22 +2413,29 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         }
 
         await Task.WhenAll(Enumerable.Range(0, DownloadConcurrency).Select(_ => Worker())).ConfigureAwait(false);
-        // Stopped (paused by the system, or a sign-out that clears them next): its songs left stay asked for.
-        ReleaseUnfinished(ids, keep: stop.IsCancellationRequested);
+        // Stopped (paused by the system, or a sign-out that clears them next) or waiting: its songs left
+        // stay asked for, but not the ones that failed.
+        var keep = stop.IsCancellationRequested || waitFor != null;
+        if (keep) ForgetUnfinished(dropped.Keys, saveNow: false);
+        ReleaseUnfinished(ids, keep);
+        var waiting = waitFor == null ? 0
+            : ids.Count(id => !_downloaded.ContainsKey(id) && !dropped.ContainsKey(id) && !_withdrawn.ContainsKey(id));
         // Once more with every worker done: two workers' last reports can arrive out of order, the
         // later one read before the other finished (a test saw Pending = 1 as the last report of a
         // finished batch), and the page takes Pending > 0 as "still downloading".
-        RaiseDownloadProgress();
+        RaiseDownloadProgress(waiting: waiting, waitsForWifi: waitFor?.Kind == NoctisErrorKind.WifiRequired);
         // One line per batch, so a download that silently did nothing is visible in the log.
         var missingNote = Volatile.Read(ref missing) is > 0 and var m ? $" ({m} missing on the computer)" : "";
+        var waitNote = waiting > 0 ? $", {waiting} waiting ({waitFor!.Kind})" : "";
         DebugLog.Write("Account", $"downloads: {ids.Count} asked, {Volatile.Read(ref done)} done, " +
-            $"{Volatile.Read(ref failed)} failed{missingNote}{(token.IsCancellationRequested ? ", cancelled" : "")}");
+            $"{Volatile.Read(ref failed)} failed{missingNote}{waitNote}{(token.IsCancellationRequested ? ", cancelled" : "")}");
         RaiseStateChanged();
         if (fatal is not null)
         {
             if (fatal.Kind == NoctisErrorKind.SignedOut) ForgetAccountLocally();
             throw fatal;
         }
+        if (waitFor is not null) throw waitFor;
         ct.ThrowIfCancellationRequested();
     }
 
@@ -2425,6 +2476,23 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
         finally
         {
             NoctisServerClient.TryDelete(part);
+        }
+    }
+
+    /// <summary>A song's download could not reach the computer: whether it answers a light call now
+    /// (that song alone stalled) or not (away from home, asleep, the network gone: the batch waits).</summary>
+    private static async Task<bool> ComputerAnswersAsync(NoctisServerClient client, CancellationToken ct)
+    {
+        try
+        {
+            using var quick = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            quick.CancelAfter(TimeSpan.FromSeconds(10));
+            await client.GetScanStatusAsync(quick.Token).ConfigureAwait(false);
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
         }
     }
 
@@ -2615,9 +2683,10 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     private void RaiseSyncProgress(NoctisSyncStage stage, int done, int total) =>
         SyncProgress?.Invoke(this, new NoctisSyncProgress(stage, done, total));
 
-    private void RaiseDownloadProgress(bool calledOff = false) =>
+    private void RaiseDownloadProgress(bool calledOff = false, int waiting = 0, bool waitsForWifi = false) =>
         DownloadProgress?.Invoke(this, new NoctisDownloadProgress(Math.Max(0, Volatile.Read(ref _dlPending)),
-            Volatile.Read(ref _dlCompleted), Volatile.Read(ref _dlFailed), DownloadedBytes, Volatile.Read(ref _dlMissing), calledOff));
+            Volatile.Read(ref _dlCompleted), Volatile.Read(ref _dlFailed), DownloadedBytes, Volatile.Read(ref _dlMissing), calledOff,
+            waiting, waitsForWifi));
 
     private sealed class InlineProgress(Action<int> report) : IProgress<int>
     {

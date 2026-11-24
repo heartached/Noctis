@@ -151,11 +151,15 @@ public class MobileAccountTests
         /// <summary>Thrown by DownloadAsync instead, when set (Wi-Fi only on mobile data…).</summary>
         public Exception? DownloadError { get; set; }
 
+        /// <summary>Set: DownloadAsync waits for it and lands nothing itself (the test says what landed).</summary>
+        public TaskCompletionSource? DownloadGate { get; set; }
+
         public Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
         {
             var list = tracks.ToList();
             DownloadCalls.Add(list);
             if (DownloadError != null) return Task.FromException(DownloadError);
+            if (DownloadGate is { } gate) return gate.Task;
             foreach (var t in list) DownloadedIds.Add(t.Id);
             return Task.CompletedTask;
         }
@@ -167,6 +171,13 @@ public class MobileAccountTests
         /// <summary>Wi-Fi only on mobile data (DownloadsWaitForWifiAsync).</summary>
         public bool WaitsForWifi { get; set; }
         public Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(WaitsForWifi);
+
+        /// <summary>Settings › Downloads › Wi-Fi only (DownloadsWifiOnlyAsync).</summary>
+        public bool WifiOnly { get; set; }
+        public Task<bool> DownloadsWifiOnlyAsync() => Task.FromResult(WifiOnly);
+
+        /// <summary>On Wi-Fi (or Ethernet) now (IsOnWifiNow).</summary>
+        public bool IsOnWifiNow { get; set; } = true;
 
         /// <summary>PauseDownloadsAsync calls; <see cref="OnPause"/> runs in each (a test ends its gated run).</summary>
         public int PauseCalls { get; private set; }
