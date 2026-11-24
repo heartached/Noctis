@@ -440,6 +440,13 @@ public sealed class TrackContextMenuBuilder
         return Menu;
     }
 
+    /// <summary>
+    /// Whether the Rate item shows: the view offers rating and Settings › Show Star Ratings is on
+    /// (Discord 11-24, Halil: people who never rate don't want the stars in every menu).
+    /// </summary>
+    internal static bool ShowsRate(ICommand? rateCommand, ViewModels.SettingsViewModel? settings) =>
+        rateCommand != null && (settings?.ShowStarRatings ?? true);
+
     /// <summary>v2 extras of a Bind: tiles, stars, then collapse empty groups.</summary>
     private void BindV2(Track track, ICommand? rateCommand)
     {
@@ -536,7 +543,7 @@ public sealed class TrackContextMenuBuilder
         }
 
         // Rate ▸ (optional). Parameter carries the track so the same command serves every row.
-        Rate.IsVisible = rateCommand != null;
+        Rate.IsVisible = ShowsRate(rateCommand, App.Services?.GetService<ViewModels.MainWindowViewModel>()?.Settings);
         if (rateCommand != null)
         {
             for (var stars = 0; stars <= 5; stars++)

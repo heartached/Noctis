@@ -109,6 +109,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Settings → Album Page → Tint whole page: the tint also runs under Other
     /// Versions / More By; true without a settings VM.</summary>
     public bool TintWholePage => _settings?.AlbumPageTintWholePage ?? AppSettings.AlbumPageTintWholePageDefault;
+
+    /// <summary>Settings › Show Star Ratings (Discord 11-24, Halil): the track rows' stars; true without a settings VM.</summary>
+    public bool ShowStarRatings => _settings?.ShowStarRatings ?? true;
     [ObservableProperty] private bool _isLightTint;
 
     /// <summary>Whether the tint runs under the floating player island right now (set by the
@@ -351,6 +354,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
                     Dispatcher.UIThread.Post(ReapplyTint);
                 else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintWholePage))
                     Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(TintWholePage)));
+                else if (e.PropertyName == nameof(SettingsViewModel.ShowStarRatings))
+                    Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(ShowStarRatings)));
             };
             _settings.PropertyChanged += _settingsPropertyChangedHandler;
             // A theme switch flips the untinted page text between the variants' colours.

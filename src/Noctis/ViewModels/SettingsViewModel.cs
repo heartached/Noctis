@@ -1675,6 +1675,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showArtworkColumn = true;
     [ObservableProperty] private bool _showGenreColumn = true;
     [ObservableProperty] private bool _showRatingColumn = true;
+    /// <summary>AppSettings.ShowStarRatings (Discord 11-24, Halil).</summary>
+    [ObservableProperty] private bool _showStarRatings = true;
     [ObservableProperty] private bool _showBpmColumn;
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
@@ -1703,6 +1705,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowStarRatingsChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -3877,6 +3880,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
+            ShowStarRatings = _settings.ShowStarRatings;
             ShowBpmColumn = _settings.ShowBpmColumn;
             ShowBitrateColumn = _settings.ShowBitrateColumn;
             ShowSampleRateColumn = _settings.ShowSampleRateColumn;
@@ -4494,6 +4498,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowArtworkColumn = ShowArtworkColumn;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
+        _settings.ShowStarRatings = ShowStarRatings;
         _settings.ShowBpmColumn = ShowBpmColumn;
         _settings.ShowBitrateColumn = ShowBitrateColumn;
         _settings.ShowSampleRateColumn = ShowSampleRateColumn;
@@ -9034,6 +9039,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowArtworkColumn = defaultSettings.ShowArtworkColumn;
             ShowGenreColumn = defaultSettings.ShowGenreColumn;
             ShowRatingColumn = defaultSettings.ShowRatingColumn;
+            ShowStarRatings = defaultSettings.ShowStarRatings;
             ShowBpmColumn = defaultSettings.ShowBpmColumn;
             ShowBitrateColumn = defaultSettings.ShowBitrateColumn;
             ShowSampleRateColumn = defaultSettings.ShowSampleRateColumn;

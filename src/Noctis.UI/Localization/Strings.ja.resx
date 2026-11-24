@@ -9132,6 +9132,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>フィルターメニューで「すべてのアーティスト」を選ぶか、名前で検索してください</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>小規模なアーティストを隠す</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>曲数の少ないアーティストをアーティストページで非表示にします。検索では引き続き見つかります。</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>星の評価を表示</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>曲を評価しない場合はオフにしてください。アルバムページ、曲リスト、メニューの星を非表示にします。評価は保持されます。</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>次の曲数未満のアーティストを隠す</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>ホバーするまでサイドバーを隠す</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>サイドバーを完全に隠し、ページを全幅で表示します。ポインターをウィンドウの左端に移動すると表示されます。</value><comment>Description under Hide sidebar until hover</comment></data>

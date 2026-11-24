@@ -228,6 +228,7 @@
                                           IsChecked="{Binding Settings.ShowFavoritesColumn, Mode=TwoWay}" />
                                 <CheckBox Classes="metadata-pill-checkbox vo-column"
                                           Content="{loc:T SongsViewOptions.Rating}"
+                                          IsVisible="{Binding Settings.ShowStarRatings}"
                                           IsChecked="{Binding Settings.ShowRatingColumn, Mode=TwoWay}" />
                                 <CheckBox Classes="metadata-pill-checkbox vo-column"
                                           Content="{loc:T SongsViewOptions.Plays}"

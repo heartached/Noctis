@@ -716,6 +716,7 @@ public partial class MainWindowViewModel : ViewModelBase
         void SyncVisualizerSection()
         {
             TopBar.AlbumCarouselAvailable = Settings.AlbumCarouselEnabled;
+            TopBar.ShowStarRatings = Settings.ShowStarRatings;
             Sidebar.SetVisualizerSectionVisible(Settings.VisualizerEnabled);
             if (ReferenceEquals(CurrentView, _visualizerVm) && !Settings.VisualizerEnabled)
                 Navigate("home");
@@ -728,6 +729,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 Dispatcher.UIThread.Post(SyncVisualizerSection);
             else if (e.PropertyName == nameof(SettingsViewModel.AlbumCarouselEnabled))
                 TopBar.AlbumCarouselAvailable = Settings.AlbumCarouselEnabled;
+            else if (e.PropertyName == nameof(SettingsViewModel.ShowStarRatings))
+                TopBar.ShowStarRatings = Settings.ShowStarRatings;
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
         };

@@ -665,6 +665,10 @@ public class AppSettings : IJsonOnDeserializing
     public bool ShowArtworkColumn { get; set; } = true;
     public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
+    /// <summary>Settings › Library › Show Star Ratings (Discord 11-24, Halil): off hides the stars on
+    /// album rows, the Songs page Rating column and the Rate menu item for people who never rate.
+    /// Ratings stay in the library and in Edit Info. ShowRatingColumn keeps its own value.</summary>
+    public bool ShowStarRatings { get; set; } = true;
     public bool ShowBpmColumn { get; set; }
     public bool ShowBitrateColumn { get; set; }
     public bool ShowSampleRateColumn { get; set; }
