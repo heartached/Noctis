@@ -1802,8 +1802,11 @@ public sealed partial class ShellViewModel : ObservableObject
         catch (NoctisServerException ex)
         {
             DebugLog.Write("Account", $"Download failed: {ex.Kind}");
-            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen.
-            Player.Notice = AccountPageViewModel.Describe(ex.Kind, signedIn: true);
+            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen. Out
+            // of the computer's reach the songs wait for it (DownloadActivity), not failed.
+            Player.Notice = ex.Kind == NoctisErrorKind.Unreachable
+                ? Loc.T("Mobile.Download.WaitingForComputer")
+                : AccountPageViewModel.Describe(ex.Kind, signedIn: true);
         }
         catch (Exception ex)
         {
@@ -1900,15 +1903,17 @@ public sealed partial class ShellViewModel : ObservableObject
     /// <summary>
     /// Downloads the app ended in the middle of go on by themselves (DownloadActivity.ResumeUnfinishedAsync),
     /// after the startup sync: long after the first frame, and with the catalog saying which songs the
-    /// computer still has. A computer that did not answer would fail every song: they wait for the
-    /// next start instead.
+    /// computer still has. A computer that did not answer would fail every song: they wait for it
+    /// instead (DownloadActivity.WaitForComputerAsync).
     /// </summary>
     private async Task ResumeUnfinishedDownloadsAsync(Task<bool> sync)
     {
         try
         {
-            if (!await sync || Downloads is not { } downloads) return;
-            await downloads.ResumeUnfinishedAsync();
+            if (Downloads is not { } downloads) return;
+            // Not answering: the songs wait for it (a run on Wi-Fi, or every 15 minutes there).
+            if (!await sync) await downloads.WaitForComputerAsync();
+            else await downloads.ResumeUnfinishedAsync();
         }
         catch (Exception ex)
         {
@@ -1920,7 +1925,7 @@ public sealed partial class ShellViewModel : ObservableObject
     /// The wakeup ran with nothing downloading (DownloadActivity): in a process the job itself started,
     /// the start's own sync and resume (the app is not on screen, so the downloads it resumes run under
     /// the job); later, a sync now, so the catalog says which songs the computer still has, then the
-    /// songs still asked for. A computer that does not answer resumes nothing, as at start.
+    /// songs still asked for. A computer that does not answer resumes nothing: they wait for it, as at start.
     /// </summary>
     private async Task ResumeForWakeupAsync()
     {

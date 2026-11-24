@@ -42,6 +42,9 @@ public sealed partial class DownloadActivity : ObservableObject
     /// <summary>Songs the last run left unfinished, waiting for Wi-Fi (Wi-Fi only on mobile data) or
     /// for the app to be in front; null when none wait. UI thread.</summary>
     private List<Track>? _waiting;
+    /// <summary>The waiting songs wait for the computer to answer (away from home, the computer
+    /// off), not for Wi-Fi or for the app: a run goes on Wi-Fi, or every 15 minutes there. UI thread.</summary>
+    private bool _waitingForComputer;
     /// <summary>The system's run of the wakeup is under way (<see cref="IDownloadWakeup.Due"/>, not
     /// finished): downloads it resumed with the app in the background run under it. UI thread.</summary>
     private bool _wakeRun;
@@ -146,6 +149,14 @@ public sealed partial class DownloadActivity : ObservableObject
         {
             await download();
         }
+        catch (NoctisServerException ex) when (ex.Kind is NoctisErrorKind.Unreachable or NoctisErrorKind.WifiRequired)
+        {
+            // Not failed: the service keeps them asked for, and they go on with the next run.
+            var left = pending.Where(t => !_account.IsDownloaded(t));
+            _waiting = (_waiting ?? new List<Track>()).Concat(left).DistinctBy(t => t.Id).ToList();
+            _waitingForComputer = ex.Kind == NoctisErrorKind.Unreachable;
+            throw;
+        }
         finally
         {
             bool last;
@@ -161,7 +172,7 @@ public sealed partial class DownloadActivity : ObservableObject
                 _keeper?.End();
             }
             // Songs paused or waiting are resumed by a later run; with none left, no run is.
-            if (last) SetWakeup(_paused != null ? WatchDelay : _waiting != null ? TimeSpan.Zero : null);
+            if (last) SetWakeupForWhatIsLeft();
             Changed?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -243,6 +254,7 @@ public sealed partial class DownloadActivity : ObservableObject
         if (tracks.Count == 0 || !_account.IsSignedIn) return;
         DebugLog.Write("Account", $"Resuming {tracks.Count} unfinished downloads");
         _waiting = tracks.ToList();
+        _waitingForComputer = false;
         await ResumeWaitingAsync();
     }
 
@@ -260,7 +272,7 @@ public sealed partial class DownloadActivity : ObservableObject
         // In the background, a wakeup run resumes them (it may start the downloads from there).
         if (IsInFront?.Invoke() == false && !_wakeRun)
         {
-            SetWakeup(TimeSpan.Zero);
+            SetWakeup(TimeSpan.Zero, _waitingForComputer);
             return;
         }
         bool wifiWait;
@@ -269,6 +281,7 @@ public sealed partial class DownloadActivity : ObservableObject
         if (wifiWait)
         {
             DebugLog.Write("Account", "Unfinished downloads wait for Wi-Fi");
+            _waitingForComputer = false;
             // Ends a run that found mobile data, and asks for one on Wi-Fi.
             SetWakeup(TimeSpan.Zero);
             return;
@@ -317,7 +330,28 @@ public sealed partial class DownloadActivity : ObservableObject
         }
         // Holding what it started; else done (unless the downloads' end finished it already).
         if (!_wakeRun || (HasRunning() && !_keptInFront)) return;
-        SetWakeup(HasRunning() || _paused != null ? WatchDelay : _waiting != null ? TimeSpan.Zero : null);
+        if (HasRunning()) SetWakeup(WatchDelay);
+        else SetWakeupForWhatIsLeft();
+    }
+
+    /// <summary>The computer did not answer (the start's sync, or a wakeup run's): the songs still
+    /// asked for wait for it, and a run is scheduled on Wi-Fi, or in 15 minutes when on Wi-Fi now
+    /// (a wakeup run schedules it as it ends).</summary>
+    public async Task WaitForComputerAsync()
+    {
+        if (!_account.IsSignedIn || HasRunning()) return;
+        IReadOnlyList<Track> tracks;
+        try { tracks = await _account.UnfinishedDownloadsAsync(); }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Unfinished downloads unreadable: {ex.GetType().Name}");
+            return;
+        }
+        if (tracks.Count == 0 || !_account.IsSignedIn || HasRunning()) return;
+        DebugLog.Write("Account", $"{tracks.Count} unfinished downloads wait for the computer");
+        _waiting = tracks.ToList();
+        _waitingForComputer = true;
+        if (!_wakeRun) SetWakeup(TimeSpan.Zero, forComputer: true);
     }
 
     /// <summary>The system stopped the wakeup run (its time limit, the network went): downloads it
@@ -332,7 +366,7 @@ public sealed partial class DownloadActivity : ObservableObject
         lock (_jobs) jobs = _jobs.ToArray();
         if (jobs.Length == 0)
         {
-            SetWakeup(_paused != null ? WatchDelay : _waiting != null ? TimeSpan.Zero : null);
+            SetWakeupForWhatIsLeft();
             return;
         }
         if (_keptInFront) return;
@@ -340,6 +374,7 @@ public sealed partial class DownloadActivity : ObservableObject
         if (left.Count == 0) return;
         // Before the downloads stop: their starts end as they do, and schedule the next run.
         _waiting = left;
+        _waitingForComputer = false;
         try { await _account.PauseDownloadsAsync(); }
         catch (Exception ex) { DebugLog.Write("Account", $"Pausing downloads failed: {ex.GetType().Name}"); }
     }
@@ -349,9 +384,21 @@ public sealed partial class DownloadActivity : ObservableObject
         lock (_jobs) return _jobs.Count > 0;
     }
 
+    /// <summary>UI thread: a run for the songs paused (the watch) or waiting (as soon as the network
+    /// fits), or none when nothing is left.</summary>
+    private void SetWakeupForWhatIsLeft()
+    {
+        if (_paused != null) SetWakeup(WatchDelay);
+        else if (_waiting != null) SetWakeup(TimeSpan.Zero, _waitingForComputer);
+        else SetWakeup(null);
+    }
+
     /// <summary>UI thread. Ends a wakeup run under way, then: songs asked for, a run after
-    /// <paramref name="delay"/> on a network for them (unmetered with Wi-Fi only on); null, none.</summary>
-    private void SetWakeup(TimeSpan? delay)
+    /// <paramref name="delay"/> on a network for them (Wi-Fi with Wi-Fi only on); null, none.
+    /// <paramref name="forComputer"/>: they wait for the computer, which is at home: off Wi-Fi the run
+    /// waits for Wi-Fi (an unlimited-data run would only fail again), on Wi-Fi it checks again after
+    /// <see cref="WatchDelay"/>.</param></summary>
+    private void SetWakeup(TimeSpan? delay, bool forComputer = false)
     {
         if (_wakeup is not { } wakeup) return;
         var turn = ++_wakeupTurn;
@@ -373,7 +420,9 @@ public sealed partial class DownloadActivity : ObservableObject
             try { wifiOnly = await _account.DownloadsWifiOnlyAsync(); }
             catch (Exception) { wifiOnly = false; }
             if (turn != _wakeupTurn || !_account.IsSignedIn) return;
-            wakeup.Schedule(wifiOnly, after);
+            if (!forComputer) wakeup.Schedule(wifiOnly, after);
+            else if (_account.IsOnWifiNow) wakeup.Schedule(wifiOnly, WatchDelay);
+            else wakeup.Schedule(true, TimeSpan.Zero);
         }
     }
 
@@ -423,7 +472,12 @@ public sealed partial class DownloadActivity : ObservableObject
             // were all removed mid-way: nothing landed and nothing failed, so nothing to tell.
             if (_notifier is { } notifier)
             {
-                if (!_account.IsSignedIn || progress is { Completed: 0, Failed: 0 }) notifier.Clear();
+                if (!_account.IsSignedIn || progress is { Completed: 0, Failed: 0, Waiting: 0 }) notifier.Clear();
+                // Songs left waiting are not failures: the card says what they wait for.
+                else if (progress.Waiting > 0) notifier.ShowFinished(
+                    Loc.T(progress.WaitsForWifi ? "Mobile.Download.WaitingForWifi" : "Mobile.Download.WaitingForComputer"),
+                    ((progress.Completed > 0 ? Loc.Plural("Mobile.Download.Done", progress.Completed) : string.Empty)
+                     + FailureParts(progress)).TrimStart(' ', '·'));
                 else notifier.ShowFinished(
                     progress.Completed > 0 ? Loc.Plural("Mobile.Download.Done", progress.Completed) : Loc.T("Mobile.Account.DownloadsFinished", string.Empty),
                     FailureParts(progress).TrimStart(' ', '·'));

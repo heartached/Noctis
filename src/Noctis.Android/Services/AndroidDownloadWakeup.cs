@@ -3,6 +3,7 @@ using Android.App;
 using Android.App.Job;
 using Android.Content;
 using Android.Content.PM;
+using Android.Net;
 using Android.OS;
 using Noctis.Mobile.Services;
 using Noctis.Services;
@@ -17,9 +18,12 @@ namespace Noctis.Android.Services;
 /// A regular JobScheduler job (<see cref="DownloadWakeupJobService"/>, id 4303), not the keeper's
 /// user-initiated one (4302): that one "must be scheduled while the application is visible to the
 /// user" (https://developer.android.com/develop/background-work/background-tasks/uidt), this one
-/// may be scheduled from the background. Its constraint is the network: NETWORK_TYPE_UNMETERED with
-/// Wi-Fi only on, else NETWORK_TYPE_ANY (ACCESS_NETWORK_STATE is held, which Android 14+ requires for
-/// a network job). It is persisted across reboots only if the app holds RECEIVE_BOOT_COMPLETED
+/// may be scheduled from the background. Its constraint is the network: Wi-Fi or Ethernet with
+/// Wi-Fi only on (and for songs waiting for the computer, which is at home), else NETWORK_TYPE_ANY
+/// (ACCESS_NETWORK_STATE is held, which Android 14+ requires for a network job). Not
+/// NETWORK_TYPE_UNMETERED: mobile data on an unlimited plan is unmetered too; from Android 9 a
+/// NetworkRequest names the transports (any of them satisfies it), before it falls back to unmetered
+/// and the run checks the transport itself (AndroidNetwork.IsOnWifi). It is persisted across reboots only if the app holds RECEIVE_BOOT_COMPLETED
 /// (JobInfo.Builder.setPersisted "Requires RECEIVE_BOOT_COMPLETED"); the manifest does not declare
 /// it, so a reboot drops the job and the next start of the app resumes the songs instead.
 ///
@@ -100,8 +104,12 @@ internal sealed class AndroidDownloadWakeup : IDownloadWakeup
         }
         Try(() =>
         {
-            var builder = new JobInfo.Builder(JobId, new ComponentName(_context, Java.Lang.Class.FromType(typeof(DownloadWakeupJobService))))
-                .SetRequiredNetworkType(wifiOnly ? NetworkType.Unmetered : NetworkType.Any)!;
+            var builder = new JobInfo.Builder(JobId, new ComponentName(_context, Java.Lang.Class.FromType(typeof(DownloadWakeupJobService))));
+            if (!wifiOnly) builder.SetRequiredNetworkType(NetworkType.Any);
+            else if (Build.VERSION.SdkInt >= BuildVersionCodes.P)
+                builder.SetRequiredNetwork(new NetworkRequest.Builder()
+                    .AddTransportType(TransportType.Wifi)!.AddTransportType(TransportType.Ethernet)!.Build());
+            else builder.SetRequiredNetworkType(NetworkType.Unmetered);
             if (delay > TimeSpan.Zero) builder.SetMinimumLatency((long)delay.TotalMilliseconds);
             // Not declared by the app (see the class): only should a library's manifest bring it.
             if (_context.CheckSelfPermission(Manifest.Permission.ReceiveBootCompleted) == Permission.Granted)

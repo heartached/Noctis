@@ -48,7 +48,11 @@ public sealed record NoctisSyncResult(int Songs, int Playlists, int StateChanges
 /// <param name="Missing">Of <paramref name="Failed"/>, the songs whose file is missing on the computer.</param>
 /// <param name="CalledOff">Sign-out or Remove All Downloads stopped every download (running or paused):
 /// nothing is left to download, so the notification goes and the background keeping ends now.</param>
-public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0, bool CalledOff = false)
+/// <param name="Waiting">In a batch's last report: its songs left waiting, not failed, because the
+/// computer could not be reached or Wi-Fi went with Wi-Fi only on (<paramref name="WaitsForWifi"/>).
+/// They stay asked for and go on by themselves.</param>
+public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0, bool CalledOff = false,
+    int Waiting = 0, bool WaitsForWifi = false)
 {
     /// <summary>The songs asked for: a failed one stays counted ("Downloading 1 of 3 Â· 1 failed"),
     /// where Completed + Pending shrank the total with every failure.</summary>
@@ -210,9 +214,12 @@ public interface INoctisAccountService
     /// now would be refused, so resumed downloads wait for Wi-Fi.</summary>
     Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(false);
 
-    /// <summary>Settings › Downloads › Wi-Fi only is on, on any network: the background run for the
+    /// <summary>Settings â€º Downloads â€º Wi-Fi only is on, on any network: the background run for the
     /// songs left waits for an unmetered one (DownloadActivity, IDownloadWakeup).</summary>
     Task<bool> DownloadsWifiOnlyAsync() => Task.FromResult(false);
+
+    /// <summary>The phone is on Wi-Fi (or Ethernet) now; true when the host cannot tell.</summary>
+    bool IsOnWifiNow => true;
 
     /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
     /// or signed out keeping the downloads): its file stays and plays until the user removes it

@@ -474,6 +474,66 @@ public class MobileDownloadProgressTests
         Assert.Equal(new[] { "cancel" }, otherWakeup.Calls);
     }
 
+    /// <summary>Away from home: the tap's download cannot reach the computer. Nothing fails: the
+    /// banner says it waits for the computer, and the wakeup is scheduled for Wi-Fi (the phone is on
+    /// mobile data). A run on Wi-Fi whose sync still finds no computer checks again in 15 minutes;
+    /// once it answers the song downloads and nothing stays scheduled.</summary>
+    [Fact]
+    public async Task Wakeup_ComputerUnreachable_SongsWait_RetriedOnWifiThenEvery15Minutes()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), IsOnWifiNow = false };
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+
+        account.DownloadError = new NoctisServerException(NoctisErrorKind.Unreachable, "away");
+        await shell.DownloadTracksAsync(new[] { a });
+        await Until(() => wakeup.Calls.Count == 2);
+
+        Assert.Equal(Loc.T("Mobile.Download.WaitingForComputer"), shell.Player.Notice);
+        Assert.Equal(new[] { "schedule|any|15", "schedule|wifi|0" }, wakeup.Calls);
+        shell.IsSuspended = true;   // Home key
+
+        // Home Wi-Fi, but the computer is asleep.
+        account.IsOnWifiNow = true;
+        account.SyncError = new NoctisServerException(NoctisErrorKind.Unreachable, "asleep");
+        account.Unfinished.Add(a);
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 4);
+        Assert.Equal(new[] { "finish", "schedule|any|15" }, wakeup.Calls.Skip(2));
+
+        account.SyncError = null;
+        account.DownloadError = null;
+        wakeup.Run();
+        await Until(() => wakeup.Calls.Count == 6);
+
+        Assert.Equal(2, account.DownloadCalls.Count);
+        Assert.True(account.IsDownloaded(a));
+        Assert.Equal(new[] { "finish", "cancel" }, wakeup.Calls.Skip(4));
+    }
+
+    /// <summary>The batch's last report says songs wait (the computer out of reach, or Wi-Fi gone with
+    /// Wi-Fi only on): the card says so instead of "Downloaded" or a failure.</summary>
+    [Theory]
+    [InlineData(false, "Mobile.Download.WaitingForComputer")]
+    [InlineData(true, "Mobile.Download.WaitingForWifi")]
+    public void Notification_SongsWaiting_SaysWhatTheyWaitFor(bool forWifi, string key)
+    {
+        using var rig = MobileFixtures.MakeRig(Array.Empty<Track>());
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var shell = ShellWith(rig, account, notifier);
+        _ = shell.Downloads;
+
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 0, 0, 0));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 1, 0, 0, Waiting: 2, WaitsForWifi: forWifi));
+
+        Assert.Equal($"finished|{Loc.T(key)}|{Loc.Plural("Mobile.Download.Done", 1)}", notifier.Calls.Last());
+    }
+
     private static async Task Until(Func<bool> condition)
     {
         var start = Environment.TickCount64;
