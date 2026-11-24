@@ -9146,6 +9146,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} 曲は通常の歌詞のみです。歌詞スタジオはこの PC 上の音声モデルでタイミングを付けられます。1 曲につき 1 分以上かかることがあり（グラフィックスカードならより高速）、保存前に 1 曲ずつ確認します。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>最初の {0} 曲を一度に開きます。</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} 曲</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Playlists" xml:space="preserve"><value>{0:N0}個のプレイリスト</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} 枚のアルバム</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Main.AllArtists" xml:space="preserve"><value>すべてのアーティスト</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
   <data name="Main.HideSmallArtists" xml:space="preserve"><value>小規模なアーティストを隠す</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>

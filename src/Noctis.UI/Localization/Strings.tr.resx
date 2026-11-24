@@ -4204,6 +4204,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} şarkının yalnızca düz sözleri var. Söz Stüdyosu bunları bu bilgisayarda konuşma modeliyle zamanlayabilir: şarkı başına bir dakika veya daha uzun sürebilir (ekran kartıyla daha hızlı) ve her birini kaydedilmeden önce kontrol edersin.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>İlk {0} tanesi aynı anda açılır.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Playlists" xml:space="preserve"><value>{0:N0} çalma listesi|{0:N0} çalma listesi</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} albüm|{0:N0} albüm</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Main.AllArtists" xml:space="preserve"><value>Tüm Sanatçılar</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
   <data name="Main.HideSmallArtists" xml:space="preserve"><value>Küçük Sanatçıları Gizle</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>

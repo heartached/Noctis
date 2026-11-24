@@ -1,11 +1,15 @@
 using System.Globalization;
 using Noctis.Converters;
+using Avalonia.Headless.XUnit;
+using Noctis.Localization;
 using Xunit;
 
 namespace Noctis.Tests;
 
+[Collection("Localization")] // song / playlist counts read Loc.Instance, which some tests switch
 public class CountLabelConverterTests
 {
+
     private static string Convert(object? value, string noun) =>
         (string)CountLabelConverter.Instance.Convert(value, typeof(string), noun, CultureInfo.InvariantCulture);
 
@@ -30,5 +34,24 @@ public class CountLabelConverterTests
     public void NullCountReadsAsZero()
     {
         Assert.Equal("0 songs", Convert(null, "song"));
+    }
+
+    /// <summary>The sidebar's song and playlist counts follow the language (they were built in
+    /// English: "4 songs" in French), with the language's own plural forms. On the Avalonia
+    /// thread: a language switch re-labels bound controls other tests left alive.</summary>
+    [AvaloniaFact]
+    public void SongAndPlaylistCounts_AreTranslated()
+    {
+        try
+        {
+            Loc.Instance.SetCulture("fr");
+            Assert.Equal("1 titre", Convert(1, "song"));
+            Assert.Equal("4 titres", Convert(4, "song"));
+            Loc.Instance.SetCulture("de");
+            Assert.Equal("2 Playlists", Convert(2, "playlist"));
+            Loc.Instance.SetCulture("ru");
+            Assert.Equal("5 плейлистов", Convert(5, "playlist"));
+        }
+        finally { Loc.Instance.SetCulture("en"); }
     }
 }

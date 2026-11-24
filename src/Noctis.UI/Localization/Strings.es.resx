@@ -4150,6 +4150,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} canciones solo tienen letra sin sincronizar. El Estudio de letras puede sincronizarlas en este PC con su modelo de voz: puede tardar un minuto o más por canción (más rápido con tarjeta gráfica) y revisas cada una antes de guardarla.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>Las primeras {0} se abren a la vez.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} canción|{0:N0} canciones</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Playlists" xml:space="preserve"><value>{0:N0} playlist|{0:N0} playlists</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} álbum|{0:N0} álbumes</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Main.AllArtists" xml:space="preserve"><value>Todos los artistas</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
   <data name="Main.HideSmallArtists" xml:space="preserve"><value>Ocultar artistas pequeños</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>

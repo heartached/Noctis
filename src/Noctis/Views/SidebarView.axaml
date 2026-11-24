@@ -686,8 +686,15 @@
                                         <TextBlock Text="{Binding Label}"
                                                    FontSize="13" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5"
-                                                   Text="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <!-- The translation is bound only so a language change re-runs the count. -->
+                                                <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="song">
+                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount" />
+                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Count.Songs]" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -838,8 +845,15 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxWidth="120" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5"
-                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=playlist}" />
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <!-- The translation is bound only so a language change re-runs the count. -->
+                                                <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="playlist">
+                                                    <Binding Path="TrackCount" />
+                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Count.Playlists]" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
 
@@ -935,8 +949,15 @@
                                         </StackPanel>
                                         <TextBlock FontSize="11"
                                                    Opacity="0.5"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Text>
+                                                <!-- The translation is bound only so a language change re-runs the count. -->
+                                                <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="song">
+                                                    <Binding Path="TrackCount" />
+                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Count.Songs]" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
 

@@ -4159,6 +4159,7 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} songs have plain lyrics only. Lyrics Studio can time them on this PC with its speech model: it can take a minute or more per song (faster on a graphics card), and you check each one before it's saved.</value><comment>Fetch / remove lyrics in bulk dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>The first {0} open at a time.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} song|{0:N0} songs</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Playlists" xml:space="preserve"><value>{0:N0} playlist|{0:N0} playlists</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} album|{0:N0} albums</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Main.AllArtists" xml:space="preserve"><value>All Artists</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
   <data name="Main.HideSmallArtists" xml:space="preserve"><value>Hide Small Artists</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
