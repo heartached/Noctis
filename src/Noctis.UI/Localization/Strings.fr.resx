@@ -694,6 +694,9 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Affiche la date d'ajout de chaque titre.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Colonne Favori</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Affiche un cœur sur chaque ligne.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>Page d'album</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>Cœur sur chaque titre</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>Cliquez sur le cœur d'un titre pour l'ajouter aux Favoris ou l'en retirer. Désactivé : seuls les favoris affichent un cœur.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Analyse de la bibliothèque</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Trouve les nouveaux titres et met à jour la recherche.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Analyser la bibliothèque</value><comment>Text in SettingsView.axaml</comment></data>

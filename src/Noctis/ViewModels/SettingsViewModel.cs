@@ -1115,6 +1115,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playlistShowNewBadge = true;
     [ObservableProperty] private bool _playlistShowAddedColumn = true;
     [ObservableProperty] private bool _playlistShowFavoriteColumn = true;
+    /// <summary>Album page song rows: clickable heart on every row (Discord 11-24, sina).</summary>
+    [ObservableProperty] private bool _albumShowSongHearts = true;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowMarqueeEnabled = true;
@@ -3776,6 +3778,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(_settings.PlaylistNewBadgeDays);
             PlaylistShowAddedColumn = _settings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = _settings.PlaylistShowFavoriteColumn;
+            AlbumShowSongHearts = _settings.AlbumShowSongHearts;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SongTransitionsEnabled = _settings.SongTransitionsEnabled;
             TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
@@ -4409,6 +4412,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(PlaylistNewBadgeDays);
         _settings.PlaylistShowAddedColumn = PlaylistShowAddedColumn;
         _settings.PlaylistShowFavoriteColumn = PlaylistShowFavoriteColumn;
+        _settings.AlbumShowSongHearts = AlbumShowSongHearts;
         _settings.TransitionStyle = TransitionStyle ?? "Crossfade";
         _settings.SongTransitionStrength = SongTransitionStrength ?? "Balanced";
         _settings.SongTransitionBeatMatch = SongTransitionBeatMatch;
@@ -5604,6 +5608,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPlaylistShowNewBadgeChanged(bool value) { _settings.PlaylistShowNewBadge = value; if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnPlaylistShowAddedColumnChanged(bool value) { _settings.PlaylistShowAddedColumn = value; if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnPlaylistShowFavoriteColumnChanged(bool value) { _settings.PlaylistShowFavoriteColumn = value; if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumShowSongHeartsChanged(bool value) { _settings.AlbumShowSongHearts = value; if (_settingsLoaded) _ = SaveAsync(); }
 
     partial void OnSongTransitionsEnabledChanged(bool value)
     {
@@ -9067,6 +9072,7 @@ public partial class SettingsViewModel : ViewModelBase
             PlaylistNewBadgeDays = defaultSettings.PlaylistNewBadgeDays;
             PlaylistShowAddedColumn = defaultSettings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = defaultSettings.PlaylistShowFavoriteColumn;
+            AlbumShowSongHearts = defaultSettings.AlbumShowSongHearts;
             ShowArtworkColumn = defaultSettings.ShowArtworkColumn;
             ShowGenreColumn = defaultSettings.ShowGenreColumn;
             ShowRatingColumn = defaultSettings.ShowRatingColumn;
