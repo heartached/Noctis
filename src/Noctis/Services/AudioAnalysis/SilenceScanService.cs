@@ -104,7 +104,10 @@ public sealed class SilenceScanService
     /// the calling thread: even the file check runs in the background, so a sleeping disk never
     /// stalls the UI. A file that can't be read gives <see cref="SilenceBounds.None"/>, cached
     /// like any result, so it isn't retried for the rest of the session.</summary>
-    public Task<SilenceBounds> ScanAsync(Track track, double thresholdDb, CancellationToken ct = default)
+    /// <param name="urgent">The song that just started: it doesn't wait behind scans made
+    /// ahead of time (one of those on a sleeping drive held a started song's scan until its
+    /// leading silence had already played).</param>
+    public Task<SilenceBounds> ScanAsync(Track track, double thresholdDb, bool urgent = false, CancellationToken ct = default)
     {
         if (!CanScan(track)) return Task.FromResult(SilenceBounds.None);
         var path = track.FilePath;
@@ -112,13 +115,13 @@ public sealed class SilenceScanService
         lock (_gate)
         {
             if (_inFlight.TryGetValue(flightKey, out var running)) return running;
-            var task = Task.Run(() => RunScanAsync(path, flightKey, thresholdDb, ct), ct);
+            var task = Task.Run(() => RunScanAsync(path, flightKey, thresholdDb, urgent, ct), ct);
             _inFlight[flightKey] = task;
             return task;
         }
     }
 
-    private async Task<SilenceBounds> RunScanAsync(string path, string flightKey, double thresholdDb, CancellationToken ct)
+    private async Task<SilenceBounds> RunScanAsync(string path, string flightKey, double thresholdDb, bool urgent, CancellationToken ct)
     {
         try
         {
@@ -135,7 +138,7 @@ public sealed class SilenceScanService
                 var ffmpeg = _ffmpegPath();
                 if (ffmpeg != null)
                 {
-                    await _decodeGate.WaitAsync(ct).ConfigureAwait(false);
+                    if (!urgent) await _decodeGate.WaitAsync(ct).ConfigureAwait(false);
                     try
                     {
                         var threshold = SilenceEdges.ThresholdToLinear(thresholdDb);
@@ -151,7 +154,7 @@ public sealed class SilenceScanService
                     }
                     finally
                     {
-                        _decodeGate.Release();
+                        if (!urgent) _decodeGate.Release();
                     }
                 }
             }

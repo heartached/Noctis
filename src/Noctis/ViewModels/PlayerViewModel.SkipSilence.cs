@@ -96,7 +96,7 @@ public partial class PlayerViewModel
         var scanner = SilenceScanner;
         if (scanner == null) return;
         var threshold = SkipSilenceThresholdDb;
-        _ = scanner.ScanAsync(track, threshold).ContinueWith(t =>
+        _ = scanner.ScanAsync(track, threshold, urgent: lateJump).ContinueWith(t =>
         {
             if (t.Status != TaskStatus.RanToCompletion) return;
             var bounds = t.Result;

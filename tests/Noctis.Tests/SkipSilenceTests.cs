@@ -146,6 +146,30 @@ public class SkipSilenceTests : IDisposable
     }
 
     [Fact]
+    public async Task Scan_ForTheSongThatJustStarted_DoesNotWaitBehindQueuedScans()
+    {
+        // Live 11-24: turning Skip Silence on scanned the loaded song (on a sleeping drive)
+        // first, and the song started next waited until its silence had played.
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var path = Song(ffmpeg, before: 2, tone: 5, after: 2);
+        var scanner = new SilenceScanService(() => ffmpeg);
+        var gate = (SemaphoreSlim)typeof(SilenceScanService)
+            .GetField("_decodeGate", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(scanner)!;
+        await gate.WaitAsync(); // a queued scan holds the line
+        try
+        {
+            var urgent = scanner.ScanAsync(LocalTrack(path, TimeSpan.FromSeconds(9)), -50, urgent: true);
+            Assert.Same(urgent, await Task.WhenAny(urgent, Task.Delay(TimeSpan.FromSeconds(20))));
+            Assert.True(urgent.Result.Leading > TimeSpan.FromSeconds(1.5));
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    [Fact]
     public async Task Scan_OfASongWithNoSilence_CutsNothing()
     {
         var ffmpeg = Ffmpeg();
