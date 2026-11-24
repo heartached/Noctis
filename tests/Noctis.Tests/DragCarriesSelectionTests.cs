@@ -145,9 +145,9 @@ public class DragCarriesSelectionTests
         Track T(int i) => ((FavoriteItem)tiles[i].DataContext!).Track!;
 
         // Selected out of order: 4, then 1, then 2.
-        Click(win, Centre(tiles[4], win), RawInputModifiers.Control);
-        Click(win, Centre(tiles[1], win), RawInputModifiers.Control);
-        Click(win, Centre(tiles[2], win), RawInputModifiers.Control);
+        Click(win, Centre(tiles[4], win), TestKeys.Primary);
+        Click(win, Centre(tiles[1], win), TestKeys.Primary);
+        Click(win, Centre(tiles[2], win), TestKeys.Primary);
 
         Assert.Equal(new[] { T(1), T(2), T(4) }, DragFrom(tiles[2]));
         // An unselected tile carries just itself.
@@ -161,8 +161,8 @@ public class DragCarriesSelectionTests
         var (view, win, _) = await MountFavorites(6);
         var tiles = FavoriteTiles(view);
         Track T(int i) => ((FavoriteItem)tiles[i].DataContext!).Track!;
-        Click(win, Centre(tiles[0], win), RawInputModifiers.Control);
-        Click(win, Centre(tiles[3], win), RawInputModifiers.Control);
+        Click(win, Centre(tiles[0], win), TestKeys.Primary);
+        Click(win, Centre(tiles[3], win), TestKeys.Primary);
 
         // The press that starts a drag must not drop the selection.
         var p = Centre(tiles[3], win);
@@ -184,7 +184,7 @@ public class DragCarriesSelectionTests
     {
         var (view, win, _) = await MountFavorites(6);
         var tiles = FavoriteTiles(view);
-        Click(win, Centre(tiles[1], win), RawInputModifiers.Control);
+        Click(win, Centre(tiles[1], win), TestKeys.Primary);
         Click(win, Centre(tiles[4], win), RawInputModifiers.Shift);
         Assert.Equal(new[] { false, true, true, true, true, false },
             tiles.Select(t => t.Classes.Contains("ctrl-selected")).ToArray());
@@ -214,9 +214,9 @@ public class DragCarriesSelectionTests
             .OrderBy(r => r.TranslatePoint(default, view)!.Value.Y).ToList();
         Track Row(int i) => (Track)rows[i].DataContext!;
 
-        Click(win, Centre(rows[5], win), RawInputModifiers.Control);
-        Click(win, Centre(rows[2], win), RawInputModifiers.Control);
-        Click(win, Centre(rows[6], win), RawInputModifiers.Control);
+        Click(win, Centre(rows[5], win), TestKeys.Primary);
+        Click(win, Centre(rows[2], win), TestKeys.Primary);
+        Click(win, Centre(rows[6], win), TestKeys.Primary);
 
         // The plain press that starts the drag keeps the selection; the drag carries all three.
         var p = Centre(rows[2], win);

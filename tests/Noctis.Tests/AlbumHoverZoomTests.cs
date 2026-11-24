@@ -400,8 +400,8 @@ public class AlbumHoverZoomTests
         var centre = Centre(Cover(mid));
         var text = TextAt(mid);
         var p = mid.TranslatePoint(new Point(mid.Bounds.Width / 2, 40), win)!.Value;
-        win.MouseDown(p, Avalonia.Input.MouseButton.Left, Avalonia.Input.RawInputModifiers.Control);
-        win.MouseUp(p, Avalonia.Input.MouseButton.Left, Avalonia.Input.RawInputModifiers.Control);
+        win.MouseDown(p, Avalonia.Input.MouseButton.Left, TestKeys.Primary);
+        win.MouseUp(p, Avalonia.Input.MouseButton.Left, TestKeys.Primary);
         win.MouseMove(p); Pump(2); await Task.Delay(350); Pump(3);
         Assert.Contains("ctrl-selected", mid.Classes);
 

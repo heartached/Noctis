@@ -10,8 +10,10 @@ namespace Noctis.Tests;
 /// GitHub #258: album cards (Albums grid, Home, artist page, More By Artist) carry the
 /// album's song count on their one-line caption, switchable in Settings. The switch is
 /// app-wide static state, so every test that flips it lives in this one class (xUnit runs a
-/// class's tests one at a time) and puts it back.
+/// class's tests one at a time) and puts it back. Settings writes it too (a SettingsViewModel built
+/// by another test, e.g. the reset test turning every switch off), so the class runs on its own.
 /// </summary>
+[Collection("Album card song count")]
 public sealed class AlbumCardSongCountTests
 {
     [Fact]
@@ -112,3 +114,6 @@ public sealed class AlbumCardSongCountTests
     private static List<Track> Songs(int n)
         => Enumerable.Range(1, n).Select(i => new Track { Title = $"T{i}", TrackNumber = i }).ToList();
 }
+
+[CollectionDefinition("Album card song count", DisableParallelization = true)]
+public sealed class AlbumCardSongCountCollection { }
