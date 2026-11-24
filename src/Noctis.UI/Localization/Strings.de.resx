@@ -1859,6 +1859,7 @@ Speichern ersetzt sie durch den Songtext auf dem Bildschirm. Eine Songtextdatei,
   <data name="MiniPlayer.PinOnTop" xml:space="preserve"><value>Oben anheften</value><comment>Mini player pin (tooltip + "…" menu item): keeps it visible through Show desktop / Minimize all and over games</comment></data>
   <data name="MiniPlayer.Unpin" xml:space="preserve"><value>Lösen</value><comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment></data>
   <data name="MiniPlayer.HideLyrics" xml:space="preserve"><value>Songtext ausblenden</value><comment>Mini player "…" menu item while lyrics are open</comment></data>
+  <data name="MiniPlayer.FullArtwork" xml:space="preserve"><value>Großes Cover</value><comment>Mini player "…" menu item: switch to the tall full-artwork card (hides lyrics, keeps the big cover)</comment></data>
   <data name="MiniPlayer.ShuffleTip" xml:space="preserve"><value>Zufällig</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.PreviousTip" xml:space="preserve"><value>Zurück</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.ForwardTip" xml:space="preserve"><value>Weiter</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>

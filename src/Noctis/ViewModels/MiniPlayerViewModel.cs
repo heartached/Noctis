@@ -152,6 +152,7 @@ public partial class MiniPlayerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(Style));
         OnPropertyChanged(nameof(IsStyleLocked));
+        OnPropertyChanged(nameof(ShowFullArtworkMenuItem));
         if (Drawer != MiniDrawer.None) Drawer = MiniDrawer.None;
         if (StyleForm is { } styled)
         {
@@ -177,7 +178,8 @@ public partial class MiniPlayerViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsIconForm), nameof(IsBarForm), nameof(IsCardForm),
         nameof(IsLargeIconForm), nameof(IsLyricsForm), nameof(IsPillForm), nameof(IsSleeveForm),
-        nameof(IsDesignForm), nameof(SupportsDrawer), nameof(ShowVolumeMenuItem), nameof(LyricsMenuLabel))]
+        nameof(IsDesignForm), nameof(SupportsDrawer), nameof(ShowVolumeMenuItem), nameof(LyricsMenuLabel),
+        nameof(ShowFullArtworkMenuItem))]
     private MiniPlayerForm _form = MiniPlayerForm.Bar;
 
     public bool IsIconForm => Form == MiniPlayerForm.Icon;
@@ -301,6 +303,19 @@ public partial class MiniPlayerViewModel : ViewModelBase
         _formBeforeLyrics = Form;
         FormResizeRequested?.Invoke(MiniPlayerForm.Lyrics);
         if (IsStyleLocked) Form = MiniPlayerForm.Lyrics;
+    }
+
+    /// <summary>"…" menu ▸ Full Artwork: the tall artwork card (LargeIcon), otherwise reached
+    /// only by dragging the window tall. From the lyrics split it hides the lyrics and keeps the
+    /// full-height cover with its controls (Discord 11-24, Mantis: Hide Lyrics went back to the
+    /// small card). Classic only: a fixed design keeps its own form.</summary>
+    public bool ShowFullArtworkMenuItem => !IsLargeIconForm && !IsStyleLocked;
+
+    [RelayCommand]
+    private void ShowFullArtwork()
+    {
+        if (!ShowFullArtworkMenuItem) return;
+        FormResizeRequested?.Invoke(MiniPlayerForm.LargeIcon);
     }
 
     // ── Bottom-sheet layers ──

@@ -1856,6 +1856,7 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
   <data name="MiniPlayer.PinOnTop" xml:space="preserve"><value>Fijar encima</value><comment>Mini player pin (tooltip + "…" menu item): keeps it visible through Show desktop / Minimize all and over games</comment></data>
   <data name="MiniPlayer.Unpin" xml:space="preserve"><value>Desfijar</value><comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment></data>
   <data name="MiniPlayer.HideLyrics" xml:space="preserve"><value>Ocultar letras</value><comment>Mini player "…" menu item while lyrics are open</comment></data>
+  <data name="MiniPlayer.FullArtwork" xml:space="preserve"><value>Portada completa</value><comment>Mini player "…" menu item: switch to the tall full-artwork card (hides lyrics, keeps the big cover)</comment></data>
   <data name="MiniPlayer.ShuffleTip" xml:space="preserve"><value>Aleatorio</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.PreviousTip" xml:space="preserve"><value>Anterior</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.ForwardTip" xml:space="preserve"><value>Siguiente</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>

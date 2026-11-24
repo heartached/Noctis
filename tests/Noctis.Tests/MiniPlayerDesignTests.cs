@@ -690,6 +690,45 @@ public class MiniPlayerDesignTests
         finally { win.Close(); }
     }
 
+    // Discord 11-24 (Mantis): Hide Lyrics hands back the form the split came from (a small card),
+    // so there was no way to drop the lyrics and keep the full-height cover. "…" ▸ Full Artwork
+    // jumps to the tall artwork card from any classic form, the lyrics split included.
+    [AvaloniaFact]
+    public async Task FullArtwork_FromTheLyricsSplit_LandsOnTheTallArtworkCard()
+    {
+        EnsureAppResources();
+        var vm = MakeViewModel();
+        var win = new MiniPlayerWindow { DataContext = vm, Width = 420, Height = 188 };
+        win.Show();
+        await PumpFor(200);
+        try
+        {
+            Assert.Equal(MiniPlayerForm.Bar, vm.Form);
+            Assert.True(vm.ShowFullArtworkMenuItem);
+
+            vm.ToggleLyricsFormCommand.Execute(null);
+            await PumpUntil(() => vm.Form == MiniPlayerForm.Lyrics, 3000);
+            Assert.Equal(MiniPlayerForm.Lyrics, vm.Form);
+            Assert.True(vm.ShowFullArtworkMenuItem);
+
+            var (aw, ah) = MiniPlayerViewModel.CanonicalSize(MiniPlayerForm.LargeIcon);
+            vm.ShowFullArtworkCommand.Execute(null);
+            await PumpUntil(() => vm.Form == MiniPlayerForm.LargeIcon
+                                  && Math.Abs(win.Width - aw) <= 1.0 && Math.Abs(win.Height - ah) <= 1.0, 3000);
+            Assert.Equal(MiniPlayerForm.LargeIcon, vm.Form);
+            Assert.Equal(aw, win.Width, 1.0);
+            Assert.Equal(ah, win.Height, 1.0);
+            // Already there: the item leaves the menu.
+            Assert.False(vm.ShowFullArtworkMenuItem);
+
+            // A fixed design keeps its own form: no Full Artwork there.
+            vm.Settings.IsMiniStyleSleeve = true;
+            await PumpFor(100);
+            Assert.False(vm.ShowFullArtworkMenuItem);
+        }
+        finally { win.Close(); }
+    }
+
     // The Pill cover's spin loop queues on the app-wide frame clock, so closing the window
     // mid-playback must end it; otherwise it keeps turning the closed window's cover (and
     // rooting that window) every frame for the rest of the session.

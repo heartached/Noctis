@@ -1856,6 +1856,7 @@ L'enregistrement les remplace par les paroles affichées. Un fichier de paroles 
   <data name="MiniPlayer.PinOnTop" xml:space="preserve"><value>Épingler au premier plan</value><comment>Mini player pin (tooltip + "…" menu item): keeps it visible through Show desktop / Minimize all and over games</comment></data>
   <data name="MiniPlayer.Unpin" xml:space="preserve"><value>Désépingler</value><comment>Mini player pin, while pinned (tooltip + "…" menu item)</comment></data>
   <data name="MiniPlayer.HideLyrics" xml:space="preserve"><value>Masquer les paroles</value><comment>Mini player "…" menu item while lyrics are open</comment></data>
+  <data name="MiniPlayer.FullArtwork" xml:space="preserve"><value>Pochette en grand</value><comment>Mini player "…" menu item: switch to the tall full-artwork card (hides lyrics, keeps the big cover)</comment></data>
   <data name="MiniPlayer.ShuffleTip" xml:space="preserve"><value>Aléatoire</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.PreviousTip" xml:space="preserve"><value>Précédent</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
   <data name="MiniPlayer.ForwardTip" xml:space="preserve"><value>Suivant</value><comment>ToolTip.Tip in MiniPlayerWindow.axaml</comment></data>
