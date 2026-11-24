@@ -1913,12 +1913,10 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             if (Downloads is not { } downloads) return;
             // Not answering: the songs wait for it (a run on Wi-Fi, or every 15 minutes there).
-            if (!await sync)
-            {
-                await downloads.WaitForComputerAsync();
-                if (atStart && !IsSuspended && downloads.WaitingText is { } waiting) Player.Notice = waiting;
-            }
+            if (!await sync) await downloads.WaitForComputerAsync();
             else await downloads.ResumeUnfinishedAsync();
+            // Waiting for the computer, or for Wi-Fi (Wi-Fi only on mobile data).
+            if (atStart && !IsSuspended && downloads.WaitingText is { } waiting) Player.Notice = waiting;
         }
         catch (Exception ex)
         {

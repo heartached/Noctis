@@ -39,6 +39,12 @@ public sealed partial class DownloadActivity : ObservableObject
     private List<(string Title, List<Track> Tracks)>? _paused;
     /// <summary>The notification shows a running download, so the next idle report ends it.</summary>
     private bool _notifying;
+    /// <summary>The card says the songs left wait ("Waiting for your computer"): a call-off clears
+    /// it at once, else it stood until its timeout. UI thread.</summary>
+    private bool _waitingCard;
+    /// <summary>A wakeup run the system stopped paused the downloads: their batch's end says nothing
+    /// (the songs left wait for the next run), not "Downloaded 3 songs" as if done. UI thread.</summary>
+    private bool _wakeStopped;
     /// <summary>Songs the last run left unfinished, waiting for Wi-Fi (Wi-Fi only on mobile data) or
     /// for the app to be in front; null when none wait. UI thread.</summary>
     private List<Track>? _waiting;
@@ -74,7 +80,7 @@ public sealed partial class DownloadActivity : ObservableObject
         // waiting count too: their wakeup stayed scheduled, and the Account page said they wait.
         account.StateChanged += (_, _) =>
         {
-            if (!account.IsSignedIn && (_keeping || _notifying || _paused != null || _waiting != null)) marshal(CallOff);
+            if (!account.IsSignedIn && (_keeping || _notifying || _waitingCard || _paused != null || _waiting != null)) marshal(CallOff);
         };
         if (keeper != null)
         {
@@ -213,9 +219,11 @@ public sealed partial class DownloadActivity : ObservableObject
         _paused = null;
         _waiting = null;
         SetWakeup(null);
-        if (_notifying)
+        _wakeStopped = false;
+        if (_notifying || _waitingCard)
         {
             _notifying = false;
+            _waitingCard = false;
             _notifier?.Clear();
         }
         // After the clear: the keeper's end puts the card right once nothing holds it.
@@ -394,6 +402,7 @@ public sealed partial class DownloadActivity : ObservableObject
         _waiting = left;
         _waitingForComputer = false;
         _waitingForWifi = false;
+        _wakeStopped = _notifying;
         try { await _account.PauseDownloadsAsync(); }
         catch (Exception ex) { DebugLog.Write("Account", $"Pausing downloads failed: {ex.GetType().Name}"); }
     }
@@ -481,22 +490,31 @@ public sealed partial class DownloadActivity : ObservableObject
         if (progress.Pending > 0)
         {
             _notifying = true;
+            _waitingCard = false;
             _notifier?.ShowProgress(NotificationTitle(),
                 Loc.T("Mobile.Account.Downloading", progress.Completed, progress.Total, FailureParts(progress)), progress.Handled, progress.Total);
         }
         else if (_notifying && _paused == null)
         {
             _notifying = false;
+            _waitingCard = false;
+            var wakeStopped = _wakeStopped;
+            _wakeStopped = false;
             // Sign-out's last report, Remove All Downloads (counts back at zero) or a batch whose songs
             // were all removed mid-way: nothing landed and nothing failed, so nothing to tell.
             if (_notifier is { } notifier)
             {
-                if (!_account.IsSignedIn || progress is { Completed: 0, Failed: 0, Waiting: 0 }) notifier.Clear();
+                // Stopped with the wakeup run: the songs left go on with the next run.
+                if (!_account.IsSignedIn || wakeStopped || progress is { Completed: 0, Failed: 0, Waiting: 0 }) notifier.Clear();
                 // Songs left waiting are not failures: the card says what they wait for.
-                else if (progress.Waiting > 0) notifier.ShowFinished(
-                    Loc.T(progress.WaitsForWifi ? "Mobile.Download.WaitingForWifi" : "Mobile.Download.WaitingForComputer"),
-                    ((progress.Completed > 0 ? Loc.Plural("Mobile.Download.Done", progress.Completed) : string.Empty)
-                     + FailureParts(progress)).TrimStart(' ', '·'));
+                else if (progress.Waiting > 0)
+                {
+                    _waitingCard = true;
+                    notifier.ShowFinished(
+                        Loc.T(progress.WaitsForWifi ? "Mobile.Download.WaitingForWifi" : "Mobile.Download.WaitingForComputer"),
+                        ((progress.Completed > 0 ? Loc.Plural("Mobile.Download.Done", progress.Completed) : string.Empty)
+                         + FailureParts(progress)).TrimStart(' ', '·'));
+                }
                 else notifier.ShowFinished(
                     progress.Completed > 0 ? Loc.Plural("Mobile.Download.Done", progress.Completed) : Loc.T("Mobile.Account.DownloadsFinished", string.Empty),
                     FailureParts(progress).TrimStart(' ', '·'));

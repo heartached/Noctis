@@ -591,6 +591,87 @@ public class MobileDownloadProgressTests
         Assert.Equal(string.Empty, openBefore.DownloadText);
     }
 
+    /// <summary>A batch ended with songs waiting ("Waiting for your computer" card), then the
+    /// downloads are called off: the card goes at once, not after its timeout.</summary>
+    [Theory]
+    [InlineData("sign-out")]
+    [InlineData("remove-all")]
+    public async Task WaitingCard_CalledOff_IsClearedAtOnce(string how)
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var notifier = new FakeNotifier();
+        var shell = ShellWith(rig, account, notifier, new FakeKeeper(), new FakeWakeup());
+        var gate = new TaskCompletionSource();
+
+        var run = shell.Downloads!.RunAsync("Blue Album", new[] { a, b }, () => gate.Task);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(2, 0, 0, 0));
+        account.DownloadedIds.Add(a.Id);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 1, 0, 0, Waiting: 1));
+        gate.SetException(new NoctisServerException(NoctisErrorKind.Unreachable, "off"));
+        await Assert.ThrowsAsync<NoctisServerException>(() => run);
+        Assert.StartsWith("finished|" + Loc.T("Mobile.Download.WaitingForComputer"), notifier.Calls.Last());
+
+        if (how == "sign-out") await account.SignOutAsync(removeDownloads: false);
+        else await account.RemoveAllDownloadsAsync();
+
+        Assert.Equal("clear", notifier.Calls.Last());
+    }
+
+    /// <summary>The system stops a wakeup run mid-way: the songs left wait for the next run, so the
+    /// batch's end must not say "Downloaded 1 song" as if done.</summary>
+    [Fact]
+    public async Task Wakeup_StoppedMidRun_NoFinishedCard()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), DownloadGate = new TaskCompletionSource() };
+        account.Unfinished.AddRange(new[] { a, b });
+        account.OnPause = () => account.DownloadGate?.TrySetResult();
+        var notifier = new FakeNotifier();
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, notifier, new FakeKeeper(), wakeup);
+        shell.IsSuspended = true;
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => wakeup.Calls.Count == 1);
+
+        wakeup.Run();
+        await Until(() => account.DownloadCalls.Count == 1);
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(2, 0, 0, 0));
+        account.DownloadedIds.Add(a.Id);   // landed before the stop
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(1, 1, 0, 0));
+        wakeup.Stop();
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 1, 0, 0));   // the stopped batch's last report
+        await Until(() => wakeup.Calls.Count == 2);
+
+        Assert.DoesNotContain(notifier.Calls, c => c.StartsWith("finished"));
+        Assert.Equal("clear", notifier.Calls.Last());
+    }
+
+    /// <summary>At start with Wi-Fi only on mobile data, the songs a run left wait for Wi-Fi: the
+    /// start's banner says so, as it does when the computer is off.</summary>
+    [Fact]
+    public async Task Startup_WifiOnlyOnMobileData_BannerSaysWaitingForWifi()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), WaitsForWifi = true, WifiOnly = true };
+        account.Unfinished.Add(a);
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+
+        await shell.InitializeAsync();
+        await shell.StartupSync;
+        await Until(() => wakeup.Calls.Count == 1);
+        await Until(() => shell.Player.Notice == Loc.T("Mobile.Download.WaitingForWifi"));
+
+        Assert.Empty(account.DownloadCalls);
+    }
+
     private static async Task Until(Func<bool> condition)
     {
         var start = Environment.TickCount64;
