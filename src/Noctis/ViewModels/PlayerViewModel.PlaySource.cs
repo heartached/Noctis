@@ -17,7 +17,7 @@ public partial class PlayerViewModel
 {
     /// <summary>Where the queue was started from; null when unknown.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PlaySourceName), nameof(PlayingFromText), nameof(HasPlaySource), nameof(TitleClickTip))]
+    [NotifyPropertyChangedFor(nameof(PlaySourceName), nameof(PlayingFromText), nameof(PlayingFromAccessibleName), nameof(HasPlaySource), nameof(TitleClickTip))]
     private PlaySource? _playSource;
 
     /// <summary>Settings › Player › Show Where Music Plays From (on by default).</summary>
@@ -102,6 +102,13 @@ public partial class PlayerViewModel
     /// <summary>"Playing from Abbey Road".</summary>
     public string PlayingFromText => PlaySourceName is { } name ? Loc.T("PlaybackBar.PlayingFrom", name) : string.Empty;
 
+    /// <summary>The drawer link's accessible name: its text, or (hidden, no source) what it is
+    /// for, so screen readers never meet a nameless button.</summary>
+    public string PlayingFromAccessibleName => PlaySourceName is null ? Loc.T("Settings.ShowPlaySource") : PlayingFromText;
+
+    /// <summary>The link's name before a player is bound (the binding's fallback).</summary>
+    public static string PlayingFromFallbackName => Loc.T("Settings.ShowPlaySource");
+
     /// <summary>The island title's tooltip: where a click goes.</summary>
     public string TitleClickTip => TitleOpensPlaySource && IsCurrentFromPlaySource
         ? PlayingFromText
@@ -112,6 +119,7 @@ public partial class PlayerViewModel
     {
         OnPropertyChanged(nameof(PlaySourceName));
         OnPropertyChanged(nameof(PlayingFromText));
+        OnPropertyChanged(nameof(PlayingFromAccessibleName));
         OnPropertyChanged(nameof(TitleClickTip));
     }
 

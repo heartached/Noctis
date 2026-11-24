@@ -1227,7 +1227,7 @@
                                 Command="{Binding Player.OpenPlaySourceCommand}"
                                 IsVisible="{Binding Player.HasPlaySource}"
                                 ToolTip.Tip="{Binding Player.PlayingFromText}"
-                                AutomationProperties.Name="{Binding Player.PlayingFromText}">
+                                AutomationProperties.Name="{Binding Player.PlayingFromAccessibleName, FallbackValue={x:Static vm:PlayerViewModel.PlayingFromFallbackName}}">
                             <Border Classes="artist-text-hover" CornerRadius="3" Padding="3,1">
                                 <TextBlock Text="{Binding Player.PlayingFromText}"
                                            FontSize="12"
