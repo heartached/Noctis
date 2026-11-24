@@ -307,6 +307,39 @@ public class SidebarEmptyFoldersTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task ImportedPlaylist_Top_IsFirst_StaysThereAfterAReload()
+    {
+        var (vm, store, _) = await StoredSidebar(new Playlist { Name = "Gym", Folder = "Rock" }, new Playlist { Name = "Road" });
+        vm.NewPlaylistsAtTop = true;
+        // The importer writes playlists.json itself, then the sidebar reloads.
+        var imported = new Playlist { Name = "Imported" };
+        var all = await store.LoadPlaylistsAsync();
+        all.Add(imported);
+        await store.SavePlaylistsAsync(all);
+        await vm.LoadPlaylistsAsync();
+
+        await vm.PlaceImportedPlaylistAsync(imported.Id);
+
+        Assert.Equal(new[] { "Imported", "Rock", "Gym", "Road" }, vm.SidebarRows.Select(r => r.Label));
+        Assert.Equal(new[] { "Imported", "Rock", "Gym", "Road" }, await ReloadedRows(store));
+    }
+
+    [AvaloniaFact]
+    public async Task ImportedPlaylist_Bottom_StaysLast()
+    {
+        var (vm, store, _) = await StoredSidebar(new Playlist { Name = "Gym", Folder = "Rock" }, new Playlist { Name = "Road" });
+        var imported = new Playlist { Name = "Imported" };
+        var all = await store.LoadPlaylistsAsync();
+        all.Add(imported);
+        await store.SavePlaylistsAsync(all);
+        await vm.LoadPlaylistsAsync();
+
+        await vm.PlaceImportedPlaylistAsync(imported.Id);
+
+        Assert.Equal(new[] { "Rock", "Gym", "Road", "Imported" }, vm.SidebarRows.Select(r => r.Label));
+    }
+
+    [AvaloniaFact]
     public async Task NewFolder_Top_IsFirst_StaysThereAfterAReload_AndWhenFilled()
     {
         var road = new Playlist { Name = "Road" };

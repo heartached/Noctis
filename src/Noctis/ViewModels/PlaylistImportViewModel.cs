@@ -410,11 +410,15 @@ public partial class PlaylistImportViewModel : ViewModelBase
         IsBusy = true;
         StatusMessage = L("Import.StatusCreating");
 
-        await _service.CreateAsync(PlaylistName, ids);
+        var createdId = await _service.CreateAsync(PlaylistName, ids);
 
-        // Reflect the new playlist in the sidebar immediately.
+        // Reflect the new playlist in the sidebar immediately, where new playlists go.
         var main = App.Services?.GetService<MainWindowViewModel>();
-        if (main is not null) await main.Sidebar.LoadPlaylistsAsync();
+        if (main is not null)
+        {
+            await main.Sidebar.LoadPlaylistsAsync();
+            await main.Sidebar.PlaceImportedPlaylistAsync(createdId);
+        }
 
         CanCreate = false;
         IsBusy = false;

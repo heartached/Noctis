@@ -581,6 +581,23 @@ public partial class SidebarViewModel : ViewModelBase
         RebuildSidebarRows();
     }
 
+    /// <summary>
+    /// A playlist the importer wrote straight to playlists.json (Import Playlist, a link) came
+    /// back from the reload last: with New Playlist and Folder Position = Top it moves first,
+    /// like one made here.
+    /// </summary>
+    public async Task PlaceImportedPlaylistAsync(Guid id)
+    {
+        if (!NewPlaylistsAtTop) return;
+        var playlist = Playlists.FirstOrDefault(p => p.Id == id);
+        if (playlist == null) return;
+        Playlists.Remove(playlist);
+        var item = PlaylistItems.FirstOrDefault(i => i.PlaylistId == id);
+        if (item != null) PlaylistItems.Remove(item);
+        AddNewPlaylist(playlist);
+        await SavePlaylistsAndFoldersAsync();
+    }
+
     /// <summary>Puts the top-level entry <paramref name="key"/> first and saves the order.</summary>
     private void PlaceFirst(string key)
     {
