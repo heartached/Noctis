@@ -330,15 +330,63 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void ToggleAlbumsView() => IsAlbumsCarousel = !IsAlbumsCarousel;
 
+    // ── Singles & EPs / Live Albums tab layouts: the same grid-or-carousel choice as the
+    // Albums tab (Discord 11-24), each tab remembering its own for every artist. ──
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSinglesGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowSinglesCarousel))]
+    [NotifyPropertyChangedFor(nameof(SinglesViewToggleLabel))]
+    private bool _isSinglesCarousel;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowLiveGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowLiveCarousel))]
+    [NotifyPropertyChangedFor(nameof(LiveViewToggleLabel))]
+    private bool _isLiveCarousel;
+
+    public string SinglesViewToggleLabel => Loc.T(IsSinglesCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
+    public string LiveViewToggleLabel => Loc.T(IsLiveCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
+
+    public bool ShowSinglesGrid => HasSingles && !(IsSinglesCarousel && IsCarouselAvailable);
+    public bool ShowSinglesCarousel => HasSingles && IsSinglesCarousel && IsCarouselAvailable;
+    public bool ShowLiveGrid => HasLive && !(IsLiveCarousel && IsCarouselAvailable);
+    public bool ShowLiveCarousel => HasLive && IsLiveCarousel && IsCarouselAvailable;
+
+    /// <summary>The single / live album each tab's carousel last centred.</summary>
+    [ObservableProperty] private Album? _singlesCarouselCenterAlbum;
+    [ObservableProperty] private Album? _liveCarouselCenterAlbum;
+
+    partial void OnIsSinglesCarouselChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistSinglesViewMode = value ? "carousel" : "grid";
+    }
+
+    partial void OnIsLiveCarouselChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistLiveViewMode = value ? "carousel" : "grid";
+    }
+
+    [RelayCommand]
+    private void ToggleSinglesView() => IsSinglesCarousel = !IsSinglesCarousel;
+
+    [RelayCommand]
+    private void ToggleLiveView() => IsLiveCarousel = !IsLiveCarousel;
+
     /// <summary>Re-reads the shared layout and style (a change made on another page while this
     /// one sat in history applies on the way back).</summary>
     private void AdoptAlbumsView()
     {
         if (_settings == null) return;
         IsAlbumsCarousel = _settings.ArtistAlbumsViewMode == "carousel";
+        IsSinglesCarousel = _settings.ArtistSinglesViewMode == "carousel";
+        IsLiveCarousel = _settings.ArtistLiveViewMode == "carousel";
         OnPropertyChanged(nameof(IsCarouselAvailable));
         OnPropertyChanged(nameof(ShowAlbumsGrid));
         OnPropertyChanged(nameof(ShowAlbumsCarousel));
+        OnPropertyChanged(nameof(ShowSinglesGrid));
+        OnPropertyChanged(nameof(ShowSinglesCarousel));
+        OnPropertyChanged(nameof(ShowLiveGrid));
+        OnPropertyChanged(nameof(ShowLiveCarousel));
         OnPropertyChanged(nameof(UseMasonry));
         OnPropertyChanged(nameof(TileFixedHeight));
         OnPropertyChanged(nameof(TileMinHeight));
@@ -830,9 +878,13 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         OnPropertyChanged(nameof(ShowAlbumsGrid));
         OnPropertyChanged(nameof(ShowAlbumsCarousel));
         OnPropertyChanged(nameof(HasSingles));
+        OnPropertyChanged(nameof(ShowSinglesGrid));
+        OnPropertyChanged(nameof(ShowSinglesCarousel));
         OnPropertyChanged(nameof(HasOverviewAlbums));
         OnPropertyChanged(nameof(HasOverviewSingles));
         OnPropertyChanged(nameof(HasLive));
+        OnPropertyChanged(nameof(ShowLiveGrid));
+        OnPropertyChanged(nameof(ShowLiveCarousel));
         OnPropertyChanged(nameof(HasCompilations));
         OnPropertyChanged(nameof(HasOverviewLive));
         OnPropertyChanged(nameof(HasOverviewCompilations));

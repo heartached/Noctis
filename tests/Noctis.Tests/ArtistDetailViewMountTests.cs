@@ -142,6 +142,76 @@ public class ArtistDetailViewMountTests
         win.Close();
     }
 
+    /// <summary>Discord 11-24: Singles &amp; EPs and Live Albums get the Albums tab's grid /
+    /// carousel toggle, each tab keeping its own choice (the Albums tab stays a grid).</summary>
+    [AvaloniaTheory]
+    [InlineData("singles", "SinglesPanel")]
+    [InlineData("live", "LivePanel")]
+    public void ArtistPage_SinglesAndLiveTabs_SwitchToTheCarousel(string tab, string panelName)
+    {
+        EnsureAppStyles();
+        Album Release(string name, int year, ReleaseType type)
+        {
+            var a = MakeAlbum(name, "Death Cab", year, type == ReleaseType.Single ? 1 : 10);
+            foreach (var t in a.Tracks) { t.ReleaseType = type; t.ReleaseTypeFromTag = true; }
+            return a;
+        }
+        var lib = new FakeLibraryService();
+        ((List<Album>)lib.Albums).AddRange(new[]
+        {
+            Release("Codes and Keys", 2011, ReleaseType.Album),
+            Release("Old Single", 2003, ReleaseType.Single),
+            Release("New Single", 2015, ReleaseType.Single),
+            Release("Old Live", 2004, ReleaseType.Live),
+            Release("New Live", 2016, ReleaseType.Live),
+        });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new FakeHistoryLog());
+        var vm = new ArtistDetailViewModel("Death Cab", lib, player, settings: settings);
+        var view = new ArtistDetailView { DataContext = vm };
+        var win = new Window { Width = 1280, Height = 900, Content = view };
+        win.Show();
+        vm.SelectTabCommand.Execute(tab);
+        Dispatcher.UIThread.RunJobs();
+
+        var panel = view.FindControl<StackPanel>(panelName)!;
+        var carousel = panel.GetVisualDescendants().OfType<AlbumCarousel>().Single();
+        object releases = tab == "singles" ? vm.SingleReleases : vm.LiveReleases;
+        var grid = panel.GetVisualDescendants().OfType<ItemsControl>().First(i => ReferenceEquals(i.ItemsSource, releases));
+        Assert.False(carousel.IsVisible);
+        Assert.True(grid.IsVisible);
+
+        var toggle = panel.GetVisualDescendants().OfType<Button>()
+            .Single(b => Avalonia.Automation.AutomationProperties.GetName(b) == "Show as Carousel");
+        toggle.Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        win.UpdateLayout();
+
+        Assert.True(carousel.IsVisible);
+        Assert.False(grid.IsVisible);
+        Assert.Equal("Show as Grid", Avalonia.Automation.AutomationProperties.GetName(toggle));
+        var (newest, oldest) = tab == "singles" ? ("New Single", "Old Single") : ("New Live", "Old Live");
+        Assert.Contains(carousel.RealizedCards.Values, c => c.Album?.Name == newest);
+        Assert.Contains(carousel.RealizedCards.Values, c => c.Album?.Name == oldest);
+        Assert.Equal(newest, carousel.CenterAlbum?.Name);
+        Assert.Equal(tab == "singles" ? "carousel" : "grid", settings.ArtistSinglesViewMode);
+        Assert.Equal(tab == "live" ? "carousel" : "grid", settings.ArtistLiveViewMode);
+        Assert.Equal("grid", settings.ArtistAlbumsViewMode);
+
+        // Every artist page shares the choice; the other tabs keep theirs.
+        var other = new ArtistDetailViewModel("Death Cab", lib, player, settings: settings);
+        Assert.Equal(tab == "singles", other.IsSinglesCarousel);
+        Assert.Equal(tab == "live", other.IsLiveCarousel);
+        Assert.False(other.IsAlbumsCarousel);
+
+        toggle.Command!.Execute(null);
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(carousel.IsVisible);
+        Assert.True(grid.IsVisible);
+        win.Close();
+    }
+
     [AvaloniaFact]
     public void ArtistPage_MountsWithHeroPopularAndReleases()
     {

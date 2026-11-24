@@ -756,6 +756,12 @@ public class AppSettings : IJsonOnDeserializing
     /// setting for every artist, like the release sort.</summary>
     public string ArtistAlbumsViewMode { get; set; } = "grid";
 
+    /// <summary>Artist page Singles &amp; EPs and Live Albums tab layouts: "grid" or "carousel".
+    /// Each tab keeps its own choice (one for every artist), so the Albums tab's carousel
+    /// doesn't switch the other tabs.</summary>
+    public string ArtistSinglesViewMode { get; set; } = "grid";
+    public string ArtistLiveViewMode { get; set; } = "grid";
+
     /// <summary>How albums are dressed in the album carousel: "Cover" (default), "JewelCase",
     /// "Vinyl" or "Cassette" (<see cref="AlbumCarouselStyles.Parse"/>). Shared by both carousels.</summary>
     public string AlbumCarouselStyle { get; set; } = AlbumCarouselStyles.DefaultSetting;

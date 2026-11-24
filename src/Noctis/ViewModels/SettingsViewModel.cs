@@ -1751,6 +1751,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _albumViewMode = "grid";
     /// <summary>Artist page Albums tab layout: "grid" or "carousel" (GitHub #149).</summary>
     [ObservableProperty] private string _artistAlbumsViewMode = "grid";
+    /// <summary>Artist page Singles &amp; EPs / Live Albums tab layouts: "grid" or "carousel".</summary>
+    [ObservableProperty] private string _artistSinglesViewMode = "grid";
+    [ObservableProperty] private string _artistLiveViewMode = "grid";
     /// <summary>Album carousel case style (<see cref="AlbumCarouselStyles"/>), both carousels.</summary>
     [ObservableProperty] private string _albumCarouselStyle = AlbumCarouselStyles.DefaultSetting;
     /// <summary>GitHub #233: a soft cover-coloured glow behind the carousel's centred album.</summary>
@@ -1782,6 +1785,8 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
     partial void OnArtistAlbumsViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistSinglesViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistLiveViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumCarouselGlowChanged(bool value)
     {
         AlbumCarouselStyleOverrides.RaiseChanged();
@@ -3959,6 +3964,8 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumViewMode = _settings.AlbumViewMode;
             ArtistAlbumsViewMode = _settings.ArtistAlbumsViewMode;
+            ArtistSinglesViewMode = _settings.ArtistSinglesViewMode;
+            ArtistLiveViewMode = _settings.ArtistLiveViewMode;
             AlbumCarouselStyle = _settings.AlbumCarouselStyle;
             AlbumCarouselGlow = _settings.AlbumCarouselGlow;
             _albumCarouselStyleOverrides = new Dictionary<string, string>(
@@ -4584,6 +4591,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumViewMode = AlbumViewMode;
         _settings.ArtistAlbumsViewMode = ArtistAlbumsViewMode;
+        _settings.ArtistSinglesViewMode = ArtistSinglesViewMode;
+        _settings.ArtistLiveViewMode = ArtistLiveViewMode;
         _settings.AlbumCarouselStyle = AlbumCarouselStyle;
         _settings.AlbumCarouselGlow = AlbumCarouselGlow;
         _settings.AlbumCarouselStyleOverrides = _albumCarouselStyleOverrides.Count > 0
@@ -9185,6 +9194,8 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumSortMode = defaultSettings.AlbumSortMode;
             AlbumViewMode = defaultSettings.AlbumViewMode;
             ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
+            ArtistSinglesViewMode = defaultSettings.ArtistSinglesViewMode;
+            ArtistLiveViewMode = defaultSettings.ArtistLiveViewMode;
             AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
             AlbumCarouselGlow = defaultSettings.AlbumCarouselGlow;
             // GitHub #233 per-album carousel styles: written back by SyncToSettings like the rest.

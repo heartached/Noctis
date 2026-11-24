@@ -1458,8 +1458,34 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
+                    <!-- Grid / carousel, like the Albums tab (Discord 11-24): this tab keeps its own choice. -->
+                    <Button Classes="grey-pill"
+                            Width="34" Height="34"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            VerticalAlignment="Center"
+                            Cursor="Hand"
+                            ToolTip.Tip="{Binding SinglesViewToggleLabel}"
+                            AutomationProperties.Name="{Binding SinglesViewToggleLabel}"
+                            IsVisible="{Binding IsCarouselAvailable}"
+                            Command="{Binding ToggleSinglesViewCommand}">
+                        <Panel>
+                            <PathIcon Data="{StaticResource AlbumCarouselIcon}" Width="16" Height="16"
+                                      IsVisible="{Binding !IsSinglesCarousel}" />
+                            <PathIcon Data="{StaticResource GridViewIcon}" Width="16" Height="16"
+                                      IsVisible="{Binding IsSinglesCarousel}" />
+                        </Panel>
+                    </Button>
                 </StackPanel>
-                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasSingles}">
+                <ctrl:AlbumCarousel Height="440"
+                                    FocusOnShow="False"
+                                    IsVisible="{Binding ShowSinglesCarousel}"
+                                    Albums="{Binding SingleReleases}"
+                                    CaseStyle="{Binding CarouselStyle}"
+                                    CenterAlbum="{Binding SinglesCarouselCenterAlbum}"
+                                    OpenCommand="{Binding OpenAlbumCommand}" />
+                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding ShowSinglesGrid}">
                     <ItemsControl.ItemsSource>
                         <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
                             <Binding Path="UseMasonry" />
@@ -1480,7 +1506,7 @@
                                         ItemTemplate="{StaticResource AlbumTile}">
                     <ctrl:MasonryAlbumPanel.IsVisible>
                         <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="HasSingles" />
+                            <Binding Path="ShowSinglesGrid" />
                             <Binding Path="UseMasonry" />
                         </MultiBinding>
                     </ctrl:MasonryAlbumPanel.IsVisible>
@@ -1518,8 +1544,34 @@
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
+                    <!-- Grid / carousel, like the Albums tab (Discord 11-24): this tab keeps its own choice. -->
+                    <Button Classes="grey-pill"
+                            Width="34" Height="34"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            VerticalAlignment="Center"
+                            Cursor="Hand"
+                            ToolTip.Tip="{Binding LiveViewToggleLabel}"
+                            AutomationProperties.Name="{Binding LiveViewToggleLabel}"
+                            IsVisible="{Binding IsCarouselAvailable}"
+                            Command="{Binding ToggleLiveViewCommand}">
+                        <Panel>
+                            <PathIcon Data="{StaticResource AlbumCarouselIcon}" Width="16" Height="16"
+                                      IsVisible="{Binding !IsLiveCarousel}" />
+                            <PathIcon Data="{StaticResource GridViewIcon}" Width="16" Height="16"
+                                      IsVisible="{Binding IsLiveCarousel}" />
+                        </Panel>
+                    </Button>
                 </StackPanel>
-                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding HasLive}">
+                <ctrl:AlbumCarousel Height="440"
+                                    FocusOnShow="False"
+                                    IsVisible="{Binding ShowLiveCarousel}"
+                                    Albums="{Binding LiveReleases}"
+                                    CaseStyle="{Binding CarouselStyle}"
+                                    CenterAlbum="{Binding LiveCarouselCenterAlbum}"
+                                    OpenCommand="{Binding OpenAlbumCommand}" />
+                <ItemsControl ItemTemplate="{StaticResource AlbumTile}" IsVisible="{Binding ShowLiveGrid}">
                     <ItemsControl.ItemsSource>
                         <MultiBinding Converter="{x:Static conv:UnlessMasonryConverter.Instance}">
                             <Binding Path="UseMasonry" />
@@ -1540,7 +1592,7 @@
                                         ItemTemplate="{StaticResource AlbumTile}">
                     <ctrl:MasonryAlbumPanel.IsVisible>
                         <MultiBinding Converter="{x:Static BoolConverters.And}">
-                            <Binding Path="HasLive" />
+                            <Binding Path="ShowLiveGrid" />
                             <Binding Path="UseMasonry" />
                         </MultiBinding>
                     </ctrl:MasonryAlbumPanel.IsVisible>
