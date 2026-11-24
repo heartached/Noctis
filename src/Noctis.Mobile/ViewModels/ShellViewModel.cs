@@ -1870,7 +1870,7 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             var sync = SyncOnStartAsync(account);
             StartupSync = sync;
-            _startupResume.TrySetResult(ResumeUnfinishedDownloadsAsync(sync));
+            _startupResume.TrySetResult(ResumeUnfinishedDownloadsAsync(sync, atStart: true));
         }
         else
         {
@@ -1904,15 +1904,20 @@ public sealed partial class ShellViewModel : ObservableObject
     /// Downloads the app ended in the middle of go on by themselves (DownloadActivity.ResumeUnfinishedAsync),
     /// after the startup sync: long after the first frame, and with the catalog saying which songs the
     /// computer still has. A computer that did not answer would fail every song: they wait for it
-    /// instead (DownloadActivity.WaitForComputerAsync).
+    /// instead (DownloadActivity.WaitForComputerAsync). <paramref name="atStart"/>: the app's start,
+    /// whose banner then says so, as a tap's does; not every wakeup run's.
     /// </summary>
-    private async Task ResumeUnfinishedDownloadsAsync(Task<bool> sync)
+    private async Task ResumeUnfinishedDownloadsAsync(Task<bool> sync, bool atStart = false)
     {
         try
         {
             if (Downloads is not { } downloads) return;
             // Not answering: the songs wait for it (a run on Wi-Fi, or every 15 minutes there).
-            if (!await sync) await downloads.WaitForComputerAsync();
+            if (!await sync)
+            {
+                await downloads.WaitForComputerAsync();
+                if (atStart && !IsSuspended && downloads.WaitingText is { } waiting) Player.Notice = waiting;
+            }
             else await downloads.ResumeUnfinishedAsync();
         }
         catch (Exception ex)

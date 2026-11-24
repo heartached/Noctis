@@ -8856,12 +8856,16 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>移除下載項目</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} 首歌曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} 個播放清單</value></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>遙控：用手機控制電腦上正在播放的內容。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>資料庫可顯示「所有音樂」、「這支手機上」或「來自電腦」。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>在「設定」&gt;「標籤列」中選擇底部標籤並調整順序。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>首頁新增「最常播放」，在手機上播放的歌曲現在也會計入。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>「播放中」和「歌詞」支援「模糊封面」背景。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>歌詞更流暢，播放清單數量正確，鎖定畫面按鈕跟隨佇列。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>首頁的大頭貼旁新增遙控按鈕。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>下載會在背景繼續並顯示進度，無法連線時會等待電腦或 Wi-Fi，而不是失敗。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>豪華版專輯會像在電腦上一樣播放連結的歌曲。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>色彩暈染背景、減少玻璃效果，以及播放中的動態封面。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>「設定」&gt;「聆聽」中新增 ReplayGain 和保持隨機播放。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>可為專輯頁面排序，並自訂藝人分隔符號和曲風分隔符號。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>聆聽記錄：點一下某一天查看當天的播放，並顯示累計總數。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>首頁新增熱門藝人，搜尋新增最近搜尋。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>阿拉伯語現在在整個應用程式中由右至左顯示。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>修正標籤列當機，清單和啟動更快，歌詞更流暢。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>內建的 ALAC 解碼器，以未經修改的 FFmpeg 6.0 原始碼建構，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>播放、媒體工作階段以及解碼器的 JNI 包裝層。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>使用者介面框架。</value></data>

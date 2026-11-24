@@ -3860,12 +3860,16 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Supprimer les téléchargements</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} morceau|{0:N0} morceaux</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>Télécommande : contrôlez depuis votre téléphone ce qui joue sur votre ordinateur.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>La Bibliothèque peut afficher Toute la musique, Sur ce téléphone ou De l’ordinateur.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>Choisissez et ordonnez les onglets du bas dans Paramètres, Barre d’onglets.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>Les plus écoutés sur l’Accueil, et les morceaux lus sur le téléphone comptent désormais.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>Fond Pochette floutée pour En cours de lecture et Paroles.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Paroles plus fluides, nombre de morceaux des playlists correct et boutons de l’écran de verrouillage qui suivent la file d’attente.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>Un bouton Télécommande sur l’Accueil, à côté de votre photo de profil.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Les téléchargements continuent en arrière-plan, affichent leur progression et attendent votre ordinateur ou le Wi-Fi au lieu d’échouer.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>Les albums deluxe lisent leurs morceaux liés, comme sur votre ordinateur.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>Fond Voile de couleur, Réduire le verre et pochettes animées dans À l’écoute.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>ReplayGain et Garder la lecture aléatoire dans Paramètres, Écoute.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>Triez la page Albums et choisissez vos propres séparateurs d’artistes et de genre.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>Historique d’écoute : touchez un jour pour voir ses écoutes, avec le total depuis le début.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>Top artistes sur l’Accueil et Recherches récentes dans Recherche.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>L’arabe s’affiche désormais de droite à gauche dans toute l’app.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Plantage de la barre d’onglets corrigé, listes et démarrage plus rapides, paroles plus fluides.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Le décodeur ALAC intégré, compilé à partir des sources non modifiées de FFmpeg 6.0, sans parties GPL ni non libres : git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Lecture, session multimédia et wrapper JNI du décodeur.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Le framework d’interface utilisateur.</value><comment>Open-source licenses</comment></data>

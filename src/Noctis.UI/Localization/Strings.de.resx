@@ -3860,12 +3860,16 @@ Zeilen und Timings werden verworfen und eine leere Songtextbox öffnet sich für
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Downloads entfernen</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} Song|{0:N0} Songs</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} Playlist|{0} Playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>Fernbedienung: Steuere vom Smartphone aus, was auf deinem Computer läuft.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>Die Bibliothek kann „Alle Musik“, „Auf diesem Smartphone“ oder „Vom Computer“ zeigen.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>Wähle die unteren Tabs und ihre Reihenfolge unter Einstellungen, Tab-Leiste.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>„Meistgespielt“ auf der Startseite, und auf dem Smartphone gespielte Songs zählen jetzt mit.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>Hintergrund „Weichgezeichnetes Cover“ für „Läuft gerade“ und „Songtext“.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Flüssigere Songtexte, richtige Playlist-Zahlen und Sperrbildschirm-Tasten, die der Warteschlange folgen.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>Eine Fernbedienung-Taste auf der Startseite, neben deinem Profilbild.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Downloads laufen im Hintergrund weiter, zeigen ihren Fortschritt und warten auf deinen Computer oder WLAN, statt fehlzuschlagen.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>Deluxe-Alben spielen ihre verknüpften Songs ab, wie auf deinem Computer.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>Hintergrund „Farbschleier“, „Weniger Glas“ und animierte Cover bei „Läuft gerade“.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>ReplayGain und „Zufallswiedergabe beibehalten“ unter Einstellungen, Hören.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>Sortiere die Alben-Seite und lege eigene Künstler- und Genre-Trennzeichen fest.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>Hörverlauf: Tippe auf einen Tag, um seine Wiedergaben zu sehen, dazu die Summe aller Zeiten.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>Top-Künstler auf der Startseite und letzte Suchen in der Suche.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>Arabisch wird jetzt in der ganzen App von rechts nach links angezeigt.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Absturz der Tab-Leiste behoben, schnellere Listen und schnellerer Start, flüssigere Songtexte.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Der mitgelieferte ALAC-Decoder, gebaut aus dem unveränderten FFmpeg-6.0-Quellcode ohne GPL- oder unfreie Teile: git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Wiedergabe, Mediensitzung und der JNI-Wrapper des Decoders.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Das Framework der Benutzeroberfläche.</value><comment>Open-source licenses</comment></data>

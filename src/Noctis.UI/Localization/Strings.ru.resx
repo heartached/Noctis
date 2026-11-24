@@ -3869,12 +3869,16 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Удалить загрузки</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} песня|{0:N0} песни|{0:N0} песен</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} плейлист|{0} плейлиста|{0} плейлистов</value></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>Пульт: управляйте с телефона тем, что играет на компьютере.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>Медиатека может показывать «Вся музыка», «На этом телефоне» или «С компьютера».</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>Выбирайте нижние вкладки и их порядок в «Настройки», «Панель вкладок».</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>«Самое прослушиваемое» на Главной, и песни, сыгранные на телефоне, теперь учитываются.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>Фон «Размытая обложка» для экранов «Сейчас играет» и «Текст».</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Более плавный текст песен, верное число песен в плейлистах и кнопки экрана блокировки, которые следуют очереди.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>Кнопка «Пульт» на Главной, рядом с фото профиля.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Загрузки продолжаются в фоне, показывают ход и ждут компьютер или Wi-Fi вместо ошибки.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>Делюкс-альбомы играют связанные песни, как на компьютере.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>Фон «Цветная дымка», «Меньше стекла» и анимированные обложки в «Сейчас играет».</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>ReplayGain и «Не выключать перемешивание» в «Настройки», «Прослушивание».</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>Сортируйте страницу альбомов и задавайте свои разделители исполнителей и жанров.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>История прослушиваний: нажмите на день, чтобы увидеть его прослушивания, плюс итог за всё время.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>«Топ исполнителей» на Главной и «Недавние запросы» в Поиске.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>Арабский теперь отображается справа налево во всём приложении.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Исправлен сбой панели вкладок, списки и запуск стали быстрее, текст песен — плавнее.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Встроенный декодер ALAC, собранный из неизменённых исходников FFmpeg 6.0 без GPL и несвободных частей: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Воспроизведение, медиасеанс и JNI-обёртка декодера.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Фреймворк пользовательского интерфейса.</value></data>

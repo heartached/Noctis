@@ -45,6 +45,8 @@ public sealed partial class DownloadActivity : ObservableObject
     /// <summary>The waiting songs wait for the computer to answer (away from home, the computer
     /// off), not for Wi-Fi or for the app: a run goes on Wi-Fi, or every 15 minutes there. UI thread.</summary>
     private bool _waitingForComputer;
+    /// <summary>The waiting songs wait for Wi-Fi (Wi-Fi only on, the phone on mobile data). UI thread.</summary>
+    private bool _waitingForWifi;
     /// <summary>The system's run of the wakeup is under way (<see cref="IDownloadWakeup.Due"/>, not
     /// finished): downloads it resumed with the app in the background run under it. UI thread.</summary>
     private bool _wakeRun;
@@ -68,10 +70,11 @@ public sealed partial class DownloadActivity : ObservableObject
         _keeper = keeper;
         _wakeup = wakeup;
         account.DownloadProgress += (_, progress) => marshal(() => Apply(progress));
-        // The computer refused this phone's key (signed out locally): no report says so.
+        // The computer refused this phone's key (signed out locally): no report says so. Songs only
+        // waiting count too: their wakeup stayed scheduled, and the Account page said they wait.
         account.StateChanged += (_, _) =>
         {
-            if (!account.IsSignedIn && (_keeping || _notifying || _paused != null)) marshal(CallOff);
+            if (!account.IsSignedIn && (_keeping || _notifying || _paused != null || _waiting != null)) marshal(CallOff);
         };
         if (keeper != null)
         {
@@ -101,6 +104,14 @@ public sealed partial class DownloadActivity : ObservableObject
 
     /// <summary>The service's last report, null before the first; the Account page starts from it.</summary>
     public NoctisDownloadProgress? Last { get; private set; }
+
+    /// <summary>"Waiting for your computer" or "Waiting for Wi-Fi" while songs asked for wait for it,
+    /// also the ones found at start (<see cref="WaitForComputerAsync"/>), else null: the Account page
+    /// and the start's banner say what the card says mid-run. UI thread.</summary>
+    public string? WaitingText => _waiting == null ? null
+        : _waitingForComputer ? Loc.T("Mobile.Download.WaitingForComputer")
+        : _waitingForWifi ? Loc.T("Mobile.Download.WaitingForWifi")
+        : null;
 
     /// <summary>Songs are downloading (any batch).</summary>
     [ObservableProperty] private bool _isActive;
@@ -155,6 +166,7 @@ public sealed partial class DownloadActivity : ObservableObject
             var left = pending.Where(t => !_account.IsDownloaded(t));
             _waiting = (_waiting ?? new List<Track>()).Concat(left).DistinctBy(t => t.Id).ToList();
             _waitingForComputer = ex.Kind == NoctisErrorKind.Unreachable;
+            _waitingForWifi = ex.Kind == NoctisErrorKind.WifiRequired;
             throw;
         }
         finally
@@ -255,6 +267,7 @@ public sealed partial class DownloadActivity : ObservableObject
         DebugLog.Write("Account", $"Resuming {tracks.Count} unfinished downloads");
         _waiting = tracks.ToList();
         _waitingForComputer = false;
+        _waitingForWifi = false;
         await ResumeWaitingAsync();
     }
 
@@ -282,8 +295,10 @@ public sealed partial class DownloadActivity : ObservableObject
         {
             DebugLog.Write("Account", "Unfinished downloads wait for Wi-Fi");
             _waitingForComputer = false;
+            _waitingForWifi = true;
             // Ends a run that found mobile data, and asks for one on Wi-Fi.
             SetWakeup(TimeSpan.Zero);
+            Changed?.Invoke(this, EventArgs.Empty);
             return;
         }
         // Taken meanwhile (another return to the front) or called off.
@@ -351,7 +366,10 @@ public sealed partial class DownloadActivity : ObservableObject
         DebugLog.Write("Account", $"{tracks.Count} unfinished downloads wait for the computer");
         _waiting = tracks.ToList();
         _waitingForComputer = true;
+        _waitingForWifi = false;
         if (!_wakeRun) SetWakeup(TimeSpan.Zero, forComputer: true);
+        // The Account page says so: before, only a batch that stopped mid-run did (its card).
+        Changed?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>The system stopped the wakeup run (its time limit, the network went): downloads it
@@ -375,6 +393,7 @@ public sealed partial class DownloadActivity : ObservableObject
         // Before the downloads stop: their starts end as they do, and schedule the next run.
         _waiting = left;
         _waitingForComputer = false;
+        _waitingForWifi = false;
         try { await _account.PauseDownloadsAsync(); }
         catch (Exception ex) { DebugLog.Write("Account", $"Pausing downloads failed: {ex.GetType().Name}"); }
     }

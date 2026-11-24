@@ -944,11 +944,15 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// the lines about the computer only where there is an account.</summary>
     public IReadOnlyList<string> WhatsNewItems => new[]
     {
-        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Remote") : null,
-        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Source") : null,
-        Loc.T("Mobile.WhatsNew.TabBar"),
-        Loc.T("Mobile.WhatsNew.MostPlayed"),
-        Loc.T("Mobile.WhatsNew.Background"),
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.RemoteHome") : null,
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Downloads") : null,
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Deluxe") : null,
+        Loc.T("Mobile.WhatsNew.Looks"),
+        Loc.T("Mobile.WhatsNew.Listening"),
+        Loc.T("Mobile.WhatsNew.Library"),
+        Loc.T("Mobile.WhatsNew.History"),
+        Loc.T("Mobile.WhatsNew.HomeSearch"),
+        Loc.T("Mobile.WhatsNew.Arabic"),
         Loc.T("Mobile.WhatsNew.Fixes"),
     }.OfType<string>().ToArray();
 

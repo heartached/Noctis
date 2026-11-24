@@ -167,6 +167,23 @@ features. **Health:** My app does not have any health features.
 - Video link: upload `artifacts/android/fgs-demo.mp4` to YouTube as **Unlisted** (or Google
   Drive, "anyone with the link") and paste the link.
 
+Second type, since beta 6 (background downloads):
+
+- Type: **Data sync** (`FOREGROUND_SERVICE_DATA_SYNC`).
+- Use case: Network transfer: upload or download (wording may differ; pick the download one).
+- Description: "Users can download songs from their own computer running the Noctis desktop app
+  (over their home network) to keep them on the phone for offline listening. On Android 8-13 a
+  dataSync foreground service runs only while downloads the user started are in progress, with
+  a progress notification, so they finish when the user leaves the app; it stops as soon as the
+  downloads end. On Android 14 and later the app uses a user-initiated data transfer job
+  instead."
+- Impact if deferred or interrupted: "The downloads the user asked for would stop as soon as
+  they left the app, leaving songs half-downloaded until they reopened it."
+- Video link: a short screen recording on the phone: start an album download from the album
+  page, press Home, pull down the notification shade to show the "Downloading" progress
+  notification, then open the app again to show the album's songs downloaded. Upload as
+  **Unlisted** like the first video.
+
 **Music and audio permission (`READ_MEDIA_AUDIO`, and `READ_EXTERNAL_STORAGE` with
 maxSdkVersion 32 for Android 8-12):** requested at runtime only when the user turns on
 Settings → Music Folders → Find All Music Automatically (or Find All Music on the first-run
