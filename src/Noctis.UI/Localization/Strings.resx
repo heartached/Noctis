@@ -3850,12 +3850,16 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>Remove Downloads</value><comment>Prompt button</comment></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} song|{0:N0} songs</value><comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} playlist|{0} playlists</value><comment>Plural forms, see Mobile.Count.Songs</comment></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>Remote: control what plays on your computer from your phone.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>Library can show All Music, On This Phone or From Computer.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>Choose and order the bottom tabs in Settings, Tab Bar.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>Most Played on Home, and songs played on the phone now count.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>Blurred Cover background for Now Playing and Lyrics.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Smoother lyrics, correct playlist counts, and lock screen buttons that follow the queue.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>A Remote button on Home, next to your profile picture.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>Downloads keep going in the background, show their progress, and wait for your computer or Wi-Fi instead of failing.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>Deluxe albums play their linked songs, as on your computer.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>Colour Wash background, Reduce Glass, and Animated Covers on Now Playing.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>ReplayGain and Keep Shuffle On in Settings, Listening.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>Sort the Albums page, and set your own Artist and Genre Separators.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>Listening History: tap a day to see its plays, plus an all-time total.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>Top Artists on Home, and Recent Searches in Search.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>Arabic now reads right to left across the app.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Tab Bar crash fixed, faster lists and start-up, and smoother lyrics.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>The bundled ALAC decoder, built from the unmodified FFmpeg 6.0 source without GPL or non-free parts: git.ffmpeg.org/ffmpeg.git</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Playback, media session and the decoder's JNI wrapper.</value><comment>Open-source licenses</comment></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>The user interface framework.</value><comment>Open-source licenses</comment></data>

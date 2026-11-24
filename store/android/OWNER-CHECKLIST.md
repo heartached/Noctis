@@ -115,7 +115,9 @@ Dashboard → "Set up your app". Work through every item with
 7. Data safety → No data collected or shared
 8. Government apps, Financial features, Health → No / none
 9. Advertising ID → No
-10. Foreground service permissions → Media playback, the two texts, the video link from step 4
+10. Foreground service permissions → Media playback, the two texts, the video link from step 4;
+    since beta 6 also Data sync (background downloads), its texts and video in
+    `play-console-answers.md`
 11. Store settings → Music & Audio, contact email, website
 12. Main store listing → the three text files, `icon-512.png`, `feature-graphic.png`,
     the PNGs in `store/android/screenshots/` (in file-name order). That folder doesn't

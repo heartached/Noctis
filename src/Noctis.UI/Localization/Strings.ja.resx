@@ -8837,12 +8837,16 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>ダウンロードを削除</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}曲</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0}個のプレイリスト</value></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>リモート：コンピューターで再生中の曲をスマートフォンから操作できます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>ライブラリで「すべての音楽」「このスマートフォン内」「コンピューターから」を切り替えられます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>下部のタブを「設定」＞「タブバー」で選んで並べ替えられます。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>ホームに「よく再生した曲」が登場し、スマートフォンで再生した曲もカウントされるようになりました。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>「再生中」と「歌詞」に「ぼかしたカバー」の背景を追加しました。</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>歌詞がよりなめらかになり、プレイリストの曲数が正しく表示され、ロック画面のボタンがキューに沿って動きます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>ホームのプロフィール写真の横にリモートボタンが付きました。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>ダウンロードはバックグラウンドで続き、進行状況を表示し、失敗する代わりにコンピューターやWi-Fiを待つようになりました。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>デラックス版アルバムは、コンピューターと同じようにリンクされた曲も再生します。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>カラーウォッシュの背景、ガラス効果を減らす、再生中のアニメーションカバー。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>ReplayGainと「シャッフルをオンのままにする」を「設定」＞「リスニング」に追加。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>アルバムページを並べ替え、アーティストとジャンルの区切り文字を自分で設定できます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>再生履歴：日をタップするとその日の再生が見られ、これまでの合計も表示されます。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>ホームにトップアーティスト、検索に最近の検索。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>アラビア語はアプリ全体で右から左に表示されるようになりました。</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>タブバーのクラッシュを修正し、リストと起動が速くなり、歌詞がよりなめらかになりました。</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>再生、メディアセッション、デコーダのJNIラッパー。</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>ユーザーインターフェイスのフレームワーク。</value></data>

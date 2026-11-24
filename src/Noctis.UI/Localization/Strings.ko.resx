@@ -8837,12 +8837,16 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>다운로드 제거</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0}곡</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>재생목록 {0}개</value></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>리모컨: 휴대폰에서 컴퓨터의 재생을 제어하세요.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>라이브러리에서 '모든 음악', '이 휴대폰', '컴퓨터에서' 중 하나를 골라 볼 수 있습니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>'설정' &gt; '탭 막대'에서 아래쪽 탭을 고르고 순서를 바꾸세요.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>홈에 '가장 많이 재생'이 추가되고, 휴대폰에서 재생한 노래도 이제 집계됩니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>'지금 재생 중'과 '가사'에서 '흐린 커버' 배경을 쓸 수 있습니다.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>더 부드러운 가사, 정확한 재생목록 곡 수, 대기열을 따르는 잠금 화면 버튼.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>홈의 프로필 사진 옆에 리모컨 버튼이 생겼습니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>다운로드가 백그라운드에서 계속되고 진행 상황을 보여 주며, 실패하는 대신 컴퓨터나 Wi-Fi를 기다립니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>디럭스 앨범은 컴퓨터에서처럼 연결된 노래도 재생합니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>컬러 워시 배경, 유리 효과 줄이기, 지금 재생 중의 움직이는 커버.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>'설정' &gt; '감상'에 ReplayGain과 셔플 유지가 추가되었습니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>앨범 페이지를 정렬하고, 아티스트 구분자와 장르 구분자를 직접 정하세요.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>감상 기록: 날짜를 탭하면 그날의 재생을 볼 수 있고, 전체 합계도 표시됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>홈에 인기 아티스트, 검색에 최근 검색이 추가되었습니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>아랍어가 이제 앱 전체에서 오른쪽에서 왼쪽으로 표시됩니다.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>탭 막대 충돌 수정, 더 빠른 목록과 시작, 더 부드러운 가사.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>내장 ALAC 디코더로, GPL 또는 non-free 구성 요소 없이 수정되지 않은 FFmpeg 6.0 소스에서 빌드되었습니다: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>재생, 미디어 세션 및 디코더의 JNI 래퍼.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>사용자 인터페이스 프레임워크.</value></data>

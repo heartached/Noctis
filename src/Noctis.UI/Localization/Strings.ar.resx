@@ -8837,12 +8837,16 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>إزالة التنزيلات</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} أغنية|{0:N0} أغنية|{0:N0} أغنيتان|{0:N0} أغانٍ|{0:N0} أغنية|{0:N0} أغنية</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} قائمة تشغيل|{0} قائمة تشغيل|{0} قائمتا تشغيل|{0} قوائم تشغيل|{0} قائمة تشغيل|{0} قائمة تشغيل</value></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>التحكم عن بُعد: تحكّم من هاتفك بما يُشغَّل على الكمبيوتر.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>يمكن أن تعرض المكتبة كل الموسيقى أو على هذا الهاتف أو من الكمبيوتر.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>اختر علامات التبويب السفلية ورتّبها من الإعدادات، شريط علامات التبويب.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>الأكثر تشغيلاً في الرئيسية، والأغاني المشغّلة على الهاتف تُحتسب الآن.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>خلفية «غلاف مموّه» لشاشتي «قيد التشغيل الآن» و«كلمات الأغاني».</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>كلمات أغانٍ أكثر سلاسة، وأعداد صحيحة في قوائم التشغيل، وأزرار شاشة القفل تتبع قائمة الانتظار.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>زر التحكم عن بُعد في الرئيسية، بجانب صورة ملفك الشخصي.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>تستمر التنزيلات في الخلفية وتعرض تقدّمها، وتنتظر الكمبيوتر أو شبكة Wi-Fi بدلاً من أن تفشل.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>ألبومات الإصدار الفاخر (Deluxe) تشغّل أغانيها المرتبطة، كما على الكمبيوتر.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>خلفية تدرّج لوني، وتقليل الزجاج، والأغلفة المتحركة في قيد التشغيل.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>ReplayGain وإبقاء التشغيل العشوائي مفعّلًا في الإعدادات، الاستماع.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>رتّب صفحة الألبومات، واختر فواصل الفنانين والنوع بنفسك.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>سجل الاستماع: اضغط على يوم لترى ما شُغّل فيه، مع المجموع منذ البداية.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>أبرز الفنانين في الرئيسية، وعمليات البحث الأخيرة في البحث.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>أصبحت العربية تُعرض من اليمين إلى اليسار في التطبيق كله.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>إصلاح تعطّل شريط علامات التبويب، وقوائم وتشغيل أسرع، وكلمات أغانٍ أكثر سلاسة.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>مفكّك ترميز ALAC المضمّن، مبني من مصدر FFmpeg 6.0 دون تعديل ودون أجزاء GPL أو غير حرة: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>التشغيل وجلسة الوسائط وغلاف JNI لمفكّك الترميز.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>إطار عمل واجهة المستخدم.</value></data>

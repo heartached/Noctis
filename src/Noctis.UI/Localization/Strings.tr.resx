@@ -3895,12 +3895,16 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>İndirilenleri Kaldır</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} çalma listesi|{0} çalma listesi</value></data>
-  <data name="Mobile.WhatsNew.Remote" xml:space="preserve"><value>Uzaktan Kumanda: bilgisayarında çalanı telefonundan yönet.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Source" xml:space="preserve"><value>Kitaplıkta Tüm müzik, Bu Telefonda veya Bilgisayardan seçilebilir.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.TabBar" xml:space="preserve"><value>Alt sekmeleri Ayarlar, Sekme Çubuğu'ndan seç ve sırala.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.MostPlayed" xml:space="preserve"><value>Ana Sayfa'da En Çok Çalınan; telefonda çalınan şarkılar da artık sayılıyor.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Background" xml:space="preserve"><value>Şimdi Çalıyor ve Şarkı Sözleri için Bulanık Kapak arka planı.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Daha akıcı şarkı sözleri, doğru çalma listesi sayıları ve kuyruğu izleyen kilit ekranı düğmeleri.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>Ana Sayfa'da, profil resminin yanında bir Uzaktan Kumanda düğmesi.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>İndirmeler arka planda sürer, ilerlemesini gösterir ve başarısız olmak yerine bilgisayarını ya da Wi-Fi'ı bekler.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>Deluxe albümler, bilgisayarındaki gibi bağlantılı şarkılarını da çalar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>Renk Perdesi arka planı, Camı azalt ve Şimdi Çalıyor'da Hareketli Kapaklar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Ayarlar, Dinleme'de ReplayGain ve Karıştırmayı Açık Tut.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>Albümler sayfasını sırala, kendi Sanatçı ve Tür Ayırıcılarını belirle.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>Dinleme Geçmişi: bir güne dokunarak o günün dinlemelerini gör, tüm zamanların toplamıyla birlikte.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>Ana Sayfa'da En Çok Dinlenen Sanatçılar, Arama'da Son Aramalar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>Arapça artık uygulamanın tamamında sağdan sola gösteriliyor.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Sekme Çubuğu çökmesi düzeltildi; listeler ve açılış daha hızlı, şarkı sözleri daha akıcı.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Paketle gelen ALAC kod çözücü; değiştirilmemiş FFmpeg 6.0 kaynağından, GPL ve özgür olmayan bölümler olmadan derlenmiştir: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Çalma, medya oturumu ve kod çözücünün JNI sarmalayıcısı.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Kullanıcı arayüzü çatısı.</value></data>
