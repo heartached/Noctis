@@ -176,6 +176,9 @@ public class MobileAccountTests
         public bool WifiOnly { get; set; }
         public Task<bool> DownloadsWifiOnlyAsync() => Task.FromResult(WifiOnly);
 
+        /// <summary>On Wi-Fi (or Ethernet) now (IsOnWifiNow).</summary>
+        public bool IsOnWifiNow { get; set; } = true;
+
         /// <summary>PauseDownloadsAsync calls; <see cref="OnPause"/> runs in each (a test ends its gated run).</summary>
         public int PauseCalls { get; private set; }
         public Action? OnPause { get; set; }

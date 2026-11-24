@@ -8901,6 +8901,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0}件失敗</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>ダウンロード中 {0}/{1}{2}</value></data>
   <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>コンピューターからダウンロード中</value></data>
+  <data name="Mobile.Download.WaitingForComputer" xml:space="preserve"><value>コンピューターを待っています</value></data>
+  <data name="Mobile.Download.WaitingForWifi" xml:space="preserve"><value>Wi-Fiを待っています</value></data>
   <data name="Mobile.Download.Done" xml:space="preserve"><value>{0}曲をダウンロードしました</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>コンピューターに接続できません。コンピューターでNoctisが開いていること、「スマートフォンでNoctisを使う」がオンになっていること、両方が同じWi-Fiに接続されていることを確認してください。</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>コンピューターのセキュリティコードが変更されました。新しいコードを信頼するには、サインアウトしてから再度サインインしてください。</value></data>

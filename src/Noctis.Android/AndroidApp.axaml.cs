@@ -299,7 +299,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             {
                 LibraryReady = libraryReady,
                 // Settings → Downloads → Wi-Fi only: a download on mobile data is refused.
-                IsOnWifi = () => AndroidNetwork.IsUnmetered(context),
+                IsOnWifi = () => AndroidNetwork.IsOnWifi(context),
                 // No ALAC decoder, neither the phone's nor the bundled FFmpeg (a build without
                 // Libs/media3-decoder-ffmpeg): the desktop sends its ALAC songs as FLAC.
                 PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),

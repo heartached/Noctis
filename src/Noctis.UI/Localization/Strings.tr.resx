@@ -3959,6 +3959,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} başarısız</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>İndiriliyor: {0} / {1}{2}</value></data>
   <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Bilgisayarından indiriliyor</value></data>
+  <data name="Mobile.Download.WaitingForComputer" xml:space="preserve"><value>Bilgisayarın bekleniyor</value></data>
+  <data name="Mobile.Download.WaitingForWifi" xml:space="preserve"><value>Wi-Fi bekleniyor</value></data>
   <data name="Mobile.Download.Done" xml:space="preserve"><value>{0} şarkı indirildi|{0} şarkı indirildi</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Bilgisayarına ulaşılamıyor. Orada Noctis’in açık olduğunu, “Telefonunda Noctis” seçeneğinin açık olduğunu ve ikisinin de aynı Wi-Fi ağında olduğunu kontrol et.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Bilgisayarının güvenlik kodu değişti. Yenisine güvenmek için oturumu kapatıp yeniden aç.</value></data>

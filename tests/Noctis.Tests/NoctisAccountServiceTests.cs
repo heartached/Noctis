@@ -1119,6 +1119,59 @@ public class NoctisAccountServiceTests : IAsyncLifetime
 
         Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
         Assert.InRange(svc.DownloadedCount, 1, 2);   // two were already under way, the third never started
+        // The song left is not a failure: it stays asked for, for the run on Wi-Fi.
+        Assert.Equal(3 - svc.DownloadedCount, (await Restart().UnfinishedDownloadsAsync()).Count);
+    }
+
+    /// <summary>A tap on mobile data with Wi-Fi only on: nothing downloads, but the songs are asked
+    /// for (downloads.json), so they go on by themselves on Wi-Fi.</summary>
+    [Fact]
+    public async Task Downloads_TappedOnMobileDataWithWifiOnly_WaitForWifi()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await SignedInAsync();
+        await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = true);
+        var svc = new NoctisAccountService(_phoneLibrary, _phonePersistence, NoctisHandlers.Sockets, AccountDir, OfflineDir,
+            "Test Phone", _recorder, marshal: a => a())
+        {
+            IsOnWifi = () => false,
+        };
+        await svc.SyncNowAsync(ct);
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAsync(new[] { Phone(_t1) }, ct));
+
+        Assert.Equal(NoctisErrorKind.WifiRequired, ex.Kind);
+        Assert.False(svc.IsOnWifiNow);
+        Assert.Equal(new[] { _t1.Id }, (await Restart().UnfinishedDownloadsAsync()).Select(t => t.Id));
+    }
+
+    /// <summary>The computer out of reach (away from home, switched off): the songs are not failed
+    /// and not dropped. The batch stops, its last report says they wait (none failed), they stay
+    /// asked for, and once the computer answers they download.</summary>
+    [Fact]
+    public async Task Downloads_ComputerUnreachable_WaitInsteadOfFailing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var svc = await SignedInAsync();
+        await svc.SyncNowAsync(ct);
+        NoctisDownloadProgress? last = null;
+        svc.DownloadProgress += (_, p) => last = p;
+        var port = _server.Port;
+        await _server.StopAsync();
+
+        var ex = await Assert.ThrowsAsync<NoctisServerException>(() => svc.DownloadAsync(new[] { Phone(_t1), Phone(_t2) }, ct));
+
+        Assert.Equal(NoctisErrorKind.Unreachable, ex.Kind);
+        Assert.Equal(0, last!.Failed);
+        Assert.Equal(2, last.Waiting);
+        Assert.False(last.WaitsForWifi);
+        Assert.Equal(new[] { _t1.Id, _t2.Id }.OrderBy(i => i), (await Restart().UnfinishedDownloadsAsync()).Select(t => t.Id).OrderBy(i => i));
+
+        await _server.StartAsync(port, certificate: null, ct, System.Net.IPAddress.Loopback);
+        await svc.ResumeDownloadsAsync(new[] { Phone(_t1), Phone(_t2) }, ct);
+
+        Assert.Equal(2, svc.DownloadedCount);
+        Assert.Empty(await Restart().UnfinishedDownloadsAsync());
     }
 
     /// <summary>Downloads paused by the system and resumed: a song the user removed meanwhile is not

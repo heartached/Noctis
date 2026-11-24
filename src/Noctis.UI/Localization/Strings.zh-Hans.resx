@@ -8901,6 +8901,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} 失败</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>正在下载 {0}/{1}{2}</value></data>
   <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>正在从电脑下载</value></data>
+  <data name="Mobile.Download.WaitingForComputer" xml:space="preserve"><value>正在等待电脑</value></data>
+  <data name="Mobile.Download.WaitingForWifi" xml:space="preserve"><value>正在等待 Wi-Fi</value></data>
   <data name="Mobile.Download.Done" xml:space="preserve"><value>已下载 {0} 首歌曲</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>无法连接到你的电脑。请确认电脑上已打开 Noctis、“在手机上使用 Noctis”已开启，并且两者连接的是同一个 Wi-Fi。</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>你电脑的安全码已更改。请退出登录后重新登录，以信任新的安全码。</value></data>
