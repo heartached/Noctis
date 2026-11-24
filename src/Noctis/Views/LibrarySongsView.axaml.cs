@@ -296,6 +296,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (_vm != null)
         {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
+            _vm.PropertyChanged -= OnVmRevealChanged;
             _vm.IsUserBusy = null;
         }
 
@@ -303,6 +304,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (_vm != null)
         {
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+            _vm.PropertyChanged += OnVmRevealChanged;
             _scrollResetFilterKey = _vm.FilterKey;
             _vm.IsUserBusy = IsUserBusy;
         }
@@ -438,7 +440,12 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
         if (_vm != null)
+        {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
+            _vm.PropertyChanged -= OnVmRevealChanged;
+        }
+        _cancelReveal?.Invoke();
+        _cancelReveal = null;
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         _selectedTracks.Clear();
@@ -458,6 +465,28 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         }
     }
 
+    // ── "Playing from …" (Discord 11-24, sina): the page was opened for the playing song ──
+
+    /// <summary>Room the floating island takes at the list's bottom (as the album page).</summary>
+    private const double RevealBottomInset = 82;
+    private Action? _cancelReveal;
+
+    private void OnVmRevealChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibrarySongsViewModel.RevealTrackId)) StartRevealIfAsked();
+    }
+
+    /// <summary>Glides the list to <see cref="LibrarySongsViewModel.RevealTrackId"/>'s row and
+    /// washes it (RowReveal.RevealInList), once; the scroll restore gives way to it.</summary>
+    private void StartRevealIfAsked()
+    {
+        if (_vm?.RevealTrackId is not { } id || VisualRoot == null) return;
+        _vm.RevealTrackId = null;
+        CancelPendingScrollRestore();
+        _cancelReveal?.Invoke();
+        _cancelReveal = RowReveal.RevealInList(TrackList, id, RevealBottomInset);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -472,6 +501,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+            _vm.PropertyChanged -= OnVmRevealChanged;
+            _vm.PropertyChanged += OnVmRevealChanged;
             _scrollResetFilterKey = _vm.FilterKey;
         }
 
@@ -491,6 +522,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
 
             TrackList.LayoutUpdated += _pendingScrollRestore;
         }
+        StartRevealIfAsked();
     }
 
 }

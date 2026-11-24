@@ -323,14 +323,14 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
     {
         var tracks = await FetchAlbumTracksAsync(tile);
         if (tracks.Count > 0)
-            _player.PlayAll(tracks.ToList());
+            _player.WithSource(PlaySource.Section(PlaySourceKind.Server)).PlayAll(tracks.ToList());
     }
 
     [RelayCommand]
     private void PlayAlbumFromDetail()
     {
         if (AlbumTracks.Count > 0)
-            _player.PlayAll(AlbumTracks.ToList());
+            _player.WithSource(PlaySource.Section(PlaySourceKind.Server)).PlayAll(AlbumTracks.ToList());
     }
 
     [RelayCommand]
@@ -338,7 +338,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
     {
         var index = AlbumTracks.IndexOf(track);
         if (index >= 0)
-            _player.ReplaceQueueAndPlay(AlbumTracks.ToList(), index);
+            _player.WithSource(PlaySource.Section(PlaySourceKind.Server)).ReplaceQueueAndPlay(AlbumTracks.ToList(), index);
     }
 
     [RelayCommand]
@@ -346,7 +346,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
     {
         var index = SearchTracks.IndexOf(track);
         if (index >= 0)
-            _player.ReplaceQueueAndPlay(SearchTracks.ToList(), index);
+            _player.WithSource(PlaySource.Section(PlaySourceKind.Server)).ReplaceQueueAndPlay(SearchTracks.ToList(), index);
     }
 
     [RelayCommand]

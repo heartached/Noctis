@@ -1358,6 +1358,11 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   </data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>シャッフルをオンのままにする</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>シャッフルがオンのとき、アルバム、プレイリスト、曲を再生してもオンのままで、新しい音楽をシャッフルします。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0}から再生中</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>再生元を表示</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>キューに、音楽を再生し始めたアルバム、プレイリスト、ページを表示します。クリックすると、そこにある曲に戻ります。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>曲名をクリックして再生元を開く</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>プレイヤーアイランドで曲名をクリックすると、アルバムではなく、再生元のページにあるその曲に移動します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>見つからない曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>キュー内の曲のファイルがなくなっている場合、Noctis はその曲をスキップします。その曲の扱いを選んでください。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>見つからないとマーク</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

@@ -78,7 +78,7 @@ public partial class MoreByArtistViewModel : ViewModelBase, ISearchable
         if (_player == null) return;
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.PlayAll(tracks);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -87,7 +87,7 @@ public partial class MoreByArtistViewModel : ViewModelBase, ISearchable
         if (_player == null) return;
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(tracks);
     }
 
     private List<Track> GetAllTracks()

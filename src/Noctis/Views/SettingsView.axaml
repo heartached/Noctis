@@ -3757,6 +3757,35 @@
                 </StackPanel>
                 </StackPanel>
             </Border>
+            <!-- Discord 11-24 (sina 4.3.7): "Playing from …" in the queue (PlayerViewModel.ShowPlaySource). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.ShowPlaySource}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowPlaySourceHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ShowPlaySource}"
+                                          IsChecked="{Binding ShowPlaySource}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord 11-24 (sina 4.3.4): the island title opens where the song plays from
+                 instead of its album (PlayerViewModel.TitleOpensPlaySource). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.TitleOpensPlaySource}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.TitleOpensPlaySourceHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.TitleOpensPlaySource}"
+                                          IsChecked="{Binding TitleOpensPlaySource}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">

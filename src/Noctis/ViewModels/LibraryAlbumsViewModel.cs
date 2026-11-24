@@ -1248,7 +1248,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayAll(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(album.EditionTracks);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1260,15 +1260,22 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
         var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
-        _player.PlayAll(ordered);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(ordered);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(album.EditionTracks);
     }
+
+    /// <summary>"Playing from …" (Discord 11-24, sina): the genre or artist this grid is narrowed
+    /// to, else the Albums page.</summary>
+    private PlaySource GridPlaySource =>
+        GenreFilterName.Length > 0 ? PlaySource.ForGenre(GenreFilterName)
+        : ArtistFilterName.Length > 0 ? PlaySource.ForArtist(ArtistFilterName)
+        : PlaySource.Section(PlaySourceKind.Albums);
 
     /// <summary>Plays all tracks from the current filtered artist view in order.</summary>
     [RelayCommand]
@@ -1276,7 +1283,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var allTracks = GetAllFilteredTracks();
         if (allTracks.Count == 0) return;
-        _player.PlayAll(allTracks);
+        _player.WithSource(GridPlaySource).PlayAll(allTracks);
     }
 
     /// <summary>Shuffles and plays all tracks from the current filtered artist view.</summary>
@@ -1285,7 +1292,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var allTracks = GetAllFilteredTracks();
         if (allTracks.Count == 0) return;
-        _player.PlayShuffled(allTracks);
+        _player.WithSource(GridPlaySource).PlayShuffled(allTracks);
     }
 
     /// <summary>
@@ -1334,7 +1341,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var songs = GetArtistSongsInOrder();
         if (songs.Count == 0) return;
         var index = songs.IndexOf(track);
-        _player.ReplaceQueueAndPlay(songs, index < 0 ? 0 : index);
+        _player.WithSource(GridPlaySource).ReplaceQueueAndPlay(songs, index < 0 ? 0 : index);
     }
 
     [RelayCommand]
@@ -1342,7 +1349,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var songs = GetArtistSongsInOrder();
         if (songs.Count == 0) return;
-        _player.PlayShuffled(songs);
+        _player.WithSource(GridPlaySource).PlayShuffled(songs);
     }
 
     [RelayCommand]

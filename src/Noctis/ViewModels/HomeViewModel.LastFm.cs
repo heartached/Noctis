@@ -45,7 +45,7 @@ public sealed partial class LastFmMixRow : ObservableObject
     {
         if (_player == null || All.Count == 0) return;
         var index = track == null ? 0 : Math.Max(0, IndexOf(track));
-        _player.ReplaceQueueAndPlay(All.ToList(), index);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Home)).ReplaceQueueAndPlay(All.ToList(), index);
     }
 
     /// <summary>The Play / Pause over a pill's art: pauses or resumes the playing song, else plays the mix from it.</summary>
@@ -61,7 +61,7 @@ public sealed partial class LastFmMixRow : ObservableObject
     private void Shuffle(Track? _)
     {
         if (_player == null || All.Count == 0) return;
-        _player.PlayShuffled(All.ToList());
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Home)).PlayShuffled(All.ToList());
     }
 
     private int IndexOf(Track track)

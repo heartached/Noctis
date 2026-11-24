@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 
 namespace Noctis.Helpers;
 
@@ -68,6 +69,68 @@ public static class RowReveal
             else done?.Invoke();
         }
         top.RequestAnimationFrame(Frame);
+    }
+
+    /// <summary>
+    /// The same reveal for a virtualized song list (Songs, a playlist; Discord 11-24, sina: the
+    /// "Playing from …" link). Waits for a layout pass that lists the song (the page may still be
+    /// filling), brings its row into view, glides it near the middle and washes it. Returns an
+    /// action that cancels a reveal still waiting.
+    /// </summary>
+    public static Action RevealInList(ListBox list, Guid trackId, double bottomInset)
+    {
+        var attempts = 0;
+        var done = false;
+        EventHandler? handler = null;
+        void Stop()
+        {
+            done = true;
+            if (handler != null) list.LayoutUpdated -= handler;
+            handler = null;
+        }
+        handler = (_, _) =>
+        {
+            if (done) return;
+            attempts++;
+            var index = IndexOf(list, trackId);
+            if (index < 0)
+            {
+                if (attempts >= 30) Stop();
+                return;
+            }
+            Stop();
+            list.ScrollIntoView(index);
+            // After the scroll's layout pass, so the row exists and its place is final.
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (list.ContainerFromIndex(index) is not Control row
+                    || list.FindDescendantOfType<ScrollViewer>() is not { } sv
+                    || sv.Content is not Visual content
+                    || row.TranslatePoint(default, content) is not { } top) return;
+                var target = TargetOffset(top.Y, row.Bounds.Height, sv.Offset.Y, sv.Viewport.Height,
+                    sv.Extent.Height, bottomInset);
+                var body = row.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("row-body"));
+                GlideTo(sv, target, () =>
+                {
+                    if (body != null) Flash(body, body.CornerRadius);
+                });
+            }, DispatcherPriority.Background);
+        };
+        list.LayoutUpdated += handler;
+        list.InvalidateMeasure(); // a list already laid out still gets its pass
+        return Stop;
+    }
+
+    private static int IndexOf(ListBox list, Guid trackId)
+    {
+        if (list.ItemsSource is not System.Collections.IEnumerable items) return -1;
+        var i = 0;
+        foreach (var item in items)
+        {
+            if (item is Noctis.Models.Track t && t.Id == trackId) return i;
+            i++;
+        }
+        return -1;
     }
 
     /// <summary>Lays the fading wash over <paramref name="row"/> (its corners follow

@@ -1008,12 +1008,14 @@
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center">
                                 <!-- Title is a link button: clicking it opens the current
-                                     track's album. Mirrors the artist link below. -->
+                                     track's album, or with Settings › Song Title Opens Where It
+                                     Plays From the page it plays from (Discord 11-24, sina).
+                                     Mirrors the artist link below. -->
                                 <Button Classes="artist-link-btn"
                                         Background="Transparent" BorderThickness="0" Padding="0"
                                         Cursor="Hand" HorizontalAlignment="Left"
-                                        Command="{Binding ViewCurrentTrackAlbumCommand}"
-                                        ToolTip.Tip="{loc:T PlaybackBar.ViewAlbumTip}">
+                                        Command="{Binding OpenTitleTargetCommand}"
+                                        ToolTip.Tip="{Binding TitleClickTip}">
                                 <StackPanel x:Name="TrackTitleContent"
                                             Orientation="Horizontal"
                                             Spacing="6">

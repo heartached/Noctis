@@ -520,6 +520,11 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Les titres écoutés restent dans la file d'attente, au-dessus du titre en cours.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Garder la lecture aléatoire</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Quand la lecture aléatoire est activée, elle le reste en lançant un album, une playlist ou un titre, et mélange la nouvelle musique.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Lecture depuis {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Afficher d'où vient la musique</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>La file d'attente indique l'album, la playlist ou la page d'où la musique a été lancée. Cliquez dessus pour retrouver le titre à cet endroit.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Le titre du morceau ouvre sa source</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Un clic sur le titre dans l'îlot de lecture vous emmène au titre sur la page d'où il est lu, au lieu de son album.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Titres manquants</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Si le fichier d'un titre de la file d'attente a disparu, Noctis le saute. Choisissez ce qu'il en advient.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Marquer comme manquant</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

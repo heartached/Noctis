@@ -942,7 +942,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 {
                     // No track loaded — shuffle entire library, in the bar's Shuffle mode
                     // so every shuffle indicator reports On and Shuffle off can undo it.
-                    PlayShuffled(_library.Tracks.ToList(), avoidRecentlyPlayed: true);
+                    WithSource(Models.PlaySource.Section(PlaySourceKind.Songs))
+                        .PlayShuffled(_library.Tracks.ToList(), avoidRecentlyPlayed: true);
                 }
                 break;
         }
@@ -1754,7 +1755,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
         // No recency weighting here: the user explicitly chose to shuffle this one album,
         // so every track on it should stay equally likely even if just played.
-        PlayShuffled(album.Tracks);
+        WithSource(Models.PlaySource.ForAlbum(album)).PlayShuffled(album.Tracks);
     }
 
     /// <summary>
@@ -2069,7 +2070,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             shuffled.Insert(0, first);
             start = 0;
         }
-        if (start < 0) return; // nothing on the list may play (e.g. all blocked explicit)
+        if (start < 0) { DropPendingPlaySource(); return; } // nothing on the list may play (e.g. all blocked explicit)
         if (start > 0)
         {
             var lead = shuffled[start];
@@ -2085,7 +2086,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
     private void ReplaceQueueAndPlay(IList<Track> tracks, int startIndex, IList<Track>? unshuffled)
     {
         DebugLogger.Info(DebugLogger.Category.Queue, "ReplaceQueueAndPlay", $"tracks={tracks.Count}, startIdx={startIndex}");
-        if (tracks.Count == 0) return;
+        if (tracks.Count == 0) { DropPendingPlaySource(); return; }
         if (startIndex < 0 || startIndex >= tracks.Count) startIndex = 0;
         // Any non-radio queue replacement (album/playlist/shuffle/etc.) ends radio so
         // it stops refilling. StartRadio re-enables IsRadioActive after calling this.
@@ -2106,6 +2107,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             TrimHistory();
         }
         _queueHistoryDepth = 0; // that entry belongs to what played before this queue
+        // "Playing from …" (Discord 11-24, sina): the page that started this queue, if it said.
+        ApplyPendingPlaySource(unshuffled ?? tracks);
 
         // Clear stale shuffle state — a new queue replaces whatever was shuffled. A shuffled
         // start is in Shuffle mode from the outset, before its first track starts.
@@ -2403,6 +2406,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _originalQueue.Clear();
         _parkedExplicit.Clear();
         _repeatCycleTracks.Clear(); // a queue started on the emptied player is not this cycle
+        ClearPlaySource();
         Position = TimeSpan.Zero;
         Duration = TimeSpan.Zero;
         PositionFraction = 0;
@@ -2645,7 +2649,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
             OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
             ExternalTrackPaths = BuildExternalTrackPaths(),
-            CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
+            CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null,
+            PlaySource = PlaySource
         };
         await _persistence.SaveQueueStateAsync(state);
     }
@@ -2706,7 +2711,8 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
                 RepeatCycleIds = _repeatCycleTracks.Select(t => t.Id).ToList(),
                 OriginalOrderIds = _originalQueue.Select(t => t.Id).ToList(),
                 ExternalTrackPaths = BuildExternalTrackPaths(),
-                CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null
+                CurrentClearedFromQueue = _currentClearedFromQueue && CurrentTrack != null,
+                PlaySource = PlaySource
             };
         }
         catch
@@ -2815,6 +2821,11 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         _originalQueue = state.IsShuffleEnabled
             ? state.OriginalOrderIds.Select(Resolve).OfType<Track>().ToList()
             : new List<Track>();
+
+        // "Playing from …" (Discord 11-24): which songs it started is not saved, so every
+        // restored song counts as from it.
+        _playSourceTrackIds = null;
+        PlaySource = state.PlaySource;
 
         // Restore current track (paused, not auto-playing)
         var usedUpNextFallback = false;
@@ -3001,6 +3012,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
         OnPropertyChanged(nameof(CurrentArtistLine));
         OnPropertyChanged(nameof(CanEditLyrics));
         ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+        RaisePlaySourceState();
         OnCurrentTrackChangedForBarActions();
         ResolveLyricsBackground();
         ResolveMusicVideo();
@@ -5056,6 +5068,7 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
 
             // The playing track's album may have just been imported (or removed).
             ViewCurrentTrackAlbumCommand.NotifyCanExecuteChanged();
+            OpenTitleTargetCommand.NotifyCanExecuteChanged();
             if (log) DebugLog.Write("Player", $"library reconcile #{reconcile}: done");
         });
     }

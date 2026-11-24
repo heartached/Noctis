@@ -440,6 +440,14 @@ public class AppSettings : IJsonOnDeserializing
     /// and turns Shuffle off).</summary>
     public bool KeepShuffleOn { get; set; }
 
+    /// <summary>Show Where Music Plays From (Discord 11-24, sina): the queue drawer's "Playing from …"
+    /// link to the page the queue was started from. On by default (it is not on the island).</summary>
+    public bool ShowPlaySource { get; set; } = true;
+
+    /// <summary>Song Title Opens Where It Plays From (Discord 11-24, sina): the island title's click
+    /// opens the page the song plays from at the song, instead of its album. Off by default.</summary>
+    public bool TitleOpensPlaySource { get; set; }
+
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when playback passes over it; off (the default) keeps it there, marked missing.</summary>
     public bool RemoveMissingFromQueue { get; set; }

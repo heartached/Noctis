@@ -226,7 +226,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             return;
         }
         if (LastPlayed.Contains(track)) PlayFromRow(LastPlayed, track);
-        else _player.ReplaceQueueAndPlay(new List<Track> { track }, 0);
+        else _player.WithSource(PlaySource.Section(PlaySourceKind.Home)).ReplaceQueueAndPlay(new List<Track> { track }, 0);
     }
 
     /// <summary>Hero "Play album": the whole album from track 1 in disc/track order, not
@@ -240,7 +240,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
             .OrderBy(t => t.DiscNumber <= 0 ? 1 : t.DiscNumber)
             .ThenBy(t => t.TrackNumber)
             .ToList();
-        _player.PlayAll(ordered);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(ordered);
     }
 
     // ── Time-aware rows (local play history) ──
@@ -340,7 +340,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         var tracks = _library.Tracks.ToList();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Songs)).PlayShuffled(tracks);
     }
 
     /// <summary>Settings › Library › Add Folder, the same command (picker + add + scan).</summary>
@@ -836,7 +836,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, index);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Home)).ReplaceQueueAndPlay(tracks, index);
     }
 
     private static List<TopSongRow> BuildTopSongRows(IReadOnlyList<Track> top)
@@ -967,7 +967,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var tracks = TopSongs.ToList();
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
-        _player.ReplaceQueueAndPlay(tracks, index);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Home)).ReplaceQueueAndPlay(tracks, index);
     }
 
     [RelayCommand]
@@ -1041,7 +1041,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     {
         var tracks = row.ToList();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Home)).PlayShuffled(tracks);
     }
 
     [RelayCommand]
@@ -1234,7 +1234,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         var tracks = album.Tracks.ToList();
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
-        _player.ReplaceQueueAndPlay(tracks, index);
+        _player.WithSource(PlaySource.ForAlbum(album)).ReplaceQueueAndPlay(tracks, index);
     }
 
     [RelayCommand]
@@ -1255,7 +1255,7 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayAll(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(album.EditionTracks);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1267,14 +1267,14 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
         var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
-        _player.PlayAll(ordered);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(ordered);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(album.EditionTracks);
     }
 
     [RelayCommand]
