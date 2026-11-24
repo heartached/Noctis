@@ -1105,6 +1105,14 @@ public class AppSettings : IJsonOnDeserializing
     /// the other way round.</summary>
     public bool SidebarAutoHide { get; set; }
 
+    /// <summary>New Playlist and Folder Position (Discord 11-24, sina): new playlists and New
+    /// Folder… folders go first in the sidebar list instead of last. Off (Bottom) by default.</summary>
+    public bool NewPlaylistsAtTop { get; set; }
+
+    /// <summary>Remove Empty Folders (Discord 11-24, sina): a sidebar folder whose last playlist is
+    /// moved out or deleted is removed too, instead of staying empty. Off by default.</summary>
+    public bool RemoveEmptyPlaylistFolders { get; set; }
+
     /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
     /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
     /// from the list keeps its built-in place.</summary>

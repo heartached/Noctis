@@ -332,6 +332,12 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>الصفحة التي يُفتح عليها Noctis. إذا كانت الصفحة مخفية فسيُفتح على الرئيسية.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>الصفحات</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>أظهر الصفحات في الشريط الجانبي أو أخفها أو أعد ترتيبها. تظهر الإعدادات دائمًا.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>موضع قوائم التشغيل والمجلدات الجديدة</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>مكان ظهور قوائم التشغيل والمجلدات الجديدة في قائمة الشريط الجانبي.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>في الأعلى</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>في الأسفل</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>إزالة المجلدات الفارغة</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>أزل المجلد عند نقل آخر قائمة تشغيل فيه أو حذفها. يبقى المجلد الجديد حتى يحتوي على قائمة تشغيل.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>نقل لأعلى</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>نقل لأسفل</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">

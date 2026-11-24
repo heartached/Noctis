@@ -734,6 +734,19 @@ public partial class MainWindowViewModel : ViewModelBase
             else if (e.PropertyName == nameof(SettingsViewModel.PlaylistShowSideRail) && CurrentView is PlaylistViewModel openPlaylist)
                 openPlaylist.ShowSideRail = Settings.PlaylistShowSideRail;
         };
+        // Settings › General › Sidebar (Discord 11-24, sina): where new playlists and folders go,
+        // and whether a folder goes when its last playlist leaves. Plain flags the sidebar reads.
+        void SyncPlaylistFolderSettings()
+        {
+            Sidebar.NewPlaylistsAtTop = Settings.NewPlaylistsAtTop;
+            Sidebar.RemoveEmptyFolders = Settings.RemoveEmptyPlaylistFolders;
+        }
+        SyncPlaylistFolderSettings();
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(SettingsViewModel.NewPlaylistsAtTop) or nameof(SettingsViewModel.RemoveEmptyPlaylistFolders))
+                SyncPlaylistFolderSettings();
+        };
         // Settings › General › Sidebar (GitHub #199): the pages the user hid and their order.
         // A hidden page is only off the rail: Navigate still opens it from shortcuts and links.
         void SyncSidebarLayout() => Sidebar.ApplyUserLayout(Settings.SidebarPageOrderKeys, Settings.SidebarHiddenPageKeys);

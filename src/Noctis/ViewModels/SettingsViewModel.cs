@@ -1492,6 +1492,8 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
         MissingSongsOptions = BuildMissingSongsOptions();
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
+        NewPlaylistPositionOptions = BuildNewPlaylistPositionOptions();
+        OnPropertyChanged(nameof(SelectedNewPlaylistPositionOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
         RelabelAnimatedArtworkStrings();
@@ -2580,6 +2582,40 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>GitHub #233: hide the sidebar until the pointer reaches the left window edge
     /// (MainWindow.UpdateSidebarHidden, SidebarEdgePeek).</summary>
     [ObservableProperty] private bool _sidebarAutoHide;
+    /// <summary>Discord 11-24 (sina): new playlists and folders go first in the sidebar list.</summary>
+    [ObservableProperty] private bool _newPlaylistsAtTop;
+    /// <summary>Discord 11-24 (sina): a folder whose last playlist leaves is removed too.</summary>
+    [ObservableProperty] private bool _removeEmptyPlaylistFolders;
+
+    /// <summary>One row of the New Playlist and Folder Position picker.</summary>
+    public sealed record NewPlaylistPositionOption(bool Top, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<NewPlaylistPositionOption> NewPlaylistPositionOptions
+    {
+        get => _newPlaylistPositionOptions;
+        private set => SetProperty(ref _newPlaylistPositionOptions, value);
+    }
+    private IReadOnlyList<NewPlaylistPositionOption> _newPlaylistPositionOptions = BuildNewPlaylistPositionOptions();
+
+    private static IReadOnlyList<NewPlaylistPositionOption> BuildNewPlaylistPositionOptions() => new[]
+    {
+        new NewPlaylistPositionOption(true, Loc.T("Settings.NewPlaylistPositionTop")),
+        new NewPlaylistPositionOption(false, Loc.T("Settings.NewPlaylistPositionBottom")),
+    };
+
+    public NewPlaylistPositionOption? SelectedNewPlaylistPositionOption
+    {
+        get => NewPlaylistPositionOptions.FirstOrDefault(o => o.Top == NewPlaylistsAtTop);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            NewPlaylistsAtTop = value.Top;
+        }
+    }
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
     /// (issue #26), so the Settings card is hidden there (same pattern as
@@ -3966,6 +4002,8 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
             SidebarAutoHide = _settings.SidebarAutoHide;
+            NewPlaylistsAtTop = _settings.NewPlaylistsAtTop;
+            RemoveEmptyPlaylistFolders = _settings.RemoveEmptyPlaylistFolders;
             LoadSidebarLayout(_settings);
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
@@ -4585,6 +4623,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
         _settings.SidebarAutoHide = SidebarAutoHide;
+        _settings.NewPlaylistsAtTop = NewPlaylistsAtTop;
+        _settings.RemoveEmptyPlaylistFolders = RemoveEmptyPlaylistFolders;
         SaveSidebarLayout();
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
@@ -7115,6 +7155,19 @@ public partial class SettingsViewModel : ViewModelBase
         _ = SaveAsync();
     }
 
+    partial void OnNewPlaylistsAtTopChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SelectedNewPlaylistPositionOption));
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnRemoveEmptyPlaylistFoldersChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
     partial void OnKeepShuffleOnChanged(bool value)
     {
         if (_player != null) _player.KeepShuffleOn = value;
@@ -9174,6 +9227,8 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             SidebarAutoHide = defaultSettings.SidebarAutoHide;
+            NewPlaylistsAtTop = defaultSettings.NewPlaylistsAtTop;
+            RemoveEmptyPlaylistFolders = defaultSettings.RemoveEmptyPlaylistFolders;
             LoadSidebarLayout(defaultSettings);
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;

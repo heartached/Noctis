@@ -29,6 +29,9 @@ internal class TestPersistenceService : IPersistenceService, IDisposable
     public List<string> PlaylistFolders { get; private set; } = new();
     public Task<List<string>> LoadPlaylistFoldersAsync() => Task.FromResult(PlaylistFolders.ToList());
     public Task SavePlaylistFoldersAsync(List<string> folders) { PlaylistFolders = folders.ToList(); return Task.CompletedTask; }
+    public Dictionary<string, int> PlaylistFolderOrder { get; private set; } = new();
+    public Task<Dictionary<string, int>> LoadPlaylistFolderOrderAsync() => Task.FromResult(new Dictionary<string, int>(PlaylistFolderOrder));
+    public Task SavePlaylistFolderOrderAsync(Dictionary<string, int> order) { PlaylistFolderOrder = new(order); return Task.CompletedTask; }
     public Task<QueueState?> LoadQueueStateAsync() => Task.FromResult<QueueState?>(null);
     public Task SaveQueueStateAsync(QueueState state) => Task.CompletedTask;
     public Task SaveQueuePositionAsync(Guid? currentTrackId, double positionSeconds) => Task.CompletedTask;

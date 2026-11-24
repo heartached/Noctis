@@ -246,6 +246,154 @@ public class SidebarEmptyFoldersTests : IDisposable
     private static Avalonia.Media.Geometry? MenuV2Geometry(Avalonia.Controls.Control host, string key)
         => Noctis.Helpers.MenuV2.FindGeometry(host, key);
 
+    // ── New Playlist and Folder Position + Remove Empty Folders (Discord 11-24, sina) ──
+
+    /// <summary>Keeps the saved playlists (as JSON copies), so a reload reads what was saved.</summary>
+    private sealed class PlaylistStore : TestPersistenceService
+    {
+        private string _json = "[]";
+        public override Task<List<Playlist>> LoadPlaylistsAsync()
+            => Task.FromResult(System.Text.Json.JsonSerializer.Deserialize<List<Playlist>>(_json)!);
+        public override Task SavePlaylistsAsync(List<Playlist> playlists)
+        {
+            _json = System.Text.Json.JsonSerializer.Serialize(playlists);
+            return Task.CompletedTask;
+        }
+    }
+
+    private static async Task<(SidebarViewModel Vm, PlaylistStore Store, Prompts Prompts)> StoredSidebar(params Playlist[] playlists)
+    {
+        var store = new PlaylistStore();
+        await store.SavePlaylistsAsync(playlists.ToList());
+        var vm = new SidebarViewModel(store, new FakeLibraryService());
+        var prompts = new Prompts();
+        vm.PromptText = (title, _, _, _) => { prompts.Titles.Add(title); return Task.FromResult(prompts.Answers.Dequeue()); };
+        vm.ConfirmAction = _ => { prompts.Confirms++; return Task.FromResult(prompts.ConfirmAnswer); };
+        await vm.LoadPlaylistsAsync();
+        return (vm, store, prompts);
+    }
+
+    private static async Task<List<string>> ReloadedRows(TestPersistenceService store)
+    {
+        var again = new SidebarViewModel(store, new FakeLibraryService());
+        await again.LoadPlaylistsAsync();
+        return again.SidebarRows.Select(r => r.Label).ToList();
+    }
+
+    [AvaloniaFact]
+    public async Task NewPlaylist_Bottom_IsLast_AsBefore()
+    {
+        var (vm, store, _) = await StoredSidebar(new Playlist { Name = "Gym", Folder = "Rock" }, new Playlist { Name = "Road" });
+
+        await vm.CreatePlaylistFromTracksAsync("Fresh", Array.Empty<Track>());
+
+        Assert.Equal(new[] { "Rock", "Gym", "Road", "Fresh" }, vm.SidebarRows.Select(r => r.Label));
+        Assert.Equal(new[] { "Rock", "Gym", "Road", "Fresh" }, await ReloadedRows(store));
+    }
+
+    [AvaloniaFact]
+    public async Task NewPlaylist_Top_IsFirst_BelowThePinnedOnes_AndStaysThereAfterAReload()
+    {
+        var (vm, store, _) = await StoredSidebar(new Playlist { Name = "Pinned", IsPinned = true },
+            new Playlist { Name = "Gym", Folder = "Rock" }, new Playlist { Name = "Road" });
+        vm.NewPlaylistsAtTop = true;
+
+        await vm.CreatePlaylistFromTracksAsync("Fresh", Array.Empty<Track>());
+        await vm.CreatePlaylistFromTracksAsync("Newest", Array.Empty<Track>());
+
+        var expected = new[] { "Pinned", "Newest", "Fresh", "Rock", "Gym", "Road" };
+        Assert.Equal(expected, vm.SidebarRows.Select(r => r.Label));
+        Assert.Equal(expected, await ReloadedRows(store));
+    }
+
+    [AvaloniaFact]
+    public async Task NewFolder_Top_IsFirst_StaysThereAfterAReload_AndWhenFilled()
+    {
+        var road = new Playlist { Name = "Road" };
+        var (vm, store, prompts) = await StoredSidebar(new Playlist { Name = "Gym", Folder = "Rock" }, road);
+        vm.NewPlaylistsAtTop = true;
+        prompts.Answers.Enqueue("Chill");
+
+        await vm.NewFolderCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { "Chill", "Rock", "Gym", "Road" }, vm.SidebarRows.Select(r => r.Label));
+        Assert.Equal(new[] { "Chill", "Rock", "Gym", "Road" }, await ReloadedRows(store));
+
+        // Filled, it keeps its place (the playlist takes the folder's place, not the other way round).
+        var item = vm.PlaylistItems.Single(i => i.PlaylistId == road.Id);
+        await vm.MoveToFolderChoiceCommand.ExecuteAsync(vm.FolderChoicesFor(item).Single(c => c.Folder == "Chill"));
+        Assert.Equal(new[] { "Chill", "Road", "Rock", "Gym" }, vm.SidebarRows.Select(r => r.Label));
+        Assert.Equal(new[] { "Chill", "Road", "Rock", "Gym" }, await ReloadedRows(store));
+    }
+
+    [AvaloniaFact]
+    public async Task NewFolder_Bottom_KeepsTheOldPlace()
+    {
+        var (vm, _, prompts) = await StoredSidebar(new Playlist { Name = "Gym", Folder = "Rock" }, new Playlist { Name = "Road" });
+        prompts.Answers.Enqueue("Zen");
+
+        await vm.NewFolderCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { "Rock", "Gym", "Zen", "Road" }, vm.SidebarRows.Select(r => r.Label));
+    }
+
+    [AvaloniaFact]
+    public async Task RemoveEmptyFolders_On_ABrandNewFolderStays_ButGoesWhenItsLastPlaylistLeaves()
+    {
+        var road = new Playlist { Name = "Road" };
+        var (vm, store, prompts) = await StoredSidebar(road);
+        vm.RemoveEmptyFolders = true;
+        prompts.Answers.Enqueue("Chill");
+
+        await vm.NewFolderCommand.ExecuteAsync(null);
+        // Never held a playlist yet: it stays, so it can be filled.
+        Assert.NotNull(FolderRow(vm, "Chill"));
+
+        var item = vm.PlaylistItems.Single();
+        await vm.MoveToFolderChoiceCommand.ExecuteAsync(vm.FolderChoicesFor(item).Single(c => c.Folder == "Chill"));
+        await vm.MoveToFolderChoiceCommand.ExecuteAsync(vm.FolderChoicesFor(item).Single(c => c.Folder == null && !c.IsNew));
+
+        Assert.Equal("", road.Folder);
+        Assert.Null(FolderRow(vm, "Chill"));
+        Assert.Empty(store.PlaylistFolders);
+        Assert.DoesNotContain("Chill", vm.GetFolderNames());
+    }
+
+    [AvaloniaFact]
+    public async Task RemoveEmptyFolders_On_DeletingTheLastPlaylist_RemovesTheFolder_OnlyThen()
+    {
+        var gym = new Playlist { Name = "Gym", Folder = "Rock" };
+        var run = new Playlist { Name = "Run", Folder = "Rock" };
+        var (vm, store, _) = await StoredSidebar(gym, run);
+        vm.UseSavedFolders(new[] { "Rock" });
+        vm.RemoveEmptyFolders = true;
+
+        await vm.DeletePlaylistAsync(gym.Id);
+        Assert.NotNull(FolderRow(vm, "Rock"));
+
+        await vm.DeletePlaylistAsync(run.Id);
+        Assert.Null(FolderRow(vm, "Rock"));
+        Assert.Empty(store.PlaylistFolders);
+    }
+
+    [AvaloniaFact]
+    public async Task RemoveEmptyFolders_Off_ASavedFolderStaysEmpty_AtItsPlace()
+    {
+        var gym = new Playlist { Name = "Gym" };
+        var (vm, store, prompts) = await StoredSidebar(new Playlist { Name = "Road" }, gym);
+        vm.NewPlaylistsAtTop = true;
+        prompts.Answers.Enqueue("Chill");
+        await vm.NewFolderCommand.ExecuteAsync(null);
+        var item = vm.PlaylistItems.Single(i => i.PlaylistId == gym.Id);
+        await vm.MoveToFolderChoiceCommand.ExecuteAsync(vm.FolderChoicesFor(item).Single(c => c.Folder == "Chill"));
+
+        await vm.DeletePlaylistAsync(gym.Id);
+
+        Assert.Equal(new[] { "Chill", "Road" }, vm.SidebarRows.Select(r => r.Label));
+        Assert.Equal(new[] { "Chill" }, store.PlaylistFolders);
+        Assert.Equal(new[] { "Chill", "Road" }, await ReloadedRows(store));
+    }
+
     // ── Persistence ──
 
     [Fact]

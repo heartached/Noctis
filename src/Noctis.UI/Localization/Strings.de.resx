@@ -149,6 +149,12 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Die Seite, mit der Noctis öffnet. Eine ausgeblendete Seite fällt auf Start zurück.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Seiten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Seiten in der Seitenleiste ein- und ausblenden und neu anordnen. Einstellungen bleibt immer sichtbar.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>Position neuer Playlists und Ordner</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Wo neue Playlists und Ordner in der Liste der Seitenleiste erscheinen.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Oben</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Unten</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Leere Ordner entfernen</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Einen Ordner entfernen, wenn seine letzte Playlist herausverschoben oder gelöscht wird. Ein neuer Ordner bleibt, bis er eine Playlist enthalten hat.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Nach oben</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Nach unten</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Album-Editionen zusammenfassen</value><comment>Text in SettingsView.axaml</comment></data>
