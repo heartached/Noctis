@@ -144,6 +144,12 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Noctis'in açıldığı sayfa. Gizli bir sayfa yerine Ana Sayfa açılır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Sayfalar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Kenar çubuğundaki sayfaları göster, gizle ve yeniden sırala. Ayarlar her zaman görünür.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>Yeni Çalma Listesi ve Klasör Konumu</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Yeni çalma listelerinin ve klasörlerin kenar çubuğu listesinde nerede görüneceği.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Üstte</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Altta</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Boş Klasörleri Kaldır</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Son çalma listesi dışarı taşındığında veya silindiğinde klasörü kaldır. Yeni bir klasör, içine bir çalma listesi girene kadar kalır.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Yukarı taşı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Aşağı taşı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Albüm Sürümlerini Birleştir</value><comment>Text in SettingsView.axaml</comment></data>

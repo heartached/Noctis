@@ -150,6 +150,12 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Страница, с которой открывается Noctis. Вместо скрытой страницы откроется Главная.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Страницы</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Показывайте, скрывайте и меняйте порядок страниц на боковой панели. Настройки видны всегда.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>Положение новых плейлистов и папок</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Где новые плейлисты и папки появляются в списке боковой панели.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Вверху</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Внизу</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Удалять пустые папки</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Удалять папку, когда из неё перемещён или удалён последний плейлист. Новая папка остаётся, пока в ней не побывал плейлист.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Переместить вверх</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Переместить вниз</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Объединять издания альбомов</value><comment>Text in SettingsView.axaml</comment></data>

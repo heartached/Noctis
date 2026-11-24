@@ -2293,6 +2293,40 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+            <!-- Discord 11-24 (sina): where new playlists and New Folder… folders go in the sidebar list. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.NewPlaylistPosition}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.NewPlaylistPositionHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="NewPlaylistPositionCombo"
+                              AutomationProperties.Name="{loc:T Settings.NewPlaylistPosition}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding NewPlaylistPositionOptions}"
+                              SelectedItem="{Binding SelectedNewPlaylistPositionOption}"
+                              MinWidth="120"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
+            <!-- Discord 11-24 (sina): a folder whose last playlist leaves goes too (a new empty one stays). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.RemoveEmptyFolders}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.RemoveEmptyFoldersHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.RemoveEmptyFolders}"
+                                          IsChecked="{Binding RemoveEmptyPlaylistFolders}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 

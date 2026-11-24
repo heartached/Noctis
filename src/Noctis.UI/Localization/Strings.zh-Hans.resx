@@ -332,6 +332,12 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Noctis 打开时显示的页面。如果该页面被隐藏，则改为显示主页。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>页面</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>显示、隐藏侧边栏中的页面并调整顺序。设置始终显示。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>新播放列表和文件夹的位置</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>新播放列表和文件夹在侧边栏列表中出现的位置。</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>顶部</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>底部</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>移除空文件夹</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>当文件夹中的最后一个播放列表被移出或删除时，同时移除该文件夹。新建的文件夹会保留，直到其中放入过播放列表。</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>上移</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>下移</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">
