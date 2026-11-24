@@ -1369,6 +1369,11 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>需要 ffmpeg：请安装它，或在“辅助程序”中设置其路径。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>静音电平</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>低于此音量的部分都视为静音。调低会保留轻柔的淡出，调高会剪掉更多，例如底噪。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>播放来源：{0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>显示音乐的播放来源</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>队列会显示开始播放音乐的专辑、播放列表或页面。点击即可回到那里的这首歌曲。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>点击歌曲标题打开播放来源</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>点击播放岛中的歌曲标题时，会跳转到播放来源页面中的这首歌曲，而不是它的专辑。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>缺失的歌曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>如果队列中某首歌曲的文件已不存在，Noctis 会跳过它。选择如何处理该歌曲。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>标记为缺失</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

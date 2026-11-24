@@ -1369,6 +1369,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>يتطلب ffmpeg: ثبّته أو حدّد مساره في البرامج المساعدة.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>مستوى الصمت</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>كل ما هو أهدأ من هذا يُعدّ صمتًا. القيمة الأدنى تُبقي التلاشي الهادئ، والأعلى تقطع أكثر مثل التشويش.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>يُشغَّل من {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>إظهار مصدر تشغيل الموسيقى</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>تعرض قائمة الانتظار الألبوم أو قائمة التشغيل أو الصفحة التي بدأت منها الموسيقى. انقر عليه للعودة إلى الأغنية هناك.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>عنوان الأغنية يفتح مصدر التشغيل</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>النقر على عنوان الأغنية في جزيرة التشغيل ينقلك إلى الأغنية في الصفحة التي تُشغَّل منها، بدلًا من ألبومها.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>الأغاني المفقودة</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>إذا اختفى ملف أغنية في قائمة الانتظار، يتخطاها Noctis. اختر ما يحدث لها.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>وضع علامة «مفقودة»</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

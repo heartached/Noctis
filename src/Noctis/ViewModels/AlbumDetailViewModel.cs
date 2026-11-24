@@ -805,14 +805,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (Tracks.Count == 0) return;
         var tracks = InAlbumOrder(Tracks);
         DebugLogger.Info(DebugLogger.Category.Queue, "Album.Play", $"tracks={tracks.Count}, startIdx=0");
-        _player.PlayAll(tracks);
+        _player.WithSource(PlaySource.ForAlbum(Album)).PlayAll(tracks);
     }
 
     [RelayCommand]
     private void ShufflePlay()
     {
         if (Tracks.Count == 0) return;
-        _player.PlayShuffled(InAlbumOrder(Tracks));
+        _player.WithSource(PlaySource.ForAlbum(Album)).PlayShuffled(InAlbumOrder(Tracks));
     }
 
     [RelayCommand]
@@ -822,7 +822,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         var idx = tracks.FindIndex(t => t.Id == track.Id);
         if (idx < 0) idx = 0;
         DebugLogger.Info(DebugLogger.Category.Queue, "Album.PlayFrom", $"tracks={tracks.Count}, startIdx={idx}, track={track.Title}");
-        _player.ReplaceQueueAndPlay(tracks, idx);
+        _player.WithSource(PlaySource.ForAlbum(Album)).ReplaceQueueAndPlay(tracks, idx);
     }
 
     /// <summary>Navigates to a related album shown in Other Versions / More By Artist.</summary>
@@ -1254,7 +1254,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.PlayAll(InAlbumOrder(album.EditionTracks));
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(InAlbumOrder(album.EditionTracks));
     }
 
     /// <summary>Related tile hover button: Pause/resume when this album is the loaded one,
@@ -1271,7 +1271,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void ShuffleRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(InAlbumOrder(album.EditionTracks));
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(InAlbumOrder(album.EditionTracks));
     }
 
     [RelayCommand]

@@ -1198,7 +1198,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.PlayAll(tracks);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -1206,7 +1206,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(tracks);
     }
 
     [RelayCommand]
@@ -1228,7 +1228,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         var album = LatestRelease;
         if (album == null || album.Tracks.Count == 0) return;
         var tracks = album.EditionTracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-        _player.PlayAll(tracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(tracks);
     }
 
     /// <summary>Plays a row: the queue is the list the row came from — favourites when the
@@ -1252,7 +1252,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             : RankPopular(_allSongs, string.Empty, 0).Select(r => r.Track).ToList();
         var index = songs.IndexOf(track);
         if (index < 0) { songs.Insert(0, track); index = 0; }
-        _player.ReplaceQueueAndPlay(songs, index);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).ReplaceQueueAndPlay(songs, index);
     }
 
     [RelayCommand]
@@ -1260,7 +1260,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var songs = PopularSongs.Select(r => r.Track).ToList();
         if (songs.Count == 0) return;
-        _player.PlayShuffled(songs);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(songs);
     }
 
     [RelayCommand]
@@ -1268,7 +1268,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var songs = _allSongs.Where(t => t.IsFavorite).ToList();
         if (songs.Count == 0) return;
-        _player.PlayShuffled(songs);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(songs);
     }
 
     [RelayCommand]

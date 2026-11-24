@@ -531,6 +531,11 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>Necesita ffmpeg: instálalo o indica su ruta en Programas auxiliares.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Nivel de silencio</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Todo lo que suene más bajo cuenta como silencio. Más bajo conserva los finales suaves; más alto recorta más, como el ruido de fondo.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Reproduciendo desde {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Mostrar de dónde se reproduce la música</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>La cola muestra el álbum, la lista o la página desde la que empezó la música. Haz clic para volver a la canción allí.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>El título de la canción abre su origen</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Al hacer clic en el título de la canción en la isla de reproducción, vas a la canción en la página desde la que se reproduce, en lugar de a su álbum.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Canciones que faltan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Si el archivo de una canción en cola ya no está, Noctis la salta. Elige qué pasa con ella.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Marcar como no encontrada</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

@@ -28,6 +28,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
+    /// <summary>The song the page was opened for by the "Playing from …" link (Discord 11-24,
+    /// sina): the view glides it into view, washes it once and clears this.</summary>
+    [ObservableProperty] private Guid? _revealTrackId;
+
     /// <summary>Tracks currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
@@ -705,7 +709,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        _player.PlayAll(tracks);
+        _player.WithSource(PlaySource.ForPlaylist(_playlist)).PlayAll(tracks);
     }
 
     /// <summary>The whole playlist in the current sort while a search narrows <see cref="Tracks"/>;
@@ -721,7 +725,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             : Tracks.ToList();
         var idx = tracks.IndexOf(track);
         if (idx < 0) idx = 0;
-        _player.ReplaceQueueAndPlay(tracks, idx);
+        _player.WithSource(PlaySource.ForPlaylist(_playlist)).ReplaceQueueAndPlay(tracks, idx);
     }
 
     /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
@@ -957,7 +961,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.ForPlaylist(_playlist)).PlayShuffled(tracks);
     }
 
     /// <summary>Opens the add-to-playlist picker for the current multi-selection

@@ -92,7 +92,7 @@ public partial class AudioCdViewModel : ViewModelBase
     private void PlayAll()
     {
         if (Tracks.Count > 0)
-            _player.PlayAll(Tracks.ToList());
+            _player.WithSource(PlaySource.Section(PlaySourceKind.AudioCd)).PlayAll(Tracks.ToList());
     }
 
     [RelayCommand]
@@ -100,7 +100,7 @@ public partial class AudioCdViewModel : ViewModelBase
     {
         var index = Tracks.IndexOf(track);
         if (index >= 0)
-            _player.ReplaceQueueAndPlay(Tracks.ToList(), index);
+            _player.WithSource(PlaySource.Section(PlaySourceKind.AudioCd)).ReplaceQueueAndPlay(Tracks.ToList(), index);
     }
 
     [RelayCommand]

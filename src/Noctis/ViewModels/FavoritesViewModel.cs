@@ -289,7 +289,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        _player.PlayAll(allTracks);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).PlayAll(allTracks);
     }
 
     [RelayCommand]
@@ -297,7 +297,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        _player.PlayShuffled(allTracks);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).PlayShuffled(allTracks);
     }
 
     // ── Track commands ──────────────────────────────────────────
@@ -309,7 +309,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         var allTracks = GetAllFavoriteTracks();
         var idx = allTracks.FindIndex(t => t.Id == track.Id);
         if (idx < 0) idx = 0;
-        _player.ReplaceQueueAndPlay(allTracks, idx);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).ReplaceQueueAndPlay(allTracks, idx);
     }
 
     [RelayCommand]
@@ -317,7 +317,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         // Selected track first
-        _player.PlayShuffled(allTracks, first: track);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).PlayShuffled(allTracks, first: track);
     }
 
     [RelayCommand]
@@ -377,14 +377,14 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayAll(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(album.EditionTracks);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(album.EditionTracks);
     }
 
     [RelayCommand]
@@ -457,7 +457,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
             if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
             var ordered = Helpers.AlbumTile.EditionOrder(album);
             if (ordered.Count == 0) return;
-            _player.PlayAll(ordered);
+            _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(ordered);
             return;
         }
         if (item.Track!.IsNowPlaying) _player.PlayPauseCommand.Execute(null);

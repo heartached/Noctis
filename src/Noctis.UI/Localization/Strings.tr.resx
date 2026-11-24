@@ -534,6 +534,11 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>ffmpeg gerekir: yükleyin ya da yolunu Yardımcı programlar bölümünde belirtin.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Sessizlik Seviyesi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Bundan sessiz olan her şey sessizlik sayılır. Düşük değer sessiz kapanışları korur; yüksek değer cızırtı gibi daha fazlasını keser.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0} içinden çalınıyor</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Müziğin Nereden Çaldığını Göster</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Kuyruk, müziğin başlatıldığı albümü, çalma listesini veya sayfayı gösterir. Oradaki şarkıya dönmek için tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Şarkı Adı Çaldığı Yeri Açar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Oynatıcı adasında şarkı adına tıklamak, seni albümü yerine şarkının çaldığı sayfadaki şarkıya götürür.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Eksik Şarkılar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Kuyruktaki bir şarkının dosyası yoksa Noctis onu atlar. Ona ne olacağını seç.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Eksik Olarak İşaretle</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

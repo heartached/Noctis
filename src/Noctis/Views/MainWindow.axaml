@@ -1214,6 +1214,30 @@
                         </StackPanel>
                         </DockPanel>
 
+                        <!-- Discord 11-24 (sina): "Playing from …", the page the queue was started
+                             from, as a link back to it (the song shown there). Here and not on the
+                             island, which has no room for a third line. Settings › Player ›
+                             Show Where Music Plays From. -->
+                        <Button DockPanel.Dock="Top"
+                                x:Name="QueuePlayingFromButton"
+                                Classes="queue-link"
+                                Margin="17,-4,16,8"
+                                HorizontalAlignment="Left"
+                                Command="{Binding Player.OpenPlaySourceCommand}"
+                                IsVisible="{Binding Player.HasPlaySource}"
+                                ToolTip.Tip="{Binding Player.PlayingFromText}"
+                                AutomationProperties.Name="{Binding Player.PlayingFromText}">
+                            <Border Classes="artist-text-hover" CornerRadius="3" Padding="3,1">
+                                <TextBlock Text="{Binding Player.PlayingFromText}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Opacity="0.6"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1"
+                                           Foreground="{DynamicResource QueueDrawerForeground}" />
+                            </Border>
+                        </Button>
+
                         <!-- Accent action pills: Close dismisses the popup, Clear empties the
                              queue (same confirm-guarded handler the old ghost button used).
                              Both track the live accent via AccentColorBrush. -->

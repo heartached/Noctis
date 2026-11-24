@@ -141,7 +141,7 @@ public partial class GenresViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (row == null) return;
         var tracks = TracksInGenre(_library.Albums, row.Name);
-        if (tracks.Count > 0) _player.PlayAll(tracks);
+        if (tracks.Count > 0) _player.WithSource(PlaySource.ForGenre(row.Name)).PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -149,7 +149,7 @@ public partial class GenresViewModel : ViewModelBase, ISearchable, IDisposable
     {
         if (row == null) return;
         var tracks = TracksInGenre(_library.Albums, row.Name);
-        if (tracks.Count > 0) _player.PlayShuffled(tracks);
+        if (tracks.Count > 0) _player.WithSource(PlaySource.ForGenre(row.Name)).PlayShuffled(tracks);
     }
 
     // ── Grouping (internal for tests) ──
