@@ -695,6 +695,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Показывать дату добавления каждого трека.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Столбец «Избранное»</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Показывать сердечко в каждой строке. Если выключено, добавляйте в избранное через меню строки или на странице песни.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>Страница альбома</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>Сердечко у каждой песни</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>Нажмите на сердечко песни, чтобы добавить её в избранное или убрать оттуда. Если выключено, сердечко видно только у избранных.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Сканирование медиатеки</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Найти новые треки и обновить поиск.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Сканировать медиатеку</value><comment>Text in SettingsView.axaml</comment></data>

@@ -70,6 +70,13 @@ public class AppSettings : IJsonOnDeserializing
     /// suggestion scan; the track list takes the width.</summary>
     public bool PlaylistShowSideRail { get; set; } = true;
 
+    /// <summary>Album pages show a clickable heart on every song row, faint until favorited
+    /// (Discord 11-24, sina: favoriting from an album took the "..." menu). Off shows the
+    /// heart only on favorited songs and it can't be clicked, the old look. On for a new
+    /// install; a settings.json saved before the setting existed keeps it off
+    /// (<see cref="OnDeserializing"/>).</summary>
+    public bool AlbumShowSongHearts { get; set; } = true;
+
     /// <summary>File paths explicitly removed from the library. Skipped during rescans.</summary>
     public List<string> ExcludedFilePaths { get; set; } = new();
 
@@ -1730,6 +1737,8 @@ public class AppSettings : IJsonOnDeserializing
         // New-install defaults of 2026-11-14: plays counted at the start, drops moved in.
         PlayCountThresholdPercent = 0;
         ImportDroppedMedia = true;
+        // Album song-row hearts (2026-11-24): favorited songs only, not clickable.
+        AlbumShowSongHearts = false;
     }
 
     // ── One data folder, several Noctis versions (GitHub #230) ──

@@ -1120,6 +1120,24 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsAlbumFavorited));
     }
 
+    /// <summary>The row heart (Settings › Album page › Heart on every song; Discord 11-24,
+    /// sina): this song only, never the Ctrl-selection. Synchronous like the playlist row
+    /// heart: an async command would disable every row's heart while the save runs.</summary>
+    [RelayCommand]
+    private void ToggleFavoriteSingle(Track track)
+    {
+        if (track == null) return;
+        track.IsFavorite = !track.IsFavorite;
+        OnPropertyChanged(nameof(IsAlbumFavorited));
+        _ = PersistFavoriteChangeAsync(track);
+    }
+
+    private async Task PersistFavoriteChangeAsync(Track track)
+    {
+        await _library.SaveTrackUserStateAsync(new[] { track });
+        _library.NotifyFavoritesChanged(new[] { track });
+    }
+
     [RelayCommand]
     private async Task ToggleAlbumFavorites()
     {

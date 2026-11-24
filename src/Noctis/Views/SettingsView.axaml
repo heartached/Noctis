@@ -5991,6 +5991,26 @@
             </StackPanel>
             </Border>
 
+            <!-- Album page song rows: a clickable heart on every row (Discord 11-24, sina). -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.AlbumPage}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.AlbumSongHearts}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumSongHeartsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumSongHearts}"
+                                          IsChecked="{Binding AlbumShowSongHearts}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            </StackPanel>
+            </Border>
+
             <!-- GitHub #74: playlist page furniture, each opt-out. -->
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.PlaylistPage}" Margin="0,16,0,8"/>
             <Border Classes="setting-card group-card">
