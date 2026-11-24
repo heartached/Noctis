@@ -385,6 +385,19 @@ public class AppSettings : IJsonOnDeserializing
 
     public int PlayPauseFadeMs { get; set; } = 300;
 
+    /// <summary>Skip Silence (Discord, Spark 11-23): a song starts at its first sound and ends
+    /// after its last one; the silence at both ends is measured in the background (ffmpeg),
+    /// files are never changed. Off by default.</summary>
+    public bool SkipSilenceEnabled { get; set; }
+
+    /// <summary>Skip Silence level in dBFS: anything quieter counts as silence
+    /// (<see cref="SkipSilenceThresholdMin"/> to <see cref="SkipSilenceThresholdMax"/>).</summary>
+    public int SkipSilenceThresholdDb { get; set; } = SkipSilenceThresholdDefault;
+
+    public const int SkipSilenceThresholdDefault = -50;
+    public const int SkipSilenceThresholdMin = -80;
+    public const int SkipSilenceThresholdMax = -20;
+
     /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
     /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
     /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>. Half the song on a
@@ -1675,6 +1688,7 @@ public class AppSettings : IJsonOnDeserializing
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        SkipSilenceThresholdDb = Math.Clamp(SkipSilenceThresholdDb, SkipSilenceThresholdMin, SkipSilenceThresholdMax);
         AudioBalance = Math.Clamp(AudioBalance, -100, 100);
         SleepTimerFadeSeconds = SnapSleepTimerFadeSeconds(SleepTimerFadeSeconds);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);

@@ -769,6 +769,16 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playPauseFadeEnabled;
     [ObservableProperty] private double _playPauseFadeMs = 300;
 
+    /// <summary>Skip Silence (Discord, Spark 11-23): songs start at their first sound and end
+    /// after their last one. The level is in dBFS.</summary>
+    [ObservableProperty] private bool _skipSilenceEnabled;
+    [ObservableProperty] private double _skipSilenceThresholdDb = AppSettings.SkipSilenceThresholdDefault;
+
+    /// <summary>Skip Silence measures with ffmpeg: without it (Linux builds don't bundle it) the
+    /// row says so instead of silently doing nothing.</summary>
+    public bool SkipSilenceNeedsFfmpeg =>
+        App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath() == null;
+
     /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
     /// (0 = as soon as it starts). The player reads it on every position tick, so a change
     /// also applies to the rest of the song playing now.</summary>
@@ -3757,6 +3767,8 @@ public partial class SettingsViewModel : ViewModelBase
             MigrateTransitionSettings(_settings);
             PlayPauseFadeEnabled = _settings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = Math.Clamp(_settings.PlayPauseFadeMs, 100, 2000);
+            SkipSilenceEnabled = _settings.SkipSilenceEnabled;
+            SkipSilenceThresholdDb = Math.Clamp(_settings.SkipSilenceThresholdDb, AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax);
             PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(_settings.PlayCountThresholdPercent);
             ImportDroppedMedia = _settings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = _settings.PlaylistShowAlbumHeaders;
@@ -4388,6 +4400,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
+        _settings.SkipSilenceEnabled = SkipSilenceEnabled;
+        _settings.SkipSilenceThresholdDb = (int)Math.Round(Math.Clamp(SkipSilenceThresholdDb, AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax));
         _settings.PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(PlayCountThresholdPercent);
         _settings.ImportDroppedMedia = ImportDroppedMedia;
         _settings.PlaylistShowAlbumHeaders = PlaylistShowAlbumHeaders;
@@ -4822,6 +4836,8 @@ public partial class SettingsViewModel : ViewModelBase
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
         _player.KeepShuffleOn = KeepShuffleOn;
+        _player.SkipSilenceThresholdDb = SkipSilenceThresholdDb;
+        _player.SkipSilenceEnabled = SkipSilenceEnabled;
         _player.RemoveMissingFromQueue = RemoveMissingFromQueue;
         _player.QueueRowLayout = CurrentQueueRowLayout;
         _player.QueuePanelWidth = QueuePanelWidth;
@@ -5519,6 +5535,24 @@ public partial class SettingsViewModel : ViewModelBase
     {
         ApplyAudioSettings();
         if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSkipSilenceEnabledChanged(bool value)
+    {
+        if (_player != null) _player.SkipSilenceEnabled = value;
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSkipSilenceThresholdDbChanged(double value)
+    {
+        var clamped = Math.Clamp(Math.Round(value), AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax);
+        if (clamped != value)
+        {
+            SkipSilenceThresholdDb = clamped;
+            return;
+        }
+        if (_player != null) _player.SkipSilenceThresholdDb = value;
+        if (_settingsLoaded) QueueSettingsSave();
     }
 
     partial void OnPlayPauseFadeMsChanged(double value)
@@ -9024,6 +9058,8 @@ public partial class SettingsViewModel : ViewModelBase
             _playbackBarWidth = null;
             PlayPauseFadeEnabled = defaultSettings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = defaultSettings.PlayPauseFadeMs;
+            SkipSilenceEnabled = defaultSettings.SkipSilenceEnabled;
+            SkipSilenceThresholdDb = defaultSettings.SkipSilenceThresholdDb;
             PlayCountThresholdPercent = defaultSettings.PlayCountThresholdPercent;
             ImportDroppedMedia = defaultSettings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = defaultSettings.PlaylistShowAlbumHeaders;

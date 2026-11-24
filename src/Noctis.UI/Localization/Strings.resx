@@ -525,6 +525,11 @@ Deezer and TIDAL: paste the link.</value></data>
   <data name="Settings.KeepPlayedInQueueHint" xml:space="preserve"><value>Played songs stay in the queue above the one playing.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Keep Shuffle On</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>When Shuffle is on, playing an album, playlist or song keeps it on and shuffles the new music.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>Skip Silence</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Starts each song at its first sound and moves on after its last one. Your files aren't changed, and start or stop times you set for a song come first.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>Needs ffmpeg: install it, or set its path under Helper programs.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>Silence Level</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Anything quieter than this counts as silence. Lower keeps quiet fade-outs; higher cuts more, like hiss or room noise.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Missing Songs</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>If a queued song's file is gone, Noctis skips it. Choose what happens to it.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Mark as Missing</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>

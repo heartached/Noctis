@@ -102,7 +102,13 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public List<(double Gain, int RampMs)> FadeGainCalls { get; } = new();
     public double FadeGain => FadeGainCalls.Count == 0 ? 1.0 : FadeGainCalls[^1].Gain;
     public void SetPlaybackFadeGain(double gain, int rampMs) => FadeGainCalls.Add((gain, rampMs));
-    public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
+    /// <summary>The start position passed with each PrepareNext, index-aligned with PreparedPaths.</summary>
+    public List<long> PreparedStartMs { get; } = new();
+    public void PrepareNext(string filePath, long startPositionMs = -1)
+    {
+        PreparedPaths.Add(filePath);
+        PreparedStartMs.Add(startPositionMs);
+    }
     public bool PreparesRemoteStreams { get; set; }
     /// <summary>Whether a prepared path counts as staged yet (the real player prepares off-thread).</summary>
     public bool StagesImmediately { get; set; } = true;

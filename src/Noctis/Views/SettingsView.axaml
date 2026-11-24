@@ -5150,6 +5150,47 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Discord 11-24 (Spark): songs start at their first sound and end after their last one. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="6">
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.SkipSilence}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.SkipSilenceHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                            <TextBlock Text="{loc:T Settings.SkipSilenceNeedsFfmpeg}"
+                                       IsVisible="{Binding SkipSilenceNeedsFfmpeg}"
+                                       FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.SkipSilence}"
+                                              IsChecked="{Binding SkipSilenceEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding SkipSilenceEnabled}" Lift="10" Motion="Glide">
+                    <StackPanel Classes="sub-setting" Spacing="6" Margin="2,16,0,0">
+                        <TextBlock Text="{loc:T Settings.SilenceLevel}" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.SilenceLevelHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:SmoothSlider Grid.Column="0"
+                                    AutomationProperties.Name="{loc:T Settings.SilenceLevel}"
+                                    Classes="accent-slider" Step="1"
+                                    Minimum="-80" Maximum="-20"
+                                    SteppedValue="{Binding SkipSilenceThresholdDb, Mode=TwoWay}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding SkipSilenceThresholdDb, StringFormat='{}{0:0} dB'}"
+                                       FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             <!-- GitHub #73: the level fades out before a pause lands and back in after a resume. -->
             <Border Classes="setting-row">
                 <StackPanel Spacing="6">
