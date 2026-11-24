@@ -531,7 +531,6 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Karıştırma açıkken bir albüm, çalma listesi veya şarkı çalmak onu açık tutar ve yeni müziği karıştırır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>Sessizliği Atla</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Her şarkıyı ilk sesinde başlatır ve son sesinden sonra sıradakine geçer. Dosyaların değiştirilmez; bir şarkı için ayarladığın başlangıç ve bitiş zamanları önceliklidir.</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>ffmpeg gerekir: yükleyin ya da yolunu Yardımcı programlar bölümünde belirtin.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Sessizlik Seviyesi</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Bundan sessiz olan her şey sessizlik sayılır. Düşük değer sessiz kapanışları korur; yüksek değer cızırtı gibi daha fazlasını keser.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0} içinden çalınıyor</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>

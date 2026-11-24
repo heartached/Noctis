@@ -1366,7 +1366,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>シャッフルがオンのとき、アルバム、プレイリスト、曲を再生してもオンのままで、新しい音楽をシャッフルします。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>無音をスキップ</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>各曲を最初の音から再生し、最後の音のあとで次の曲に進みます。ファイルは変更されず、曲に設定した開始・停止時間が優先されます。</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceNeedsFfmpeg" xml:space="preserve"><value>ffmpeg が必要です。インストールするか、「ヘルパープログラム」でパスを指定してください。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>無音レベル</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>これより小さい音は無音とみなします。低くすると静かなフェードアウトを残し、高くするとノイズなども多くカットします。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0}から再生中</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>

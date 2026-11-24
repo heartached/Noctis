@@ -774,11 +774,6 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _skipSilenceEnabled;
     [ObservableProperty] private double _skipSilenceThresholdDb = AppSettings.SkipSilenceThresholdDefault;
 
-    /// <summary>Skip Silence measures with ffmpeg: without it (Linux builds don't bundle it) the
-    /// row says so instead of silently doing nothing.</summary>
-    public bool SkipSilenceNeedsFfmpeg =>
-        App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath() == null;
-
     /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
     /// (0 = as soon as it starts). The player reads it on every position tick, so a change
     /// also applies to the rest of the song playing now.</summary>

@@ -406,9 +406,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // Create long-lived ViewModels
         Player = new PlayerViewModel(audioPlayer, library, persistence, new AnimatedCoverService(persistence), metadata);
-        // Skip Silence measures with the same ffmpeg the converter and BPM analysis use.
+        // Skip Silence measures with the same ffmpeg the converter and BPM analysis use, or
+        // with libVLC where there is none (Linux builds don't bundle ffmpeg).
         Player.SilenceScanner = new Noctis.Services.AudioAnalysis.SilenceScanService(
-            () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath());
+            () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath(),
+            Noctis.Services.AudioAnalysis.SilenceScanService.DecodeWithVlc);
         QueueToast.Attach(Player);
         if (App.Services?.GetService<PhoneHandoffInbox>() is { } handoffInbox)
         {

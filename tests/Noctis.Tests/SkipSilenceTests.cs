@@ -170,6 +170,41 @@ public class SkipSilenceTests : IDisposable
     }
 
     [Fact]
+    public async Task Scan_WithoutFfmpeg_UsesLibVlc_AndFindsTheSameSilence()
+    {
+        // Linux builds don't bundle ffmpeg (the Steam Deck user who asked may not have it):
+        // libVLC, shipped with every build, decodes the ends instead.
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return; // the test file is made with ffmpeg
+        var path = Song(ffmpeg, before: 2, tone: 5, after: 4);
+        var scanner = new SilenceScanService(() => null, SilenceScanService.DecodeWithVlc);
+        Assert.True(scanner.IsAvailable);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var b = await scanner.ScanAsync(LocalTrack(path, TimeSpan.FromSeconds(11)), -50);
+
+        Assert.InRange(b.Leading.TotalSeconds, 2 - 0.06 - 0.03, 2 - 0.06 + 0.03);
+        Assert.InRange(b.Trailing.TotalSeconds, 4 - 0.25 - 0.05, 4 - 0.25 + 0.05);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(8), $"took {sw.Elapsed}"); // not played in real time
+    }
+
+    [Fact]
+    public async Task Scan_WithoutFfmpeg_OfALongSong_ReadsOnlyItsEnds()
+    {
+        var ffmpeg = Ffmpeg();
+        if (ffmpeg == null) return;
+        var path = Song(ffmpeg, before: 3, tone: 90, after: 5);
+        var scanner = new SilenceScanService(() => null, SilenceScanService.DecodeWithVlc);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var b = await scanner.ScanAsync(LocalTrack(path, TimeSpan.FromSeconds(98)), -50);
+
+        Assert.InRange(b.Leading.TotalSeconds, 3 - 0.06 - 0.03, 3 - 0.06 + 0.03);
+        Assert.InRange(b.Trailing.TotalSeconds, 5 - 0.25 - 0.05, 5 - 0.25 + 0.05);
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(10), $"took {sw.Elapsed}");
+    }
+
+    [Fact]
     public async Task Scan_OfASongWithNoSilence_CutsNothing()
     {
         var ffmpeg = Ffmpeg();
@@ -263,6 +298,33 @@ public class SkipSilenceTests : IDisposable
         Play(vm, a);
 
         Assert.Equal(2500, player.PendingSeekMs);
+    }
+
+    [AvaloniaFact]
+    public async Task ALateScan_WaitsForThePlayerToKnowTheLength_BeforeJumping()
+    {
+        // Live 11-24: a fast scan landed while the song was still opening; the player drops a
+        // seek it can't place yet, so the song jumped to 2.9 s and went back to 0:00.
+        var (player, vm) = NewPlayer();
+        var a = FileTrack("a");
+        Play(vm, a);
+        player.Duration = TimeSpan.Zero; // still opening
+        var generation = (int)typeof(PlayerViewModel)
+            .GetField("_silencePlayGeneration", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(vm)!;
+        var scanned = typeof(PlayerViewModel).GetMethod("OnSilenceScanned", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        scanned.Invoke(vm, new object[] { a, generation, true, vm.SkipSilenceThresholdDb,
+            new SilenceBounds(TimeSpan.FromSeconds(2.5), TimeSpan.Zero) });
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(player.Seeks);
+
+        player.Duration = a.Duration; // opened
+        for (var i = 0; i < 20 && player.Seeks.Count == 0; i++)
+        {
+            await Task.Delay(50);
+            Dispatcher.UIThread.RunJobs();
+        }
+        Assert.Equal(new[] { TimeSpan.FromSeconds(2.5) }, player.Seeks);
     }
 
     [AvaloniaFact]

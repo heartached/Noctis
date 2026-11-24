@@ -111,11 +111,25 @@ public partial class PlayerViewModel
         if (_silenceByTrack.Count >= SilenceMemoLimit) _silenceByTrack.Clear();
         _silenceByTrack[track.Id] = bounds;
 
-        if (!lateJump || generation != _silencePlayGeneration || CurrentTrack?.Id != track.Id) return;
+        if (lateJump) TryLateSilenceJump(track, generation, bounds, 0);
+    }
+
+    /// <summary>The song is still in its leading silence: jump to its first sound. The player
+    /// drops a seek while it doesn't know the song's length yet (still opening), and a fast scan
+    /// (libVLC, live 11-24) landed there: the song jumped, then went back to 0:00. So it waits
+    /// for the length, a few times briefly.</summary>
+    private void TryLateSilenceJump(Track track, int generation, SilenceBounds bounds, int attempt)
+    {
+        if (generation != _silencePlayGeneration || CurrentTrack?.Id != track.Id) return;
         if (_silenceSeekGeneration == generation || State == PlaybackState.Stopped) return;
         if (bounds.Leading <= TimeSpan.Zero || Position >= bounds.Leading - TimeSpan.FromMilliseconds(300)) return;
+        if (_audioPlayer.Duration <= TimeSpan.Zero && attempt < 20)
+        {
+            DispatcherTimer.RunOnce(() => TryLateSilenceJump(track, generation, bounds, attempt + 1), TimeSpan.FromMilliseconds(100));
+            return;
+        }
         DebugLogger.Info(DebugLogger.Category.Playback, "SkipSilence.LateStart",
-            $"title={track.Title}, positionMs={Position.TotalMilliseconds:F0}, leadingMs={bounds.Leading.TotalMilliseconds:F0}");
+            $"title={track.Title}, positionMs={Position.TotalMilliseconds:F0}, leadingMs={bounds.Leading.TotalMilliseconds:F0}, waits={attempt}");
         SeekTo(bounds.Leading);
     }
 
