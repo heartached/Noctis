@@ -307,6 +307,43 @@ public class MobileAnimatedCoverTests : IDisposable
         Assert.Null(motion.Path);
     }
 
+    /// <summary>A download that breaks off deletes its partial file before the next download may
+    /// start: deleted after, it could be the next one's file (the same album asked again), which
+    /// then ended with the still cover.</summary>
+    [Fact]
+    public async Task ABrokenDownload_DeletesItsPartialFile_BeforeTheNextOneStarts()
+    {
+        var album = Guid.NewGuid();
+        var gate = new TaskCompletionSource();
+        var calls = 0;
+        bool? leftOver = null;
+        var source = new AnimatedCoverSource(Cache(), () => true, () => _now)
+        {
+            IsComputerSong = _ => true,
+            Fetch = async (_, destination, _, _) =>
+            {
+                if (++calls == 1)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.WriteAllBytes(destination, new byte[] { 1 });
+                    await gate.Task;
+                    throw new NoctisServerException(NoctisErrorKind.Unreachable, "dropped");
+                }
+                leftOver = File.Exists(destination);
+                File.WriteAllBytes(destination, new byte[] { 1, 2 });
+                return new AnimatedCoverDownload(AnimatedCoverFetch.Saved, "\"v2\"");
+            },
+        };
+        var song = ComputerSong(album);
+        var first = source.ResolveAsync(song, AnimatedCoversSetting.Always, CancellationToken.None);
+        var second = source.ResolveAsync(song, AnimatedCoversSetting.Always, CancellationToken.None);   // waits its turn
+        Assert.Equal(1, calls);
+        gate.SetResult();
+        Assert.Null(await first);
+        Assert.NotNull(await second);
+        Assert.False(leftOver);
+    }
+
     [Fact]
     public async Task ALookupThatEndsAfterTheSongChanged_IsAskedAgain_WhenTheSongComesBack()
     {

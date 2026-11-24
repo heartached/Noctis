@@ -141,9 +141,11 @@ public sealed class AnimatedCoverSource
         }
         finally
         {
-            _downloads.Release();
+            // The partial file goes before the next download may start: deleted after, it could be
+            // the next one's file (the same album asked again), which then ended with the still cover.
             try { if (System.IO.File.Exists(_cache.PartPathFor(album))) System.IO.File.Delete(_cache.PartPathFor(album)); }
             catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException) { }
+            finally { _downloads.Release(); }
         }
     }
 
