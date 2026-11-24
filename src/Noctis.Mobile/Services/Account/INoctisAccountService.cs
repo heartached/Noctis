@@ -210,6 +210,10 @@ public interface INoctisAccountService
     /// now would be refused, so resumed downloads wait for Wi-Fi.</summary>
     Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(false);
 
+    /// <summary>Settings › Downloads › Wi-Fi only is on, on any network: the background run for the
+    /// songs left waits for an unmetered one (DownloadActivity, IDownloadWakeup).</summary>
+    Task<bool> DownloadsWifiOnlyAsync() => Task.FromResult(false);
+
     /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
     /// or signed out keeping the downloads): its file stays and plays until the user removes it
     /// (<see cref="RemoveDownloadsAsync"/>, which then takes its row too). Never deleted on its own:

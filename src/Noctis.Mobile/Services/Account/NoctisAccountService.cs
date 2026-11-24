@@ -2163,6 +2163,9 @@ public sealed partial class NoctisAccountService : INoctisAccountService, ITrack
     public async Task<bool> DownloadsWaitForWifiAsync() =>
         IsOnWifi is { } onWifi && !onWifi() && (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
 
+    public async Task<bool> DownloadsWifiOnlyAsync() =>
+        (await _persistence.LoadSettingsAsync().ConfigureAwait(false)).MobileDownloadWifiOnly;
+
     public async Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync()
     {
         // The library's rows say which songs the computer still lists.
