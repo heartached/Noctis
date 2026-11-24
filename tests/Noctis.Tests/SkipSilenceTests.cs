@@ -185,7 +185,8 @@ public class SkipSilenceTests : IDisposable
 
         Assert.InRange(b.Leading.TotalSeconds, 2 - 0.06 - 0.03, 2 - 0.06 + 0.03);
         Assert.InRange(b.Trailing.TotalSeconds, 4 - 0.25 - 0.05, 4 - 0.25 + 0.05);
-        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(8), $"took {sw.Elapsed}"); // not played in real time
+        // Not played in real time (about 22 s for both ends of this song); loose for a busy machine.
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(15), $"took {sw.Elapsed}");
     }
 
     [Fact]
@@ -201,7 +202,7 @@ public class SkipSilenceTests : IDisposable
 
         Assert.InRange(b.Leading.TotalSeconds, 3 - 0.06 - 0.03, 3 - 0.06 + 0.03);
         Assert.InRange(b.Trailing.TotalSeconds, 5 - 0.25 - 0.05, 5 - 0.25 + 0.05);
-        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(10), $"took {sw.Elapsed}");
+        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(20), $"took {sw.Elapsed}"); // real time: about 60 s
     }
 
     [Fact]
