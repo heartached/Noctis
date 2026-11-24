@@ -534,6 +534,63 @@ public class MobileDownloadProgressTests
         Assert.Equal($"finished|{Loc.T(key)}|{Loc.Plural("Mobile.Download.Done", 1)}", notifier.Calls.Last());
     }
 
+    /// <summary>The Account page open as a batch stops with songs waiting: it says what they wait
+    /// for, as the card does, not "Downloads finished".</summary>
+    [Theory]
+    [InlineData(false, "Mobile.Download.WaitingForComputer")]
+    [InlineData(true, "Mobile.Download.WaitingForWifi")]
+    public void AccountPage_SongsWaiting_SaysWhatTheyWaitFor(bool forWifi, string key)
+    {
+        using var rig = MobileFixtures.MakeRig(Array.Empty<Track>());
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        shell.OpenAccountCommand.Execute(null);
+        var page = Assert.IsType<AccountPageViewModel>(shell.CurrentPage);
+
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 0, 0, 0));
+        account.RaiseDownloadProgress(new NoctisDownloadProgress(0, 1, 0, 0, Waiting: 2, WaitsForWifi: forWifi));
+
+        Assert.False(page.IsDownloading);
+        Assert.Equal(Loc.T(key), page.DownloadText);
+    }
+
+    /// <summary>The S23 case: songs a run left, and the computer off at start. The log said they wait
+    /// for the computer but nothing on screen did: now the banner and the Account page (opened
+    /// before or after) say so. Then the computer refuses the phone: nothing waits any more, the
+    /// wakeup is cancelled and the page no longer says it.</summary>
+    [Fact]
+    public async Task Startup_ComputerOff_BannerAndAccountPageSaySongsWait_GoneWhenRefused()
+    {
+        var a = RemoteSong("A");
+        using var rig = MobileFixtures.MakeRig(new[] { a });
+        var account = new FakeAccount
+        {
+            Account = FakeAccount.SignedInAs(),
+            SyncError = new NoctisServerException(NoctisErrorKind.Unreachable, "off"),
+        };
+        account.Unfinished.Add(a);
+        var wakeup = new FakeWakeup();
+        var shell = ShellWith(rig, account, new FakeNotifier(), new FakeKeeper(), wakeup);
+        shell.OpenAccountCommand.Execute(null);
+        var openBefore = Assert.IsType<AccountPageViewModel>(shell.CurrentPage);
+
+        await shell.InitializeAsync();
+        await Until(() => wakeup.Calls.Count == 1);
+        await Until(() => shell.Player.Notice == Loc.T("Mobile.Download.WaitingForComputer"));
+
+        Assert.Empty(account.DownloadCalls);
+        Assert.Equal(Loc.T("Mobile.Download.WaitingForComputer"), openBefore.DownloadText);
+        var openAfter = new AccountPageViewModel(shell, account);
+        Assert.Equal(Loc.T("Mobile.Download.WaitingForComputer"), openAfter.DownloadText);
+
+        account.Account = null;
+        account.RaiseStateChanged();
+
+        Assert.Null(shell.Downloads!.WaitingText);
+        Assert.Equal("cancel", wakeup.Calls.Last());
+        Assert.Equal(string.Empty, openBefore.DownloadText);
+    }
+
     private static async Task Until(Func<bool> condition)
     {
         var start = Environment.TickCount64;

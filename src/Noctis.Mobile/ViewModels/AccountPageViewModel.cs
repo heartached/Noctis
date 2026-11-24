@@ -34,6 +34,9 @@ public sealed partial class AccountPageViewModel : MobilePage
     private bool _ownSyncEndPending;
     private bool _downloadRunning;
     private NoctisDownloadProgress? _lastDownload;
+    private DownloadActivity? _downloads;
+    /// <summary>DownloadText says what songs wait for (RefreshDownloads).</summary>
+    private bool _showsWaiting;
     private CancellationTokenSource? _uploadCts;
 
     public AccountPageViewModel(ShellViewModel shell, INoctisAccountService account)
@@ -48,6 +51,12 @@ public sealed partial class AccountPageViewModel : MobilePage
         // Opened while an album's download runs: its counts from the start, not from the next
         // song to land (a big FLAC left the row blank, and Download Everything on offer, for minutes).
         if (shell.Downloads?.Last is { Pending: > 0 } running) _lastDownload = running;
+        // Songs found waiting for the computer once the start's sync gives up, with the page open.
+        if (shell.Downloads is { } downloads)
+        {
+            _downloads = downloads;
+            downloads.Changed += OnDownloadsChanged;
+        }
         Refresh();
         // Signed out by the sync at app start (which only logs): say why the form is back.
         if (!IsSignedIn && _account.WasSignedOutByComputer) SetError(Describe(NoctisErrorKind.SignedOut, signedIn: false));
@@ -676,6 +685,9 @@ public sealed partial class AccountPageViewModel : MobilePage
         RefreshDownloads();
     });
 
+    /// <summary>UI thread (DownloadActivity.Changed).</summary>
+    private void OnDownloadsChanged(object? sender, EventArgs e) => RefreshDownloads();
+
     private void OnUploadProgress(object? sender, NoctisUploadProgress progress) => _marshal(() =>
     {
         // The send's last report is posted before its task completes, but the page's await
@@ -736,6 +748,24 @@ public sealed partial class AccountPageViewModel : MobilePage
         IsDownloading = _downloadRunning || pending;
         IsDownloadCounted = pending;
         DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Handled / (double)d.Total : 0;
+        // Songs left waiting are not finished: the page says what they wait for, as the card does,
+        // also for the ones found waiting at start (nothing on the page said so before).
+        var showedWaiting = _showsWaiting;
+        _showsWaiting = false;
+        if (!IsDownloading)
+        {
+            var waiting = _lastDownload is { Waiting: > 0 } w
+                ? Loc.T(w.WaitsForWifi ? "Mobile.Download.WaitingForWifi" : "Mobile.Download.WaitingForComputer") + DownloadActivity.FailureParts(w)
+                : Shell.Downloads?.WaitingText;
+            if (waiting != null)
+            {
+                DownloadText = waiting;
+                _showsWaiting = true;
+                return;
+            }
+            // No longer waiting (signed out, called off) with no report to show instead.
+            if (showedWaiting && _lastDownload == null) DownloadText = string.Empty;
+        }
         if (_lastDownload is not { } p) return;
         var failed = DownloadActivity.FailureParts(p);
         DownloadText = pending
@@ -754,6 +784,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         _account.SyncProgress -= OnSyncProgress;
         _account.DownloadProgress -= OnDownloadProgress;
         _account.UploadProgress -= OnUploadProgress;
+        if (_downloads != null) _downloads.Changed -= OnDownloadsChanged;
         Password = string.Empty;
     }
 
