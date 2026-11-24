@@ -129,10 +129,18 @@ public class MobileAnimatedCoverTests : IDisposable
         public readonly List<(Guid Album, string? ETag)> Asked = new();
         public readonly Dictionary<Guid, byte[]> Loops = new();
         public bool Unreachable;
+        /// <summary>Holds each answer until it completes (a slow download).</summary>
+        public Task? Gate;
 
-        public Task<AnimatedCoverDownload> Fetch(Guid album, string destination, string? etag, CancellationToken ct)
+        public async Task<AnimatedCoverDownload> Fetch(Guid album, string destination, string? etag, CancellationToken ct)
         {
             Asked.Add((album, etag));
+            if (Gate is { } gate) await gate;
+            return await Answer(album, destination, etag);
+        }
+
+        private Task<AnimatedCoverDownload> Answer(Guid album, string destination, string? etag)
+        {
             if (Unreachable) throw new NoctisServerException(NoctisErrorKind.Unreachable, "down");
             if (!Loops.TryGetValue(album, out var bytes)) return Task.FromResult(new AnimatedCoverDownload(AnimatedCoverFetch.None, null));
             var tag = "\"v" + bytes.Length + "\"";
@@ -298,6 +306,39 @@ public class MobileAnimatedCoverTests : IDisposable
         Assert.Null(motion.Path);
     }
 
+    [Fact]
+    public async Task ALookupThatEndsAfterTheSongChanged_IsAskedAgain_WhenTheSongComesBack()
+    {
+        // Now Playing open on a song whose loop is still downloading, closed, the next song
+        // plays, the download ends, then Previous and Now Playing again: the loop shows (it
+        // stayed the still cover: the ended lookup still counted as running).
+        var computer = new FakeComputer();
+        Guid a = Guid.NewGuid(), b = Guid.NewGuid();
+        computer.Loops[a] = new byte[] { 1 };
+        var one = ComputerSong(a);
+        var two = ComputerSong(b);
+        using var rig = MobileFixtures.MakeRig(new[] { one, two });
+        var motion = new NowPlayingMotion(rig.Shell, Source(computer, () => true));
+        var gate = new TaskCompletionSource();
+        computer.Gate = gate.Task;
+
+        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        rig.Shell.IsNowPlayingOpen = true;
+        var slow = motion.Pending;
+        rig.Shell.IsNowPlayingOpen = false;
+        rig.Shell.Player.NextCommand.Execute(null);
+        gate.SetResult();
+        await slow;
+        Assert.Null(motion.Path);
+
+        computer.Gate = null;
+        rig.Shell.Player.PreviousCommand.Execute(null);
+        Assert.Same(one, rig.Shell.Player.CurrentTrack);
+        rig.Shell.IsNowPlayingOpen = true;
+        await motion.Pending;
+        Assert.NotNull(motion.Path);
+    }
+
     [AvaloniaFact]
     public void TheCover_IsSeen_OnlyOnTopUncoveredPlayingAndStill()
     {
@@ -338,7 +379,13 @@ public class MobileAnimatedCoverTests : IDisposable
     private sealed class FakeVideo : IAnimatedCoverPlayer
     {
         public readonly List<string> Calls = new();
-        public void Play(string source) => Calls.Add("play " + source);
+        /// <summary>Play raises Failed before it returns (the phone's player failing to start).</summary>
+        public bool FailOnPlay;
+        public void Play(string source)
+        {
+            Calls.Add("play " + source);
+            if (FailOnPlay) Fail();
+        }
         public void Pause() => Calls.Add("pause");
         public void Release() => Calls.Add("release");
         public event EventHandler? Failed;
@@ -448,5 +495,23 @@ public class MobileAnimatedCoverTests : IDisposable
         p.Update("good", true);
         clock.Advance(AnimatedCoverPresenter.SettleDelay);
         Assert.True(p.IsShown);
+    }
+
+    [Fact]
+    public void ALoopThatFailsToStart_IsNotShown_AndIsNotTriedAgain()
+    {
+        var video = new FakeVideo { FailOnPlay = true };
+        var clock = new Clock();
+        var p = new AnimatedCoverPresenter(video, clock.Schedule);
+        p.Update("bad", true);
+        clock.Advance(AnimatedCoverPresenter.SettleDelay);
+        Assert.False(p.IsShown);
+        Assert.Equal(new[] { "play bad", "release" }, video.Calls);
+
+        p.Update("bad", false);
+        p.Update("bad", true);
+        clock.Advance(AnimatedCoverPresenter.SettleDelay);
+        Assert.False(p.IsShown);
+        Assert.Equal(1, video.Calls.Count(c => c.StartsWith("play", StringComparison.Ordinal)));
     }
 }
