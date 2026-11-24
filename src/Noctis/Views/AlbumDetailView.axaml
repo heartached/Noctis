@@ -1008,8 +1008,11 @@
                               VerticalAlignment="Center"
                               Margin="0,0,10,0">
                             <!-- Col 0: rating stars (collapsed when unrated) -->
-                            <!-- Click-to-rate (see LibrarySongsView): revealed on row hover, always on once rated. -->
+                            <!-- Click-to-rate (see LibrarySongsView): revealed on row hover, always on once rated.
+                                 Settings › Show Star Ratings off (Discord 11-24, Halil) collapses it; the
+                                 Auto column and its margin go with it, so no gap is left. -->
                             <controls:RatingStars Grid.Column="0"
+                                                  IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowStarRatings, FallbackValue=True}"
                                                   Value="{Binding Rating}"
                                                   Classes="row-rating"
                                                   Classes.rated="{Binding !!Rating}"

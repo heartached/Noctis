@@ -9151,6 +9151,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>필터 메뉴에서 모든 아티스트를 선택하거나 이름을 검색하세요</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>작은 아티스트 숨기기</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>곡이 몇 개뿐인 아티스트를 아티스트 페이지에서 숨깁니다. 검색으로는 계속 찾을 수 있습니다.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>별점 표시</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>곡에 별점을 매기지 않는다면 끄세요. 앨범 페이지, 곡 목록, 메뉴에서 별을 숨깁니다. 매긴 별점은 그대로 유지됩니다.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>다음보다 곡이 적은 아티스트 숨기기</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>마우스를 올릴 때까지 사이드바 숨기기</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>사이드바를 완전히 숨겨 페이지가 전체 너비를 사용합니다. 포인터를 창의 왼쪽 가장자리로 옮기면 나타납니다.</value><comment>Description under Hide sidebar until hover</comment></data>

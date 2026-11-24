@@ -525,9 +525,8 @@ public sealed class ColumnHeaderPanel : ColumnsPanel
     {
         var menu = new ContextMenu();
         menu.Classes.Add(MenuV2.MenuClass);
-        foreach (var spec in layout.Ordered)
+        foreach (var spec in layout.MenuColumns)
         {
-            if (spec.Pinned) continue;
             var item = MenuV2.Row(this, spec.Label, layout.IsVisible(spec.Key) ? "MenuLineCheck" : null);
             item.IsEnabled = spec.CanHide;
             item.StaysOpenOnClick = true;

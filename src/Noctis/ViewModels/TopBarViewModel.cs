@@ -590,6 +590,8 @@ public partial class TopBarViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(CoverFlowToggleVisible))]
     [NotifyPropertyChangedFor(nameof(AlbumsViewToggleVisible))]
     private bool _albumCarouselAvailable = true;
+    /// <summary>Settings › Show Star Ratings (mirrored by the main window; Discord 11-24, Halil): hides Sort ▸ Rating.</summary>
+    [ObservableProperty] private bool _showStarRatings = true;
     /// <summary>Case style name ("Cover" / "JewelCase" / "Vinyl" / "Cassette") for the checkmarks.</summary>
     [ObservableProperty] private string _albumCarouselStyle = "Cover";
 
