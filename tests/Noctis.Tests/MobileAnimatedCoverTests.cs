@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
@@ -306,6 +307,43 @@ public class MobileAnimatedCoverTests : IDisposable
         Assert.Null(motion.Path);
     }
 
+    /// <summary>A download that breaks off deletes its partial file before the next download may
+    /// start: deleted after, it could be the next one's file (the same album asked again), which
+    /// then ended with the still cover.</summary>
+    [Fact]
+    public async Task ABrokenDownload_DeletesItsPartialFile_BeforeTheNextOneStarts()
+    {
+        var album = Guid.NewGuid();
+        var gate = new TaskCompletionSource();
+        var calls = 0;
+        bool? leftOver = null;
+        var source = new AnimatedCoverSource(Cache(), () => true, () => _now)
+        {
+            IsComputerSong = _ => true,
+            Fetch = async (_, destination, _, _) =>
+            {
+                if (++calls == 1)
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.WriteAllBytes(destination, new byte[] { 1 });
+                    await gate.Task;
+                    throw new NoctisServerException(NoctisErrorKind.Unreachable, "dropped");
+                }
+                leftOver = File.Exists(destination);
+                File.WriteAllBytes(destination, new byte[] { 1, 2 });
+                return new AnimatedCoverDownload(AnimatedCoverFetch.Saved, "\"v2\"");
+            },
+        };
+        var song = ComputerSong(album);
+        var first = source.ResolveAsync(song, AnimatedCoversSetting.Always, CancellationToken.None);
+        var second = source.ResolveAsync(song, AnimatedCoversSetting.Always, CancellationToken.None);   // waits its turn
+        Assert.Equal(1, calls);
+        gate.SetResult();
+        Assert.Null(await first);
+        Assert.NotNull(await second);
+        Assert.False(leftOver);
+    }
+
     [Fact]
     public async Task ALookupThatEndsAfterTheSongChanged_IsAskedAgain_WhenTheSongComesBack()
     {
@@ -372,6 +410,45 @@ public class MobileAnimatedCoverTests : IDisposable
         Assert.True(NowPlayingPage.IsMotionSeen(shell, true, false));
         shell.IsNowPlayingOpen = false;
         Assert.False(NowPlayingPage.IsMotionSeen(shell, true, false));
+    }
+
+    private sealed class FakeSaver : IBatterySaver
+    {
+        public bool IsOn { get; set; }
+        public event EventHandler? Changed;
+        public int Listeners => Changed?.GetInvocationList().Length ?? 0;
+        public void Flip(bool on)
+        {
+            IsOn = on;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Battery Saver turned on or off while Now Playing is open stops or starts the loop at
+    /// once (it waited for a pause, a new song or a menu), and nothing listens once the page is shut.</summary>
+    [AvaloniaFact]
+    public void BatterySaver_TurnedOnOrOff_WhileNowPlayingIsOpen_AppliesAtOnce()
+    {
+        var saver = new FakeSaver();
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
+        typeof(ShellViewModel).GetProperty(nameof(ShellViewModel.BatterySaver))!.SetValue(rig.Shell, saver);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        MobileFixtures.Land(window);
+        var cover = view.FindControl<NowPlayingPage>("NowPlaying")!.FindControl<AnimatedCoverView>("MotionCover")!;
+        Assert.True(cover.IsSeen);
+
+        saver.Flip(true);
+        Assert.False(cover.IsSeen);
+        saver.Flip(false);
+        Assert.True(cover.IsSeen);
+
+        rig.Shell.IsNowPlayingOpen = false;
+        MobileFixtures.Land(window);
+        Assert.False(cover.IsSeen);
+        Assert.Equal(0, saver.Listeners);
+        window.Close();
     }
 
     // ── When the video shows ──

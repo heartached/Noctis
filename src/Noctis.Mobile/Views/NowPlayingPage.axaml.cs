@@ -159,11 +159,28 @@ public partial class NowPlayingPage : UserControl
     /// </summary>
     private void UpdateMotion()
     {
+        WatchBatterySaver();
         if (MotionCover is not { } view) return;
         var shell = _shell;
         view.Source = shell?.Motion?.Path;
         view.IsSeen = IsMotionSeen(shell, IsVisible, _held || ArtworkSwipe?.IsSwiping == true);
     }
+
+    private Noctis.Mobile.Services.IBatterySaver? _saver;
+
+    /// <summary>Battery Saver turned on or off stops or starts the loop at once (it waited for a
+    /// pause, a new song or a menu). Listened to only while the page shows: on Android, listening
+    /// keeps a system broadcast receiver registered.</summary>
+    private void WatchBatterySaver()
+    {
+        var saver = IsVisible ? _shell?.BatterySaver : null;
+        if (ReferenceEquals(saver, _saver)) return;
+        if (_saver != null) _saver.Changed -= OnBatterySaverChanged;
+        _saver = saver;
+        if (_saver != null) _saver.Changed += OnBatterySaverChanged;
+    }
+
+    private void OnBatterySaverChanged(object? sender, EventArgs e) => UpdateMotion();
 
     /// <summary>Whether Now Playing's cover is on screen, uncovered and still (internal for tests).</summary>
     internal static bool IsMotionSeen(ShellViewModel? shell, bool pageVisible, bool held) =>
