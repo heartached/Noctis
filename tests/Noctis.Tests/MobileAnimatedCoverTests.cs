@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Noctis.Mobile.Services;
 using Noctis.Mobile.Services.Account;
@@ -372,6 +373,45 @@ public class MobileAnimatedCoverTests : IDisposable
         Assert.True(NowPlayingPage.IsMotionSeen(shell, true, false));
         shell.IsNowPlayingOpen = false;
         Assert.False(NowPlayingPage.IsMotionSeen(shell, true, false));
+    }
+
+    private sealed class FakeSaver : IBatterySaver
+    {
+        public bool IsOn { get; set; }
+        public event EventHandler? Changed;
+        public int Listeners => Changed?.GetInvocationList().Length ?? 0;
+        public void Flip(bool on)
+        {
+            IsOn = on;
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    /// <summary>Battery Saver turned on or off while Now Playing is open stops or starts the loop at
+    /// once (it waited for a pause, a new song or a menu), and nothing listens once the page is shut.</summary>
+    [AvaloniaFact]
+    public void BatterySaver_TurnedOnOrOff_WhileNowPlayingIsOpen_AppliesAtOnce()
+    {
+        var saver = new FakeSaver();
+        using var rig = MobileFixtures.MakeRig(new[] { MobileFixtures.Song("Tone") });
+        typeof(ShellViewModel).GetProperty(nameof(ShellViewModel.BatterySaver))!.SetValue(rig.Shell, saver);
+        var window = MobileFixtures.Mount(rig.Shell, out var view);
+        rig.Shell.Player.PlayTracks(rig.Library.TrackList, 0);
+        rig.Shell.OpenNowPlayingCommand.Execute(null);
+        MobileFixtures.Land(window);
+        var cover = view.FindControl<NowPlayingPage>("NowPlaying")!.FindControl<AnimatedCoverView>("MotionCover")!;
+        Assert.True(cover.IsSeen);
+
+        saver.Flip(true);
+        Assert.False(cover.IsSeen);
+        saver.Flip(false);
+        Assert.True(cover.IsSeen);
+
+        rig.Shell.IsNowPlayingOpen = false;
+        MobileFixtures.Land(window);
+        Assert.False(cover.IsSeen);
+        Assert.Equal(0, saver.Listeners);
+        window.Close();
     }
 
     // ── When the video shows ──
