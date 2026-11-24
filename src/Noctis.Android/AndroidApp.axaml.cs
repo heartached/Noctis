@@ -158,6 +158,12 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             Account = account,
             DownloadNotifier = downloadNotifier,
             DownloadKeeper = downloadNotifier != null ? new AndroidDownloadKeeper(context, downloadNotifier) : null,
+            // Songs left waiting (for Wi-Fi, or by an ended process) go on when the system runs this
+            // job, in the background too, not only when the app comes to the front.
+            DownloadWakeup = downloadNotifier != null ? new AndroidDownloadWakeup(context) : null,
+            // Off screen until MainActivity resumes (OnForegrounded): the wakeup's job may start the
+            // process with no activity, and DownloadActivity then knows the app is not in front.
+            IsSuspended = true,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
             // Without an account there is no computer to send plays through: the phone sends them.
             Scrobbler = new PhoneScrobbler(persistence, new HttpClient()) { HasComputerRoute = account != null },

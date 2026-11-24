@@ -1254,9 +1254,12 @@ public class NoctisAccountServiceTests : IAsyncLifetime
         Assert.True(await svc.DownloadsWaitForWifiAsync());
         onWifi = true;
         Assert.False(await svc.DownloadsWaitForWifiAsync());
+        // The background run for the songs left asks for Wi-Fi whatever the network now.
+        Assert.True(await svc.DownloadsWifiOnlyAsync());
         onWifi = false;
         await _phonePersistence.UpdateSettingsAsync(s => s.MobileDownloadWifiOnly = false);
         Assert.False(await svc.DownloadsWaitForWifiAsync());
+        Assert.False(await svc.DownloadsWifiOnlyAsync());
     }
 
     /// <summary>Sign-out and Remove All Downloads tell the phone's download activity that every
