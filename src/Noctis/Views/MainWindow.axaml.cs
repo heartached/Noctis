@@ -1640,11 +1640,21 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private PixelPoint? _normalPosition;
     private Size? _normalSize;
 
+    private bool _normalPlacementQueued;
+
     private void RememberNormalPlacement()
     {
-        if (WindowState != WindowState.Normal || !IsVisible) return;
-        _normalPosition = Position;
-        _normalSize = Bounds.Size;
+        // A moment later: maximizing moves the window before WindowState says Maximized, and
+        // that move recorded the maximized corner as the spot to restore to (live 11-24).
+        if (_normalPlacementQueued) return;
+        _normalPlacementQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _normalPlacementQueued = false;
+            if (WindowState != WindowState.Normal || !IsVisible) return;
+            _normalPosition = Position;
+            _normalSize = Bounds.Size;
+        }, DispatcherPriority.Background);
     }
 
     private void CaptureWindowPlacement()
