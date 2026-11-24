@@ -207,6 +207,16 @@
         <Style Selector="Button.row-heart:pressed /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
         </Style>
+        <!-- The empty row heart takes the page's text colour, as the header heart does: the
+             button's own white was near-invisible on a light tint or the Light theme. Styles,
+             not a local value, and the now-playing row's colour restated after it: a view
+             style outranks the app's Border.now-playing HeartIcon rule. -->
+        <Style Selector="controls|HeartIcon.faint-heart">
+            <Setter Property="OffBrush" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+        </Style>
+        <Style Selector="Border.now-playing controls|HeartIcon.faint-heart">
+            <Setter Property="OffBrush" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+        </Style>
         <Style Selector="Button.row-heart:pointerover controls|HeartIcon.faint-heart">
             <Setter Property="OffOpacity" Value="0.7" />
         </Style>
