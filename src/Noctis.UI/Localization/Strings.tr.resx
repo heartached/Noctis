@@ -3266,6 +3266,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Shortcuts.Action.SeekForward" xml:space="preserve"><value>İleri sar</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.SeekBackward" xml:space="preserve"><value>Geri sar</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.ToggleMiniPlayer" xml:space="preserve"><value>Mini oynatıcı</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve"><value>Kenar çubuğunu genişlet / daralt</value><comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment></data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve"><value>Geri</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoForward" xml:space="preserve"><value>İleri</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoHome" xml:space="preserve"><value>Ana Sayfa'ya git</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>

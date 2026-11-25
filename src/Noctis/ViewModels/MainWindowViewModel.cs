@@ -289,6 +289,11 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarHidden = !IsSidebarHidden;
 
+    /// <summary>Expanded ↔ icon rail (Ctrl/⌘+B, the command palette): flips "Keep sidebar
+    /// expanded". Nothing while the sidebar is hidden (fullscreen lyrics, auto-hide).</summary>
+    public bool ToggleSidebarPinned() =>
+        !IsSidebarHidden && Settings.TrySetSidebarPinned(!Settings.SidebarAlwaysExpanded);
+
     // ── Lyrics side panel ──
 
     /// <summary>Whether the lyrics side panel overlay is open.</summary>

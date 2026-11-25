@@ -40,6 +40,8 @@ public enum ShortcutAction
     GoSongs,
     GoAlbums,
     GoArtists,
+    // Discord (Luwi 11-25): flips "Keep sidebar expanded".
+    ToggleSidebar,
 }
 
 /// <summary>
@@ -83,6 +85,7 @@ public static class ShortcutDefaults
         new ShortcutDescriptor(ShortcutAction.ToggleQueue, GroupWindow),
         new ShortcutDescriptor(ShortcutAction.ToggleLyrics, GroupWindow),
         new ShortcutDescriptor(ShortcutAction.ToggleMiniPlayer, GroupWindow),
+        new ShortcutDescriptor(ShortcutAction.ToggleSidebar, GroupWindow),
         new ShortcutDescriptor(ShortcutAction.OpenSettings, GroupWindow),
         new ShortcutDescriptor(ShortcutAction.SearchLibrary, GroupNavigation),
         new ShortcutDescriptor(ShortcutAction.CommandPalette, GroupNavigation),
@@ -144,6 +147,9 @@ public static class ShortcutDefaults
             ShortcutAction.GoSongs => new KeyGesture(Key.D2, primary),
             ShortcutAction.GoAlbums => new KeyGesture(Key.D3, primary),
             ShortcutAction.GoArtists => new KeyGesture(Key.D4, primary),
+            // B for sidebar, the key VS Code and many editors use for it. Ctrl+B is no
+            // TextBox editing key, so it works from the search box too.
+            ShortcutAction.ToggleSidebar => new KeyGesture(Key.B, primary),
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
         };
     }

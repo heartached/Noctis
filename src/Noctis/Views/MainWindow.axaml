@@ -2167,6 +2167,18 @@
             IsVisible="False"
             ZIndex="10" />
 
+    <!-- Discord (Luwi 11-25): drag the sidebar's right edge to collapse or expand it
+         (SidebarResizeGrip). Fills the 8 px gap between the rail and the page, so it takes no
+         clicks from either; under the rail (ZIndex 9) so the hover-expanded rail covers it. -->
+    <Border x:Name="SidebarResizeGrip"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Stretch"
+            Width="8"
+            Margin="68,8,0,12"
+            Background="Transparent"
+            Cursor="SizeWestEast"
+            ZIndex="9" />
+
     <!-- Sidebar: overlaid so hover-expand doesn't reflow content -->
     <Border x:Name="SidebarWrapper"
             HorizontalAlignment="Left"

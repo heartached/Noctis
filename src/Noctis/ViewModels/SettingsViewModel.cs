@@ -5753,6 +5753,19 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    /// <summary>
+    /// Discord (Luwi 11-25): Ctrl/⌘+B and dragging the sidebar's edge flip "Keep sidebar
+    /// expanded" without opening Settings. The same property the switch binds, so it lays out
+    /// and saves the same way. Not while "Hide sidebar until hover" is on, where Settings greys
+    /// the switch out too (GitHub #233). Returns whether it changed.
+    /// </summary>
+    public bool TrySetSidebarPinned(bool pinned)
+    {
+        if (SidebarAutoHide || SidebarAlwaysExpanded == pinned) return false;
+        SidebarAlwaysExpanded = pinned;
+        return true;
+    }
+
     partial void OnSidebarAlwaysExpandedChanged(bool value)
     {
         // Raised even while settings are loading so a persisted "on" pins the sidebar

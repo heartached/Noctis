@@ -8172,6 +8172,10 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>미니 플레이어</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve">
+    <value>사이드바 펼치기 / 접기</value>
+    <comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment>
+  </data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve">
     <value>뒤로</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>

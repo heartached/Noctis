@@ -163,6 +163,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Action(Loc.T("Palette.ToggleAnimatedCovers"), "SettingsIcon",
             () => _main.Settings.EnableAnimatedCovers = !_main.Settings.EnableAnimatedCovers,
             Loc.T("Palette.AppearanceSetting"));
+        Action(Loc.T("Shortcuts.Action.ToggleSidebar"), "MenuLineExpand", () => _main.ToggleSidebarPinned());
 
         return items;
     }
