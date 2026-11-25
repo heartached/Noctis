@@ -4896,6 +4896,17 @@
                                               IsChecked="{Binding YouTubeMusicLyricsEnabled}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- GitHub #265: Genius, plain lyrics only, before lrcmux. -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="{loc:T Settings.Genius}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.GeniusHint}" FontSize="11" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.Genius}"
+                                              IsChecked="{Binding GeniusEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                     <!-- GitHub #219: lrcmux, asked last, off by default. -->
                     <Grid ColumnDefinitions="*,Auto">
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">

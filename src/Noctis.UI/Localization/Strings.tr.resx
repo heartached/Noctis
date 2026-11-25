@@ -678,6 +678,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics topluluk sözleri · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev üzerinden Deezer, KuGou, YouTube Music ve Musixmatch sözleri, en son sorulur</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>Diğer kaynaklarda olmayan şarkılar için zamanlamasız sözler, çoğu zaman az bilinen sanatçılar · Lyrics Studio’da senkronlamaya hazır</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Senkronize sözler · daha yavaş arama</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Söz sayfasındaki Kaynak Seç, burada kapatılan kaynakları yine kullanabilir.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -2888,6 +2890,7 @@ Sözleri kaydet'e basana kadar diske hiçbir şey yazılmaz.</value><comment>Con
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>lrc.red modeli her kelimeyi zamanlıyor…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>lrc.red modeliyle kelime senkronlu · gözden geçir</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>lrc.red'den · modeliyle kelime senkronlu</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>Genius’ten</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Satırı dinlemek için bir zamana tıkla. Metni yerinde düzenle. Renkli satırlara bir daha bak.</value><comment>Review pane hint</comment></data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>Tüm satırlar 0,1 sn öne · kısayol [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>Tüm satırlar 0,1 sn sonraya · kısayol ]</value><comment>Tooltip</comment></data>

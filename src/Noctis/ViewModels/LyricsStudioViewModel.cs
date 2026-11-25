@@ -187,6 +187,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     {
         LyricsStudioSource.ExistingLyrics => "From the song's lyrics",
         LyricsStudioSource.Lrclib => "From LRCLIB",
+        LyricsStudioSource.Genius => Loc("LyricsStudio.GeniusSource"),
         LyricsStudioSource.Transcription => "Transcribed · check the words",
         LyricsStudioSource.PastedLyrics => "From your lyrics",
         LyricsStudioSource.LrcRed => Loc("LyricsStudio.LrcRedSource"),

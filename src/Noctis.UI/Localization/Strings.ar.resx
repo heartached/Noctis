@@ -1777,6 +1777,8 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>كلمات مجتمع Better Lyrics · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>كلمات Deezer وKuGou وYouTube Music وMusixmatch عبر lrcmux.dev، يُسأل أخيرًا</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>كلمات غير متزامنة للأغاني التي لا تجدها المصادر الأخرى، غالبًا لفنانين أقل شهرة · جاهزة للمزامنة في Lyrics Studio</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>كلمات متزامنة · بحث أبطأ</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>يظل بإمكان «اختيار المصدر» في صفحة الكلمات استخدام المصادر المعطّلة هنا.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -7270,6 +7272,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>يوقّت نموذج lrc.red كل كلمة…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>متزامنة كلمةً بكلمة بنموذج lrc.red · راجعها</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>من lrc.red · متزامنة كلمةً بكلمة بنموذجه</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>من Genius</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve">
     <value>انقر على توقيت لسماع ذلك السطر. حرّر النص في مكانه. الأسطر الملوّنة تحتاج إلى مراجعة ثانية.</value>
     <comment>Review pane hint</comment>

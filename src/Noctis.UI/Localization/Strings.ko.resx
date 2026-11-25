@@ -1777,6 +1777,8 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics 커뮤니티 가사 · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev를 통한 Deezer, KuGou, YouTube Music, Musixmatch 가사, 마지막에 조회</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>다른 소스에 없는 곡의 싱크 없는 가사(덜 알려진 아티스트에 많음) · Lyrics Studio에서 바로 싱크 가능</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>싱크 가사 · 검색이 느림</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>가사 페이지의 '소스 선택'에서는 여기서 끈 소스도 사용할 수 있습니다.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -7270,6 +7272,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>lrc.red 모델이 모든 단어의 타이밍을 맞추는 중…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>lrc.red 모델로 단어 싱크됨 · 검토</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>lrc.red 제공 · 자체 모델로 단어 싱크됨</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>Genius 제공</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve">
     <value>시간을 클릭하면 해당 줄을 들을 수 있습니다. 텍스트는 바로 수정하세요. 색이 칠해진 줄은 다시 확인이 필요합니다.</value>
     <comment>Review pane hint</comment>
