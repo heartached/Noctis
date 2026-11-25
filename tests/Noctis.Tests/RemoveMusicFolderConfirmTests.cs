@@ -55,6 +55,7 @@ public class RemoveMusicFolderConfirmTests
             Assert.Equal("Remove", request.ConfirmText);
             Assert.Equal(new[] { Music, Other }, vm.MusicFolders);
             Assert.Empty(library.ScanPasses);
+            Assert.Empty(library.FolderRemovals);
 
             answer = true;
             await vm.RemoveFolderCommand.ExecuteAsync(Music);
@@ -63,11 +64,34 @@ public class RemoveMusicFolderConfirmTests
             for (var i = 0; i < 100 && library.ScanPasses.Count == 0; i++)
                 await Task.Delay(20, TestContext.Current.CancellationToken);
             Assert.Equal(new[] { Other }, Assert.Single(library.ScanPasses));
+            // 11-24: the folder's songs leave at once, before the rescan (a quit or an unreachable
+            // drive used to stop that rescan, and the songs stayed).
+            var removal = Assert.Single(library.FolderRemovals);
+            Assert.Equal(Music, removal.Folder);
+            Assert.Equal(new[] { Other }, removal.Remaining);
+            Assert.Equal(0, removal.ScansBefore);
+            Assert.Equal(new[] { "added", "other", "sibling" }, library.AllTracks.Select(t => t.Title).OrderBy(t => t));
 
             Loc.Instance.SetCulture("ru");
             Assert.Equal($"Из медиатеки будут убраны песни из «{Other}»: 1 песня. Файлы останутся на месте.",
                 Loc.T("Settings.RemoveFolderBody", Loc.Plural("Count.Songs", SettingsViewModel.SongsLeavingWithFolder(library.AllTracks, Other)), Other));
         }
         finally { Loc.Instance.SetCulture("en"); }
+    }
+
+    /// <summary>A music folder inside another one: removing it takes no songs out (the outer
+    /// folder still holds them), and the confirmation says 0, not every song under it.</summary>
+    [Fact]
+    public void SongsLeavingWithFolder_SkipsSongsAnotherMusicFolderStillHolds()
+    {
+        var inner = Path.Combine(Music, "Rock");
+        var tracks = new[]
+        {
+            new Track { FilePath = Path.Combine(inner, "r.mp3") },
+            new Track { FilePath = Path.Combine(Music, "m.mp3") },
+        };
+        Assert.Equal(0, SettingsViewModel.SongsLeavingWithFolder(tracks, inner, new[] { Music }));
+        // Removing the outer folder while the inner one stays: only the outer folder's own song leaves.
+        Assert.Equal(1, SettingsViewModel.SongsLeavingWithFolder(tracks, Music, new[] { inner }));
     }
 }

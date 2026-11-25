@@ -1756,6 +1756,43 @@ public class LibraryService : ILibraryService
 
     private static bool IsServerTrack(Track t) => t.SourceType == SourceType.NoctisServer;
 
+    /// <summary>True when removing the music folder <paramref name="folder"/> takes
+    /// <paramref name="track"/> out of the library: it lives under that folder, under none of
+    /// <paramref name="remainingRoots"/>, and was neither added on its own (GitHub #108) nor
+    /// streamed from the desktop.</summary>
+    public static bool LeavesWithFolder(Track track, string folder, IEnumerable<string> remainingRoots)
+        => !track.AddedIndividually && !IsServerTrack(track)
+           && PathIsUnder(track.FilePath, folder)
+           && !remainingRoots.Any(root => PathIsUnder(track.FilePath, root));
+
+    /// <inheritdoc />
+    public async Task RemoveFolderTracksAsync(string folder, IReadOnlyCollection<string> remainingFolders)
+    {
+        if (string.IsNullOrWhiteSpace(folder)) return;
+        // After any scan in flight: it publishes the set it walked, which would put the songs back.
+        await _scanGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync().ConfigureAwait(false);
+            var roots = BuildIncludeRoots(remainingFolders, settings).ToList();
+            // Copy-and-swap (see RemoveTrackAsync). Unlike RemoveTracksAsync nothing is excluded,
+            // no artwork is deleted and the user-state journal keeps its rows: the same as a
+            // rescan dropping the songs, so adding the folder again restores them.
+            var current = _tracks;
+            var kept = current.Where(t => !LeavesWithFolder(t, folder, roots)).ToList();
+            if (kept.Count == current.Count) return;
+            _tracks = kept;
+            await RebuildIndexesAsync().ConfigureAwait(false);
+            await SaveAsync().ConfigureAwait(false);
+            DebugLog.Write("Library", $"Removed music folder: {current.Count - kept.Count} song(s) left the library.");
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
     /// <inheritdoc />
     public async Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
     {

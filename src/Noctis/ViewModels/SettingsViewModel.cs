@@ -8612,16 +8612,20 @@ public partial class SettingsViewModel : ViewModelBase
            && (candidate[root.Length] == Path.DirectorySeparatorChar
                || candidate[root.Length] == Path.AltDirectorySeparatorChar);
 
-    /// <summary>The songs the rescan after removing <paramref name="folder"/> takes out of the
-    /// library: those under it, except songs added on their own (a scan keeps those, GitHub #108).</summary>
-    internal static int SongsLeavingWithFolder(IEnumerable<Track> tracks, string folder)
-        => tracks.Count(t => !t.AddedIndividually && LibraryService.PathIsUnder(t.FilePath, folder));
+    /// <summary>The songs removing <paramref name="folder"/> takes out of the library: those under
+    /// it, except songs added on their own (a scan keeps those, GitHub #108) and songs another
+    /// music folder in the list still holds (a folder inside another one).</summary>
+    internal static int SongsLeavingWithFolder(IEnumerable<Track> tracks, string folder, IEnumerable<string>? otherFolders = null)
+    {
+        var others = (otherFolders ?? Array.Empty<string>()).ToList();
+        return tracks.Count(t => LibraryService.LeavesWithFolder(t, folder, others));
+    }
 
     [RelayCommand]
     private async Task RemoveFolder(string folder)
     {
         // One click on the ✕ used to take the folder's songs out of the library at once.
-        var songs = SongsLeavingWithFolder(_library.AllTracks, folder);
+        var songs = SongsLeavingWithFolder(_library.AllTracks, folder, MusicFolders.Where(f => f != folder));
         var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Settings.RemoveFolderBody", Loc.Plural("Count.Songs", songs), folder),
             Title: Loc.T("Settings.RemoveFolderTitle"),
@@ -8636,8 +8640,20 @@ public partial class SettingsViewModel : ViewModelBase
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
 
-        // Re-scan so tracks from the removed folder drop out of the library.
-        _ = RunLibraryScanAsync();
+        _ = DropFolderSongsThenRescanAsync(folder, MusicFolders.ToList());
+    }
+
+    /// <summary>The removed folder's songs leave the library at once (they used to wait for the
+    /// whole rescan, which a quit, or an unreachable drive, could stop: the songs then stayed),
+    /// then the usual rescan runs.</summary>
+    private async Task DropFolderSongsThenRescanAsync(string folder, IReadOnlyCollection<string> remaining)
+    {
+        // A Settings scan in flight walked the old folder list and would publish the songs again
+        // when it ends; RunLibraryScanAsync below cancels it anyway, so free the library now.
+        _scanCts?.Cancel();
+        try { await _library.RemoveFolderTracksAsync(folder, remaining); }
+        catch (Exception ex) { DebugLog.Write("Settings", $"Removing the folder's songs failed: {ex.Message}"); }
+        await RunLibraryScanAsync();
     }
 
     private void SetScanStatus(string text, bool autoClear = false)

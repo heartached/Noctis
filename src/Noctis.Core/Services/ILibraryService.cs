@@ -142,6 +142,17 @@ public interface ILibraryService
     Task RemoveTracksAsync(IEnumerable<Guid> ids);
 
     /// <summary>
+    /// A music folder was taken out of the list: its songs leave the library now, not only when
+    /// the rescan that follows finishes. That rescan can take minutes, a desktop scan that finds
+    /// any folder unreachable is abandoned, and a quit mid-scan saves a checkpoint that keeps every
+    /// song it started with, so the songs stayed. Songs still under one of
+    /// <paramref name="remainingFolders"/> (or a folder include rule), songs added on their own and
+    /// the phone's desktop songs stay. Nothing is excluded and the user-state journal is kept, so
+    /// adding the folder again brings the songs back with their play counts, ratings and favorites.
+    /// </summary>
+    Task RemoveFolderTracksAsync(string folder, IReadOnlyCollection<string> remainingFolders) => Task.CompletedTask;
+
+    /// <summary>
     /// Phone app: replaces the whole <see cref="SourceType.NoctisServer"/> set (the signed-in
     /// desktop's songs) with <paramref name="tracks"/>; local tracks are untouched. A song
     /// already present keeps its instance when its catalog metadata is unchanged, or keeps its

@@ -178,6 +178,16 @@ internal sealed class FakeLibraryService : ILibraryService
     /// <summary>Each scan's folders, one entry per ScanAsync call.</summary>
     public List<List<string>> ScanPasses { get; } = new();
 
+    /// <summary>Each RemoveFolderTracksAsync call, with how many scans had run before it.</summary>
+    public List<(string Folder, List<string> Remaining, int ScansBefore)> FolderRemovals { get; } = new();
+
+    public Task RemoveFolderTracksAsync(string folder, IReadOnlyCollection<string> remainingFolders)
+    {
+        FolderRemovals.Add((folder, remainingFolders.ToList(), ScanPasses.Count));
+        TrackList.RemoveAll(t => LibraryService.LeavesWithFolder(t, folder, remainingFolders));
+        return Task.CompletedTask;
+    }
+
     /// <summary>When set, a scan stays running until the test completes it.</summary>
     public TaskCompletionSource? HoldScan { get; set; }
 
