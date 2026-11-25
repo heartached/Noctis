@@ -1,6 +1,95 @@
 {
   "releases": [
     {
+      "tag": "v1.7.2",
+      "version": "1.7.2",
+      "name": "v1.7.2",
+      "label": "1.7.2",
+      "publishedAt": "2026-11-25T05:00:50Z",
+      "url": "https://github.com/heartached/Noctis/releases/tag/v1.7.2",
+      "prerelease": false,
+      "sections": [
+        {
+          "title": "New Features",
+          "items": [
+            "Added a song count on album cards. (#258)",
+            "Added Masonry to the Genre page, artist pages and Home. (#259)",
+            "Added genre tag separators on desktop and phone. (#260)",
+            "Added Keep Shuffle On.",
+            "Added adding to several playlists at once from Add to Playlist.",
+            "Added playlist folders with New Folder and Move to Folder.",
+            "Added a full size view and change option for playlist covers.",
+            "Added a choice of how long songs stay marked as new.",
+            "Added a time toggle, an optional volume slider and a width reset to the Player Island.",
+            "Added a setting to return to the current lyrics line automatically.",
+            "Added clickable genres, artists and songs on several pages.",
+            "Added a Full Artwork option to the mini player.",
+            "Added the carousel to the Singles and Live Albums tabs on artist pages.",
+            "Added Skip Silence, which starts songs at their first sound and ends them after their last.",
+            "Added a heart on every song row on album pages.",
+            "Added a Show Star Ratings setting.",
+            "Added New Playlist and Folder Position settings and Remove Empty Folders.",
+            "Added Playing from in the queue, opened from the Player Island title.",
+            "Added a Lyrics Files choice in Lyrics Studio: ELRC and LRC, ELRC only or LRC only."
+          ]
+        },
+        {
+          "title": "Improvements",
+          "items": [
+            "Improved metadata saving so the window closes right away.",
+            "Improved the seek bar click and drag area.",
+            "Improved the Player Island title so it opens the album and highlights the song.",
+            "Improved Album Hover Zoom so it also works on Favorites.",
+            "Improved the New badge and Genre Separators descriptions.",
+            "Improved the sidebar hover slide and glass background.",
+            "Improved the Shuffle button so it matches on every page.",
+            "Improved the playlist cover hover effect.",
+            "Improved the ticks in Add to Playlist with smooth animation."
+          ]
+        },
+        {
+          "title": "Bug Fixes",
+          "items": [
+            "Fixed album cards not opening their album in Masonry view. (#262)",
+            "Fixed the version notice being cut off. (#261)",
+            "Fixed genres like Rock, Pop and Indie showing as one combined genre. (#260)",
+            "Fixed song and album tiles on Favorites not dragging.",
+            "Fixed a selection clearing before a drag could start.",
+            "Fixed dragging several songs onto a playlist adding only one.",
+            "Fixed dragging a song to the top of a scrolled playlist leaving an invisible row.",
+            "Fixed Cancel in the metadata editor still applying changes.",
+            "Fixed lyrics jumping to the top after Tab or Alt+Tab.",
+            "Fixed the hidden sidebar needing two hovers to fully open.",
+            "Fixed the expanded sidebar pushing the page off the right edge.",
+            "Fixed the album page tint turning the artist name white.",
+            "Fixed the volume label overflowing its box.",
+            "Fixed the Player Island width reset forgetting the extra buttons.",
+            "Fixed Masonry freezing when switched on in large libraries. (#259)",
+            "Fixed box selection picking the wrong albums on the Genre page. (#259)",
+            "Fixed empty genre and artist pages saying to add music folders. (#260)",
+            "Fixed missing Mac wording in some languages.",
+            "Fixed Chinese missing the save messages.",
+            "Fixed phone debug builds crashing after about 10 seconds.",
+            "Fixed saved genre separators not being used at startup on phone.",
+            "Fixed the None line on the Genre Separators screen being squeezed.",
+            "Fixed the Follow pill sitting below the bottom edge on the lyrics page.",
+            "Fixed the heart on album song rows being hard to see on light colours.",
+            "Fixed sidebar and playlist counts ignoring the app language.",
+            "Fixed the sidebar highlighting Home or Songs after going Back to an artist page.",
+            "Fixed songs from a removed music folder staying in the library.",
+            "Fixed the remove folder dialog showing too high a song count.",
+            "Fixed a maximized window reopening on the main monitor instead of the one it was closed on.",
+            "Fixed Reset Settings keeping the albums set to never fetch animated artwork.",
+            "Fixed Clear Artwork Cache leaving cover thumbnails behind.",
+            "Fixed the release date in Advanced Details not saving.",
+            "Fixed .alac and .aifc songs not showing in the library.",
+            "Fixed AIFF files keeping a wrong size in their header after a tag edit."
+          ]
+        }
+      ],
+      "summary": null
+    },
+    {
       "tag": "v1.7.1",
       "version": "1.7.1",
       "name": "v1.7.1",
@@ -4600,6 +4689,6 @@
       "summary": "Initial Release"
     }
   ],
-  "updatedAt": "2026-11-21T20:58:39.391Z",
+  "updatedAt": "2026-11-25T05:01:20.616Z",
   "degraded": false
 }
