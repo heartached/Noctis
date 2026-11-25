@@ -1125,10 +1125,6 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>وقت التشغيل</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve">
-    <value>الوقت المنقضي والمتبقي للمقطع الحالي في مربع المقطع.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve">
     <value>شريط تقدم بشكل موجي</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -7929,10 +7925,6 @@ Deezer وTIDAL: الصق الرابط.</value>
     <value>إزالة النجمة من الشريط الجانبي</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>نقل إلى مجلد…</value>
-    <comment>Header in SidebarView.axaml</comment>
-  </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
     <value>إزالة من المجلد</value>
     <comment>Header in SidebarView.axaml</comment>
@@ -14017,30 +14009,6 @@ Deezer وTIDAL: الصق الرابط.</value>
   <data name="Mobile.Count.Playlists" xml:space="preserve">
     <value>{0} قائمة تشغيل|{0} قائمة تشغيل|{0} قائمتا تشغيل|{0} قوائم تشغيل|{0} قائمة تشغيل|{0} قائمة تشغيل</value>
     <comment>Plural forms, see Mobile.Count.Songs</comment>
-  </data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve">
-    <value>إضافة أغانٍ داخل قائمة التشغيل: اضغط + واختر أغاني من مكتبتك.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve">
-    <value>كلمات الأغاني تتلاءم مع شاشتك وتتمرر بسلاسة.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve">
-    <value>تظهر الأغاني من الكمبيوتر في المضافة مؤخرًا.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve">
-    <value>اسحب أغنية إلى أعلى قائمة الانتظار أو أسفلها وستتمرر القائمة معها.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve">
-    <value>تشغيل أسرع دون تجمّد أثناء تحميل مكتبتك، وقوائم أكثر سلاسة.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve">
-    <value>تستجيب أشرطة التقدم على كامل ارتفاعها، ويتسع الوضع الأفقي للشاشة.</value>
-    <comment>What's New</comment>
   </data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve">
     <value>مفكّك ترميز ALAC المضمّن، مبني من مصدر FFmpeg 6.0 دون تعديل ودون أجزاء GPL أو غير حرة: git.ffmpeg.org/ffmpeg.git</value>
