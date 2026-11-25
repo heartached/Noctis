@@ -165,6 +165,154 @@ public class EditInfoAuditTests : IDisposable
         Assert.True(failures.Count == 0, ext + " lost: " + string.Join(", ", failures));
     }
 
+    [Theory]
+    [MemberData(nameof(FixtureFormats))]
+    public async Task CustomTag_AddedThenRemoved_RoundTrips(string ext)
+    {
+        var path = Create(ext);
+        var (track, library) = Load(path);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+        vm.AddCustomTagCommand.Execute(null);
+        vm.CustomTags[^1].Key = "NOCTISAUDIT";
+        vm.CustomTags[^1].Value = "kept";
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(string.Empty, vm.SaveErrorMessage);
+
+        var again = Open(track, library);
+        await again.InitializeAsync();
+        var item = Assert.Single(again.CustomTags, t => t.Key.Equals("NOCTISAUDIT", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("kept", item.Value);
+
+        again.RemoveCustomTagCommand.Execute(item);
+        await again.SaveCommand.ExecuteAsync(null);
+        var third = Open(track, library);
+        await third.InitializeAsync();
+        Assert.DoesNotContain(third.CustomTags, t => t.Key.Equals("NOCTISAUDIT", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>A second edit of a box whose value lives in a custom field (COMPILATION,
+    /// RATING, NOCTIS_DISLIKED, NOCTIS_RELEASETYPE, PERFORMER on Vorbis / ID3 TXXX). Those
+    /// fields were also listed as Custom Tags, and the custom-tag write after the tag write put
+    /// the value the editor opened with back.</summary>
+    [Theory]
+    [MemberData(nameof(FixtureFormats))]
+    public async Task SecondEdit_OfABoxStoredInACustomField_IsNotUndone(string ext)
+    {
+        var path = Create(ext);
+        var (track, library) = Load(path);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+        vm.IsCompilation = true; vm.Rating = 4; vm.IsDisliked = true; vm.ReleaseTypeOverride = "EP"; vm.Performer = "First";
+        vm.ShowComposerInAllViews = true; vm.UseWorkAndMovement = true; vm.WorkName = "W1";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        var again = Open(track, library);
+        await again.InitializeAsync();
+        again.IsCompilation = false; again.Rating = 2; again.IsDisliked = false; again.ReleaseTypeOverride = "Auto"; again.Performer = "Second";
+        again.ShowComposerInAllViews = false; again.UseWorkAndMovement = false; again.WorkName = "W2";
+        await again.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(string.Empty, again.SaveErrorMessage);
+
+        var file = new MetadataService().ReadTrackMetadata(path)!;
+        var failures = new List<string>();
+        if (file.IsCompilation) failures.Add("IsCompilation stayed on");
+        if (file.Rating != 2) failures.Add($"Rating {file.Rating}");
+        if (file.IsDisliked) failures.Add("IsDisliked stayed on");
+        if (file.IsReleaseTypeOverridden) failures.Add($"ReleaseType override stayed {file.ReleaseType}");
+        if (file.ShowComposerInAllViews) failures.Add("ShowComposer stayed on");
+        if (file.UseWorkAndMovement) failures.Add("UseWorkAndMovement stayed on");
+        if (file.WorkName != "W2") failures.Add($"WorkName {file.WorkName}");
+        if (AdvancedTagIO.ReadAll(path).Performer != "Second") failures.Add($"Performer {AdvancedTagIO.ReadAll(path).Performer}");
+        Assert.True(failures.Count == 0, ext + ": " + string.Join(", ", failures));
+    }
+
+    // ── 2. Album mode: only what was changed, on every song ──
+
+    [Fact]
+    public async Task AlbumScope_ChangedFields_GoToEverySong_OthersKeepTheirOwn()
+    {
+        var a = Load(Create("mp3")).Track;
+        var b = Load(Create("flac")).Track;
+        a.Title = "One"; a.TrackNumber = 1; a.Comment = "first"; a.Composer = "C1";
+        b.Title = "Two"; b.TrackNumber = 2; b.Comment = "second"; b.Composer = "C2";
+        foreach (var t in new[] { a, b })
+        {
+            t.Album = "A"; t.AlbumArtist = "X"; t.AlbumId = Track.ComputeAlbumId("X", "A");
+            new MetadataService().WriteTrackMetadata(t);
+        }
+        var library = new FakeLibraryService();
+        library.TrackList.AddRange(new[] { a, b });
+        var vm = new MetadataViewModel(a, new MetadataService(), library, new TestPersistenceService(), new FakeAnimatedCoverService(),
+            albumScoped: true, albumTracks: new List<Track> { a, b });
+        await vm.InitializeAsync();
+        Assert.Equal(string.Empty, vm.Comment);   // mixed: blank with a "Mixed" hint
+        Assert.NotEqual(string.Empty, vm.CommentWatermark);
+
+        vm.Year = "2010";
+        vm.TrackCount = "2";
+        vm.Album = "A (Deluxe)";
+        vm.IsCompilation = true;
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(string.Empty, vm.SaveErrorMessage);
+
+        foreach (var (t, title, n, comment, composer) in new[] { (a, "One", 1, "first", "C1"), (b, "Two", 2, "second", "C2") })
+        {
+            var file = new MetadataService().ReadTrackMetadata(t.FilePath)!;
+            Assert.Equal((title, n, comment, composer), (file.Title, file.TrackNumber, file.Comment, file.Composer));
+            Assert.Equal((2010, 2, "A (Deluxe)", true), (file.Year, file.TrackCount, file.Album, file.IsCompilation));
+            Assert.Equal(Track.ComputeAlbumId("X", "A (Deluxe)"), t.AlbumId);
+        }
+    }
+
+    // ── 3. Dirty state ──
+
+    /// <summary>A freshly opened, fully tagged song says "No changes yet", and saving it
+    /// untouched rewrites nothing. Typing and reverting, or ticking a box twice, ends there too.</summary>
+    [Theory]
+    [MemberData(nameof(FixtureFormats))]
+    public async Task FreshDialog_HasNoChanges_AndRevertedEditsCountNone(string ext)
+    {
+        var path = Create(ext);
+        var (track, library) = Load(path);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+        vm.Title = "T"; vm.Year = "2001"; vm.Grouping = "G"; vm.Comment = "C"; vm.Bpm = "99";
+        vm.IsCompilation = true; vm.Isrc = "X"; vm.Rating = 2;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        var again = Open(track, library);
+        await again.InitializeAsync();
+        Assert.Equal(0, again.ChangeCount);
+
+        again.Title = "T2"; again.Title = "T";
+        again.IsCompilation = false; again.IsCompilation = true;
+        again.Genre = "Jazz"; again.Genre = track.Genre;
+        Assert.Equal(0, again.ChangeCount);
+
+        var written = File.GetLastWriteTimeUtc(path);
+        await again.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(written, File.GetLastWriteTimeUtc(path));
+    }
+
+    [Fact]
+    public async Task ReadOnlyFile_SaveReportsTheFile()
+    {
+        var path = Create("mp3");
+        var (track, library) = Load(path);
+        File.SetAttributes(path, FileAttributes.ReadOnly);
+        try
+        {
+            var vm = Open(track, library);
+            await vm.InitializeAsync();
+            vm.Title = "Edited";
+            await vm.SaveCommand.ExecuteAsync(null);
+
+            Assert.Contains(Path.GetFileName(path), vm.SaveErrorMessage);
+        }
+        finally { File.SetAttributes(path, FileAttributes.Normal); }
+    }
+
     // ── 6. The boxes themselves ──
 
     /// <summary>"Track 3 of 12", "Disc 1 of 2", "Movement 2 of 4" and the play count's
@@ -400,5 +548,10 @@ public class EditInfoAuditTests : IDisposable
         Check("Copyright", "(C) 2020", file.Copyright ?? "");
         if (!file.IsExplicit) failures.Add("IsExplicit: a rescan reads the song as not explicit");
         Assert.True(failures.Count == 0, ext + ":\n" + string.Join("\n", failures));
+
+        // Every value is in its own box: none of them is listed again under Custom Tags.
+        var again = Open(track, library);
+        await again.InitializeAsync();
+        Assert.True(again.CustomTags.Count == 0, ext + " lists " + string.Join(", ", again.CustomTags.Select(t => t.Key)));
     }
 }
