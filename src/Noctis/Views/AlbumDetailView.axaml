@@ -187,6 +187,13 @@
         <Style Selector="Button.row-more-dots:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+        <!-- GitHub #264: the disc header's shuffle glyph shows on hover / keyboard focus. -->
+        <Style Selector="StackPanel.disc-header Button.disc-shuffle">
+            <Setter Property="Opacity" Value="0" />
+        </Style>
+        <Style Selector="StackPanel.disc-header:pointerover Button.disc-shuffle, StackPanel.disc-header Button.disc-shuffle:focus-visible">
+            <Setter Property="Opacity" Value="0.85" />
+        </Style>
         <!-- Row heart (Heart on every song): no hover square, no zoom; hover brightens the
              faint glyph, as on playlist rows. -->
         <Style Selector="Button.row-heart">
@@ -915,11 +922,34 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:DiscGroup">
                     <StackPanel>
-                        <TextBlock Text="{Binding Header}"
-                                   FontSize="17" FontWeight="Bold"
-                                   Margin="0,18,0,6"
-                                   Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"
-                                   IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).HasMultipleDiscs}" />
+                        <!-- GitHub #264: a disc header plays or shuffles just that disc: right-click
+                             for Play Disc N / Shuffle Disc N, or the shuffle glyph shown on hover. -->
+                        <StackPanel Classes="disc-header"
+                                    Orientation="Horizontal" Spacing="6"
+                                    Margin="0,18,0,6"
+                                    Background="Transparent"
+                                    ContextRequested="OnDiscHeaderContextRequested"
+                                    IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).HasMultipleDiscs}">
+                            <TextBlock Text="{Binding Header}"
+                                       FontSize="17" FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+                            <Button Classes="disc-shuffle row-more-dots"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="0"
+                                    Width="28" Height="28"
+                                    VerticalAlignment="Center"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="{Binding ShuffleLabel}"
+                                    AutomationProperties.Name="{Binding ShuffleLabel}"
+                                    Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShuffleDiscCommand}"
+                                    CommandParameter="{Binding}">
+                                <PathIcon Data="{StaticResource ShuffleIcon}"
+                                          Width="15" Height="15"
+                                          Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+                            </Button>
+                        </StackPanel>
                         <ListBox Classes="track-list"
                                  ItemsSource="{Binding Tracks}"
                                  Foreground="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}"

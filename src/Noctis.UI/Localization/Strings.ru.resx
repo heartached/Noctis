@@ -875,6 +875,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Отвязать треки из</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Удалить из медиатеки</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Другие версии</value><comment>Text in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.Disc" xml:space="preserve"><value>Диск {0}</value><comment>Album page, over a disc’s songs (GitHub #264)</comment></data>
+  <data name="AlbumDetail.PlayDisc" xml:space="preserve"><value>Слушать диск {0}</value><comment>Disc header menu: play only this disc (GitHub #264)</comment></data>
+  <data name="AlbumDetail.ShuffleDisc" xml:space="preserve"><value>Перемешать диск {0}</value><comment>Disc header menu and button: shuffle only this disc (GitHub #264)</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Играть следующим</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.Favorites" xml:space="preserve"><value>В избранное</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromFavorites" xml:space="preserve"><value>Удалить из избранного</value><comment>Header in AlbumDetailView.axaml</comment></data>

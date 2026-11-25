@@ -868,6 +868,9 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="AlbumDetail.UnlinkTracksFrom" xml:space="preserve"><value>Délier les morceaux de</value><comment>Submenu in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromLibrary" xml:space="preserve"><value>Retirer de la bibliothèque</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.OtherVersions" xml:space="preserve"><value>Autres versions</value><comment>Text in AlbumDetailView.axaml</comment></data>
+  <data name="AlbumDetail.Disc" xml:space="preserve"><value>Disque {0}</value><comment>Album page, over a disc’s songs (GitHub #264)</comment></data>
+  <data name="AlbumDetail.PlayDisc" xml:space="preserve"><value>Lire le disque {0}</value><comment>Disc header menu: play only this disc (GitHub #264)</comment></data>
+  <data name="AlbumDetail.ShuffleDisc" xml:space="preserve"><value>Lire le disque {0} en aléatoire</value><comment>Disc header menu and button: shuffle only this disc (GitHub #264)</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve"><value>Lire ensuite</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.Favorites" xml:space="preserve"><value>Favoris</value><comment>Header in AlbumDetailView.axaml</comment></data>
   <data name="AlbumDetail.RemoveFromFavorites" xml:space="preserve"><value>Retirer des favoris</value><comment>Header in AlbumDetailView.axaml</comment></data>
