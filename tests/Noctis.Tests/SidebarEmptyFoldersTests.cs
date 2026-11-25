@@ -154,6 +154,24 @@ public class SidebarEmptyFoldersTests : IDisposable
     }
 
     [AvaloniaFact]
+    public async Task RenamingANewFolderThatHoldsAPlaylist_KeepsItSaved_SoItStaysWhenEmptied()
+    {
+        var road = new Playlist { Name = "Road" };
+        var (vm, store, prompts) = Sidebar(road);
+        prompts.Answers.Enqueue("Chill");
+        await vm.NewFolderCommand.ExecuteAsync(null);
+        var item = vm.PlaylistItems.Single();
+        await vm.MoveToFolderChoiceCommand.ExecuteAsync(vm.FolderChoicesFor(item).Single(c => c.Folder == "Chill"));
+
+        prompts.Answers.Enqueue("Calm");
+        await vm.RenameFolderCommand.ExecuteAsync(FolderRow(vm, "Chill"));
+        Assert.Equal(new[] { "Calm" }, store.PlaylistFolders);
+
+        await vm.MoveToFolderChoiceCommand.ExecuteAsync(vm.FolderChoicesFor(item).Single(c => c.Folder == null && !c.IsNew));
+        Assert.NotNull(FolderRow(vm, "Calm"));
+    }
+
+    [AvaloniaFact]
     public async Task RemovingAFolderWithPlaylists_StillAsks_AndForgetsTheSavedName()
     {
         var gym = new Playlist { Name = "Gym" };
