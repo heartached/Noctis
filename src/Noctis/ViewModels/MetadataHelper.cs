@@ -329,7 +329,8 @@ public static class MetadataHelper
     /// <summary>GitHub #267: Settings ▸ Tools ▸ Get Genres from Discogs: every local album.</summary>
     public static async Task OpenLibraryDiscogsGenresDialog()
     {
-        if (_libraryGenresRun is not { IsRunning: true })
+        // A running lookup, or finds not yet applied, come back instead of a new run.
+        if (_libraryGenresRun is not ({ IsRunning: true } or { HasUnsavedFinds: true }))
         {
             var albums = AnimatedArtworkBulkService.GroupAlbums(App.Services!.GetRequiredService<ILibraryService>().Tracks);
             _libraryGenresRun = CreateDiscogsGenresViewModel(albums, library: true);

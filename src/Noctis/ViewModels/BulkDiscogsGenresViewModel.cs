@@ -98,6 +98,8 @@ public partial class BulkDiscogsGenresViewModel : ViewModelBase
     public bool CanStart => !IsRunning && !IsApplying && Rows.Any(r => r.NeedsLookup);
     public bool CanApply => !IsRunning && !IsApplying && Rows.Any(r => r.IsIncluded && r.HasChange);
     public bool CanChangeOptions => !IsRunning && !IsApplying;
+    /// <summary>Ticked finds not yet applied: the whole-library dialog reopens on them.</summary>
+    public bool HasUnsavedFinds => Rows.Any(r => r.IsIncluded && r.State == RowState.Found);
     public string CloseText => IsRunning && _isLibraryRun ? L("BulkLyrics.Hide") : L("BulkLyrics.Close");
     /// <summary>After a stopped run the primary button reads "Continue" rather than "Find".</summary>
     public string StartText => Rows.Any(r => r.State != RowState.Pending) ? L("DiscogsGenres.Continue") : L("BulkArtwork.Find");
