@@ -1,4 +1,5 @@
 using Noctis.Helpers;
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Noctis.Models;
 
@@ -121,13 +122,24 @@ public static partial class ExistingLyricsLoader
     /// <summary>
     /// <see cref="DetectFormat"/> for a whole list, in order. Each folder is listed once and
     /// its .elrc/.lrc names kept in a set, so a library-wide pass costs one directory
-    /// enumeration per folder instead of six <c>File.Exists</c> probes per track. Sidecar
-    /// text and stored lyrics are still read per track, so call this off the UI thread.
+    /// enumeration per folder instead of six <c>File.Exists</c> probes per track. A sidecar is
+    /// read once per session while its size and write time stay the same (see
+    /// <see cref="SidecarFormats"/>); stored lyrics are still read per track, so call this off the UI thread.
     /// </summary>
     public static IReadOnlyList<LyricsFormat> DetectFormats(IReadOnlyList<Track> tracks, CancellationToken ct = default)
+        => DetectFormats(tracks, ct, null);
+
+    /// <summary>
+    /// <see cref="DetectFormats(IReadOnlyList{Track}, CancellationToken)"/> that reports each
+    /// track's format as soon as it is known (index, format), in order, on the scanning thread.
+    /// A cold pass over a hard drive is nearly all disk wait (measured 35 s for 7,212 songs and
+    /// 6,557 sidecars, 0.7 s warm), so the Lyrics Studio page picks its queue from the first answers.
+    /// </summary>
+    public static IReadOnlyList<LyricsFormat> DetectFormats(IReadOnlyList<Track> tracks, CancellationToken ct,
+        Action<int, LyricsFormat>? detected)
     {
         var result = new LyricsFormat[tracks.Count];
-        var byDir = new Dictionary<string, Dictionary<string, string>?>(StringComparer.OrdinalIgnoreCase);
+        var byDir = new Dictionary<string, Dictionary<string, FileInfo>?>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < tracks.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
@@ -144,39 +156,63 @@ public static partial class ExistingLyricsLoader
                 if (!byDir.TryGetValue(dir, out var sidecars))
                     byDir[dir] = sidecars = ListSidecars(dir);
                 if (sidecars is not null && TryDetectSidecar(sidecars, stem, out var timed))
-                { result[i] = timed; continue; }
+                { result[i] = timed; detected?.Invoke(i, timed); continue; }
             }
             result[i] = LyricsFormatDetector.Detect(track.Lyrics, track.SyncedLyrics);
+            detected?.Invoke(i, result[i]);
         }
         return result;
     }
 
-    private static bool TryDetectSidecar(Dictionary<string, string> sidecars, string stem, out LyricsFormat format)
+    private static bool TryDetectSidecar(Dictionary<string, FileInfo> sidecars, string stem, out LyricsFormat format)
     {
-        if (sidecars.TryGetValue(stem + ".ttml", out var ttml) && TtmlFormat(ttml) is { } tf) { format = tf; return true; }
+        if (sidecars.TryGetValue(stem + ".ttml", out var ttml) && SidecarFormat(ttml, isTtml: true) is { } tf) { format = tf; return true; }
         foreach (var ext in new[] { ".elrc", ".lrc" })
         {
-            if (!sidecars.TryGetValue(stem + ext, out var file) || !TryRead(file, out var text)) continue;
-            var f = LyricsFormatDetector.Detect(null, text);
-            if (f is LyricsFormat.Elrc or LyricsFormat.Lrc) { format = f; return true; }
+            if (sidecars.TryGetValue(stem + ext, out var file) && SidecarFormat(file, isTtml: false) is { } f) { format = f; return true; }
         }
         format = LyricsFormat.None;
         return false;
     }
 
-    /// <summary>Case-insensitive "stem.ext" → full path for every .lrc/.elrc/.ttml in <paramref name="dir"/>; null when the folder can't be listed.</summary>
-    private static Dictionary<string, string>? ListSidecars(string dir)
+    /// <summary>
+    /// Each sidecar's timing (null: no timed lines) by full path, with the size and write time
+    /// it had when read. On a hard drive the library-wide pass was nearly all sidecar reads
+    /// (measured 28 s cold for 6,557 files, one seek each, against 65 ms to list their 1,687
+    /// folders), and Windows dropped them from its cache within minutes, so every Lyrics Studio
+    /// visit after a library change paid it again. The folder listing hands over size and write
+    /// time for free; a file is read again only when either changed.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, (long Length, DateTime Written, LyricsFormat? Format)> SidecarFormats =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static LyricsFormat? SidecarFormat(FileInfo file, bool isTtml)
+    {
+        if (SidecarFormats.TryGetValue(file.FullName, out var known)
+            && known.Length == file.Length && known.Written == file.LastWriteTimeUtc)
+            return known.Format;
+        // An unreadable file (locked mid-write) is not remembered: the next pass reads it again.
+        if (!TryRead(file.FullName, out var text)) return null;
+        LyricsFormat? format = isTtml ? TtmlTextFormat(text) : LyricsFormatDetector.Detect(null, text);
+        if (format is not (LyricsFormat.Elrc or LyricsFormat.Lrc)) format = null;
+        SidecarFormats[file.FullName] = (file.Length, file.LastWriteTimeUtc, format);
+        return format;
+    }
+
+    /// <summary>Case-insensitive "stem.ext" → file (with the listing's size and write time) for every .lrc/.elrc/.ttml in <paramref name="dir"/>; null when the folder can't be listed.</summary>
+    private static Dictionary<string, FileInfo>? ListSidecars(string dir)
     {
         try
         {
-            if (!Directory.Exists(dir)) return null;
-            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var file in Directory.EnumerateFiles(dir))
+            var folder = new DirectoryInfo(dir);
+            if (!folder.Exists) return null;
+            var map = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var file in folder.EnumerateFiles())
             {
-                var ext = System.IO.Path.GetExtension(file);
+                var ext = file.Extension;
                 if (ext.Equals(".lrc", StringComparison.OrdinalIgnoreCase) || ext.Equals(".elrc", StringComparison.OrdinalIgnoreCase)
                     || ext.Equals(".ttml", StringComparison.OrdinalIgnoreCase))
-                    map.TryAdd(System.IO.Path.GetFileName(file), file);
+                    map.TryAdd(file.Name, file);
             }
             return map;
         }
@@ -184,9 +220,10 @@ public static partial class ExistingLyricsLoader
     }
 
     /// <summary>A .ttml sidecar's timing as the lyrics page reads it: word spans → word timings (Elrc), timed lines → Lrc; null when unreadable or untimed.</summary>
-    private static LyricsFormat? TtmlFormat(string file)
+    private static LyricsFormat? TtmlFormat(string file) => TryRead(file, out var text) ? TtmlTextFormat(text) : null;
+
+    private static LyricsFormat? TtmlTextFormat(string text)
     {
-        if (!TryRead(file, out var text)) return null;
         var (lines, _) = TtmlParser.Parse(text);
         if (lines is not { Count: > 0 }) return null;
         if (lines.Any(l => l.Words is { Count: > 0 })) return LyricsFormat.Elrc;
