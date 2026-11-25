@@ -31,7 +31,8 @@ namespace Noctis.ViewModels;
 ///   audit/, crash.log, crashlog-*.log, organize_undo/ (the moved files stay where they are;
 ///     only the way back is forgotten), *.corrupt-* quarantines, settings.json.bak (old
 ///     settings, credentials included)
-///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, *-backfill.progress,
+///   animated_artwork_bulk_ledger.json, lyrics_bulk_ledger.json, animated_artwork_no_autofetch.json,
+///     animated_artwork_autofetch_ledger.json (album pages' fetch), *-backfill.progress,
 ///     mp3_decoder_fallback.txt, musixmatch_token (anonymous token, fetched again)
 ///   tidal-auth.json (signed out, as the other services' sign-ins live in settings.json)
 ///   computers.json (each computer's own sign-ins and window/device/size settings, GitHub #230;
@@ -67,6 +68,10 @@ public partial class SettingsViewModel
         "playlist_folder_order.json", "queue-position.json", "queue-position.json.tmp",
         "animated_artwork_bulk_ledger.json", "lyrics_bulk_ledger.json",
         "mp3_decoder_fallback.txt", "musixmatch_token", "computers.json",
+        // Album pages' animated artwork fetch: the albums the user said not to fetch for and the
+        // "no match" memory. StopLibraryRunsAsync drops the fetcher so the next page reloads
+        // them, which read these old files straight back.
+        "animated_artwork_no_autofetch.json", "animated_artwork_autofetch_ledger.json",
     };
 
     /// <summary>File patterns deleted in the data folder itself (not below it).</summary>

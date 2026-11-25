@@ -9423,6 +9423,9 @@ public partial class SettingsViewModel : ViewModelBase
                     // SimilarArtistsService likewise (artwork/similar): its pictures stopped saving.
                     Directory.CreateDirectory(Path.Combine(artworkDir, "similar"));
                 }
+                // The downscaled copies of those covers (cache/artwork_thumbs) stayed behind,
+                // up to 512 MB of thumbnails of files that no longer exist.
+                ArtworkThumbnailCache.Clear();
             });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();
