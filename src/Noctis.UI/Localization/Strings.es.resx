@@ -1121,10 +1121,6 @@ Deezer y TIDAL: pega el enlace.</value>
     <value>Tiempo de reproducción</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve">
-    <value>Tiempo transcurrido y restante de la canción actual en el cuadro de la pista.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve">
     <value>Barra de progreso con forma de onda</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -7914,10 +7910,6 @@ Al guardar se reemplazan por la letra en pantalla. Un archivo de letra que no es
     <value>Dejar de destacar en la barra lateral</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>Mover a carpeta…</value>
-    <comment>Header in SidebarView.axaml</comment>
-  </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
     <value>Quitar de la carpeta</value>
     <comment>Header in SidebarView.axaml</comment>
@@ -13884,30 +13876,6 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Mobile.Count.SongsN0" xml:space="preserve">
     <value>{0:N0} canción|{0:N0} canciones</value>
     <comment>Count with digit grouping. Plural forms, see Mobile.Count.Songs</comment>
-  </data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve">
-    <value>Añadir canciones dentro de una playlist: toca + y elige canciones de tu biblioteca.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve">
-    <value>La letra se ajusta a tu pantalla y se desplaza con fluidez.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve">
-    <value>Las canciones de tu ordenador aparecen en Añadido recientemente.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve">
-    <value>Arrastra una canción al borde superior o inferior de la cola y la lista se desplaza con ella.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve">
-    <value>Inicio más rápido, sin bloqueos mientras se carga tu biblioteca, y menús más fluidos.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve">
-    <value>Las barras de progreso responden en toda su altura y la vista horizontal cabe en la pantalla.</value>
-    <comment>What's New</comment>
   </data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve">
     <value>El decodificador ALAC incluido, compilado a partir del código fuente sin modificar de FFmpeg 6.0, sin partes GPL ni no libres: git.ffmpeg.org/ffmpeg.git</value>
