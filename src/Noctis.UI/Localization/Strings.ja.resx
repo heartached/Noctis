@@ -1125,10 +1125,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <value>再生時間</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve">
-    <value>トラック表示欄に、再生中の曲の経過時間と残り時間を表示します。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve">
     <value>波形シークバー</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -7933,10 +7929,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <value>サイドバーのスターを外す</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>フォルダーへ移動…</value>
-    <comment>Header in SidebarView.axaml</comment>
-  </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
     <value>フォルダーから削除</value>
     <comment>Header in SidebarView.axaml</comment>
@@ -13506,10 +13498,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <value>電池を少し多く使い省電力モードでは止まります</value>
     <comment>Background footnote</comment>
   </data>
-  <data name="Mobile.History.DayName" xml:space="preserve">
-    <value>{0}：{1}</value>
-    <comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment>
-  </data>
   <data name="Mobile.History.Forever" xml:space="preserve">
     <value>無期限</value>
     <comment>Keep History choice</comment>
@@ -14017,30 +14005,6 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
   <data name="Mobile.Count.Playlists" xml:space="preserve">
     <value>{0}個のプレイリスト</value>
     <comment>Plural forms, see Mobile.Count.Songs</comment>
-  </data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve">
-    <value>プレイリストの中で「曲を追加」：＋をタップしてライブラリから曲を選べます。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve">
-    <value>歌詞が画面に合わせて表示され、なめらかにスクロールします。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve">
-    <value>コンピューターの曲が「最近追加した項目」に表示されます。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve">
-    <value>曲をキューの上端か下端までドラッグすると、リストが一緒にスクロールします。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve">
-    <value>起動が速くなり、ライブラリの読み込み中も固まらず、メニューもなめらかになりました。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve">
-    <value>再生バーは高さ全体でタップに反応し、横向きでも画面に収まります。</value>
-    <comment>What's New</comment>
   </data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve">
     <value>同梱のALACデコーダ。GPLおよび非フリーの部分を含めず、無改変のFFmpeg 6.0ソースからビルドしています：git.ffmpeg.org/ffmpeg.git</value>
