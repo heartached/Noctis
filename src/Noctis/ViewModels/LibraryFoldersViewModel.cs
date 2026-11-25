@@ -322,10 +322,15 @@ public partial class LibraryFoldersViewModel : ViewModelBase, ISearchable, IDisp
     private static PlaySource FolderSource(FolderNode? node) =>
         new(PlaySourceKind.Folder, node?.DisplayName, node?.FullPath);
 
-    /// <summary>The "Playing from …" link: scrolls to and selects <paramref name="track"/> when it
-    /// is in the selected folder (the search's ScrollToTrackRequested).</summary>
-    public void RevealTrack(Track track)
+    /// <summary>The "Playing from …" link: opens the folder at <paramref name="folderPath"/> (the
+    /// source's path) when another one is selected, then scrolls to and selects
+    /// <paramref name="track"/> when it is in it (the search's ScrollToTrackRequested).</summary>
+    public void RevealTrack(Track track, string? folderPath = null)
     {
+        if (!string.IsNullOrEmpty(folderPath)
+            && !string.Equals(SelectedNode?.FullPath, folderPath, StringComparison.OrdinalIgnoreCase)
+            && FindNode(RootNodes, folderPath) is { } folder)
+            SelectedNode = folder;
         var match = SelectedFolderTracks.FirstOrDefault(t => t.Id == track.Id);
         if (match != null) ScrollToTrackRequested?.Invoke(this, match);
     }
