@@ -235,6 +235,8 @@ public static class MetadataHelper
         var lyrics = _libraryLyricsRun;
         var artwork = _libraryArtworkRun;
         var selection = _selectionLyricsRun;
+        var genres = _libraryGenresRun;
+        _libraryGenresRun = null;
         _selectionLyricsRun = null;
         _libraryLyricsRun = null;
         _libraryArtworkRun = null;
@@ -261,6 +263,13 @@ public static class MetadataHelper
         {
             artwork.StopCommand.Execute(null);
             try { await (artwork.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+        }
+        // GitHub #267: the library genre lookup writes nothing until Apply, but must not apply to the new library.
+        if (genres is not null)
+        {
+            genres.StopCommand.Execute(null);
+            try { await (genres.StartCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
+            try { await (genres.ApplyCommand.ExecutionTask ?? Task.CompletedTask); } catch { }
         }
     }
 
@@ -300,6 +309,74 @@ public static class MetadataHelper
             _libraryArtworkRun = new BulkAnimatedArtworkViewModel(albums, service);
         }
         await ShowDialogOwned(new BulkAnimatedArtworkDialog(_libraryArtworkRun));
+    }
+
+    /// <summary>GitHub #267: the whole-library Get Genres from Discogs run, kept while hidden like the other library runs.</summary>
+    private static BulkDiscogsGenresViewModel? _libraryGenresRun;
+
+    /// <summary>
+    /// GitHub #267: Get Genres from Discogs for the songs' albums (an album menu, a selection of
+    /// albums or songs). Songs are grouped by album; only local songs of named albums take part.
+    /// </summary>
+    public static Task OpenDiscogsGenresDialog(IReadOnlyList<Track> tracks)
+    {
+        if (tracks == null || tracks.Count == 0) return Task.CompletedTask;
+        var albums = AnimatedArtworkBulkService.GroupAlbums(tracks.Distinct());
+        if (albums.Count == 0) return Task.CompletedTask;
+        return ShowDialogOwned(new BulkDiscogsGenresDialog(CreateDiscogsGenresViewModel(albums, library: false)));
+    }
+
+    /// <summary>GitHub #267: Settings ▸ Tools ▸ Get Genres from Discogs: every local album.</summary>
+    public static async Task OpenLibraryDiscogsGenresDialog()
+    {
+        // A running lookup, or finds not yet applied, come back instead of a new run.
+        if (_libraryGenresRun is not ({ IsRunning: true } or { HasUnsavedFinds: true }))
+        {
+            var albums = AnimatedArtworkBulkService.GroupAlbums(App.Services!.GetRequiredService<ILibraryService>().Tracks);
+            _libraryGenresRun = CreateDiscogsGenresViewModel(albums, library: true);
+        }
+        await ShowDialogOwned(new BulkDiscogsGenresDialog(_libraryGenresRun));
+    }
+
+    private static BulkDiscogsGenresViewModel CreateDiscogsGenresViewModel(IReadOnlyList<IReadOnlyList<Track>> albums, bool library)
+    {
+        var services = App.Services!;
+        return new BulkDiscogsGenresViewModel(albums,
+            services.GetRequiredService<DiscogsGenreService>(),
+            services.GetRequiredService<IMetadataService>(),
+            services.GetRequiredService<ILibraryService>(),
+            isLibraryRun: library,
+            prefs: DiscogsGenrePrefs(),
+            savePrefs: SaveDiscogsGenrePrefs);
+    }
+
+    /// <summary>GitHub #267: the dialog's options as last set.</summary>
+    internal static DiscogsGenreOptions? DiscogsGenrePrefs()
+    {
+        var s = App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings();
+        return s is null ? null : DiscogsGenrePrefsFrom(s);
+    }
+
+    internal static DiscogsGenreOptions DiscogsGenrePrefsFrom(AppSettings s) => new(
+        Enum.TryParse<DiscogsGenreSource>(s.DiscogsGenreSource, ignoreCase: true, out var source) ? source : DiscogsGenreSource.Styles,
+        Math.Max(0, s.DiscogsMaxGenres), s.DiscogsUseRelease, s.DiscogsAddToExisting);
+
+    internal static void ApplyDiscogsGenrePrefs(AppSettings s, DiscogsGenreOptions o)
+    {
+        s.DiscogsGenreSource = o.Source.ToString();
+        s.DiscogsMaxGenres = o.MaxGenres;
+        s.DiscogsUseRelease = o.UseRelease;
+        s.DiscogsAddToExisting = o.AddToExisting;
+    }
+
+    /// <summary>GitHub #267: keeps the options, in the live settings and on disk.</summary>
+    private static void SaveDiscogsGenrePrefs(DiscogsGenreOptions options)
+    {
+        if (App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings() is { } live) ApplyDiscogsGenrePrefs(live, options);
+        if (App.Services?.GetService<IPersistenceService>() is { } persistence)
+            _ = persistence.UpdateSettingsAsync(s => ApplyDiscogsGenrePrefs(s, options)).ContinueWith(
+                t => DebugLog.Write(DiscogsGenreService.LogSource, "saving options failed: " + (t.Exception?.GetBaseException().Message ?? string.Empty)),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     /// <summary>Search Lyrics with a source picker (issue #113), for the lyrics page's track.</summary>

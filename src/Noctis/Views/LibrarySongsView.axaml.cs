@@ -188,6 +188,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
             removeLyricsCommand: vm.RemoveLyricsCommand,
             sendToFolderCommand: vm.SendToFolderCommand,
             moveToAlbumCommand: vm.MoveToAlbumCommand); // GitHub #239
+        _menuBuilder.BindDiscogsGenres(track, vm.DiscogsGenresCommand); // GitHub #267
     }
 
     /// <summary>Click on a row's stars: rate that track (or the whole Ctrl-selection it belongs to).</summary>

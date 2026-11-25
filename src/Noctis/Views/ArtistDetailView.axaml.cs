@@ -232,6 +232,7 @@ public partial class ArtistDetailView : UserControl
             snoozeCommand: albumsVm.SnoozeAlbumForMonthCommand);
         _albumMenuBuilder.BindSendToFolder(album, albumsVm.SendAlbumToFolderCommand); // GitHub #121
         _albumMenuBuilder.BindFindLyrics(album, albumsVm.FindLyricsAlbumCommand); // GitHub #195
+        _albumMenuBuilder.BindDiscogsGenres(album, albumsVm.DiscogsGenresAlbumCommand); // GitHub #267
 
         OpenMenu(_albumMenuBuilder.Menu, tile, PlacementMode.Pointer);
         return true;

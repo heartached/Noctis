@@ -9496,4 +9496,43 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Metadata.SaveFailed" xml:space="preserve"><value>无法保存更改：{0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="Metadata.Of" xml:space="preserve"><value>/</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
   <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0}（上次播放 {1}）</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
+  <data name="DiscogsGenres.Title" xml:space="preserve"><value>来自 Discogs 的流派</value><comment>Get Genres from Discogs dialog title (window)</comment></data>
+  <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>获取 1 张专辑的流派</value></data>
+  <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>获取 {0:N0} 张专辑的流派</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
+  <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>在 Discogs 上查找每张专辑，并将其风格建议为专辑的流派。在你选择“应用”之前不会保存任何内容。</value></data>
+  <data name="DiscogsGenres.Use" xml:space="preserve"><value>使用</value></data>
+  <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>风格</value></data>
+  <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>流派</value></data>
+  <data name="DiscogsGenres.SourceBoth" xml:space="preserve"><value>风格和流派</value></data>
+  <data name="DiscogsGenres.Max" xml:space="preserve"><value>数量</value><comment>Label: at most how many genres to take</comment></data>
+  <data name="DiscogsGenres.MaxAll" xml:space="preserve"><value>全部</value></data>
+  <data name="DiscogsGenres.UseRelease" xml:space="preserve"><value>使用最接近的发行版本，而不是主发行</value></data>
+  <data name="DiscogsGenres.AddToExisting" xml:space="preserve"><value>添加到当前流派，而不是替换</value></data>
+  <data name="DiscogsGenres.Now" xml:space="preserve"><value>当前：</value><comment>Label before an album's current genres</comment></data>
+  <data name="DiscogsGenres.New" xml:space="preserve"><value>新：</value><comment>Label before the genres Discogs proposes</comment></data>
+  <data name="DiscogsGenres.NoGenre" xml:space="preserve"><value>无流派</value></data>
+  <data name="DiscogsGenres.Mixed" xml:space="preserve"><value>各歌曲不同</value></data>
+  <data name="DiscogsGenres.Master" xml:space="preserve"><value>主发行</value><comment>Discogs master release (the release group)</comment></data>
+  <data name="DiscogsGenres.Release" xml:space="preserve"><value>发行版本</value><comment>One Discogs release version</comment></data>
+  <data name="DiscogsGenres.OpenOnDiscogs" xml:space="preserve"><value>在 Discogs 上打开</value></data>
+  <data name="DiscogsGenres.Searching" xml:space="preserve"><value>正在搜索…</value></data>
+  <data name="DiscogsGenres.NotFound" xml:space="preserve"><value>未找到</value></data>
+  <data name="DiscogsGenres.LookupFailed" xml:space="preserve"><value>无法查找</value></data>
+  <data name="DiscogsGenres.NoChange" xml:space="preserve"><value>无变化</value></data>
+  <data name="DiscogsGenres.RowSaved" xml:space="preserve"><value>已保存</value></data>
+  <data name="DiscogsGenres.RowWriteFailed" xml:space="preserve"><value>无法保存</value></data>
+  <data name="DiscogsGenres.SumFound" xml:space="preserve"><value>找到 {0:N0} 个</value></data>
+  <data name="DiscogsGenres.SumNotFound" xml:space="preserve"><value>未找到 {0:N0} 个</value></data>
+  <data name="DiscogsGenres.Busy" xml:space="preserve"><value>Discogs 当前繁忙，请几分钟后再试。</value></data>
+  <data name="DiscogsGenres.Saving" xml:space="preserve"><value>正在保存流派…</value></data>
+  <data name="DiscogsGenres.Saved" xml:space="preserve"><value>流派已保存 · 专辑：{0:N0}</value></data>
+  <data name="DiscogsGenres.SavedSomeFailed" xml:space="preserve"><value>已保存专辑：{0:N0} · 无法保存的歌曲：{1:N0}</value></data>
+  <data name="DiscogsGenres.Apply" xml:space="preserve"><value>应用</value></data>
+  <data name="DiscogsGenres.Continue" xml:space="preserve"><value>继续</value></data>
+  <data name="DiscogsGenres.Attribution" xml:space="preserve"><value>数据由 Discogs 提供。</value><comment>Required by the Discogs API terms, shown under the results</comment></data>
+  <data name="DiscogsGenres.Menu" xml:space="preserve"><value>从 Discogs 获取流派</value><comment>Album / song menu (Tools) and album page menu: GitHub #267</comment></data>
+  <data name="Settings.DiscogsGenres" xml:space="preserve"><value>从 Discogs 获取流派</value></data>
+  <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>用 Discogs 上的风格标记专辑流派。保存前你会检查每一项更改。</value></data>
+  <data name="Palette.DiscogsGenres" xml:space="preserve"><value>从 Discogs 获取流派…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>用 Discogs 风格标记专辑流派</value><comment>Command palette (Ctrl+K)</comment></data>
 </root>

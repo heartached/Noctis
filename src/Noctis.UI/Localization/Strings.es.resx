@@ -4498,4 +4498,43 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Ningún otro álbum tiene este nombre. En la cuadrícula de Álbumes, haz ⌘+clic en los álbumes que van juntos y luego clic derecho en uno de ellos.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
   <data name="Metadata.Of" xml:space="preserve"><value>de</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
   <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (última reproducción {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
+  <data name="DiscogsGenres.Title" xml:space="preserve"><value>Géneros de Discogs</value><comment>Get Genres from Discogs dialog title (window)</comment></data>
+  <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>Obtener géneros para 1 álbum</value></data>
+  <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>Obtener géneros para {0:N0} álbumes</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
+  <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Busca cada álbum en Discogs y propone sus estilos como géneros del álbum. No se guarda nada hasta que elijas Aplicar.</value></data>
+  <data name="DiscogsGenres.Use" xml:space="preserve"><value>Usar</value></data>
+  <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Estilos</value></data>
+  <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Géneros</value></data>
+  <data name="DiscogsGenres.SourceBoth" xml:space="preserve"><value>Estilos y géneros</value></data>
+  <data name="DiscogsGenres.Max" xml:space="preserve"><value>Cuántos</value><comment>Label: at most how many genres to take</comment></data>
+  <data name="DiscogsGenres.MaxAll" xml:space="preserve"><value>Todos</value></data>
+  <data name="DiscogsGenres.UseRelease" xml:space="preserve"><value>Usar la edición más cercana en lugar del máster</value></data>
+  <data name="DiscogsGenres.AddToExisting" xml:space="preserve"><value>Añadir a los géneros actuales en lugar de reemplazarlos</value></data>
+  <data name="DiscogsGenres.Now" xml:space="preserve"><value>Ahora:</value><comment>Label before an album's current genres</comment></data>
+  <data name="DiscogsGenres.New" xml:space="preserve"><value>Nuevo:</value><comment>Label before the genres Discogs proposes</comment></data>
+  <data name="DiscogsGenres.NoGenre" xml:space="preserve"><value>Sin género</value></data>
+  <data name="DiscogsGenres.Mixed" xml:space="preserve"><value>Distinto en cada canción</value></data>
+  <data name="DiscogsGenres.Master" xml:space="preserve"><value>Máster</value><comment>Discogs master release (the release group)</comment></data>
+  <data name="DiscogsGenres.Release" xml:space="preserve"><value>Edición</value><comment>One Discogs release version</comment></data>
+  <data name="DiscogsGenres.OpenOnDiscogs" xml:space="preserve"><value>Abrir en Discogs</value></data>
+  <data name="DiscogsGenres.Searching" xml:space="preserve"><value>Buscando…</value></data>
+  <data name="DiscogsGenres.NotFound" xml:space="preserve"><value>No encontrado</value></data>
+  <data name="DiscogsGenres.LookupFailed" xml:space="preserve"><value>No se pudo buscar</value></data>
+  <data name="DiscogsGenres.NoChange" xml:space="preserve"><value>Sin cambios</value></data>
+  <data name="DiscogsGenres.RowSaved" xml:space="preserve"><value>Guardado</value></data>
+  <data name="DiscogsGenres.RowWriteFailed" xml:space="preserve"><value>No se pudo guardar</value></data>
+  <data name="DiscogsGenres.SumFound" xml:space="preserve"><value>{0:N0} encontrados</value></data>
+  <data name="DiscogsGenres.SumNotFound" xml:space="preserve"><value>{0:N0} no encontrados</value></data>
+  <data name="DiscogsGenres.Busy" xml:space="preserve"><value>Discogs está ocupado ahora mismo. Inténtalo de nuevo en unos minutos.</value></data>
+  <data name="DiscogsGenres.Saving" xml:space="preserve"><value>Guardando géneros…</value></data>
+  <data name="DiscogsGenres.Saved" xml:space="preserve"><value>Géneros guardados · álbumes: {0:N0}</value></data>
+  <data name="DiscogsGenres.SavedSomeFailed" xml:space="preserve"><value>Álbumes guardados: {0:N0} · canciones que no se pudieron guardar: {1:N0}</value></data>
+  <data name="DiscogsGenres.Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="DiscogsGenres.Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="DiscogsGenres.Attribution" xml:space="preserve"><value>Datos proporcionados por Discogs.</value><comment>Required by the Discogs API terms, shown under the results</comment></data>
+  <data name="DiscogsGenres.Menu" xml:space="preserve"><value>Obtener géneros de Discogs</value><comment>Album / song menu (Tools) and album page menu: GitHub #267</comment></data>
+  <data name="Settings.DiscogsGenres" xml:space="preserve"><value>Obtener géneros de Discogs</value></data>
+  <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Etiqueta los géneros de tus álbumes con sus estilos en Discogs. Revisas cada cambio antes de guardarlo.</value></data>
+  <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Obtener géneros de Discogs…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Etiquetar géneros de álbumes con estilos de Discogs</value><comment>Command palette (Ctrl+K)</comment></data>
 </root>

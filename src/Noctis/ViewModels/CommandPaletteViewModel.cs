@@ -152,6 +152,8 @@ public partial class CommandPaletteViewModel : ViewModelBase
             Loc.T("Palette.FindLyricsSub"));
         Action(Loc.T("Palette.FindAnimatedArtwork"), "SettingsIcon", () => _ = MetadataHelper.OpenLibraryAnimatedArtworkDialog(),
             Loc.T("Palette.FindAnimatedArtworkSub"));
+        Action(Loc.T("Palette.DiscogsGenres"), "SettingsIcon", () => _ = MetadataHelper.OpenLibraryDiscogsGenresDialog(),
+            Loc.T("Palette.DiscogsGenresSub")); // GitHub #267
         Action(Loc.T("Palette.ToggleShuffle"), "ShuffleIcon", () => _main.Player.ToggleShuffleCommand.Execute(null));
         Action(Loc.T("Palette.CycleRepeat"), "RepeatAllIcon", () => _main.Player.CycleRepeatCommand.Execute(null));
         Action(Loc.T("Palette.ToggleCrossfade"), "SettingsIcon",

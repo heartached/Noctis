@@ -218,7 +218,7 @@ public class ContextMenuV2Tests
         // No title header (owner 10-09): the quick tiles are the first row.
         var first = Assert.IsType<MenuItem>(b.Menu.Items[0]);
         Assert.Contains(b.QuickPlay, ((Control)first.Header!).GetLogicalDescendants());
-        Assert.Equal(new object[] { b.Convert, b.ScanReplayGain, b.Spectrogram, b.SendToFolder, b.OpenWith, b.DontScrobble },
+        Assert.Equal(new object[] { b.Convert, b.ScanReplayGain, b.Spectrogram, b.SendToFolder, b.DiscogsGenres, b.OpenWith, b.DontScrobble },
             b.Tools.Items.Cast<object>().ToArray());
         // The four playback rows became tiles: none of them is a list row any more.
         Assert.DoesNotContain(b.Play, b.Menu.Items);

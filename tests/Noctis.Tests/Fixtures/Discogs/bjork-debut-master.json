@@ -1,0 +1,62 @@
+{
+  "pagination": { "page": 1, "pages": 1, "per_page": 25, "items": 4, "urls": {} },
+  "results": [
+    {
+      "country": "Europe",
+      "year": "2002",
+      "format": ["CD", "Compilation"],
+      "label": ["One Little Indian"],
+      "type": "master",
+      "genre": ["Electronic", "Pop"],
+      "style": ["Trip Hop", "Downtempo"],
+      "id": 1200001,
+      "master_id": 1200001,
+      "master_url": "https://api.discogs.com/masters/1200001",
+      "uri": "/master/1200001-Bj%C3%B6rk-Debut-Post",
+      "title": "Björk - Debut + Post",
+      "resource_url": "https://api.discogs.com/masters/1200001"
+    },
+    {
+      "country": "UK",
+      "year": "1994",
+      "format": ["CD", "Album"],
+      "type": "master",
+      "genre": ["Electronic"],
+      "style": ["Experimental"],
+      "id": 1200002,
+      "master_id": 1200002,
+      "uri": "/master/1200002-Bj%C3%B6rk-Debut-Live",
+      "title": "Björk - Debut Live",
+      "resource_url": "https://api.discogs.com/masters/1200002"
+    },
+    {
+      "country": "UK",
+      "year": "1993",
+      "format": ["Vinyl", "LP", "Album"],
+      "label": ["One Little Indian"],
+      "type": "master",
+      "genre": ["Electronic", "Rock"],
+      "style": ["House", "Synth-pop", "Experimental", "Deep House"],
+      "id": 34486,
+      "master_id": 34486,
+      "master_url": "https://api.discogs.com/masters/34486",
+      "uri": "/master/34486-Bj%C3%B6rk-Debut",
+      "title": "Björk - Debut",
+      "thumb": "",
+      "cover_image": "",
+      "resource_url": "https://api.discogs.com/masters/34486"
+    },
+    {
+      "country": "US",
+      "year": "1993",
+      "format": ["CD", "Album"],
+      "type": "master",
+      "genre": ["Electronic"],
+      "style": ["House"],
+      "id": 1200003,
+      "uri": "/master/1200003-Bjork-Tribute-Debut",
+      "title": "Various - A Tribute To Björk: Debut",
+      "resource_url": "https://api.discogs.com/masters/1200003"
+    }
+  ]
+}

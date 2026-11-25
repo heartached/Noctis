@@ -850,6 +850,13 @@
                                 <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineReplayGain}"/>
                             </MenuItem.Icon>
                         </MenuItem>
+                        <!-- GitHub #267 -->
+                        <MenuItem Header="{loc:T DiscogsGenres.Menu}"
+                                  Command="{Binding DiscogsGenresAlbumCommand}">
+                            <MenuItem.Icon>
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineBadge}"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <!-- GitHub #121: SendAlbumToFolderCommand existed since 2a616afb but no menu bound it. -->
                         <MenuItem Header="{loc:T SendTo.Title}"
                                   Command="{Binding SendAlbumToFolderCommand}">
