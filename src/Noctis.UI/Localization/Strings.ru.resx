@@ -1125,10 +1125,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Время воспроизведения</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve">
-    <value>Прошедшее и оставшееся время текущего трека в блоке трека.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve">
     <value>Волновая форма на полосе перемотки</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -7945,10 +7941,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
     <value>Открепить от боковой панели</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>Переместить в папку…</value>
-    <comment>Header in SidebarView.axaml</comment>
-  </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
     <value>Убрать из папки</value>
     <comment>Header in SidebarView.axaml</comment>
@@ -14022,30 +14014,6 @@ Deezer и TIDAL: вставьте ссылку.</value>
   <data name="Mobile.Count.Playlists" xml:space="preserve">
     <value>{0} плейлист|{0} плейлиста|{0} плейлистов</value>
     <comment>Plural forms, see Mobile.Count.Songs</comment>
-  </data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve">
-    <value>«Добавить песни» внутри плейлиста: нажмите + и выберите песни из медиатеки.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve">
-    <value>Текст подстраивается под экран и плавно прокручивается.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve">
-    <value>Песни с компьютера появляются в разделе «Недавно добавленные».</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve">
-    <value>Перетащите песню к верхнему или нижнему краю очереди, и список прокрутится вместе с ней.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve">
-    <value>Быстрый запуск без зависаний при загрузке медиатеки и более плавные меню.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve">
-    <value>Полосы прогресса реагируют по всей высоте, а альбомная ориентация помещается на экран.</value>
-    <comment>What's New</comment>
   </data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve">
     <value>Встроенный декодер ALAC, собранный из неизменённых исходников FFmpeg 6.0 без GPL и несвободных частей: git.ffmpeg.org/ffmpeg.git</value>
