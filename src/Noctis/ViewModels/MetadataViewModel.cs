@@ -2490,6 +2490,10 @@ public partial class MetadataViewModel : ViewModelBase
             _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
             _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
             _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
+            // Advanced Details › release date: the library's copy too, so the album page shows
+            // the new date without a rescan (the file gets it with the advanced fields below).
+            if (_originalAdvancedFields != null && AdvReleaseDate != _originalAdvancedFields.ReleaseDate)
+                _track.ReleaseDate = AdvancedTagIO.NormalizeReleaseDate(AdvReleaseDate);
             _track.IsCompilation = IsCompilation;
             _track.ShowComposerInAllViews = ShowComposerInAllViews;
             _track.Grouping = Grouping;

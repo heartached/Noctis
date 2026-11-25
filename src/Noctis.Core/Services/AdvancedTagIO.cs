@@ -246,9 +246,12 @@ internal static class AdvancedTagIO
     {
         try
         {
-            using var file = TagFile.Create(filePath);
-            ApplyAll(file, fields, original);
-            file.Save();
+            using (var file = TagFile.Create(filePath))
+            {
+                ApplyAll(file, fields, original);
+                file.Save();
+            }
+            TagLibFileTypes.RepairAiffFormSize(filePath);
             return true;
         }
         catch
@@ -303,6 +306,14 @@ internal static class AdvancedTagIO
             WriteField(file, "TLAN", "LANGUAGE", null, fields.Language);
             WriteCustomField(file, "MOOD", fields.Mood);
             WriteField(file, "TIT3", "DESCRIPTION", null, fields.Description);
+            // The box was read (RELEASETIME, then RELEASEDATE) but never written, so a typed
+            // date was dropped on Save (owner 11-24). Only when edited: an unchanged date is
+            // left exactly as the file has it. RELEASETIME goes, as it is read first.
+            if (fields.ReleaseDate != original.ReleaseDate)
+            {
+                WriteCustomField(file, "RELEASEDATE", NormalizeReleaseDate(fields.ReleaseDate));
+                WriteCustomField(file, "RELEASETIME", null);
+            }
 
             // ── Custom tags: remove deleted, update changed, add new ──
             var origDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -325,6 +336,22 @@ internal static class AdvancedTagIO
                     WriteCustomField(file, kv.Key, kv.Value);
             }
         }
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex NumericDate =
+        new(@"^\d{1,4}[/.\-]\d{1,2}[/.\-]\d{1,4}$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The release date as it goes into the file: a typed day ("07/23/2016", "23.07.2016",
+    /// "2016/7/3") becomes the ISO "2016-07-23" that other players and taggers read; a bare
+    /// year, a year and month, a timestamp or anything unparsed is kept as typed (trimmed).
+    /// </summary>
+    public static string NormalizeReleaseDate(string? value)
+    {
+        var v = value?.Trim() ?? string.Empty;
+        if (!NumericDate.IsMatch(v) || !Models.Track.TryParseReleaseDate(v.Replace('.', '/'), out var date))
+            return v;
+        return date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     // ══════════════════════════════════════════════════════════════
