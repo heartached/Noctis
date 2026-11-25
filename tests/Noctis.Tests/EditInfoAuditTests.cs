@@ -326,6 +326,8 @@ public class EditInfoAuditTests : IDisposable
         Assert.DoesNotContain("Text=\"of\"", xaml);
         var vmSource = File.ReadAllText(Path.Combine(root.FullName, "src", "Noctis", "ViewModels", "MetadataViewModel.cs"));
         Assert.DoesNotContain("(Last Played ", vmSource);
+        // The date itself follows the app language too, not always the US M/d/yyyy.
+        Assert.DoesNotContain("\"M/d/yyyy", vmSource);
 
         foreach (var resx in Directory.GetFiles(Path.Combine(root.FullName, "src", "Noctis.UI", "Localization"), "Strings*.resx"))
         {
@@ -513,6 +515,57 @@ public class EditInfoAuditTests : IDisposable
         await vm.SaveCommand.ExecuteAsync(null);
 
         Assert.Equal(120, track.Bpm);
+    }
+
+    [Fact]
+    public async Task Names_TypedWithStraySpaces_AreSavedTrimmed()
+    {
+        // " Song " was saved as typed: the file, sorting and search then carried the spaces
+        // (Version and Genre were already trimmed).
+        var (track, library) = Load(Create("flac"));
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.Title = "  Song  ";
+        vm.Artist = " Artist ";
+        vm.AlbumArtist = " Album Artist ";
+        vm.Album = " Album ";
+        vm.Composer = " Composer ";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("Song", track.Title);
+        Assert.Equal("Artist", track.Artist);
+        Assert.Equal("Album Artist", track.AlbumArtist);
+        Assert.Equal("Album", track.Album);
+        Assert.Equal("Composer", track.Composer);
+        Assert.Equal("Song", new MetadataService().ReadTrackMetadata(track.FilePath)!.Title);
+    }
+
+    [Fact]
+    public async Task AlbumScope_NamesTypedWithStraySpaces_AreSavedTrimmed()
+    {
+        var a = Load(Create("flac")).Track;
+        var b = Load(Create("flac")).Track;
+        foreach (var t in new[] { a, b }) { t.Album = "A"; t.AlbumArtist = "X"; t.AlbumId = Track.ComputeAlbumId("X", "A"); }
+        var library = new FakeLibraryService();
+        library.TrackList.AddRange(new[] { a, b });
+        var vm = new MetadataViewModel(a, new MetadataService(), library, new TestPersistenceService(), new FakeAnimatedCoverService(),
+            albumScoped: true, albumTracks: new List<Track> { a, b });
+        await vm.InitializeAsync();
+
+        vm.Album = " New Album ";
+        vm.AlbumArtist = " New Artist ";
+        vm.Artist = " Someone ";
+        vm.Composer = " Writer ";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        foreach (var t in new[] { a, b })
+        {
+            Assert.Equal("New Album", t.Album);
+            Assert.Equal("New Artist", t.AlbumArtist);
+            Assert.Equal("Someone", t.Artist);
+            Assert.Equal("Writer", t.Composer);
+        }
     }
 
     [Fact]

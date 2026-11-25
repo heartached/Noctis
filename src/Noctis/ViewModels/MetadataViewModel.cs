@@ -445,14 +445,14 @@ public partial class MetadataViewModel : ViewModelBase
                     .DefaultIfEmpty()
                     .Max();
                 return lastPlayed != default
-                    ? Localization.Loc.T("Metadata.PlayCountLastPlayed", total, lastPlayed.ToLocalTime().ToString("M/d/yyyy, h:mm tt"))
+                    ? Localization.Loc.T("Metadata.PlayCountLastPlayed", total, lastPlayed.ToLocalTime().ToString("g", Localization.Loc.Instance.Culture))
                     : total.ToString();
             }
 
             if (_track.LastPlayed.HasValue)
             {
                 var lastPlayed = _track.LastPlayed.Value.ToLocalTime();
-                return Localization.Loc.T("Metadata.PlayCountLastPlayed", _track.PlayCount, lastPlayed.ToString("M/d/yyyy, h:mm tt"));
+                return Localization.Loc.T("Metadata.PlayCountLastPlayed", _track.PlayCount, lastPlayed.ToString("g", Localization.Loc.Instance.Culture));
             }
             return _track.PlayCount.ToString();
         }
@@ -1428,18 +1428,18 @@ public partial class MetadataViewModel : ViewModelBase
 
         foreach (var t in _albumTracks)
         {
-            if (artistChg) t.Artist = Artist;
+            if (artistChg) t.Artist = (Artist ?? string.Empty).Trim();
             if (albumArtistChg)
             {
-                t.AlbumArtist = AlbumArtist;
+                t.AlbumArtist = (AlbumArtist ?? string.Empty).Trim();
                 t.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist); // the user's tag (GitHub #178)
             }
             if (albumChg)
             {
-                t.Album = Album;
+                t.Album = (Album ?? string.Empty).Trim();
                 t.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
             }
-            if (composerChg) t.Composer = Composer;
+            if (composerChg) t.Composer = (Composer ?? string.Empty).Trim();
             if (groupingChg) t.Grouping = Grouping;
             if (versionChg) t.Version = songVersion;
             if (genreChg) t.Genre = genre;
@@ -1623,8 +1623,8 @@ public partial class MetadataViewModel : ViewModelBase
         Channels = info.ChannelDescription;
         FileSize = info.FileSizeFormatted;
         Duration = info.DurationFormatted;
-        DateAdded = _track.DateAdded.ToLocalTime().ToString("M/d/yyyy, h:mm tt");
-        DateModified = info.DateModified.ToString("M/d/yyyy, h:mm tt");
+        DateAdded = _track.DateAdded.ToLocalTime().ToString("g", Localization.Loc.Instance.Culture);
+        DateModified = info.DateModified.ToString("g", Localization.Loc.Instance.Culture);
         FileLocation = info.FilePath;
         FullFilePath = info.FilePath;
         FolderName = Path.GetDirectoryName(info.FilePath) ?? string.Empty;
@@ -2489,19 +2489,23 @@ public partial class MetadataViewModel : ViewModelBase
         if (!_albumScoped)
         {
             // Apply Details changes to the track model
-            _track.Title = Title;
+            // Names are saved trimmed, like Version and Genre: " Song " kept its spaces in the
+            // file, sorting and search (owner 11-25 audit).
+            var albumArtist = (AlbumArtist ?? string.Empty).Trim();
+            var album = (Album ?? string.Empty).Trim();
+            _track.Title = (Title ?? string.Empty).Trim();
             _track.Version = (SongVersion ?? string.Empty).Trim();
-            _track.Artist = Artist;
+            _track.Artist = (Artist ?? string.Empty).Trim();
             // An album artist typed here is the user's tag (GitHub #178): the album-grouping
             // pass must not re-key it, even when the file write below fails.
-            if (!string.Equals(_track.AlbumArtist, AlbumArtist, StringComparison.Ordinal))
-                _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(AlbumArtist);
-            _track.AlbumArtist = AlbumArtist;
-            if (!string.Equals(_track.Album, Album, StringComparison.Ordinal))
+            if (!string.Equals(_track.AlbumArtist, albumArtist, StringComparison.Ordinal))
+                _track.AlbumArtistFromTag = !string.IsNullOrWhiteSpace(albumArtist);
+            _track.AlbumArtist = albumArtist;
+            if (!string.Equals(_track.Album, album, StringComparison.Ordinal))
                 _track.AlbumFromFolder = false; // the user's album name, not the folder's (GitHub #193)
-            _track.Album = Album;
+            _track.Album = album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
-            _track.Composer = Composer;
+            _track.Composer = (Composer ?? string.Empty).Trim();
             _track.TrackNumber = ParseNumberBox(TrackNumber, _track.TrackNumber);
             _track.TrackCount = ParseNumberBox(TrackCount, _track.TrackCount);
             _track.DiscNumber = Math.Max(1, ParseNumberBox(DiscNumber, _track.DiscNumber));
