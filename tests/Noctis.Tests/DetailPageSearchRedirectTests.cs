@@ -157,4 +157,18 @@ public class DetailPageSearchRedirectTests
         Assert.Same(album, vm.CurrentView);
         Assert.Equal("Hoshizora", vm.TopBar.SearchText);
     });
+
+    [AvaloniaFact]
+    public void StatisticsPage_PillSaysSongs_AndASearchLandsOnSongs() => Run(vm =>
+    {
+        // Statistics has no list: its search goes to Songs, so the pill must not read
+        // "Search in Statistics".
+        Navigate(vm, "statistics");
+        Assert.Equal(Noctis.Localization.Loc.T("TopBar.SearchIn", Noctis.Localization.Loc.T("Nav.Songs")), vm.TopBar.SearchWatermark);
+
+        vm.TopBar.IsSearchOpen = true;
+        Type(vm, "Hoshizora");
+
+        Assert.IsType<LibrarySongsViewModel>(vm.CurrentView);
+    });
 }

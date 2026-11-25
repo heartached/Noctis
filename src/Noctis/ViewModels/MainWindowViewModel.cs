@@ -2036,6 +2036,9 @@ public partial class MainWindowViewModel : ViewModelBase
             PlaylistFeaturedArtistsViewModel => Loc.T("TopBar.SearchIn", Loc.T("TopBar.FeaturedArtists")),
             MoreByArtistViewModel => Loc.T("TopBar.SearchIn", Loc.T("Nav.Albums")),
             ArtistDetailViewModel artistPage => Loc.T("TopBar.SearchIn", artistPage.ArtistName),
+            // Statistics, Queue, Audio CD: a search there lands on Songs, so say so.
+            not ISearchable when TopBar.CurrentTabName != "Songs" && UnsearchablePageSearchTarget() == "songs"
+                => Loc.T("TopBar.SearchIn", Loc.T("Nav.Songs")),
             _ => Loc.T("TopBar.SearchIn", TopBar.CurrentTabTitle)
         };
 
@@ -3120,6 +3123,21 @@ public partial class MainWindowViewModel : ViewModelBase
     /// else the tab's section, with the album page kept in history. The pill stays open with
     /// the typed text untouched (no caret jump, no lost keys); later keystrokes only filter.
     /// </summary>
+    /// <summary>The list a search typed on a page that can't filter lands on: the tab's own
+    /// list, or Songs for a page with no list behind it (Statistics, Queue, Audio CD).</summary>
+    private string UnsearchablePageSearchTarget() => TopBar.CurrentTabName switch
+    {
+        "Albums" => "albums",
+        "Artists" => "artists",
+        "Folders" => "folders",
+        "Genres" => "genres",
+        "Playlists" or "Playlist" => "playlists",
+        "Favorites" => "favorites",
+        "Server" => "server",
+        "Inbox" => "inbox",
+        _ => "songs",
+    };
+
     private void SearchFromUnsearchablePage()
     {
         var typed = TopBar.SearchText;
@@ -3133,18 +3151,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         else
         {
-            var key = TopBar.CurrentTabName switch
-            {
-                "Albums" => "albums",
-                "Artists" => "artists",
-                "Folders" => "folders",
-                "Genres" => "genres",
-                "Playlists" or "Playlist" => "playlists",
-                "Favorites" => "favorites",
-                "Server" => "server",
-                "Inbox" => "inbox",
-                _ => "songs",
-            };
+            var key = UnsearchablePageSearchTarget();
             _keepSearchOnNavigate = true;
             try { Navigate(key); }
             finally { _keepSearchOnNavigate = false; }
