@@ -165,6 +165,174 @@ public class EditInfoAuditTests : IDisposable
         Assert.True(failures.Count == 0, ext + " lost: " + string.Join(", ", failures));
     }
 
+    // ── 5. Out of sync: the song keeps playing (and gets rated) while its editor is open ──
+
+    /// <summary>The play count is not a box (only Reset), yet Save wrote back the count the
+    /// editor read when it opened: a play counted meanwhile (the song being edited is often
+    /// the one playing) was undone, and the "Last Played" date then disagreed with it.</summary>
+    [Fact]
+    public async Task PlaysCountedWhileTheEditorIsOpen_SurviveASave()
+    {
+        var (track, library) = Load(Create("flac"));
+        track.PlayCount = 5;
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        track.PlayCount++; // PlayerViewModel counts the play on the library's Track
+        vm.Title = "Edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(6, track.PlayCount);
+    }
+
+    [Fact]
+    public async Task RatingGivenElsewhereWhileTheEditorIsOpen_SurvivesAnUnrelatedSave()
+    {
+        var (track, library) = Load(Create("flac"));
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        track.Rating = 5;       // now-playing stars
+        track.IsDisliked = true; // a song menu's Not Liked
+        vm.Title = "Edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(5, track.Rating);
+        Assert.True(track.IsDisliked);
+        Assert.Equal(5, new MetadataService().ReadTrackMetadata(track.FilePath)!.Rating);
+    }
+
+    [Fact]
+    public async Task RatingChangedInTheEditor_StillWins()
+    {
+        var (track, library) = Load(Create("flac"));
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.Rating = 3;
+        vm.IsDisliked = true;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(3, track.Rating);
+        Assert.True(track.IsDisliked);
+    }
+
+    [Fact]
+    public async Task PlayCountReset_StillResets()
+    {
+        var (track, library) = Load(Create("flac"));
+        track.PlayCount = 5;
+        track.LastPlayed = DateTime.UtcNow;
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.ResetPlayCountCommand.Execute(null);
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, track.PlayCount);
+        Assert.Null(track.LastPlayed);
+    }
+
+    // ── 4. Number boxes: nothing typed by mistake may silently wipe or corrupt a value ──
+
+    [Theory]
+    [InlineData("abc")]          // letters
+    [InlineData("-5")]           // negative
+    [InlineData("99999999999")]  // more than an int holds
+    [InlineData("19 99")]
+    public async Task Year_Unreadable_KeepsTheSongsYear(string typed)
+    {
+        var path = Create("flac");
+        var (track, library) = Load(path);
+        track.Year = 1999;
+        new MetadataService().WriteTrackMetadata(track);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.Year = typed;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(1999, track.Year);
+        Assert.Equal(1999, new MetadataService().ReadTrackMetadata(path)!.Year);
+    }
+
+    [Theory]
+    [InlineData(" 2004 ", 2004)]
+    [InlineData("", 0)]          // emptied on purpose: cleared
+    public async Task Year_SpacesAreIgnored_AndAnEmptyBoxClears(string typed, int expected)
+    {
+        var path = Create("flac");
+        var (track, library) = Load(path);
+        track.Year = 1999;
+        new MetadataService().WriteTrackMetadata(track);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.Year = typed;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(expected, track.Year);
+        Assert.Equal(expected, new MetadataService().ReadTrackMetadata(path)!.Year);
+    }
+
+    [Theory]
+    [InlineData("3/12", 3)]      // pasted "track/total"
+    [InlineData(" 4 ", 4)]
+    [InlineData("x", 7)]         // unreadable: kept
+    [InlineData("-2", 7)]
+    [InlineData("", 0)]          // emptied: cleared
+    public async Task TrackNumber_Box(string typed, int expected)
+    {
+        var path = Create("flac");
+        var (track, library) = Load(path);
+        track.TrackNumber = 7;
+        new MetadataService().WriteTrackMetadata(track);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.TrackNumber = typed;
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(expected, track.TrackNumber);
+        Assert.Equal(expected, new MetadataService().ReadTrackMetadata(path)!.TrackNumber);
+    }
+
+    [Fact]
+    public async Task Bpm_Decimal_IsRounded_NotWiped()
+    {
+        var path = Create("flac");
+        var (track, library) = Load(path);
+        track.Bpm = 90;
+        new MetadataService().WriteTrackMetadata(track);
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.Bpm = "120.4";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(120, track.Bpm);
+    }
+
+    [Fact]
+    public async Task AlbumScope_UnreadableYear_KeepsEachSongsYear()
+    {
+        var a = Load(Create("flac")).Track;
+        var b = Load(Create("flac")).Track;
+        foreach (var t in new[] { a, b }) { t.Album = "A"; t.AlbumArtist = "X"; t.AlbumId = Track.ComputeAlbumId("X", "A"); }
+        a.Year = 1990; b.Year = 1991;
+        var library = new FakeLibraryService();
+        library.TrackList.AddRange(new[] { a, b });
+        var vm = new MetadataViewModel(a, new MetadataService(), library, new TestPersistenceService(), new FakeAnimatedCoverService(),
+            albumScoped: true, albumTracks: new List<Track> { a, b });
+        await vm.InitializeAsync();
+
+        vm.Year = "19x0";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal(1990, a.Year);
+        Assert.Equal(1991, b.Year);
+    }
+
     [Theory]
     [MemberData(nameof(FixtureFormats))]
     public async Task EveryAdvancedField_RoundTrips_ThroughTheFile(string ext)

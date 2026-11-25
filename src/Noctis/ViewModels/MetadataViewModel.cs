@@ -1363,6 +1363,29 @@ public partial class MetadataViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// The number in a Details box (year, track, disc, BPM, movement): empty is cleared (0),
+    /// spaces don't count, a pasted "3/12" (track/total) is 3 and a decimal is rounded. Anything
+    /// else (letters, a negative or too large number) keeps <paramref name="current"/>: a typo
+    /// used to save as 0, which wiped the value in the file (owner 11-25 audit).
+    /// </summary>
+    internal static int ParseNumberBox(string? text, int current)
+    {
+        var s = text?.Trim() ?? string.Empty;
+        if (s.Length == 0) return 0;
+        var slash = s.IndexOf('/');
+        if (slash > 0) s = s[..slash].TrimEnd();
+        if (int.TryParse(s, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var n))
+            return n;
+        if (double.TryParse(s, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var d)
+            && d <= int.MaxValue)
+            return (int)Math.Round(d, MidpointRounding.AwayFromZero);
+        return current;
+    }
+
+    /// <summary>True when the field differs from what the editor showed once loaded.</summary>
+    private bool EditedHere(string name) => !Equals(ReadTracked(name), _changeBaseline.GetValueOrDefault(name));
+
+    /// <summary>
     /// Applies the album-scoped Details edits: only fields the user changed are
     /// fanned out to every track of the album, so untouched ("Mixed") and
     /// per-track fields (titles, track numbers, …) keep their own values.
@@ -1399,15 +1422,6 @@ public partial class MetadataViewModel : ViewModelBase
         bool dislikedChg = IsDisliked != _loadedIsDisliked;
         int ratingVal = Math.Clamp(Rating, 0, 5);
 
-        int yearVal = int.TryParse(Year, out var yr) ? yr : 0;
-        int trackNumberVal = int.TryParse(TrackNumber, out var tn) ? tn : 0;
-        int trackCountVal = int.TryParse(TrackCount, out var tc) ? tc : 0;
-        int discNumberVal = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
-        int discCountVal = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
-        int bpmVal = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
-        int movementNumberVal = int.TryParse(MovementNumber, out var mvn) ? Math.Max(0, mvn) : 0;
-        int movementCountVal = int.TryParse(MovementCount, out var mvc) ? Math.Max(0, mvc) : 0;
-
         foreach (var t in _albumTracks)
         {
             if (artistChg) t.Artist = Artist;
@@ -1425,18 +1439,18 @@ public partial class MetadataViewModel : ViewModelBase
             if (groupingChg) t.Grouping = Grouping;
             if (versionChg) t.Version = songVersion;
             if (genreChg) t.Genre = genre;
-            if (yearChg) t.Year = yearVal;
-            if (trackNumberChg) t.TrackNumber = trackNumberVal;
-            if (trackCountChg) t.TrackCount = trackCountVal;
-            if (discNumberChg) t.DiscNumber = discNumberVal;
-            if (discCountChg) t.DiscCount = discCountVal;
-            if (bpmChg) t.Bpm = bpmVal;
+            if (yearChg) t.Year = ParseNumberBox(Year, t.Year);
+            if (trackNumberChg) t.TrackNumber = ParseNumberBox(TrackNumber, t.TrackNumber);
+            if (trackCountChg) t.TrackCount = ParseNumberBox(TrackCount, t.TrackCount);
+            if (discNumberChg) t.DiscNumber = Math.Max(1, ParseNumberBox(DiscNumber, t.DiscNumber));
+            if (discCountChg) t.DiscCount = Math.Max(1, ParseNumberBox(DiscCount, t.DiscCount));
+            if (bpmChg) t.Bpm = ParseNumberBox(Bpm, t.Bpm);
             if (commentChg) t.Comment = Comment;
             if (useWorkChg) t.UseWorkAndMovement = UseWorkAndMovement;
             if (workNameChg) t.WorkName = WorkName;
             if (movementNameChg) t.MovementName = MovementName;
-            if (movementNumberChg) t.MovementNumber = movementNumberVal;
-            if (movementCountChg) t.MovementCount = movementCountVal;
+            if (movementNumberChg) t.MovementNumber = ParseNumberBox(MovementNumber, t.MovementNumber);
+            if (movementCountChg) t.MovementCount = ParseNumberBox(MovementCount, t.MovementCount);
             if (compChg) t.IsCompilation = IsCompilation;
             if (showComposerChg) t.ShowComposerInAllViews = ShowComposerInAllViews;
             if (ratingChg) t.Rating = ratingVal;
@@ -2484,12 +2498,12 @@ public partial class MetadataViewModel : ViewModelBase
             _track.Album = Album;
             _track.Genre = Track.NormalizeGenre(Genre); // "Rock ;Pop" → "Rock; Pop", trimmed (GitHub #123)
             _track.Composer = Composer;
-            _track.TrackNumber = int.TryParse(TrackNumber, out var tn) ? tn : 0;
-            _track.TrackCount = int.TryParse(TrackCount, out var tc) ? tc : 0;
-            _track.DiscNumber = int.TryParse(DiscNumber, out var dn) ? Math.Max(1, dn) : 1;
-            _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
-            _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
-            _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
+            _track.TrackNumber = ParseNumberBox(TrackNumber, _track.TrackNumber);
+            _track.TrackCount = ParseNumberBox(TrackCount, _track.TrackCount);
+            _track.DiscNumber = Math.Max(1, ParseNumberBox(DiscNumber, _track.DiscNumber));
+            _track.DiscCount = Math.Max(1, ParseNumberBox(DiscCount, _track.DiscCount));
+            _track.Bpm = ParseNumberBox(Bpm, _track.Bpm);
+            _track.Year = ParseNumberBox(Year, _track.Year);
             // Advanced Details › release date: the library's copy too, so the album page shows
             // the new date without a rescan (the file gets it with the advanced fields below).
             if (_originalAdvancedFields != null && AdvReleaseDate != _originalAdvancedFields.ReleaseDate)
@@ -2500,13 +2514,16 @@ public partial class MetadataViewModel : ViewModelBase
             _track.UseWorkAndMovement = UseWorkAndMovement;
             _track.WorkName = WorkName;
             _track.MovementName = MovementName;
-            _track.MovementNumber = int.TryParse(MovementNumber, out var mn) ? Math.Max(0, mn) : 0;
-            _track.MovementCount = int.TryParse(MovementCount, out var mc) ? Math.Max(0, mc) : 0;
-            _track.PlayCount = int.TryParse(PlayCount, out var pc) ? Math.Max(0, pc) : 0;
+            _track.MovementNumber = ParseNumberBox(MovementNumber, _track.MovementNumber);
+            _track.MovementCount = ParseNumberBox(MovementCount, _track.MovementCount);
+            // The play count has no box (only Reset, applied below), and the rating and Not
+            // Liked can be set elsewhere while this window is open (the playing song's stars,
+            // a song menu): written back unconditionally, Save undid a play counted meanwhile
+            // or that rating (owner 11-25 audit). Only an edit made here is applied.
             _track.Comment = Comment;
             _track.Copyright = Copyright ?? string.Empty;
-            _track.Rating = Math.Clamp(Rating, 0, 5);
-            _track.IsDisliked = IsDisliked;
+            if (EditedHere(nameof(Rating))) _track.Rating = Math.Clamp(Rating, 0, 5);
+            if (EditedHere(nameof(IsDisliked))) _track.IsDisliked = IsDisliked;
 
             // Recalculate AlbumId if album or artist changed
             _track.AlbumId = Track.ComputeAlbumId(_track.AlbumArtist, _track.Album);
