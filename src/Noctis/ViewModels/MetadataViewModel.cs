@@ -442,14 +442,14 @@ public partial class MetadataViewModel : ViewModelBase
                     .DefaultIfEmpty()
                     .Max();
                 return lastPlayed != default
-                    ? $"{total} (Last Played {lastPlayed.ToLocalTime():M/d/yyyy, h:mm tt})"
+                    ? Localization.Loc.T("Metadata.PlayCountLastPlayed", total, lastPlayed.ToLocalTime().ToString("M/d/yyyy, h:mm tt"))
                     : total.ToString();
             }
 
             if (_track.LastPlayed.HasValue)
             {
                 var lastPlayed = _track.LastPlayed.Value.ToLocalTime();
-                return $"{_track.PlayCount} (Last Played {lastPlayed:M/d/yyyy, h:mm tt})";
+                return Localization.Loc.T("Metadata.PlayCountLastPlayed", _track.PlayCount, lastPlayed.ToString("M/d/yyyy, h:mm tt"));
             }
             return _track.PlayCount.ToString();
         }

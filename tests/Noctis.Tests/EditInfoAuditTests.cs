@@ -165,6 +165,28 @@ public class EditInfoAuditTests : IDisposable
         Assert.True(failures.Count == 0, ext + " lost: " + string.Join(", ", failures));
     }
 
+    // ── 6. The boxes themselves ──
+
+    /// <summary>"Track 3 of 12", "Disc 1 of 2", "Movement 2 of 4" and the play count's
+    /// "(Last Played …)" were English in every language.</summary>
+    [Fact]
+    public void OfLabels_AndLastPlayed_AreLocalized()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "Noctis.sln"))) root = root.Parent!;
+        var xaml = File.ReadAllText(Path.Combine(root.FullName, "src", "Noctis", "Views", "MetadataWindow.axaml"));
+        Assert.DoesNotContain("Text=\"of\"", xaml);
+        var vmSource = File.ReadAllText(Path.Combine(root.FullName, "src", "Noctis", "ViewModels", "MetadataViewModel.cs"));
+        Assert.DoesNotContain("(Last Played ", vmSource);
+
+        foreach (var resx in Directory.GetFiles(Path.Combine(root.FullName, "src", "Noctis.UI", "Localization"), "Strings*.resx"))
+        {
+            var text = File.ReadAllText(resx);
+            Assert.Contains("name=\"Metadata.Of\"", text);
+            Assert.Contains("name=\"Metadata.PlayCountLastPlayed\"", text);
+        }
+    }
+
     // ── 5. Out of sync: the song keeps playing (and gets rated) while its editor is open ──
 
     /// <summary>The play count is not a box (only Reset), yet Save wrote back the count the

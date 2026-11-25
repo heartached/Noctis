@@ -4493,4 +4493,6 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Cliquez sur une touche pour la modifier. Échap annule, Suppr la supprime.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Change l'icône de la barre des menus. Le Dock garde l'icône classique.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Aucun autre album ne porte ce nom. Faites ⌘+clic sur les albums qui vont ensemble dans la grille Albums, puis faites un clic droit sur l'un d'eux.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>sur</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (dernière écoute {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
 </root>

@@ -9491,4 +9491,6 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>انقر على مفتاح لتغييره. Esc يلغي، وDelete يزيل الاختصار.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.AppIconDescMac" xml:space="preserve"><value>يغيّر الأيقونة في شريط القوائم. يحتفظ Dock بالأيقونة الكلاسيكية.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>لا يوجد ألبوم آخر بهذا الاسم. انقر مع ⌘ على الألبومات التي تنتمي معًا في شبكة الألبومات، ثم انقر بزر الماوس الأيمن على أحدها.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>من</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (آخر تشغيل {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
 </root>

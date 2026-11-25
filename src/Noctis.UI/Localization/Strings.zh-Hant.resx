@@ -9491,4 +9491,6 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Metadata.SavingInBackground" xml:space="preserve"><value>正在儲存變更…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
   <data name="Metadata.SavedInBackground" xml:space="preserve"><value>變更已儲存。</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
   <data name="Metadata.SaveFailed" xml:space="preserve"><value>無法儲存變更：{0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>/</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0}（上次播放 {1}）</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
 </root>
