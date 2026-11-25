@@ -139,10 +139,12 @@ public class Album : ObservableObject
     public string ArtistDisplay => ArtistCredit.Display(Artist);
 
     /// <summary>Formatted total duration.</summary>
+    // Rounded to the nearest minute (a 40-second album read "0 min" and 3:59 read "3 min"),
+    // and never 0 for an album that has any length.
     public string TotalDurationFormatted =>
         TotalDuration.TotalHours >= 1
             ? $"{(int)TotalDuration.TotalHours}h {TotalDuration.Minutes}m"
-            : $"{(int)TotalDuration.TotalMinutes} min";
+            : $"{(TotalDuration > TimeSpan.Zero ? Math.Max(1, (int)Math.Round(TotalDuration.TotalMinutes, MidpointRounding.AwayFromZero)) : 0)} min";
 
     public const string MixedQualityBadge = "Mixed";
     public const string MixedQualityDescription =
