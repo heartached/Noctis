@@ -2316,6 +2316,9 @@ public partial class MainWindowViewModel : ViewModelBase
             PlaylistViewModel playlistView => Sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistView.PlaylistId),
             AlbumDetailViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "albums"),
             MoreByArtistViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "artists"),
+            // The artist page opens under Artists (OpenArtistDiscography); Back to it used to
+            // highlight the section it was opened from (Home) instead.
+            ArtistDetailViewModel => Sidebar.NavItems.FirstOrDefault(n => n.Key == "artists"),
             _ when ReferenceEquals(target.View, _albumsVm) => Sidebar.NavItems.FirstOrDefault(n => n.Key == (_albumsVm.IsGenreFiltered ? "genres" : "albums")),
             _ => Sidebar.NavItems.FirstOrDefault(n => n.Key == target.SectionKey)
                  ?? Sidebar.FavoritesItems.FirstOrDefault(n => n.Key == target.SectionKey)
