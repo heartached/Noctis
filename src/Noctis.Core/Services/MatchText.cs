@@ -30,6 +30,8 @@ public static partial class MatchText
         "anniversary", "version", "explicit", "clean", "album", "single", "mono", "stereo", "bonus",
         "track", "original", "digital", "lp", "ep", "collector", "collectors", "limited", "complete",
         "definitive", "reissue", "release", "year", "years", "studio", "mix", "mixed",
+        // "(Music Box Ver.)", "[TV Size Ver.]" — Japanese releases' short form (GitHub #263).
+        "ver",
     };
 
     // Filler that never identifies a version on its own.
@@ -44,11 +46,18 @@ public static partial class MatchText
     [GeneratedRegex(@"\s+(?:feat\.?|ft\.?|featuring)\s+.*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex TrailingFeaturing();
 
-    [GeneratedRegex(@"[\(\[]([^\)\]]*)[\)\]]", RegexOptions.CultureInvariant)]
+    // Full-width brackets too: "Song（Instrumental）", "Song【Live】" (GitHub #263).
+    [GeneratedRegex(@"[\(\[（［【]([^\)\]）］】]*)[\)\]）］】]", RegexOptions.CultureInvariant)]
     private static partial Regex BracketSegment();
 
     [GeneratedRegex(@"\s+[-–—]\s+([^-–—]+)$", RegexOptions.CultureInvariant)]
     private static partial Regex DashSegment();
+
+    // A trailing suffix wrapped in a pair of dashes or wave dashes, as Japanese releases write
+    // versions: "Song -Japanese Ver.-", "Song ～Piano Ver.～", "Song〜Off Vocal〜" (GitHub #263).
+    // A dash needs a space before it so "Anti-Hero-" is not read as one; wave dashes don't.
+    [GeneratedRegex(@"(?:\s+(?<d>[-–—])|\s*(?<d>[~～〜]))\s*([^-–—~～〜]+?)\s*\k<d>\s*$", RegexOptions.CultureInvariant)]
+    private static partial Regex WrappedSegment();
 
     [GeneratedRegex(@"\s*(?:,|&|;|/|\+|\bx\b|\band\b|\bfeat\.?|\bft\.?|\bfeaturing\b|\bwith\b|\bvs\.?)\s*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex ArtistSeparators();
@@ -113,7 +122,8 @@ public static partial class MatchText
         var dashAt = segments?.Count ?? 0;
         for (var i = 0; i < 3; i++)
         {
-            var m = DashSegment().Match(s);
+            var m = WrappedSegment().Match(s);
+            if (!m.Success) m = DashSegment().Match(s);
             if (!m.Success || !IsVersionSegment(m.Groups[1].Value, markers)) break;
             segments?.Insert(dashAt, m.Groups[1].Value.Trim());
             s = s[..m.Index];
