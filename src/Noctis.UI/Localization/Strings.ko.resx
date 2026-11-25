@@ -7051,6 +7051,11 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   </data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>TTML로도 저장</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>TTML은 읽지만 ELRC 단어 타이밍은 읽지 못하는 플레이어를 위해 노래 옆에 .ttml 파일도 기록합니다.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>가사 파일</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>단어 타이밍으로 저장할 때 쓰는 파일입니다. ELRC는 단어 타이밍을 유지하고, LRC는 ELRC를 읽지 못하는 플레이어에서도 작동합니다.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC 및 LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>ELRC만</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>LRC만</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve">
     <value>실행</value>
     <comment>Section title</comment>

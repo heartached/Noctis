@@ -2786,6 +2786,11 @@ Années : year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar s
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Stocke aussi les paroles simples dans le fichier audio.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>Enregistrer aussi en TTML</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>Écrit aussi un fichier .ttml à côté du titre, pour les lecteurs qui lisent le TTML mais pas les horodatages par mot ELRC.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>Fichiers de paroles</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>Les fichiers écrits lors d'un enregistrement avec minutage par mot. ELRC garde le minutage par mot ; LRC fonctionne dans les lecteurs qui ne lisent pas ELRC.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC et LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>ELRC seulement</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>LRC seulement</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>EXÉCUTION</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Titres sans le format choisi</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Jusqu'à 40 chansons qui n'ont pas le format ci-dessus.</value><comment>Run card help</comment></data>

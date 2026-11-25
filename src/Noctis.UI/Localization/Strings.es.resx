@@ -2786,6 +2786,11 @@ Años: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Guarda también la letra sin sincronizar dentro del archivo de audio.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>Guardar también como TTML</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>Escribe también un archivo .ttml junto a la canción, para reproductores que leen TTML pero no los tiempos por palabra de ELRC.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>Archivos de letras</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>Qué archivos escribe un guardado con tiempos por palabra. ELRC conserva los tiempos por palabra; LRC funciona en reproductores que no leen ELRC.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC y LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>Solo ELRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>Solo LRC</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>EJECUTAR</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Canciones sin el formato elegido</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Hasta 40 canciones a las que les falta el formato de arriba.</value><comment>Run card help</comment></data>

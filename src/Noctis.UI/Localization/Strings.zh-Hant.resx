@@ -7051,6 +7051,11 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   </data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>同時儲存為 TTML</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>同時在歌曲旁寫入一個 .ttml 檔案，供能讀取 TTML 但不支援 ELRC 逐字時間軸的播放器使用。</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>歌詞檔案</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>帶逐字時間儲存時寫入哪些檔案。ELRC 保留逐字時間；LRC 可在不支援 ELRC 的播放器中使用。</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC 和 LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>僅 ELRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>僅 LRC</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve">
     <value>執行</value>
     <comment>Section title</comment>

@@ -682,6 +682,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Also save the timings as a .ttml sidecar, for players that read TTML but not ELRC (Discord: Light Cone).</summary>
     public bool LyricsStudioSaveTtml { get; set; }
 
+    /// <summary>Lyrics Studio's files for word-timed lyrics: a <see cref="Models.LyricsStudioFiles"/> name
+    /// (ELRC and LRC, ELRC only, LRC only).</summary>
+    public string LyricsStudioFiles { get; set; } = nameof(Models.LyricsStudioFiles.ElrcAndLrc);
+
     /// <summary>The Studio's live preview pane beside the review is open (10-14).</summary>
     public bool LyricsStudioLivePreview { get; set; } = true;
 

@@ -7051,6 +7051,11 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   </data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>الحفظ بصيغة TTML أيضًا</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>يكتب أيضًا ملف .ttml بجانب الأغنية، للمشغّلات التي تقرأ TTML لكن لا تقرأ توقيتات الكلمات في ELRC.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>ملفات الكلمات</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>الملفات التي يكتبها الحفظ مع توقيت الكلمات. يحتفظ ELRC بتوقيت الكلمات؛ ويعمل LRC في المشغّلات التي لا تقرأ ELRC.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC و LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>ELRC فقط</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>LRC فقط</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve">
     <value>التنفيذ</value>
     <comment>Section title</comment>

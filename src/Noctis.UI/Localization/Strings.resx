@@ -2793,6 +2793,11 @@ Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Also store the plain lyrics inside the audio file.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>Also save as TTML</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>Also write a .ttml file next to the song, for players that read TTML but not ELRC word timings.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>Lyrics files</value><comment>Lyrics Studio settings</comment></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>Which files a save with word timings writes. ELRC keeps the word timings; LRC works in players that don't read ELRC.</value><comment>Lyrics Studio settings</comment></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC and LRC</value><comment>Lyrics Studio settings</comment></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>ELRC only</value><comment>Lyrics Studio settings</comment></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>LRC only</value><comment>Lyrics Studio settings</comment></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>RUN</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Songs missing the chosen format</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Up to 40 songs that lack the format above.</value><comment>Run card help</comment></data>

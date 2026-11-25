@@ -2812,6 +2812,11 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Düz sözleri ses dosyasının içinde de sakla.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>TTML olarak da kaydet</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>TTML okuyan ama ELRC kelime zamanlamalarını okumayan oynatıcılar için şarkının yanına bir .ttml dosyası da yaz.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>Şarkı sözü dosyaları</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>Kelime zamanlamalı kayıtta hangi dosyaların yazılacağı. ELRC kelime zamanlamalarını korur; LRC, ELRC okumayan oynatıcılarda çalışır.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC ve LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>Yalnızca ELRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>Yalnızca LRC</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>ÇALIŞTIR</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Seçilen biçimi eksik şarkılar</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Yukarıdaki biçime sahip olmayan en fazla 40 şarkı.</value><comment>Run card help</comment></data>

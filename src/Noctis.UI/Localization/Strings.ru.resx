@@ -2793,6 +2793,11 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Также сохранять обычный текст внутри аудиофайла.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>Также сохранять в TTML</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>Также создавать рядом с песней файл .ttml для плееров, которые читают TTML, но не тайминг слов ELRC.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>Файлы текста</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>Какие файлы записываются при сохранении с таймингом слов. ELRC сохраняет тайминг слов; LRC работает в плеерах, которые не читают ELRC.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC и LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>Только ELRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>Только LRC</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>ЗАПУСК</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Песни без выбранного формата</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>До 40 песен, у которых нет указанного выше формата.</value><comment>Run card help</comment></data>

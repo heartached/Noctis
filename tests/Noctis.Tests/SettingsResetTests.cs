@@ -188,6 +188,7 @@ public class SettingsResetTests : IDisposable
         [nameof(AppSettings.DiscordStatusDisplay)] = _ => nameof(DiscordStatusDisplay.Title),
         [nameof(AppSettings.PlayCountImportMode)] = _ => nameof(PlayCountImportMode.Replace),
         [nameof(AppSettings.LyricsSaveTarget)] = _ => nameof(LyricsSaveTarget.Embedded),
+        [nameof(AppSettings.LyricsStudioFiles)] = _ => nameof(LyricsStudioFiles.ElrcOnly),
         [nameof(AppSettings.LyricsPreferredType)] = _ => nameof(LyricsPreferredType.LineSynced),
         [nameof(AppSettings.Shortcuts)] = _ => new Dictionary<string, string> { [nameof(ShortcutAction.PlayPause)] = "P" },
         [nameof(AppSettings.LyricsBackgroundMediaPath)] = clip => clip,

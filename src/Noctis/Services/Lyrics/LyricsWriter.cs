@@ -74,9 +74,15 @@ public sealed class LyricsWriter
     /// reads before the tags are removed like stale ones, or they would hide the save. An explicit TTML is still
     /// written: it is a file the user asked for. <paramref name="embedInTags"/> (Lyrics Studio / bulk "also
     /// embed") keeps its old meaning for lyrics files only: plain text in the tags.</param>
+    /// <param name="files">Word-timed lyrics: which lyrics files (Lyrics Studio's choice). ELRC only removes an old
+    /// .lrc; LRC only saves the line timings alone (word timings dropped, in the tags too) and removes an old .elrc,
+    /// which the lyrics page reads first.</param>
     public LyricsSaveOutcome SaveDetailed(Track track, string? plain, string? synced, bool embedInTags, bool replaceForeignSidecar, string? ttml = null,
-        LyricsSaveTarget? target = null)
+        LyricsSaveTarget? target = null, LyricsStudioFiles files = LyricsStudioFiles.ElrcAndLrc)
     {
+        if (files == LyricsStudioFiles.LrcOnly && !string.IsNullOrWhiteSpace(synced)
+            && LyricsFormatDetector.Detect(null, synced) == LyricsFormat.Elrc)
+            synced = LineLevelProjection(synced);
         var hasSynced = !string.IsNullOrWhiteSpace(synced);
         var hasPlain = !string.IsNullOrWhiteSpace(plain);
         if (!hasSynced && !hasPlain) return LyricsSaveOutcome.Nothing;
@@ -113,7 +119,11 @@ public sealed class LyricsWriter
                 // Word timings live in .elrc; the .lrc keeps a line-level projection so
                 // players that only know LRC still work. ELRC is additive, never a replacement.
                 WriteSidecar(elrcPath, synced!, replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
-                WriteSidecar(lrcPath, LineLevelProjection(synced!), replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
+                if (files != LyricsStudioFiles.ElrcOnly)
+                    WriteSidecar(lrcPath, LineLevelProjection(synced!), replaceForeignSidecar, ref sidecarWritten, ref replaced, ref kept);
+                else
+                    foreach (var stale in SidecarsOnDisk(path, ".lrc"))
+                        RemoveSidecar(stale, replaceForeignSidecar, ref replaced, ref kept);
             }
             else
             {

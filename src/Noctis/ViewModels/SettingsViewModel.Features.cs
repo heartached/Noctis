@@ -405,6 +405,8 @@ public partial class SettingsViewModel
     [ObservableProperty] private bool _lyricsStudioEmbedTags;
     [ObservableProperty] private bool _lyricsStudioOnlineLyrics = true;
     [ObservableProperty] private bool _lyricsStudioSaveTtml;
+    /// <summary>The Studio's files for word-timed lyrics (set from the Studio itself).</summary>
+    [ObservableProperty] private LyricsStudioFiles _lyricsStudioFiles;
     /// <summary>The Studio's live preview pane is open (set from the Studio itself).</summary>
     [ObservableProperty] private bool _lyricsStudioLivePreview = true;
     /// <summary>Experimental: the speech model on the graphics card (set from the Studio itself).</summary>
@@ -461,6 +463,13 @@ public partial class SettingsViewModel
         QueueSettingsSave();
     }
 
+    partial void OnLyricsStudioFilesChanged(LyricsStudioFiles value)
+    {
+        if (!_settingsLoaded) return;
+        _settings.LyricsStudioFiles = value.ToString();
+        QueueSettingsSave();
+    }
+
     partial void OnLyricsStudioLivePreviewChanged(bool value)
     {
         if (!_settingsLoaded) return;
@@ -485,6 +494,7 @@ public partial class SettingsViewModel
         LyricsStudioEmbedTags = prefs.EmbedTags;
         LyricsStudioOnlineLyrics = prefs.OnlineLyrics;
         LyricsStudioSaveTtml = prefs.SaveTtml;
+        LyricsStudioFiles = prefs.Files;
         LyricsStudioLivePreview = prefs.LivePreview;
         LyricsStudioUseGpu = prefs.UseGpu;
     }
@@ -540,6 +550,7 @@ public partial class SettingsViewModel
         LyricsStudioEmbedTags = _settings.LyricsStudioEmbedTags;
         LyricsStudioOnlineLyrics = _settings.LyricsStudioOnlineLyrics;
         LyricsStudioSaveTtml = _settings.LyricsStudioSaveTtml;
+        LyricsStudioFiles = LyricsSaveOptions.ParseStudioFiles(_settings.LyricsStudioFiles);
         LyricsStudioLivePreview = _settings.LyricsStudioLivePreview;
         LyricsStudioUseGpu = _settings.LyricsStudioUseGpu;
     }
@@ -560,6 +571,7 @@ public partial class SettingsViewModel
         _settings.LyricsStudioEmbedTags = LyricsStudioEmbedTags;
         _settings.LyricsStudioOnlineLyrics = LyricsStudioOnlineLyrics;
         _settings.LyricsStudioSaveTtml = LyricsStudioSaveTtml;
+        _settings.LyricsStudioFiles = LyricsStudioFiles.ToString();
         _settings.LyricsStudioLivePreview = LyricsStudioLivePreview;
         _settings.LyricsStudioUseGpu = LyricsStudioUseGpu;
     }

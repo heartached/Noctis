@@ -10,7 +10,7 @@ using Noctis.Services.LyricsStudio;
 namespace Noctis.ViewModels;
 
 /// <summary>Lyrics Studio choices the user changes inside the dialog; persisted by Settings.</summary>
-public sealed record LyricsStudioPrefs(string Model, string Language, bool WordTimings, bool SkipAlreadyTimed, bool EmbedTags, bool OnlineLyrics = true, bool SaveTtml = false, bool LivePreview = true, bool UseGpu = false);
+public sealed record LyricsStudioPrefs(string Model, string Language, bool WordTimings, bool SkipAlreadyTimed, bool EmbedTags, bool OnlineLyrics = true, bool SaveTtml = false, bool LivePreview = true, bool UseGpu = false, LyricsStudioFiles Files = LyricsStudioFiles.ElrcAndLrc);
 
 public sealed record SpeechLanguageOption(string Code, string Name)
 {
@@ -66,6 +66,13 @@ public partial class LyricsStudioViewModel : ViewModelBase
     [ObservableProperty] private bool _onlineLyrics;
     /// <summary>Also save a .ttml next to the song: players that read TTML and LRC but not ELRC get the word timings (Discord: Light Cone).</summary>
     [ObservableProperty] private bool _saveTtml;
+
+    /// <summary>The lyrics files a word-timed save writes: ELRC and LRC (default), ELRC only or LRC only
+    /// (owner 11-24: "choose LRC or ELRC instead of saving both"). The settings drop-down's index.</summary>
+    [ObservableProperty] private int _lyricsFilesIndex;
+
+    private LyricsStudioFiles LyricsFiles => Enum.IsDefined((LyricsStudioFiles)LyricsFilesIndex)
+        ? (LyricsStudioFiles)LyricsFilesIndex : LyricsStudioFiles.ElrcAndLrc;
     /// <summary>The live preview pane beside the review is open (remembered like the options).</summary>
     [ObservableProperty] private bool _showLivePreview;
     /// <summary>Experimental: the speech model on the graphics card (<see cref="WhisperGpu"/>). Shown only in builds that carry the Vulkan runtime.</summary>
@@ -190,7 +197,12 @@ public partial class LyricsStudioViewModel : ViewModelBase
     };
     public string ReviewConfidenceText => Selected?.Result is { } r
         ? (r.Source is LyricsStudioSource.ExistingFile or LyricsStudioSource.LrcRed ? string.Empty : $"{Math.Round(r.Confidence * 100)}% heard · ")
-          + $"{r.Lines.Count} lines · saves {(WordTimings ? "ELRC" : "LRC")}{(SaveTtml ? " + TTML" : string.Empty)}"
+          + $"{r.Lines.Count} lines · saves {(!WordTimings ? "LRC" : LyricsFiles switch
+          {
+              LyricsStudioFiles.ElrcOnly => "ELRC",
+              LyricsStudioFiles.LrcOnly => "LRC",
+              _ => "ELRC + LRC",
+          })}{(SaveTtml ? " + TTML" : string.Empty)}"
         : string.Empty;
     public bool ReviewIsTranscription => Selected?.Result?.Source == LyricsStudioSource.Transcription;
     public bool CanSave => Selected is { Status: StudioStatus.Ready or StudioStatus.Loaded } && ReviewLines.Count > 0;
@@ -288,6 +300,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
         _embedTags = s.LyricsStudioEmbedTags;
         _onlineLyrics = s.LyricsStudioOnlineLyrics;
         _saveTtml = s.LyricsStudioSaveTtml;
+        _lyricsFilesIndex = (int)LyricsSaveOptions.ParseStudioFiles(s.LyricsStudioFiles);
         _showLivePreview = s.LyricsStudioLivePreview;
         _useGpu = s.LyricsStudioUseGpu;
         WhisperGpu.Requested = _useGpu;
@@ -364,6 +377,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
     }
     partial void OnEmbedTagsChanged(bool value) => PersistPrefs();
     partial void OnOnlineLyricsChanged(bool value) => PersistPrefs();
+    partial void OnLyricsFilesIndexChanged(int value)
+    {
+        PersistPrefs();
+        OnPropertyChanged(nameof(ReviewConfidenceText));
+    }
     partial void OnSaveTtmlChanged(bool value)
     {
         PersistPrefs();
@@ -659,7 +677,7 @@ public partial class LyricsStudioViewModel : ViewModelBase
     private void PersistPrefs()
     {
         if (_loadingPrefs) return;
-        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics, SaveTtml, ShowLivePreview, UseGpu)); }
+        try { _savePrefs(new LyricsStudioPrefs(WhisperModelManager.Lullaby.Size.ToString(), SelectedLanguage.Code, WordTimings, SkipAlreadyTimed, EmbedTags, OnlineLyrics, SaveTtml, ShowLivePreview, UseGpu, LyricsFiles)); }
         catch { /* preferences are a convenience */ }
     }
 
@@ -1347,10 +1365,11 @@ public partial class LyricsStudioViewModel : ViewModelBase
             ? TimedLyricsBuilder.BuildTtml(WordTimings ? lines : lines.Select(l => l with { Words = Array.Empty<AlignedWord>() }))
             : null;
         var embed = EmbedTags;
+        var files = LyricsFiles;
         try
         {
             // Off the UI thread: trashing the old file can wait on the OS (macOS asks Finder, up to 15 s).
-            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true, ttml));
+            var outcome = await Task.Run(() => _writer.SaveDetailed(item.Track, plain, synced, embed, replaceForeignSidecar: true, ttml, files: files));
             // Lyrics made by hand: the song has lyrics after all (GitHub #162).
             if (outcome.Saved) ClearNoLyricsMark(item.Track);
             // What was written, edits included: reopening the saved song showed the result from
@@ -1362,8 +1381,9 @@ public partial class LyricsStudioViewModel : ViewModelBase
             item.LyricsCleared = false;
             item.RefreshExistingFormat();
             // ELRC with no word timed yet is written as plain LRC; say what actually landed.
-            var format = !WordTimings ? (ttml is null ? "line timings (LRC)" : "line timings (LRC + TTML)")
-                : lines.Any(l => l.Words.Count > 0) ? (ttml is null ? "word timings (ELRC)" : "word timings (ELRC + TTML)")
+            var format = !WordTimings || files == LyricsStudioFiles.LrcOnly ? (ttml is null ? "line timings (LRC)" : "line timings (LRC + TTML)")
+                : lines.Any(l => l.Words.Count > 0) ? (files == LyricsStudioFiles.ElrcOnly ? "word timings (ELRC" : "word timings (ELRC + LRC")
+                    + (ttml is null ? ")" : " + TTML)")
                 : "line timings (LRC) · no words timed yet";
             item.StatusText = outcome.KeptForeignSidecar ? $"Saved · {format} · an old lyrics file was kept, couldn't move it to the recycle bin"
                 : !outcome.SidecarWritten ? $"Saved · {format} · no lyrics file written"
