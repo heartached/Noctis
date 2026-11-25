@@ -678,6 +678,8 @@ Deezer y TIDAL: pega el enlace.</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Letras de la comunidad de Better Lyrics · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>Letras de Deezer, KuGou, YouTube Music y Musixmatch a través de lrcmux.dev, consultado en último lugar</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>Letras sin sincronizar para canciones que las otras fuentes no tienen, a menudo de artistas menos conocidos · listas para sincronizar en Lyrics Studio</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Letras sincronizadas · búsquedas más lentas</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>Elegir fuente en la página de letras puede seguir usando las fuentes desactivadas aquí.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -2865,6 +2867,7 @@ No se escribe nada en el disco hasta que pulses Guardar letras.</value><comment>
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>El modelo de lrc.red está sincronizando cada palabra…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>Sincronizada por palabra con el modelo de lrc.red · revisar</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>De lrc.red · sincronizada por palabra con su modelo</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>De Genius</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Haz clic en un tiempo para oír esa línea. Edita el texto directamente. Las líneas resaltadas necesitan una segunda revisión.</value><comment>Review pane hint</comment></data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>Todas las líneas 0,1 s antes · atajo [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>Todas las líneas 0,1 s después · atajo ]</value><comment>Tooltip</comment></data>

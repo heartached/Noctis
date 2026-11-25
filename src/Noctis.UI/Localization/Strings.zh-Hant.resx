@@ -1777,6 +1777,8 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics 社群歌詞 · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>透過 lrcmux.dev 取得 Deezer、酷狗、YouTube Music 和 Musixmatch 的歌詞，最後查詢</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>其他來源沒有的歌曲的無時間軸歌詞（多為小眾藝人）· 可直接在 Lyrics Studio 中同步</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>同步歌詞 · 查詢較慢</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>歌詞頁面上的「選擇來源」仍可使用在此關閉的來源。</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -7273,6 +7275,7 @@ Deezer 和 TIDAL：貼上連結。</value></data>
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>lrc.red 的模型正在為每個字計時…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>已由 lrc.red 的模型逐字同步 · 待檢查</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>來自 lrc.red · 由其模型逐字同步</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>來自 Genius</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve">
     <value>點選時間可試聽該行。可直接編輯文字。帶底色的行需要再檢查一下。</value>
     <comment>Review pane hint</comment>

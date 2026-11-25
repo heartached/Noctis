@@ -683,6 +683,8 @@ Deezer und TIDAL: Füge den Link ein.</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better-Lyrics-Community-Songtexte · Songtexte von Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>Songtexte von Deezer, KuGou, YouTube Music und Musixmatch über lrcmux.dev, zuletzt gefragt</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>Songtexte ohne Timing für Songs, die den anderen Quellen fehlen, oft von selteneren Künstlern · bereit zum Syncen im Lyrics Studio</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Synchrone Songtexte · langsamere Suche</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>„Quelle wählen“ auf der Songtextseite durchsucht jede davon, auch wenn sie hier aus ist.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -2864,6 +2866,7 @@ Nichts landet auf der Platte, bis du auf Songtext speichern drückst.</value><co
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>lrc.reds Modell timt jedes Wort…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>Wortsynchron von lrc.reds Modell · prüfen</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>Von lrc.red · wortsynchron von seinem Modell</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>Von Genius</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve"><value>Klicke eine Zeit, um diese Zeile zu hören. Text direkt bearbeiten. Getönte Zeilen brauchen einen zweiten Blick.</value><comment>Review pane hint</comment></data>
   <data name="LyricsStudio.NudgeEarlier" xml:space="preserve"><value>Alle Zeilen 0,1 s früher · Kürzel [</value><comment>Tooltip</comment></data>
   <data name="LyricsStudio.NudgeLater" xml:space="preserve"><value>Alle Zeilen 0,1 s später · Kürzel ]</value><comment>Tooltip</comment></data>

@@ -1777,6 +1777,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics コミュニティの歌詞 · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev 経由の Deezer、KuGou、YouTube Music、Musixmatch の歌詞。最後に問い合わせます</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>他のソースにない曲の同期なし歌詞（あまり知られていないアーティストに多い）· Lyrics Studio ですぐ同期できます</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>同期歌詞 · 検索に時間がかかります</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>歌詞ページの「ソースを選択」では、ここでオフにしたソースも使えます。</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -7273,6 +7275,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="LyricsStudio.LrcRedSyncWorking" xml:space="preserve"><value>lrc.red のモデルが単語ごとにタイミングを付けています…</value><comment>Song status and button label while lrc.red's model runs</comment></data>
   <data name="LyricsStudio.LrcRedSynced" xml:space="preserve"><value>lrc.red のモデルで単語同期済み · 確認してください</value><comment>Song status after lrc.red's model word-synced it</comment></data>
   <data name="LyricsStudio.LrcRedSource" xml:space="preserve"><value>lrc.red から · lrc.red のモデルで単語同期</value><comment>Review source line for lyrics lrc.red's model word-synced</comment></data>
+  <data name="LyricsStudio.GeniusSource" xml:space="preserve"><value>Genius から</value><comment>Review source line for plain lyrics found on Genius and timed by the model (GitHub #265)</comment></data>
   <data name="LyricsStudio.ReviewHint" xml:space="preserve">
     <value>時間をクリックするとその行を再生します。テキストはその場で編集できます。色付きの行は再確認が必要です。</value>
     <comment>Review pane hint</comment>

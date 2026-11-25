@@ -676,7 +676,7 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Also embed the plain lyrics in the audio file's tags when saving.</summary>
     public bool LyricsStudioEmbedTags { get; set; }
 
-    /// <summary>Songs with no lyrics at all: look the plain text up online (LRCLIB) before falling back to transcription.</summary>
+    /// <summary>Songs with no lyrics at all: look the plain text up online (LRCLIB, then Genius while it is on) before falling back to transcription.</summary>
     public bool LyricsStudioOnlineLyrics { get; set; } = true;
 
     /// <summary>Also save the timings as a .ttml sidecar, for players that read TTML but not ELRC (Discord: Light Cone).</summary>
@@ -1627,6 +1627,11 @@ public class AppSettings : IJsonOnDeserializing
     /// relayed, keyless, 60 requests a minute) is searched automatically, after the other sources.
     /// Off: a third-party relay whose loose match often credits the composer, so fewer answers validate.</summary>
     public bool LrcMuxEnabled { get; set; }
+
+    /// <summary>GitHub #265: whether Genius (genius.com, keyless) is searched automatically for plain
+    /// lyrics. Never synced, so it only fills songs no timed source has — often rarer artists —
+    /// and gives Lyrics Studio words to time. Two requests per lookup (search, song page).</summary>
+    public bool GeniusEnabled { get; set; } = true;
 
     /// <summary>Whether YouTube Music (line-synced) is searched automatically. Off on fresh
     /// installs: three round trips and ~1 MB of responses per lookup, on pinned client versions.</summary>
