@@ -96,6 +96,27 @@ public class SidebarEdgePeekTests
         r.Host.Close();
     }
 
+    /// <summary>11-23 feedback: with "Hide sidebar until hover" and "Hover to expand" both on,
+    /// touching the edge brought the icon rail, and only a second hover on the rail expanded
+    /// it. One touch of the edge now brings the expanded sidebar, and it stays expanded while
+    /// the pointer moves onto it.</summary>
+    [AvaloniaFact]
+    public void Peek_TouchingTheEdge_BringsTheExpandedSidebarAtOnce()
+    {
+        var r = Build(hoverExpand: true);
+        r.Move(2);
+        Assert.True(r.Rail.IsVisible);
+        Assert.Equal(SidebarEdgePeek.ExpandedWidth, r.Rail.Width);
+        Assert.True(r.Expanded);
+        r.Move(120); // onto the expanded rail
+        Assert.Equal(SidebarEdgePeek.ExpandedWidth, r.Rail.Width);
+        Assert.True(r.Expanded);
+        r.Move(900);
+        Assert.False(r.Rail.IsVisible);
+        Assert.False(r.Expanded);
+        r.Host.Close();
+    }
+
     [AvaloniaFact]
     public void Peek_IsPinnedWide_WhenKeepExpandedIsOn()
     {

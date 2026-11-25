@@ -28,6 +28,10 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
+    /// <summary>The song the page was opened for by the "Playing from …" link (Discord 11-24,
+    /// sina): the view glides it into view, washes it once and clears this.</summary>
+    [ObservableProperty] private Guid? _revealTrackId;
+
     /// <summary>Tracks currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
@@ -250,7 +254,33 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
 
         _sidebar.PlaylistTracksChanged += OnPlaylistTracksChanged;
         _sidebar.PlaylistEdited += OnPlaylistEdited;
+        _sidebar.PlaylistsReloaded += OnPlaylistsReloaded;
     }
+
+    /// <summary>
+    /// The sidebar read the playlists again (a sync from a phone or another computer changed the
+    /// file). This page held the object it was opened with, so it kept the old songs and name,
+    /// and an edit made here changed that orphan while the save wrote the sidebar's list. Take
+    /// the new object; a playlist that is gone (deleted on the other device) closes the page.
+    /// </summary>
+    private void OnPlaylistsReloaded(object? sender, EventArgs e)
+    {
+        var fresh = _sidebar.Playlists.FirstOrDefault(p => p.Id == _playlist.Id);
+        if (ReferenceEquals(fresh, _playlist)) return;
+        if (fresh is null)
+        {
+            BackRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        _playlist = fresh;
+        _navItem = _sidebar.PlaylistItems.FirstOrDefault(n => n.PlaylistId == fresh.Id);
+        foreach (var property in ReloadedArtProperties)
+            OnPropertyChanged(property);
+        OnPlaylistEdited(this, fresh.Id);
+        LoadTracks();
+    }
+
+    private static readonly string[] ReloadedArtProperties = { nameof(Art1), nameof(Art2), nameof(Art3), nameof(Art4), nameof(CanViewCover) };
 
     private void OnLibraryUpdated(object? sender, EventArgs e)
     {
@@ -268,7 +298,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         nameof(PlaylistColor), nameof(PlaylistCoverArtPath), nameof(HasCustomArt), nameof(HasCollageArt),
         nameof(HasSingleArt), nameof(ShowFallbackIcon), nameof(BackdropArtPath), nameof(IsPinned),
-        nameof(StarTip), nameof(ModifiedDateDisplay), nameof(ModifiedDateValue),
+        nameof(StarTip), nameof(ModifiedDateDisplay), nameof(ModifiedDateValue), nameof(CanViewCover),
     };
 
     /// <summary>
@@ -679,7 +709,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.WithSource(PlaySource.ForPlaylist(_playlist)).PlayAll(tracks);
     }
 
     /// <summary>The whole playlist in the current sort while a search narrows <see cref="Tracks"/>;
@@ -695,7 +725,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
             : Tracks.ToList();
         var idx = tracks.IndexOf(track);
         if (idx < 0) idx = 0;
-        _player.ReplaceQueueAndPlay(tracks, idx);
+        _player.WithSource(PlaySource.ForPlaylist(_playlist)).ReplaceQueueAndPlay(tracks, idx);
     }
 
     /// <summary>The Ctrl-selection when the acted-on row is part of it, else just that row.</summary>
@@ -931,7 +961,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
     {
         var tracks = Tracks.ToList();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.ForPlaylist(_playlist)).PlayShuffled(tracks);
     }
 
     /// <summary>Opens the add-to-playlist picker for the current multi-selection
@@ -1161,6 +1191,35 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         await _sidebar.EditPlaylistAsync(_playlist);
     }
 
+    // ── Hero cover menu (11-23): a click on the cover, View Cover / Change Cover… ──
+
+    /// <summary>The full-size viewer (the album page's); tests swap it.</summary>
+    internal Func<Views.ArtworkViewerRequest, Task> ShowArtworkViewer { get; set; } = Views.ArtworkViewerDialog.ShowAsync;
+
+    /// <summary>The cover picker (the Edit Playlist dialog's); null = cancelled. Tests swap it.</summary>
+    internal Func<Avalonia.Visual?, Task<string?>> PickCoverFile { get; set; } = EditPlaylistDialogViewModel.PickCoverFileAsync;
+
+    /// <summary>The one picture the cover shows: the custom cover, else a single album's art.
+    /// A collage or the plain colour tile has none to open full size.</summary>
+    private string? ViewableCoverPath => HasCustomArt ? PlaylistCoverArtPath : HasSingleArt ? Art1 : null;
+
+    public bool CanViewCover => ViewableCoverPath != null;
+
+    /// <summary>The async command stays disabled while the viewer is up, so a double click
+    /// on the menu row opens one viewer, not two.</summary>
+    [RelayCommand]
+    private Task ViewCover()
+        => ViewableCoverPath is { } path ? ShowArtworkViewer(new Views.ArtworkViewerRequest(path)) : Task.CompletedTask;
+
+    /// <summary>Picks a picture and makes it the cover now (as the Edit Playlist dialog's
+    /// Change cover + Save would); the header refreshes from PlaylistEdited.</summary>
+    [RelayCommand]
+    private async Task ChangeCover(Avalonia.Visual? anchor)
+    {
+        if (await PickCoverFile(anchor) is not { } file) return;
+        await _sidebar.SetPlaylistCoverAsync(_playlist, file);
+    }
+
     [RelayCommand]
     private async Task DeletePlaylist()
     {
@@ -1181,6 +1240,7 @@ public partial class PlaylistViewModel : ViewModelBase, ISearchable, IDisposable
         _player.PropertyChanged -= _playerPropertyChangedHandler;
         _sidebar.PlaylistTracksChanged -= OnPlaylistTracksChanged;
         _sidebar.PlaylistEdited -= OnPlaylistEdited;
+        _sidebar.PlaylistsReloaded -= OnPlaylistsReloaded;
         if (_playlist.IsSmartPlaylist)
             _library.LibraryUpdated -= OnLibraryUpdated;
     }

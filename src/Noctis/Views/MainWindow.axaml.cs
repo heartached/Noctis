@@ -994,6 +994,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         if (_sidebarWrapper != null)
                         {
                             _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
+                            _sidebarWrapper.Background = null;
                             _sidebarWrapper.IsVisible = !mainVm2.IsSidebarHidden;
                         }
                         if (_rootPanel != null)
@@ -1025,20 +1026,22 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             // rail stays icon-only and never expands (no slide animation).
                             // While "Keep sidebar expanded" is on the pin handler owns the
                             // layout and hovering must not touch it.
+                            // The expanded rail slides OVER the page (it is overlaid, ZIndex 10).
+                            // It used to also translate the page 160 px right, which pushed the
+                            // page's right edge off-screen while hovering: the Albums grid's last
+                            // column and the top-right buttons were cut off (live check 11-23).
                             var expanded = _sidebarWrapper.IsPointerOver
                                            && vm.Settings.SidebarHoverExpand;
                             _sidebarWrapper.Width = expanded ? 220 : 60;
-                            if (_rootPanel?.RenderTransform is TranslateTransform translate)
-                                translate.X = expanded ? 160 : 0;
+                            _sidebarWrapper.Background = expanded ? SidebarOverPageBacking(vm) : null;
                             vm.Sidebar.IsExpanded = expanded;
                         }
                     };
 
                     // Pin/unpin immediately when the setting flips (and on startup once the
                     // persisted value lands) — no pointer event will fire to do it for us.
-                    // Unlike the transient hover slide (a translate that pushes the right
-                    // edge off-screen), pinning reflows the content into the remaining
-                    // width via a real left margin so nothing gets cut off.
+                    // Unlike the transient hover slide (the rail over the page), pinning
+                    // reflows the content into the remaining width via a real left margin.
                     _sidebarAlwaysExpandedHandler = (_, pinned) =>
                     {
                         if (_sidebarWrapper == null || vm.IsSidebarHidden) return;
@@ -1046,11 +1049,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                                        || (_sidebarWrapper.IsPointerOver
                                            && vm.Settings.SidebarHoverExpand);
                         _sidebarWrapper.Width = expanded ? 220 : 60;
+                        _sidebarWrapper.Background = !pinned && expanded ? SidebarOverPageBacking(vm) : null;
                         if (_rootPanel != null)
                         {
                             _rootPanel.Margin = new Avalonia.Thickness(pinned ? 236 : 76, 0, 0, 0);
                             if (_rootPanel.RenderTransform is TranslateTransform translate)
-                                translate.X = !pinned && expanded ? 160 : 0;
+                                translate.X = 0;
                         }
                         vm.Sidebar.IsExpanded = expanded;
                     };
@@ -1063,7 +1067,13 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             () => vm.IsSidebarHidden,
                             () => vm.Settings.SidebarHoverExpand,
                             () => vm.Settings.SidebarAlwaysExpanded,
-                            expanded => vm.Sidebar.IsExpanded = expanded)
+                            expanded =>
+                            {
+                                vm.Sidebar.IsExpanded = expanded;
+                                // The peeking rail always slides over the page: the same opaque
+                                // backing as the hover-expanded rail when it is wide.
+                                _sidebarWrapper.Background = expanded ? SidebarOverPageBacking(vm) : null;
+                            })
                         {
                             // A short grace before tucking away, so overshooting the rail by a
                             // few pixels does not snap it shut (GitHub #233 auto-hide).
@@ -1087,6 +1097,20 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             }
         }
+    }
+
+    /// <summary>
+    /// The hover-expanded rail covers the page's left edge, and the theme's island fill is
+    /// slightly see-through (#F0...), so album titles showed through behind the rail's labels.
+    /// Without Liquid Glass an opaque copy of the island colour goes under it; with Liquid
+    /// Glass the frost is meant to show the page, so nothing is added.
+    /// </summary>
+    private IBrush? SidebarOverPageBacking(MainWindowViewModel vm)
+    {
+        if (vm.Settings.LiquidGlassEnabled) return null;
+        return this.TryFindResource("IslandBackground", ActualThemeVariant, out var r) && r is ISolidColorBrush b
+            ? new SolidColorBrush(Color.FromRgb(b.Color.R, b.Color.G, b.Color.B))
+            : null;
     }
 
     /// <summary>
@@ -1245,7 +1269,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         {
             if (e.Property == WindowStateProperty || e.Property == IsVisibleProperty)
                 ScheduleBackgroundTrim();
+            if (e.Property == ClientSizeProperty) RememberNormalPlacement();
         };
+        PositionChanged += (_, _) => RememberNormalPlacement();
 
         // If the main window goes down (OS shutdown, etc.) take the mini player with it
         // so it can't outlive the app shell as an orphaned topmost window.
@@ -1610,6 +1636,27 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
         CaptureWindowPlacement();
     }
 
+    // The window's last size and spot while it was Normal: what a maximized window restores to.
+    private PixelPoint? _normalPosition;
+    private Size? _normalSize;
+
+    private bool _normalPlacementQueued;
+
+    private void RememberNormalPlacement()
+    {
+        // A moment later: maximizing moves the window before WindowState says Maximized, and
+        // that move recorded the maximized corner as the spot to restore to (live 11-24).
+        if (_normalPlacementQueued) return;
+        _normalPlacementQueued = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _normalPlacementQueued = false;
+            if (WindowState != WindowState.Normal || !IsVisible) return;
+            _normalPosition = Position;
+            _normalSize = Bounds.Size;
+        }, DispatcherPriority.Background);
+    }
+
     private void CaptureWindowPlacement()
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -1621,6 +1668,23 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             settings.WindowHeight = Math.Max(MinHeight, Bounds.Height);
             settings.WindowX = Position.X;
             settings.WindowY = Position.Y;
+        }
+        else if (WindowState != WindowState.Minimized && _normalPosition is { } normalPosition)
+        {
+            // Closed maximized: the spot was never saved, so the window reopened (maximized)
+            // wherever it last closed un-maximized, the main monitor for someone who keeps it
+            // maximized on a second one (live 11-24). Save the spot it restores to, moved onto
+            // the monitor it is maximized on when it got there while maximized (Win+Shift+Arrow).
+            var position = normalPosition;
+            if (Screens?.ScreenFromWindow(this) is { } here && !here.WorkingArea.Contains(normalPosition))
+                position = new PixelPoint(here.WorkingArea.X + 40, here.WorkingArea.Y + 40);
+            settings.WindowX = position.X;
+            settings.WindowY = position.Y;
+            if (_normalSize is { } size)
+            {
+                settings.WindowWidth = Math.Max(MinWidth, size.Width);
+                settings.WindowHeight = Math.Max(MinHeight, size.Height);
+            }
         }
 
         // Never restore into Minimized; fullscreen (F11) is a transient view state,

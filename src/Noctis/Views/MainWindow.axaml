@@ -501,7 +501,8 @@
                                         <MenuItem Header="{loc:T Main.Favorite}" Command="{Binding PageSortCommand}" CommandParameter="IsFavorite">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=IsFavorite}"/></MenuItem.Icon>
                                         </MenuItem>
-                                        <MenuItem Header="{loc:T Main.Rating}" Command="{Binding PageSortCommand}" CommandParameter="Rating">
+                                        <MenuItem Header="{loc:T Main.Rating}" Command="{Binding PageSortCommand}" CommandParameter="Rating"
+                                                  IsVisible="{Binding ShowStarRatings}">
                                             <MenuItem.Icon><controls:LineIcon Classes="mv2-icon mv2-check" Data="{StaticResource MenuLineCheck}" IsVisible="{Binding PageSortColumn, Converter={StaticResource StringEquals}, ConverterParameter=Rating}"/></MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T Main.Year}" Command="{Binding PageSortCommand}" CommandParameter="Year">
@@ -675,11 +676,20 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Artist discography: shuffle icon + Play (primary). -->
+                    <!-- Artist discography (and genre pages): Shuffle + Play, the Songs page's accent
+                         Shuffle pill (11-23 feedback: an icon-only grey Shuffle here read as a
+                         different control). -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding HasArtistActions}">
-                        <Button Classes="corner-icon" Command="{Binding PageShuffleArtistCommand}" ToolTip.Tip="{loc:T Main.ShuffleAllTip}">
-                            <PathIcon Data="{StaticResource ShuffleIcon}"/>
+                        <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
+                                Command="{Binding PageShuffleArtistCommand}"
+                                ToolTip.Tip="{loc:T Main.ShuffleAllTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Main.ShuffleTip}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayArtistCommand}" ToolTip.Tip="{loc:T Main.PlayAllTip}">
@@ -778,11 +788,18 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Favorites: shuffle icon + Play (primary). -->
+                    <!-- Favorites: Shuffle + Play, accent pills like the Songs page's Shuffle. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FavoritesActionsVisible}">
-                        <Button Classes="corner-icon" Command="{Binding PageShuffleFavoritesCommand}" ToolTip.Tip="{loc:T Main.ShuffleTip}">
-                            <PathIcon Data="{StaticResource ShuffleIcon}"/>
+                        <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
+                                Command="{Binding PageShuffleFavoritesCommand}"
+                                ToolTip.Tip="{loc:T Main.ShuffleTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Main.ShuffleTip}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayFavoritesCommand}" ToolTip.Tip="{loc:T Main.PlayTip}">
@@ -796,7 +813,7 @@
                     </StackPanel>
 
                     <!-- Folders: manage folders (page option, opens Settings > Library) · sort popover ·
-                         shuffle icon · Play (primary). Same shuffle-icon + Play pair as Favorites. -->
+                         Shuffle · Play. Same accent Shuffle + Play pair as Favorites. -->
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center"
                                 IsVisible="{Binding FoldersActionsVisible}">
                         <Button Classes="corner-icon" Command="{Binding PageManageFoldersCommand}" ToolTip.Tip="{loc:T Main.ManageFolders}">
@@ -825,8 +842,15 @@
                             </Button>
                             <Border Classes="corner-dot" IsVisible="{Binding IsFoldersSortActive}"/>
                         </Panel>
-                        <Button Classes="corner-icon" Command="{Binding PageShuffleFolderCommand}" ToolTip.Tip="{loc:T Main.ShuffleFolderTip}">
-                            <PathIcon Data="{StaticResource ShuffleIcon}"/>
+                        <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
+                                Command="{Binding PageShuffleFolderCommand}"
+                                ToolTip.Tip="{loc:T Main.ShuffleFolderTip}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <PathIcon Data="{StaticResource ShuffleIcon}" Width="13" Height="13"
+                                          Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{loc:T Main.ShuffleTip}" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentForegroundBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                         <Button Classes="accent-btn corner-primary" Background="{DynamicResource AccentButtonBackground}"
                                 Command="{Binding PagePlayFolderCommand}" ToolTip.Tip="{loc:T Main.PlayFolderTip}">
@@ -1190,6 +1214,30 @@
                                        IsVisible="{Binding !!Player.UpNext.Count}" />
                         </StackPanel>
                         </DockPanel>
+
+                        <!-- Discord 11-24 (sina): "Playing from …", the page the queue was started
+                             from, as a link back to it (the song shown there). Here and not on the
+                             island, which has no room for a third line. Settings › Player ›
+                             Show Where Music Plays From. -->
+                        <Button DockPanel.Dock="Top"
+                                x:Name="QueuePlayingFromButton"
+                                Classes="queue-link"
+                                Margin="17,-4,16,8"
+                                HorizontalAlignment="Left"
+                                Command="{Binding Player.OpenPlaySourceCommand}"
+                                IsVisible="{Binding Player.HasPlaySource}"
+                                ToolTip.Tip="{Binding Player.PlayingFromText}"
+                                AutomationProperties.Name="{Binding Player.PlayingFromAccessibleName, FallbackValue={x:Static vm:PlayerViewModel.PlayingFromFallbackName}}">
+                            <Border Classes="artist-text-hover" CornerRadius="3" Padding="3,1">
+                                <TextBlock Text="{Binding Player.PlayingFromText}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Opacity="0.6"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxLines="1"
+                                           Foreground="{DynamicResource QueueDrawerForeground}" />
+                            </Border>
+                        </Button>
 
                         <!-- Accent action pills: Close dismisses the popup, Clear empties the
                              queue (same confirm-guarded handler the old ghost button used).
@@ -2016,7 +2064,9 @@
     </Border>
 
     <!-- Plugin notice pill (IPluginHost.Notify): same glass pill as the drop-import one,
-         near the top so it never covers the playback island; clears itself after a few seconds. -->
+         near the top so it never covers the playback island; clears itself after a few seconds.
+         GitHub #261: a long notice (the "saved by a newer Noctis" one, #230) wraps onto more
+         lines instead of ending in "..." before its point; the 18 radius keeps one line a pill. -->
     <Border IsVisible="{Binding PluginNotice, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
             IsHitTestVisible="False"
             HorizontalAlignment="Center"
@@ -2026,11 +2076,14 @@
             Background="{DynamicResource IslandBackground}"
             BorderBrush="#22FFFFFF"
             BorderThickness="1"
-            CornerRadius="999"
+            CornerRadius="18"
             Padding="16,9"
             ZIndex="40">
         <TextBlock Text="{Binding PluginNotice}"
                    FontSize="13" FontWeight="SemiBold"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"
+                   MaxLines="4"
                    TextTrimming="CharacterEllipsis"
                    Foreground="{DynamicResource IslandForeground}"
                    VerticalAlignment="Center"/>
@@ -2136,9 +2189,11 @@
              rounded clip sits on the content, not on SidebarWrapper: the glass draws its
              own rounded shape, and a clipping ancestor would hide from it the repaints of
              the page beside the rail that its blur reads (see GlassReach). -->
+        <!-- Tint follows Settings › Glass Opacity, like the queue drawer and the islands
+             (it was a fixed 0.55, so sidebar and queue never matched). -->
         <controls:GlassPanel Background="{DynamicResource IslandBackground}"
                              CornerRadius="20"
-                             GlassTintOpacity="0.55">
+                             GlassTintOpacity="{Binding Player.IslandBackgroundOpacity}">
             <Border CornerRadius="20" ClipToBounds="True">
                 <views:SidebarView x:Name="SidebarPane"
                                    HorizontalAlignment="Stretch"

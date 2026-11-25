@@ -9,7 +9,9 @@ using Noctis.Mobile.Services.Account;
 namespace Noctis.Mobile.ViewModels;
 
 /// <summary>Where the remote stands with the computer.</summary>
-public enum RemoteStatus { Connecting, Ready, Unreachable, NotAllowed, Outdated, SignedOut }
+/// <remarks><see cref="ServerError"/>: the computer answered, but with an HTTP error or a reply the
+/// phone could not read (not "can't reach": it was reached).</remarks>
+public enum RemoteStatus { Connecting, Ready, Unreachable, NotAllowed, Outdated, SignedOut, CertificateChanged, ServerError }
 
 /// <summary>One of the computer's Up Next songs; a tap plays it there.</summary>
 public sealed record ComputerQueueRow(int Index, Guid Id, string Title, string Artist);
@@ -45,6 +47,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     private int _pollsSinceQueue;
     private Guid? _trackId;
     private Guid? _coverAlbumId;
+    private int _coverAsk;
     // Answers are applied in the order their asks were sent: a poll that left before a press and
     // lands after it would put the old state back for a second.
     private long _sent;
@@ -84,12 +87,14 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     /// <summary>The hero in place of the player: connecting, or why it cannot be reached.</summary>
     public bool ShowsMessage => Status != RemoteStatus.Ready;
 
-    public bool CanRetry => Status is RemoteStatus.Unreachable or RemoteStatus.NotAllowed or RemoteStatus.Outdated;
+    public bool CanRetry => Status is RemoteStatus.Unreachable or RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.CertificateChanged
+        or RemoteStatus.ServerError;
 
     public string MessageTitle => Status switch
     {
         RemoteStatus.Connecting => Loc.T("Mobile.Remote.Connecting", ComputerName),
         RemoteStatus.SignedOut => Loc.T("Mobile.Remote.Title"),
+        RemoteStatus.ServerError => Loc.T("Mobile.Remote.ServerErrorTitle", ComputerName),
         _ => Loc.T("Mobile.Remote.CantReach", ComputerName),
     };
 
@@ -98,7 +103,9 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
         RemoteStatus.Unreachable => Loc.T("Mobile.Account.Error.Unreachable"),
         RemoteStatus.NotAllowed => Loc.T("Mobile.Remote.NotAllowed", ComputerName),
         RemoteStatus.Outdated => Loc.T("Mobile.Remote.Outdated", ComputerName),
+        RemoteStatus.CertificateChanged => Loc.T("Mobile.Account.Error.CertificateChanged"),
         RemoteStatus.SignedOut => Loc.T("Mobile.Account.Error.SignedOut"),
+        RemoteStatus.ServerError => Loc.T("Mobile.Remote.ServerError", ComputerName),
         _ => string.Empty,
     };
 
@@ -187,8 +194,11 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
             return;
         }
         _loopCts = new CancellationTokenSource();
-        // Back on screen: Up Next may have changed while away.
+        // Back on screen: Up Next may have changed while away, and the first answer is applied as
+        // a new song, so a cover that failed or was cut off by leaving is asked for again (one
+        // that shows is kept: LoadCover skips the album it has).
         _queueStale = true;
+        _trackId = null;
         Loop = RunAsync(_loopCts.Token);
     }
 
@@ -234,7 +244,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
                 if (ct.IsCancellationRequested) return;
                 var status = Fail(ex);
                 // Nothing a wait fixes: the page stops asking until Try Again.
-                if (status is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut)
+                if (status is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut or RemoteStatus.CertificateChanged)
                 {
                     StopIfCurrent(ct);
                     return;
@@ -261,14 +271,21 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     /// moment" (a refused jump, a busy computer) leave a showing player as it is.</summary>
     private RemoteStatus Fail(Exception ex)
     {
-        var kind = ex is NoctisServerException n ? n.Kind : NoctisErrorKind.Unreachable;
+        // Anything but the service's own errors is a reply it could not make sense of (the
+        // service turns every failure to connect into Unreachable): not "can't reach".
+        var kind = ex is NoctisServerException n ? n.Kind : NoctisErrorKind.Server;
         if (ex is not NoctisServerException) DebugLog.Write("Remote", $"Ask failed: {ex.GetType().Name}");
         Status = kind switch
         {
             NoctisErrorKind.RemoteNotAllowed => RemoteStatus.NotAllowed,
             NoctisErrorKind.Outdated => RemoteStatus.Outdated,
             NoctisErrorKind.SignedOut => RemoteStatus.SignedOut,
+            // Every address of the computer was tried (the service moves to one that answers as
+            // the pinned computer): only a new sign-in trusts a new security code.
+            NoctisErrorKind.CertificateChanged => RemoteStatus.CertificateChanged,
             NoctisErrorKind.Server when Status == RemoteStatus.Ready => RemoteStatus.Ready,
+            // It answered: an HTTP error or a reply that could not be read.
+            NoctisErrorKind.Server => RemoteStatus.ServerError,
             _ => RemoteStatus.Unreachable,
         };
         return Status;
@@ -327,6 +344,9 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
     {
         if (albumId == _coverAlbumId) return;
         _coverAlbumId = albumId;
+        // By ask, not album: a fetch cut off by leaving the page lands after the page came back
+        // and asked for the same album again, and must not clear that ask.
+        var ask = ++_coverAsk;
         if (albumId is not { } id)
         {
             ArtworkPath = null;
@@ -335,14 +355,17 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
         try
         {
             var path = await _account.GetComputerCoverAsync(id, _loopCts?.Token ?? CancellationToken.None);
-            if (_coverAlbumId == id) ArtworkPath = path;
+            if (ask == _coverAsk) ArtworkPath = path;
         }
         catch (Exception ex)
         {
-            if (_coverAlbumId == id) ArtworkPath = null;
             if (ex is not OperationCanceledException) DebugLog.Write("Remote", $"Cover failed: {ex.GetType().Name}");
             // Asked again with the next new song, or when the page comes back.
-            if (_coverAlbumId == id) _coverAlbumId = null;
+            if (ask == _coverAsk)
+            {
+                ArtworkPath = null;
+                _coverAlbumId = null;
+            }
         }
     }
 
@@ -368,7 +391,7 @@ public sealed partial class ComputerRemotePageViewModel : MobilePage
             if (ct.IsCancellationRequested) return;
             // A jump whose row moved on, say: the next ask brings Up Next as it is now.
             _queueStale = true;
-            if (Fail(ex) is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut) StopIfCurrent(ct);
+            if (Fail(ex) is RemoteStatus.NotAllowed or RemoteStatus.Outdated or RemoteStatus.SignedOut or RemoteStatus.CertificateChanged) StopIfCurrent(ct);
         }
     }
 

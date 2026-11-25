@@ -156,6 +156,130 @@ public class ListeningHistoryHandoffTests : IDisposable
     }
 
     [Fact]
+    public void Week_CountsPlaysPerDay_AndAllTimeCoversTheWholeLog()
+    {
+        var song = Guid.NewGuid();
+        var now = new DateTime(2026, 10, 28, 12, 0, 0, DateTimeKind.Utc);
+        var log = new[]
+        {
+            Play(song, now.AddDays(-30)),                  // outside the week, inside all time
+            Play(song, now.AddDays(-2)),
+            Play(song, now.AddDays(-2).AddHours(1), skipped: true),
+            Play(song, now.AddHours(-1)),
+        };
+
+        var week = ListeningWeekCalculator.Compute(log, _ => TimeSpan.FromMinutes(4), now, TimeZoneInfo.Utc);
+        Assert.Equal(new[] { 0, 0, 0, 0, 2, 0, 1 }, week.DayPlays);
+        Assert.Equal(3, week.Plays);
+
+        // The same rule: old events count half the song, a skip a play and no time.
+        var (ticks, plays) = ListeningWeekCalculator.ComputeAllTime(log, _ => TimeSpan.FromMinutes(4));
+        Assert.Equal(4, plays);
+        Assert.Equal(TimeSpan.FromMinutes(6).Ticks, ticks);
+        Assert.Equal((0L, 0), ListeningWeekCalculator.ComputeAllTime(Array.Empty<PlayHistoryEvent>(), _ => null));
+    }
+
+    [Fact]
+    public void TappingADay_ShowsThatDay_AndTappingItAgainOrTheCard_ShowsTheWeek()
+    {
+        var songs = Enumerable.Range(1, 2).Select(i => MobileFixtures.Song("Song " + i)).ToArray();
+        var now = DateTime.UtcNow.Date.AddHours(12);   // noon: a test after midnight keeps its days
+        using var rig = MobileFixtures.MakeRig(songs, log: h =>
+        {
+            h.Seed(songs[0], now.AddDays(-2));
+            h.Seed(songs[1], now.AddDays(-2).AddMinutes(5));
+            h.Seed(songs[0], now.AddMinutes(-10));
+        });
+        var vm = new ListeningHistoryViewModel(rig.Shell) { UtcNow = () => now, Zone = TimeZoneInfo.Utc };
+        vm.Refresh();
+        Assert.Equal("This Week", vm.WeekCaption);
+        Assert.Equal("3 plays", vm.WeekPlays);
+        Assert.Equal("2 min", vm.WeekTotal);   // 3 x 45 s
+
+        var day = vm.Bars[4];
+        vm.SelectDayCommand.Execute(day);
+        Assert.Equal(day.Date.ToString("dddd", Noctis.Localization.Loc.Instance.Culture), vm.WeekCaption, ignoreCase: true);
+        Assert.Equal("2 plays", vm.WeekPlays);
+        Assert.Equal("1 min", vm.WeekTotal);   // 2 x 45 s
+        Assert.Equal(new[] { false, false, false, false, true, false, false }, vm.Bars.Select(b => b.IsSelected));
+        Assert.Same(day, vm.Bars[4]);          // changed in place: the bars stay
+
+        vm.SelectDayCommand.Execute(day);      // the same bar again: the week
+        Assert.Equal("This Week", vm.WeekCaption);
+        Assert.Equal("3 plays", vm.WeekPlays);
+        Assert.Null(vm.SelectedDay);
+        Assert.DoesNotContain(vm.Bars, b => b.IsSelected);
+
+        vm.SelectDayCommand.Execute(vm.Bars[6]);
+        Assert.Equal("Today", vm.WeekCaption);
+        Assert.Equal("1 play", vm.WeekPlays);
+        Assert.Equal("45 s", vm.WeekTotal);
+        vm.ClearDayCommand.Execute(null);      // the card tapped outside the bars
+        Assert.Equal("This Week", vm.WeekCaption);
+        Assert.Equal("2 min", vm.WeekTotal);
+    }
+
+    [Fact]
+    public void ASelectedDay_StaysSelected_WhenAPlayLands()
+    {
+        var song = MobileFixtures.Song("Song");
+        var now = DateTime.UtcNow.Date.AddHours(12);   // noon: a test after midnight keeps its days
+        using var rig = MobileFixtures.MakeRig(new[] { song }, log: h => h.Seed(song, now.AddMinutes(-30)));
+        var vm = new ListeningHistoryViewModel(rig.Shell) { UtcNow = () => now, Zone = TimeZoneInfo.Utc };
+        vm.Refresh();
+        vm.SelectDayCommand.Execute(vm.Bars[6]);
+        Assert.Equal("1 play", vm.WeekPlays);
+
+        rig.History.Seed(song, now.AddMinutes(-1));
+        vm.Refresh();   // what PlayRecorded runs
+
+        Assert.Equal("Today", vm.WeekCaption);
+        Assert.Equal("2 plays", vm.WeekPlays);
+        Assert.True(vm.Bars[6].IsSelected);
+        Assert.Equal(1, vm.Bars.Count(b => b.IsSelected));
+    }
+
+    [Fact]
+    public void DayBars_ScreenReaderName_HasTheTimeAndThePlays()
+    {
+        var song = MobileFixtures.Song("Song");
+        var now = DateTime.UtcNow.Date.AddHours(12);   // noon: a test after midnight keeps its days
+        using var rig = MobileFixtures.MakeRig(new[] { song }, log: h =>
+        {
+            h.Seed(song, now.AddMinutes(-30));
+            h.Seed(song, now.AddMinutes(-20));
+        });
+        var vm = new ListeningHistoryViewModel(rig.Shell) { UtcNow = () => now, Zone = TimeZoneInfo.Utc };
+        vm.Refresh();
+        Assert.EndsWith(": 1 min, 2 plays", vm.Bars[6].Name);
+        Assert.EndsWith(": 0 min, 0 plays", vm.Bars[0].Name);
+    }
+
+    [Fact]
+    public void RecentRows_ShowEachSongsPlays_AndTheAllTimeLineCoversTheWholeLog()
+    {
+        var songs = new[] { MobileFixtures.Song("Often", artist: "Band"), MobileFixtures.Song("Once", artist: "") };
+        var now = DateTime.UtcNow.Date.AddHours(12);   // noon: a test after midnight keeps its days
+        using var rig = MobileFixtures.MakeRig(songs, log: h =>
+        {
+            h.Seed(songs[0], now.AddDays(-200));   // long before this week: all time still has it
+            h.Seed(songs[0], now.AddDays(-3));
+            h.Seed(songs[1], now.AddMinutes(-20));
+            h.Seed(songs[0], now.AddMinutes(-5));
+        });
+        var vm = new ListeningHistoryViewModel(rig.Shell) { UtcNow = () => now, Zone = TimeZoneInfo.Utc };
+        vm.Refresh();
+
+        Assert.Equal(new[] { "Band · 3 plays", "1 play" }, vm.Recent.Select(r => r.Sub));
+        Assert.Equal("5 min", vm.Recent[0].When);
+        Assert.Equal("All Time: 3 min · 4 plays", vm.AllTime);   // 4 x 45 s
+
+        rig.History.EventList.Clear();
+        vm.Refresh();
+        Assert.Equal("", vm.AllTime);
+    }
+
+    [Fact]
     public async Task ShowAll_OpensASongListOfTheRecentSongs()
     {
         var songs = Enumerable.Range(1, 5).Select(i => MobileFixtures.Song("S" + i)).ToArray();
@@ -426,6 +550,27 @@ public class ListeningHistoryHandoffTests : IDisposable
         shell.Player.PlayTracks(new[] { local, a }, 0);
         shell.PickUp.Flush();
         Assert.Empty(account.SavedQueues);
+    }
+
+    [Fact]
+    public void PickUp_OnTheNextSong_SendsItOnce_NotAlsoAsTheSongAfterIt()
+    {
+        // The send on a song change ran while Up Next still held the song just started, so the
+        // computer was told to play it twice in a row.
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new MobileAccountTests.FakeAccount { Account = MobileAccountTests.FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        shell.SetPickUpOnComputer(true);
+        shell.Player.PlayTracks(new[] { a, b, c }, 0);
+
+        rig.Player.RaiseTrackEnded();
+
+        var sent = account.SavedQueues.Last();
+        Assert.Equal(b.Id, sent.Current);
+        Assert.Equal(new[] { b.Id, c.Id }, sent.Ids);
     }
 
     [Fact]
@@ -930,6 +1075,39 @@ public class ListeningHistoryHandoffTests : IDisposable
         Assert.Equal("Forever", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "KeepValueLabel").Text);
         Assert.True(MobileFixtures.Named<Avalonia.Controls.Button>(pane, "ShowAllButton").IsVisible);
         Assert.False(MobileFixtures.Named<Avalonia.Controls.Grid>(pane, "NoRecentRow").IsVisible);
+        window.Close();
+    }
+
+    [AvaloniaFact]
+    public void Pane_EachDayIsAFullHeightButton_AndATapShowsThatDay()
+    {
+        var song = MobileFixtures.Song("Song", artist: "Band");
+        var now = DateTime.UtcNow.Date.AddHours(12);
+        using var rig = MobileFixtures.MakeRig(new[] { song }, log: h =>
+        {
+            for (var i = 0; i < 4; i++) h.Seed(song, now.AddMinutes(-30 + i));
+        });
+        MobileFixtures.EnsurePhonePalette();
+        var vm = new ListeningHistoryViewModel(rig.Shell) { UtcNow = () => now, Zone = TimeZoneInfo.Utc };
+        var pane = new ListeningHistoryPane { DataContext = vm };
+        var window = new Avalonia.Controls.Window { Width = 412, Height = 915, Content = pane };
+        window.Show();
+        window.UpdateLayout();
+
+        var bars = MobileFixtures.Named<Avalonia.Controls.ItemsControl>(pane, "DayBars");
+        var buttons = bars.GetVisualDescendants().OfType<Avalonia.Controls.Button>().ToList();
+        Assert.Equal(7, buttons.Count);
+        // Today has the only tall bar; an empty day's button still spans the whole column.
+        Assert.All(buttons, b => Assert.Equal(buttons[6].Bounds.Height, b.Bounds.Height, 1));
+        Assert.True(buttons[0].Bounds.Height > HistoryBar.MaxHeight);
+        Assert.False(string.IsNullOrEmpty(Avalonia.Automation.AutomationProperties.GetName(buttons[0])));
+
+        buttons[6].Command!.Execute(buttons[6].CommandParameter);
+        window.UpdateLayout();
+        Assert.Equal("Today", MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "WeekCaption").Text);
+        Assert.Contains(buttons[6].GetVisualDescendants().OfType<Avalonia.Controls.Border>(), b => b.Classes.Contains("selected"));
+        Assert.Equal("Band · 4 plays", vm.Recent[0].Sub);
+        Assert.True(MobileFixtures.Named<Avalonia.Controls.TextBlock>(pane, "AllTimeLabel").IsVisible);
         window.Close();
     }
 

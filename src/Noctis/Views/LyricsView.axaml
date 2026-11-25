@@ -696,12 +696,53 @@
                             Margin="0,4,0,0"
                             ClipToBounds="True"
                             IsVisible="{Binding Player.CurrentTrack, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <!-- Genres: one link each, opening that genre's page (like the album page's). -->
+                    <ItemsControl x:Name="GenreLinks"
+                                  ItemsSource="{Binding GenreTokens}"
+                                  VerticalAlignment="Center"
+                                  IsVisible="{Binding HasGenreTokens}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ArtistTokenItem">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Classes="link-btn"
+                                            ToolTip.Tip="{loc:T Genres.ShowGenreTip}"
+                                            AutomationProperties.Name="{Binding Name}"
+                                            Command="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).OpenGenreCommand}"
+                                            CommandParameter="{Binding Name}">
+                                        <TextBlock Text="{Binding Name}"
+                                                   FontSize="12"
+                                                   Foreground="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).LyricsSubtleFg}"/>
+                                    </Button>
+                                    <TextBlock Text="{Binding Separator}"
+                                               FontSize="12"
+                                               VerticalAlignment="Center"
+                                               Foreground="{Binding $parent[ItemsControl].((vm:LyricsViewModel)DataContext).LyricsSubtleFg}"
+                                               IsVisible="{Binding !IsLast}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Text=" · "
+                               FontSize="12"
+                               Foreground="{Binding LyricsSubtleFg}"
+                               VerticalAlignment="Center">
+                        <TextBlock.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}" FallbackValue="{x:False}">
+                                <Binding Path="HasGenreTokens"/>
+                                <Binding Path="HasHeaderFacts"/>
+                            </MultiBinding>
+                        </TextBlock.IsVisible>
+                    </TextBlock>
                     <TextBlock FontSize="12" Foreground="{Binding LyricsSubtleFg}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
                         <TextBlock.Text>
-                            <!-- MetadataLine skips empty segments: untagged files (no genre/year)
-                                 otherwise render a stray leading "· 2018 · 24 tracks" dot. -->
+                            <!-- MetadataLine skips empty segments: untagged files (no year)
+                                 otherwise render a stray leading "· 24 tracks" dot. -->
                             <MultiBinding Converter="{StaticResource MetadataLine}" ConverterParameter="track">
-                                <Binding Path="Player.CurrentTrack.GenreDisplay" FallbackValue=""/>
                                 <Binding Path="Player.CurrentTrack.DisplayYear" FallbackValue="0"/>
                                 <!-- Album-wide count (every disc), not the file's per-disc TRCK
                                      total: "9 tracks" on a 19-song, 3-disc album (Discord, aaron 09-21). -->
@@ -1090,9 +1131,13 @@
                     </LinearGradientBrush>
                 </Border.OpacityMask>
 
+                <!-- Focus never scrolls the lyrics (11-23 feedback): a focused line (Tab, or
+                     the one the window focuses again on Alt+Tab back) was brought into view,
+                     which read as a user scroll and paused following the sung line. -->
                 <ScrollViewer x:Name="LyricsScrollViewer"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
+                              BringIntoViewOnFocusChange="False"
                               Padding="24,0,48,0">
                     <!-- Scroll content = lyric lines + the Written-By footer, one extent.
                          The ItemsControl stays this panel's FIRST child at Y=0 with no
@@ -1131,8 +1176,11 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="m:LyricLine">
                                 <!-- Reads its line (UIA read "Avalonia.Controls.StackPanel", 10-13). -->
+                                <!-- Not a Tab stop: Tab goes to the page's controls, not through
+                                     every line of the song (lines still click to seek). -->
                                 <Button Background="Transparent"
                                         Classes="lyric-line-btn"
+                                        IsTabStop="False"
                                         AutomationProperties.Name="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}"
                                         Classes.active="{Binding IsActive}"
                                         BorderThickness="0"
@@ -1397,8 +1445,11 @@
 
             <!-- (Source / Save / Alternate buttons moved to left panel bottom) -->
 
-            <!-- Follow Button -->
-            <Button Classes="pill-btn"
+            <!-- Follow Button. Its bottom margin is set in code (UpdateFollowPillMargin): the
+                 wide-mode 1.1x zoom grows this panel from its top-left corner (the origin
+                 "0.5,0.5" is half a pixel, not the centre), which pushed a 30px margin past the
+                 window's bottom edge, so the pill never showed. -->
+            <Button x:Name="FollowButton" Classes="pill-btn"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
                     Margin="0,0,0,30"

@@ -79,6 +79,10 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
+    /// <summary>The song the page was opened for by the "Playing from …" link (Discord 11-24,
+    /// sina): the view glides it into view, washes it once and clears this.</summary>
+    [ObservableProperty] private Guid? _revealTrackId;
+
     /// <summary>Tracks currently Ctrl-selected in the view. Set by code-behind.</summary>
     public List<Track> CtrlSelectedTracks { get; set; } = new();
 
@@ -354,7 +358,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         var index = tracks.IndexOf(track);
         if (index < 0) index = 0;
 
-        _player.PlayFromRow(tracks, index);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Songs)).PlayFromRow(tracks, index);
     }
 
     /// <summary>
@@ -379,7 +383,7 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
         var tracks = FilteredTracks.ToList();
         if (tracks.Count == 0) return;
 
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Songs)).PlayShuffled(tracks);
     }
 
     [RelayCommand]
@@ -540,6 +544,22 @@ public partial class LibrarySongsViewModel : ViewModelBase, ISearchable, IDispos
     {
         if (!string.IsNullOrWhiteSpace(artistName))
             _viewArtistAction?.Invoke(artistName);
+    }
+
+    private Action<string>? _openGenreAction;
+    public void SetOpenGenreAction(Action<string> action) => _openGenreAction = action;
+
+    /// <summary>The Genre cell's link: opens that genre's page, like the album page's genre
+    /// links. The cell shows <see cref="Track.GenreDisplay"/> ("Rock · Pop"); a click on one
+    /// genre passes that genre (ArtistCreditLink), a keyboard press the whole line, which
+    /// opens its first genre.</summary>
+    [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (string.IsNullOrWhiteSpace(genre)) return;
+        var first = genre.Split(" · ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (!string.IsNullOrEmpty(first))
+            _openGenreAction?.Invoke(first);
     }
 
     // ── Live Plays re-rank (Discord, Andre 10-28) ──

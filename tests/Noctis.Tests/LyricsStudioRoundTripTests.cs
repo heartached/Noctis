@@ -41,14 +41,14 @@ public class LyricsStudioRoundTripTests : IDisposable
             => throw new InvalidOperationException("no model run in these tests");
     }
 
-    private (LyricsStudioViewModel Vm, Track Song) StudioOn(string lrc)
+    private (LyricsStudioViewModel Vm, Track Song) StudioOn(string lrc, Func<string, bool>? trash = null)
     {
         var path = Path.Combine(_root, "song.mp3");
         File.WriteAllText(Path.ChangeExtension(path, ".lrc"), lrc);
         var song = new Track { Title = "song", Artist = "A", FilePath = path, Duration = TimeSpan.FromMinutes(3) };
         var writer = new LyricsWriter(null!, null, new AppWrittenSidecarRegistry(Path.Combine(_root, "registry.json")), Path.Combine(_root, "cache"))
         {
-            TrashFile = _ => true,
+            TrashFile = trash ?? (_ => true),
         };
         var vm = new LyricsStudioViewModel(new[] { song }, new Engine(_root), writer, new FakeLibraryService(), null, () => new AppSettings(), _ => { })
         {
@@ -88,6 +88,51 @@ public class LyricsStudioRoundTripTests : IDisposable
         var (ttml, _) = TtmlParser.Parse(File.ReadAllText(Path.ChangeExtension(song.FilePath!, ".ttml")));
         Assert.Equal(new[] { "(oh", "oh)" }, ttml![0].BackgroundWords?.Select(w => w.Text.Trim()));
         Assert.Equal(TimeSpan.FromSeconds(2.1), ttml[0].BackgroundWords![0].Start);
+    }
+
+    /// <summary>Owner 11-24: a word-timed save always wrote both an .elrc and an .lrc; Settings ›
+    /// Lyrics files now picks ELRC and LRC (default), ELRC only or LRC only, and the other file goes.</summary>
+    [AvaloniaTheory]
+    [InlineData(LyricsStudioFiles.ElrcAndLrc, true, true)]
+    [InlineData(LyricsStudioFiles.ElrcOnly, true, false)]
+    [InlineData(LyricsStudioFiles.LrcOnly, false, true)]
+    public async Task LyricsFiles_WritesOnlyTheChosenFiles(LyricsStudioFiles choice, bool elrc, bool lrc)
+    {
+        var (vm, song) = StudioOn(Elrc, trash: f => { File.Delete(f); return true; });
+        // The song already has both, as in the owner's folder.
+        File.WriteAllText(Path.ChangeExtension(song.FilePath!, ".elrc"), Elrc);
+        vm.WordTimings = true;
+        vm.LyricsFilesIndex = (int)choice;
+        vm.Selected = vm.Queue[0];
+        await vm.SaveCommand.ExecuteAsync(null);
+        Assert.Equal(LyricsStudioViewModel.StudioStatus.Saved, vm.Queue[0].Status);
+
+        var elrcPath = Path.ChangeExtension(song.FilePath!, ".elrc");
+        var lrcPath = Path.ChangeExtension(song.FilePath!, ".lrc");
+        Assert.Equal(elrc, File.Exists(elrcPath));
+        Assert.Equal(lrc, File.Exists(lrcPath));
+        if (elrc) Assert.Contains("<00:01.50>lanterns", File.ReadAllText(elrcPath));
+        // LRC only: line timings, no word timings, in the file and on the song.
+        if (choice == LyricsStudioFiles.LrcOnly)
+        {
+            Assert.DoesNotContain("<00:", File.ReadAllText(lrcPath));
+            Assert.DoesNotContain("<00:", song.SyncedLyrics);
+        }
+    }
+
+    [AvaloniaFact]
+    public void LyricsFiles_ChoiceIsSaved_AndReadBack()
+    {
+        var settings = new AppSettings { LyricsStudioFiles = nameof(LyricsStudioFiles.ElrcOnly) };
+        var path = Path.Combine(_root, "song.mp3");
+        var song = new Track { Title = "song", Artist = "A", FilePath = path, Duration = TimeSpan.FromMinutes(3) };
+        var writer = new LyricsWriter(null!, null, new AppWrittenSidecarRegistry(Path.Combine(_root, "registry.json")), Path.Combine(_root, "cache"));
+        LyricsStudioPrefs? prefs = null;
+        var vm = new LyricsStudioViewModel(new[] { song }, new Engine(_root), writer, new FakeLibraryService(), null, () => settings, p => prefs = p);
+        Assert.Equal((int)LyricsStudioFiles.ElrcOnly, vm.LyricsFilesIndex);
+
+        vm.LyricsFilesIndex = (int)LyricsStudioFiles.LrcOnly;
+        Assert.Equal(LyricsStudioFiles.LrcOnly, prefs?.Files);
     }
 
     [AvaloniaFact]

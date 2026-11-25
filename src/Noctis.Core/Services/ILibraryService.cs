@@ -142,6 +142,17 @@ public interface ILibraryService
     Task RemoveTracksAsync(IEnumerable<Guid> ids);
 
     /// <summary>
+    /// A music folder was taken out of the list: its songs leave the library now, not only when
+    /// the rescan that follows finishes. That rescan can take minutes, a desktop scan that finds
+    /// any folder unreachable is abandoned, and a quit mid-scan saves a checkpoint that keeps every
+    /// song it started with, so the songs stayed. Songs still under one of
+    /// <paramref name="remainingFolders"/> (or a folder include rule), songs added on their own and
+    /// the phone's desktop songs stay. Nothing is excluded and the user-state journal is kept, so
+    /// adding the folder again brings the songs back with their play counts, ratings and favorites.
+    /// </summary>
+    Task RemoveFolderTracksAsync(string folder, IReadOnlyCollection<string> remainingFolders) => Task.CompletedTask;
+
+    /// <summary>
     /// Phone app: replaces the whole <see cref="SourceType.NoctisServer"/> set (the signed-in
     /// desktop's songs) with <paramref name="tracks"/>; local tracks are untouched. A song
     /// already present keeps its instance when its catalog metadata is unchanged, or keeps its
@@ -153,9 +164,10 @@ public interface ILibraryService
     Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
         => throw new NotSupportedException();
 
-    /// <summary>Phone app sign-out: drops every <see cref="SourceType.NoctisServer"/> track
-    /// (and covers no remaining track uses), rebuilds, saves, raises <see cref="LibraryUpdated"/>.</summary>
-    Task RemoveRemoteTracksAsync() => throw new NotSupportedException();
+    /// <summary>Phone app sign-out: drops every <see cref="SourceType.NoctisServer"/> track but those
+    /// in <paramref name="keep"/> (downloads a sign-out keeps; null = none), and covers no remaining
+    /// track uses; rebuilds, saves, raises <see cref="LibraryUpdated"/>.</summary>
+    Task RemoveRemoteTracksAsync(IReadOnlySet<Guid>? keep = null) => throw new NotSupportedException();
 
     /// <summary>
     /// Updates the on-disk location of tracks that have been moved/renamed, preserving
@@ -248,6 +260,10 @@ public interface ILibraryService
 
     /// <summary>Undoes <see cref="LinkAlbumTracksAsync"/>.</summary>
     Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId) => Task.CompletedTask;
+
+    /// <summary>Replaces every link at once (the phone takes the computer's links at each sync):
+    /// saved, rebuilt, LibraryUpdated; nothing happens when they are the same.</summary>
+    Task SetAlbumLinksAsync(IReadOnlyList<AlbumLink> links) => Task.CompletedTask;
 
     /// <summary>
     /// GitHub #193: switches the automatic album grouping (#178) on or off and rebuilds right

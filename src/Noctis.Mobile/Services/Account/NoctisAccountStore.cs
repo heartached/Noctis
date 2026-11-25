@@ -45,6 +45,9 @@ internal sealed class NoctisSyncState
     /// <summary>The desktop songs here are dated by when they reached the phone. False in a file
     /// from before that rule: those songs still carry the computer's date and are re-dated once.</summary>
     public bool ArrivalDates { get; set; }
+    /// <summary>The computer's version of each album cover the phone has (album id "N" → its
+    /// noctisCover): a cover whose version changed there is downloaded again.</summary>
+    public Dictionary<string, string> Covers { get; set; } = new();
 }
 
 /// <summary>Phone changes waiting for the next sync. Written on every change.</summary>
@@ -72,12 +75,33 @@ internal sealed class NoctisUploadState
     public HashSet<string> Sent { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+/// <summary>Downloads whose song the computer no longer has (a settled catalog without it, or a
+/// sign-out that kept them): the files stay and still play until the user removes them. Not tied to
+/// one server + user: signing in to another computer lists them, the original one takes them back.</summary>
+internal sealed class NoctisOfflineState
+{
+    /// <summary>Desktop song ids (Guid "N").</summary>
+    public HashSet<string> NotOnComputer { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+/// <summary>Songs a download run asked for and has not finished (the app ended mid-way, or the system
+/// paused it): the next start resumes them, on the computer they were asked from only.</summary>
+internal sealed class NoctisUnfinishedDownloads
+{
+    public string ServerUrl { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    /// <summary>Desktop song ids (Guid "N").</summary>
+    public List<string> Songs { get; set; } = new();
+}
+
 /// <summary>
 /// The account's files in the platform's no-backup directory (Android NoBackupFilesDir; tests a
 /// temp folder): <c>device.json</c> (this install's id, kept across sign-outs),
 /// <c>account.json</c> (server, user, device key, pinned fingerprint — never the password),
 /// <c>sync.json</c> (checkpoint + last agreed state), <c>pending.json</c> (unpushed edits and
-/// queued plays) and <c>uploads.json</c> (phone songs already sent). Every write goes to a temp file first and is then moved over the old one, so a
+/// queued plays), <c>uploads.json</c> (phone songs already sent), <c>offline.json</c> (downloads
+/// the computer no longer has, kept across sign-outs) and <c>downloads.json</c> (downloads still
+/// asked for, resumed at the next start; there only while some are). Every write goes to a temp file first and is then moved over the old one, so a
 /// crash mid-write leaves the previous version. Unreadable files read as empty.
 /// </summary>
 public sealed class NoctisAccountStore
@@ -102,6 +126,8 @@ public sealed class NoctisAccountStore
     private string SyncPath => Path.Combine(Directory, "sync.json");
     private string PendingPath => Path.Combine(Directory, "pending.json");
     private string UploadsPath => Path.Combine(Directory, "uploads.json");
+    private string OfflinePath => Path.Combine(Directory, "offline.json");
+    private string UnfinishedPath => Path.Combine(Directory, "downloads.json");
 
     /// <summary>This install's device id: 16 random bytes as hex, created on first use and kept for good.</summary>
     public string LoadOrCreateDeviceId()
@@ -160,8 +186,31 @@ public sealed class NoctisAccountStore
         lock (_writeGate) WriteAtomic(UploadsPath, json);
     }
 
+    internal NoctisOfflineState LoadOffline() => Read<NoctisOfflineState>(OfflinePath) ?? new NoctisOfflineState();
+
+    internal void SaveOffline(NoctisOfflineState offline)
+    {
+        var json = JsonSerializer.Serialize(offline, Json);
+        lock (_writeGate) WriteAtomic(OfflinePath, json);
+    }
+
+    internal NoctisUnfinishedDownloads? LoadUnfinishedDownloads() => Read<NoctisUnfinishedDownloads>(UnfinishedPath);
+
+    /// <summary>Writes the songs still asked for; none: the file goes.</summary>
+    internal void SaveUnfinishedDownloads(NoctisUnfinishedDownloads unfinished)
+    {
+        if (unfinished.Songs.Count == 0)
+        {
+            lock (_writeGate) NoctisServerClient.TryDelete(UnfinishedPath);
+            return;
+        }
+        var json = JsonSerializer.Serialize(unfinished, Json);
+        lock (_writeGate) WriteAtomic(UnfinishedPath, json);
+    }
+
     /// <summary>Sign-out: forgets the checkpoint, the agreed state, anything unsent and the record of
-    /// songs sent (the computer's own check finds them again). The device id stays.</summary>
+    /// songs sent (the computer's own check finds them again). The device id stays, and so does
+    /// offline.json (the downloads a sign-out keeps).</summary>
     internal void DeleteSyncData()
     {
         lock (_writeGate)

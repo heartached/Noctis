@@ -68,4 +68,37 @@ public class NavigationHistoryDisposeTests
             App.Services = null;
         }
     }
+
+    /// <summary>An artist page opened from Home highlights Artists; Back to it (from an album
+    /// or another section) highlighted Home again, the section it was opened from (11-24).</summary>
+    [AvaloniaFact]
+    public void BackToAnArtistPage_HighlightsArtists_NotTheSectionItWasOpenedFrom()
+    {
+        var vm = BuildShell();
+        try
+        {
+            Navigate(vm, "home");
+            vm.OpenArtistByName("Somebody");
+            Dispatcher.UIThread.RunJobs();
+            var page = Assert.IsType<ArtistDetailViewModel>(vm.CurrentView);
+            Assert.Equal("artists", vm.Sidebar.SelectedNavItem?.Key);
+
+            Navigate(vm, "songs");
+            Assert.Equal("songs", vm.Sidebar.SelectedNavItem?.Key);
+
+            vm.GoBackInHistoryCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(page, vm.CurrentView);
+            Assert.Equal("artists", vm.Sidebar.SelectedNavItem?.Key);
+
+            vm.GoForwardInHistoryCommand.Execute(null);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal("songs", vm.Sidebar.SelectedNavItem?.Key);
+        }
+        finally
+        {
+            (App.Services as IDisposable)?.Dispose();
+            App.Services = null;
+        }
+    }
 }

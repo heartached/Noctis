@@ -42,7 +42,7 @@ public class NoctisServerTests : IAsyncLifetime
         var art = Path.Combine(_dir, "cover.jpg");
         File.WriteAllBytes(art, new byte[] { 0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3 });
 
-        var t1 = new Track { Id = Guid.NewGuid(), Title = "Alpha", Artist = "The Xylophones", AlbumArtist = "The Xylophones", Album = "First", AlbumId = AlbumA, FilePath = audio, Duration = TimeSpan.FromSeconds(200), TrackNumber = 1, Year = 2001, Genre = "Rock", FileSize = 5000, Bitrate = 320 };
+        var t1 = new Track { Id = Guid.NewGuid(), Title = "Alpha", Artist = "The Xylophones", AlbumArtist = "The Xylophones", Album = "First", AlbumId = AlbumA, FilePath = audio, Duration = TimeSpan.FromSeconds(200), TrackNumber = 1, Year = 2001, Genre = "Rock", FileSize = 5000, Bitrate = 320, ReplayGainTrackDb = -7.5, ReplayGainTrackPeak = 0.98, ReplayGainAlbumDb = -6.25 };
         var t2 = new Track { Id = Guid.NewGuid(), Title = "Beta", Artist = "The Xylophones", AlbumArtist = "The Xylophones", Album = "First", AlbumId = AlbumA, FilePath = audio, Duration = TimeSpan.FromSeconds(100), TrackNumber = 2, Year = 2001, Genre = "Rock", FileSize = 5000 };
         var t3 = new Track { Id = Guid.NewGuid(), Title = "Gamma", Artist = "Yolanda", AlbumArtist = "Yolanda", Album = "Second", AlbumId = AlbumB, FilePath = audio, Duration = TimeSpan.FromSeconds(50), TrackNumber = 1, Year = 2010, Genre = "Jazz; Rock", FileSize = 5000, IsFavorite = true };
         _lib = new FakeServerLibrary(
@@ -150,6 +150,18 @@ public class NoctisServerTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Songs_CarryTheirReplayGain_OnlyWhenTagged()
+    {
+        // OpenSubsonic's replayGain object: the phone levels a desktop song by it.
+        var songs = (await Get("search3", "query=&songCount=500")).GetProperty("searchResult3").GetProperty("song").EnumerateArray().ToList();
+        var alpha = songs.Single(s => s.GetProperty("title").GetString() == "Alpha").GetProperty("replayGain");
+        Assert.Equal(-7.5, alpha.GetProperty("trackGain").GetDouble());
+        Assert.Equal(0.98, alpha.GetProperty("trackPeak").GetDouble());
+        Assert.Equal(-6.25, alpha.GetProperty("albumGain").GetDouble());
+        Assert.False(songs.Single(s => s.GetProperty("title").GetString() == "Beta").TryGetProperty("replayGain", out _));
+    }
+
+    [Fact]
     public async Task Search_Lists_Genres_Starred()
     {
         var search = await Get("search3", "query=gam");
@@ -167,6 +179,46 @@ public class NoctisServerTests : IAsyncLifetime
         var starred = await Get("getStarred2");
         Assert.Equal("Gamma", starred.GetProperty("starred2").GetProperty("song")[0].GetProperty("title").GetString());
         Assert.Equal("Second", starred.GetProperty("starred2").GetProperty("album")[0].GetProperty("name").GetString()); // all its tracks are starred
+    }
+
+    /// <summary>search3's albums carry their cover file's version (noctisCover, its last write in
+    /// hex ticks) for the phone to tell a changed cover; an album without a cover has none.</summary>
+    [Fact]
+    public async Task Search3Albums_CarryTheirCoverVersion_OnlyWhenTheyHaveACover()
+    {
+        var albums = (await Get("search3", "query=&albumCount=500")).GetProperty("searchResult3").GetProperty("album")
+            .EnumerateArray().ToDictionary(a => a.GetProperty("name").GetString()!);
+        var path = _lib.ArtworkPath(AlbumA)!;
+        Assert.Equal(File.GetLastWriteTimeUtc(path).Ticks.ToString("x"), albums["First"].GetProperty("noctisCover").GetString());
+        Assert.False(albums["Second"].TryGetProperty("noctisCover", out _));
+    }
+
+    /// <summary>Discord (Halil, "deluxe track linking"): an album linked on the computer (Link Tracks
+    /// From) lists the linked songs at their disc and track places, as the desktop album page does;
+    /// the linked songs stay their own album's, and the original album is unchanged. search3 names
+    /// the albums it borrows from (noctisLinks, additive) for the phone to link the same way.</summary>
+    [Fact]
+    public async Task LinkedAlbum_ListsTheLinkedSongsInAlbumOrder_AndSearch3NamesItsSources()
+    {
+        Noctis.Services.AlbumLinks.Attach(_lib.Albums.ToDictionary(a => a.Id), new[] { new AlbumLink { AlbumId = AlbumB, SourceAlbumId = AlbumA } });
+        var first = $"al-{AlbumA:N}";
+
+        var album = (await Get("getAlbum", $"id=al-{AlbumB:N}")).GetProperty("album");
+        var songs = album.GetProperty("song").EnumerateArray().ToList();
+        // Gamma is Second's own track 1: on a tie the edition's own file comes first.
+        Assert.Equal(new[] { "Gamma", "Alpha", "Beta" }, songs.Select(s => s.GetProperty("title").GetString()).ToArray());
+        Assert.Equal(first, songs[1].GetProperty("albumId").GetString());
+        Assert.Equal(3, album.GetProperty("songCount").GetInt32());
+        Assert.Equal(350, album.GetProperty("duration").GetInt32());
+        Assert.False(album.TryGetProperty("starred", out _));   // Gamma is a favourite, Alpha and Beta are not
+
+        var original = (await Get("getAlbum", $"id={first}")).GetProperty("album");
+        Assert.Equal(new[] { "Alpha", "Beta" }, original.GetProperty("song").EnumerateArray().Select(s => s.GetProperty("title").GetString()).ToArray());
+
+        var albums = (await Get("search3", "query=&albumCount=500")).GetProperty("searchResult3").GetProperty("album")
+            .EnumerateArray().ToDictionary(a => a.GetProperty("name").GetString()!);
+        Assert.Equal(new[] { first }, albums["Second"].GetProperty("noctisLinks").EnumerateArray().Select(l => l.GetString()).ToArray());
+        Assert.False(albums["First"].TryGetProperty("noctisLinks", out _));
     }
 
     /// <summary>GitHub #136: Gamma is tagged "Jazz; Rock". It counts under Jazz and Rock, not

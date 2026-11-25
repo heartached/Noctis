@@ -108,10 +108,13 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
             _observedVm.PropertyChanged += OnVmPropertyChanged;
             _observedVm.Tracks.CollectionChanged += OnTracksCollectionChanged;
         }
+        StartRevealIfAsked(); // one playlist opened straight into another: no attach
     }
 
     private void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PlaylistViewModel.RevealTrackId)) StartRevealIfAsked();
+
         // Focus + select the inline rename box once it becomes visible.
         if (e.PropertyName == nameof(PlaylistViewModel.IsRenamingName)
             && _observedVm?.IsRenamingName == true)
@@ -353,6 +356,15 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         {
             System.Diagnostics.Debug.WriteLine($"[PlaylistView] Selection remove failed: {ex.Message}");
         }
+    }
+
+    /// <summary>11-23: a click on the hero cover opens its menu (View Cover / Change Cover…),
+    /// the one a right-click opens.</summary>
+    private void OnHeroCoverTapped(object? sender, TappedEventArgs e)
+    {
+        if (HeroCover.ContextMenu is not { } menu) return;
+        e.Handled = true;
+        menu.Open(HeroCover);
     }
 
     private void OnSelectionClearClick(object? sender, RoutedEventArgs e)
@@ -824,6 +836,8 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelPendingScrollRestore();
+        _cancelReveal?.Invoke();
+        _cancelReveal = null;
         ResetPlaylistDragState();
         UnhookSettings();
 
@@ -866,6 +880,23 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
         }
     }
 
+    // ── "Playing from …" (Discord 11-24, sina): the page was opened for the playing song ──
+
+    /// <summary>Room the floating island takes at the list's bottom (as the album page).</summary>
+    private const double RevealBottomInset = 82;
+    private Action? _cancelReveal;
+
+    /// <summary>Glides the list to <see cref="PlaylistViewModel.RevealTrackId"/>'s row and
+    /// washes it (RowReveal.RevealInList), once; the scroll restore gives way to it.</summary>
+    private void StartRevealIfAsked()
+    {
+        if (_observedVm?.RevealTrackId is not { } id || VisualRoot == null) return;
+        _observedVm.RevealTrackId = null;
+        CancelPendingScrollRestore();
+        _cancelReveal?.Invoke();
+        _cancelReveal = RowReveal.RevealInList(TrackList, id, RevealBottomInset);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -896,6 +927,7 @@ public partial class PlaylistView : UserControl, ITrackSelectionSource
 
             TrackList.LayoutUpdated += _pendingScrollRestore;
         }
+        StartRevealIfAsked();
     }
 
 }

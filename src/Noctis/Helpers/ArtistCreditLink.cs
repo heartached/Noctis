@@ -27,6 +27,15 @@ public static class ArtistCreditLink
     public static bool GetIsEnabled(Button button) => button.GetValue(IsEnabledProperty);
     public static void SetIsEnabled(Button button, bool value) => button.SetValue(IsEnabledProperty, value);
 
+    /// <summary>When set, the names are the text's parts between this separator instead of
+    /// artist names: <c>Separator=" · "</c> makes each genre of a Songs-row genre cell
+    /// ("Rock · Pop") its own link, like the album page's genre links.</summary>
+    public static readonly AttachedProperty<string?> SeparatorProperty =
+        AvaloniaProperty.RegisterAttached<Button, string?>("Separator", typeof(ArtistCreditLink));
+
+    public static string? GetSeparator(Button button) => button.GetValue(SeparatorProperty);
+    public static void SetSeparator(Button button, string? value) => button.SetValue(SeparatorProperty, value);
+
     /// <summary>Where the current press landed, per button (null = no pointer press, e.g. keyboard).</summary>
     private static readonly ConditionalWeakTable<Button, StrongBox<Point?>> PressPoints = new();
 
@@ -183,7 +192,7 @@ public static class ArtistCreditLink
         var credit = text is HighlightTextBlock h ? h.DisplayText : text.Text;
 
         var p = button.TranslatePoint(buttonPoint, text);
-        if (p is not { } local || NameExtentAt(text, credit, local) is not { } hit) return null;
+        if (p is not { } local || NameExtentAt(text, credit, local, GetSeparator(button)) is not { } hit) return null;
         if (hit.Right - hit.Left < 1) return null;
         var topLeft = text.TranslatePoint(new Point(hit.Left, 0), presenter);
         if (topLeft is not { } tl) return null;
@@ -196,9 +205,9 @@ public static class ArtistCreditLink
     /// ("Bonobo, Jor…"). Null on a separator or outside the text; a single-name credit
     /// resolves to that name anywhere on the text.</summary>
     internal static (ArtistCreditSpans.Span Span, double Left, double Right)? NameExtentAt(
-        TextBlock text, string? credit, Point local)
+        TextBlock text, string? credit, Point local, string? separator = null)
     {
-        var spans = ArtistCreditSpans.Locate(credit);
+        var spans = ArtistCreditSpans.Locate(credit, separator);
         if (spans.Count == 0) return null;
         if (local.X < 0 || local.Y < 0 || local.X > text.Bounds.Width || local.Y > text.Bounds.Height)
             return null;
@@ -238,12 +247,13 @@ public static class ArtistCreditLink
         var text = button.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault();
         if (text == null) return null;
         var credit = text is HighlightTextBlock h ? h.DisplayText : text.Text;
-        if (ArtistCreditSpans.Locate(credit).Count < 2) return null;
+        var separator = GetSeparator(button);
+        if (ArtistCreditSpans.Locate(credit, separator).Count < 2) return null;
 
         var p = button.TranslatePoint(buttonPoint, text);
         if (p is not { } local || local.X < 0 || local.Y < 0 || local.X > text.Bounds.Width || local.Y > text.Bounds.Height)
             return null;
         var hit = text.TextLayout.HitTestPoint(local);
-        return ArtistCreditSpans.NameAt(credit, hit.TextPosition);
+        return ArtistCreditSpans.NameAt(credit, hit.TextPosition, separator);
     }
 }

@@ -103,7 +103,7 @@ public class MobileAccountTests
             AvatarPath = null;
             if (removeDownloads) DownloadedIds.Clear();
             // As the service does (NoctisAccountService.SignOutAsync): a final report with nothing running.
-            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes));
+            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes, CalledOff: true));
             StateChanged?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
@@ -141,14 +141,52 @@ public class MobileAccountTests
         public Dictionary<Guid, Guid> Links { get; } = new();
         public Guid? DesktopIdOf(Track track) => IsRemote(track) ? track.Id : Links.TryGetValue(track.Id, out var d) ? d : null;
         public bool IsDownloaded(Track track) => DownloadedIds.Contains(track.Id);
+        /// <summary>When each download was saved (Home's Downloaded rail order); none = unknown.</summary>
+        public Dictionary<Guid, DateTime> DownloadedTimes { get; } = new();
+        public DateTime? DownloadedAt(Track track) =>
+            DownloadedIds.Contains(track.Id) && DownloadedTimes.TryGetValue(track.Id, out var at) ? at : null;
         public long DownloadedBytes => DownloadedIds.Count * 5L * 1024 * 1024;
         public int DownloadedCount => DownloadedIds.Count;
+
+        /// <summary>Thrown by DownloadAsync instead, when set (Wi-Fi only on mobile data…).</summary>
+        public Exception? DownloadError { get; set; }
+
+        /// <summary>Set: DownloadAsync waits for it and lands nothing itself (the test says what landed).</summary>
+        public TaskCompletionSource? DownloadGate { get; set; }
 
         public Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
         {
             var list = tracks.ToList();
             DownloadCalls.Add(list);
+            if (DownloadError != null) return Task.FromException(DownloadError);
+            if (DownloadGate is { } gate) return gate.Task;
             foreach (var t in list) DownloadedIds.Add(t.Id);
+            return Task.CompletedTask;
+        }
+
+        /// <summary>What UnfinishedDownloadsAsync lists (a run the last start left unfinished).</summary>
+        public List<Track> Unfinished { get; } = new();
+        public Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync() => Task.FromResult<IReadOnlyList<Track>>(Unfinished.ToList());
+
+        /// <summary>Wi-Fi only on mobile data (DownloadsWaitForWifiAsync).</summary>
+        public bool WaitsForWifi { get; set; }
+        public Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(WaitsForWifi);
+
+        /// <summary>Settings › Downloads › Wi-Fi only (DownloadsWifiOnlyAsync).</summary>
+        public bool WifiOnly { get; set; }
+        public Task<bool> DownloadsWifiOnlyAsync() => Task.FromResult(WifiOnly);
+
+        /// <summary>On Wi-Fi (or Ethernet) now (IsOnWifiNow).</summary>
+        public bool IsOnWifiNow { get; set; } = true;
+
+        /// <summary>PauseDownloadsAsync calls; <see cref="OnPause"/> runs in each (a test ends its gated run).</summary>
+        public int PauseCalls { get; private set; }
+        public Action? OnPause { get; set; }
+
+        public Task PauseDownloadsAsync()
+        {
+            PauseCalls++;
+            OnPause?.Invoke();
             return Task.CompletedTask;
         }
 
@@ -174,8 +212,16 @@ public class MobileAccountTests
         {
             RemoveAllCalls++;
             DownloadedIds.Clear();
+            // As the service does (NoctisAccountService.RemoveAllDownloadsAsync): a final report with nothing running.
+            DownloadProgress?.Invoke(this, new NoctisDownloadProgress(0, 0, 0, DownloadedBytes, CalledOff: true));
             return Task.CompletedTask;
         }
+
+        /// <summary>Downloaded songs the computer no longer has (shown while their id is downloaded).</summary>
+        public List<Track> NotOnComputer { get; } = new();
+        public bool IsNotOnComputer(Track track) => NotOnComputer.Contains(track) && DownloadedIds.Contains(track.Id);
+        public IReadOnlyList<Track> NotOnComputerTracks => NotOnComputer.Where(t => DownloadedIds.Contains(t.Id)).ToList();
+        public long NotOnComputerBytes => NotOnComputerTracks.Count * 5L * 1024 * 1024;
 
         public string? ResolvePlaybackUri(string filePath) => null;
 
@@ -216,6 +262,8 @@ public class MobileAccountTests
         public Exception? CommandError { get; set; }
         public List<Guid> CoverAsks { get; } = new();
         public string? CoverPath { get; set; }
+        /// <summary>Thrown by the cover fetch instead, when set.</summary>
+        public Exception? CoverError { get; set; }
 
         private ComputerPlayback Answer(bool withQueue) =>
             withQueue ? Playback with { UpNext = Playback.UpNext ?? Array.Empty<ComputerTrack>() } : Playback with { UpNext = null, UpNextTotal = 0 };
@@ -235,7 +283,7 @@ public class MobileAccountTests
         public Task<string?> GetComputerCoverAsync(Guid albumId, CancellationToken ct = default)
         {
             CoverAsks.Add(albumId);
-            return Task.FromResult(CoverPath);
+            return CoverError != null ? Task.FromException<string?>(CoverError) : Task.FromResult(CoverPath);
         }
     }
 
@@ -857,7 +905,7 @@ public class MobileAccountTests
         Assert.Equal("Downloads finished · 77 missing on your computer", page.DownloadText);
 
         account.RaiseDownloadProgress(new NoctisDownloadProgress(3, 1, 3, 0, Missing: 2));
-        Assert.Equal("Downloading 1 of 4 · 2 missing on your computer · 1 failed", page.DownloadText);
+        Assert.Equal("Downloading 1 of 7 · 2 missing on your computer · 1 failed", page.DownloadText);   // the failed stay in the total
         Assert.Equal("This song's file is missing on your computer.", AccountPageViewModel.Describe(NoctisErrorKind.FileMissing, true));
     }
 
@@ -1055,6 +1103,80 @@ public class MobileAccountTests
         await page.ConfirmRemoveDownloadsCommand.ExecuteAsync(null);
         Assert.False(page.CanRemoveDownloads);                             // nothing left
         Assert.Equal(string.Empty, page.DownloadText);                     // not "Downloads finished" over none
+    }
+
+    /// <summary>Downloads whose song the computer no longer has: a row under Downloaded ("No longer on
+    /// your computer", hidden with none) opens their list; each row's Remove deletes that one, Remove
+    /// All asks first (red) and then deletes the rest; the row follows.</summary>
+    [Fact]
+    public async Task NotOnComputer_RowOpensTheList_RemoveAndRemoveAll()
+    {
+        var a = RemoteSong("A");
+        var b = RemoteSong("B");
+        var c = RemoteSong("C");
+        using var rig = MobileFixtures.MakeRig(new[] { a, b, c });
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        foreach (var t in new[] { a, b, c }) account.DownloadedIds.Add(t.Id);
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+        Assert.False(page.HasNotOnComputer);
+
+        account.NotOnComputer.AddRange(new[] { a, b });
+        account.RaiseStateChanged();
+        Assert.True(page.HasNotOnComputer);
+        Assert.Equal("2 songs · 10 MB", page.NotOnComputerValue);
+        Assert.Equal("No longer on your computer: 2 songs · 10 MB", page.NotOnComputerText);
+
+        page.OpenNotOnComputerCommand.Execute(null);
+        var list = Assert.IsType<SongListPageViewModel>(shell.CurrentPage);
+        Assert.Equal("No longer on your computer", list.Title);
+        Assert.True(list.CanRemoveSongs);
+        Assert.Equal(new[] { a, b }, list.Songs);
+
+        await list.RemoveSongCommand.ExecuteAsync(a);
+        Assert.Equal(new[] { a }, Assert.Single(account.RemoveCalls));
+        Assert.Equal(new[] { b }, list.Songs);
+
+        list.AskRemoveAllCommand.Execute(null);
+        var prompt = Assert.IsType<PromptViewModel>(shell.Prompt);
+        Assert.Equal("Remove these songs?", prompt.Title);
+        Assert.Equal("This removes 1 song from this phone. Your computer no longer has them, so they can't be downloaded again.", prompt.Message);
+        Assert.Single(account.RemoveCalls);                                // nothing removed before the answer
+        var remove = Assert.Single(prompt.Actions);
+        Assert.True(remove.IsDestructive);
+        await remove.RunCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { b }, account.RemoveCalls[1]);
+        Assert.Empty(list.Songs);
+        Assert.True(account.IsDownloaded(c));                               // an ordinary download stays
+
+        account.RaiseStateChanged();
+        Assert.False(page.HasNotOnComputer);
+    }
+
+    /// <summary>Other lists offer neither Remove nor Remove All.</summary>
+    [Fact]
+    public void OtherSongLists_OfferNoRemove()
+    {
+        using var rig = MobileFixtures.MakeRig(new[] { RemoteSong("A") });
+        var list = new SongListPageViewModel(rig.Shell, "Nav.Songs", () => rig.Shell.Library.Songs);
+        Assert.False(list.CanRemoveSongs);
+    }
+
+    /// <summary>Sign out with downloads on the phone says they stay (they play on).</summary>
+    [Fact]
+    public async Task SignOutQuestion_SaysKeptDownloadsStay()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs() };
+        var shell = ShellWith(rig, account);
+        var page = OpenAccount(shell);
+        page.AskSignOutCommand.Execute(null);
+        Assert.Equal("Its songs leave this phone's library. You can sign in again any time.", Assert.IsType<PromptViewModel>(shell.Prompt).Message);
+        page.CancelSignOutCommand.Execute(null);
+
+        await page.DownloadAllCommand.ExecuteAsync(null);
+        page.AskSignOutCommand.Execute(null);
+        Assert.StartsWith("Its songs leave this phone's library, except downloaded ones", Assert.IsType<PromptViewModel>(shell.Prompt).Message);
     }
 
     /// <summary>Settings' profile card said "Synced 5 min ago" for as long as the sheet stayed

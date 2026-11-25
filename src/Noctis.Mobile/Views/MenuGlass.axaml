@@ -9,7 +9,7 @@
                      BackdropMaxLuminance="{DynamicResource MenuGlassMaxLuminance}"
                      BackdropToneCurve="{DynamicResource MenuGlassToneCurve}"
                      BackdropLift="1" BackdropSpill="{DynamicResource MenuGlassSpill}"
-                     Background="{DynamicResource MenuGlassTint}"
+                     Background="{DynamicResource MenuGlassTint}" PlainBackground="{DynamicResource MenuGlassPlainTint}"
                      EdgeThickness="0" BoxShadow="{DynamicResource MenuGlassShadow}"
                      Sheen="{DynamicResource MenuGlassSheen}"
                      TextElement.Foreground="{DynamicResource MenuGlassText}">
@@ -42,6 +42,9 @@
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="MenuGlassTint" Color="#0AFFFFFF" />
+                    <!-- Reduce Glass (Settings › Appearance): the card as a plain opaque fill, Apple's
+                         Reduce Transparency menu grey, the text and hairlines unchanged on it. -->
+                    <SolidColorBrush x:Key="MenuGlassPlainTint" Color="#2C2C2E" />
                     <x:Double x:Key="MenuGlassMinLuminance">0.22</x:Double>
                     <x:Double x:Key="MenuGlassMaxLuminance">0.41</x:Double>
                     <x:Double x:Key="MenuGlassToneCurve">2.5</x:Double>
@@ -63,6 +66,7 @@
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="MenuGlassTint" Color="#4DFFFFFF" />
+                    <SolidColorBrush x:Key="MenuGlassPlainTint" Color="#F2F2F7" />
                     <x:Double x:Key="MenuGlassMinLuminance">0.74</x:Double>
                     <x:Double x:Key="MenuGlassMaxLuminance">1</x:Double>
                     <x:Double x:Key="MenuGlassToneCurve">1</x:Double>

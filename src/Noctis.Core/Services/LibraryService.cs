@@ -1756,6 +1756,43 @@ public class LibraryService : ILibraryService
 
     private static bool IsServerTrack(Track t) => t.SourceType == SourceType.NoctisServer;
 
+    /// <summary>True when removing the music folder <paramref name="folder"/> takes
+    /// <paramref name="track"/> out of the library: it lives under that folder, under none of
+    /// <paramref name="remainingRoots"/>, and was neither added on its own (GitHub #108) nor
+    /// streamed from the desktop.</summary>
+    public static bool LeavesWithFolder(Track track, string folder, IEnumerable<string> remainingRoots)
+        => !track.AddedIndividually && !IsServerTrack(track)
+           && PathIsUnder(track.FilePath, folder)
+           && !remainingRoots.Any(root => PathIsUnder(track.FilePath, root));
+
+    /// <inheritdoc />
+    public async Task RemoveFolderTracksAsync(string folder, IReadOnlyCollection<string> remainingFolders)
+    {
+        if (string.IsNullOrWhiteSpace(folder)) return;
+        // After any scan in flight: it publishes the set it walked, which would put the songs back.
+        await _scanGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var settings = await _persistence.LoadSettingsAsync().ConfigureAwait(false);
+            var roots = BuildIncludeRoots(remainingFolders, settings).ToList();
+            // Copy-and-swap (see RemoveTrackAsync). Unlike RemoveTracksAsync nothing is excluded,
+            // no artwork is deleted and the user-state journal keeps its rows: the same as a
+            // rescan dropping the songs, so adding the folder again restores them.
+            var current = _tracks;
+            var kept = current.Where(t => !LeavesWithFolder(t, folder, roots)).ToList();
+            if (kept.Count == current.Count) return;
+            _tracks = kept;
+            await RebuildIndexesAsync().ConfigureAwait(false);
+            await SaveAsync().ConfigureAwait(false);
+            DebugLog.Write("Library", $"Removed music folder: {current.Count - kept.Count} song(s) left the library.");
+            LibraryUpdated?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _scanGate.Release();
+        }
+    }
+
     /// <inheritdoc />
     public async Task ReplaceRemoteTracksAsync(IReadOnlyCollection<Track> tracks, CancellationToken ct = default)
     {
@@ -1832,15 +1869,16 @@ public class LibraryService : ILibraryService
     }
 
     /// <inheritdoc />
-    public async Task RemoveRemoteTracksAsync()
+    public async Task RemoveRemoteTracksAsync(IReadOnlySet<Guid>? keep = null)
     {
         await _scanGate.WaitAsync().ConfigureAwait(false);
         try
         {
             var current = _tracks;
-            var removed = current.Where(IsServerTrack).ToList();
+            bool Removes(Track t) => IsServerTrack(t) && keep?.Contains(t.Id) != true;
+            var removed = current.Where(Removes).ToList();
             if (removed.Count == 0) return;
-            _tracks = current.Where(t => !IsServerTrack(t)).ToList();
+            _tracks = current.Where(t => !Removes(t)).ToList();
             // Covers fetched for the desktop's albums go with them (a phone album sharing the
             // AlbumId keeps its cover). No exclusion list: these were never files.
             DeleteOrphanedArtwork(removed);
@@ -1860,7 +1898,10 @@ public class LibraryService : ILibraryService
         && a.AlbumId == b.AlbumId && a.Duration == b.Duration && a.TrackNumber == b.TrackNumber
         && a.DiscNumber == b.DiscNumber && a.Year == b.Year && a.Genre == b.Genre && a.Bitrate == b.Bitrate
         && a.SampleRate == b.SampleRate && a.FileSize == b.FileSize && a.Codec == b.Codec
-        && a.FilePath == b.FilePath;
+        && a.FilePath == b.FilePath
+        // A ReplayGain scan on the desktop changes nothing else: the new values must still land.
+        && a.ReplayGainTrackDb == b.ReplayGainTrackDb && a.ReplayGainTrackPeak == b.ReplayGainTrackPeak
+        && a.ReplayGainAlbumDb == b.ReplayGainAlbumDb;
 
     /// <summary>
     /// Deletes cached covers for albums that no longer have any tracks after a
@@ -2822,6 +2863,10 @@ public class LibraryService : ILibraryService
     public Task UnlinkAlbumTracksAsync(Guid albumId, Guid sourceAlbumId)
         => ChangeAlbumLinksAsync(Services.AlbumLinks.Without(_albumLinks, albumId, sourceAlbumId));
 
+    /// <inheritdoc />
+    public Task SetAlbumLinksAsync(IReadOnlyList<AlbumLink> links)
+        => ChangeAlbumLinksAsync(links.Aggregate(new List<AlbumLink>(), (next, l) => Services.AlbumLinks.With(next, l.AlbumId, l.SourceAlbumId)));
+
     private async Task ChangeAlbumLinksAsync(List<AlbumLink> next)
     {
         if (next.Count == _albumLinks.Count
@@ -3500,6 +3545,7 @@ public class LibraryService : ILibraryService
         MetadataService.UseEmbeddedArtwork = settings.UseEmbeddedArtwork;
         ArtistCredit.Configure(ArtistGroupModes.Parse(settings.ArtistGroupMode), settings.ArtistTagSeparators,
             settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+        GenreSeparators.Configure(settings.GenreTagSeparators);
         // Only ever switched on here (SettingsViewModel owns the flag and loads first): a
         // default-settings library must not switch off what the settings page turned on.
         if (settings.ShowArtistsAsTagged) ArtistCredit.ShowAsTagged = true;
@@ -3962,10 +4008,10 @@ public class LibraryService : ILibraryService
         if (_genreBackfillPending)
         {
             var genre = new TagBackfill("genre", GenreSchemaVersion, "genre-backfill.progress",
-                t => Track.SplitGenres(t.Genre).Length == 1,
-                path => _metadata.ReadGenres(path) is var g && Track.SplitGenres(g).Length > 1 ? g : string.Empty,
+                t => Track.SplitStoredGenres(t.Genre).Length == 1,
+                path => _metadata.ReadGenres(path) is var g && Track.SplitStoredGenres(g).Length > 1 ? g : string.Empty,
                 // Only over the stale row it was read for: a genre typed meanwhile wins.
-                (t, v) => { if (Track.SplitGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
+                (t, v) => { if (Track.SplitStoredGenres(v)[0].Equals(t.Genre.Trim(), StringComparison.OrdinalIgnoreCase)) t.Genre = v; },
                 MarkPhoneTracks: false, Reindex: true);
             if (!await RunTagBackfillAsync(genre)) return;
         }

@@ -29,9 +29,15 @@
             <TextBlock Name="NoMatchesText" Classes="subtle" Text="{loc:T Mobile.Playlists.NoMatch}" HorizontalAlignment="Center"
                        Margin="20,24,20,0" IsVisible="{Binding ShowNoMatches}" />
             <!-- Apple's playlist list: a cover, the name and the song count, a hairline from the
-                 text to the edge. -->
-            <ItemsControl Name="PlaylistList" ItemsSource="{Binding Rows}">
-                <ItemsControl.ItemTemplate>
+                 text to the edge. Virtualised, rows built once and handed the next playlist
+                 (RowItemsControl): 300 playlists built 300 rows, each loading its cover, at open. -->
+            <views:RowItemsControl Name="PlaylistList" ItemsSource="{Binding Rows}">
+                <views:RowItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel />
+                    </ItemsPanelTemplate>
+                </views:RowItemsControl.ItemsPanel>
+                <views:RowItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:PlaylistRow">
                         <Button Classes="row"
                                 views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenPlaylistSheetCommand}"
@@ -60,8 +66,8 @@
                             </Grid>
                         </Button>
                     </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+                </views:RowItemsControl.ItemTemplate>
+            </views:RowItemsControl>
           </StackPanel>
         </ScrollViewer>
     </Grid>

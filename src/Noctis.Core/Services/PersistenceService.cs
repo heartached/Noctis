@@ -46,6 +46,8 @@ public class PersistenceService : IPersistenceService
     private string SettingsPath => Path.Combine(DataDirectory, "settings.json");
     private string LibraryPath => Path.Combine(DataDirectory, "library.json");
     private string PlaylistsPath => Path.Combine(DataDirectory, "playlists.json");
+    private string PlaylistFoldersPath => Path.Combine(DataDirectory, "playlist_folders.json");
+    private string PlaylistFolderOrderPath => Path.Combine(DataDirectory, "playlist_folder_order.json");
     private string QueuePath => Path.Combine(DataDirectory, "queue.json");
     private string QueuePositionPath => Path.Combine(DataDirectory, "queue-position.json");
     private string IndexCachePath => Path.Combine(DataDirectory, "indexes.json");
@@ -465,6 +467,18 @@ public class PersistenceService : IPersistenceService
         await SaveJsonAsync(PlaylistsPath, playlists);
     }
 
+    public async Task<List<string>> LoadPlaylistFoldersAsync()
+        => await LoadJsonAsync<List<string>>(PlaylistFoldersPath) ?? new List<string>();
+
+    public Task SavePlaylistFoldersAsync(List<string> folders)
+        => SaveJsonAsync(PlaylistFoldersPath, folders);
+
+    public async Task<Dictionary<string, int>> LoadPlaylistFolderOrderAsync()
+        => await LoadJsonAsync<Dictionary<string, int>>(PlaylistFolderOrderPath) ?? new Dictionary<string, int>();
+
+    public Task SavePlaylistFolderOrderAsync(Dictionary<string, int> order)
+        => SaveJsonAsync(PlaylistFolderOrderPath, order);
+
     // ── Queue State ───────────────────────────────────────────
 
     public async Task<QueueState?> LoadQueueStateAsync()
@@ -645,6 +659,8 @@ public class PersistenceService : IPersistenceService
         nameof(AppSettings.YtDlpPath),
         nameof(AppSettings.ExternalOpenAppPath),
         nameof(AppSettings.LyricsStudioUseGpu),
+        // The Convert dialog's last output folder: a folder on this computer's disks.
+        nameof(AppSettings.ConverterOutputFolder),
     };
 
     private static void ApplyComputerSettings(AppSettings settings, JsonObject? slot)

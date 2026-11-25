@@ -224,11 +224,11 @@ public class MobileNowPlayingPageTests : IDisposable
         var luminance = Math.Pow(1 - alphaThere, 2.2);   // sRGB white dimmed by the shade, linearised
         Assert.True((1.05) / (luminance + 0.05) >= 4.5, $"white text over a white cover at {transport:0.00}: shade {alphaThere:0.00}");
 
-        var dither = MobileFixtures.Named<Border>(page, "WashDither");
-        var tile = Assert.IsAssignableFrom<Avalonia.Media.IImageBrush>(dither.Background);
+        // Drawn by a DitherLayer from the one tile (MobileNowPlayingDitherTests); the brush is its fallback.
+        var dither = MobileFixtures.Named<DitherLayer>(page, "WashDither");
+        var tile = Assert.IsAssignableFrom<Avalonia.Media.IImageBrush>(NowPlayingPage.Dither);
         Assert.Equal(Avalonia.Media.TileMode.Tile, tile.TileMode);
         Assert.Equal(Avalonia.Media.Stretch.Fill, tile.Stretch);   // fills its cell at any density (None left gaps on the phone)
-        Assert.Same(NowPlayingPage.Dither, dither.Background);                 // one tile per process
 
         // The layers lie under the controls, in order: cover wash, shade, dither.
         var panel = Assert.IsType<Panel>(backdrop.Parent);

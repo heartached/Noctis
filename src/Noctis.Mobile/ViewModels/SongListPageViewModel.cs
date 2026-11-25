@@ -23,6 +23,9 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     private readonly Playlist? _playlist;
     private readonly string? _sortKey;
     private List<Track> _all = new();
+    // _all in the sort in use: sorted when the songs or the sort change, not at each Find
+    // keystroke or filter toggle, which only walk it (a filter keeps the sorted order).
+    private List<Track> _sorted = new();
 
     /// <param name="sortKey">The list whose sort is remembered (Songs, Favorites, a playlist):
     /// the page opens in the sort it was left in. Null for lists that always open in their own
@@ -144,7 +147,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     [ObservableProperty] private string _filterText = string.Empty;
 
-    partial void OnFilterTextChanged(string value) => Apply();
+    partial void OnFilterTextChanged(string value) => ApplyFilter();
 
     // ── Filters ──
 
@@ -156,8 +159,8 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     [NotifyPropertyChangedFor(nameof(IsFiltered))]
     private bool _onlyDownloaded;
 
-    partial void OnOnlyFavouritesChanged(bool value) => Apply();
-    partial void OnOnlyDownloadedChanged(bool value) => Apply();
+    partial void OnOnlyFavouritesChanged(bool value) => ApplyFilter();
+    partial void OnOnlyDownloadedChanged(bool value) => ApplyFilter();
 
     /// <summary>The filter button lights up while a filter is on.</summary>
     public bool IsFiltered => OnlyFavourites || OnlyDownloaded;
@@ -177,6 +180,41 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     /// <summary>The filter button: only with a filter to offer.</summary>
     public bool HasFilters => OffersFavouritesFilter || CanFilterDownloaded;
+
+    // ── Remove (Account › No longer on your computer) ──
+
+    /// <summary>Deletes the songs' files (the list of downloads whose song the computer no longer
+    /// has): each row's Remove, and Remove All in the header after its question. Null on every
+    /// other list, which shows neither.</summary>
+    public Func<IReadOnlyList<Track>, Task>? RemoveSongs { get; init; }
+
+    public bool CanRemoveSongs => RemoveSongs != null;
+
+    [RelayCommand]
+    private async Task RemoveSongAsync(Track? track)
+    {
+        if (track == null || RemoveSongs == null) return;
+        await RemoveSongs(new[] { track });
+        Refresh();
+    }
+
+    /// <summary>Remove All: every song of the list, once the red action confirms.</summary>
+    [RelayCommand]
+    private void AskRemoveAll()
+    {
+        if (RemoveSongs is not { } remove || _all.Count == 0) return;
+        var songs = _all.ToList();
+        Shell.ShowPrompt(new PromptViewModel(Shell, Loc.T("Mobile.NotOnComputer.RemoveQuestion"),
+            Loc.T("Mobile.NotOnComputer.RemoveDetail", Loc.Plural("Mobile.Count.Songs", songs.Count)),
+            new[]
+            {
+                new PromptAction(Loc.T("Mobile.Downloads.RemoveAction"), async _ =>
+                {
+                    await remove(songs);
+                    Refresh();
+                }, isDestructive: true),
+            }));
+    }
 
     // ── Sort ──
 
@@ -248,9 +286,17 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         if ((key == null || key == _sortKey) && ApplySavedSort()) Apply();
     }
 
-    public void Refresh()
+    public void Refresh() => Refresh(resort: true);
+
+    /// <param name="resort">False for a refresh that changed no sort key (a heart, a download):
+    /// when the list still holds the same songs they keep their sorted order and only the
+    /// filters run again. Every heart and every downloaded song sorted the whole list again
+    /// (~11 ms headless for 7,200 songs by Artist).</param>
+    private void Refresh(bool resort)
     {
-        _all = _source().ToList();
+        var next = _source().ToList();
+        if (!resort && !SameSongs(next, _all)) resort = true;
+        _all = next;
         TotalCount = _all.Count;
         if (_playlist != null)
         {
@@ -266,10 +312,21 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
             OnPropertyChanged(nameof(OnlyDownloaded));
             OnPropertyChanged(nameof(IsFiltered));
         }
-        Apply();
+        if (resort) Apply();
+        else ApplyFilter();
     }
 
+    /// <summary>Sorts the songs again (they or the sort changed), then filters.</summary>
     private void Apply()
+    {
+        _sorted = Order(_all).ToList();
+        ApplyFilter();
+    }
+
+    /// <summary>The filters and Find over the sorted songs. Each Find keystroke used to sort its
+    /// matches again (culture-aware, four tie-breaks) and clearing the field every song: ~6 ms
+    /// headless on 7,200 songs by Artist, several times that on a phone.</summary>
+    private void ApplyFilter()
     {
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
         try { ApplyCore(); }
@@ -278,7 +335,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
 
     private void ApplyCore()
     {
-        IEnumerable<Track> rows = _all;
+        IEnumerable<Track> rows = _sorted;
         if (OnlyFavourites) rows = rows.Where(t => t.IsFavorite);
         if (OnlyDownloaded && Shell.Account is { } account) rows = rows.Where(account.IsDownloaded);
         if (!string.IsNullOrWhiteSpace(FilterText))
@@ -288,7 +345,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         }
         // Only when the rows differ: every library refresh (a heart, a scan's progress) re-runs
         // this, and a Reset on an unchanged list tore down and re-realised every row on screen.
-        MobileLibrary.ReplaceIfChanged(Songs, Order(rows).ToList());
+        MobileLibrary.ReplaceIfChanged(Songs, rows as IReadOnlyList<Track> ?? rows.ToList());
         SongCount = Songs.Count;
         Selection.Prune();
     }
@@ -317,7 +374,16 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
         return ordered.ThenBy(t => t.Album, names).ThenBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, names);
     }
 
-    private void OnRefreshed(object? sender, EventArgs e) => Refresh();
+    private void OnRefreshed(object? sender, EventArgs e) =>
+        Refresh(resort: !ReferenceEquals(e, LibraryViewModel.FavouritesRefresh) && !ReferenceEquals(e, LibraryViewModel.DownloadsRefresh));
+
+    private static bool SameSongs(List<Track> a, List<Track> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+            if (!ReferenceEquals(a[i], b[i])) return false;
+        return true;
+    }
 
     /// <summary>A row tap: play this list from that row.</summary>
     [RelayCommand]
@@ -337,7 +403,7 @@ public sealed partial class SongListPageViewModel : MobilePage, ISortable
     [RelayCommand]
     private void PlayAll()
     {
-        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs.ToList(), 0, Title);
+        if (Songs.Count > 0) Shell.Player.PlayAll(Songs.ToList(), Title);
     }
 
     [RelayCommand]

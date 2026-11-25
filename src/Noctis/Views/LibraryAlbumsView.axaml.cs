@@ -33,6 +33,12 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => TrackSelection.FromAlbums(_selectedAlbums);
 
+    /// <summary>A drag from a selected album carries every selected album, in grid order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        TrackSelection.DragSelection(payload, _selectedAlbums, _vm?.CarouselAlbums) is { } albums
+            ? TrackSelection.FromAlbums(albums)
+            : null;
+
     public LibraryAlbumsView()
     {
         InitializeComponent();
@@ -98,6 +104,9 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = album;
 
+        // A plain press on a tile of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, album, _selectedAlbums, e, ClearSelection))
+            return;
         if (!MultiSelectHelper.HandleAlbumTileClickByData(tile, album, e, _selectedAlbums)
             && !e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
             && e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
@@ -133,8 +142,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         if (sender is not Button tile) return;
         MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
         // Album Hover Zoom (GitHub #218): Loaded can fire again on re-attach, so re-subscribe.
-        tile.PointerEntered -= OnTileHoverEntered;
-        tile.PointerEntered += OnTileHoverEntered;
+        HoverZoom.Attach(tile);
         // A grid row re-used for other albums (TileRow) re-binds its tiles instead of loading them.
         tile.DataContextChanged -= OnAlbumTileRebound;
         tile.DataContextChanged += OnAlbumTileRebound;
@@ -146,50 +154,9 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             MultiSelectHelper.SyncAlbumTileVisual(tile, _selectedAlbums);
     }
 
-    // ── Album Hover Zoom (GitHub #218) ──
-    // The hovered tile's grow + glow is pure style (Styles.axaml, .hover-zoom); no other tile
-    // moves (GitHub #250). Two things the style cannot do are done here when a tile is entered:
-    // - Lift it above its neighbours. Its .hover-zoom ZIndex sits on the Button, but in the row
-    //   grid each Button is the only child of a TileRow ContentPresenter, so that ZIndex sorted
-    //   nothing: the tiles to its right and the row below drew over its grown edge and glow.
-    //   The presenter and the row's ListBoxItem are lifted instead (left up until the next
-    //   hover, so the shrink back also plays on top).
-    // - Grow away from the grid's edges. Grown from its centre, a tile in the first row or an
-    //   edge column ran past the scroller's viewport and was clipped (5px of cover at 2400px).
-
-    private const double HoverZoomScale = 1.04;
-    private readonly List<Visual> _hoverLifted = new();
-
-    private void OnTileHoverEntered(object? sender, PointerEventArgs e)
-    {
-        if (_vm?.IsHoverZoom != true || sender is not Button tile) return;
-        LiftHoveredTile(tile);
-        AnchorHoveredTile(tile);
-    }
-
-    private void LiftHoveredTile(Button tile)
-    {
-        foreach (var v in _hoverLifted) v.ZIndex = 0;
-        _hoverLifted.Clear();
-        if (tile.GetVisualParent() is ContentPresenter { Parent: TileRow } presenter)
-            _hoverLifted.Add(presenter);
-        if (tile.FindAncestorOfType<ListBoxItem>() is { } row)
-            _hoverLifted.Add(row);
-        foreach (var v in _hoverLifted) v.ZIndex = 1;
-    }
-
-    private void AnchorHoveredTile(Button tile)
-    {
-        if (ActiveScroller()?.Content is not Visual content || tile.GetVisualParent() is not Visual parent) return;
-        if (parent.TranslatePoint(tile.Bounds.Position, content) is not { } at) return;
-        var growX = tile.Bounds.Width * (HoverZoomScale - 1) / 2;
-        var growY = tile.Bounds.Height * (HoverZoomScale - 1) / 2;
-        var left = at.X < growX;
-        var right = content.Bounds.Width - (at.X + tile.Bounds.Width) < growX;
-        var x = left == right ? 0.5 : left ? 0 : 1;
-        var y = at.Y < growY ? 0 : 0.5;
-        tile.RenderTransformOrigin = new RelativePoint(x, y, RelativeUnit.Relative);
-    }
+    // ── Album Hover Zoom (GitHub #218): shared with Favorites, see TileHoverZoom ──
+    private TileHoverZoom? _hoverZoom;
+    private TileHoverZoom HoverZoom => _hoverZoom ??= new TileHoverZoom(() => _vm?.IsHoverZoom == true, ActiveScroller);
 
     private void OnViewKeyDown(object? sender, KeyEventArgs e)
     {
@@ -684,7 +651,7 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
         var clamped = new Point(Math.Clamp(inViewport.X, 0, sv.Viewport.Width), Math.Clamp(inViewport.Y, 0, sv.Viewport.Height));
         if (sv.TranslatePoint(clamped, band.Content) is not { } end) return;
 
-        var hits = band.Masonry ? MasonryPanel.AlbumsIn(Between(band.Start, end).Inflate(0.5)) : RowGridHits(band, end);
+        var hits = band.Masonry ? MasonryHits(band, end) : RowGridHits(band, end);
         _selectedAlbums.Clear();
         _selectedAlbums.UnionWith(band.Base);
         _selectedAlbums.UnionWith(hits);
@@ -701,6 +668,14 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
             BandRect.Height = Math.Max(1, r.Height);
             BandRect.IsVisible = true;
         }
+    }
+
+    /// <summary>The Masonry cards the band meets. The panel takes its own coordinates, and a
+    /// genre page's Songs section sits above it in the scroller's content (GitHub #259).</summary>
+    private List<Album> MasonryHits(BandState band, Point end)
+    {
+        var offset = MasonryPanel.TranslatePoint(default, band.Content) ?? default;
+        return MasonryPanel.AlbumsIn(Between(band.Start - offset, end - offset).Inflate(0.5));
     }
 
     /// <summary>Albums of the rows and columns between the band's two ends. The start's row and

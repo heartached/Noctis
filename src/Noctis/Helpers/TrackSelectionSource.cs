@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia.Controls;
 using Noctis.Models;
 
 namespace Noctis.Helpers;
@@ -13,6 +15,14 @@ namespace Noctis.Helpers;
 public interface ITrackSelectionSource
 {
     IReadOnlyList<Track> GetSelectedTracks();
+
+    /// <summary>
+    /// What a drag that starts on <paramref name="dragged"/> (its <paramref name="payload"/>: a
+    /// song, album or favourite) carries: the whole selection, in list order, when the dragged
+    /// item is part of a selection of several; null otherwise (the drag carries just that item).
+    /// Read once, when the drag starts (DragFileBehavior).
+    /// </summary>
+    IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) => null;
 }
 
 public static class TrackSelection
@@ -42,6 +52,23 @@ public static class TrackSelection
         if (pageSelection is { Count: > 0 }) return pageSelection;
         if (playing is not null && IsFile(playing.FilePath)) return new[] { playing };
         return Array.Empty<Track>();
+    }
+
+    /// <summary>
+    /// The selection a drag of <paramref name="payload"/> carries (see
+    /// <see cref="ITrackSelectionSource.GetDragSelection"/>), in the order of
+    /// <paramref name="ordered"/> (the list as shown): null unless the payload is one of
+    /// several selected items. Selected items the list no longer shows are left out.
+    /// </summary>
+    public static List<T>? DragSelection<T>(object? payload, HashSet<T> selected, IEnumerable? ordered) where T : class
+    {
+        if (payload is not T item || selected.Count < 2 || !selected.Contains(item)) return null;
+        var result = new List<T>(selected.Count);
+        if (ordered != null)
+            foreach (var o in ordered)
+                if (o is T t && selected.Contains(t))
+                    result.Add(t);
+        return result.Count > 0 ? result : null;
     }
 
     private static bool IsFile(string? path) =>

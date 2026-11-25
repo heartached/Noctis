@@ -43,7 +43,10 @@ public sealed record AutoMixPlannerOptions(
     RepeatMode RepeatMode,
     bool ShuffleEnabled,
     bool ManualTransition,
-    double CrossfadeDurationSeconds = 6);
+    double CrossfadeDurationSeconds = 6,
+    // Skip Silence: the silence measured at each end of a song, when known (null = estimate
+    // from the hand-set start/stop times only).
+    Func<Track, AudioSilenceProfile?>? DetectedSilence = null);
 
 public sealed record AutoMixTransitionPlan(
     AutoMixTransitionType TransitionType,

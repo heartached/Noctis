@@ -18,14 +18,22 @@ public static class ArtistCreditSpans
 
     /// <summary>The credit's names with their character ranges in <paramref name="text"/>, in
     /// order of appearance. A name the splitter kept but that is not found verbatim is skipped.</summary>
-    public static IReadOnlyList<Span> Locate(string? text)
+    public static IReadOnlyList<Span> Locate(string? text) => Locate(text, null);
+
+    /// <summary>Like <see cref="Locate(string?)"/>, but with <paramref name="separator"/> set
+    /// the names are the text's parts between that separator instead of the artist splitter's:
+    /// " · " for a genre line ("Rock · Pop", <see cref="Track.DotGenres"/>).</summary>
+    public static IReadOnlyList<Span> Locate(string? text, string? separator)
     {
         var result = new List<Span>();
         if (string.IsNullOrWhiteSpace(text))
             return result;
 
+        var names = string.IsNullOrEmpty(separator)
+            ? ArtistCredit.Split(text)
+            : text.Split(separator, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var searchFrom = 0;
-        foreach (var name in ArtistCredit.Split(text))
+        foreach (var name in names)
         {
             var at = text.IndexOf(name, searchFrom, StringComparison.OrdinalIgnoreCase);
             if (at < 0)
@@ -42,9 +50,13 @@ public static class ArtistCreditSpans
     /// surrounding whitespace or a position past the end resolve to null so the caller can
     /// fall back to the primary artist.
     /// </summary>
-    public static string? NameAt(string? text, int index)
+    public static string? NameAt(string? text, int index) => NameAt(text, index, null);
+
+    /// <summary><see cref="NameAt(string?, int)"/> with the names split on
+    /// <paramref name="separator"/> (see <see cref="Locate(string?, string?)"/>).</summary>
+    public static string? NameAt(string? text, int index, string? separator)
     {
-        var spans = Locate(text);
+        var spans = Locate(text, separator);
         if (spans.Count == 1)
             return spans[0].Name;
         foreach (var span in spans)

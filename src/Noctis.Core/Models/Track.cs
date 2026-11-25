@@ -306,6 +306,13 @@ public partial class Track : ObservableObject
     [property: System.Text.Json.Serialization.JsonIgnore]
     private bool _isFileMissing;
 
+    /// <summary>Transient flag (phone): a song downloaded from a computer that no longer has it
+    /// (Account › No longer on your computer). Song rows show a small mark for it. Stamped by the
+    /// phone's account service once per change, so rows never look it up. Not persisted.</summary>
+    [ObservableProperty]
+    [property: System.Text.Json.Serialization.JsonIgnore]
+    private bool _isNotOnComputer;
+
     /// <summary>Transient 1-based position within the list view currently displaying this track
     /// (set by the Folders pane). Drives the leading row-number column. Not persisted.</summary>
     [ObservableProperty]
@@ -830,45 +837,47 @@ public partial class Track : ObservableObject
     /// </summary>
     public const string GenreSeparator = "; ";
 
-    /// <summary>The single genres in <paramref name="value"/>: split on ';', trimmed, blanks
-    /// dropped, de-duplicated case-insensitively (first spelling wins).</summary>
+    /// <summary>The single genres in <paramref name="value"/>, as the library groups and shows
+    /// them: split on ';' and every <see cref="GenreSeparators"/> separator ("Rock, Pop" → Rock,
+    /// Pop; GitHub #260), trimmed, blanks dropped, de-duplicated case-insensitively (first
+    /// spelling wins). Read-time only: tag writes use <see cref="SplitStoredGenres"/>.</summary>
     public static string[] SplitGenres(string? value)
+        => string.IsNullOrWhiteSpace(value) ? Array.Empty<string>() : GenreSeparators.Split(value);
+
+    /// <summary>The separate genre values a stored <see cref="Genre"/> stands for: split on ';'
+    /// only, as the reader joined the file's values. What the tag writer and the editor compare
+    /// and write, so a "Rock, Pop" value shown as two genres is never rewritten as two
+    /// (GitHub #260). Trimmed, blanks dropped, de-duplicated case-insensitively.</summary>
+    public static string[] SplitStoredGenres(string? value)
         => string.IsNullOrWhiteSpace(value)
             ? Array.Empty<string>()
-            : value.Split(';', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            : value.Split(GenreSeparators.Stored, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
 
-    /// <summary>Tag genre values as one <see cref="Genre"/> string (see <see cref="SplitGenres"/>).</summary>
+    /// <summary>Tag genre values as one <see cref="Genre"/> string (see <see cref="SplitStoredGenres"/>).</summary>
     public static string JoinGenres(IEnumerable<string?>? values)
         => values == null
             ? string.Empty
-            : string.Join(GenreSeparator, SplitGenres(string.Join(";", values.Where(v => v != null))));
+            : string.Join(GenreSeparator, SplitStoredGenres(string.Join(";", values.Where(v => v != null))));
 
-    /// <summary>Typed genre text in the stored form: "rock ;Pop;" → "rock; Pop".</summary>
-    public static string NormalizeGenre(string? value) => string.Join(GenreSeparator, SplitGenres(value));
+    /// <summary>Typed genre text in the stored form: "rock ;Pop;" → "rock; Pop". Splits on ';'
+    /// only: "Rock, Pop" stays one value, as typed (GitHub #260).</summary>
+    public static string NormalizeGenre(string? value) => string.Join(GenreSeparator, SplitStoredGenres(value));
 
     /// <summary>Stored genres for display, joined with " · " like the artist page's GENRE fact:
     /// "Alternative Rock; Alt-Pop" → "Alternative Rock · Alt-Pop" (GitHub #136).</summary>
     public static string DotGenres(string? value) => string.Join(" · ", SplitGenres(value));
 
     /// <summary>True when <paramref name="value"/> holds any of <paramref name="genres"/>
-    /// (case-insensitive). Allocation-free: Autoplay and radio call it for every library track.</summary>
+    /// (case-insensitive; split like <see cref="SplitGenres"/>). Allocation-free: Autoplay and
+    /// radio call it for every library track.</summary>
     public static bool SharesGenre(string[] genres, string? value)
-    {
-        if (genres.Length == 0 || string.IsNullOrEmpty(value)) return false;
-        var rest = value.AsSpan();
-        while (true)
-        {
-            var cut = rest.IndexOf(';');
-            var part = (cut < 0 ? rest : rest[..cut]).Trim();
-            if (part.Length > 0)
-                foreach (var g in genres)
-                    if (part.Equals(g, StringComparison.OrdinalIgnoreCase)) return true;
-            if (cut < 0) return false;
-            rest = rest[(cut + 1)..];
-        }
-    }
+        => genres.Length > 0 && !string.IsNullOrEmpty(value)
+           && GenreSeparators.Contains(value, genres, default, out _);
+
+    /// <summary>Raises <see cref="GenreDisplay"/> after the genre separators changed.</summary>
+    public void NotifyGenreDisplayChanged() => OnPropertyChanged(nameof(GenreDisplay));
 
     /// <summary>
     /// Generates a deterministic album ID from AlbumArtist and Album name.

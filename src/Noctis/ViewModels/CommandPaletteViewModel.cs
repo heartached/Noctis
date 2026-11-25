@@ -19,8 +19,13 @@ public sealed class PaletteItem
     /// <summary>The icon is a stroked line icon (MenuLine*/Line*/PageLine*), drawn with
     /// LineIcon; otherwise a filled glyph drawn with PathIcon.</summary>
     public bool IsLineIcon { get; init; }
-    public bool ShowGlyphIcon => Icon != null && !IsLineIcon;
-    public bool ShowLineIcon => Icon != null && IsLineIcon;
+    /// <summary>The sidebar's own PNG mask for this row (Home, Songs, Albums...), when it has one:
+    /// the palette then shows the same icon as the sidebar instead of the older filled glyph.</summary>
+    public Avalonia.Media.Imaging.Bitmap? Mask => Icon as Avalonia.Media.Imaging.Bitmap;
+    public Avalonia.Media.Geometry? Glyph => Icon as Avalonia.Media.Geometry;
+    public bool ShowMaskIcon => Mask != null;
+    public bool ShowGlyphIcon => Glyph != null && !IsLineIcon;
+    public bool ShowLineIcon => Glyph != null && IsLineIcon;
     public required Action Execute { get; init; }
 }
 
@@ -49,7 +54,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         _main = main;
         _library = library;
         _staticItems = BuildStaticItems();
-        Refresh();
+        _ = RefreshAsync();
     }
 
     // Debounced. Refresh() scans _library.Tracks, .Albums and .Artists in full;
@@ -63,6 +68,10 @@ public partial class CommandPaletteViewModel : ViewModelBase
 
     partial void OnQueryChanged(string value)
     {
+        // Results now belong to an older query: a scan still running for one is dropped, and
+        // Enter waits for this query's rows (ExecuteSelected) instead of running a stale one.
+        Interlocked.Increment(ref _refreshGeneration);
+        _resultsStale = true;
         _queryDebounceCts?.Cancel();
         _queryDebounceCts?.Dispose();
         var cts = new CancellationTokenSource();
@@ -77,7 +86,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         {
             await Task.Delay(QueryDebounceMs, token);
             if (token.IsCancellationRequested) return;
-            Refresh();
+            await RefreshAsync();
         }
         catch (OperationCanceledException) { /* superseded by a newer keystroke */ }
     }
@@ -88,8 +97,14 @@ public partial class CommandPaletteViewModel : ViewModelBase
         || key.StartsWith("PageLine", StringComparison.Ordinal)
         || key.StartsWith("Line", StringComparison.Ordinal);
 
-    private static object? Icon(string key) =>
-        Application.Current?.TryFindResource(key, out var res) == true ? res : null;
+    private static readonly Noctis.Converters.IconKeyToGeometryConverter SidebarMasks = new();
+
+    /// <summary>The sidebar's PNG mask when the key has one (so pages look the same in both
+    /// places), otherwise the geometry resource.</summary>
+    internal static object? Icon(string key) =>
+        Noctis.Converters.IconKeyToGeometryConverter.HasKey(key)
+            ? SidebarMasks.Convert(key, typeof(object), null, System.Globalization.CultureInfo.InvariantCulture)
+            : Application.Current?.TryFindResource(key, out var res) == true ? res : null;
 
     private List<PaletteItem> BuildStaticItems()
     {
@@ -109,7 +124,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Albums")), "albums", "AlbumsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Artists")), "artists", "ArtistsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Genres")), "genres", "TagIcon");
-        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Folders")), "folders", "FolderIcon");
+        Page(Loc.T("Palette.GoTo", Loc.T("Nav.Folders")), "folders", "FoldersIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Playlists")), "playlists", "PlaylistsIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Nav.Favorites")), "favorites", "FavoritesIcon");
         Page(Loc.T("Palette.GoTo", Loc.T("Tab.Statistics")), "statistics", "StatisticsIcon");
@@ -155,7 +170,13 @@ public partial class CommandPaletteViewModel : ViewModelBase
     /// <summary>Stale-result guard: only the newest Refresh may touch Results.</summary>
     private int _refreshGeneration;
 
-    private async void Refresh()
+    /// <summary>True from a keystroke until that query's rows are in <see cref="Results"/>.</summary>
+    private bool _resultsStale;
+
+    /// <summary>The row picked (Enter or click); it runs once the palette has closed.</summary>
+    private PaletteItem? _chosen;
+
+    private async Task RefreshAsync()
     {
         var query = Query.Trim();
 
@@ -167,6 +188,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
             foreach (var item in _staticItems.Take(MaxResults))
                 Results.Add(item);
             SelectedIndex = Results.Count > 0 ? 0 : -1;
+            _resultsStale = false;
             return;
         }
 
@@ -260,6 +282,7 @@ public partial class CommandPaletteViewModel : ViewModelBase
             }
 
             SelectedIndex = Results.Count > 0 ? 0 : -1;
+            _resultsStale = false;
         }
         catch (Exception ex)
         {
@@ -293,18 +316,45 @@ public partial class CommandPaletteViewModel : ViewModelBase
         SelectedIndex = Math.Clamp(SelectedIndex + delta, 0, Results.Count - 1);
     }
 
+    /// <summary>
+    /// Enter. Typing then pressing Enter within the 200 ms debounce used to run the row of the
+    /// previous query (the first page, "Go to Home", for a fresh palette): the typed query's
+    /// rows are fetched first now.
+    /// </summary>
     [RelayCommand]
-    private void ExecuteSelected()
+    private async Task ExecuteSelectedAsync()
     {
+        if (_chosen != null) return;
+        if (_resultsStale)
+        {
+            _queryDebounceCts?.Cancel();
+            await RefreshAsync();
+            if (_resultsStale) return; // the query changed again meanwhile
+        }
         if (SelectedIndex >= 0 && SelectedIndex < Results.Count)
             ExecuteItem(Results[SelectedIndex]);
     }
 
+    /// <summary>
+    /// Picks <paramref name="item"/> and closes the palette; the item runs from
+    /// <see cref="RunChosen"/> once the palette is gone. The palette's close animation keeps
+    /// it on screen (and modal) for a moment, and an item that opens a pop-up of its own (Lyrics
+    /// Studio, Find Lyrics) must not open under a closing modal. Only the first pick counts.
+    /// </summary>
     [RelayCommand]
     private void ExecuteItem(PaletteItem? item)
     {
-        if (item == null) return;
+        if (item == null || _chosen != null) return;
+        _chosen = item;
         CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>Runs the picked row, once (the opener calls it after the palette closed).</summary>
+    public void RunChosen()
+    {
+        var item = _chosen;
+        if (item == null) return;
+        _chosen = null;
         item.Execute();
     }
 

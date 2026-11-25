@@ -95,6 +95,39 @@ public partial class PopMenu : UserControl
     public PopMenu()
     {
         InitializeComponent();
+        // One built view per kind of menu, kept while another kind shows: the content presenter
+        // keeps only the last one, so a sort menu in between threw the song menu's rows away and
+        // the next ⋯ built them all again (4 MB, headless) inside the tap's frame.
+        var kinds = MenuContent.DataTemplates.ToList();
+        MenuContent.DataTemplates.Clear();
+        MenuContent.DataTemplates.Add(new KeptViews(kinds));
+    }
+
+    /// <summary>The menu's templates, each building its view once into one host that stays in
+    /// the tree: the kind asked for shows, rebound to the new menu, and the others are hidden
+    /// with their last menu (taken out and put back, a view had all its styles applied again:
+    /// 2.8 MB a switch).</summary>
+    private sealed class KeptViews(IReadOnlyList<Avalonia.Controls.Templates.IDataTemplate> kinds) : Avalonia.Controls.Templates.IDataTemplate
+    {
+        private readonly Panel _host = new();
+        private readonly Dictionary<Avalonia.Controls.Templates.IDataTemplate, Control> _built = new();
+
+        public bool Match(object? data) => kinds.Any(k => k.Match(data));
+
+        public Control? Build(object? param)
+        {
+            var kind = kinds.FirstOrDefault(k => k.Match(param));
+            if (kind == null) return null;
+            if (!_built.TryGetValue(kind, out var view))
+            {
+                if (kind.Build(param) is not { } made) return null;
+                _built[kind] = view = made;
+                _host.Children.Add(view);
+            }
+            view.DataContext = param;
+            foreach (var (k, v) in _built) v.IsVisible = ReferenceEquals(k, kind);
+            return _host;
+        }
     }
 
     /// <summary>What the open card grew out of: the ⋯ button, or the held row or tile; null when
@@ -403,7 +436,7 @@ public partial class PopMenu : UserControl
         var height = Math.Min(Card.DesiredSize.Height, bottom - top);
 
         double x, y;
-        if (Anchor is { } anchor && host != null && anchor.TranslatePoint(default, host) is { } at)
+        if (Anchor is { } anchor && host != null && LaidOutAt(anchor, host) is { } at)
         {
             var a = new Rect(at, anchor.Bounds.Size);
             x = a.Center.X >= size.Width / 2 ? a.Right - width : a.Left;
@@ -440,6 +473,15 @@ public partial class PopMenu : UserControl
         Card.Margin = new Thickness(x, y, 0, 0);
     }
 
+    /// <summary>
+    /// Where <paramref name="anchor"/> is laid out in <paramref name="host"/>, without its own
+    /// render transform: a ⋯ shrinks while pressed (scale 0.96, MobileStyles), and placed from its
+    /// shrunk box the card landed up to a pixel off the button, by how far the press had got when
+    /// the finger lifted (a loaded headless run: origin 701.52 for a button at 701, card 284 for 283).
+    /// </summary>
+    private static Point? LaidOutAt(Visual anchor, Visual host) =>
+        anchor.GetVisualParent() is { } parent ? parent.TranslatePoint(anchor.Bounds.Position, host) : anchor.TranslatePoint(default, host);
+
     /// <summary>How far down the card may reach: above the tab bar and mini player on a page or
     /// the Queue (whose tab bar stays up), above the gesture bar over Now Playing and Lyrics.</summary>
     private double BottomLimit(double height)
@@ -454,7 +496,7 @@ public partial class PopMenu : UserControl
     private RelativePoint Origin()
     {
         var card = new Rect(Card.Margin.Left, Card.Margin.Top, Card.Width, Card.Bounds.Height > 0 ? Card.Bounds.Height : Card.DesiredSize.Height);
-        if (Anchor is not { } anchor || this.GetVisualParent() is not { } host || anchor.TranslatePoint(default, host) is not { } at || card.Width <= 0)
+        if (Anchor is not { } anchor || this.GetVisualParent() is not { } host || LaidOutAt(anchor, host) is not { } at || card.Width <= 0)
             return RelativePoint.Center;
         var x = at.X + anchor.Bounds.Width / 2 - card.X;
         var y = at.Y + anchor.Bounds.Height / 2 - card.Y;

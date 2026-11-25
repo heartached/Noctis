@@ -181,7 +181,12 @@ public sealed partial class ShellViewModel : ObservableObject
         var downloaded = account.DownloadedCount;
         if (Interlocked.Exchange(ref _downloadedCount, downloaded) != downloaded) Marshal(Library.NotifyDownloadsChanged);
         var signedIn = account.IsSignedIn ? 1 : 0;
-        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn) Marshal(Library.NotifyAccountChanged);
+        if (Interlocked.Exchange(ref _signedIn, signedIn) != signedIn)
+            Marshal(() =>
+            {
+                Library.NotifyAccountChanged();
+                OnPropertyChanged(nameof(ShowsHomeRemote));
+            });
     }
 
     // Signed in (1) or not, as last seen: the Library's source button shows only signed in (or
@@ -198,11 +203,38 @@ public sealed partial class ShellViewModel : ObservableObject
 
     public bool HasAccount => Account != null;
 
+    /// <summary>The system notification for downloads from the computer (Android); null in tests
+    /// unless injected, and the in-app progress still shows.</summary>
+    public IDownloadNotifier? DownloadNotifier { get; init; }
+
+    /// <summary>Keeps the process running while downloads run in the background (Android); null in
+    /// tests unless injected, and downloads then run only while the process does.</summary>
+    public IDownloadKeeper? DownloadKeeper { get; init; }
+
+    /// <summary>Runs the app again for downloads left waiting, even in the background (Android: a
+    /// JobScheduler job); null in tests unless injected, and they then wait for the app in front.</summary>
+    public IDownloadWakeup? DownloadWakeup { get; init; }
+
+    private DownloadActivity? _downloads;
+
+    /// <summary>Where the downloads from the computer stand (album page row, Account page,
+    /// notification); null without an account. Made on first use, after the host's init values.</summary>
+    public DownloadActivity? Downloads => _account == null ? null
+        : _downloads ??= new DownloadActivity(_account, Marshal, DownloadNotifier, DownloadKeeper, DownloadWakeup)
+        {
+            IsInFront = () => !IsSuspended,
+            ResumeAfterSync = ResumeForWakeupAsync,
+        };
+
     /// <summary>Hops account events, which arrive on any thread, to the UI thread; tests pass a direct call.</summary>
     public Action<Action> Marshal { get; init; } = a => Avalonia.Threading.Dispatcher.UIThread.Post(a);
 
     /// <summary>The sync started by <see cref="InitializeAsync"/> when signed in; tests await it.</summary>
     internal Task StartupSync { get; private set; } = Task.CompletedTask;
+
+    /// <summary>The start's resume of unfinished downloads (done at once when signed out), set by
+    /// <see cref="InitializeAsync"/>: a wakeup run in a process the job started waits for it.</summary>
+    private readonly TaskCompletionSource<Task> _startupResume = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Pages pushed over the active tab's root, oldest first. A tab switch clears it.</summary>
     public ObservableCollection<MobilePage> Pages { get; } = new();
@@ -400,6 +432,10 @@ public sealed partial class ShellViewModel : ObservableObject
         foreach (var page in Pages) page.Relabel();
         OnPropertyChanged(nameof(SongRowMarkLabel)); // Settings › Show in Song Rows kept the old language
         OnPropertyChanged(nameof(QueueHistoryToggleText));
+        OnPropertyChanged(nameof(IsRightToLeft));
+        OnPropertyChanged(nameof(FlowDirection));
+        OnPropertyChanged(nameof(TopSafePadding));
+        OnPropertyChanged(nameof(BottomSafePadding));
     }
 
     public bool IsHomeSelected => SelectedTab == MobileTab.Home;
@@ -424,21 +460,23 @@ public sealed partial class ShellViewModel : ObservableObject
     private AlbumGridPageViewModel? _albumsRoot;
     private ArtistListPageViewModel? _artistsRoot;
 
-    /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.
-    /// Made on first use; it re-reads on every library refresh.</summary>
-    public PlaylistListPageViewModel PlaylistsRoot =>
-        _playlistsRoot ??= new PlaylistListPageViewModel(this) { IsEmbedded = true };
+    // Every tab's root is made on first use while its tab is on the bar and null otherwise: a root
+    // re-reads on every library refresh, so a tab taken off the bar closes and drops its root
+    // (OnBarTabsChanged) and a bar without it builds and refreshes none.
+
+    /// <summary>The Playlists tab's root: the playlist list, embedded under the tab's own title.</summary>
+    public PlaylistListPageViewModel? PlaylistsRoot => _playlistsRoot ??= HasTab(MobileTab.Playlists)
+        ? new PlaylistListPageViewModel(this) { IsEmbedded = true }
+        : null;
 
     /// <summary>The Favorites tab's root: the favourite songs, embedded under the tab's title.</summary>
-    public SongListPageViewModel FavoritesRoot =>
-        _favoritesRoot ??= new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false };
-
-    // Songs, Albums and Artists as tab roots (Settings › Tab Bar): each made once its tab is first
-    // on the bar, null before that, so a bar without them builds and refreshes none of them.
+    public SongListPageViewModel? FavoritesRoot => _favoritesRoot ??= HasTab(MobileTab.Favorites)
+        ? new SongListPageViewModel(this, "Nav.Favorites", Library.Favourites, sortKey: "Nav.Favorites") { IsEmbedded = true, OffersFavouritesFilter = false }
+        : null;
 
     /// <summary>The Songs tab's root: every song, embedded under the tab's title (the Library row's page).</summary>
     public SongListPageViewModel? SongsRoot => _songsRoot ??= HasTab(MobileTab.Songs)
-        ? new SongListPageViewModel(this, "Nav.Songs", () => Library.Songs, sortKey: "Nav.Songs") { IsEmbedded = true }
+        ? new SongListPageViewModel(this, "Nav.Songs", Library.SourceSongs, sortKey: "Nav.Songs") { IsEmbedded = true }
         : null;
 
     /// <summary>The Albums tab's root: the album grid, embedded under the tab's title.</summary>
@@ -475,6 +513,13 @@ public sealed partial class ShellViewModel : ObservableObject
 
     partial void OnBarTabsChanged(IReadOnlyList<MobileTab> value)
     {
+        Drop(ref _playlistsRoot, MobileTab.Playlists);
+        Drop(ref _favoritesRoot, MobileTab.Favorites);
+        Drop(ref _songsRoot, MobileTab.Songs);
+        Drop(ref _albumsRoot, MobileTab.Albums);
+        Drop(ref _artistsRoot, MobileTab.Artists);
+        OnPropertyChanged(nameof(PlaylistsRoot));
+        OnPropertyChanged(nameof(FavoritesRoot));
         OnPropertyChanged(nameof(SongsRoot));
         OnPropertyChanged(nameof(AlbumsRoot));
         OnPropertyChanged(nameof(ArtistsRoot));
@@ -482,12 +527,44 @@ public sealed partial class ShellViewModel : ObservableObject
         // it, and a sheet such as Settings, stay where they are).
         if (!value.Contains(SelectedTab)) SelectedTab = StartTab;
         SavePlayerBarSettings(nameof(BarTabs));
+
+        void Drop<T>(ref T? root, MobileTab tab) where T : MobilePage
+        {
+            if (root == null || value.Contains(tab)) return;
+            root.OnClosed();
+            root = null;
+        }
     }
 
     // The sides too: in landscape the 3-button navigation bar or a side cutout sits left or
-    // right, and without them the content drew under it.
-    public Thickness TopSafePadding => new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
-    public Thickness BottomSafePadding => new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
+    // right, and without them the content drew under it. The insets are the screen's own sides:
+    // under a right-to-left layout a margin's Left is the screen's right, so they swap.
+    public Thickness TopSafePadding => IsRightToLeft
+        ? new(SafeArea.Right, SafeArea.Top, SafeArea.Left, 0)
+        : new(SafeArea.Left, SafeArea.Top, SafeArea.Right, 0);
+    public Thickness BottomSafePadding => IsRightToLeft
+        ? new(SafeArea.Right, 0, SafeArea.Left, SafeArea.Bottom)
+        : new(SafeArea.Left, 0, SafeArea.Right, SafeArea.Bottom);
+
+    /// <summary>
+    /// The phone reads right to left when the strings it shows are a right-to-left language
+    /// (Arabic): the setting, or the phone's own language when it ships, as <see cref="Loc.Resolve"/>
+    /// picks it. A Hebrew phone shows the English strings, so it stays left to right. The shell
+    /// sets it at its root (ShellView), so every page, sheet and menu mirrors with it, live on a
+    /// language change (<see cref="Relabel"/>); what must not mirror (media transport, times)
+    /// sets LeftToRight itself. The desktop is not touched.
+    /// </summary>
+    public bool IsRightToLeft => IsRightToLeftLanguage(Loc.Instance.Culture.Name);
+
+    public Avalonia.Media.FlowDirection FlowDirection =>
+        IsRightToLeft ? Avalonia.Media.FlowDirection.RightToLeft : Avalonia.Media.FlowDirection.LeftToRight;
+
+    /// <summary>Whether the translation <paramref name="cultureName"/> resolves to is written right to left.</summary>
+    internal static bool IsRightToLeftLanguage(string cultureName)
+    {
+        try { return System.Globalization.CultureInfo.GetCultureInfo(Loc.Resolve(cultureName)).TextInfo.IsRightToLeft; }
+        catch (System.Globalization.CultureNotFoundException) { return false; }
+    }
 
     /// <summary>The floating pill: whenever a track is loaded and Now Playing is not covering it;
     /// a song list's Select mode puts its action bar in the pill's place.</summary>
@@ -818,6 +895,14 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty] private bool _glassTabPill;
     partial void OnGlassTabPillChanged(bool value) => SavePlayerBarSettings(nameof(GlassTabPill));
 
+    /// <summary>Settings › Appearance › Reduce Glass (beta testers 11-22: "in some menus it just feels
+    /// laggy"): every glass surface (the menus' card, the tab bar, mini player and other floating
+    /// bars, the header buttons, the tab pill) is a plain fill that reads nothing beneath it
+    /// (GlassPanel.ReduceGlass, set on ShellView). Off by default. While on, Liquid Glass Tab Pill
+    /// has nothing to draw and its switch is disabled; its value is kept for when this goes off.</summary>
+    [ObservableProperty] private bool _reduceGlass;
+    partial void OnReduceGlassChanged(bool value) => SavePlayerBarSettings(nameof(ReduceGlass));
+
     /// <summary>Settings › Listening › Played Songs in Queue (Discord request 11-07): the Queue page
     /// shows the songs already played above the current track (NowPlayingViewModel.PlayedSongs).
     /// Off by default, the Queue page as it was.</summary>
@@ -825,6 +910,29 @@ public sealed partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(ShowsQueueHistoryRows))]
     private bool _showQueueHistory;
     partial void OnShowQueueHistoryChanged(bool value) => SavePlayerBarSettings(nameof(ShowQueueHistory));
+
+    /// <summary>Settings › Listening › Keep Shuffle On (Discord 11-23, testers: "shuffle turns itself off
+    /// when I play something else"): while Shuffle is on, starting a list keeps it on and plays it
+    /// shuffled (NowPlayingViewModel.KeepShuffleOn). Off by default; saved under the desktop's key
+    /// (AppSettings.KeepShuffleOn).</summary>
+    [ObservableProperty] private bool _keepShuffleOn;
+    partial void OnKeepShuffleOnChanged(bool value)
+    {
+        Player.KeepShuffleOn = value;
+        SavePlayerBarSettings(nameof(KeepShuffleOn));
+    }
+
+    /// <summary>Settings › Account › Show Remote on Home (Discord beta 11-22: "you have to go to the
+    /// settings/account page to find it"): a Remote button next to the profile picture on Home.
+    /// On by default; saved with the player bar's settings (MobileHomeRemote).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowsHomeRemote))]
+    private bool _showRemoteOnHome = true;
+    partial void OnShowRemoteOnHomeChanged(bool value) => SavePlayerBarSettings(nameof(ShowRemoteOnHome));
+
+    /// <summary>Home's Remote button shows: the switch is on and a computer is signed in (it goes
+    /// at sign-out, and comes back at sign-in, without a restart).</summary>
+    public bool ShowsHomeRemote => ShowRemoteOnHome && Account is { IsSignedIn: true };
 
     /// <summary>The Queue page's History is folded to its title (its Hide); for this run of the app only.</summary>
     [ObservableProperty]
@@ -839,11 +947,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [RelayCommand] private void ToggleQueueHistoryCollapsed() => IsQueueHistoryCollapsed = !IsQueueHistoryCollapsed;
 
-    private async Task LoadPlayerBarSettingsAsync()
+    private async Task LoadPlayerBarSettingsAsync(AppSettings? saved = null)
     {
         try
         {
-            var settings = await Library.Persistence.LoadSettingsAsync();
+            var settings = saved ?? await Library.Persistence.LoadSettingsAsync();
             // A switch flipped while this load ran keeps the user's value: the load used to put
             // the saved one back, and the flip was never saved either.
             _applyingPlayerBar = true;
@@ -856,8 +964,12 @@ public sealed partial class ShellViewModel : ObservableObject
                     SongRowMark = Enum.TryParse<SongRowMark>(settings.MobileSongRowMark, ignoreCase: true, out var mark) && Enum.IsDefined(mark)
                         ? mark : SongRowMark.Ratings;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingArtwork))) NowPlayingArtwork = NowPlayingArtworkStyles.Parse(settings.MobileNowPlayingArtwork);
+                if (!_playerBarSetBeforeLoad.Contains(nameof(AnimatedCovers))) AnimatedCovers = AnimatedCoversSettings.Parse(settings.MobileAnimatedCovers);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(GlassTabPill))) GlassTabPill = settings.MobileGlassTabPill;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ReduceGlass))) ReduceGlass = settings.MobileReduceGlass;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(ShowQueueHistory))) ShowQueueHistory = settings.MobileQueueShowHistory;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(KeepShuffleOn))) KeepShuffleOn = settings.KeepShuffleOn;
+                if (!_playerBarSetBeforeLoad.Contains(nameof(ShowRemoteOnHome))) ShowRemoteOnHome = settings.MobileHomeRemote;
                 if (!_playerBarSetBeforeLoad.Contains(nameof(BarTabs))) BarTabs = TabBarTabs.Decode(settings.MobileTabBar);
                 if (!_playerBarSetBeforeLoad.Contains(nameof(NowPlayingBrightness)))
                     NowPlayingBrightness = Math.Clamp(settings.MobileNowPlayingBrightness, -NowPlayingBrightnessLimit, NowPlayingBrightnessLimit);
@@ -889,11 +1001,15 @@ public sealed partial class ShellViewModel : ObservableObject
         bool fill = ShowMiniProgressFill, line = ShowMiniProgressLine, pages = ArtworkPageColors;
         var mark = SongRowMark.ToString();
         var artwork = NowPlayingArtwork.ToString();
+        var animatedCovers = AnimatedCovers.ToString();
         var brightness = NowPlayingBrightness;
         var background = NowPlayingBackground.ToString();
         int blur = NowPlayingBlur, dim = NowPlayingDim;
         var glassPill = GlassTabPill;
+        var reduceGlass = ReduceGlass;
         var queueHistory = ShowQueueHistory;
+        var keepShuffle = KeepShuffleOn;
+        var homeRemote = ShowRemoteOnHome;
         var tabBar = TabBarTabs.Encode(BarTabs);
         PendingPlayerBarSave = _playerBarSaveChain = _playerBarSaveChain.ContinueWith(async _ =>
         {
@@ -907,12 +1023,16 @@ public sealed partial class ShellViewModel : ObservableObject
                     settings.MobileArtworkPageColors = pages;
                     settings.MobileSongRowMark = mark;
                     settings.MobileNowPlayingArtwork = artwork;
+                    settings.MobileAnimatedCovers = animatedCovers;
                     settings.MobileNowPlayingBrightness = brightness;
                     settings.MobileNowPlayingBackground = background;
                     settings.MobileNowPlayingBlur = blur;
                     settings.MobileNowPlayingDim = dim;
                     settings.MobileGlassTabPill = glassPill;
+                    settings.MobileReduceGlass = reduceGlass;
                     settings.MobileQueueShowHistory = queueHistory;
+                    settings.KeepShuffleOn = keepShuffle;
+                    settings.MobileHomeRemote = homeRemote;
                     settings.MobileTabBar = tabBar;
                 });
             }
@@ -1143,6 +1263,12 @@ public sealed partial class ShellViewModel : ObservableObject
     }
 
     [RelayCommand] private void OpenRecentlyPlayed() => Navigate(new RailGridPageViewModel(this, "Mobile.RecentlyPlayed", () => Library.RecentlyPlayedRail));
+
+    /// <summary>Home › Top Artists: the rail's artists as a grid.</summary>
+    [RelayCommand] private void OpenTopArtists() => Navigate(new RailGridPageViewModel(this, "Home.TopArtists", () => Library.TopArtistsRail));
+
+    /// <summary>Home › Downloaded: every album with a song kept on this phone.</summary>
+    [RelayCommand] private void OpenDownloaded() => Navigate(new RailGridPageViewModel(this, "Mobile.Downloaded", Library.DownloadedAlbums));
 
     /// <summary>An album tile, row or link: the album page.</summary>
     [RelayCommand]
@@ -1416,6 +1542,28 @@ public sealed partial class ShellViewModel : ObservableObject
         if (item != null) Sheet = ContextSheetViewModel.ForArtist(this, item.Artist, item.ArtworkPath);
     }
 
+    private readonly Noctis.Helpers.BulkObservableCollection<Playlist> _pickerPlaylists = new();
+    private string[] _pickerNames = Array.Empty<string>();
+
+    /// <summary>
+    /// Add to Playlist's list (the manual playlists), one collection kept from sheet to sheet:
+    /// a new list on every open made the sheet build a row for every playlist each time. It is
+    /// replaced only when the playlists or their names changed (a rename is made in place).
+    /// </summary>
+    internal IReadOnlyList<Playlist> PickerPlaylists()
+    {
+        var next = Library.Playlists.Where(p => !p.IsSmartPlaylist).ToList();
+        var names = next.Select(p => p.Name).ToArray();
+        var same = next.Count == _pickerPlaylists.Count && names.SequenceEqual(_pickerNames)
+            && next.Zip(_pickerPlaylists).All(pair => ReferenceEquals(pair.First, pair.Second));
+        if (!same)
+        {
+            _pickerPlaylists.ReplaceAll(next);
+            _pickerNames = names;
+        }
+        return _pickerPlaylists;
+    }
+
     /// <summary>Closes whichever menu or sheet is open.</summary>
     [RelayCommand]
     public void CloseSheet()
@@ -1630,7 +1778,8 @@ public sealed partial class ShellViewModel : ObservableObject
         if (Account != null && CurrentPage is not AccountPageViewModel) Navigate(new AccountPageViewModel(this, Account));
     }
 
-    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet.</summary>
+    /// <summary>Account › Remote: the computer's own player, pushed inside the Settings sheet (or
+    /// over Home, from its Remote button: <see cref="ShowsHomeRemote"/>).</summary>
     [RelayCommand]
     private void OpenComputerRemote()
     {
@@ -1638,10 +1787,32 @@ public sealed partial class ShellViewModel : ObservableObject
             Navigate(new ComputerRemotePageViewModel(this, Account));
     }
 
-    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play. Failures
-    /// are logged; the Account page shows the running counts.</summary>
-    public Task DownloadTracksAsync(IReadOnlyList<Track> tracks) =>
-        RunAccountAsync("Download", a => a.DownloadAsync(tracks));
+    /// <summary>The sheet's Download: fetches <paramref name="tracks"/> for offline play, as one start
+    /// named <paramref name="title"/> (the album page, the Account page and the notification follow
+    /// it). The banner says it started; a refusal the user can act on (Wi-Fi only, phone full, signed
+    /// out) replaces it, other failures are logged.</summary>
+    public async Task DownloadTracksAsync(IReadOnlyList<Track> tracks, string? title = null)
+    {
+        if (Account is not { } account || Downloads is not { } downloads) return;
+        Player.Notice = Loc.T("Mobile.Account.StartingDownloads");
+        try
+        {
+            await downloads.RunAsync(title, tracks, () => account.DownloadAsync(tracks));
+        }
+        catch (NoctisServerException ex)
+        {
+            DebugLog.Write("Account", $"Download failed: {ex.Kind}");
+            // Before this, a tap on mobile data with Wi-Fi only on did nothing that could be seen. Out
+            // of the computer's reach the songs wait for it (DownloadActivity), not failed.
+            Player.Notice = ex.Kind == NoctisErrorKind.Unreachable
+                ? Loc.T("Mobile.Download.WaitingForComputer")
+                : AccountPageViewModel.Describe(ex.Kind, signedIn: true);
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Download failed: {ex.Message}");
+        }
+    }
 
     /// <summary>The sheet's Remove download(s).</summary>
     public Task RemoveDownloadsAsync(IReadOnlyList<Track> tracks) =>
@@ -1660,16 +1831,30 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
-    public async Task InitializeAsync()
+    /// <param name="settings">The settings the host read and applied at start (AndroidApp.StartAsync):
+    /// every part below takes its values from them instead of reading settings.json once more each
+    /// (it was read eight times per cold launch). Null = read here, once. A value changed since that
+    /// read is kept all the same: each part keeps what the user set before its load.</param>
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    public async Task InitializeAsync(AppSettings? settings)
     {
-        await Library.InitializeAsync();
-        await LoadPlayerBarSettingsAsync();
-        await LoadListSortsAsync();
-        await Background.LoadAsync();
-        await LoadHistoryPrefsAsync();
+        if (settings == null)
+        {
+            try { settings = await Library.Persistence.LoadSettingsAsync(); }
+            catch (Exception ex) { DebugLog.Write("Settings", $"Start settings load failed: {ex.Message}"); }   // each part reads its own
+        }
+        await Library.InitializeAsync(settings);
+        await LoadPlayerBarSettingsAsync(settings);
+        await LoadListSortsAsync(settings);
+        await Search.LoadRecentSearchesAsync(settings);
+        await Background.LoadAsync(settings);
+        await LoadHistoryPrefsAsync(settings);
         // Lyrics settings before the queue restore: restoring sets CurrentTrack, which loads
         // that track's lyrics with the saved split-word and layer preferences.
-        await Lyrics.InitializeAsync();
+        await Lyrics.InitializeAsync(settings);
+        // ReplayGain before the queue restore too: the restored song's level is set as it loads.
+        await Player.LoadReplayGainAsync(settings);
         try
         {
             await Player.RestoreStateAsync();
@@ -1681,24 +1866,85 @@ public sealed partial class ShellViewModel : ObservableObject
         // Signed in: pull the desktop's changes and push ours. Fire-and-forget over a loaded
         // library; a failure (the computer is off, another network) is logged and never
         // reaches the UI — Settings → Account shows the next manual sync's error instead.
-        if (Account is { IsSignedIn: true } account) StartupSync = SyncOnStartAsync(account);
+        if (Account is { IsSignedIn: true } account)
+        {
+            var sync = SyncOnStartAsync(account);
+            StartupSync = sync;
+            _startupResume.TrySetResult(ResumeUnfinishedDownloadsAsync(sync, atStart: true));
+        }
+        else
+        {
+            _startupResume.TrySetResult(Task.CompletedTask);
+            // Signed out: a run left scheduled has nothing to resume.
+            DownloadWakeup?.Cancel();
+        }
         // Home's Last.fm sections (cached for 12 h: normally no request).
         _ = LastFm.RefreshAsync(force: false);
     }
 
-    private static async Task SyncOnStartAsync(INoctisAccountService account)
+    /// <returns>Whether the computer answered (a sync already running counts as yes).</returns>
+    private static async Task<bool> SyncOnStartAsync(INoctisAccountService account)
     {
         try
         {
-            if (account.IsSyncing) return;
+            if (account.IsSyncing) return true;
             var result = await account.SyncNowAsync();
             DebugLog.Write("Account", $"Startup sync: {result.Songs} songs, {result.Playlists} playlists, " +
                 $"{result.StateChangesPulled} changes in, {result.StateChangesPushed} out, {result.PlaysSent} plays sent");
+            return true;
         }
         catch (Exception ex)
         {
             DebugLog.Write("Account", $"Startup sync failed: {(ex as NoctisServerException)?.Kind.ToString() ?? ex.GetType().Name}: {ex.Message}");
+            return false;
         }
+    }
+
+    /// <summary>
+    /// Downloads the app ended in the middle of go on by themselves (DownloadActivity.ResumeUnfinishedAsync),
+    /// after the startup sync: long after the first frame, and with the catalog saying which songs the
+    /// computer still has. A computer that did not answer would fail every song: they wait for it
+    /// instead (DownloadActivity.WaitForComputerAsync). <paramref name="atStart"/>: the app's start,
+    /// whose banner then says so, as a tap's does; not every wakeup run's.
+    /// </summary>
+    private async Task ResumeUnfinishedDownloadsAsync(Task<bool> sync, bool atStart = false)
+    {
+        try
+        {
+            if (Downloads is not { } downloads) return;
+            // Not answering: the songs wait for it (a run on Wi-Fi, or every 15 minutes there).
+            if (!await sync) await downloads.WaitForComputerAsync();
+            else await downloads.ResumeUnfinishedAsync();
+            // Waiting for the computer, or for Wi-Fi (Wi-Fi only on mobile data).
+            if (atStart && !IsSuspended && downloads.WaitingText is { } waiting) Player.Notice = waiting;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Account", $"Resuming downloads failed: {ex.GetType().Name}");
+        }
+    }
+
+    /// <summary>
+    /// The wakeup ran with nothing downloading (DownloadActivity): in a process the job itself started,
+    /// the start's own sync and resume (the app is not on screen, so the downloads it resumes run under
+    /// the job); later, a sync now, so the catalog says which songs the computer still has, then the
+    /// songs still asked for. A computer that does not answer resumes nothing: they wait for it, as at start.
+    /// </summary>
+    private async Task ResumeForWakeupAsync()
+    {
+        var startup = await _startupResume.Task;
+        if (!startup.IsCompleted)
+        {
+            await startup;
+            return;
+        }
+        if (Account is { IsSignedIn: true } account) await ResumeUnfinishedDownloadsAsync(SyncOnStartAsync(account));
+    }
+
+    /// <summary>Back in front: downloads waiting for the app (or for Wi-Fi) are looked at again.</summary>
+    partial void OnIsSuspendedChanged(bool value)
+    {
+        if (!value && _downloads is { } downloads) _ = downloads.ResumeWaitingAsync();
     }
 
     // Set once the saved queue has been read back (InitializeAsync).

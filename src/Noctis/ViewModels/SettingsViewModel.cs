@@ -769,6 +769,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playPauseFadeEnabled;
     [ObservableProperty] private double _playPauseFadeMs = 300;
 
+    /// <summary>Skip Silence (Discord, Spark 11-23): songs start at their first sound and end
+    /// after their last one. The level is in dBFS.</summary>
+    [ObservableProperty] private bool _skipSilenceEnabled;
+    [ObservableProperty] private double _skipSilenceThresholdDb = AppSettings.SkipSilenceThresholdDefault;
+
     /// <summary>GitHub #101: percent of a song that has to be heard before the play counts
     /// (0 = as soon as it starts). The player reads it on every position tick, so a change
     /// also applies to the rest of the song playing now.</summary>
@@ -1105,6 +1110,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _playlistShowNewBadge = true;
     [ObservableProperty] private bool _playlistShowAddedColumn = true;
     [ObservableProperty] private bool _playlistShowFavoriteColumn = true;
+    /// <summary>Album page song rows: clickable heart on every row (Discord 11-24, sina).</summary>
+    [ObservableProperty] private bool _albumShowSongHearts = true;
     [ObservableProperty] private bool _trackTitleMarqueeEnabled = true;
     [ObservableProperty] private bool _artistMarqueeEnabled = true;
     [ObservableProperty] private bool _coverFlowMarqueeEnabled = true;
@@ -1364,6 +1371,11 @@ public partial class SettingsViewModel : ViewModelBase
     }
     [ObservableProperty] private bool _playbackBarShowIdlePill;
     [ObservableProperty] private bool _playbackBarShowTime;
+    /// <summary>The island time's lower line shows the total length instead of the time left
+    /// (a click on the time swaps it, Discord 11-23).</summary>
+    [ObservableProperty] private bool _playbackBarTimeShowsTotal;
+    /// <summary>Always show the volume slider on the island (Discord 11-23). Off by default.</summary>
+    [ObservableProperty] private bool _playbackBarInlineVolume;
     /// <summary>GitHub #93: waveform in the island / mini player seek bars (off by default).</summary>
     [ObservableProperty] private bool _waveformSeekBarEnabled;
     /// <summary>GitHub #181: waveform in the lyrics page's progress bar (off by default).</summary>
@@ -1475,11 +1487,14 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedPlayCountThresholdOption));
         MissingSongsOptions = BuildMissingSongsOptions();
         OnPropertyChanged(nameof(SelectedMissingSongsOption));
+        NewPlaylistPositionOptions = BuildNewPlaylistPositionOptions();
+        OnPropertyChanged(nameof(SelectedNewPlaylistPositionOption));
         UiScaleOptions = BuildUiScaleOptions();
         OnPropertyChanged(nameof(SelectedUiScaleOption));
         RelabelAnimatedArtworkStrings();
         LyricsSaveTargetOptions = BuildLyricsSaveTargetOptions();
         OnPropertyChanged(nameof(SelectedLyricsSaveTargetOption));
+        RelabelPlaylistNewBadgeDays();
         RebuildArtworkClickOptions();
         LyricsPreferredTypeOptions = BuildLyricsPreferredTypeOptions();
         OnPropertyChanged(nameof(SelectedLyricsPreferredTypeOption));
@@ -1575,6 +1590,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Plugin API 1.8: the lyrics renderer key ("" = Noctis's own). See <see cref="AppSettings.LyricsRenderer"/>.</summary>
     [ObservableProperty] private string _lyricsRenderer = "";
     [ObservableProperty] private bool _lyricsCenterWhenNoLyrics = true;
+    /// <summary>See <see cref="AppSettings.LyricsAutoReturnToLine"/>.</summary>
+    [ObservableProperty] private bool _lyricsAutoReturnToLine = true;
     /// <summary>Discord (f7uh): the lyrics page shows the centred player with its lyrics hidden.</summary>
     [ObservableProperty] private bool _lyricsPageHideLyrics;
 
@@ -1667,6 +1684,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showArtworkColumn = true;
     [ObservableProperty] private bool _showGenreColumn = true;
     [ObservableProperty] private bool _showRatingColumn = true;
+    /// <summary>AppSettings.ShowStarRatings (Discord 11-24, Halil).</summary>
+    [ObservableProperty] private bool _showStarRatings = true;
     [ObservableProperty] private bool _showBpmColumn;
     [ObservableProperty] private bool _showBitrateColumn;
     [ObservableProperty] private bool _showSampleRateColumn;
@@ -1695,6 +1714,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnShowArtworkColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowGenreColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowRatingColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnShowStarRatingsChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBpmColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowBitrateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnShowSampleRateColumnChanged(bool value) { if (_settingsLoaded) _ = SaveAsync(); }
@@ -1731,6 +1751,9 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _albumViewMode = "grid";
     /// <summary>Artist page Albums tab layout: "grid" or "carousel" (GitHub #149).</summary>
     [ObservableProperty] private string _artistAlbumsViewMode = "grid";
+    /// <summary>Artist page Singles &amp; EPs / Live Albums tab layouts: "grid" or "carousel".</summary>
+    [ObservableProperty] private string _artistSinglesViewMode = "grid";
+    [ObservableProperty] private string _artistLiveViewMode = "grid";
     /// <summary>Album carousel case style (<see cref="AlbumCarouselStyles"/>), both carousels.</summary>
     [ObservableProperty] private string _albumCarouselStyle = AlbumCarouselStyles.DefaultSetting;
     /// <summary>GitHub #233: a soft cover-coloured glow behind the carousel's centred album.</summary>
@@ -1762,6 +1785,8 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
     partial void OnArtistAlbumsViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistSinglesViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnArtistLiveViewModeChanged(string value) { if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnAlbumCarouselGlowChanged(bool value)
     {
         AlbumCarouselStyleOverrides.RaiseChanged();
@@ -2497,8 +2522,20 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private double _playbackBarTrackBoxOpacity = 0.07;
     /// <summary>Player island width in DIPs (GitHub #50): the Player page slider and the
     /// bar's edge-grip drag drive the same value. Mirrors <see cref="AppSettings.PlaybackBarWidth"/>.</summary>
-    [ObservableProperty] private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPlaybackBarWidthCustom))]
+    private double _playbackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarDefaultWidth = 536;
+
+    /// <summary>The island has a width of the user's own (slider or edge-grip drag): shows the
+    /// Reset button beside the Player Island Width slider (Discord 11-23; the only way back was
+    /// double-clicking the island's invisible edge grip).</summary>
+    public bool IsPlaybackBarWidthCustom => Math.Abs(PlaybackBarIslandWidth - PlaybackBarDefaultWidth) >= 0.5;
+
+    /// <summary>Player Island Width ▸ Reset: back to the stock width, saved and pushed to the bar
+    /// like a slider move (the bar adds the extra buttons' room to the stock width itself).</summary>
+    [RelayCommand]
+    private void ResetPlaybackBarWidth() => PlaybackBarIslandWidth = PlaybackBarDefaultWidth;
     public const double PlaybackBarMinWidth = AppSettings.PlaybackBarMinWidth;
     public const double PlaybackBarMaxWidth = AppSettings.PlaybackBarMaxWidth;
 
@@ -2538,6 +2575,8 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Wider spacing between albums (GitHub #210's 18px gaps, rows fit their captions);
     /// off is 1.6.9's close grid. The album grid view models watch this property.</summary>
     [ObservableProperty] private bool _albumGridWideSpacing;
+    /// <summary>GitHub #258: album cards show the song count on their caption (default on).</summary>
+    [ObservableProperty] private bool _showAlbumSongCount = true;
     /// <summary>GitHub #218: hover zoom in the Albums grid.</summary>
     [ObservableProperty] private bool _albumHoverZoom;
     [ObservableProperty] private double _albumTileTargetSize = 220;
@@ -2546,6 +2585,40 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>GitHub #233: hide the sidebar until the pointer reaches the left window edge
     /// (MainWindow.UpdateSidebarHidden, SidebarEdgePeek).</summary>
     [ObservableProperty] private bool _sidebarAutoHide;
+    /// <summary>Discord 11-24 (sina): new playlists and folders go first in the sidebar list.</summary>
+    [ObservableProperty] private bool _newPlaylistsAtTop;
+    /// <summary>Discord 11-24 (sina): a folder whose last playlist leaves is removed too.</summary>
+    [ObservableProperty] private bool _removeEmptyPlaylistFolders;
+
+    /// <summary>One row of the New Playlist and Folder Position picker.</summary>
+    public sealed record NewPlaylistPositionOption(bool Top, string Label)
+    {
+        public override string ToString() => Label;
+    }
+
+    public IReadOnlyList<NewPlaylistPositionOption> NewPlaylistPositionOptions
+    {
+        get => _newPlaylistPositionOptions;
+        private set => SetProperty(ref _newPlaylistPositionOptions, value);
+    }
+    private IReadOnlyList<NewPlaylistPositionOption> _newPlaylistPositionOptions = BuildNewPlaylistPositionOptions();
+
+    private static IReadOnlyList<NewPlaylistPositionOption> BuildNewPlaylistPositionOptions() => new[]
+    {
+        new NewPlaylistPositionOption(true, Loc.T("Settings.NewPlaylistPositionTop")),
+        new NewPlaylistPositionOption(false, Loc.T("Settings.NewPlaylistPositionBottom")),
+    };
+
+    public NewPlaylistPositionOption? SelectedNewPlaylistPositionOption
+    {
+        get => NewPlaylistPositionOptions.FirstOrDefault(o => o.Top == NewPlaylistsAtTop);
+        set
+        {
+            // A ComboBox nulls its selection while items are rebuilt; ignore that, keep the state.
+            if (value is null) return;
+            NewPlaylistsAtTop = value.Top;
+        }
+    }
     /// <summary>Liquid Glass needs OS blur-behind (Acrylic/Mica/vibrancy). On Linux/X11
     /// none of those exist and the hint would degrade to a plain see-through window
     /// (issue #26), so the Settings card is hidden there (same pattern as
@@ -2688,6 +2761,13 @@ public partial class SettingsViewModel : ViewModelBase
     /// <summary>Text of the "add separator" box on the Library tab.</summary>
     [ObservableProperty] private string _newArtistSeparator = string.Empty;
 
+    /// <summary>GitHub #260: separators that split a genre tag into several genres, on top of
+    /// ';' (always on, so not listed). Edited as chips; every change regroups at once.</summary>
+    public ObservableCollection<string> GenreTagSeparators { get; } = new(GenreSeparators.Defaults);
+
+    /// <summary>Text of the "add genre separator" box on the Library tab.</summary>
+    [ObservableProperty] private string _newGenreSeparator = string.Empty;
+
     /// <summary>"Keep these names together": names the separators never cut apart
     /// ("Tyler, The Creator"). Edited as chips. Starts on the built-ins so a regroup that
     /// runs before settings load (the mode or separators arriving first) keeps them.</summary>
@@ -2794,6 +2874,16 @@ public partial class SettingsViewModel : ViewModelBase
 
     /// <summary>Keep played songs in the queue (GitHub #124). Off by default.</summary>
     [ObservableProperty] private bool _keepPlayedInQueue;
+
+    /// <summary>Keep Shuffle On (Discord 11-23): starting new music leaves Shuffle on. Off by default.</summary>
+    [ObservableProperty] private bool _keepShuffleOn;
+
+    /// <summary>Discord 11-24 (sina): "Playing from …" in the queue drawer (PlayerViewModel.ShowPlaySource).</summary>
+    [ObservableProperty] private bool _showPlaySource = true;
+
+    /// <summary>Discord 11-24 (sina): the island title opens where the song plays from
+    /// (PlayerViewModel.TitleOpensPlaySource).</summary>
+    [ObservableProperty] private bool _titleOpensPlaySource;
 
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when it is passed over, instead of staying in it marked. Off by default.</summary>
@@ -3725,12 +3815,16 @@ public partial class SettingsViewModel : ViewModelBase
             MigrateTransitionSettings(_settings);
             PlayPauseFadeEnabled = _settings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = Math.Clamp(_settings.PlayPauseFadeMs, 100, 2000);
+            SkipSilenceEnabled = _settings.SkipSilenceEnabled;
+            SkipSilenceThresholdDb = Math.Clamp(_settings.SkipSilenceThresholdDb, AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax);
             PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(_settings.PlayCountThresholdPercent);
             ImportDroppedMedia = _settings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = _settings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = _settings.PlaylistShowNewBadge;
+            PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(_settings.PlaylistNewBadgeDays);
             PlaylistShowAddedColumn = _settings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = _settings.PlaylistShowFavoriteColumn;
+            AlbumShowSongHearts = _settings.AlbumShowSongHearts;
             CrossfadeDuration = Math.Clamp(_settings.CrossfadeDuration, 1, 12);
             SongTransitionsEnabled = _settings.SongTransitionsEnabled;
             TransitionStyle = string.IsNullOrWhiteSpace(_settings.TransitionStyle) ? "Crossfade" : _settings.TransitionStyle;
@@ -3779,6 +3873,8 @@ public partial class SettingsViewModel : ViewModelBase
             SetQuickPlaylistSlots(_settings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = _settings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = _settings.PlaybackBarShowTime;
+            PlaybackBarTimeShowsTotal = _settings.PlaybackBarTimeShowsTotal;
+            PlaybackBarInlineVolume = _settings.PlaybackBarInlineVolume;
             WaveformSeekBarEnabled = _settings.WaveformSeekBarEnabled;
             LyricsWaveformSeekBarEnabled = _settings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = _settings.PlaybackBarWidth;
@@ -3816,6 +3912,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsGlowAndLift = _settings.LyricsGlowAndLift;
             LyricsRenderer = _settings.LyricsRenderer ?? "";
             LyricsCenterWhenNoLyrics = _settings.LyricsCenterWhenNoLyrics;
+            LyricsAutoReturnToLine = _settings.LyricsAutoReturnToLine;
             LyricsPageHideLyrics = _settings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = _settings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = LyricsSaveOptions.ParseTarget(_settings.LyricsSaveTarget).ToString();
@@ -3841,6 +3938,7 @@ public partial class SettingsViewModel : ViewModelBase
             ShowArtworkColumn = _settings.ShowArtworkColumn;
             ShowGenreColumn = _settings.ShowGenreColumn;
             ShowRatingColumn = _settings.ShowRatingColumn;
+            ShowStarRatings = _settings.ShowStarRatings;
             ShowBpmColumn = _settings.ShowBpmColumn;
             ShowBitrateColumn = _settings.ShowBitrateColumn;
             ShowSampleRateColumn = _settings.ShowSampleRateColumn;
@@ -3866,6 +3964,8 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumSortMode = _settings.AlbumSortMode;
             AlbumViewMode = _settings.AlbumViewMode;
             ArtistAlbumsViewMode = _settings.ArtistAlbumsViewMode;
+            ArtistSinglesViewMode = _settings.ArtistSinglesViewMode;
+            ArtistLiveViewMode = _settings.ArtistLiveViewMode;
             AlbumCarouselStyle = _settings.AlbumCarouselStyle;
             AlbumCarouselGlow = _settings.AlbumCarouselGlow;
             _albumCarouselStyleOverrides = new Dictionary<string, string>(
@@ -3908,12 +4008,15 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileSizeAuto = _settings.AlbumTileSizeAuto;
             AlbumGridMasonry = _settings.AlbumGridMasonry;
             AlbumGridWideSpacing = _settings.AlbumGridWideSpacing;
+            ShowAlbumSongCount = _settings.ShowAlbumSongCount;
             AlbumHoverZoom = _settings.AlbumHoverZoom;
             AlbumTileTargetSize = Math.Clamp(_settings.AlbumTileTargetSize,
                 Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
             SidebarHoverExpand = _settings.SidebarHoverExpand;
             SidebarAlwaysExpanded = _settings.SidebarAlwaysExpanded;
             SidebarAutoHide = _settings.SidebarAutoHide;
+            NewPlaylistsAtTop = _settings.NewPlaylistsAtTop;
+            RemoveEmptyPlaylistFolders = _settings.RemoveEmptyPlaylistFolders;
             LoadSidebarLayout(_settings);
             LiquidGlassEnabled = _settings.LiquidGlassEnabled;
             TaskbarProgressEnabled = _settings.TaskbarProgressEnabled;
@@ -3927,6 +4030,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = ArtistGroupModes.Parse(_settings.ArtistGroupMode).ToString();
             ReplaceArtistTagSeparators(_settings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(_settings.ArtistProtectedNames ?? ArtistCredit.DefaultProtectedNames.ToList());
+            ReplaceGenreTagSeparators(_settings.GenreTagSeparators ?? GenreSeparators.Defaults.ToList());
             IgnoreLeadingWordsInArtistSort = _settings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(_settings.ArtistSortIgnoredWords);
 
@@ -3947,6 +4051,9 @@ public partial class SettingsViewModel : ViewModelBase
             GaplessPlaybackEnabled = _settings.GaplessPlaybackEnabled;
             AutoplayEnabled = _settings.AutoplayEnabled;
             KeepPlayedInQueue = _settings.KeepPlayedInQueue;
+            KeepShuffleOn = _settings.KeepShuffleOn;
+            ShowPlaySource = _settings.ShowPlaySource;
+            TitleOpensPlaySource = _settings.TitleOpensPlaySource;
             RemoveMissingFromQueue = _settings.RemoveMissingFromQueue;
             var queueRows = QueueRowLayout.FromSettings(_settings);
             QueueRowLine1 = queueRows.Line1.ToString();
@@ -4349,12 +4456,16 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.SongTransitionsEnabled = SongTransitionsEnabled;
         _settings.PlayPauseFadeEnabled = PlayPauseFadeEnabled;
         _settings.PlayPauseFadeMs = (int)Math.Round(Math.Clamp(PlayPauseFadeMs, 100, 2000));
+        _settings.SkipSilenceEnabled = SkipSilenceEnabled;
+        _settings.SkipSilenceThresholdDb = (int)Math.Round(Math.Clamp(SkipSilenceThresholdDb, AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax));
         _settings.PlayCountThresholdPercent = AppSettings.SnapPlayCountThreshold(PlayCountThresholdPercent);
         _settings.ImportDroppedMedia = ImportDroppedMedia;
         _settings.PlaylistShowAlbumHeaders = PlaylistShowAlbumHeaders;
         _settings.PlaylistShowNewBadge = PlaylistShowNewBadge;
+        _settings.PlaylistNewBadgeDays = AppSettings.SnapPlaylistNewBadgeDays(PlaylistNewBadgeDays);
         _settings.PlaylistShowAddedColumn = PlaylistShowAddedColumn;
         _settings.PlaylistShowFavoriteColumn = PlaylistShowFavoriteColumn;
+        _settings.AlbumShowSongHearts = AlbumShowSongHearts;
         _settings.TransitionStyle = TransitionStyle ?? "Crossfade";
         _settings.SongTransitionStrength = SongTransitionStrength ?? "Balanced";
         _settings.SongTransitionBeatMatch = SongTransitionBeatMatch;
@@ -4401,6 +4512,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.PlaybackBarQuickPlaylistIds = _quickPlaylistSlots.ToList();
         _settings.PlaybackBarShowIdlePill = PlaybackBarShowIdlePill;
         _settings.PlaybackBarShowTime = PlaybackBarShowTime;
+        _settings.PlaybackBarTimeShowsTotal = PlaybackBarTimeShowsTotal;
+        _settings.PlaybackBarInlineVolume = PlaybackBarInlineVolume;
         _settings.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _settings.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _settings.LyricsFlowingLightEnabled = LyricsFlowingLightEnabled;
@@ -4429,6 +4542,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.LyricsGlowAndLift = LyricsGlowAndLift;
         _settings.LyricsRenderer = LyricsRenderer ?? "";
         _settings.LyricsCenterWhenNoLyrics = LyricsCenterWhenNoLyrics;
+        _settings.LyricsAutoReturnToLine = LyricsAutoReturnToLine;
         _settings.LyricsPageHideLyrics = LyricsPageHideLyrics;
         _settings.LyricsBackgroundBehindSidebar = LyricsBackgroundBehindSidebar;
         _settings.LyricsSaveTarget = LyricsSaveOptions.ParseTarget(LyricsSaveTarget).ToString();
@@ -4451,6 +4565,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ShowArtworkColumn = ShowArtworkColumn;
         _settings.ShowGenreColumn = ShowGenreColumn;
         _settings.ShowRatingColumn = ShowRatingColumn;
+        _settings.ShowStarRatings = ShowStarRatings;
         _settings.ShowBpmColumn = ShowBpmColumn;
         _settings.ShowBitrateColumn = ShowBitrateColumn;
         _settings.ShowSampleRateColumn = ShowSampleRateColumn;
@@ -4476,6 +4591,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumSortMode = AlbumSortMode;
         _settings.AlbumViewMode = AlbumViewMode;
         _settings.ArtistAlbumsViewMode = ArtistAlbumsViewMode;
+        _settings.ArtistSinglesViewMode = ArtistSinglesViewMode;
+        _settings.ArtistLiveViewMode = ArtistLiveViewMode;
         _settings.AlbumCarouselStyle = AlbumCarouselStyle;
         _settings.AlbumCarouselGlow = AlbumCarouselGlow;
         _settings.AlbumCarouselStyleOverrides = _albumCarouselStyleOverrides.Count > 0
@@ -4517,12 +4634,15 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.AlbumTileSizeAuto = AlbumTileSizeAuto;
         _settings.AlbumGridMasonry = AlbumGridMasonry;
         _settings.AlbumGridWideSpacing = AlbumGridWideSpacing;
+        _settings.ShowAlbumSongCount = ShowAlbumSongCount;
         _settings.AlbumHoverZoom = AlbumHoverZoom;
         _settings.AlbumTileTargetSize = Math.Clamp(AlbumTileTargetSize,
             Helpers.AlbumGridMetrics.MinTargetSize, Helpers.AlbumGridMetrics.MaxTargetSize);
         _settings.SidebarHoverExpand = SidebarHoverExpand;
         _settings.SidebarAlwaysExpanded = SidebarAlwaysExpanded;
         _settings.SidebarAutoHide = SidebarAutoHide;
+        _settings.NewPlaylistsAtTop = NewPlaylistsAtTop;
+        _settings.RemoveEmptyPlaylistFolders = RemoveEmptyPlaylistFolders;
         SaveSidebarLayout();
         _settings.LiquidGlassEnabled = LiquidGlassEnabled;
         _settings.TaskbarProgressEnabled = TaskbarProgressEnabled;
@@ -4535,6 +4655,7 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.ArtistGroupMode = ArtistGroupModes.Parse(ArtistGroupMode).ToString();
         _settings.ArtistTagSeparators = ArtistTagSeparators.ToList();
         _settings.ArtistProtectedNames = ArtistProtectedNames.ToList();
+        _settings.GenreTagSeparators = GenreTagSeparators.ToList();
         _settings.IgnoreLeadingWordsInArtistSort = IgnoreLeadingWordsInArtistSort;
         _settings.ArtistSortIgnoredWords = ArtistSortIgnoredWords.ToList();
         _settings.LrcLibEnabled = LrcLibEnabled;
@@ -4547,6 +4668,9 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.GaplessPlaybackEnabled = GaplessPlaybackEnabled;
         _settings.AutoplayEnabled = AutoplayEnabled;
         _settings.KeepPlayedInQueue = KeepPlayedInQueue;
+        _settings.KeepShuffleOn = KeepShuffleOn;
+        _settings.ShowPlaySource = ShowPlaySource;
+        _settings.TitleOpensPlaySource = TitleOpensPlaySource;
         _settings.RemoveMissingFromQueue = RemoveMissingFromQueue;
         var queueRows = CurrentQueueRowLayout;
         _settings.QueueRowLine1 = queueRows.Line1.ToString();
@@ -4775,6 +4899,11 @@ public partial class SettingsViewModel : ViewModelBase
         _player.GaplessEnabled = GaplessPlaybackEnabled;
         _player.AutoplayEnabled = AutoplayEnabled;
         _player.KeepPlayedInQueue = KeepPlayedInQueue;
+        _player.KeepShuffleOn = KeepShuffleOn;
+        _player.SkipSilenceThresholdDb = SkipSilenceThresholdDb;
+        _player.SkipSilenceEnabled = SkipSilenceEnabled;
+        _player.ShowPlaySource = ShowPlaySource;
+        _player.TitleOpensPlaySource = TitleOpensPlaySource;
         _player.RemoveMissingFromQueue = RemoveMissingFromQueue;
         _player.QueueRowLayout = CurrentQueueRowLayout;
         _player.QueuePanelWidth = QueuePanelWidth;
@@ -4804,6 +4933,8 @@ public partial class SettingsViewModel : ViewModelBase
         _player.ExclusiveModeEnabled = ExclusiveAudioEnabled;
         _player.IslandQuickPlaylistIds = _quickPlaylistSlots;
         _player.IslandShowTime = PlaybackBarShowTime;
+        _player.IslandTimeShowsTotal = PlaybackBarTimeShowsTotal;
+        _player.IslandInlineVolume = PlaybackBarInlineVolume;
         _player.WaveformSeekBarEnabled = WaveformSeekBarEnabled;
         _player.LyricsWaveformSeekBarEnabled = LyricsWaveformSeekBarEnabled;
         _player.IslandBackgroundOpacity = Math.Clamp(PlaybackBarBackgroundOpacity, 0, 1);
@@ -5472,6 +5603,24 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnSkipSilenceEnabledChanged(bool value)
+    {
+        if (_player != null) _player.SkipSilenceEnabled = value;
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnSkipSilenceThresholdDbChanged(double value)
+    {
+        var clamped = Math.Clamp(Math.Round(value), AppSettings.SkipSilenceThresholdMin, AppSettings.SkipSilenceThresholdMax);
+        if (clamped != value)
+        {
+            SkipSilenceThresholdDb = clamped;
+            return;
+        }
+        if (_player != null) _player.SkipSilenceThresholdDb = value;
+        if (_settingsLoaded) QueueSettingsSave();
+    }
+
     partial void OnPlayPauseFadeMsChanged(double value)
     {
         var clamped = Math.Clamp(value, 100, 2000);
@@ -5521,6 +5670,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnPlaylistShowNewBadgeChanged(bool value) { _settings.PlaylistShowNewBadge = value; if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnPlaylistShowAddedColumnChanged(bool value) { _settings.PlaylistShowAddedColumn = value; if (_settingsLoaded) _ = SaveAsync(); }
     partial void OnPlaylistShowFavoriteColumnChanged(bool value) { _settings.PlaylistShowFavoriteColumn = value; if (_settingsLoaded) _ = SaveAsync(); }
+    partial void OnAlbumShowSongHeartsChanged(bool value) { _settings.AlbumShowSongHearts = value; if (_settingsLoaded) _ = SaveAsync(); }
 
     partial void OnSongTransitionsEnabledChanged(bool value)
     {
@@ -5832,6 +5982,21 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
     }
 
+    partial void OnShowAlbumSongCountChanged(bool value)
+    {
+        // GitHub #258: the captions are plain Album properties reading this switch; the shown
+        // cards are the library's Album objects, so re-raising theirs updates every grid at once.
+        Album.ShowSongCountOnCards = value;
+        RefreshAlbumCardCaptions();
+        if (_settingsLoaded && !_suspendSettingPersistence) _ = SaveAsync();
+    }
+
+    /// <summary>Re-raises the album card captions (song count switch, language switch).</summary>
+    public void RefreshAlbumCardCaptions()
+    {
+        foreach (var album in _library.Albums) album.NotifyCaptionChanged();
+    }
+
     partial void OnAlbumTileTargetSizeChanged(double value)
     {
         var clamped = double.IsFinite(value)
@@ -5957,6 +6122,69 @@ public partial class SettingsViewModel : ViewModelBase
 
     [RelayCommand]
     private void ResetArtistSeparators() => ReplaceArtistTagSeparators(ArtistCredit.DefaultSeparators);
+
+    // ── Genre separators (GitHub #260) ──
+
+    /// <summary>Swaps the genre separator chips with one regroup at the end.</summary>
+    private void ReplaceGenreTagSeparators(IEnumerable<string>? separators)
+    {
+        var normalized = GenreSeparators.Normalize(separators);
+        if (normalized.SequenceEqual(GenreTagSeparators, StringComparer.Ordinal))
+        {
+            ApplyGenreSeparators(); // the process-wide list may still differ (settings load)
+            return;
+        }
+        GenreTagSeparators.Clear();
+        foreach (var s in normalized)
+            GenreTagSeparators.Add(s);
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void AddGenreSeparator()
+    {
+        var value = NewGenreSeparator?.Trim() ?? string.Empty;
+        NewGenreSeparator = string.Empty;
+        if (!GenreSeparators.IsAddable(value, GenreTagSeparators)) return;
+        GenreTagSeparators.Add(value);
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void RemoveGenreSeparator(string separator)
+    {
+        // Unlike the artist separators an empty list is fine: ';' still splits.
+        if (!GenreTagSeparators.Remove(separator)) return;
+        ApplyGenreSeparators();
+    }
+
+    [RelayCommand]
+    private void ResetGenreSeparators() => ReplaceGenreTagSeparators(GenreSeparators.Defaults);
+
+    /// <summary>
+    /// Pushes the genre separators into the process-wide splitter. They apply when genres are
+    /// read (no rescan, files untouched), so a change only needs the library indexes rebuilt
+    /// (every genre list listens to LibraryUpdated) and the visible genre lines raised.
+    /// </summary>
+    private void ApplyGenreSeparators()
+    {
+        var before = GenreSeparators.Version;
+        GenreSeparators.Configure(GenreTagSeparators);
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+        if (GenreSeparators.Version == before) return;
+        _library.NotifyMetadataChanged();
+        NotifyGenreLines();
+        SetScanStatus(Loc.T("Settings.RegroupingGenres"), autoClear: true);
+    }
+
+    private void NotifyGenreLines()
+    {
+        var seen = new HashSet<Track>(ReferenceEqualityComparer.Instance);
+        foreach (var track in _library.AllTracks)
+            if (seen.Add(track)) track.NotifyGenreDisplayChanged();
+        if (_player?.CurrentTrack is { } current && seen.Add(current)) current.NotifyGenreDisplayChanged();
+    }
 
     /// <summary>Swaps the "keep together" chips with one regroup at the end.</summary>
     private void ReplaceArtistProtectedNames(IEnumerable<string>? names)
@@ -6365,6 +6593,18 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    partial void OnPlaybackBarInlineVolumeChanged(bool value)
+    {
+        ApplyPlayerSettings();
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
+    partial void OnPlaybackBarTimeShowsTotalChanged(bool value)
+    {
+        if (_player != null) _player.IslandTimeShowsTotal = value;
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnWaveformSeekBarEnabledChanged(bool value)
     {
         ApplyPlayerSettings();
@@ -6767,6 +7007,12 @@ public partial class SettingsViewModel : ViewModelBase
         if (_settingsLoaded) _ = SaveAsync();
     }
 
+    // The lyrics page reads it through MainWindowViewModel (LyricsViewModel.AutoReturnToCurrentLine).
+    partial void OnLyricsAutoReturnToLineChanged(bool value)
+    {
+        if (_settingsLoaded) _ = SaveAsync();
+    }
+
     partial void OnLyricsPageHideLyricsChanged(bool value)
     {
         ApplyPlayerSettings();
@@ -6927,6 +7173,40 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnKeepPlayedInQueueChanged(bool value)
     {
         if (_player != null) _player.KeepPlayedInQueue = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnNewPlaylistsAtTopChanged(bool value)
+    {
+        OnPropertyChanged(nameof(SelectedNewPlaylistPositionOption));
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnRemoveEmptyPlaylistFoldersChanged(bool value)
+    {
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnKeepShuffleOnChanged(bool value)
+    {
+        if (_player != null) _player.KeepShuffleOn = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnShowPlaySourceChanged(bool value)
+    {
+        if (_player != null) _player.ShowPlaySource = value;
+        if (_suspendSettingPersistence) return;
+        _ = SaveAsync();
+    }
+
+    partial void OnTitleOpensPlaySourceChanged(bool value)
+    {
+        if (_player != null) _player.TitleOpensPlaySource = value;
         if (_suspendSettingPersistence) return;
         _ = SaveAsync();
     }
@@ -8332,16 +8612,20 @@ public partial class SettingsViewModel : ViewModelBase
            && (candidate[root.Length] == Path.DirectorySeparatorChar
                || candidate[root.Length] == Path.AltDirectorySeparatorChar);
 
-    /// <summary>The songs the rescan after removing <paramref name="folder"/> takes out of the
-    /// library: those under it, except songs added on their own (a scan keeps those, GitHub #108).</summary>
-    internal static int SongsLeavingWithFolder(IEnumerable<Track> tracks, string folder)
-        => tracks.Count(t => !t.AddedIndividually && LibraryService.PathIsUnder(t.FilePath, folder));
+    /// <summary>The songs removing <paramref name="folder"/> takes out of the library: those under
+    /// it, except songs added on their own (a scan keeps those, GitHub #108) and songs another
+    /// music folder in the list still holds (a folder inside another one).</summary>
+    internal static int SongsLeavingWithFolder(IEnumerable<Track> tracks, string folder, IEnumerable<string>? otherFolders = null)
+    {
+        var others = (otherFolders ?? Array.Empty<string>()).ToList();
+        return tracks.Count(t => LibraryService.LeavesWithFolder(t, folder, others));
+    }
 
     [RelayCommand]
     private async Task RemoveFolder(string folder)
     {
         // One click on the ✕ used to take the folder's songs out of the library at once.
-        var songs = SongsLeavingWithFolder(_library.AllTracks, folder);
+        var songs = SongsLeavingWithFolder(_library.AllTracks, folder, MusicFolders.Where(f => f != folder));
         var answer = await ShowPluginDialog(new Views.ConfirmationRequest(
             Loc.T("Settings.RemoveFolderBody", Loc.Plural("Count.Songs", songs), folder),
             Title: Loc.T("Settings.RemoveFolderTitle"),
@@ -8356,8 +8640,20 @@ public partial class SettingsViewModel : ViewModelBase
         await SaveAsync();
         MusicFoldersChanged?.Invoke(this, EventArgs.Empty);
 
-        // Re-scan so tracks from the removed folder drop out of the library.
-        _ = RunLibraryScanAsync();
+        _ = DropFolderSongsThenRescanAsync(folder, MusicFolders.ToList());
+    }
+
+    /// <summary>The removed folder's songs leave the library at once (they used to wait for the
+    /// whole rescan, which a quit, or an unreachable drive, could stop: the songs then stayed),
+    /// then the usual rescan runs.</summary>
+    private async Task DropFolderSongsThenRescanAsync(string folder, IReadOnlyCollection<string> remaining)
+    {
+        // A Settings scan in flight walked the old folder list and would publish the songs again
+        // when it ends; RunLibraryScanAsync below cancels it anyway, so free the library now.
+        _scanCts?.Cancel();
+        try { await _library.RemoveFolderTracksAsync(folder, remaining); }
+        catch (Exception ex) { DebugLog.Write("Settings", $"Removing the folder's songs failed: {ex.Message}"); }
+        await RunLibraryScanAsync();
     }
 
     private void SetScanStatus(string text, bool autoClear = false)
@@ -8769,6 +9065,7 @@ public partial class SettingsViewModel : ViewModelBase
             ArtistGroupMode = defaultSettings.ArtistGroupMode;
             ReplaceArtistTagSeparators(defaultSettings.ArtistTagSeparators);
             ReplaceArtistProtectedNames(defaultSettings.ArtistProtectedNames);
+            ReplaceGenreTagSeparators(defaultSettings.GenreTagSeparators);
             IgnoreLeadingWordsInArtistSort = defaultSettings.IgnoreLeadingWordsInArtistSort;
             ReplaceArtistSortIgnoredWords(defaultSettings.ArtistSortIgnoredWords);
             EnableAnimatedCovers = defaultSettings.EnableAnimatedCovers;
@@ -8805,6 +9102,8 @@ public partial class SettingsViewModel : ViewModelBase
             SetQuickPlaylistSlots(defaultSettings.PlaybackBarQuickPlaylistIds);
             PlaybackBarShowIdlePill = defaultSettings.PlaybackBarShowIdlePill;
             PlaybackBarShowTime = defaultSettings.PlaybackBarShowTime;
+            PlaybackBarTimeShowsTotal = defaultSettings.PlaybackBarTimeShowsTotal;
+            PlaybackBarInlineVolume = defaultSettings.PlaybackBarInlineVolume;
             WaveformSeekBarEnabled = defaultSettings.WaveformSeekBarEnabled;
             LyricsWaveformSeekBarEnabled = defaultSettings.LyricsWaveformSeekBarEnabled;
             PlaybackBarIslandWidth = defaultSettings.PlaybackBarWidth;
@@ -8836,6 +9135,7 @@ public partial class SettingsViewModel : ViewModelBase
             LyricsGlowAndLift = defaultSettings.LyricsGlowAndLift;
             LyricsRenderer = defaultSettings.LyricsRenderer;
             LyricsCenterWhenNoLyrics = defaultSettings.LyricsCenterWhenNoLyrics;
+            LyricsAutoReturnToLine = defaultSettings.LyricsAutoReturnToLine;
             LyricsPageHideLyrics = defaultSettings.LyricsPageHideLyrics;
             LyricsBackgroundBehindSidebar = defaultSettings.LyricsBackgroundBehindSidebar;
             LyricsSaveTarget = defaultSettings.LyricsSaveTarget;
@@ -8859,6 +9159,7 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumTileSizeAuto = defaultSettings.AlbumTileSizeAuto;
             AlbumGridMasonry = defaultSettings.AlbumGridMasonry;
             AlbumGridWideSpacing = defaultSettings.AlbumGridWideSpacing;
+            ShowAlbumSongCount = defaultSettings.ShowAlbumSongCount;
             AlbumHoverZoom = defaultSettings.AlbumHoverZoom;
             AlbumTileTargetSize = defaultSettings.AlbumTileTargetSize;
             // Playback-bar width: clear the pending session value, or SyncToSettings
@@ -8867,15 +9168,20 @@ public partial class SettingsViewModel : ViewModelBase
             _playbackBarWidth = null;
             PlayPauseFadeEnabled = defaultSettings.PlayPauseFadeEnabled;
             PlayPauseFadeMs = defaultSettings.PlayPauseFadeMs;
+            SkipSilenceEnabled = defaultSettings.SkipSilenceEnabled;
+            SkipSilenceThresholdDb = defaultSettings.SkipSilenceThresholdDb;
             PlayCountThresholdPercent = defaultSettings.PlayCountThresholdPercent;
             ImportDroppedMedia = defaultSettings.ImportDroppedMedia;
             PlaylistShowAlbumHeaders = defaultSettings.PlaylistShowAlbumHeaders;
             PlaylistShowNewBadge = defaultSettings.PlaylistShowNewBadge;
+            PlaylistNewBadgeDays = defaultSettings.PlaylistNewBadgeDays;
             PlaylistShowAddedColumn = defaultSettings.PlaylistShowAddedColumn;
             PlaylistShowFavoriteColumn = defaultSettings.PlaylistShowFavoriteColumn;
+            AlbumShowSongHearts = defaultSettings.AlbumShowSongHearts;
             ShowArtworkColumn = defaultSettings.ShowArtworkColumn;
             ShowGenreColumn = defaultSettings.ShowGenreColumn;
             ShowRatingColumn = defaultSettings.ShowRatingColumn;
+            ShowStarRatings = defaultSettings.ShowStarRatings;
             ShowBpmColumn = defaultSettings.ShowBpmColumn;
             ShowBitrateColumn = defaultSettings.ShowBitrateColumn;
             ShowSampleRateColumn = defaultSettings.ShowSampleRateColumn;
@@ -8904,6 +9210,8 @@ public partial class SettingsViewModel : ViewModelBase
             AlbumSortMode = defaultSettings.AlbumSortMode;
             AlbumViewMode = defaultSettings.AlbumViewMode;
             ArtistAlbumsViewMode = defaultSettings.ArtistAlbumsViewMode;
+            ArtistSinglesViewMode = defaultSettings.ArtistSinglesViewMode;
+            ArtistLiveViewMode = defaultSettings.ArtistLiveViewMode;
             AlbumCarouselStyle = defaultSettings.AlbumCarouselStyle;
             AlbumCarouselGlow = defaultSettings.AlbumCarouselGlow;
             // GitHub #233 per-album carousel styles: written back by SyncToSettings like the rest.
@@ -8949,6 +9257,9 @@ public partial class SettingsViewModel : ViewModelBase
             // moment a default changed, so "Reset to Defaults" stopped matching a fresh install.
             AutoplayEnabled = defaultSettings.AutoplayEnabled;
             KeepPlayedInQueue = defaultSettings.KeepPlayedInQueue;
+            KeepShuffleOn = defaultSettings.KeepShuffleOn;
+            ShowPlaySource = defaultSettings.ShowPlaySource;
+            TitleOpensPlaySource = defaultSettings.TitleOpensPlaySource;
             RemoveMissingFromQueue = defaultSettings.RemoveMissingFromQueue;
             QueueRowLine1 = defaultSettings.QueueRowLine1;
             QueueRowLine1Extra = defaultSettings.QueueRowLine1Extra;
@@ -8973,6 +9284,8 @@ public partial class SettingsViewModel : ViewModelBase
             SidebarHoverExpand = defaultSettings.SidebarHoverExpand;
             SidebarAlwaysExpanded = defaultSettings.SidebarAlwaysExpanded;
             SidebarAutoHide = defaultSettings.SidebarAutoHide;
+            NewPlaylistsAtTop = defaultSettings.NewPlaylistsAtTop;
+            RemoveEmptyPlaylistFolders = defaultSettings.RemoveEmptyPlaylistFolders;
             LoadSidebarLayout(defaultSettings);
             LiquidGlassEnabled = defaultSettings.LiquidGlassEnabled;
             TaskbarProgressEnabled = defaultSettings.TaskbarProgressEnabled;
@@ -9110,6 +9423,9 @@ public partial class SettingsViewModel : ViewModelBase
                     // SimilarArtistsService likewise (artwork/similar): its pictures stopped saving.
                     Directory.CreateDirectory(Path.Combine(artworkDir, "similar"));
                 }
+                // The downscaled copies of those covers (cache/artwork_thumbs) stayed behind,
+                // up to 512 MB of thumbnails of files that no longer exist.
+                ArtworkThumbnailCache.Clear();
             });
             _dirSizeCache.TryRemove(artworkDir, out _);
             RefreshStorageInfo();

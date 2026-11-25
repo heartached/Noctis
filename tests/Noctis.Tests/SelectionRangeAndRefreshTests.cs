@@ -420,4 +420,31 @@ public class SelectionRangeAndRefreshTests
         Assert.Equal(2, view.GetSelectedTracks().Count);
         win.Close();
     }
+
+    [AvaloniaFact]
+    public async Task Masonry_RubberBand_OnAGenrePage_SelectsTheCardsItMeets_UnderTheSongsSection()
+    {
+        // GitHub #259: the genre page's Songs section sits above the Masonry cards, so the
+        // band's content coordinates are offset from the panel's own.
+        var (lib, vm, view, win) = await MountAlbums(60, masonry: true);
+        foreach (var t in lib.TrackList) t.Genre = "Rock";
+        vm.SetGenreFilter("Rock");
+        await PumpUntil(() => vm.FilteredAlbumRows.OfType<ArtistSongsRow>().Any() && Tiles(view).Count > 0);
+        Pump(4);
+        Assert.True(vm.IsMasonryView);
+        Assert.NotEmpty(vm.MasonrySectionRows);
+
+        var tiles = Tiles(view);
+        var first = tiles.OrderBy(t => t.TranslatePoint(default, win)!.Value.Y).ThenBy(t => t.TranslatePoint(default, win)!.Value.X).First();
+        Assert.True(first.TranslatePoint(default, win)!.Value.Y > 150, "the cards start under the Songs section");
+        var start = new Point(4, first.TranslatePoint(new Point(0, 30), win)!.Value.Y);
+        var target = tiles.Where(t => Math.Abs(t.TranslatePoint(default, win)!.Value.Y - first.TranslatePoint(default, win)!.Value.Y) < 1)
+            .OrderBy(t => t.TranslatePoint(default, win)!.Value.X).Skip(1).First();
+        await Drag(win, start, Centre(target, win));
+
+        var selected = Tiles(view).Where(Selected).Select(t => (Album)t.DataContext!).ToList();
+        _o.WriteLine("genre masonry selected: " + string.Join(", ", selected.Select(a => a.Name)));
+        Assert.Equal(new[] { first.DataContext, target.DataContext }.OrderBy(a => ((Album)a!).Name), selected.OrderBy(a => a.Name));
+        win.Close();
+    }
 }

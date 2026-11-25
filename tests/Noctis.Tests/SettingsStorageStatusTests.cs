@@ -12,6 +12,7 @@ namespace Noctis.Tests;
 /// a page away from the button, which cleared itself three seconds later. The result now
 /// shows under the buttons on the Advanced page.
 /// </summary>
+[Collection("ArtworkCache")]
 public class SettingsStorageStatusTests : IDisposable
 {
     private readonly string _root =
@@ -44,5 +45,27 @@ public class SettingsStorageStatusTests : IDisposable
         Assert.Equal(Loc.T("Settings.ArtworkCacheCleared"), vm.StorageStatusText);
         Assert.Equal("", vm.ScanStatusText);
         Assert.False(File.Exists(Path.Combine(_root, "artwork", "cover.jpg")));
+    }
+
+    /// <summary>The downscaled copies of the deleted covers (cache/artwork_thumbs) stayed on disk.</summary>
+    [AvaloniaFact]
+    public async Task ClearArtworkCache_AlsoDeletesTheCoversThumbnails()
+    {
+        var thumbs = Path.Combine(_root, "cache", "artwork_thumbs");
+        ArtworkThumbnailCache.Enable(thumbs);
+        try
+        {
+            File.WriteAllText(Path.Combine(thumbs, "abc-256-v2.thumb"), "x");
+            var vm = new SettingsViewModel(new PersistenceService(_root), new FakeLibraryService(), new NoOpPlayHistoryService());
+            await vm.LoadAsync();
+
+            await vm.ClearArtworkCacheCommand.ExecuteAsync(null);
+
+            Assert.Empty(Directory.GetFiles(thumbs));
+        }
+        finally
+        {
+            ArtworkThumbnailCache.Disable();
+        }
     }
 }

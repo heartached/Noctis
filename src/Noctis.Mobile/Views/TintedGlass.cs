@@ -23,11 +23,12 @@ internal static class TintedGlass
     /// own (#B3 on dark, #99 on Light).</summary>
     public const byte DeepAlpha = 0xB3, LightAlpha = 0x99;
 
-    /// <summary>What a tint sets: the glass, its rim, the tab bar's selected capsule, and the
-    /// backdrop's luminance range. Text colours are the caller's (a theme scope, or the page's).</summary>
+    /// <summary>What a tint sets: the glass, its Reduce Glass fill, its rim, the tab bar's selected
+    /// capsule, and the backdrop's luminance range. Text colours are the caller's (a theme scope, or
+    /// the page's).</summary>
     public static readonly string[] Keys =
     {
-        "PhoneChromeBrush", "PhoneChromeOutlineBrush", "PhoneChromeSelectedBrush", "GlassBarMinLuminance", "GlassBarMaxLuminance",
+        "PhoneChromeBrush", "PhoneChromePlainBrush", "PhoneChromeOutlineBrush", "PhoneChromeSelectedBrush", "GlassBarMinLuminance", "GlassBarMaxLuminance",
     };
 
     /// <summary>The glass tint for <paramref name="page"/>, translucent.</summary>
@@ -49,6 +50,8 @@ internal static class TintedGlass
     {
         var light = PageTint.PrefersDarkText(page);
         into["PhoneChromeBrush"] = new SolidColorBrush(Tint(page));
+        // Reduce Glass: the glass's face over the page, opaque (what ApplyText reads the labels against).
+        into["PhoneChromePlainBrush"] = new SolidColorBrush(Face(page));
         into["PhoneChromeOutlineBrush"] = new SolidColorBrush(Color.Parse(light ? "#21000000" : "#30FFFFFF"));
         into["PhoneChromeSelectedBrush"] = new SolidColorBrush(Selected(page));
         into["GlassBarMinLuminance"] = light ? 0.25 : 0.0;

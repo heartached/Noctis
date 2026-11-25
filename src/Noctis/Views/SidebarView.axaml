@@ -117,7 +117,7 @@
              Folder headers: [New Playlist in Folder, Rename] · [Remove Folder]. -->
         <Style Selector="ListBox#PlaylistList ListBoxItem">
             <Setter Property="ContextMenu">
-                <ContextMenu x:DataType="m:PlaylistNavItem" Classes="v2">
+                <ContextMenu x:DataType="m:PlaylistNavItem" Classes="v2" Opened="OnPlaylistMenuOpened">
                     <!-- Playlist rows -->
                     <MenuItem Header="{loc:T Sidebar.EditPlaylist}"
                               IsVisible="{Binding !IsFolder}"
@@ -154,9 +154,11 @@
                         </MenuItem.Icon>
                     </MenuItem>
                     <Separator IsVisible="{Binding !IsFolder}" />
+                    <!-- 11-23: a submenu of the folders, No Folder and New Folder… (only that one
+                         asks for a name), filled as the menu opens (OnPlaylistMenuOpened). -->
                     <MenuItem Header="{loc:T Sidebar.MoveFolder}"
+                              Classes="move-to-folder"
                               IsVisible="{Binding !IsFolder}"
-                              Command="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).MoveToFolderCommand}"
                               CommandParameter="{Binding}">
                         <MenuItem.Icon>
                             <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSendToFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
@@ -373,13 +375,14 @@
 
                      Look (owner 10-08, the filled-pill language): no outline. The capsule
                      starts as the rail button's own 48px hover disc, exactly over it,
-                     and grows into a 40px filled pill: the island surface with a soft
+                     and grows sideways into a 48px filled pill (it used to drop to 40px,
+                     which read as the bar shrinking on focus): the island surface with a soft
                      shadow (it floats over the page), the rail's hover tint as the field
                      fill, and a 1.5px ring that is transparent at rest and turns accent
                      while the field has focus (PillDialog's pill-field). The magnifier
                      never moves: 24px from the left edge = the disc's centre, which on
-                     the pill is the field's 16px inset. The 48px host keeps the shrinking
-                     height centred on the button; SearchShadowRoom's padding is room for the shadow (the
+                     the pill is the field's 16px inset. The 48px host keeps the capsule
+                     centred on the button; SearchShadowRoom's padding is room for the shadow (the
                      overlay host clips to its content's bounds; no room on the left, where
                      the rail ends). Motion lives in code-behind. -->
                 <Popup x:Name="SearchPopup"
@@ -429,17 +432,22 @@
                                     <Setter Property="Opacity" Value="1"/>
                                     <Setter Property="Foreground" Value="{DynamicResource AccentColorBrush}"/>
                                 </Style>
-                                <Style Selector="Button#SearchCapButton:pointerover">
+                                <!-- pill-icon: the cap and the Clear / lyric-search buttons, round
+                                     targets with the rail's hover fill (the lyric button had
+                                     Fluent's small-radius box, wider than tall: Discord 11-21). -->
+                                <Style Selector="Button.pill-icon:pointerover">
                                     <Setter Property="RenderTransform" Value="scale(1)"/>
                                 </Style>
-                                <Style Selector="Button#SearchCapButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                <Style Selector="Button.pill-icon:pointerover /template/ ContentPresenter#PART_ContentPresenter">
                                     <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource IslandForeground}"/>
                                 </Style>
-                                <Style Selector="Button#SearchCapButton:pressed">
+                                <Style Selector="Button.pill-icon:pressed">
                                     <Setter Property="RenderTransform" Value="scale(0.92)"/>
                                 </Style>
-                                <Style Selector="Button#SearchCapButton:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                <Style Selector="Button.pill-icon:pressed /template/ ContentPresenter#PART_ContentPresenter">
                                     <Setter Property="Background" Value="{DynamicResource SidebarHoverBrush}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource IslandForeground}"/>
                                 </Style>
                             </Border.Styles>
                             <Panel>
@@ -461,6 +469,7 @@
                                         <!-- Left cap: the same 16px magnifier as the (hidden) rail
                                              button beneath, doubling as the close toggle. -->
                                         <Button x:Name="SearchCapButton"
+                                                Classes="pill-icon"
                                                 Grid.Column="0"
                                                 Click="OnSearchButtonClick"
                                                 AutomationProperties.Name="{loc:T Sidebar.Search}"
@@ -499,9 +508,13 @@
                                                     Click="OnSearchClearClick"
                                                     AutomationProperties.Name="{loc:T Main.Clear}"
                                                     IsVisible="{Binding TopBar.SearchText.Length, FallbackValue=False}"
+                                                    Classes="pill-icon"
+                                                    Width="24" Height="24" CornerRadius="999"
                                                     Background="Transparent" BorderThickness="0"
                                                     Foreground="{DynamicResource IslandForeground}"
-                                                    Padding="6,2" Cursor="Hand" VerticalAlignment="Center">
+                                                    Padding="0" Cursor="Hand" VerticalAlignment="Center"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center">
                                                 <ctrl:LineIcon Data="{StaticResource MenuLineClose}" Width="12" Height="12" Opacity="0.5"/>
                                             </Button>
                                             <!-- Lyric search (Discord, Cosmo 11-08): off / Include lyrics /
@@ -512,9 +525,13 @@
                                                     Classes.active="{Binding TopBar.IsLyricsSearchActive}"
                                                     AutomationProperties.Name="{Binding TopBar.LyricsSearchTip}"
                                                     ToolTip.Tip="{Binding TopBar.LyricsSearchTip}"
+                                                    Classes="pill-icon"
+                                                    Width="24" Height="24" CornerRadius="999"
                                                     Background="Transparent" BorderThickness="0"
                                                     Foreground="{DynamicResource IslandForeground}"
-                                                    Padding="4,2" Cursor="Hand" VerticalAlignment="Center">
+                                                    Padding="0" Cursor="Hand" VerticalAlignment="Center"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center">
                                                 <ctrl:LineIcon x:Name="SearchLyricsGlyph" Data="{StaticResource MenuLineLyrics}" Width="14" Height="14"/>
                                                 <Button.Flyout>
                                                     <MenuFlyout Placement="BottomEdgeAlignedRight"
@@ -557,7 +574,10 @@
             <!-- Scrollable content fills remaining space. Scrollbar stays hidden
                  (wheel/touch still scroll) so it never cuts through the 60px
                  collapsed rail when many playlists overflow the viewport. -->
-            <ScrollViewer VerticalScrollBarVisibility="Hidden"
+            <!-- Transparent so the empty space under the playlists takes a right-click. -->
+            <ScrollViewer x:Name="NavScroller"
+                          Background="Transparent"
+                          VerticalScrollBarVisibility="Hidden"
                           HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
 
@@ -666,8 +686,15 @@
                                         <TextBlock Text="{Binding Label}"
                                                    FontSize="13" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5"
-                                                   Text="{Binding $parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <!-- The translation is bound only so a language change re-runs the count. -->
+                                                <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="song">
+                                                    <Binding Path="$parent[UserControl].((vm:SidebarViewModel)DataContext).FavoritesCount" />
+                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Count.Songs]" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
@@ -729,8 +756,10 @@
                                 Margin="8,2,8,8" />
                     </StackPanel>
 
-                    <!-- Playlists header (only visible when expanded) -->
-                    <TextBlock Margin="18,4,12,4"
+                    <!-- Playlists header (only visible when expanded). Its menu also opens on a
+                         right-click in the empty part of the playlist area (OnNavScrollerPointerPressed). -->
+                    <TextBlock x:Name="PlaylistsHeader"
+                               Margin="18,4,12,4"
                                IsVisible="{Binding IsExpanded}"
                                Text="{loc:T Sidebar.PLAYLISTS}"
                                FontSize="12"
@@ -749,6 +778,11 @@
                                 <MenuItem Header="{loc:T Sidebar.NewSmartPlaylist}" Command="{Binding CreateSmartPlaylistFromSidebarCommand}">
                                     <MenuItem.Icon>
                                         <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineSmartPlaylist}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <MenuItem Header="{loc:T Sidebar.NewFolder}" Command="{Binding NewFolderCommand}">
+                                    <MenuItem.Icon>
+                                        <Viewbox Width="16" Height="16"><Canvas Width="24" Height="24"><Path Classes="mv2-icon" Data="{StaticResource MenuLineFolder}" StrokeThickness="2.25" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </ContextMenu>
@@ -811,8 +845,15 @@
                                                    TextTrimming="CharacterEllipsis"
                                                    MaxWidth="120" />
                                         <TextBlock FontSize="11"
-                                                   Opacity="0.5"
-                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=playlist}" />
+                                                   Opacity="0.5">
+                                            <TextBlock.Text>
+                                                <!-- The translation is bound only so a language change re-runs the count. -->
+                                                <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="playlist">
+                                                    <Binding Path="TrackCount" />
+                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Count.Playlists]" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
 
@@ -908,8 +949,15 @@
                                         </StackPanel>
                                         <TextBlock FontSize="11"
                                                    Opacity="0.5"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   Text="{Binding TrackCount, Converter={StaticResource CountLabel}, ConverterParameter=song}" />
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Text>
+                                                <!-- The translation is bound only so a language change re-runs the count. -->
+                                                <MultiBinding Converter="{StaticResource CountLabel}" ConverterParameter="song">
+                                                    <Binding Path="TrackCount" />
+                                                    <Binding Source="{x:Static loc:Loc.Instance}" Path="[Count.Songs]" />
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
                                     </StackPanel>
                                 </StackPanel>
 

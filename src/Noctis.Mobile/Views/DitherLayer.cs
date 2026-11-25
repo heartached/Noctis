@@ -15,7 +15,8 @@ namespace Noctis.Mobile.Views;
 /// lyrics page paid for it on every frame its lines moved: Avalonia draws a tiled image brush
 /// through a new intermediate surface, image and shader each time it is drawn (headless S23 rig,
 /// 11-15: 3.4 KB a frame and half the finalizable Skia objects of a playing lyrics page). Now
-/// Playing, which seldom repaints, keeps the brush.
+/// Playing draws it the same way: under its spinning record the brush cost ~8 KB a frame
+/// (MobileNowPlayingDitherTests).
 /// </summary>
 public sealed class DitherLayer : Control
 {

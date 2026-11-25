@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.Controls.Presenters;
 using Avalonia.VisualTree;
 using Noctis.Helpers;
@@ -27,6 +28,10 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
+
+    /// <summary>A drag from a selected row carries the selection, in album order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        TrackSelection.DragSelection(payload, _selectedTracks, (DataContext as AlbumDetailViewModel)?.Tracks);
 
     // One shared track menu for the whole page, bound to a row on open — the
     // per-row XAML menus (context menu + 3-dot flyout, ~35 items and ~14 bitmap
@@ -122,6 +127,8 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             src = src.Parent as Control;
         if (src is not ListBoxItem item) return;
         if (item.DataContext is not Track track) return;
+        // The row heart favorites that song only; its press leaves the selection alone.
+        if (IsRowHeartPress(e.Source)) return;
 
         // GitHub #226: Shift+click spans from the last clicked row, in album order (across discs).
         if (MultiSelectHelper.IsRangePress(e) && DataContext is AlbumDetailViewModel vm)
@@ -134,9 +141,23 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = track;
 
+        // A plain press on a row of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, track, _selectedTracks, e, ClearTrackSelection))
+            return;
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
         if (_selectedTracks.Count > 0)
             Focus();
+    }
+
+    /// <summary>Whether a press landed on a song row's heart button (Heart on every song).</summary>
+    internal static bool IsRowHeartPress(object? source)
+    {
+        for (var c = source as StyledElement; c != null; c = c.Parent)
+        {
+            if (c is Button b && b.Classes.Contains("row-heart")) return true;
+            if (c is ListBoxItem) return false;
+        }
+        return false;
     }
 
     /// <summary>GitHub #114: a click on the header cover opens it full size; no cover, no viewer.</summary>
@@ -513,6 +534,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         CancelPendingScrollRestore();
+        CancelPendingReveal();
 
         // Unhook from _trackedVm (the VM the handler is actually subscribed to):
         // after an in-place VM swap the subscription follows the DataContext via
@@ -605,7 +627,69 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
         else
         {
             TrackScrollViewer.Offset = new Vector(0, 0);
+            StartReveal(newVm);
         }
+    }
+
+    // ── Reveal the song the page was opened for (11-23 feedback: the island's title opened
+    // the album at its top, the playing song out of sight on a long album). ──
+
+    private EventHandler? _pendingReveal;
+    private int _revealGeneration;
+
+    private void CancelPendingReveal()
+    {
+        _revealGeneration++;
+        if (_pendingReveal != null)
+        {
+            DiscGroupList.LayoutUpdated -= _pendingReveal;
+            _pendingReveal = null;
+        }
+    }
+
+    /// <summary>Once the rows are laid out, glides the page to <see cref="AlbumDetailViewModel.RevealTrackId"/>'s
+    /// row and washes it once (<see cref="RowReveal"/>).</summary>
+    private void StartReveal(AlbumDetailViewModel vm)
+    {
+        CancelPendingReveal();
+        if (vm.TakeRevealTrackId() is not { } id) return;
+        var generation = _revealGeneration;
+        var attempts = 0;
+        _pendingReveal = (_, _) =>
+        {
+            attempts++;
+            var row = FindTrackRow(id);
+            if ((row == null || row.Bounds.Height <= 0) && attempts < 20) return;
+            CancelPendingReveal();
+            if (row == null) return;
+            generation = _revealGeneration;
+            // After this layout pass, so the extent and the row's place are final.
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (generation != _revealGeneration || !ReferenceEquals(DataContext, vm)) return;
+                RevealRow(row);
+            }, DispatcherPriority.Background);
+        };
+        DiscGroupList.LayoutUpdated += _pendingReveal;
+    }
+
+    private ListBoxItem? FindTrackRow(Guid id)
+        => DiscGroupList.GetVisualDescendants().OfType<ListBoxItem>()
+            .FirstOrDefault(i => i.DataContext is Track t && t.Id == id);
+
+    private void RevealRow(ListBoxItem row)
+    {
+        var sv = TrackScrollViewer;
+        if (sv.Content is not Visual content || row.TranslatePoint(default, content) is not { } top) return;
+        var target = RowReveal.TargetOffset(top.Y, row.Bounds.Height, sv.Offset.Y, sv.Viewport.Height,
+            sv.Extent.Height, PlayerBarMidFromBottom * 2);
+        var body = row.GetVisualDescendants().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("row-body"));
+        var generation = _revealGeneration;
+        RowReveal.GlideTo(sv, target, () =>
+        {
+            if (generation == _revealGeneration && body != null)
+                RowReveal.Flash(body, body.CornerRadius);
+        });
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -663,6 +747,7 @@ public partial class AlbumDetailView : UserControl, ITrackSelectionSource
             // Fresh navigation: reset to top.
             TrackScrollViewer.Offset = new Vector(0, 0);
             _trackedVm = DataContext as AlbumDetailViewModel;
+            if (_trackedVm != null) StartReveal(_trackedVm);
         }
     }
 }

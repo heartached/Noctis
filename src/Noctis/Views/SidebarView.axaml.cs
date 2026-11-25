@@ -3,6 +3,7 @@ using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Controls.Presenters;
 using Avalonia.Interactivity;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
@@ -43,6 +44,8 @@ public partial class SidebarView : UserControl
         PlaylistList.AddHandler(PointerCaptureLostEvent, OnPlaylistRowPointerCaptureLost);
         PlaylistList.ContainerPrepared += OnPlaylistContainerPrepared;
         PlaylistList.LayoutUpdated += UpdateGroupTrays;
+        // A right-click in the empty part of the playlist area: the PLAYLISTS header's menu.
+        NavScroller.AddHandler(PointerPressedEvent, OnNavScrollerPointerPressed);
         DataContextChanged += OnDataContextChanged;
         SearchPopupContent.AddHandler(KeyDownEvent, OnSearchCapsuleKeyDown, RoutingStrategies.Tunnel);
         DetachedFromVisualTree += (_, _) =>
@@ -104,6 +107,59 @@ public partial class SidebarView : UserControl
             _topBarVm.SearchCloseRequested += OnSearchCloseRequested;
             _topBarVm.PropertyChanged += OnTopBarPropertyChanged;
             if (_topBarVm.IsSearchOpen) SyncSearchPopupToViewModel();
+        }
+    }
+
+    /// <summary>
+    /// 11-23: a right-click on empty space in the playlist area (under the last playlist, or
+    /// the list's own padding) opens the PLAYLISTS header's menu: New Playlist…, New Smart
+    /// Playlist…, New Folder…. A press on a row never gets here (its own menu handles it), and
+    /// the main navigation above the header keeps no menu.
+    /// </summary>
+    private void OnNavScrollerPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(NavScroller).Properties.IsRightButtonPressed) return;
+        if (!IsEmptyPlaylistAreaPress(e.Source as Visual, e.GetPosition(PlaylistListHost).Y)) return;
+        if (PlaylistsHeader.ContextMenu is not { } menu) return;
+        e.Handled = true;
+        menu.Open(PlaylistsHeader);
+    }
+
+    /// <summary>The press landed on nothing in the playlist area: below the PLAYLISTS header
+    /// and not on a row (or the drag card).</summary>
+    internal bool IsEmptyPlaylistAreaPress(Visual? source, double yInPlaylistHost)
+    {
+        if (source == null || yInPlaylistHost < 0) return false;
+        if (source.FindAncestorOfType<ListBoxItem>(includeSelf: true) != null) return false;
+        // The scroller's own background (the space under the list), or the list's empty part.
+        return source is ScrollContentPresenter || ReferenceEquals(source, NavScroller)
+               || ReferenceEquals(source, PlaylistListHost) || source.FindAncestorOfType<ListBox>(includeSelf: true) == PlaylistList;
+    }
+
+    /// <summary>
+    /// The playlist row menu is one shared instance: as it opens, its "Move to Folder" submenu
+    /// is filled for the row it opened on (every folder, the current one ticked, No Folder,
+    /// New Folder…). Rebuilt each open: a handful of items, and the folders change.
+    /// </summary>
+    private void OnPlaylistMenuOpened(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu menu || _vm == null) return;
+        if (menu.Items.OfType<MenuItem>().FirstOrDefault(i => i.Classes.Contains("move-to-folder")) is not { } move) return;
+        move.Items.Clear();
+        if (menu.DataContext is not PlaylistNavItem { IsFolder: false } item) return;
+        var choices = _vm.FolderChoicesFor(item);
+        foreach (var choice in choices)
+        {
+            if (choice.Folder == null && !choice.IsNew && move.Items.Count > 0)
+                move.Items.Add(new Separator());
+            var icon = choice.IsCurrent ? "MenuLineCheck"
+                : choice.IsNew ? "MenuLinePlaylistAdd"
+                : choice.Folder == null ? "MenuLineFolderRemove"
+                : "MenuLineFolder";
+            var row = MenuV2.Row(this, choice.Label, icon);
+            row.Command = _vm.MoveToFolderChoiceCommand;
+            row.CommandParameter = choice;
+            move.Items.Add(row);
         }
     }
 
@@ -760,7 +816,9 @@ public partial class SidebarView : UserControl
     internal const double SearchCloseMs = 240;     // total, including the lead below
     private const double SearchCloseLeadMs = 40;   // field starts fading before the shape moves
     internal const double SearchCapsuleClosedSize = 48;  // the rail button's own disc (nav-row size)
-    internal const double SearchCapsuleOpenHeight = 40;  // PillDialog's pill-field height
+    // The open pill keeps the button row's 48px: a 40px pill read as the bar shrinking on
+    // focus (Discord, Halil 11-21), the field stepping in from the hover disc it grows out of.
+    internal const double SearchCapsuleOpenHeight = SearchCapsuleClosedSize;
     internal const double SearchCapsuleOpenWidth = 250;  // 48 cap - 6 + 196 field + 12 right pad
     // The rail button's left edge in both settled rail states (RailActions' 6px margin; its
     // icon grid sits 10px in, at x=16, either way). A CONSTANT, not a live measurement:
@@ -878,9 +936,15 @@ public partial class SidebarView : UserControl
     {
         // The shadow room's padding sits around the capsule inside the popup.
         var room = SearchShadowRoom.Padding;
-        SearchPopup.HorizontalOffset = SearchCapsuleX - room.Left;
+        // At an Interface Size other than 100% the popup content inherits the sidebar's scale
+        // but its offsets are applied as they are, in window units: unscaled, they put the
+        // capsule off the row (at 110% the pill sat 4px high and looked like it shrank upward
+        // on open, Discord 11-21). Everything here is in the sidebar's own units, so scale it.
+        var scale = TopLevel.GetTopLevel(this) is { } top && this.TransformToVisual(top) is { } m && m.M22 > 0
+            ? m.M22 : 1.0;
+        SearchPopup.HorizontalOffset = (SearchCapsuleX - room.Left) * scale;
         if (SearchIconHost.TranslatePoint(new Point(0, -10), this) is { } capsuleOrigin)
-            SearchPopup.VerticalOffset = capsuleOrigin.Y - room.Top;
+            SearchPopup.VerticalOffset = (capsuleOrigin.Y - room.Top) * scale;
     }
 
     /// <summary>Every UI-side close: flips the view model, whose change plays the collapse

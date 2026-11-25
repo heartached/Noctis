@@ -3,6 +3,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 
 namespace Noctis.Helpers;
@@ -81,6 +82,32 @@ public static class MultiSelectHelper
                 return false;
             if (v is ListBoxItem && !rowsAreLayout) return false;
         }
+        return true;
+    }
+
+    /// <summary>
+    /// A plain left press on an item of a multi-selection keeps the selection until the button
+    /// comes up: a drag that starts from the press carries the whole selection (DragFileBehavior,
+    /// Discord 11-23), and a click (no drag) then runs <paramref name="clearOnClick"/>, which the
+    /// press itself used to do. Returns true when the press was deferred so; the caller skips
+    /// its own plain-press clearing then. Same rule as the playlist page's reorder (GitHub #125).
+    /// </summary>
+    public static bool DeferPlainPressOnSelection<T>(InputElement view, T data, HashSet<T> selected,
+        PointerPressedEventArgs e, System.Action clearOnClick) where T : class
+    {
+        if (selected.Count < 2 || !selected.Contains(data)) return false;
+        if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed
+            || e.KeyModifiers.HasFlag(PlatformHelper.PrimaryModifier)
+            || e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            return false;
+
+        var dragsBefore = DragFileBehavior.DragCount;
+        void OnReleased(object? sender, PointerReleasedEventArgs r)
+        {
+            view.RemoveHandler(InputElement.PointerReleasedEvent, OnReleased);
+            if (DragFileBehavior.DragCount == dragsBefore) clearOnClick();
+        }
+        view.AddHandler(InputElement.PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
         return true;
     }
 

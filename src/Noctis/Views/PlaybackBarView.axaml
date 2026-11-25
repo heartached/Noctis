@@ -206,6 +206,42 @@
             </Style.Animations>
         </Style>
 
+        <!-- Island time (Discord 11-23): a bare text button — no Fluent fill on hover or press
+             (it keeps the app-wide press scale). Its lower line crossfades between the time
+             left and the total length (.total); Opacity only, so no relayout per swap. -->
+        <Style Selector="Button.island-time-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
+        </Style>
+        <Style Selector="Button.island-time-btn:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.island-time-btn:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.island-time-btn TextBlock.island-time-alt">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                        <DoubleTransition.Easing>
+                            <CubicEaseOut/>
+                        </DoubleTransition.Easing>
+                    </DoubleTransition>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Button.island-time-btn TextBlock#TrackTimeTotal">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <Style Selector="Button.island-time-btn.total TextBlock#TrackTimeTotal">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <Style Selector="Button.island-time-btn.total TextBlock#TrackTimeRemaining">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+
         <Style Selector="Button.artist-link-btn:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
@@ -352,6 +388,11 @@
         <Style Selector="Grid#VolumePill.muted TextBlock#VolumeReadout">
             <Setter Property="Opacity" Value="0.45"/>
         </Style>
+        <!-- On the island (always-on slider) the pill is the slider alone: the level shows in
+             the fill, and the readout's width stays out of the island's budget. -->
+        <Style Selector="Canvas#InlineVolumeCanvas TextBlock#VolumeReadout">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
 
         <!-- Seek slider (horizontal) -->
         <Style Selector="Slider.seek-slider">
@@ -387,7 +428,9 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Grid.seek-row:pointerover Panel.seek-thumb-host">
+        <!-- .seek-hover: code-behind sets it while the pointer is over the seek hit strip
+             (SeekSlider, outside this row since it reaches below the card) or a seek drag runs. -->
+        <Style Selector="Grid.seek-row.seek-hover Panel.seek-thumb-host">
             <Setter Property="Opacity" Value="1"/>
         </Style>
         <Style Selector="Grid.seek-row Border.seek-thumb">
@@ -965,12 +1008,14 @@
                                     HorizontalAlignment="Left"
                                     VerticalAlignment="Center">
                                 <!-- Title is a link button: clicking it opens the current
-                                     track's album. Mirrors the artist link below. -->
+                                     track's album, or with Settings › Song Title Opens Where It
+                                     Plays From the page it plays from (Discord 11-24, sina).
+                                     Mirrors the artist link below. -->
                                 <Button Classes="artist-link-btn"
                                         Background="Transparent" BorderThickness="0" Padding="0"
                                         Cursor="Hand" HorizontalAlignment="Left"
-                                        Command="{Binding ViewCurrentTrackAlbumCommand}"
-                                        ToolTip.Tip="{loc:T PlaybackBar.ViewAlbumTip}">
+                                        Command="{Binding OpenTitleTargetCommand}"
+                                        ToolTip.Tip="{Binding TitleClickTip}">
                                 <StackPanel x:Name="TrackTitleContent"
                                             Orientation="Horizontal"
                                             Spacing="6">
@@ -1118,24 +1163,51 @@
                          right-aligned so the digits tick in place. The island grows by
                          IslandTimeWidth while this is on (see ExtraTransportWidth) so the
                          title/artist viewports keep their full width. -->
-                    <StackPanel Grid.Column="2"
-                                x:Name="TrackTimeStack"
-                                VerticalAlignment="Center"
-                                Margin="0,0,8,0"
-                                MinWidth="36"
-                                IsVisible="{Binding IslandShowTime}">
+                    <!-- Discord 11-23: a click swaps the lower line between the time left and the
+                         song's total length (remembered: AppSettings.PlaybackBarTimeShowsTotal).
+                         Both lines are laid out at once and crossfade, so the column keeps the
+                         wider one's width and never jumps; tabular digits keep each tick in place. -->
+                    <Button Grid.Column="2"
+                            x:Name="TrackTimeButton"
+                            Classes="island-time-btn"
+                            Classes.total="{Binding IslandTimeShowsTotal}"
+                            Command="{Binding ToggleIslandTimeDisplayCommand}"
+                            ToolTip.Tip="{loc:T PlaybackBar.TimeToggleTip}"
+                            AutomationProperties.Name="{loc:T PlaybackBar.TimeToggleTip}"
+                            Focusable="False"
+                            Cursor="Hand"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0"
+                            IsVisible="{Binding IslandShowTime}">
+                    <StackPanel x:Name="TrackTimeStack"
+                                MinWidth="36">
                         <TextBlock Text="{Binding PositionText}"
                                    FontSize="10"
                                    FontWeight="SemiBold"
+                                   FontFeatures="+tnum"
                                    TextAlignment="Right"
                                    HorizontalAlignment="Right"
                                    Foreground="{DynamicResource IslandForeground}" />
-                        <TextBlock Text="{Binding RemainingTimeText, StringFormat='-{0}'}"
-                                   FontSize="10"
-                                   TextAlignment="Right"
-                                   HorizontalAlignment="Right"
-                                   Foreground="{DynamicResource IslandForegroundSecondary}" />
+                        <Panel>
+                            <TextBlock x:Name="TrackTimeRemaining"
+                                       Classes="island-time-alt"
+                                       Text="{Binding RemainingTimeText, StringFormat='-{0}'}"
+                                       FontSize="10"
+                                       FontFeatures="+tnum"
+                                       TextAlignment="Right"
+                                       HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource IslandForegroundSecondary}" />
+                            <TextBlock x:Name="TrackTimeTotal"
+                                       Classes="island-time-alt"
+                                       Text="{Binding DurationText}"
+                                       FontSize="10"
+                                       FontFeatures="+tnum"
+                                       TextAlignment="Right"
+                                       HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource IslandForegroundSecondary}" />
+                        </Panel>
                     </StackPanel>
+                    </Button>
 
                     <!-- Now-playing bars (the same EqVisualizer the album/track rows use,
                          accent-coloured by its default style) + the options button, on the
@@ -1171,6 +1243,7 @@
                        card; hovering only fades it in — no time labels, no thicker track
                        (see the seek-row styles above). -->
                   <Grid Grid.Row="1" Height="6" Margin="-6,0,-6,0" ClipToBounds="False"
+                        x:Name="SeekRow"
                         Classes="seek-row" Background="Transparent">
                       <Grid Height="6" ClipToBounds="False">
                           <!-- Waveform seek bar (Settings → Player, GitHub #93): replaces the
@@ -1225,22 +1298,35 @@
                                           BoxShadow="0 2 4 0 #40000000"/>
                               </Panel>
                           </Canvas>
-                          <!-- Hit strip 14px tall, bottom-aligned: it reaches 8px up over the
-                               row above (the art's bottom edge included — this row is drawn
-                               later, so it wins the hit test). The drawn line is unchanged; the
-                               old 6px strip made a seek near the art open the Mini Player. -->
-                          <Slider Value="{Binding PositionFraction, Mode=TwoWay}"
-                                  Classes="seek-slider"
-                                  AutomationProperties.Name="{loc:T PlaybackBar.Seek}"
-                                  Minimum="0" Maximum="1"
-                                  Focusable="False"
-                                  Height="14"
-                                  Margin="0,-8,0,0"
-                                  VerticalAlignment="Bottom"
-                                  x:Name="SeekSlider" />
                       </Grid>
                   </Grid>
                   </Grid>
+                  </Border>
+
+                  <!-- Seek hit strip (Discord 11-23, "too hard to click"): 17px, from 8px up over
+                       the art's bottom edge (as before: the art keeps its centre, the title and
+                       artist keep theirs) down past the card to the island's inner bottom edge,
+                       5.5px under the line (it ended 2.5px under it, where the card's rounded
+                       clip cut it). It sits outside that clip so it can reach below the card; the
+                       island's glass is as far as hit testing reaches, so the page under the
+                       floating island keeps every click. The clip here keeps it to the card's
+                       width; the Slider inside hangs 6px past each side exactly as the drawn
+                       line does, so a press maps to the same spot on the line. Drawn later than
+                       the card, it wins the hit test over the art's bottom edge. The drawn
+                       line is unchanged. -->
+                  <Border x:Name="SeekHitStrip"
+                          Height="17"
+                          Margin="0,0,0,-3"
+                          VerticalAlignment="Bottom"
+                          ClipToBounds="True">
+                      <Slider Value="{Binding PositionFraction, Mode=TwoWay}"
+                              Classes="seek-slider"
+                              AutomationProperties.Name="{loc:T PlaybackBar.Seek}"
+                              Minimum="0" Maximum="1"
+                              Focusable="False"
+                              Height="17"
+                              Margin="-6,0,-6,0"
+                              x:Name="SeekSlider" />
                   </Border>
                 </Grid>
 
@@ -1797,6 +1883,23 @@
                             </Panel>
                         </Button>
 
+                        <!-- Always-on volume slider (Settings › Player Island › Always Show Volume
+                             Slider, Discord 11-23). While it is on (and the island is not in its
+                             compact shape) code-behind moves the pop-up's VolumePill in here
+                             (UpdateInlineVolume) and the speaker button only mutes. The Width
+                             slides 0 ↔ InlineVolumeWidth, clipped; the Canvas keeps the pill at its
+                             own size meanwhile, so the slider never re-lays out per frame. The -5
+                             margin cancels the row's 5px spacing, so at width 0 it takes no room. -->
+                        <Border x:Name="InlineVolumeHost"
+                                Width="0"
+                                Height="22"
+                                Margin="-5,0,0,0"
+                                VerticalAlignment="Center"
+                                ClipToBounds="True"
+                                IsVisible="False">
+                            <Canvas x:Name="InlineVolumeCanvas"/>
+                        </Border>
+
                         <!-- Overlay-layer hosted: a native popup window is always-on-top and
                              would float over other apps; the overlay keeps the flyout inside
                              the window on every platform (and lets Liquid Glass frost it — a
@@ -1897,10 +2000,12 @@
                                                 Margin="0"
                                                 x:Name="VolumeSlider"/>
                                     </Grid>
-                                    <!-- Live level. Fixed width so "5%" → "100%" never resizes the pill. -->
+                                    <!-- Live level. Fixed width so "5%" → "100%" never resizes the pill:
+                                         FitVolumeReadoutWidth sets it to "100%" measured in this font
+                                         (26 clipped it, Discord 11-23); 30 until then. -->
                                     <TextBlock x:Name="VolumeReadout"
                                                Grid.Column="1"
-                                               Width="26"
+                                               Width="30"
                                                Margin="4,0,0,0"
                                                VerticalAlignment="Center"
                                                TextAlignment="Center"

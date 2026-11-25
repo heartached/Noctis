@@ -53,10 +53,12 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Tint = shell.TintFactory();
         Tint.HeroFade = true;
         Tint.Enabled = shell.ArtworkPageColors;
-        Selection = new TrackSelection(shell, () => Album.Tracks, () => Album.Name);
+        Selection = new TrackSelection(shell, () => Album.EditionTracks, () => Album.Name);
         Shell.Library.Refreshed += OnRefreshed;
         Shell.Player.PropertyChanged += OnPlayerChanged;
         Shell.PropertyChanged += OnShellChanged;
+        _downloads = shell.Downloads;
+        if (_downloads != null) _downloads.Changed += OnDownloadsChanged;
         Apply(album);
         DescriptionLoad = LoadDescriptionAsync(album.Artist, album.Name, _descriptionCts.Token);
     }
@@ -115,6 +117,14 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasRecordLabel))]
     private string _recordLabel = string.Empty;
+
+    private readonly DownloadActivity? _downloads;
+
+    /// <summary>This album's songs are downloading from the computer: "Downloading 3 of 12" over a
+    /// bar under the buttons, wherever the download was started (its menu, Select, Download Everything).</summary>
+    [ObservableProperty] private bool _isDownloading;
+    [ObservableProperty] private string _downloadText = string.Empty;
+    [ObservableProperty] private double _downloadFraction;
 
     public bool HasQualityLine => QualityLine.Length > 0;
     public bool HasReleaseDate => ReleaseDateText.Length > 0;
@@ -175,7 +185,9 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     private void Apply(Album album)
     {
         Album = album;
-        Tracks = album.Tracks.Select((t, i) => new AlbumTrackRow(t, t.TrackNumber > 0 ? t.TrackNumber : i + 1)).ToList();
+        // The album's own songs plus those linked in from another album (Link Tracks From on the
+        // computer), at their disc and track places: the desktop album page's list.
+        Tracks = album.EditionTracks.Select((t, i) => new AlbumTrackRow(t, t.TrackNumber > 0 ? t.TrackNumber : i + 1)).ToList();
         Rows = BuildRows(Tracks);
         MetaLine = BuildMetaLine(album);
         QualityLine = BuildQualityLine(album);
@@ -184,9 +196,21 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         CopyrightText = album.Copyright.Trim();
         RecordLabel = album.RecordLabel;
         ArtistArtworkPath = Shell.ArtistPhotos?.CachedPhoto(album.Artist) ?? MobileLibrary.ArtistArtworkFor(Shell.Library.Service, album.Artist);
-        IsFavourite = album.IsAllTracksFavorite;
+        IsFavourite = IsAllFavourite(album);
         SyncNowPlaying();
+        RefreshDownload();
         Tint.Load(album.ArtworkPath);
+    }
+
+    private void OnDownloadsChanged(object? sender, EventArgs e) => RefreshDownload();
+
+    private void RefreshDownload()
+    {
+        var progress = _downloads?.ProgressOf(Album.EditionTracks);
+        IsDownloading = progress != null;
+        if (progress is not { } p) return;
+        DownloadText = Loc.T("Mobile.Account.Downloading", p.Done, p.Total, string.Empty);
+        DownloadFraction = p.Done / (double)p.Total;
     }
 
     /// <summary>"Lossless · 24-bit/96 kHz FLAC": Core's badge and its detail line (the desktop's
@@ -269,7 +293,7 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     {
         var fresh = Shell.Library.Service.GetAlbumById(AlbumId);
         if (fresh != null && !ReferenceEquals(fresh, Album)) Apply(fresh);
-        else IsFavourite = Album.IsAllTracksFavorite;   // a favourite toggled here or elsewhere
+        else IsFavourite = IsAllFavourite(Album);   // a favourite toggled here or elsewhere
         Selection.Prune();
     }
 
@@ -303,12 +327,16 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         }
     }
 
-    [RelayCommand] private void Play() => PlayFrom(0);
+    [RelayCommand]
+    private void Play()
+    {
+        if (Album.EditionTracks.Count > 0) Shell.Player.PlayAll(Album.EditionTracks, Album.Name);
+    }
 
     [RelayCommand]
     private void Shuffle()
     {
-        if (Album.Tracks.Count > 0) Shell.Player.PlayShuffled(Album.Tracks, source: Album.Name);
+        if (Album.EditionTracks.Count > 0) Shell.Player.PlayShuffled(Album.EditionTracks, source: Album.Name);
     }
 
     [RelayCommand]
@@ -325,8 +353,8 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
 
     private void PlayFrom(int index)
     {
-        if (Album.Tracks.Count == 0 || index < 0) return;
-        Shell.Player.PlayTracks(Album.Tracks, index, Album.Name);
+        if (Album.EditionTracks.Count == 0 || index < 0) return;
+        Shell.Player.PlayTracks(Album.EditionTracks, index, Album.Name);
     }
 
     /// <summary>The heart: favourites every track on the album, or, when all already are,
@@ -334,10 +362,13 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
     [RelayCommand]
     private async Task ToggleFavouriteAsync()
     {
-        var favourite = !Album.IsAllTracksFavorite;
+        var favourite = !IsAllFavourite(Album);
         IsFavourite = favourite;
-        await Shell.SetFavouriteAsync(Album.Tracks, favourite);
+        await Shell.SetFavouriteAsync(Album.EditionTracks, favourite);
     }
+
+    /// <summary>Every song the page lists is a favourite (the desktop's IsAlbumFavorited: linked songs count).</summary>
+    private static bool IsAllFavourite(Album album) => album.EditionTracks.Count > 0 && album.EditionTracks.All(t => t.IsFavorite);
 
     [RelayCommand] private void OpenArtist() => Shell.OpenArtistCommand.Execute(Album.Artist);
 
@@ -350,5 +381,6 @@ public sealed partial class AlbumPageViewModel : MobilePage, ITintedPage
         Shell.Library.Refreshed -= OnRefreshed;
         Shell.Player.PropertyChanged -= OnPlayerChanged;
         Shell.PropertyChanged -= OnShellChanged;
+        if (_downloads != null) _downloads.Changed -= OnDownloadsChanged;
     }
 }

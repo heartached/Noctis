@@ -32,6 +32,31 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Folders the user has collapsed this session (default expanded).</summary>
     private readonly HashSet<string> _collapsedFolders = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _foldingFolders = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>Folders made with New Folder… (playlist_folders.json). A folder is otherwise
+    /// only the Folder name on its playlists; these show even with no playlist in them, until
+    /// Remove Folder. Local only: the playlist sync carries no folders at all.</summary>
+    private readonly List<string> _savedFolders = new();
+    /// <summary>Sidebar place of each saved folder while it is empty (playlist_folder_order.json):
+    /// a folder's place is otherwise carried by its playlists' SidebarOrder.</summary>
+    private readonly Dictionary<string, int> _savedFolderOrder = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>The saved folders or their places changed: the next playlist save writes them too.</summary>
+    private bool _foldersDirty;
+
+    /// <summary>Settings › Sidebar › New Playlist and Folder Position (Discord 11-24, sina): new
+    /// playlists and folders go first in the list instead of last. Mirrored by MainWindowViewModel.</summary>
+    public bool NewPlaylistsAtTop { get; set; }
+
+    /// <summary>Settings › Sidebar › Remove Empty Folders (Discord 11-24, sina): a folder whose last
+    /// playlist is moved out or deleted goes too, a New Folder… one included. A new folder that
+    /// has not held a playlist yet stays, so it can still be filled. Mirrored by MainWindowViewModel.</summary>
+    public bool RemoveEmptyFolders { get; set; }
+
+    /// <summary>Asks for a line of text (title, initial text, hint, confirm label); null = cancelled.
+    /// The text prompt pop-up; tests answer it.</summary>
+    internal Func<string, string?, string?, string?, Task<string?>> PromptText { get; set; } = Views.TextPromptDialog.ShowAsync;
+
+    /// <summary>Yes/no confirmation pop-up; tests answer it.</summary>
+    internal Func<string, Task<bool>> ConfirmAction { get; set; } = Views.ConfirmationDialog.ShowAsync;
 
     /// <summary>Set by the view: eases a folder's rows shut; the collapse removes them once
     /// the task ends. Null (tests) collapses at once.</summary>
@@ -263,6 +288,10 @@ public partial class SidebarViewModel : ViewModelBase
     public async Task LoadPlaylistsAsync()
     {
         var loadedPlaylists = await _persistence.LoadPlaylistsAsync();
+        SetSavedFolders(await _persistence.LoadPlaylistFoldersAsync());
+        SetSavedFolderOrder(await _persistence.LoadPlaylistFolderOrderAsync());
+        // The highlighted playlist keeps its highlight: its row is rebuilt below.
+        var selectedPlaylist = SelectedNavItem?.PlaylistId;
         Playlists.Clear();
         PlaylistItems.Clear();
 
@@ -273,7 +302,18 @@ public partial class SidebarViewModel : ViewModelBase
         }
 
         RebuildSidebarRows();
+        if (selectedPlaylist is { } selected && PlaylistItems.FirstOrDefault(n => n.PlaylistId == selected) is { } again)
+            SetSelectedNavItemSilently(again);
+        PlaylistsReloaded?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// <see cref="LoadPlaylistsAsync"/> read the playlists again (a sync from a phone or another
+    /// computer, an import, a reset): every <see cref="Playlist"/> in <see cref="Playlists"/> is a
+    /// new object, so a page holding one must take the new one (same id) or it shows and edits
+    /// a copy nothing saves.
+    /// </summary>
+    public event EventHandler? PlaylistsReloaded;
 
     /// <summary>
     /// Rebuilds the flattened sidebar rows: pinned playlists, then the folders (with
@@ -287,7 +327,7 @@ public partial class SidebarViewModel : ViewModelBase
     /// </summary>
     public void RebuildSidebarRows()
     {
-        var desired = BuildRows(PlaylistItems, _collapsedFolders, FolderOrders(), SidebarOrders());
+        var desired = BuildRows(PlaylistItems, _collapsedFolders, FolderOrders(), SidebarOrders(), _savedFolders);
 
         // Folder headers are synthesized fresh by BuildRows; swap in the live
         // instances (matched by key) so their ListBox containers survive.
@@ -332,11 +372,14 @@ public partial class SidebarViewModel : ViewModelBase
     /// <paramref name="sidebarOrder"/> maps top-level entries (row keys: "folder:Name",
     /// "playlist:id") the user placed among each other to their position (see
     /// SidebarOrders); the rest follow them in the old layout, folders then loose playlists.
+    /// <paramref name="emptyFolders"/> are folders shown even with no playlist in them (New
+    /// Folder…); one that has playlists is just that folder.
     /// </summary>
     public static List<PlaylistNavItem> BuildRows(
         IEnumerable<PlaylistNavItem> items, ISet<string> collapsedFolders,
         IReadOnlyDictionary<string, int>? folderOrder = null,
-        IReadOnlyDictionary<string, int>? sidebarOrder = null)
+        IReadOnlyDictionary<string, int>? sidebarOrder = null,
+        IEnumerable<string>? emptyFolders = null)
     {
         var rows = new List<PlaylistNavItem>();
         var all = items.ToList();
@@ -352,12 +395,26 @@ public partial class SidebarViewModel : ViewModelBase
 
         // The old layout (folders, then loose playlists), then the placed entries moved to
         // the front in their order. OrderBy is stable, so unplaced ones keep the old layout.
-        var entries = unpinned
+        var folders = unpinned
             .Where(i => !string.IsNullOrWhiteSpace(i.Folder))
             .GroupBy(i => i.Folder.Trim(), StringComparer.OrdinalIgnoreCase)
-            .OrderBy(g => FolderRank(folderOrder, g.Key))
-            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(g => (Key: $"folder:{g.Key}", Folder: (string?)g.Key, Items: g.ToList()))
+            .Select(g => (Name: g.Key, Items: g.ToList()))
+            .ToList();
+        if (emptyFolders != null)
+        {
+            // A pinned playlist leaves its folder's rows, not the folder: it still holds it.
+            var held = new HashSet<string>(all.Select(i => i.Folder.Trim()).Where(f => f.Length > 0), StringComparer.OrdinalIgnoreCase);
+            foreach (var name in emptyFolders)
+            {
+                var folder = name.Trim();
+                if (folder.Length > 0 && held.Add(folder)) folders.Add((folder, new List<PlaylistNavItem>()));
+            }
+        }
+
+        var entries = folders
+            .OrderBy(g => FolderRank(folderOrder, g.Name))
+            .ThenBy(g => g.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => (Key: $"folder:{g.Name}", Folder: (string?)g.Name, g.Items))
             .Concat(unpinned
                 .Where(i => string.IsNullOrWhiteSpace(i.Folder))
                 .Select(i => (i.Key, Folder: (string?)null, Items: new List<PlaylistNavItem> { i })))
@@ -382,7 +439,8 @@ public partial class SidebarViewModel : ViewModelBase
                 IsFolder = true,
                 IsExpanded = expanded,
                 TrackCount = members.Count,
-                GroupPosition = expanded ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
+                // An empty folder draws no open tray (nothing under it to hold).
+                GroupPosition = expanded && members.Count > 0 ? SidebarGroupPosition.Header : SidebarGroupPosition.None,
             });
 
             if (!expanded)
@@ -435,8 +493,14 @@ public partial class SidebarViewModel : ViewModelBase
             var key = EntryKey(pl);
             orders[key] = Math.Max(pl.SidebarOrder, orders.GetValueOrDefault(key));
         }
+        // An empty saved folder has no playlist to carry its place: it keeps its own.
+        foreach (var (folder, place) in _savedFolderOrder)
+            if (place > 0 && !HasPlaylistsIn(folder)) orders[$"folder:{folder}"] = place;
         return orders;
     }
+
+    private bool HasPlaylistsIn(string folder)
+        => Playlists.Any(p => string.Equals(p.Folder.Trim(), folder.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Row key of the top-level entry a playlist sits in: its folder, or itself.</summary>
     private static string EntryKey(Playlist pl)
@@ -451,12 +515,96 @@ public partial class SidebarViewModel : ViewModelBase
     private void FileIntoFolder(Playlist playlist, string folder)
     {
         folder = folder.Trim();
+        var left = playlist.Folder.Trim();
+        var leftPlace = playlist.SidebarOrder;
         var members = folder.Length == 0 ? new List<Playlist>() : Playlists
             .Where(p => p != playlist && string.Equals(p.Folder.Trim(), folder, StringComparison.OrdinalIgnoreCase))
             .ToList();
         playlist.FolderOrder = FolderOrderOf(folder);
         if (members.Count > 0) playlist.SidebarOrder = members.Max(p => p.SidebarOrder);
+        // An empty saved folder that has a place (put at the top, or dragged) keeps it.
+        else if (folder.Length > 0 && _savedFolderOrder.TryGetValue(folder, out var place) && place > 0)
+            playlist.SidebarOrder = place;
         playlist.Folder = folder;
+        if (left.Length > 0 && !string.Equals(left, folder, StringComparison.OrdinalIgnoreCase))
+            LeftFolder(left, leftPlace);
+    }
+
+    /// <summary>
+    /// A playlist left <paramref name="folder"/> (moved out or deleted). When it was the last one:
+    /// with Remove Empty Folders on, the folder goes (Discord 11-24, sina); otherwise a saved
+    /// (New Folder…) folder stays, empty, at the place it had (<paramref name="place"/>). A folder
+    /// that only existed through its playlists disappears either way, as before.
+    /// </summary>
+    private void LeftFolder(string folder, int place)
+    {
+        if (HasPlaylistsIn(folder)) return;
+        if (RemoveEmptyFolders)
+        {
+            if (ForgetSavedFolder(folder)) _foldersDirty = true;
+            _collapsedFolders.Remove(folder);
+        }
+        else if (place > 0 && _savedFolders.Contains(folder, StringComparer.OrdinalIgnoreCase))
+        {
+            _savedFolderOrder[folder] = place;
+            _foldersDirty = true;
+        }
+    }
+
+    /// <summary>Saves the playlists, and the saved folders when they changed with them.</summary>
+    private async Task SavePlaylistsAndFoldersAsync()
+    {
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (!_foldersDirty) return;
+        _foldersDirty = false;
+        await SaveFoldersAsync();
+    }
+
+    /// <summary>
+    /// A new playlist goes into the list: last, or with New Playlist and Folder Position = Top
+    /// (Discord 11-24, sina) first: first in its folder, or first among the folders and loose
+    /// playlists (below the pinned ones), saved as SidebarOrder like a drag.
+    /// </summary>
+    private void AddNewPlaylist(Playlist playlist)
+    {
+        if (!NewPlaylistsAtTop)
+        {
+            Playlists.Add(playlist);
+            PlaylistItems.Add(BuildPlaylistNavItem(playlist));
+        }
+        else
+        {
+            Playlists.Insert(0, playlist);
+            PlaylistItems.Insert(0, BuildPlaylistNavItem(playlist));
+            if (!playlist.IsPinned && playlist.Folder.Trim().Length == 0) PlaceFirst($"playlist:{playlist.Id}");
+        }
+        RebuildSidebarRows();
+    }
+
+    /// <summary>
+    /// A playlist the importer wrote straight to playlists.json (Import Playlist, a link) came
+    /// back from the reload last: with New Playlist and Folder Position = Top it moves first,
+    /// like one made here.
+    /// </summary>
+    public async Task PlaceImportedPlaylistAsync(Guid id)
+    {
+        if (!NewPlaylistsAtTop) return;
+        var playlist = Playlists.FirstOrDefault(p => p.Id == id);
+        if (playlist == null) return;
+        Playlists.Remove(playlist);
+        var item = PlaylistItems.FirstOrDefault(i => i.PlaylistId == id);
+        if (item != null) PlaylistItems.Remove(item);
+        AddNewPlaylist(playlist);
+        await SavePlaylistsAndFoldersAsync();
+    }
+
+    /// <summary>Puts the top-level entry <paramref name="key"/> first and saves the order.</summary>
+    private void PlaceFirst(string key)
+    {
+        var keys = TopLevelKeys();
+        keys.RemoveAll(k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
+        keys.Insert(0, key);
+        ApplyTopLevelOrder(keys);
     }
 
     /// <summary>Keys of the top-level sidebar entries (folders and loose playlists, not the
@@ -486,6 +634,13 @@ public partial class SidebarViewModel : ViewModelBase
                     pl.SidebarOrder = i + 1;
                     pl.FolderOrder = folderRank;
                 }
+                // An empty saved folder keeps its place itself (no playlist to carry it).
+                if (!HasPlaylistsIn(folder) && _savedFolders.Contains(folder, StringComparer.OrdinalIgnoreCase)
+                    && _savedFolderOrder.GetValueOrDefault(folder) != i + 1)
+                {
+                    _savedFolderOrder[folder] = i + 1;
+                    _foldersDirty = true;
+                }
             }
             else if (keys[i].StartsWith("playlist:", StringComparison.Ordinal)
                      && Guid.TryParse(keys[i]["playlist:".Length..], out var id)
@@ -514,6 +669,7 @@ public partial class SidebarViewModel : ViewModelBase
     public IReadOnlyList<string> GetFolderNames() =>
         Playlists
             .Select(p => p.Folder.Trim())
+            .Concat(_savedFolders)
             .Where(f => f.Length > 0)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
@@ -689,18 +845,16 @@ public partial class SidebarViewModel : ViewModelBase
             Color = Playlist.GetRandomColor(),
         };
         FileIntoFolder(playlist, folder ?? string.Empty);
-        Playlists.Add(playlist);
-        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
-        RebuildSidebarRows();
+        AddNewPlaylist(playlist);
 
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 
     // ── Sidebar context menu + drag-and-drop ──
     // Right-click on a playlist row / folder header, and drops onto the list, come
-    // through here. Folders are just the Folder string on each playlist, so "create a
-    // folder" means "put a playlist in a folder with a new name" and a folder with no
-    // playlists left in it simply disappears.
+    // through here. Folders are just the Folder string on each playlist, so a folder with no
+    // playlists left in it disappears, except one made with New Folder…, which is saved
+    // beside the playlists (_savedFolders) and stays until Remove Folder.
 
     [RelayCommand]
     private async Task EditPlaylistItem(PlaylistNavItem? item)
@@ -722,21 +876,96 @@ public partial class SidebarViewModel : ViewModelBase
         if (item?.PlaylistId is { } id) await DeletePlaylist(id);
     }
 
-    /// <summary>Prompts for a folder name (existing or new) and moves the playlist there.</summary>
-    [RelayCommand]
-    private async Task MoveToFolder(PlaylistNavItem? item)
+    /// <summary>The "Move to Folder" submenu of a playlist row: every folder (the empty ones
+    /// made with New Folder… too), alphabetical, the one it is in marked; then No Folder, then
+    /// New Folder… (the only one that asks for a name).</summary>
+    internal IReadOnlyList<FolderMenuChoice> FolderChoicesFor(PlaylistNavItem item)
     {
-        var playlist = ResolveNavPlaylist(item);
-        if (playlist == null) return;
+        var current = (ResolveNavPlaylist(item)?.Folder ?? item.Folder).Trim();
+        var choices = GetFolderNames()
+            .Select(f => new FolderMenuChoice(item, f, f, IsNew: false,
+                IsCurrent: string.Equals(f, current, StringComparison.OrdinalIgnoreCase)))
+            .ToList();
+        choices.Add(new FolderMenuChoice(item, null, Loc.T("Sidebar.NoFolder"), IsNew: false, IsCurrent: current.Length == 0));
+        choices.Add(new FolderMenuChoice(item, null, Loc.T("Sidebar.NewFolder"), IsNew: true, IsCurrent: false));
+        return choices;
+    }
 
-        var existing = GetFolderNames();
-        var hint = existing.Count > 0
-            ? Loc.T("Sidebar.FolderHintExisting", string.Join(", ", existing))
-            : Loc.T("Sidebar.FolderHint");
-        var name = await Views.TextPromptDialog.ShowAsync(Loc.T("Sidebar.MoveToFolderTitle"), playlist.Folder, hint, Loc.T("SendTo.Move"));
-        if (name == null) return;
+    /// <summary>A pick in the "Move to Folder" submenu: into that folder, out of any, or into a
+    /// new one named in the prompt.</summary>
+    [RelayCommand]
+    private async Task MoveToFolderChoice(FolderMenuChoice? choice)
+    {
+        var playlist = ResolveNavPlaylist(choice?.Item);
+        if (choice == null || playlist == null) return;
+        var folder = choice.Folder ?? string.Empty;
+        if (choice.IsNew)
+        {
+            var name = await PromptText(Loc.T("Sidebar.NewFolderTitle"), null, null, Loc.T("Sidebar.CreateFolder"));
+            if (string.IsNullOrWhiteSpace(name)) return;
+            folder = name.Trim();
+        }
+        if (string.Equals(playlist.Folder.Trim(), folder, StringComparison.Ordinal)) return;
+        await SetPlaylistFolderAsync(playlist, folder);
+    }
 
-        await SetPlaylistFolderAsync(playlist, name);
+    /// <summary>"New Folder…" (the PLAYLISTS header and the empty part of the list): a folder
+    /// that shows while it is still empty, saved beside the playlists until it is removed.</summary>
+    [RelayCommand]
+    private async Task NewFolder()
+    {
+        var name = (await PromptText(Loc.T("Sidebar.NewFolderTitle"), null, null, Loc.T("Sidebar.CreateFolder")))?.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+        if (GetFolderNames().Contains(name, StringComparer.OrdinalIgnoreCase)) return;
+        _savedFolders.Add(name);
+        _collapsedFolders.Remove(name);
+        // Top (Discord 11-24, sina): first among the folders and loose playlists, kept there.
+        if (NewPlaylistsAtTop) PlaceFirst($"folder:{name}");
+        RebuildSidebarRows();
+        if (NewPlaylistsAtTop) await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        _foldersDirty = false;
+        await SaveFoldersAsync();
+    }
+
+    /// <summary>Takes <paramref name="folders"/> as the saved empty folders (trimmed, once each).</summary>
+    private void SetSavedFolders(IEnumerable<string> folders)
+    {
+        _savedFolders.Clear();
+        foreach (var f in folders)
+        {
+            var name = f?.Trim() ?? string.Empty;
+            if (name.Length > 0 && !_savedFolders.Contains(name, StringComparer.OrdinalIgnoreCase))
+                _savedFolders.Add(name);
+        }
+    }
+
+    /// <summary>Uses <paramref name="folders"/> as the saved folders and shows them (tests).</summary>
+    internal void UseSavedFolders(IEnumerable<string> folders)
+    {
+        SetSavedFolders(folders);
+        RebuildSidebarRows();
+    }
+
+    /// <summary>Takes <paramref name="order"/> as the empty saved folders' places (saved folders only).</summary>
+    private void SetSavedFolderOrder(IReadOnlyDictionary<string, int> order)
+    {
+        _savedFolderOrder.Clear();
+        foreach (var (folder, place) in order)
+            if (place > 0 && _savedFolders.Contains(folder.Trim(), StringComparer.OrdinalIgnoreCase))
+                _savedFolderOrder[folder.Trim()] = place;
+    }
+
+    private async Task SaveFoldersAsync()
+    {
+        await _persistence.SavePlaylistFoldersAsync(_savedFolders.ToList());
+        await _persistence.SavePlaylistFolderOrderAsync(new Dictionary<string, int>(_savedFolderOrder));
+    }
+
+    /// <summary>Drops <paramref name="folder"/> from the saved folders; true when it was there.</summary>
+    private bool ForgetSavedFolder(string folder)
+    {
+        _savedFolderOrder.Remove(folder.Trim());
+        return _savedFolders.RemoveAll(f => string.Equals(f, folder.Trim(), StringComparison.OrdinalIgnoreCase)) > 0;
     }
 
     [RelayCommand]
@@ -752,7 +981,7 @@ public partial class SidebarViewModel : ViewModelBase
     private async Task RenameFolder(PlaylistNavItem? item)
     {
         if (item is not { IsFolder: true }) return;
-        var newName = await Views.TextPromptDialog.ShowAsync(Loc.T("Sidebar.RenameFolderTitle"), item.Label, null, Loc.T("Mobile.Rename"));
+        var newName = await PromptText(Loc.T("Sidebar.RenameFolderTitle"), item.Label, null, Loc.T("Mobile.Rename"));
         if (string.IsNullOrWhiteSpace(newName) || string.Equals(newName, item.Label, StringComparison.Ordinal)) return;
 
         var wasCollapsed = _collapsedFolders.Remove(item.Label);
@@ -772,8 +1001,19 @@ public partial class SidebarViewModel : ViewModelBase
             var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
             if (nav != null) nav.Folder = newName;
         }
+        // A saved (New Folder…) folder keeps showing under its new name; renamed onto another
+        // folder, it is that folder now.
+        var emptyPlace = _savedFolderOrder.GetValueOrDefault(item.Label.Trim());
+        var savedRenamed = ForgetSavedFolder(item.Label);
+        // (GetFolderNames would always hold the new name once the folder's own playlists moved.)
+        if (savedRenamed && !merged && !_savedFolders.Contains(newName.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            _savedFolders.Add(newName.Trim());
+            if (emptyPlace > 0) _savedFolderOrder[newName.Trim()] = emptyPlace;
+        }
         RebuildSidebarRows();
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (savedRenamed) await SaveFoldersAsync();
     }
 
     /// <summary>Folder header: the playlists stay, the folder goes.</summary>
@@ -781,20 +1021,22 @@ public partial class SidebarViewModel : ViewModelBase
     private async Task DissolveFolder(PlaylistNavItem? item)
     {
         if (item is not { IsFolder: true }) return;
-        var confirmed = await Views.ConfirmationDialog.ShowAsync(
-            Loc.T("Sidebar.RemoveFolderConfirm", item.Label));
-        if (!confirmed) return;
+        var members = Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)).ToList();
+        // An empty folder has nothing to keep: it just goes.
+        if (members.Count > 0 && !await ConfirmAction(Loc.T("Sidebar.RemoveFolderConfirm", item.Label))) return;
 
         _collapsedFolders.Remove(item.Label);
-        foreach (var pl in Playlists.Where(p => string.Equals(p.Folder.Trim(), item.Label, StringComparison.OrdinalIgnoreCase)))
+        foreach (var pl in members)
         {
             pl.Folder = string.Empty;
             pl.ModifiedAt = DateTime.UtcNow;
             var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == pl.Id);
             if (nav != null) nav.Folder = string.Empty;
         }
+        var wasSaved = ForgetSavedFolder(item.Label);
         RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (members.Count > 0) await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        if (wasSaved) await SaveFoldersAsync();
     }
 
     /// <summary>
@@ -838,7 +1080,7 @@ public partial class SidebarViewModel : ViewModelBase
         dragged.ModifiedAt = DateTime.UtcNow;
         SyncPlaylistItemsWithPlaylists();
         RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 
     /// <summary>
@@ -865,7 +1107,7 @@ public partial class SidebarViewModel : ViewModelBase
         dragged.ModifiedAt = DateTime.UtcNow;
         SyncPlaylistItemsWithPlaylists();
         RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 
     /// <summary>
@@ -882,7 +1124,7 @@ public partial class SidebarViewModel : ViewModelBase
         if (!PlaceTopLevel(key, target.Key, placeAfter)) return;
 
         RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 
     private Playlist? ResolveNavPlaylist(PlaylistNavItem? item)
@@ -895,7 +1137,7 @@ public partial class SidebarViewModel : ViewModelBase
         var nav = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         if (nav != null) nav.Folder = playlist.Folder;
         RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 
     /// <summary>Re-orders PlaylistItems to match Playlists and copies pin/folder state across.</summary>
@@ -930,12 +1172,13 @@ public partial class SidebarViewModel : ViewModelBase
         if (playlist == null) return;
 
         Playlists.Remove(playlist);
+        if (playlist.Folder.Trim().Length > 0) LeftFolder(playlist.Folder.Trim(), playlist.SidebarOrder);
 
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
         if (navItem != null) PlaylistItems.Remove(navItem);
         RebuildSidebarRows();
 
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 
     /// <summary>Renames a playlist and persists the change.</summary>
@@ -956,38 +1199,55 @@ public partial class SidebarViewModel : ViewModelBase
     /// <summary>Adds tracks to a manual playlist and persists. Smart playlists are
     /// filled by their rules, so added ids would never show and are ignored.</summary>
     public async Task AddTracksToPlaylist(Guid playlistId, IEnumerable<Track> tracks)
+        => await AddTracksToPlaylistsAsync(new[] { playlistId }, tracks);
+
+    /// <summary>
+    /// Adds tracks to each of the manual playlists (Add to Playlist with several ticked) and
+    /// saves once. Each playlist takes only the songs it lacks, as a single add does; smart
+    /// playlists and unknown ids are skipped. Returns the playlists that were written to.
+    /// </summary>
+    public async Task<IReadOnlyList<Playlist>> AddTracksToPlaylistsAsync(IEnumerable<Guid> playlistIds, IEnumerable<Track> tracks)
     {
-        var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
-        if (playlist == null || playlist.IsSmartPlaylist) return;
-
-        // Only add tracks that aren't already in the playlist to prevent duplicates
-        var existingIds = new HashSet<Guid>(playlist.TrackIds);
+        var songs = tracks as IList<Track> ?? tracks.ToList();
+        var touched = new List<Playlist>();
         var now = DateTime.UtcNow;
-        foreach (var track in tracks)
+        foreach (var playlistId in playlistIds.Distinct())
         {
-            if (existingIds.Add(track.Id))
+            var playlist = Playlists.FirstOrDefault(p => p.Id == playlistId);
+            if (playlist == null || playlist.IsSmartPlaylist) continue;
+
+            // Only add tracks that aren't already in the playlist to prevent duplicates
+            var existingIds = new HashSet<Guid>(playlist.TrackIds);
+            foreach (var track in songs)
             {
-                playlist.TrackIds.Add(track.Id);
-                playlist.TrackAddedAt[track.Id] = now; // drives the row's NEW badge and "Added" date
+                if (existingIds.Add(track.Id))
+                {
+                    playlist.TrackIds.Add(track.Id);
+                    playlist.TrackAddedAt[track.Id] = now; // drives the row's NEW badge and "Added" date
+                }
             }
-        }
-        playlist.ModifiedAt = now;
+            playlist.ModifiedAt = now;
 
-        // Update the sidebar item's track count and artwork
-        var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
-        if (navItem != null)
-        {
-            var rebuilt = BuildPlaylistNavItem(playlist);
-            navItem.TrackCount = rebuilt.TrackCount;
-            navItem.MetaText = rebuilt.MetaText;
-            navItem.Art1 = rebuilt.Art1;
-            navItem.Art2 = rebuilt.Art2;
-            navItem.Art3 = rebuilt.Art3;
-            navItem.Art4 = rebuilt.Art4;
+            // Update the sidebar item's track count and artwork
+            var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlistId);
+            if (navItem != null)
+            {
+                var rebuilt = BuildPlaylistNavItem(playlist);
+                navItem.TrackCount = rebuilt.TrackCount;
+                navItem.MetaText = rebuilt.MetaText;
+                navItem.Art1 = rebuilt.Art1;
+                navItem.Art2 = rebuilt.Art2;
+                navItem.Art3 = rebuilt.Art3;
+                navItem.Art4 = rebuilt.Art4;
+            }
+            touched.Add(playlist);
         }
 
+        if (touched.Count == 0) return touched;
         await _persistence.SavePlaylistsAsync(Playlists.ToList());
-        PlaylistTracksChanged?.Invoke(this, playlistId);
+        foreach (var playlist in touched)
+            PlaylistTracksChanged?.Invoke(this, playlist.Id);
+        return touched;
     }
 
     /// <summary>
@@ -1069,11 +1329,9 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var t in tracks)
             playlist.TrackIds.Add(t.Id);
 
-        Playlists.Add(playlist);
-        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
-        RebuildSidebarRows();
+        AddNewPlaylist(playlist);
 
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
         return playlist;
     }
 
@@ -1113,12 +1371,13 @@ public partial class SidebarViewModel : ViewModelBase
         var dialogVm = CreateAddToPlaylistViewModel(tracks);
         var dialog = new AddToPlaylistDialog { DataContext = dialogVm };
 
-        Guid? selectedExistingId = null;
+        IReadOnlyList<Guid> selectedIds = Array.Empty<Guid>();
         bool createRequested = false;
         string newName = string.Empty;
         string newDescription = string.Empty;
 
-        dialogVm.PlaylistSelected += (_, navItem) => selectedExistingId = navItem.PlaylistId;
+        dialogVm.PlaylistsSelected += (_, picked) =>
+            selectedIds = picked.Select(p => p.PlaylistId).OfType<Guid>().ToList();
         dialogVm.NewPlaylistRequested += (_, args) =>
         {
             createRequested = true;
@@ -1139,9 +1398,9 @@ public partial class SidebarViewModel : ViewModelBase
             return;
         }
 
-        if (selectedExistingId is Guid id)
+        if (selectedIds.Count > 0)
         {
-            await AddTracksToPlaylist(id, tracks);
+            await AddPickedPlaylistsAsync(selectedIds, tracks);
             return;
         }
 
@@ -1156,12 +1415,28 @@ public partial class SidebarViewModel : ViewModelBase
         foreach (var t in tracks)
             playlist.TrackIds.Add(t.Id);
 
-        Playlists.Add(playlist);
-        PlaylistItems.Add(BuildPlaylistNavItem(playlist));
-        RebuildSidebarRows();
+        AddNewPlaylist(playlist);
 
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
+
+    /// <summary>The Add to Playlist dialog's picks: the songs go in each playlist, then the pill
+    /// above the island says where ("Added to Gym" / "Added to 3 playlists"). Internal for tests.</summary>
+    internal async Task AddPickedPlaylistsAsync(IReadOnlyList<Guid> playlistIds, IList<Track> tracks)
+    {
+        var added = await AddTracksToPlaylistsAsync(playlistIds, tracks);
+        if (added.Count == 0) return;
+        var headline = added.Count == 1
+            ? Loc.T("PlaybackBar.AddedToPlaylist", added[0].Name)
+            : Loc.T("AddToPlaylist.AddedToPlaylists", added.Count);
+        var detail = tracks.Count == 1
+            ? (string.IsNullOrWhiteSpace(tracks[0].Title) ? Loc.T("QueueToast.OneSong") : tracks[0].Title)
+            : Loc.T("QueueToast.SongCount", tracks.Count);
+        ToastRequested?.Invoke(this, (headline, detail));
+    }
+
+    /// <summary>A one-line confirmation for the pill above the playback island (headline, detail).</summary>
+    public event EventHandler<(string Headline, string Detail)>? ToastRequested;
 
     /// <summary>Opens the edit playlist dialog pre-filled with existing data and saves changes.</summary>
     public async Task EditPlaylistAsync(Playlist playlist)
@@ -1221,38 +1496,66 @@ public partial class SidebarViewModel : ViewModelBase
         }
         else if (!string.IsNullOrEmpty(dialogVm.PendingCoverArtFile))
         {
-            var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
-            Directory.CreateDirectory(coversDir);
-
-            var ext = Path.GetExtension(dialogVm.PendingCoverArtFile);
-            var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
-
-            // Drop a previous cover with a different extension: replacing a .png with a
-            // .jpg left the .png behind forever, since RemoveCoverArt only deletes the
-            // path currently recorded.
-            foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}*"))
-            {
-                if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
-                    try { File.Delete(stale); } catch { }
-            }
-
-            // The picked file can be the cover already in place (the picker opened in
-            // playlist_covers): copying a file onto itself threw, and the rest of the edit
-            // (name, star, folder) was never saved.
-            if (!string.Equals(Path.GetFullPath(dialogVm.PendingCoverArtFile), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
-                File.Copy(dialogVm.PendingCoverArtFile, destPath, overwrite: true);
-            playlist.CoverArtPath = destPath;
-            // A new picture of the same type lands on the same path (<id>.jpg): drop the
-            // decode of the old one, or every CachedImage on that path keeps drawing it.
-            ArtworkCache.Invalidate(destPath);
+            CopyCoverIn(playlist, dialogVm.PendingCoverArtFile);
         }
 
-        // Rebuild the sidebar nav item with updated info
+        RefreshNavItem(playlist);
+        RebuildSidebarRows();
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistEdited?.Invoke(this, playlist.Id);
+    }
+
+    /// <summary>
+    /// The playlist page's Change Cover…: <paramref name="file"/> becomes the playlist's custom
+    /// cover (copied into playlist_covers as the Edit Playlist dialog's Save does), and the
+    /// sidebar row, the page and disk follow.
+    /// </summary>
+    public async Task SetPlaylistCoverAsync(Playlist playlist, string file)
+    {
+        CopyCoverIn(playlist, file);
+        playlist.ModifiedAt = DateTime.UtcNow;
+        RefreshNavItem(playlist);
+        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        PlaylistEdited?.Invoke(this, playlist.Id);
+    }
+
+    /// <summary>Copies <paramref name="file"/> in as the playlist's cover (playlist_covers/&lt;id&gt;.ext).</summary>
+    private static void CopyCoverIn(Playlist playlist, string file)
+    {
+        var coversDir = Path.Combine(Helpers.AppPaths.DataRoot, "playlist_covers");
+        Directory.CreateDirectory(coversDir);
+
+        var ext = Path.GetExtension(file);
+        var destPath = Path.Combine(coversDir, $"{playlist.Id}{ext}");
+
+        // Drop a previous cover with a different extension: replacing a .png with a
+        // .jpg left the .png behind forever, since RemoveCoverArt only deletes the
+        // path currently recorded.
+        foreach (var stale in Directory.EnumerateFiles(coversDir, $"{playlist.Id}*"))
+        {
+            if (!string.Equals(stale, destPath, StringComparison.OrdinalIgnoreCase))
+                try { File.Delete(stale); } catch { }
+        }
+
+        // The picked file can be the cover already in place (the picker opened in
+        // playlist_covers): copying a file onto itself threw, and the rest of the edit
+        // (name, star, folder) was never saved.
+        if (!string.Equals(Path.GetFullPath(file), Path.GetFullPath(destPath), StringComparison.OrdinalIgnoreCase))
+            File.Copy(file, destPath, overwrite: true);
+        playlist.CoverArtPath = destPath;
+        // A new picture of the same type lands on the same path (<id>.jpg): drop the
+        // decode of the old one, or every CachedImage on that path keeps drawing it.
+        ArtworkCache.Invalidate(destPath);
+    }
+
+    /// <summary>Rebuilds the playlist's sidebar row from the playlist (name, size, art, star, folder).</summary>
+    private void RefreshNavItem(Playlist playlist)
+    {
         var navItem = PlaylistItems.FirstOrDefault(n => n.PlaylistId == playlist.Id);
         if (navItem != null)
         {
             var rebuilt = BuildPlaylistNavItem(playlist);
-            navItem.Label = newName;
+            navItem.Label = playlist.Name;
             navItem.TrackCount = rebuilt.TrackCount;
             navItem.MetaText = rebuilt.MetaText;
             navItem.CoverArtPath = rebuilt.CoverArtPath;
@@ -1263,10 +1566,6 @@ public partial class SidebarViewModel : ViewModelBase
             navItem.IsPinned = rebuilt.IsPinned;
             navItem.Folder = rebuilt.Folder;
         }
-
-        RebuildSidebarRows();
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
-        PlaylistEdited?.Invoke(this, playlist.Id);
     }
 
     /// <summary>Gets a playlist by its ID.</summary>
@@ -1301,10 +1600,12 @@ public partial class SidebarViewModel : ViewModelBase
 
         if (createdPlaylist == null) return;
 
-        Playlists.Add(createdPlaylist);
-        PlaylistItems.Add(BuildPlaylistNavItem(createdPlaylist));
-        RebuildSidebarRows();
+        AddNewPlaylist(createdPlaylist);
 
-        await _persistence.SavePlaylistsAsync(Playlists.ToList());
+        await SavePlaylistsAndFoldersAsync();
     }
 }
+
+/// <summary>One entry of a playlist row's "Move to Folder" submenu: a folder (<see cref="Folder"/>),
+/// No Folder (null), or New Folder… (<see cref="IsNew"/>).</summary>
+public sealed record FolderMenuChoice(PlaylistNavItem Item, string? Folder, string Label, bool IsNew, bool IsCurrent);

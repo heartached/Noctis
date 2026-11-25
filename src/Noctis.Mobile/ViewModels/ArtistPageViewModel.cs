@@ -342,7 +342,13 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
         }
     }
 
-    private void OnRefreshed(object? sender, EventArgs e) => Rebuild();
+    // A heart or a download changes nothing the page shows (Top Songs ranks by plays). Rebuilding
+    // replaced every rail and card, so each tile was built again and blanked its cover.
+    private void OnRefreshed(object? sender, EventArgs e)
+    {
+        if (ReferenceEquals(e, LibraryViewModel.FavouritesRefresh) || ReferenceEquals(e, LibraryViewModel.DownloadsRefresh)) return;
+        Rebuild();
+    }
 
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -376,7 +382,7 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     [RelayCommand]
     private void Play()
     {
-        if (Songs.Count > 0) Shell.Player.PlayTracks(Songs, 0, Name);
+        if (Songs.Count > 0) Shell.Player.PlayAll(Songs, Name);
     }
 
     [RelayCommand]
@@ -413,7 +419,7 @@ public sealed partial class ArtistPageViewModel : MobilePage, ITintedPage
     [RelayCommand]
     private void PlayCard(ArtistCard? card)
     {
-        if (card is { Album.Tracks.Count: > 0 }) Shell.Player.PlayTracks(card.Album.Tracks, 0, card.Album.Name);
+        if (card is { Album.EditionTracks.Count: > 0 }) Shell.Player.PlayAll(card.Album.EditionTracks, card.Album.Name);
     }
 
     [RelayCommand] private void OpenAlbums() => OpenRail("Nav.Albums", () => Albums);

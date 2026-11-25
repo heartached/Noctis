@@ -104,9 +104,18 @@ public static class LibraryColumns
         }
     }
 
+    /// <summary>
+    /// Whether a Songs column shows, or null for one that always does. The Rating column also
+    /// needs Show Star Ratings (Discord 11-24, Halil); its own flag is kept as the user set it,
+    /// so turning the stars back on brings the column back only if it was on before.
+    /// </summary>
+    internal static bool? SongsShown(SettingsViewModel s, string key) =>
+        key == "Rating" ? s.ShowRatingColumn && s.ShowStarRatings : SongsFlag(s, key);
+
     /// <summary>Settings property name → Songs column key, for PropertyChanged.</summary>
     private static string? SongsKeyFor(string? property) => property switch
     {
+        nameof(SettingsViewModel.ShowStarRatings) => "Rating",
         nameof(SettingsViewModel.ShowTimeColumn) => "Time",
         nameof(SettingsViewModel.ShowArtistColumn) => "Artist",
         nameof(SettingsViewModel.ShowAlbumColumn) => "Album",
@@ -135,14 +144,14 @@ public static class LibraryColumns
     {
         layout.Load(settings.SongsColumnOrder, settings.SongsColumnWidths);
         foreach (var spec in layout.Specs)
-            if (SongsFlag(settings, spec.Key) is { } shown) layout.SetVisible(spec.Key, shown);
+            if (SongsShown(settings, spec.Key) is { } shown) layout.SetVisible(spec.Key, shown);
 
         // Writing order and widths raises PropertyChanged for each in turn; only an outside
         // change (Settings reset) may reload the layout, never our own half-written pair.
         var committing = false;
         PropertyChangedEventHandler onSettings = (_, e) =>
         {
-            if (SongsKeyFor(e.PropertyName) is { } key && SongsFlag(settings, key) is { } shown)
+            if (SongsKeyFor(e.PropertyName) is { } key && SongsShown(settings, key) is { } shown)
                 layout.SetVisible(key, shown);
             else if (!committing && e.PropertyName is nameof(SettingsViewModel.SongsColumnOrder) or nameof(SettingsViewModel.SongsColumnWidths)
                      && (settings.SongsColumnOrder != layout.SerializeOrder() || settings.SongsColumnWidths != layout.SerializeWidths()))
@@ -165,11 +174,14 @@ public static class LibraryColumns
         settings.PropertyChanged += onSettings;
         layout.VisibilityRequested += onRequest;
         layout.Committed += onCommit;
+        // Stars hidden: the header menu doesn't offer a Rating column it couldn't show.
+        layout.IsLeftOutOfMenu = key => key == "Rating" && !settings.ShowStarRatings;
         return new Unbind(() =>
         {
             settings.PropertyChanged -= onSettings;
             layout.VisibilityRequested -= onRequest;
             layout.Committed -= onCommit;
+            layout.IsLeftOutOfMenu = null;
         });
     }
 

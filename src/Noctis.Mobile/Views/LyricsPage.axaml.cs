@@ -4,9 +4,13 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Interactivity;
+using Avalonia.Animation.Easings;
 using Avalonia.Media;
+using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 using Noctis.Mobile.ViewModels;
 
@@ -60,10 +64,15 @@ public partial class LyricsPage : UserControl
     private readonly DispatcherTimer _controlsTimer;
     private readonly DispatcherTimer _controlsOffTimer;
     private readonly DispatcherTimer _holdRelease;
+    private readonly DispatcherTimer _glideDone;
+    // The frame callback, made once: a method group passed per frame is a new delegate per frame.
+    private readonly Action<TimeSpan> _onFrame;
 
     public LyricsPage()
     {
+        _onFrame = OnFrame;
         InitializeComponent();
+        ApplyDiagnostics();
         LyricsList.ContainerPrepared += (_, _) => Services.FrameStallMonitor.Count("lyric rows prepared");
         LyricsScroll.SizeChanged += (_, _) => UpdateEdgePadding();
         LyricsScroll.PropertyChanged += OnScrollPropertyChanged;
@@ -76,6 +85,9 @@ public partial class LyricsPage : UserControl
         _controlsOffTimer.Tick += (_, _) => RemoveHiddenControls();
         _holdRelease = new DispatcherTimer { Interval = HoldReleaseDelay };
         _holdRelease.Tick += (_, _) => { if (!WantsHold) ReleaseHold(); };
+        _glideDone = new DispatcherTimer();
+        _glideDone.Tick += (_, _) => OnCompositorGlideDone();
+        _onGlideCommitted = OnGlideCommitted;
 
         // Any touch brings the transport back (and keeps it up a while), even one a line or
         // the scroller handles; a tap on a line also ends browsing, as the seek it makes
@@ -84,6 +96,7 @@ public partial class LyricsPage : UserControl
         LyricsList.AddHandler(Button.ClickEvent, (_, _) => EndBrowse(scrollBack: false), RoutingStrategies.Bubble);
         LyricsScroll.AddHandler(PointerPressedEvent, OnScrollPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
         LyricsScroll.AddHandler(PointerReleasedEvent, OnScrollPointerReleased, RoutingStrategies.Tunnel, handledEventsToo: true);
+        LyricsScroll.AddHandler(PointerMovedEvent, OnScrollPointerMoved, RoutingStrategies.Tunnel, handledEventsToo: true);
         Backdrop.PropertyChanged += (_, e) => { if (e.Property == Image.SourceProperty) UpdateFades(); };
         BlurCover.ImageChanged += (_, _) => UpdateFades();
         TopFade.PropertyChanged += (_, e) => { if (e.Property == BoundsProperty) UpdateFades(); };
@@ -140,8 +153,15 @@ public partial class LyricsPage : UserControl
         base.OnPropertyChanged(change);
         if (change.Property != IsVisibleProperty) return;
         UpdateMenuHold();
+        FeedTimeline();
         if (!IsVisible)
         {
+            // The keep-alive stops asking now (the frame loop ends at its next frame): its frames
+            // redraw the screen even under a hidden page.
+            KeepAlive?.Run(false);
+            // A glide in flight ends now (its compositor animation with it): nothing of the page
+            // runs while it is closed, and on open it stands on the sung line at once.
+            StopGlide();
             EndBrowse(scrollBack: false);
             _controlsTimer.Stop();
             _controlsOffTimer.Stop();
@@ -178,6 +198,23 @@ public partial class LyricsPage : UserControl
     private void OnShellChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(ShellViewModel.IsMenuOpen) or nameof(ShellViewModel.IsSheetOpen)) UpdateMenuHold();
+        // Android may report the insets after the resize, and the page's size does not change
+        // when only they do: the landscape layout is placed from them, so it follows them too.
+        else if (e.PropertyName == nameof(ShellViewModel.SafeArea)) ApplyOrientation(Bounds.Size);
+        else if (e.PropertyName == nameof(ShellViewModel.IsSuspended))
+        {
+            // Gone to the background: the keep-alive stops now (the frame loop ends at its next
+            // frame). Back in front: catch up to the sung line and stand on it, as on open (it
+            // used to glide there from wherever the page left off, in front of the user), then
+            // the frames run again.
+            if (_shell is { IsSuspended: true }) KeepAlive.Run(false);
+            else if (IsVisible)
+            {
+                _lyrics?.OnFrame(LyricsPageViewModel.NowMs());
+                if (!_heldForMenu) ScrollToLine(_lyrics?.ScrollLineIndex ?? -1, animate: false);
+                EnsureFrameLoop();
+            }
+        }
     }
 
     /// <summary>
@@ -240,6 +277,9 @@ public partial class LyricsPage : UserControl
     private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(NowPlayingViewModel.IsPlaying) && IsVisible) ShowControls();
+        // Between plain lines the frame loop rests; each position poll (4 a second) wakes it
+        // once the next line is near (KeepsFrames), or at once after a seek.
+        else if (e.PropertyName == nameof(NowPlayingViewModel.Position) && !_frameLoopRunning && IsVisible) EnsureFrameLoop();
     }
 
     /// <summary>A new track's lyrics start at the top.</summary>
@@ -249,6 +289,21 @@ public partial class LyricsPage : UserControl
         StopGlide();
         EndBrowse(scrollBack: false);
         ApplyOffset(0);
+    }
+
+    /// <summary>DIAGNOSTIC ONLY (<see cref="Services.LyricsDiagnostics"/>, off by default): takes
+    /// the switched-off layers out of the page. The fades skip a band that is not in the tree.</summary>
+    private void ApplyDiagnostics()
+    {
+        if (Services.LyricsDiagnostics.NoBands) Remove(TopFade, BottomFade);
+        if (Services.LyricsDiagnostics.NoBackdrop) Remove(Backdrop, BlurCover);
+        if (Services.LyricsDiagnostics.NoDither) Remove(WashDither);
+
+        static void Remove(params Control[] controls)
+        {
+            foreach (var c in controls)
+                if (c.Parent is Panel panel) panel.Children.Remove(c);
+        }
     }
 
     /// <summary>Top and bottom room so the first and last lines can reach the anchor
@@ -263,6 +318,7 @@ public partial class LyricsPage : UserControl
 
     private bool? _landscape;
     private double _sideWidth = double.NaN;
+    private Thickness _safe;
 
     /// <summary>
     /// Beta 2 (#mobile-beta): sideways, the lyrics kept the portrait column, its header and
@@ -274,12 +330,14 @@ public partial class LyricsPage : UserControl
     /// </summary>
     private void ApplyOrientation(Size size)
     {
+        if (size.Width <= 0 || size.Height <= 0) return;
         var landscape = size.Width > size.Height;
         var safe = _shell?.SafeArea ?? default;
         var side = landscape ? safe.Left + 24 + Math.Max(0, size.Width - safe.Left - safe.Right - 48) * 5 / 11 : 0;
-        if (_landscape == landscape && side == _sideWidth) return;
+        if (_landscape == landscape && side == _sideWidth && safe == _safe) return;
         _landscape = landscape;
         _sideWidth = side;
+        _safe = safe;
         // Built, not parsed: "{side},*" formats in the phone's culture, and "444,27,*" (German,
         // French, Russian...) is three columns - the lyrics got a 27 dp one and spilled off screen.
         Split.ColumnDefinitions = landscape
@@ -344,6 +402,7 @@ public partial class LyricsPage : UserControl
     {
         _controlsOffTimer.Stop();
         ControlsLayer.IsVisible = true;
+        FeedTimeline();
         ControlsLayer.Opacity = 1;
         ControlsLayer.IsHitTestVisible = true;
         _controlsTimer.Stop();
@@ -374,6 +433,17 @@ public partial class LyricsPage : UserControl
     {
         _controlsOffTimer.Stop();
         if (!ControlsShown) ControlsLayer.IsVisible = false;
+        FeedTimeline();
+    }
+
+    /// <summary>The seek bar and times are fed only while they can be seen: the page shown and
+    /// the transport not faded away (NowPlayingPage.FeedTimeline).</summary>
+    private void FeedTimeline()
+    {
+        if (SeekBar is null) return;   // before InitializeComponent
+        var seen = IsVisible && ControlsLayer.IsVisible;
+        NowPlayingPage.FeedTimeline(SeekBar, SeekBar, seen);
+        NowPlayingPage.FeedTimeline(TimeRow, SeekBar, seen);
     }
 
     // Seek on release only, as Now Playing (NowPlayingPage.OnSeekCompleted).
@@ -414,13 +484,69 @@ public partial class LyricsPage : UserControl
     private void OnScrollPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         _fingerDown = true;
+        _pressedAt = e.GetPosition(this);
+        _pressedPointer = e.Pointer;
+        // A finger landing stops nothing: a tap seeks (and the seek glides on from where the
+        // lines are). Only a drag takes the lines over (OnScrollPointerMoved).
         if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();   // a touch while reading holds the lines
+    }
+
+    // Where the finger landed (page coordinates), and which one.
+    private Point _pressedAt;
+    private IPointer? _pressedPointer;
+
+    /// <summary>
+    /// Beta 5 (11-23): stopping a compositor glide as the finger landed froze the lines under
+    /// every tap. A drag must still take over from what is on screen: the scroller's offset is
+    /// already the glide's target, so its first scroll step would otherwise jump the lines by
+    /// what the glide had left. The glide stops just before the scroller's own gesture starts
+    /// (a tunnel handler runs ahead of its recognizer), once the finger has moved as far as
+    /// that recognizer needs to start scrolling.
+    /// </summary>
+    private void OnScrollPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_fingerDown || e.Pointer != _pressedPointer || e.Pointer.Type == PointerType.Mouse || !_gliding || !_onCompositor) return;
+        var moved = e.GetPosition(this) - _pressedAt;
+        if (Math.Abs(moved.Y) > ScrollStartDistance() || Math.Abs(moved.X) > ScrollStartDistance())
+            StopGlide();
+    }
+
+    /// <summary>The lyric line on screen under <paramref name="at"/> (page coordinates; the hit
+    /// test is the compositor's, so it is what is shown).</summary>
+    private Button? LineButtonUnder(Point at)
+    {
+        for (var v = this.InputHitTest(at) as Visual; v != null && v != LyricsScroll; v = v.GetVisualParent())
+            if (v is Button b && b.Classes.Contains("lyric-line")) return b;
+        return null;
+    }
+
+    /// <summary>How far a finger moves before the scroller's gesture starts (its recognizer's own
+    /// setting, half the platform's tap size).</summary>
+    private double ScrollStartDistance()
+    {
+        if (LyricsScroll.Presenter is Control presenter)
+            foreach (var recognizer in presenter.GestureRecognizers)
+                if (recognizer is ScrollGestureRecognizer scroll) return scroll.ScrollStartDistance;
+        return 5;
     }
 
     private void OnScrollPointerReleased(object? sender, PointerEventArgs e)
     {
         if (!_fingerDown) return;
         _fingerDown = false;
+        // A tap on a line during a compositor glide: the line Button would decide it was clicked
+        // from where the finger is in its laid-out place, which is already the glide's target,
+        // while the line is shown (and was touched) where the glide still has it: most taps
+        // missed. The page takes such a tap itself: the glide stops on the lines as shown and
+        // the line under the finger (the compositor's hit test: what is shown) seeks, which
+        // glides on from there. The Button, its release handled, lets go when the pointer does.
+        if (_gliding && _onCompositor && LineButtonUnder(e.GetPosition(this)) is { } line)
+        {
+            StopGlide();
+            e.Handled = true;
+            EndBrowse(scrollBack: false);
+            if (line.Command is { } command && command.CanExecute(line.CommandParameter)) command.Execute(line.CommandParameter);
+        }
         _fingerUpMs = LyricsPageViewModel.NowMs();
         // The wait counts from the lift (the last touch), not from the drag's last movement.
         if (_lyrics is { IsBrowsing: true }) RestartBrowseTimer();
@@ -458,31 +584,50 @@ public partial class LyricsPage : UserControl
 
     // ── Frames ──
 
-    private bool KeepsFrames => IsVisible && !_heldForMenu && (_gliding || _lyrics?.WantsFrames == true);
+    /// <summary>The page's frame loop is running (tests read it).</summary>
+    internal bool IsFrameLoopRunning => _frameLoopRunning;
+
+    /// <summary>How far ahead of a plain line's start the frame loop (and with it the keep-alive)
+    /// wakes. Between lines nothing is drawn, and the S23's panel drops to 24 Hz after a moment
+    /// without frames; its way back to 120 Hz takes 75-85 ms (RenderKeepAlive). Woken this early,
+    /// on a position poll (every 250 ms), it is back at full rate before the line glides.</summary>
+    internal const double WakeLeadMs = 600;
+
+    // Not while the app is in the background (home, task switch, screen off): the frame loop and
+    // the keep-alive kept the render loop ticking there for as long as the song played.
+    private bool KeepsFrames => IsVisible && !_heldForMenu && _shell is not { IsSuspended: true }
+                                && ((_gliding && !_onCompositor) || (_lyrics?.WantsFrames == true && LinesMoveSoon()));
+
+    /// <summary>A word-timed song (or the dots) moves every frame; plain lines only around a change.</summary>
+    private bool LinesMoveSoon() =>
+        _lyrics is { } lyrics && (lyrics.AnimatesEveryFrame || lyrics.MsToNextChange(LyricsPageViewModel.NowMs()) <= WakeLeadMs);
 
     private void EnsureFrameLoop()
     {
         if (_frameLoopRunning || !KeepsFrames) return;
         if (TopLevel.GetTopLevel(this) is not { } top) return;
         _frameLoopRunning = true;
+        Services.FrameStallMonitor.SetState("lyric frame loop", true);
         KeepAlive.Run(true);
-        top.RequestAnimationFrame(OnFrame);
+        top.RequestAnimationFrame(_onFrame);
     }
 
     private void OnFrame(TimeSpan _)
     {
+        Services.FrameStallMonitor.Count("lyric frames");
         var now = LyricsPageViewModel.NowMs();
-        if (_gliding) StepGlide(now);
+        if (_gliding && !_onCompositor) StepGlide(now);
         if (_lyrics?.WantsFrames == true && IsVisible) _lyrics.OnFrame(now);
 
         if (KeepsFrames && TopLevel.GetTopLevel(this) is { } top)
         {
             KeepAlive.Run(true);   // a page shown this frame has its compositor visual only now
-            top.RequestAnimationFrame(OnFrame);
+            top.RequestAnimationFrame(_onFrame);
         }
         else
         {
             _frameLoopRunning = false;
+            Services.FrameStallMonitor.SetState("lyric frame loop", false);
             KeepAlive.Run(false);
         }
     }
@@ -521,6 +666,7 @@ public partial class LyricsPage : UserControl
         // The line's top stays below the fade (portrait's taller viewport seldom needs it).
         target = Math.Max(0, Math.Min(target, top - TopFade.Bounds.Height));
 
+        // A glide in flight stops where it stands on screen; the next one sets off from there.
         StopGlide();
         if (!animate || Math.Abs(target - LyricsScroll.Offset.Y) < 2)
         {
@@ -531,12 +677,15 @@ public partial class LyricsPage : UserControl
         _glideFrom = LyricsScroll.Offset.Y;
         _glideTo = target;
         _glideStartMs = LyricsPageViewModel.NowMs();
+        _glideCommitted = false;
         var distance = Math.Abs(target - _glideFrom);
         // A line-to-line advance runs exactly LineMotion.DurationMs, landing with the line's
         // own scale transition; only seek-sized jumps stretch a little (the desktop's rule).
         _glideDurationMs = Math.Min(1050, Math.Max(LineMotion.DurationMs, distance * 0.85));
         BuildCascade(index, distance);
         _gliding = true;
+        Services.FrameStallMonitor.SetState(Services.FrameStallMonitor.MotionState, true);
+        if (StartCompositorGlide()) return;
         EnsureFrameLoop();
     }
 
@@ -560,34 +709,45 @@ public partial class LyricsPage : UserControl
         _cascadeMaxDelayMs = _cascade[^1].DelayMs;
     }
 
+    /// <summary>The glide <paramref name="elapsedMs"/> in: the list's scroll offset (returned)
+    /// and, into <paramref name="lags"/> (one per cascade line), each cascade line's lag behind
+    /// it, the desktop's motion (LyricsView.AnimateScroll).</summary>
+    private double GlideAt(double elapsedMs, double[]? lags)
+    {
+        var t = Math.Clamp(elapsedMs / _glideDurationMs, 0, 1);
+        var eased = LineMotion.Ease(t);
+        var delta = _glideTo - _glideFrom;
+        if (lags != null && _cascade != null)
+        {
+            // Each cascade line is displaced by the gap between the base ease and its own
+            // delayed ease, clamped to the line above's lag.
+            var prevLag = 0.0;
+            for (var i = 0; i < _cascade.Count; i++)
+            {
+                var tLine = Math.Clamp((elapsedMs - _cascade[i].DelayMs) / _glideDurationMs, 0.0, 1.0);
+                prevLag = LineMotion.CascadeStep(delta * (eased - LineMotion.Ease(tLine)), prevLag, MaxCascadeLagStepPx);
+                lags[i] = prevLag;
+            }
+        }
+        return _glideFrom + delta * eased;
+    }
+
     private void StepGlide(double nowMs)
     {
         var elapsed = nowMs - _glideStartMs;
-        var t = Math.Clamp(elapsed / _glideDurationMs, 0, 1);
-        var eased = LineMotion.Ease(t);
-        var delta = _glideTo - _glideFrom;
-        ApplyOffset(_glideFrom + delta * eased);
-
+        if (_cascade != null && (_lags == null || _lags.Length < _cascade.Count)) _lags = new double[_cascade.Count];
+        ApplyOffset(GlideAt(elapsed, _cascade == null ? null : _lags));
         if (_cascade != null)
-        {
-            // Each cascade line is displaced by the gap between the base ease and its own
-            // delayed ease, clamped to the line above's lag (LyricsView.AnimateScroll).
-            var prevLag = 0.0;
-            foreach (var (control, delayMs) in _cascade)
-            {
-                var tLine = Math.Clamp((elapsed - delayMs) / _glideDurationMs, 0.0, 1.0);
-                var lag = LineMotion.CascadeStep(delta * (eased - LineMotion.Ease(tLine)), prevLag, MaxCascadeLagStepPx);
-                prevLag = lag;
-                SetLag(control, lag);
-            }
-        }
+            for (var i = 0; i < _cascade.Count; i++) SetLag(_cascade[i].Control, _lags![i]);
 
-        if (t >= 1 && elapsed >= _glideDurationMs + _cascadeMaxDelayMs)
+        if (elapsed >= _glideDurationMs + _cascadeMaxDelayMs)
         {
             ApplyOffset(_glideTo);
             StopGlide();
         }
     }
+
+    private double[]? _lags;
 
     private static void SetLag(Control control, double lag)
     {
@@ -601,8 +761,203 @@ public partial class LyricsPage : UserControl
         }
     }
 
+    // ── The glide on the compositor ──
+
+    /// <summary>
+    /// S23 at 120 Hz (11-23): while the lines glided, the page wrote the scroll offset and each
+    /// cascade line's lag on every frame: a layout pass, the scroller's events and a property
+    /// change per line on every frame, which with the rest of the frame filled the phone's
+    /// nursery every 25-30 s, its 80-100 ms GC pause now and then right in a glide. Now the
+    /// offset jumps to the target once and the render thread plays the motion back: the list's
+    /// composition Translation runs from where the lines stood to none on the line curve
+    /// (<see cref="LineMotionEase"/>), and each cascade line's own Translation follows its lag,
+    /// worked out from the same motion (<see cref="GlideAt"/>, see <see cref="LagStepMs"/>).
+    /// The UI thread does nothing per frame. Taps hit what is on screen (Avalonia hit-tests the
+    /// compositor's last frame). The lines the motion uncovers must already be realised: the
+    /// panel keeps <see cref="RealisedBuffer"/> of a viewport beyond each edge (its CacheLength),
+    /// and a longer jump glides frame by frame as before (<see cref="StepGlide"/>).
+    /// </summary>
+    private bool StartCompositorGlide()
+    {
+        var delta = _glideTo - _glideFrom;
+        if (!CompositorGlide || Math.Abs(delta) > LyricsScroll.Viewport.Height * RealisedBuffer
+            || ElementComposition.GetElementVisual(LyricsList) is not { } list) return false;
+        _onCompositor = true;
+        ApplyOffset(_glideTo);
+        // The offset and the animation reach the render thread in the same batch: the jump
+        // never shows.
+        var glide = list.Compositor.CreateVector3DKeyFrameAnimation();
+        glide.InsertKeyFrame(0f, new Vector3D(0, delta, 0), Linear);
+        glide.InsertKeyFrame(1f, default, Ease);
+        glide.Duration = TimeSpan.FromMilliseconds(_glideDurationMs);
+        list.StartAnimation(TranslationProperty, glide);
+        _translated.Add(list);
+
+        var totalMs = _glideDurationMs + _cascadeMaxDelayMs;
+        if (_cascade != null)
+        {
+            // The lags every LagStepMs, then per line only the key frames a straight run between
+            // them cannot stand in for (LagKeyFrames).
+            var rows = _cascade.Count;
+            var steps = (int)Math.Ceiling(totalMs / LagStepMs);
+            if (_lagCurve == null || _lagCurve.Length < (steps + 1) * rows) _lagCurve = new double[(steps + 1) * rows];
+            if (_lags == null || _lags.Length < rows) _lags = new double[rows];
+            for (var k = 0; k <= steps; k++)
+            {
+                GlideAt(Math.Min(k * LagStepMs, totalMs), _lags);
+                Array.Copy(_lags, 0, _lagCurve, k * rows, rows);
+            }
+            for (var i = 0; i < rows; i++)
+            {
+                if (ElementComposition.GetElementVisual(_cascade[i].Control) is not { } row) continue;
+                var lag = row.Compositor.CreateVector3DKeyFrameAnimation();
+                lag.Duration = TimeSpan.FromMilliseconds(totalMs);
+                LagKeyFrames(_lagCurve, steps, rows, i, LagTolerancePx, _keys);
+                foreach (var k in _keys)
+                    lag.InsertKeyFrame(k == steps ? 1f : (float)(k * LagStepMs / totalMs), new Vector3D(0, _lagCurve[k * rows + i], 0), Linear);
+                row.StartAnimation(TranslationProperty, lag);
+                _translated.Add(row);
+            }
+        }
+        _glideDone.Stop();
+        _glideDone.Interval = TimeSpan.FromMilliseconds(totalMs);
+        _glideDone.Start();
+        // The render thread starts the animation at the commit that carries it (Avalonia stamps
+        // the batch with its clock as it is sent), up to a frame after this call when it comes
+        // from a timer or a tap. The glide's own clock restarts there, so where the page thinks
+        // the lines are (VisualOffset) is where the compositor shows them: stopped mid-way, the
+        // hand-over used to jump by that frame's motion (up to ~3 px on the S23, 11-23).
+        list.Compositor.RequestCompositionUpdate(_onGlideCommitted);
+        return true;
+    }
+
+    // Whether the running glide's clock has been set at its commit.
+    private bool _glideCommitted;
+    private readonly Action _onGlideCommitted;
+
+    /// <summary>Runs just before the commit that sends the glide (Compositor.RequestCompositionUpdate).</summary>
+    private void OnGlideCommitted()
+    {
+        if (!_gliding || !_onCompositor || _glideCommitted) return;
+        _glideCommitted = true;
+        _glideStartMs = LyricsPageViewModel.NowMs();
+        _glideDone.Stop();
+        _glideDone.Interval = TimeSpan.FromMilliseconds(_glideDurationMs + _cascadeMaxDelayMs);
+        _glideDone.Start();
+    }
+
+    /// <summary>Off: every glide runs frame by frame (tests compare the two).</summary>
+    internal static bool CompositorGlide { get; set; } = true;
+
+    /// <summary>Fraction of a viewport the lyric panel keeps realised beyond each edge (its
+    /// CacheLength in LyricsPage.axaml): the longest glide the compositor plays.</summary>
+    internal const double RealisedBuffer = 0.5;
+
+    /// <summary>The cascade lines' lag is worked out this often, and played back as straight runs
+    /// between key frames that stay within <see cref="LagTolerancePx"/> of it (a third of a pixel
+    /// of the true curve at worst, where a backward glide's clamp bends it). A fixed 30 Hz
+    /// sampling was 2 px off a line's lag where its delayed start bends the curve sharply, and
+    /// 120 Hz took ~1,300 key frames a glide (new objects each time).</summary>
+    private const double LagStepMs = 2;
+    internal const double LagTolerancePx = 0.25;
+
+    // Scratch for the cascade's key frames, kept between glides.
+    private double[]? _lagCurve;
+    private readonly List<int> _keys = new();
+
+    /// <summary>
+    /// The samples (by index) of column <paramref name="column"/> of <paramref name="curve"/>
+    /// (<paramref name="steps"/> + 1 rows of <paramref name="stride"/>) that straight runs must
+    /// join for every sample in between to lie within <paramref name="tolerance"/>: the first,
+    /// the last, and the fewest in between (greedy, each run as long as it fits). Internal for
+    /// tests.
+    /// </summary>
+    internal static void LagKeyFrames(double[] curve, int steps, int stride, int column, double tolerance, List<int> keys)
+    {
+        keys.Clear();
+        keys.Add(0);
+        var from = 0;
+        while (from < steps)
+        {
+            var to = from + 1;
+            while (to < steps && Fits(from, to + 1)) to++;
+            keys.Add(to);
+            from = to;
+        }
+
+        bool Fits(int a, int b)
+        {
+            var va = curve[a * stride + column];
+            var slope = (curve[b * stride + column] - va) / (b - a);
+            for (var m = a + 1; m < b; m++)
+                if (Math.Abs(va + slope * (m - a) - curve[m * stride + column]) > tolerance) return false;
+            return true;
+        }
+    }
+
+    private const string TranslationProperty = "Translation";
+    private static readonly LinearEasing Linear = new();
+    private static readonly LineMotionEase Ease = new();
+
+    private bool _onCompositor;
+    // Visuals whose Translation the compositor glide animates (the list and its cascade lines).
+    private readonly List<CompositionVisual> _translated = new();
+
+    /// <summary>A compositor glide is running (tests read it; one that has played out ends here
+    /// if its timer has not run yet).</summary>
+    internal bool IsGlidingOnCompositor
+    {
+        get
+        {
+            if (_gliding && _onCompositor && LyricsPageViewModel.NowMs() - _glideStartMs >= _glideDurationMs + _cascadeMaxDelayMs)
+                OnCompositorGlideDone();
+            return _gliding && _onCompositor;
+        }
+    }
+
+    /// <summary>The compositor glide has played out: the translations rest at none.</summary>
+    private void OnCompositorGlideDone()
+    {
+        _glideDone.Stop();
+        if (!_onCompositor) return;
+        _onCompositor = false;
+        _translated.Clear();
+        StopGlide();
+    }
+
+    /// <summary>Where the lines stand on screen as a scroll offset: the layout's offset, less
+    /// what a compositor glide still displaces them by (on the glide's own clock, which starts
+    /// with the render thread's: OnGlideCommitted).</summary>
+    private double VisualOffset() =>
+        _gliding && _onCompositor
+            ? GlideAt(LyricsPageViewModel.NowMs() - _glideStartMs, null)
+            : LyricsScroll.Offset.Y;
+
+    /// <summary>Puts a composition Translation at <paramref name="y"/> at once, replacing an
+    /// animation on it: a plain write ends it on the render thread (StopAnimation can miss one
+    /// still on its way there, see RenderKeepAlive). The UI side keeps the last value written
+    /// and drops an equal write, so then the same place is written a hair off in depth (2D
+    /// drawing has no depth).</summary>
+    private static void SetTranslation(CompositionVisual visual, double y)
+    {
+        var at = new Vector3D(0, y, 0);
+        visual.Translation = visual.Translation == at ? new Vector3D(0, y, 1e-6) : at;
+    }
+
     private void StopGlide()
     {
+        if (_gliding && _onCompositor)
+        {
+            // Mid-glide: the offset takes where the lines are on screen and the translations
+            // go, together (the cascade lines drop their lag, as the frame-by-frame glide did).
+            var y = VisualOffset();
+            _glideDone.Stop();
+            _onCompositor = false;
+            foreach (var visual in _translated) SetTranslation(visual, 0);
+            _translated.Clear();
+            ApplyOffset(y);
+        }
+        if (_gliding) Services.FrameStallMonitor.SetState(Services.FrameStallMonitor.MotionState, false);
         _gliding = false;
         if (_cascade == null) return;
         foreach (var (control, _) in _cascade) SetLag(control, 0);

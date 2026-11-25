@@ -179,10 +179,10 @@ public class LocalizationTests
             Loc.Instance.SetCulture("ru");
             Assert.Equal("Сворачивать в строку меню", Loc.Platform("Settings.MinimizeTray", isMac: true));
 
-            // Spanish has "tray" translated but no Mac wording yet: stays Spanish.
+            // Every language now has its own Mac wording (11-23): Spanish shows it, never the English one.
             Loc.Instance.SetCulture("es");
-            Assert.Equal(Loc.T("Settings.MinimizeTray"), Loc.Platform("Settings.MinimizeTray", isMac: true));
-            Assert.NotEqual(Loc.English("Settings.MinimizeTray"), Loc.Platform("Settings.MinimizeTray", isMac: true));
+            Assert.Equal("Minimizar a la barra de menús", Loc.Platform("Settings.MinimizeTray", isMac: true));
+            Assert.Equal("Minimizar a la bandeja", Loc.Platform("Settings.MinimizeTray", isMac: false));
         }
         finally { Loc.Instance.SetCulture("en"); }
     }

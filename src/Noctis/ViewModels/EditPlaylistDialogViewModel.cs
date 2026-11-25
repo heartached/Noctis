@@ -170,8 +170,16 @@ public partial class EditPlaylistDialogViewModel : ViewModelBase
     [RelayCommand]
     private async Task SetCoverArt(Avalonia.Visual visual)
     {
-        var topLevel = TopLevel.GetTopLevel(visual);
-        if (topLevel == null) return;
+        if (await PickCoverFileAsync(visual) is { } localPath)
+            UseCoverFile(localPath);
+    }
+
+    /// <summary>The cover picker (JPEG / PNG), shared with the playlist page's Change Cover…;
+    /// null when cancelled or the pick has no local path.</summary>
+    internal static async Task<string?> PickCoverFileAsync(Avalonia.Visual? visual)
+    {
+        var topLevel = visual == null ? null : TopLevel.GetTopLevel(visual);
+        if (topLevel == null) return null;
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
@@ -183,12 +191,10 @@ public partial class EditPlaylistDialogViewModel : ViewModelBase
             }
         });
 
-        if (files.Count == 0) return;
+        if (files.Count == 0) return null;
 
         var localPath = files[0].TryGetLocalPath();
-        if (string.IsNullOrEmpty(localPath)) return;
-
-        UseCoverFile(localPath);
+        return string.IsNullOrEmpty(localPath) ? null : localPath;
     }
 
     /// <summary>Takes <paramref name="path"/> as the new cover; Save copies it in.</summary>

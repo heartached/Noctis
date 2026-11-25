@@ -27,7 +27,7 @@ namespace Noctis.Tests;
 
 /// <summary>
 /// Owner 11-02: the round buttons at the top-right of every library page follow one order
-/// (page option · Filter · Sort · View · shuffle icon + primary pill · Cover Flow), the same
+/// (page option · Filter · Sort · View · Shuffle pill + primary pill · Cover Flow), the same
 /// function wears the same glyph on every page, and every button is named. The corner
 /// panel is lifted out of an unshown MainWindow (showing it runs app startup) and fed a
 /// TopBarViewModel set up the way MainWindowViewModel sets it up for each page.
@@ -147,8 +147,9 @@ public class TopBarCornerOrderTests
     // GitHub #164: Albums wears the grid / album carousel toggle in the Cover Flow icon's place.
     [InlineData("Albums", "Filter|Sort|View|AlbumCarousel")]
     [InlineData("Artists", "Filter|Sort|View|CoverFlow")]
-    [InlineData("Folders", "Folder|Sort|Shuffle|Pill:Play|CoverFlow")]
-    [InlineData("Favorites", "Shuffle|Pill:Play|CoverFlow")]
+    // 11-23 feedback: Shuffle is the Songs page's accent pill on every page, not a grey icon.
+    [InlineData("Folders", "Folder|Sort|Pill:Shuffle|Pill:Play|CoverFlow")]
+    [InlineData("Favorites", "Pill:Shuffle|Pill:Play|CoverFlow")]
     [InlineData("Playlists", "Sort|Pill:New|CoverFlow")]
     public void CornerButtons_OneOrderAndGlyphPerFunction_NamedAndTabbedLeftToRight(string page, string expected)
     {

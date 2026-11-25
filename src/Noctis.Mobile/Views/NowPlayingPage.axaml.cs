@@ -21,7 +21,8 @@ public partial class NowPlayingPage : UserControl
     /// white at a random alpha up to <see cref="DitherAmplitude"/>/255, tiled over the screen. A
     /// gradient this long (a 2400 px screen falls through ~110 levels) otherwise shows its 8-bit
     /// steps as bands; noise of a few levels, invisible as texture, scatters them. Made once per
-    /// process, drawn as a tiled image, so it costs nothing per track or per frame.
+    /// process. The pages draw the tile through DitherLayer (one Skia shader); this brush is its
+    /// fallback where Skia is not drawing (headless tests).
     /// </summary>
     internal static IBrush Dither => _dither ??= MakeDither();
 
@@ -62,7 +63,6 @@ public partial class NowPlayingPage : UserControl
     public NowPlayingPage()
     {
         InitializeComponent();
-        WashDither.Background = Dither;
 
         // The bar is a CapsuleSlider: it captures the finger itself and brackets the drag with
         // these, so a gesture taken away by the system (a notification, the shade) arrives as
@@ -78,12 +78,17 @@ public partial class NowPlayingPage : UserControl
         ArtworkSwipe = new TrackSwipeGesture(ArtworkBox, ArtworkBox, ArtworkGhostBox, GhostArtwork, this, gap: 24,
             () => _shell?.Player,
             () => _shell is { IsNowPlayingOpen: true, IsLyricsOpen: false, IsQueueOpen: false, IsMenuOpen: false });
+        // A finger on the upper half (the sheet's drag-down, the cover's swipe) moves the cover
+        // under the native video, which does not follow a transform: the video steps aside.
+        AddHandler(PointerPressedEvent, OnAnyPress, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
     }
 
     /// <summary>The cover's sideways swipe (internal for tests).</summary>
     internal TrackSwipeGesture ArtworkSwipe { get; }
 
     private ShellViewModel? _shell;
+    private NowPlayingViewModel? _player;
+    private NowPlayingMotion? _motion;
 
     // The disc turns only while someone can see it: the page open (not closed, not under the
     // lyrics) and the app in front (ShellViewModel.IsSuspended: home, task switch, screen off).
@@ -91,25 +96,130 @@ public partial class NowPlayingPage : UserControl
     {
         base.OnDataContextChanged(e);
         if (_shell != null) _shell.PropertyChanged -= OnShellChanged;
+        if (_player != null) _player.PropertyChanged -= OnMotionInputChanged;
+        if (_motion != null) _motion.PropertyChanged -= OnMotionInputChanged;
         _shell = DataContext as ShellViewModel;
+        _player = _shell?.Player;
+        _motion = _shell?.Motion;
         if (_shell != null) _shell.PropertyChanged += OnShellChanged;
+        if (_player != null) _player.PropertyChanged += OnMotionInputChanged;
+        if (_motion != null) _motion.PropertyChanged += OnMotionInputChanged;
         UpdateDiscActive();
+        UpdateMotion();
     }
 
     private void OnShellChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ShellViewModel.IsSuspended)) UpdateDiscActive();
+        if (e.PropertyName == nameof(ShellViewModel.IsNowPlayingOpen)) _held = false;
+        if (e.PropertyName is nameof(ShellViewModel.IsSuspended) or nameof(ShellViewModel.IsNowPlayingOpen)
+            or nameof(ShellViewModel.IsLyricsOpen) or nameof(ShellViewModel.IsQueueOpen) or nameof(ShellViewModel.IsMenuOpen)
+            or nameof(ShellViewModel.IsSheetOpen) or nameof(ShellViewModel.IsPromptOpen) or nameof(ShellViewModel.IsAlbumNoteOpen)
+            or nameof(ShellViewModel.ShowsDiscArtwork) or nameof(ShellViewModel.AnimatedCovers))
+            UpdateMotion();
     }
+
+    private void OnMotionInputChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(NowPlayingViewModel.IsPlaying) or nameof(NowPlayingViewModel.CurrentTrack) or nameof(NowPlayingMotion.Path))
+            UpdateMotion();
+    }
+
+    // A finger down on the cover or the sheet's upper half; up again anywhere (the release is
+    // watched at the window: the sheet's drag captures the pointer above this page).
+    private bool _held;
+    private TopLevel? _releaseWatch;
+
+    private void OnAnyPress(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        var at = e.GetPosition(this);
+        var onCover = ArtworkBox.Bounds.Contains(e.GetPosition(Layout)) || at.Y <= Bounds.Height / 2;
+        if (!onCover) return;
+        _held = true;
+        if (_releaseWatch is null && TopLevel.GetTopLevel(this) is { } top)
+        {
+            _releaseWatch = top;
+            top.AddHandler(PointerReleasedEvent, OnAnyRelease, Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
+        }
+        UpdateMotion();
+    }
+
+    private void OnAnyRelease(object? sender, Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        if (!_held) return;
+        _held = false;
+        UpdateMotion();
+    }
+
+    /// <summary>
+    /// Feeds the animated cover (MotionCover): the song's loop, and whether the cover is seen and
+    /// still - the page landed and on top (nothing over it: lyrics, queue, a menu, a sheet, a
+    /// question), the Cover style, the music playing (paused, the cover shrinks back, which the
+    /// native video cannot follow), the app in front, no Battery Saver, no finger on it, no swipe.
+    /// </summary>
+    private void UpdateMotion()
+    {
+        WatchBatterySaver();
+        if (MotionCover is not { } view) return;
+        var shell = _shell;
+        view.Source = shell?.Motion?.Path;
+        view.IsSeen = IsMotionSeen(shell, IsVisible, _held || ArtworkSwipe?.IsSwiping == true);
+    }
+
+    private Noctis.Mobile.Services.IBatterySaver? _saver;
+
+    /// <summary>Battery Saver turned on or off stops or starts the loop at once (it waited for a
+    /// pause, a new song or a menu). Listened to only while the page shows: on Android, listening
+    /// keeps a system broadcast receiver registered.</summary>
+    private void WatchBatterySaver()
+    {
+        var saver = IsVisible ? _shell?.BatterySaver : null;
+        if (ReferenceEquals(saver, _saver)) return;
+        if (_saver != null) _saver.Changed -= OnBatterySaverChanged;
+        _saver = saver;
+        if (_saver != null) _saver.Changed += OnBatterySaverChanged;
+    }
+
+    private void OnBatterySaverChanged(object? sender, EventArgs e) => UpdateMotion();
+
+    /// <summary>Whether Now Playing's cover is on screen, uncovered and still (internal for tests).</summary>
+    internal static bool IsMotionSeen(ShellViewModel? shell, bool pageVisible, bool held) =>
+        shell is { IsNowPlayingOpen: true, IsLyricsOpen: false, IsQueueOpen: false, IsMenuOpen: false, IsSheetOpen: false,
+            IsPromptOpen: false, IsAlbumNoteOpen: false, IsSuspended: false, ShowsDiscArtwork: false }
+        && shell.AnimatedCovers != AnimatedCoversSetting.Off
+        && shell.Player.IsPlaying
+        && shell.BatterySaver?.IsOn != true
+        && pageVisible && !held;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == IsVisibleProperty) UpdateDiscActive();
+        if (change.Property == IsVisibleProperty)
+        {
+            UpdateDiscActive();
+            UpdateMotion();
+        }
     }
 
     private void UpdateDiscActive()
     {
         if (Disc is { } disc) disc.IsActive = IsVisible && _shell is not { IsSuspended: true };
+        if (TimelineRow is not null) FeedTimeline(TimelineRow, SeekBar, IsVisible);
+    }
+
+    /// <summary>
+    /// The seek bar and its times follow the player's four position ticks a second, and each tick
+    /// marked them for redraw even on a hidden page: a render pass every tick and, once a second,
+    /// both times' text laid out again, for the closed Now Playing and its lyrics alike, all the
+    /// while music played (MobileHiddenTimelineTests). While hidden, <paramref name="row"/> has no
+    /// data (its bindings go quiet); shown again, it takes the page's data back and reads the
+    /// current values before it is drawn. Never mid-drag. (A page on screen when the app goes to
+    /// the background stays fed: the system's snapshot of it must not show a blank bar.)
+    /// </summary>
+    internal static void FeedTimeline(Control row, CapsuleSlider seekBar, bool seen)
+    {
+        if (seen) row.ClearValue(DataContextProperty);
+        else if (!seekBar.IsScrubbing) row.DataContext = null;
     }
 
     private bool? _landscape;

@@ -144,6 +144,12 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.SidebarStartPageHint" xml:space="preserve"><value>Noctis'in açıldığı sayfa. Gizli bir sayfa yerine Ana Sayfa açılır.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPages" xml:space="preserve"><value>Sayfalar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarPagesHint" xml:space="preserve"><value>Kenar çubuğundaki sayfaları göster, gizle ve yeniden sırala. Ayarlar her zaman görünür.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.NewPlaylistPosition" xml:space="preserve"><value>Yeni Çalma Listesi ve Klasör Konumu</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionHint" xml:space="preserve"><value>Yeni çalma listelerinin ve klasörlerin kenar çubuğu listesinde nerede görüneceği.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Üstte</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Altta</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Boş Klasörleri Kaldır</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Son çalma listesi dışarı taşındığında veya silindiğinde klasörü kaldır. Yeni bir klasör, içine bir çalma listesi girene kadar kalır.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Yukarı taşı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Aşağı taşı</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Albüm Sürümlerini Birleştir</value><comment>Text in SettingsView.axaml</comment></data>
@@ -317,7 +323,9 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Ekolayzer</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Karıştır'ın ardından bir EQ açma/kapama düğmesi.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Çalma süresi</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Parça kutusunda geçerli parçanın geçen ve kalan süresi.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Parça kutusunda geçerli parçanın geçen ve kalan süresi. Bunun yerine toplam uzunluğu göstermek için süreye tıklayın.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Ses Kaydırıcısını Her Zaman Göster</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ses kaydırıcısı açılır pencere yerine Ses düğmesinin yanında durur. Sesi kapatmak için düğmeye tıklayın. Dar bir ada yine açılır pencereyi kullanır.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Dalga formlu ilerleme çubuğu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Şarkının dalga formunu ilerleme çubuğunda gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Parça Kutusu Opaklığı</value><comment>Text in SettingsView.axaml</comment></data>
@@ -358,6 +366,7 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.IdleQueuePillHint" xml:space="preserve"><value>Hiçbir şey çalmazken küçük bir Kuyruk kapsülü gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerIslandWidth" xml:space="preserve"><value>Oynatıcı Adası Genişliği</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowWidePlayerIsland" xml:space="preserve"><value>Daha geniş olunca ilerleme çubuğuna daha çok yer kalır. Sıfırlamak için kaydırıcıya çift tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ResetPlayerIslandWidth" xml:space="preserve"><value>Oynatıcı Adası Genişliğini Sıfırla</value><comment>Accessible name of the Reset button beside the Player Island Width slider (SettingsView.axaml)</comment></data>
   <data name="Settings.Narrower" xml:space="preserve"><value>Daha dar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Wider" xml:space="preserve"><value>Daha geniş</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SongProgressTaskbar" xml:space="preserve"><value>Görev Çubuğunda Şarkı İlerlemesi</value><comment>Text in SettingsView.axaml</comment></data>
@@ -369,10 +378,12 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.FiveCoversPerRow" xml:space="preserve"><value>Satır başına beş kapak. Kendi kapak boyutunu seçmek için kapat.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.AlbumGridMasonry" xml:space="preserve"><value>Duvar Örgüsü Albüm Izgarası</value><comment>Settings toggle (GitHub #213)</comment></data>
   <data name="Settings.AlbumGridMasonryDesc" xml:space="preserve"><value>Kapaklar sütun başına gerçek yüksekliklerine göre dizilir, böylece kısa başlıklar boşluk bırakmaz.</value><comment>Settings toggle description (GitHub #213)</comment></data>
+  <data name="Settings.ShowAlbumSongCount" xml:space="preserve"><value>Albüm Kartlarında Şarkı Sayısını Göster</value><comment>Settings toggle (GitHub #258)</comment></data>
+  <data name="Settings.ShowAlbumSongCountDesc" xml:space="preserve"><value>Her albümün alt yazısında kaç şarkı olduğu da yazar.</value><comment>Settings toggle description (GitHub #258)</comment></data>
   <data name="Settings.AlbumGridWideSpacing" xml:space="preserve"><value>Albümler Arasında Daha Geniş Boşluk</value><comment>Settings toggle: GitHub #210 spacing for the album grids (1.6.9 spacing when off)</comment></data>
   <data name="Settings.AlbumGridWideSpacingDesc" xml:space="preserve"><value>Kapaklar arasında daha fazla boşluk. Her satır kendi başlıklarına uyar.</value><comment>Settings toggle description</comment></data>
   <data name="Settings.AlbumHoverZoom" xml:space="preserve"><value>Üzerine Gelince Albümü Büyüt</value><comment>Settings toggle (GitHub #218)</comment></data>
-  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>Albümler ızgarasında işaretçinin altındaki albüm biraz büyür ve yumuşakça parlar.</value><comment>Settings toggle description (GitHub #218)</comment></data>
+  <data name="Settings.AlbumHoverZoomDesc" xml:space="preserve"><value>Albümler ve Favoriler ızgaralarında işaretçinin altındaki kapak biraz büyür ve yumuşakça parlar.</value><comment>Settings toggle description (GitHub #218)</comment></data>
   <data name="Settings.Smaller" xml:space="preserve"><value>Daha küçük</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Larger" xml:space="preserve"><value>Daha büyük</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FlowingLyricsBackground" xml:space="preserve"><value>Akan Söz Arka Planı</value><comment>Text in SettingsView.axaml</comment></data>
@@ -458,6 +469,8 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (eklenti kapalı)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Sözü Olmayan Şarkıda Oynatıcıyı Ortala</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Şarkının sözü yoksa kapağı ve kontrolleri ortaya taşır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Geçerli Satıra Otomatik Dön</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>Sözleri kaydırdıktan birkaç saniye sonra söylenen satıra geri döner. Kapalı: Takip et'e basana kadar kaydırdığınız yerde kalır.</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Kenar Çubuğunun Arkasında Arka Plan</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Söz arka planının kenar çubuğunun arkasına kadar uzanmasını sağlar.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Dalga Formlu İlerleme Çubuğu</value><comment>Text in SettingsView.axaml</comment></data>
@@ -514,6 +527,17 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
     <value>Çalınan şarkılar kuyrukta çalan şarkının üstünde kalır.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
+  <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Karıştırmayı Açık Tut</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Karıştırma açıkken bir albüm, çalma listesi veya şarkı çalmak onu açık tutar ve yeni müziği karıştırır.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilence" xml:space="preserve"><value>Sessizliği Atla</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Her şarkıyı ilk sesinde başlatır ve son sesinden sonra sıradakine geçer. Dosyaların değiştirilmez; bir şarkı için ayarladığın başlangıç ve bitiş zamanları önceliklidir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevel" xml:space="preserve"><value>Sessizlik Seviyesi</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Bundan sessiz olan her şey sessizlik sayılır. Düşük değer sessiz kapanışları korur; yüksek değer cızırtı gibi daha fazlasını keser.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0} içinden çalınıyor</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
+  <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Müziğin Nereden Çaldığını Göster</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Kuyruk, müziğin başlatıldığı albümü, çalma listesini veya sayfayı gösterir. Oradaki şarkıya dönmek için tıkla.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Şarkı Adı Çaldığı Yeri Açar</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Oynatıcı adasında şarkı adına tıklamak, seni albümü yerine şarkının çaldığı sayfadaki şarkıya götürür.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Eksik Şarkılar</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Kuyruktaki bir şarkının dosyası yoksa Noctis onu atlar. Ona ne olacağını seç.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Eksik Olarak İşaretle</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -680,6 +704,9 @@ Deezer ve TIDAL: bağlantıyı yapıştır.</value></data>
   <data name="Settings.PlaylistAddedColumnHint" xml:space="preserve"><value>Her parçanın eklendiği tarihi göster.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumn" xml:space="preserve"><value>Favori sütunu</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlaylistFavoriteColumnHint" xml:space="preserve"><value>Her satırda bir kalp gösterir.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.Section.AlbumPage" xml:space="preserve"><value>Albüm sayfası</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHearts" xml:space="preserve"><value>Her şarkıda kalp</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AlbumSongHeartsHint" xml:space="preserve"><value>Bir şarkıyı Favorilere eklemek veya çıkarmak için kalbine tıklayın. Kapalıyken kalp yalnızca favorilerde görünür.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LibraryScan" xml:space="preserve"><value>Kitaplık Taraması</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FindNewTracksUpdate" xml:space="preserve"><value>Yeni parçaları bul ve aramayı güncelle.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ScanLibrary" xml:space="preserve"><value>Kitaplığı Tara</value><comment>Text in SettingsView.axaml</comment></data>
@@ -1924,6 +1951,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="PlaybackBar.ViewNamedArtistTip" xml:space="preserve"><value>{0} sayfasına git</value><comment>Island artist link tooltip while the pointer is over one name of a multi-artist credit; {0} = that artist's name</comment></data>
   <data name="PlaybackBar.FavoriteTip" xml:space="preserve"><value>Favori</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.OptionsTip" xml:space="preserve"><value>Seçenekler</value><comment>ToolTip.Tip in PlaybackBarView.axaml</comment></data>
+  <data name="PlaybackBar.TimeToggleTip" xml:space="preserve"><value>Kalan süreyi veya toplam uzunluğu göster</value><comment>ToolTip.Tip in PlaybackBarView.axaml: the island's time; a click swaps time left / total length</comment></data>
   <data name="PlaybackBar.Play" xml:space="preserve"><value>Çal</value><comment>Text in PlaybackBarView.axaml</comment></data>
   <data name="PlaybackBar.Pause" xml:space="preserve"><value>Duraklat</value><comment>Play/pause button tooltip and accessible name while playing</comment></data>
   <data name="PlaybackBar.PlayNext" xml:space="preserve"><value>Sonraki Çal</value><comment>Header in PlaybackBarView.axaml</comment></data>
@@ -2119,7 +2147,7 @@ Kaydetmek bunları ekrandaki sözlerle değiştirir. Noctis'in yazmadığı bir 
   <data name="Sidebar.EditPlaylist" xml:space="preserve"><value>Çalma Listesini Düzenle…</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.StarSidebar" xml:space="preserve"><value>Kenar Çubuğunda Yıldızla</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.UnstarFromSidebar" xml:space="preserve"><value>Kenar Çubuğundan Yıldızı Kaldır</value><comment>Header in SidebarView.axaml</comment></data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Klasöre Taşı…</value><comment>Header in SidebarView.axaml</comment></data>
+  <data name="Sidebar.MoveFolder" xml:space="preserve"><value>Klasöre Taşı</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve"><value>Klasörden Kaldır</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.DeletePlaylist" xml:space="preserve"><value>Çalma Listesini Sil</value><comment>Header in SidebarView.axaml</comment></data>
   <data name="Sidebar.NewPlaylistFolder" xml:space="preserve"><value>Klasörde Yeni Çalma Listesi…</value><comment>Header in SidebarView.axaml</comment></data>
@@ -2784,6 +2812,11 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="LyricsStudioSettings.EmbedTagsHint" xml:space="preserve"><value>Düz sözleri ses dosyasının içinde de sakla.</value><comment>Toggle help</comment></data>
   <data name="LyricsStudioSettings.SaveTtml" xml:space="preserve"><value>TTML olarak da kaydet</value><comment>Toggle title</comment></data>
   <data name="LyricsStudioSettings.SaveTtmlHint" xml:space="preserve"><value>TTML okuyan ama ELRC kelime zamanlamalarını okumayan oynatıcılar için şarkının yanına bir .ttml dosyası da yaz.</value><comment>Toggle help</comment></data>
+  <data name="LyricsStudioSettings.LyricsFiles" xml:space="preserve"><value>Şarkı sözü dosyaları</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesHint" xml:space="preserve"><value>Kelime zamanlamalı kayıtta hangi dosyaların yazılacağı. ELRC kelime zamanlamalarını korur; LRC, ELRC okumayan oynatıcılarda çalışır.</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesBoth" xml:space="preserve"><value>ELRC ve LRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesElrc" xml:space="preserve"><value>Yalnızca ELRC</value></data>
+  <data name="LyricsStudioSettings.LyricsFilesLrc" xml:space="preserve"><value>Yalnızca LRC</value></data>
   <data name="LyricsStudioSettings.RunSection" xml:space="preserve"><value>ÇALIŞTIR</value><comment>Section title</comment></data>
   <data name="LyricsStudioSettings.OpenTitle" xml:space="preserve"><value>Seçilen biçimi eksik şarkılar</value><comment>Run card title</comment></data>
   <data name="LyricsStudioSettings.OpenHelp" xml:space="preserve"><value>Yukarıdaki biçime sahip olmayan en fazla 40 şarkı.</value><comment>Run card help</comment></data>
@@ -3511,6 +3544,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Playlists.None" xml:space="preserve"><value>Henüz çalma listesi yok. Başlatmak için bir şarkıya uzun bas.</value></data>
   <data name="Mobile.Playlists.NoMatch" xml:space="preserve"><value>Eşleşen çalma listesi yok</value></data>
   <data name="Mobile.Playlists.SortName" xml:space="preserve"><value>Çalma listelerini sırala</value></data>
+  <data name="Mobile.Albums.SortName" xml:space="preserve"><value>Albümleri sırala</value></data>
   <data name="Mobile.Playlists.New" xml:space="preserve"><value>Yeni Çalma Listesi</value></data>
   <data name="Mobile.Create" xml:space="preserve"><value>Oluştur</value></data>
   <data name="Mobile.PlayNext" xml:space="preserve"><value>Sonraki Çal</value></data>
@@ -3542,6 +3576,9 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Search.All" xml:space="preserve"><value>Tümü</value></data>
   <data name="Mobile.Search.Hint" xml:space="preserve"><value>Kitaplığında ara</value></data>
   <data name="Mobile.Search.NoResults" xml:space="preserve"><value>Sonuç yok</value></data>
+  <data name="Mobile.Search.Recent" xml:space="preserve"><value>Son Aramalar</value></data>
+  <data name="Mobile.Search.ClearRecent" xml:space="preserve"><value>Temizle</value></data>
+  <data name="Mobile.Search.RemoveRecent" xml:space="preserve"><value>{0} aramasını son aramalardan kaldır</value></data>
   <data name="Mobile.Artist" xml:space="preserve"><value>Sanatçı</value></data>
   <data name="Mobile.Background.SlowMotion" xml:space="preserve"><value>Ağır Çekim</value></data>
   <data name="Mobile.Background.SlowMotionHint" xml:space="preserve"><value>Renkler yavaşça süzülür</value></data>
@@ -3549,6 +3586,7 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Background.FromArtwork" xml:space="preserve"><value>Kapaktan</value></data>
   <data name="Mobile.NowPlaying" xml:space="preserve"><value>Şimdi Çalıyor</value></data>
   <data name="Mobile.Background.NowPlayingHint" xml:space="preserve"><value>Her şarkının kapağıyla değişir</value></data>
+  <data name="Mobile.Background.WashHint" xml:space="preserve"><value>Oynatıcının renk perdesi her sayfanın arkasında</value></data>
   <data name="Mobile.Off" xml:space="preserve"><value>Kapalı</value></data>
   <data name="Mobile.Background.OffHint" xml:space="preserve"><value>Düz tema rengi</value></data>
   <data name="Mobile.Background.Neutral" xml:space="preserve"><value>Nötr</value></data>
@@ -3587,6 +3625,10 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.NowPlayingArtwork.Cover" xml:space="preserve"><value>Kapak</value></data>
   <data name="Mobile.NowPlayingArtwork.Vinyl" xml:space="preserve"><value>Plak</value></data>
   <data name="Mobile.NowPlayingArtwork.CD" xml:space="preserve"><value>CD</value></data>
+  <data name="Mobile.Settings.AnimatedCovers" xml:space="preserve"><value>Hareketli Kapaklar</value></data>
+  <data name="Mobile.AnimatedCovers.Off" xml:space="preserve"><value>Kapalı</value></data>
+  <data name="Mobile.AnimatedCovers.WifiOnly" xml:space="preserve"><value>Yalnızca Wi-Fi</value></data>
+  <data name="Mobile.AnimatedCovers.Always" xml:space="preserve"><value>Her Zaman</value></data>
   <data name="Mobile.Settings.NowPlayingBrightness" xml:space="preserve"><value>Şimdi Çalıyor Arka Planı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessName" xml:space="preserve"><value>Şimdi Çalıyor arka plan parlaklığı</value></data>
   <data name="Mobile.Settings.NowPlayingBrightnessHint" xml:space="preserve"><value>Şimdi Çalıyor ekranının arkasında daha koyu ya da açık renkler</value></data>
@@ -3639,12 +3681,20 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Settings.SmoothMotionFootnote" xml:space="preserve"><value>120 Hz ekranlarda daha akıcı kaydırma ama daha fazla pil</value></data>
   <data name="Mobile.Settings.GlassTabPill" xml:space="preserve"><value>Liquid Glass sekme kapsülü</value></data>
   <data name="Mobile.Settings.GlassTabPillHint" xml:space="preserve"><value>Seçili sekme şeffaf cam kalır</value></data>
+  <data name="Mobile.Settings.ReduceGlass" xml:space="preserve"><value>Camı azalt</value></data>
+  <data name="Mobile.Settings.ReduceGlassHint" xml:space="preserve"><value>Menüler ve çubuklar camsız, yavaş telefonlarda daha akıcı</value></data>
   <data name="Mobile.Settings.TabBar" xml:space="preserve"><value>Sekme Çubuğu</value></data>
-  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>2 ile 5 arası sekme seç ve sıralamak için ≡ simgesini sürükle. Kitaplık her zaman çubukta kalır, böylece tüm listeler ve Ayarlar elinin altında olur.</value></data>
+  <data name="Mobile.TabBar.Hint" xml:space="preserve"><value>2 ile 5 arası sekme seç ve sıralamak için satırın sonundaki noktaları sürükle. Kitaplık her zaman çubukta kalır, böylece tüm listeler ve Ayarlar elinin altında olur.</value></data>
   <data name="Mobile.TabBar.Reset" xml:space="preserve"><value>Varsayılana Sıfırla</value></data>
   <data name="Mobile.TabBar.ReorderName" xml:space="preserve"><value>{0} öğesini taşı</value></data>
   <data name="Mobile.Settings.QueueHistory" xml:space="preserve"><value>Kuyrukta çalınan şarkılar</value></data>
   <data name="Mobile.Settings.QueueHistoryHint" xml:space="preserve"><value>Çaldığın şarkılar çalanın üstünde kalır</value></data>
+  <data name="Mobile.ReplayGain.Track" xml:space="preserve"><value>Parça</value></data>
+  <data name="Mobile.ReplayGain.Album" xml:space="preserve"><value>Albüm</value></data>
+  <data name="Mobile.ReplayGain.Preamp" xml:space="preserve"><value>Ön yükseltme</value></data>
+  <data name="Mobile.ReplayGain.PreventClipping" xml:space="preserve"><value>Kırpılmayı önle</value></data>
+  <data name="Mobile.ReplayGain.PreventClippingHint" xml:space="preserve"><value>Yükseltme, şarkının en yüksek tepesinin altında kalır</value></data>
+  <data name="Mobile.ReplayGain.Footnote" xml:space="preserve"><value>Şarkılarının ReplayGain etiketleriyle ses yüksekliğini dengeler, bilgisayarındaki şarkılar dahil. Parça her şarkıyı aynı yükseklikte çalar; Albüm bir albümün sessiz ve yüksek şarkılarını olduğu gibi bırakır. ReplayGain'i olmayan şarkılar olduğu gibi çalar.</value></data>
   <data name="Mobile.Settings.StorageUsed" xml:space="preserve"><value>Kullanılan Alan</value></data>
   <data name="Mobile.Settings.RemoveAllDownloads" xml:space="preserve"><value>Tüm İndirilenleri Kaldır</value></data>
   <data name="Mobile.Settings.RemoveDownloadsHint" xml:space="preserve"><value>Bilgisayarında kalır ve akışla çalmaya devam eder</value></data>
@@ -3739,7 +3789,8 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Background.SongTitle" xml:space="preserve"><value>Şarkı Adı</value></data>
   <data name="Mobile.Background.BatterySaverOn" xml:space="preserve"><value>Pil Tasarrufu açık, bu yüzden renkler sabit kalır.</value></data>
   <data name="Mobile.Background.MotionFootnote" xml:space="preserve"><value>Biraz daha fazla pil harcar ve Pil Tasarrufu'nda durur</value></data>
-  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}</value></data>
+  <data name="Mobile.History.DayName" xml:space="preserve"><value>{0}: {1}, {2}</value></data>
+  <data name="Mobile.History.AllTime" xml:space="preserve"><value>Tüm Zamanlar: {0} · {1}</value></data>
   <data name="Mobile.History.Forever" xml:space="preserve"><value>Süresiz</value></data>
   <data name="Mobile.History.OneYear" xml:space="preserve"><value>1 Yıl</value></data>
   <data name="Mobile.History.Days" xml:space="preserve"><value>{0} Gün|{0} Gün</value></data>
@@ -3867,12 +3918,16 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Downloads.RemoveAction" xml:space="preserve"><value>İndirilenleri Kaldır</value></data>
   <data name="Mobile.Count.SongsN0" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value></data>
   <data name="Mobile.Count.Playlists" xml:space="preserve"><value>{0} çalma listesi|{0} çalma listesi</value></data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve"><value>Çalma listesinin içinden Şarkı Ekle: + simgesine dokun ve kitaplığından şarkı seç.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve"><value>Şarkı sözleri ekranına uyar ve akıcı şekilde kayar.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve"><value>Bilgisayarındaki şarkılar Son Eklenenler'de görünür.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve"><value>Bir şarkıyı kuyruğun üst veya alt kenarına sürükle, liste onunla birlikte kaysın.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve"><value>Daha hızlı açılış, kitaplık yüklenirken donma yok ve daha akıcı menüler.</value><comment>What's New</comment></data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>İlerleme çubukları tüm yüksekliklerinde tepki verir ve yatay mod ekrana sığar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.RemoteHome" xml:space="preserve"><value>Ana Sayfa'da, profil resminin yanında bir Uzaktan Kumanda düğmesi.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Downloads" xml:space="preserve"><value>İndirmeler arka planda sürer, ilerlemesini gösterir ve başarısız olmak yerine bilgisayarını ya da Wi-Fi'ı bekler.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Deluxe" xml:space="preserve"><value>Deluxe albümler, bilgisayarındaki gibi bağlantılı şarkılarını da çalar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Looks" xml:space="preserve"><value>Renk Perdesi arka planı, Camı azalt ve Şimdi Çalıyor'da Hareketli Kapaklar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Listening" xml:space="preserve"><value>Ayarlar, Dinleme'de ReplayGain ve Karıştırmayı Açık Tut.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Library" xml:space="preserve"><value>Albümler sayfasını sırala, kendi Sanatçı ve Tür Ayırıcılarını belirle.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.History" xml:space="preserve"><value>Dinleme Geçmişi: bir güne dokunarak o günün dinlemelerini gör, tüm zamanların toplamıyla birlikte.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.HomeSearch" xml:space="preserve"><value>Ana Sayfa'da En Çok Dinlenen Sanatçılar, Arama'da Son Aramalar.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Arabic" xml:space="preserve"><value>Arapça artık uygulamanın tamamında sağdan sola gösteriliyor.</value><comment>What's New</comment></data>
+  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve"><value>Sekme Çubuğu çökmesi düzeltildi; listeler ve açılış daha hızlı, şarkı sözleri daha akıcı.</value><comment>What's New</comment></data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve"><value>Paketle gelen ALAC kod çözücü; değiştirilmemiş FFmpeg 6.0 kaynağından, GPL ve özgür olmayan bölümler olmadan derlenmiştir: git.ffmpeg.org/ffmpeg.git</value></data>
   <data name="Mobile.License.Media3" xml:space="preserve"><value>Çalma, medya oturumu ve kod çözücünün JNI sarmalayıcısı.</value></data>
   <data name="Mobile.License.Avalonia" xml:space="preserve"><value>Kullanıcı arayüzü çatısı.</value></data>
@@ -3912,6 +3967,14 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Account.SignOutAction" xml:space="preserve"><value>Oturumu Kapat</value></data>
   <data name="Mobile.Account.SignOutAndRemove" xml:space="preserve"><value>Oturumu Kapat ve İndirilenleri Kaldır</value></data>
   <data name="Mobile.Account.SignOutDetail" xml:space="preserve"><value>Oradaki şarkılar bu telefonun kitaplığından çıkar. İstediğin zaman yeniden oturum açabilirsin.</value></data>
+  <data name="Mobile.Account.SignOutDetailKeep" xml:space="preserve"><value>Oradaki şarkılar bu telefonun kitaplığından çıkar, indirdiklerin hariç: Onlar kalır ve sen kaldırana kadar çalmaya devam eder. İstediğin zaman yeniden oturum açabilirsin.</value></data>
+  <data name="Mobile.Account.NotOnComputer" xml:space="preserve"><value>Artık bilgisayarında yok</value></data>
+  <data name="Mobile.Account.NotOnComputerStorage" xml:space="preserve"><value>Artık bilgisayarında yok: {0}</value></data>
+  <data name="Mobile.NotOnComputer.Hint" xml:space="preserve"><value>Bu şarkılar artık bilgisayarında yok. Bu telefonda kalır ve sen kaldırana kadar çalmaya devam eder.</value></data>
+  <data name="Mobile.NotOnComputer.Remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="Mobile.NotOnComputer.RemoveAll" xml:space="preserve"><value>Tümünü Kaldır</value></data>
+  <data name="Mobile.NotOnComputer.RemoveQuestion" xml:space="preserve"><value>Bu şarkılar kaldırılsın mı?</value></data>
+  <data name="Mobile.NotOnComputer.RemoveDetail" xml:space="preserve"><value>{0} bu telefondan kaldırılır. Artık bilgisayarında olmadıkları için yeniden indirilemezler.</value></data>
   <data name="Mobile.Account.SigningOut" xml:space="preserve"><value>Oturum kapatılıyor…</value></data>
   <data name="Mobile.Account.SomethingWrong" xml:space="preserve"><value>Bir sorun oluştu. Yeniden dene.</value></data>
   <data name="Mobile.Account.SyncFinished" xml:space="preserve"><value>Eşitleme tamamlandı</value></data>
@@ -3922,6 +3985,10 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Account.MissingOnComputer" xml:space="preserve"><value>{0} bilgisayarında yok</value></data>
   <data name="Mobile.Account.Failed" xml:space="preserve"><value>{0} başarısız</value></data>
   <data name="Mobile.Account.Downloading" xml:space="preserve"><value>İndiriliyor: {0} / {1}{2}</value></data>
+  <data name="Mobile.Download.FromComputer" xml:space="preserve"><value>Bilgisayarından indiriliyor</value></data>
+  <data name="Mobile.Download.WaitingForComputer" xml:space="preserve"><value>Bilgisayarın bekleniyor</value></data>
+  <data name="Mobile.Download.WaitingForWifi" xml:space="preserve"><value>Wi-Fi bekleniyor</value></data>
+  <data name="Mobile.Download.Done" xml:space="preserve"><value>{0} şarkı indirildi|{0} şarkı indirildi</value></data>
   <data name="Mobile.Account.Error.Unreachable" xml:space="preserve"><value>Bilgisayarına ulaşılamıyor. Orada Noctis’in açık olduğunu, “Telefonunda Noctis” seçeneğinin açık olduğunu ve ikisinin de aynı Wi-Fi ağında olduğunu kontrol et.</value></data>
   <data name="Mobile.Account.Error.CertificateChanged" xml:space="preserve"><value>Bilgisayarının güvenlik kodu değişti. Yenisine güvenmek için oturumu kapatıp yeniden aç.</value></data>
   <data name="Mobile.Account.Error.CertificateChangedSigningIn" xml:space="preserve"><value>Oturum açılırken bilgisayarının güvenlik kodu değişti. Yeniden dene ve kodu kontrol et.</value></data>
@@ -3962,15 +4029,19 @@ Satırlar ve zamanlamaları atılır ve kendi sözlerin için boş bir söz kutu
   <data name="Mobile.Account.SyncedDays" xml:space="preserve"><value>{0} gün önce eşitlendi|{0} gün önce eşitlendi</value></data>
   <data name="Mobile.Account.SyncedOn" xml:space="preserve"><value>Son eşitleme: {0}</value></data>
   <data name="Mobile.Remote.Title" xml:space="preserve"><value>Uzaktan Kumanda</value><comment>Account page row and page title: control the computer's player from the phone</comment></data>
-  <data name="Mobile.Remote.Hint" xml:space="preserve"><value>{0} üzerinde çal, duraklat ve atla</value><comment>Account page Remote row's grey line. {0} = computer name</comment></data>
   <data name="Mobile.Remote.Connecting" xml:space="preserve"><value>{0} cihazına bağlanılıyor…</value><comment>Remote page while connecting. {0} = computer name</comment></data>
   <data name="Mobile.Remote.CantReach" xml:space="preserve"><value>{0} cihazına ulaşılamıyor</value><comment>Remote page title when the computer cannot be used. {0} = computer name</comment></data>
-  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} yalnızca ana hesabının çalınanı kontrol etmesine izin verir. Bu telefonda o hesapla oturum aç.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.NotAllowed" xml:space="preserve"><value>{0} üzerinde çalınanı yalnızca ana hesap kontrol edebilir. Burada oturumu kapat, ardından o hesapla giriş yapmak için {0} üzerindeki Noctis'te QR kodunu tara.</value><comment>Remote page: this phone's account may not control the computer. {0} = computer name</comment></data>
   <data name="Mobile.Remote.Outdated" xml:space="preserve"><value>{0} üzerindeki Noctis uzaktan kumanda için çok eski. Güncelleyip tekrar dene.</value><comment>Remote page: the computer's Noctis has no remote. {0} = computer name</comment></data>
   <data name="Mobile.Remote.NothingPlaying" xml:space="preserve"><value>{0} üzerinde hiçbir şey çalmıyor</value><comment>Remote page when the computer plays nothing. {0} = computer name</comment></data>
   <data name="Mobile.Remote.UpNext" xml:space="preserve"><value>{0} üzerinde Sıradaki</value><comment>Remote page caption over the computer's queue. {0} = computer name</comment></data>
   <data name="Mobile.Remote.AndMore" xml:space="preserve"><value>ve {0} tane daha</value><comment>Under the computer's queue when it lists only the first songs. {0} = count</comment></data>
   <data name="Mobile.Remote.Retry" xml:space="preserve"><value>Tekrar Dene</value><comment>Remote page button</comment></data>
+  <data name="Mobile.Remote.ServerErrorTitle" xml:space="preserve"><value>{0} ile iletişimde bir sorun oluştu</value><comment>Remote page title when the computer answered, but with an error or an unreadable reply (not unreachable). {0} = computer name</comment></data>
+  <data name="Mobile.Remote.ServerError" xml:space="preserve"><value>{0} bir hatayla yanıt verdi. Üzerindeki Noctis'i güncelleyip tekrar dene.</value><comment>Remote page under Mobile.Remote.ServerErrorTitle. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.HintMain" xml:space="preserve"><value>{0} üzerinde çal ve atla. Yalnızca ana hesap.</value><comment>Account page Remote row's grey line for a signed-in phone: what it does and who may use it. {0} = computer name</comment></data>
+  <data name="Mobile.Remote.OnHome" xml:space="preserve"><value>Uzaktan Kumandayı Ana Sayfada Göster</value><comment>Account page switch under the Remote row: a Remote button on the Home page header</comment></data>
+  <data name="Mobile.Remote.OnHomeHint" xml:space="preserve"><value>Profil fotoğrafının yanında bir düğme</value><comment>Grey line under Mobile.Remote.OnHome: where the button shows (Home header, next to the profile picture)</comment></data>
   <data name="Mobile.Language.System" xml:space="preserve"><value>Sistem</value></data>
   <data name="Mobile.Player.LostFolderAccess" xml:space="preserve"><value>Noctis bu şarkının klasörüne erişimi kaybetti. Klasörü Ayarlar → Kitaplık’tan yeniden ekle.</value></data>
   <data name="Mobile.Player.CantDecode" xml:space="preserve"><value>Bu telefon şu biçimi çözemiyor: {0}. Şarkı atlandı.</value></data>
@@ -4138,6 +4209,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="BulkLyrics.StudioOfferMany" xml:space="preserve"><value>{0:N0} şarkının yalnızca düz sözleri var. Söz Stüdyosu bunları bu bilgisayarda konuşma modeliyle zamanlayabilir: şarkı başına bir dakika veya daha uzun sürebilir (ekran kartıyla daha hızlı) ve her birini kaydedilmeden önce kontrol edersin.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="BulkLyrics.StudioOfferFirst" xml:space="preserve"><value>İlk {0} tanesi aynı anda açılır.</value><comment>Fetch / remove lyrics in bulk dialog</comment></data>
   <data name="Count.Songs" xml:space="preserve"><value>{0:N0} şarkı|{0:N0} şarkı</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
+  <data name="Count.Playlists" xml:space="preserve"><value>{0:N0} çalma listesi|{0:N0} çalma listesi</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Albums" xml:space="preserve"><value>{0:N0} albüm|{0:N0} albüm</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Main.AllArtists" xml:space="preserve"><value>Tüm Sanatçılar</value><comment>Artists page filter menu: show every artist (GitHub #233)</comment></data>
   <data name="Main.HideSmallArtists" xml:space="preserve"><value>Küçük Sanatçıları Gizle</value><comment>Artists page filter menu: hide artists with few songs (GitHub #233)</comment></data>
@@ -4146,6 +4218,8 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="LibraryArtists.AllArtistsHiddenHint" xml:space="preserve"><value>Filtre menüsünden Tüm Sanatçılar’ı seç veya bir ad ara</value><comment>Artists page empty state hint when Hide Small Artists hides everyone</comment></data>
   <data name="Settings.HideSmallArtists" xml:space="preserve"><value>Küçük sanatçıları gizle</value><comment>Settings > Library > Artists toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSmallArtistsHint" xml:space="preserve"><value>Yalnızca birkaç şarkısı olan sanatçıları Sanatçılar sayfasından gizler. Arama onları yine bulur.</value><comment>Description under Hide small artists</comment></data>
+  <data name="Settings.ShowStarRatings" xml:space="preserve"><value>Yıldız puanlarını göster</value><comment>Settings > Library toggle (Discord 11-24)</comment></data>
+  <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>Şarkılara puan vermiyorsan kapat. Albüm sayfalarındaki, şarkı listelerindeki ve menülerdeki yıldızları gizler. Puanların silinmez.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Şundan az şarkısı olan sanatçıları gizle</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Kenar çubuğunu üzerine gelene kadar gizle</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
   <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Kenar çubuğunu tamamen gizler, sayfalar tam genişliği kullanır. Göstermek için işaretçiyi pencerenin sol kenarına götür.</value><comment>Description under Hide sidebar until hover</comment></data>
@@ -4166,6 +4240,10 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.FileTypesRegistered" xml:space="preserve"><value>Kaydedildi. Ayarlar → Uygulamalar → Varsayılan uygulamalar altından Noctis’i seç ya da bir şarkıya sağ tıkla → Birlikte aç.</value><comment>Settings status line</comment></data>
   <data name="Settings.FileTypesFailed" xml:space="preserve"><value>Dosya türleri güncellenemedi: {0}</value><comment>Settings status line</comment></data>
   <data name="Settings.RegroupingArtists" xml:space="preserve"><value>Sanatçılar yeniden gruplanıyor…</value><comment>Settings status line</comment></data>
+  <data name="Settings.GenreTagSeparators" xml:space="preserve"><value>Tür Etiketi Ayırıcıları</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.GenreTagSeparatorsHint" xml:space="preserve"><value>Bir tür etiketini birkaç türe böler; "Rock, Pop" etiketli bir şarkı hem Rock hem Pop altında görünür. Noktalı virgül her zaman böler. Dosyaların değiştirilmez.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.AddGenreSeparatorEG" xml:space="preserve"><value>Bir ayırıcı ekle, örn. /</value><comment>Watermark in SettingsView.axaml</comment></data>
+  <data name="Settings.RegroupingGenres" xml:space="preserve"><value>Türler yeniden gruplanıyor…</value><comment>Settings status line</comment></data>
   <data name="Settings.RestoringArtistCredits" xml:space="preserve"><value>Orijinal sanatçı bilgileri geri yükleniyor…</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsFailed" xml:space="preserve"><value>Sanatçı bilgileri güncellenemedi.</value><comment>Settings status line</comment></data>
   <data name="Settings.ArtistCreditsUpToDate" xml:space="preserve"><value>Sanatçı bilgileri zaten güncel.</value><comment>Settings status line</comment></data>
@@ -4296,6 +4374,9 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Metadata.SongsSelected" xml:space="preserve"><value>{0} şarkı seçildi</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedOne" xml:space="preserve"><value>"{0}" dosyasına etiketler yazılamadı. Dosya başka bir uygulamada açık ya da salt okunur olabilir — orada kapat veya dosyayı kontrol et, sonra tekrar dene.</value><comment>Metadata window</comment></data>
   <data name="Metadata.WriteFailedMany" xml:space="preserve"><value>{0} dosyaya etiketler yazılamadı (ör. "{1}"). Dosyalar başka bir uygulamada açık ya da salt okunur olabilir — orada kapat veya dosyaları kontrol et, sonra tekrar dene.</value><comment>Metadata window</comment></data>
+  <data name="Metadata.SavingInBackground" xml:space="preserve"><value>Değişiklikler kaydediliyor…</value><comment>Notice pill while an Edit Info save still writes its files after the window closed</comment></data>
+  <data name="Metadata.SavedInBackground" xml:space="preserve"><value>Değişiklikler kaydedildi.</value><comment>Notice pill when that background Edit Info save has finished</comment></data>
+  <data name="Metadata.SaveFailed" xml:space="preserve"><value>Değişiklikler kaydedilemedi: {0}</value><comment>Edit Info save error. {0} = the error message</comment></data>
   <data name="BulkArtwork.TitleOne" xml:space="preserve"><value>1 albüm için hareketli kapak bul</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.TitleMany" xml:space="preserve"><value>{0:N0} albüm için hareketli kapak bul</value><comment>Find animated artwork in bulk dialog</comment></data>
   <data name="BulkArtwork.NoAlbums" xml:space="preserve"><value>Aranacak albüm yok.</value><comment>Find animated artwork in bulk dialog</comment></data>
@@ -4397,6 +4478,12 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Mobile.Hidden.UnhideName" xml:space="preserve"><value>{0} öğesini göster</value></data>
   <data name="Mobile.Hidden.Folder" xml:space="preserve"><value>Klasör</value></data>
   <data name="Mobile.Hidden.NotFound" xml:space="preserve"><value>Şu an bu telefonda yok</value></data>
+  <data name="Mobile.Settings.ArtistSeparators" xml:space="preserve"><value>Sanatçı Ayırıcıları</value></data>
+  <data name="Mobile.Separators.Hint" xml:space="preserve"><value>Her ayırıcı bir sanatçı etiketini birkaç sanatçıya böler: “,” ile “Boys Noize, ABRA” etiketi Boys Noize ve ABRA olur. Sanatçılarınız hemen yeniden gruplanır.</value></data>
+  <data name="Mobile.Separators.RemoveName" xml:space="preserve"><value>{0} öğesini kaldır</value></data>
+  <data name="Mobile.Settings.GenreSeparators" xml:space="preserve"><value>Tür Ayırıcıları</value></data>
+  <data name="Mobile.GenreSeparators.Hint" xml:space="preserve"><value>Her ayırıcı bir tür etiketini birkaç türe böler: “,” ile “Rock, Pop” etiketli bir şarkı hem Rock hem Pop sayılır. Noktalı virgül her zaman böler. Dosyaların değiştirilmez.</value></data>
+  <data name="Mobile.GenreSeparators.None" xml:space="preserve"><value>Yok: türleri yalnızca noktalı virgül böler.</value></data>
   <data name="Menu.OtherVersions" xml:space="preserve"><value>Diğer Sürümler</value><comment>Song right-click menu and the player's … menu: submenu listing the library's other recordings of the song (Instrumental, Remastered, Live …)</comment></data>
   <data name="Menu.OriginalVersion" xml:space="preserve"><value>Orijinal</value><comment>Other Versions submenu: label of the version whose title has no suffix like (Live) or (Remastered)</comment></data>
   <data name="Search.LyricsTip" xml:space="preserve"><value>Sözlerde ara</value><comment>Search box: tooltip of the lyrics button (Songs page) while lyrics are not searched</comment></data>
@@ -4427,4 +4514,32 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="MoveToAlbum.ConfirmNew" xml:space="preserve"><value>{2} ile yeni “{1}” albümü başlatılacak. Dosyaların albüm etiketleri (albüm, albüm sanatçısı, parça ve disk numarası) değiştirilir.</value><comment>{0} song count, {1} new album name</comment></data>
   <data name="MoveToAlbum.Move" xml:space="preserve"><value>Taşı</value><comment>Confirm button</comment></data>
   <data name="MoveToAlbum.NotWritten" xml:space="preserve"><value>Noctis'te taşındı, ancak bazı dosyalar ({0}) kaydedilemedi (salt okunur veya başka bir uygulamada açık). Böyle bir dosya değişirse sonraki taramada eski albümüne döner.</value><comment>{0} file count; list of file names follows</comment></data>
+  <data name="AddToPlaylist.Add" xml:space="preserve"><value>Ekle</value><comment>Footer button in AddToPlaylistDialog: adds the songs to the ticked playlist</comment></data>
+  <data name="AddToPlaylist.AddToCount" xml:space="preserve"><value>{0:N0} çalma listesine ekle</value><comment>Footer button in AddToPlaylistDialog when several playlists are ticked; {0} = how many (2 or more)</comment></data>
+  <data name="AddToPlaylist.AddedToPlaylists" xml:space="preserve"><value>{0:N0} çalma listesine eklendi</value><comment>Confirmation pill above the playback island after Add to Playlist put songs in several playlists; {0} = how many (2 or more)</comment></data>
+  <data name="Settings.PlaylistNewBadgeHintDays" xml:space="preserve"><value>Çalma listesine yakın zamanda eklenen parçaları işaretle. Ne kadar süre yeni sayılacaklarını seç.</value><comment>Hint under Settings › Playlist page › NEW badge; the duration picker sits beside it</comment></data>
+  <data name="Settings.PlaylistNewBadgeDuration" xml:space="preserve"><value>Parçalar ne kadar YENİ kalır</value><comment>Screen-reader name of the NEW badge duration picker in Settings › Playlist page</comment></data>
+  <data name="Settings.NewBadgeDays1" xml:space="preserve"><value>1 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays3" xml:space="preserve"><value>3 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays7" xml:space="preserve"><value>7 gün</value><comment>NEW badge duration choice in Settings › Playlist page (the default); also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays14" xml:space="preserve"><value>14 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Settings.NewBadgeDays30" xml:space="preserve"><value>30 gün</value><comment>NEW badge duration choice in Settings › Playlist page; also fills {0} of Playlist.AddedInLastTip</comment></data>
+  <data name="Playlist.AddedInLastTip" xml:space="preserve"><value>Son {0} içinde eklendi</value><comment>Tooltip of a playlist row's NEW badge; {0} = the chosen length, a Settings.NewBadgeDays* value such as "7 days"</comment></data>
+  <data name="Sidebar.NewFolder" xml:space="preserve"><value>Yeni Klasör…</value><comment>Sidebar: PLAYLISTS header / empty playlist area menu item, and the last entry of a playlist's Move to Folder submenu; asks for a name</comment></data>
+  <data name="Sidebar.NewFolderTitle" xml:space="preserve"><value>Yeni klasör</value><comment>Title of the name prompt for a new sidebar playlist folder</comment></data>
+  <data name="Sidebar.CreateFolder" xml:space="preserve"><value>Oluştur</value><comment>Confirm button of the new sidebar folder name prompt</comment></data>
+  <data name="Sidebar.NoFolder" xml:space="preserve"><value>Klasör Yok</value><comment>Entry of a playlist's Move to Folder submenu in the sidebar: takes it out of any folder</comment></data>
+  <data name="Playlist.ViewCover" xml:space="preserve"><value>Kapağı Görüntüle</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
+  <data name="Playlist.ChangeCover" xml:space="preserve"><value>Kapağı Değiştir…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
+  <data name="Playlist.CoverMenu" xml:space="preserve"><value>Çalma listesi kapağı</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
+  <data name="Settings.StartMinimizedTrayMac" xml:space="preserve"><value>Menü çubuğunda gizli başlat</value><comment>macOS wording of Settings.StartMinimizedTray (Loc.Platform)</comment></data>
+  <data name="Settings.MinimizeTrayMac" xml:space="preserve"><value>Menü çubuğuna küçült</value><comment>macOS wording of Settings.MinimizeTray (Loc.Platform)</comment></data>
+  <data name="Settings.CloseTrayMac" xml:space="preserve"><value>Menü çubuğuna kapat</value><comment>macOS wording of Settings.CloseTray (Loc.Platform)</comment></data>
+  <data name="Settings.TrashButtonHintMac" xml:space="preserve"><value>Çalan şarkıyı aşağıdaki Çöp klasörüne veya macOS Çöp Sepeti'ne gönderen bir düğme ekler.</value><comment>macOS wording of Settings.TrashButtonHint (Loc.Platform)</comment></data>
+  <data name="Settings.TrashFolderMissingMac" xml:space="preserve"><value>Bu klasör yok, bu yüzden geri gelene kadar şarkılar macOS Çöp Sepeti'ne gider.</value><comment>macOS wording of Settings.TrashFolderMissing (Loc.Platform)</comment></data>
+  <data name="Settings.RightClickSongOpenMac" xml:space="preserve"><value>Bir şarkıya sağ tıklayıp dosyasını bu uygulamada aç. Boşsa menü öğesi gizlenir.</value><comment>macOS wording of Settings.RightClickSongOpen (Loc.Platform)</comment></data>
+  <data name="Settings.ClickKeyChangePressMac" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Delete temizler.</value><comment>macOS wording of Settings.ClickKeyChangePress (Loc.Platform)</comment></data>
+  <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Delete bağı kaldırır.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
+  <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Menü çubuğundaki simgeyi değiştirir. Dock klasik simgeyi korur.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
+  <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Bu adda başka albüm yok. Albümler ızgarasında birbirine ait albümlere ⌘ tuşuyla tıkla, ardından birine sağ tıkla.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
 </root>

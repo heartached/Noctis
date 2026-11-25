@@ -2293,6 +2293,40 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+            <!-- Discord 11-24 (sina): where new playlists and New Folder… folders go in the sidebar list. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.NewPlaylistPosition}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.NewPlaylistPositionHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <ComboBox Grid.Column="1"
+                              x:Name="NewPlaylistPositionCombo"
+                              AutomationProperties.Name="{loc:T Settings.NewPlaylistPosition}"
+                              Classes="pill-list"
+                              ItemsSource="{Binding NewPlaylistPositionOptions}"
+                              SelectedItem="{Binding SelectedNewPlaylistPositionOption}"
+                              MinWidth="120"
+                              VerticalAlignment="Center"
+                              CornerRadius="999"
+                              Padding="14,8"/>
+                </Grid>
+            </Border>
+            <!-- Discord 11-24 (sina): a folder whose last playlist leaves goes too (a new empty one stays). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.RemoveEmptyFolders}" FontSize="13"/>
+                        <TextBlock Text="{loc:T Settings.RemoveEmptyFoldersHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.RemoveEmptyFolders}"
+                                          IsChecked="{Binding RemoveEmptyPlaylistFolders}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             </StackPanel>
             </Border>
 
@@ -3314,6 +3348,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- GitHub #258: song count on the album cards' caption. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.ShowAlbumSongCount}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowAlbumSongCountDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ShowAlbumSongCount}"
+                                          IsChecked="{Binding ShowAlbumSongCount}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- Album grid spacing: off = 1.6.9 (8px gaps, one row height), on = GitHub #210. -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
@@ -3702,6 +3750,17 @@
                                               IsChecked="{Binding PlaybackBarShowTime}"
                                               VerticalAlignment="Center"/>
                     </Grid>
+                    <!-- Discord 11-23: the volume slider stays on the island (PlaybackBarView.UpdateInlineVolume). -->
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.InlineVolumeSlider}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.InlineVolumeSliderHint}" FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.InlineVolumeSlider}"
+                                              IsChecked="{Binding PlaybackBarInlineVolume}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
                 </StackPanel>
             </Border>
             <!-- GitHub #183: what a click on the island's artwork opens (Mini player by default). -->
@@ -3732,6 +3791,35 @@
                 </StackPanel>
                 </StackPanel>
             </Border>
+            <!-- Discord 11-24 (sina 4.3.7): "Playing from …" in the queue (PlayerViewModel.ShowPlaySource). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.ShowPlaySource}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowPlaySourceHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ShowPlaySource}"
+                                          IsChecked="{Binding ShowPlaySource}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord 11-24 (sina 4.3.4): the island title opens where the song plays from
+                 instead of its album (PlayerViewModel.TitleOpensPlaySource). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.TitleOpensPlaySource}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.TitleOpensPlaySourceHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.TitleOpensPlaySource}"
+                                          IsChecked="{Binding TitleOpensPlaySource}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #93: waveform in the island and mini player seek bars (off by default). -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
@@ -3748,11 +3836,41 @@
             </Border>
             <Border Classes="setting-row">
                 <StackPanel Spacing="12">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="{loc:T Settings.PlayerIslandWidth}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.HowWidePlayerIsland}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.PlayerIslandWidth}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.HowWidePlayerIsland}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <!-- Discord 11-23: shown (faded in) only while the width is the user's own.
+                             Always laid out, so the row never reflows as it comes and goes. -->
+                        <Button Grid.Column="1" x:Name="IslandWidthResetButton"
+                                Classes="pill island-width-reset"
+                                Classes.custom="{Binding IsPlaybackBarWidthCustom}"
+                                Content="{loc:T Settings.Reset}" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Top" Margin="12,0,0,0"
+                                AutomationProperties.Name="{loc:T Settings.ResetPlayerIslandWidth}"
+                                IsEnabled="{Binding IsPlaybackBarWidthCustom}"
+                                Command="{Binding ResetPlaybackBarWidthCommand}">
+                            <Button.Styles>
+                                <Style Selector="Button.island-width-reset">
+                                    <Setter Property="Opacity" Value="0"/>
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.18">
+                                                <DoubleTransition.Easing>
+                                                    <CubicEaseOut/>
+                                                </DoubleTransition.Easing>
+                                            </DoubleTransition>
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Button.island-width-reset.custom">
+                                    <Setter Property="Opacity" Value="1"/>
+                                </Style>
+                            </Button.Styles>
+                        </Button>
+                    </Grid>
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                         <TextBlock Grid.Column="0" Text="{loc:T Settings.Narrower}"
                                    FontSize="12" Opacity="0.7"
@@ -4614,6 +4732,20 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- 11-23 feedback: off keeps a scrolled-away lyrics view where it is until Follow. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.LyricsAutoReturn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.LyricsAutoReturnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.LyricsAutoReturn}"
+                                          IsChecked="{Binding LyricsAutoReturnToLine}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
             <!-- GitHub #184: the page's background reaches under the sidebar rail (off by default). -->
             <Border Classes="setting-row">
                 <Grid ColumnDefinitions="*,Auto">
@@ -5081,6 +5213,44 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            <!-- Discord 11-24 (Spark): songs start at their first sound and end after their last one. -->
+            <Border Classes="setting-row">
+                <StackPanel Spacing="6">
+                    <StackPanel>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.SkipSilence}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.SkipSilenceHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <controls:LottieToggle Grid.Column="1"
+                                              AutomationProperties.Name="{loc:T Settings.SkipSilence}"
+                                              IsChecked="{Binding SkipSilenceEnabled}"
+                                              VerticalAlignment="Center"/>
+                    </Grid>
+                    <controls:CollapsibleContent IsOpen="{Binding SkipSilenceEnabled}" Lift="10" Motion="Glide">
+                    <StackPanel Classes="sub-setting" Spacing="6" Margin="2,16,0,0">
+                        <TextBlock Text="{loc:T Settings.SilenceLevel}" FontSize="13" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.SilenceLevelHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="*,Auto">
+                            <controls:SmoothSlider Grid.Column="0"
+                                    AutomationProperties.Name="{loc:T Settings.SilenceLevel}"
+                                    Classes="accent-slider" Step="1"
+                                    Minimum="-80" Maximum="-20"
+                                    SteppedValue="{Binding SkipSilenceThresholdDb, Mode=TwoWay}"
+                                    VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding SkipSilenceThresholdDb, StringFormat='{}{0:0} dB'}"
+                                       FontSize="12" Opacity="0.7"
+                                       VerticalAlignment="Center"
+                                       MinWidth="74" TextAlignment="Right" Margin="12,0,0,0"/>
+                        </Grid>
+                    </StackPanel>
+                    </controls:CollapsibleContent>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
             <!-- GitHub #73: the level fades out before a pause lands and back in after a resume. -->
             <Border Classes="setting-row">
                 <StackPanel Spacing="6">
@@ -5160,6 +5330,20 @@
                     <controls:LottieToggle Grid.Column="1"
                                           AutomationProperties.Name="{loc:T Settings.KeepPlayedInQueue}"
                                           IsChecked="{Binding KeepPlayedInQueue}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <!-- Discord 11-23: starting new music keeps Shuffle on (PlayerViewModel.KeepShuffleOn). -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.KeepShuffleOn}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.KeepShuffleOnHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.KeepShuffleOn}"
+                                          IsChecked="{Binding KeepShuffleOn}"
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
@@ -5908,6 +6092,26 @@
             </StackPanel>
             </Border>
 
+            <!-- Album page song rows: a clickable heart on every row (Discord 11-24, sina). -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.AlbumPage}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="{loc:T Settings.AlbumSongHearts}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.AlbumSongHeartsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.AlbumSongHearts}"
+                                          IsChecked="{Binding AlbumShowSongHearts}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            </StackPanel>
+            </Border>
+
             <!-- GitHub #74: playlist page furniture, each opt-out. -->
             <TextBlock Classes="section-title" Text="{loc:T Settings.Section.PlaylistPage}" Margin="0,16,0,8"/>
             <Border Classes="setting-card group-card">
@@ -5929,13 +6133,25 @@
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="{loc:T Settings.PlaylistNewBadge}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHint}"
+                        <TextBlock Text="{loc:T Settings.PlaylistNewBadgeHintDays}"
                                    FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                     </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
-                                          IsChecked="{Binding PlaylistShowNewBadge}"
-                                          VerticalAlignment="Center"/>
+                    <!-- 11-23: how long a track stays NEW (was always 7 days); greyed while the badge is off. -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <ComboBox x:Name="PlaylistNewBadgeDaysCombo"
+                                  AutomationProperties.Name="{loc:T Settings.PlaylistNewBadgeDuration}"
+                                  Classes="pill-list"
+                                  ItemsSource="{Binding PlaylistNewBadgeDayOptions}"
+                                  SelectedItem="{Binding SelectedPlaylistNewBadgeDaysOption}"
+                                  IsEnabled="{Binding PlaylistShowNewBadge}"
+                                  MinWidth="110"
+                                  VerticalAlignment="Center"
+                                  CornerRadius="999"
+                                  Padding="14,8"/>
+                        <controls:LottieToggle AutomationProperties.Name="{loc:T Settings.PlaylistNewBadge}"
+                                              IsChecked="{Binding PlaylistShowNewBadge}"
+                                              VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Grid>
             </Border>
             <!-- Discord (DendyAly 11-02): the Featured Artists / Suggested rail; also in the page's options menu. -->
@@ -6218,6 +6434,67 @@
                 </StackPanel>
             </Border>
             <Border Classes="setting-row">
+                <!-- GitHub #260: genre separators, built like the artist ones above. ';' always
+                     splits (the stored join), so it is not a chip. -->
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <TextBlock Text="{loc:T Settings.GenreTagSeparators}" FontSize="15" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.GenreTagSeparatorsHint}"
+                                       FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Reset}" FontSize="12" Padding="14,6"
+                                VerticalAlignment="Top" Margin="12,0,0,0"
+                                Command="{Binding ResetGenreSeparatorsCommand}"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding GenreTagSeparators}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="sys:String">
+                                <Border Padding="12,4,6,4" Margin="0,0,6,6" CornerRadius="14"
+                                        Background="{DynamicResource SystemControlBackgroundBaseLowBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="{Binding}" FontSize="13" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Content="{loc:T Settings.Text}"
+                                                Command="{Binding $parent[ItemsControl].((vm:SettingsViewModel)DataContext).RemoveGenreSeparatorCommand}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                FontSize="11"
+                                                Opacity="0.5"
+                                                Cursor="Hand"
+                                                Padding="4,2"
+                                                ToolTip.Tip="{loc:T Settings.RemoveSeparatorTip}"
+                                                AutomationProperties.Name="{loc:T Settings.RemoveSeparatorTip}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                        <TextBox Grid.Column="0" Classes="settings-search"
+                                 AutomationProperties.Name="{loc:T Settings.AddGenreSeparatorEG}"
+                                 Text="{Binding NewGenreSeparator, Mode=TwoWay}"
+                                 PlaceholderText="{loc:T Settings.AddGenreSeparatorEG}"
+                                 Padding="14,6"
+                                 MaxWidth="320" HorizontalAlignment="Left" MinWidth="220">
+                            <TextBox.KeyBindings>
+                                <KeyBinding Gesture="Enter" Command="{Binding AddGenreSeparatorCommand}"/>
+                            </TextBox.KeyBindings>
+                        </TextBox>
+                        <Button Grid.Column="1" Classes="pill" Content="{loc:T Settings.Add}" FontSize="13" Padding="16,6"
+                                Command="{Binding AddGenreSeparatorCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border Classes="setting-row">
                 <!-- GitHub #99. Toggle + its word list share a spacing-free panel so the gap folds
                      with the body (see the Album page colour block). -->
                 <StackPanel>
@@ -6315,6 +6592,21 @@
                 </Grid>
                 </controls:CollapsibleContent>
                 </StackPanel>
+            </Border>
+            <!-- Discord 11-24, Halil: hide the stars everywhere for people who never rate songs.
+                 Edit Info keeps its rating field; smart playlist rules on rating still work. -->
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{loc:T Settings.ShowStarRatings}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ShowStarRatingsHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ShowStarRatings}"
+                                          IsChecked="{Binding ShowStarRatings}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
             </Border>
             </StackPanel>
             </Border>

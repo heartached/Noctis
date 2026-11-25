@@ -133,6 +133,42 @@ public class MobileComputerRemoteTests
         Assert.True(page.IsRunning);
     }
 
+    /// <summary>A cover that failed (or whose fetch was cut off by leaving the page) is asked for
+    /// again when the page comes back, not only with the next song: it stayed blank for the rest
+    /// of a long song.</summary>
+    [AvaloniaFact]
+    public async Task AFailedCover_IsAskedAgain_WhenThePageComesBack()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), Playback = Playing(), CoverError = new System.IO.IOException("reset") };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics)
+        {
+            Account = account,
+            Marshal = a => a(),
+            TintFactory = rig.Shell.TintFactory,
+        };
+        shell.OpenAccountCommand.Execute(null);
+        var page = new ComputerRemotePageViewModel(shell, account, new Clock().Delay);
+        shell.Navigate(page);
+        Assert.Null(page.ArtworkPath);
+        Assert.Single(account.CoverAsks);
+
+        account.CoverError = null;
+        account.CoverPath = "/covers/a.jpg";
+        shell.IsSuspended = true;
+        await page.Loop.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        shell.IsSuspended = false;
+
+        Assert.Equal(new[] { AlbumId, AlbumId }, account.CoverAsks);
+        Assert.Equal("/covers/a.jpg", page.ArtworkPath);
+
+        // A cover that is showing is not fetched again on the next return.
+        shell.IsSuspended = true;
+        await page.Loop.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        shell.IsSuspended = false;
+        Assert.Equal(2, account.CoverAsks.Count);
+    }
+
     [AvaloniaFact]
     public void AnotherPagePushedOverIt_Stops()
     {
@@ -174,6 +210,39 @@ public class MobileComputerRemoteTests
         Assert.True(page.ShowsPlayer);
     }
 
+    /// <summary>A computer that answered, but with an HTTP error or something unreadable, read as
+    /// "Can't reach Studio PC … check that Noctis is open and on the same Wi-Fi": it was reached,
+    /// and the Wi-Fi advice sent people the wrong way. Now it says the computer answered with an
+    /// error (a mismatched update, most often) and keeps asking slowly, as for unreachable.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void AnErrorAnswer_IsNotCalledUnreachable(bool serverError)
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount
+        {
+            Account = FakeAccount.SignedInAs(),
+            PlaybackError = serverError ? new NoctisServerException(NoctisErrorKind.Server, "The server answered HTTP 500.") : new InvalidOperationException("bad json"),
+        };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
+        var clock = new Clock();
+        var page = new ComputerRemotePageViewModel(shell, account, clock.Delay);
+        shell.Navigate(page);
+
+        Assert.Equal(RemoteStatus.ServerError, page.Status);
+        Assert.Equal("Something went wrong talking to Studio PC", page.MessageTitle);
+        Assert.Equal("Studio PC answered with an error. Update Noctis on it, then try again.", page.MessageText);
+        Assert.True(page.CanRetry);
+        Assert.Equal(ComputerRemotePageViewModel.RetryInterval, clock.Waits[^1]);
+        Assert.True(page.IsRunning);
+
+        account.PlaybackError = null;
+        account.Playback = Playing();
+        clock.Tick();
+        Assert.Equal(RemoteStatus.Ready, page.Status);
+    }
+
     [AvaloniaTheory]
     [InlineData(NoctisErrorKind.RemoteNotAllowed, RemoteStatus.NotAllowed)]
     [InlineData(NoctisErrorKind.Outdated, RemoteStatus.Outdated)]
@@ -187,6 +256,8 @@ public class MobileComputerRemoteTests
         Assert.Equal(status, page.Status);
         Assert.False(page.IsRunning);
         Assert.Contains("Studio PC", page.MessageText);
+        if (status == RemoteStatus.NotAllowed)   // what to do, not just what is refused
+            Assert.Equal("Only the main account on Studio PC can control what it plays. Sign out here, then scan the QR code in Noctis on Studio PC to sign in with that account.", page.MessageText);
         var asks = account.PlaybackAsks.Count;
 
         account.PlaybackError = null;
@@ -194,6 +265,23 @@ public class MobileComputerRemoteTests
         Assert.Equal(asks + 1, account.PlaybackAsks.Count);
         Assert.Equal(RemoteStatus.Ready, page.Status);
         Assert.True(page.IsRunning);
+    }
+
+    /// <summary>A computer whose security code changed (and that none of its other addresses
+    /// answers as the pinned one) read as "Can't reach … Check that Noctis is open", every 4 s for
+    /// ever: nothing told the user the fix is signing in again.</summary>
+    [AvaloniaFact]
+    public void CertificateChanged_SaysSo_AndStopsAsking()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var (_, account, page, clock) = Open(rig);
+        account.PlaybackError = new NoctisServerException(NoctisErrorKind.CertificateChanged, "x");
+        clock.Tick();
+
+        Assert.Equal(RemoteStatus.CertificateChanged, page.Status);
+        Assert.Equal(Noctis.Localization.Loc.T("Mobile.Account.Error.CertificateChanged"), page.MessageText);
+        Assert.False(page.IsRunning);
+        Assert.True(page.CanRetry);
     }
 
     [AvaloniaFact]
@@ -274,7 +362,9 @@ public class MobileComputerRemoteTests
         var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
         shell.OpenAccountCommand.Execute(null);
         var accountPage = Assert.IsType<AccountPageViewModel>(shell.CurrentPage);
-        Assert.Equal("Play, pause and skip on Studio PC", accountPage.RemoteHint);
+        // Who may use it, said before the first try (a phone of another account learned it only
+        // from the Remote page's refusal).
+        Assert.Equal("Play and skip on Studio PC. Main account only.", accountPage.RemoteHint);
 
         shell.OpenComputerRemoteCommand.Execute(null);
         var remote = Assert.IsType<ComputerRemotePageViewModel>(shell.CurrentPage);
@@ -313,6 +403,136 @@ public class MobileComputerRemoteTests
             Assert.False(MobileFixtures.Named<Avalonia.Controls.Border>(page, "PlayerCard").IsEffectivelyVisible);
             Assert.True(MobileFixtures.Named<Avalonia.Controls.Button>(page, "RetryButton").IsEffectivelyVisible);
             Assert.Equal("Can't reach Studio PC", MobileFixtures.Named<Avalonia.Controls.TextBlock>(page, "MessageTitleText").Text);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    // ── Show Remote on Home (Discord beta 11-22) ──
+
+    [AvaloniaFact]
+    public void HomeRemote_ShowsOnlyWithTheSwitchOn_WhileSignedIn()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), Playback = Playing() };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
+        var raised = new List<string?>();
+        shell.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        Assert.True(shell.ShowRemoteOnHome);                               // on by default
+        Assert.True(shell.ShowsHomeRemote);
+        shell.ShowRemoteOnHome = false;
+        Assert.False(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+        raised.Clear();
+        shell.ShowRemoteOnHome = true;
+        Assert.True(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+
+        raised.Clear();
+        var signedIn = account.Account;
+        account.Account = null;                                            // signed out
+        account.RaiseStateChanged();
+        Assert.False(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+
+        raised.Clear();
+        account.Account = signedIn;                                        // signed in again
+        account.RaiseStateChanged();
+        Assert.True(shell.ShowsHomeRemote);
+        Assert.Contains(nameof(ShellViewModel.ShowsHomeRemote), raised);
+    }
+
+    [Fact]
+    public async Task HomeRemote_IsSaved_AndReadBack()
+    {
+        using var rig = MobileFixtures.MakeRig(seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            Assert.True(s.MobileHomeRemote);                               // the default
+            s.MobileHomeRemote = false;
+            await p.SaveSettingsAsync(s);
+        });
+        await rig.Shell.InitializeAsync();
+        Assert.False(rig.Shell.ShowRemoteOnHome);                          // a saved off stays off
+
+        rig.Shell.ShowRemoteOnHome = true;
+        await rig.Shell.PendingPlayerBarSave;
+        Assert.True((await rig.Persistence.LoadSettingsAsync()).MobileHomeRemote);
+    }
+
+    /// <summary>A settings file from before the default flipped (no MobileHomeRemote field) reads as on.</summary>
+    [Fact]
+    public async Task HomeRemote_ASettingsFileWithoutTheField_ReadsAsOn()
+    {
+        using var rig = MobileFixtures.MakeRig(seed: async p =>
+        {
+            var s = await p.LoadSettingsAsync();
+            s.MobileHomeRemote = false;
+            await p.SaveSettingsAsync(s);
+            var path = System.IO.Path.Combine(p.DataDirectory, "settings.json");
+            var json = System.Text.Json.Nodes.JsonNode.Parse(await System.IO.File.ReadAllTextAsync(path))!.AsObject();
+            Assert.True(json.Remove("mobileHomeRemote"));
+            await System.IO.File.WriteAllTextAsync(path, json.ToJsonString());
+        });
+        await rig.Shell.InitializeAsync();
+        Assert.True(rig.Shell.ShowRemoteOnHome);
+    }
+
+    [AvaloniaFact]
+    public void TheAccountSwitch_PutsARemoteButtonOnHome_ThatOpensTheRemote()
+    {
+        using var rig = MobileFixtures.MakeRig();
+        var account = new FakeAccount { Account = FakeAccount.SignedInAs(), Playback = Playing() };
+        var shell = new ShellViewModel(rig.Shell.Library, rig.Shell.Player, rig.Shell.Lyrics) { Account = account, Marshal = a => a(), TintFactory = rig.Shell.TintFactory };
+        var window = MobileFixtures.Mount(shell, out var view);
+        try
+        {
+            window.UpdateLayout();
+            var home = MobileFixtures.Find<Noctis.Mobile.Views.HomePage>(view);
+            var glass = MobileFixtures.Named<Noctis.Controls.GlassPanel>(home, "HomeRemoteGlass");
+            Assert.True(glass.IsEffectivelyVisible);                        // on by default
+            Assert.True(MobileFixtures.Named<Noctis.Mobile.Views.ProfileButton>(home, "HomeProfile").IsEffectivelyVisible);
+
+            shell.OpenAccountCommand.Execute(null);
+            window.UpdateLayout();
+            var accountView = MobileFixtures.Find<Noctis.Mobile.Views.AccountPage>(view);
+            var toggle = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(accountView, "HomeRemoteSwitch");
+            Assert.True(toggle.IsEffectivelyVisible);
+            Assert.Equal("Show Remote on Home", Avalonia.Automation.AutomationProperties.GetName(toggle));
+            Assert.True(toggle.IsChecked);
+            toggle.IsChecked = false;
+            Assert.False(shell.ShowRemoteOnHome);
+            shell.PopToRoot();
+            window.UpdateLayout();
+            Assert.False(glass.IsEffectivelyVisible);                       // turned off: the button goes
+
+            shell.OpenAccountCommand.Execute(null);
+            window.UpdateLayout();
+            accountView = MobileFixtures.Find<Noctis.Mobile.Views.AccountPage>(view);
+            toggle = MobileFixtures.Named<Avalonia.Controls.Primitives.ToggleButton>(accountView, "HomeRemoteSwitch");
+            Assert.False(toggle.IsChecked);
+            toggle.IsChecked = true;
+            Assert.True(shell.ShowRemoteOnHome);
+
+            shell.PopToRoot();
+            window.UpdateLayout();
+            Assert.True(glass.IsEffectivelyVisible);
+            var button = MobileFixtures.Named<Avalonia.Controls.Button>(home, "HomeRemoteButton");
+            Assert.Equal("Remote", Avalonia.Automation.AutomationProperties.GetName(button));
+            Assert.Equal(MobileFixtures.Named<Noctis.Mobile.Views.ProfileButton>(home, "HomeProfile").Bounds.Height, glass.Bounds.Height);
+
+            button.Command!.Execute(null);
+            var remote = Assert.IsType<ComputerRemotePageViewModel>(shell.CurrentPage);
+            shell.GoBack();
+            Assert.False(remote.IsRunning);
+
+            account.Account = null;                                        // signed out: the button goes
+            account.RaiseStateChanged();
+            window.UpdateLayout();
+            Assert.False(glass.IsEffectivelyVisible);
         }
         finally
         {

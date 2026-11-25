@@ -459,6 +459,31 @@ public static class MenuOpenAnimation
         menu.SetValue(LastRunProperty, 0L);
     }
 
+    /// <summary>
+    /// Ends a menu's open motion at once: the card and its rows jump to where they would land.
+    /// For a card whose frost is the OS blur behind its window (the tray menu, TrayMenuFrost):
+    /// that blur shows at full strength from the first frame and cannot fade, so while the pop
+    /// faded the card and its rows in, the menu showed as an empty frosted rectangle first
+    /// (Discord 11-21, "spam right click"). The open's pending steps see a newer run and stop.
+    /// </summary>
+    public static void SettleNow(Control card)
+    {
+        card.SetValue(LastRunProperty, Math.Max(Environment.TickCount64, card.GetValue(LastRunProperty) + 1));
+        card.Transitions = null;
+        card.IsHitTestVisible = true;
+        card.Opacity = 1;
+        if (GetUseFade(card)) SetFade(card, 1);
+        card.RenderTransform = TransformOperations.Parse(GetPop(card) ? "scale(1)" : "translateY(0px)");
+        if (card is not ItemsControl items)
+            return;
+        foreach (var row in items.GetRealizedContainers())
+        {
+            row.Transitions = null;
+            row.ClearValue(Visual.OpacityProperty);
+            row.ClearValue(Visual.RenderTransformProperty);
+        }
+    }
+
     // ── The pop for a card that is not a menu: every drop-down list (ComboBoxDropDownAnimator) ──
 
     /// <summary>How long <see cref="PopOut"/> takes: the caller holds the real close this long.</summary>

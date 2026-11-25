@@ -3,6 +3,7 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Noctis.Helpers;
 
 namespace Noctis.Mobile.Views;
@@ -34,7 +35,17 @@ public static class Appear
 
     private static void OnAttached(object? sender, VisualTreeAttachmentEventArgs e)
     {
-        if (sender is Control control) Play(control);
+        // A virtualised row coming back on screen (RowHost.Arrives) has arrived already.
+        if (sender is Control control && control.FindAncestorOfType<RowHost>() is not { Arrives: false }) Play(control);
+    }
+
+    /// <summary>Runs the arrival now on <paramref name="root"/> and every control below it that has
+    /// it enabled.</summary>
+    public static void PlayWithin(Control root)
+    {
+        if (GetIsEnabled(root)) Play(root);
+        foreach (var control in root.GetVisualDescendants().OfType<Control>())
+            if (GetIsEnabled(control)) Play(control);
     }
 
     /// <summary>Runs the arrival on <paramref name="control"/> now.</summary>

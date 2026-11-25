@@ -78,7 +78,10 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public void SetExclusiveMode(bool enabled) => ExclusiveRequests.Add(enabled);
     public bool ExclusiveModePaused { get; set; }
     public void RaiseOutputModeChanged(string status) => OutputModeChanged?.Invoke(this, status);
-    public void ApplyReplayGain(string mode, double preampDb) { }
+    public void ApplyReplayGain(string mode, double preampDb) => ReplayGainCalls.Add((mode, preampDb, true));
+    /// <summary>Every ApplyReplayGain call, in order (the two-argument one records Prevent Clipping on).</summary>
+    public List<(string Mode, double Preamp, bool PreventClipping)> ReplayGainCalls { get; } = new();
+    public void ApplyReplayGain(string mode, double preampDb, bool preventClipping) => ReplayGainCalls.Add((mode, preampDb, preventClipping));
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public bool GaplessEnabled { get; private set; } = true;
     public void SetGapless(bool enabled) => GaplessEnabled = enabled;
@@ -99,7 +102,13 @@ internal sealed class FakeAudioPlayer : IAudioPlayer
     public List<(double Gain, int RampMs)> FadeGainCalls { get; } = new();
     public double FadeGain => FadeGainCalls.Count == 0 ? 1.0 : FadeGainCalls[^1].Gain;
     public void SetPlaybackFadeGain(double gain, int rampMs) => FadeGainCalls.Add((gain, rampMs));
-    public void PrepareNext(string filePath, long startPositionMs = -1) => PreparedPaths.Add(filePath);
+    /// <summary>The start position passed with each PrepareNext, index-aligned with PreparedPaths.</summary>
+    public List<long> PreparedStartMs { get; } = new();
+    public void PrepareNext(string filePath, long startPositionMs = -1)
+    {
+        PreparedPaths.Add(filePath);
+        PreparedStartMs.Add(startPositionMs);
+    }
     public bool PreparesRemoteStreams { get; set; }
     /// <summary>Whether a prepared path counts as staged yet (the real player prepares off-thread).</summary>
     public bool StagesImmediately { get; set; } = true;
@@ -168,6 +177,16 @@ internal sealed class FakeLibraryService : ILibraryService
 
     /// <summary>Each scan's folders, one entry per ScanAsync call.</summary>
     public List<List<string>> ScanPasses { get; } = new();
+
+    /// <summary>Each RemoveFolderTracksAsync call, with how many scans had run before it.</summary>
+    public List<(string Folder, List<string> Remaining, int ScansBefore)> FolderRemovals { get; } = new();
+
+    public Task RemoveFolderTracksAsync(string folder, IReadOnlyCollection<string> remainingFolders)
+    {
+        FolderRemovals.Add((folder, remainingFolders.ToList(), ScanPasses.Count));
+        TrackList.RemoveAll(t => LibraryService.LeavesWithFolder(t, folder, remainingFolders));
+        return Task.CompletedTask;
+    }
 
     /// <summary>When set, a scan stays running until the test completes it.</summary>
     public TaskCompletionSource? HoldScan { get; set; }

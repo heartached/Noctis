@@ -189,6 +189,25 @@ public class MobileLibrarySourceTests
         Assert.Equal(12, artists.Artists.Single(a => a.Name == "Band").Artist.TrackCount);
     }
 
+    /// <summary>Settings › Tab Bar can put Songs, Albums and Artists on the bar: the Songs tab follows
+    /// the source as the Albums tab does (it listed every song under On This Phone).</summary>
+    [Fact]
+    public async Task SongsTab_FollowsTheSource_AsTheAlbumsTabDoes()
+    {
+        using var lib = Make();
+        var shell = lib.Shell;
+        shell.SetBarTabs(new[] { MobileTab.Songs, MobileTab.Albums, MobileTab.Library });
+        await shell.Library.SetSourceAsync(LibrarySource.Phone);
+
+        Assert.Equal(new[] { "Mixed", "Phone Only" }, shell.AlbumsRoot!.Albums.Select(a => a.Name));
+        var songs = shell.SongsRoot!;
+        Assert.Equal(4, songs.TotalCount);
+        Assert.DoesNotContain(songs.Songs, t => lib.Account.IsRemote(t));
+
+        await shell.Library.SetSourceAsync(LibrarySource.All);
+        Assert.Equal(14, songs.TotalCount);
+    }
+
     [Fact]
     public async Task RecentlyAdded_RailAndList_FollowTheSource_FavoritesAndDownloadedDoNot()
     {

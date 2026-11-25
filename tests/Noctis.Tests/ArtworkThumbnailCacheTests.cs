@@ -137,6 +137,24 @@ public class ArtworkThumbnailCacheTests : IDisposable
         Assert.Empty(Thumbs(cover));
     }
 
+    /// <summary>Settings › Clear Artwork Cache left every thumbnail of the deleted covers on disk.</summary>
+    [Fact]
+    public void Clear_DeletesEveryThumbnail_AndTheNextDecodeRebuildsIt()
+    {
+        var a = WriteCover("a.png", 1024, 1);
+        var b = WriteCover("b.png", 1024, 2);
+        ArtworkThumbnailCache.DecodeToWidth(a, 256)?.Dispose();
+        ArtworkThumbnailCache.DecodeToWidth(b, 256)?.Dispose();
+        Assert.Equal(2, Directory.GetFiles(_thumbs).Length);
+
+        Assert.Equal(2, ArtworkThumbnailCache.Clear());
+
+        Assert.Empty(Directory.GetFiles(_thumbs));
+        using var again = ArtworkThumbnailCache.DecodeToWidth(a, 256);
+        Assert.NotNull(again);
+        Assert.Single(Directory.GetFiles(_thumbs));
+    }
+
     [Fact]
     public async Task Invalidate_DeletesOnlyThatCoversThumbnails()
     {

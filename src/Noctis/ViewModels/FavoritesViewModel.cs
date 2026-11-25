@@ -77,6 +77,8 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         {
             if (e.PropertyName == nameof(SettingsViewModel.AlbumGridWideSpacing))
                 OnPropertyChanged(nameof(IsWideAlbumSpacing));
+            if (e.PropertyName == nameof(SettingsViewModel.AlbumHoverZoom))
+                OnPropertyChanged(nameof(IsHoverZoom));
             if (e.PropertyName is nameof(SettingsViewModel.AlbumTileSizeAuto)
                 or nameof(SettingsViewModel.AlbumTileTargetSize)
                 or nameof(SettingsViewModel.AlbumGridWideSpacing))
@@ -102,6 +104,10 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
 
     /// <summary>Settings › Appearance "Wider spacing between albums" (shared with the Albums grid).</summary>
     public bool IsWideAlbumSpacing => _settings.AlbumGridWideSpacing;
+
+    /// <summary>Settings › Appearance "Album Hover Zoom" (GitHub #218), as on the Albums grid
+    /// (Discord 11-23: it applied to the albums there but not to the songs here).</summary>
+    public bool IsHoverZoom => _settings.AlbumHoverZoom;
 
     /// <summary>
     /// Recomputes column count and tile size from the view's usable width and the
@@ -283,7 +289,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(allTracks, 0);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).PlayAll(allTracks);
     }
 
     [RelayCommand]
@@ -291,7 +297,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         if (allTracks.Count == 0) return;
-        _player.PlayShuffled(allTracks);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).PlayShuffled(allTracks);
     }
 
     // ── Track commands ──────────────────────────────────────────
@@ -303,7 +309,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
         var allTracks = GetAllFavoriteTracks();
         var idx = allTracks.FindIndex(t => t.Id == track.Id);
         if (idx < 0) idx = 0;
-        _player.ReplaceQueueAndPlay(allTracks, idx);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).ReplaceQueueAndPlay(allTracks, idx);
     }
 
     [RelayCommand]
@@ -311,7 +317,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     {
         var allTracks = GetAllFavoriteTracks();
         // Selected track first
-        _player.PlayShuffled(allTracks, first: track);
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Favorites)).PlayShuffled(allTracks, first: track);
     }
 
     [RelayCommand]
@@ -371,14 +377,14 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
     private void PlayAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(album.EditionTracks);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album?.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(album.EditionTracks);
     }
 
     [RelayCommand]
@@ -451,7 +457,7 @@ public partial class FavoritesViewModel : ViewModelBase, ISearchable, IDisposabl
             if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
             var ordered = Helpers.AlbumTile.EditionOrder(album);
             if (ordered.Count == 0) return;
-            _player.ReplaceQueueAndPlay(ordered, 0);
+            _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(ordered);
             return;
         }
         if (item.Track!.IsNowPlaying) _player.PlayPauseCommand.Execute(null);

@@ -36,6 +36,10 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
 
     /// <summary>The Ctrl-selection, for window shortcuts (GitHub #131 ReplayGain).</summary>
     public IReadOnlyList<Track> GetSelectedTracks() => _selectedTracks.ToList();
+
+    /// <summary>A drag from a selected row carries the selection, in list order.</summary>
+    public IReadOnlyList<Track>? GetDragSelection(Control dragged, object? payload) =>
+        TrackSelection.DragSelection(payload, _selectedTracks, TrackList.ItemsSource);
     private TrackContextMenuBuilder? _menuBuilder;
     /// <summary>Culture the menu's strings were read in (they are read once, at Build).</summary>
     private string? _menuCulture;
@@ -104,6 +108,9 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
             _rangeAnchor = track;
 
+        // A plain press on a row of a multi-selection keeps it until release, so a drag carries it.
+        if (MultiSelectHelper.DeferPlainPressOnSelection(this, track, _selectedTracks, e, ClearSelection))
+            return;
         MultiSelectHelper.HandleTrackRowClickByData(item, track, e, _selectedTracks);
 
         if (_selectedTracks.Count > 0)
@@ -289,6 +296,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (_vm != null)
         {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
+            _vm.PropertyChanged -= OnVmRevealChanged;
             _vm.IsUserBusy = null;
         }
 
@@ -296,6 +304,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         if (_vm != null)
         {
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+            _vm.PropertyChanged += OnVmRevealChanged;
             _scrollResetFilterKey = _vm.FilterKey;
             _vm.IsUserBusy = IsUserBusy;
         }
@@ -431,7 +440,12 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
                 vm.SavedScrollOffset = sv.Offset.Y;
         }
         if (_vm != null)
+        {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
+            _vm.PropertyChanged -= OnVmRevealChanged;
+        }
+        _cancelReveal?.Invoke();
+        _cancelReveal = null;
 
         // Reset multi-selection so it doesn't leak back when the view is revisited.
         _selectedTracks.Clear();
@@ -451,6 +465,28 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         }
     }
 
+    // ── "Playing from …" (Discord 11-24, sina): the page was opened for the playing song ──
+
+    /// <summary>Room the floating island takes at the list's bottom (as the album page).</summary>
+    private const double RevealBottomInset = 82;
+    private Action? _cancelReveal;
+
+    private void OnVmRevealChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibrarySongsViewModel.RevealTrackId)) StartRevealIfAsked();
+    }
+
+    /// <summary>Glides the list to <see cref="LibrarySongsViewModel.RevealTrackId"/>'s row and
+    /// washes it (RowReveal.RevealInList), once; the scroll restore gives way to it.</summary>
+    private void StartRevealIfAsked()
+    {
+        if (_vm?.RevealTrackId is not { } id || VisualRoot == null) return;
+        _vm.RevealTrackId = null;
+        CancelPendingScrollRestore();
+        _cancelReveal?.Invoke();
+        _cancelReveal = RowReveal.RevealInList(TrackList, id, RevealBottomInset);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -465,6 +501,8 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
         {
             _vm.FilteredTracks.CollectionChanged -= OnFilteredTracksChanged;
             _vm.FilteredTracks.CollectionChanged += OnFilteredTracksChanged;
+            _vm.PropertyChanged -= OnVmRevealChanged;
+            _vm.PropertyChanged += OnVmRevealChanged;
             _scrollResetFilterKey = _vm.FilterKey;
         }
 
@@ -484,6 +522,7 @@ public partial class LibrarySongsView : UserControl, ITrackSelectionSource
 
             TrackList.LayoutUpdated += _pendingScrollRestore;
         }
+        StartRevealIfAsked();
     }
 
 }

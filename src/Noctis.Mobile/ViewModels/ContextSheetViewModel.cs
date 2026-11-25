@@ -34,8 +34,9 @@ public sealed partial class ContextSheetViewModel : ObservableObject
         new(shell, Loc.Plural("Mobile.Count.Songs", tracks.Count), string.Empty,
             tracks.FirstOrDefault(t => !string.IsNullOrEmpty(t.AlbumArtworkPath))?.AlbumArtworkPath, tracks);
 
+    /// <summary>An album's sheet: its songs as its page lists them, linked ones included (Link Tracks From).</summary>
     public static ContextSheetViewModel ForAlbum(ShellViewModel shell, Album album, TrackSelection? selection = null) =>
-        new(shell, album.Name, album.Artist, album.ArtworkPath, album.Tracks.ToList()) { Album = album, SelectIn = selection };
+        new(shell, album.Name, album.Artist, album.ArtworkPath, album.EditionTracks.ToList()) { Album = album, SelectIn = selection };
 
     /// <summary>An artist's sheet, headed by the artist's photo when the phone has one, else
     /// <paramref name="artworkPath"/> (the cover the row showed).</summary>
@@ -208,7 +209,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     [ObservableProperty] private string _newPlaylistName = string.Empty;
 
     /// <summary>Manual playlists only: a smart playlist's contents come from its rules.</summary>
-    public IReadOnlyList<Playlist> Playlists => _shell.Library.Playlists.Where(p => !p.IsSmartPlaylist).ToList();
+    public IReadOnlyList<Playlist> Playlists => _shell.PickerPlaylists();
 
     [RelayCommand]
     private void PlayNext()
@@ -400,7 +401,7 @@ public sealed partial class ContextSheetViewModel : ObservableObject
     {
         var tracks = NotDownloaded.ToList();
         _shell.CloseSheet();
-        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks);
+        if (tracks.Count > 0) await _shell.DownloadTracksAsync(tracks, Title);
     }
 
     /// <summary>Every desktop song here, not only the downloaded ones: the service removes the

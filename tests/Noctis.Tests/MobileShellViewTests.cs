@@ -151,7 +151,8 @@ public class MobileShellViewTests
         var title = view.FindControl<Button>("MiniRow")!;
 
         // The star column's own width, from the first fixed-width sibling's left edge.
-        var transports = grid.Children.OfType<Button>().Where(b => Grid.GetColumn(b) > 0).ToList();
+        // Play and Next share one left-to-right column (they keep their order in Arabic).
+        var transports = grid.Children.OfType<Control>().Where(b => Grid.GetColumn(b) > 0).ToList();
         var columnWidth = transports.Min(b => b.Bounds.Left);
 
         Assert.Equal(columnWidth, title.Bounds.Width, 1);

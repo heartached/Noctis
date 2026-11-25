@@ -51,6 +51,17 @@ public class AppSettings : IJsonOnDeserializing
     /// and the Added / Favorite columns.</summary>
     public bool PlaylistShowAlbumHeaders { get; set; } = true;
     public bool PlaylistShowNewBadge { get; set; } = true;
+
+    /// <summary>How many days a track stays NEW on a playlist page (11-23; it was always 7).
+    /// One of <see cref="PlaylistNewBadgeDayChoices"/>.</summary>
+    public int PlaylistNewBadgeDays { get; set; } = 7;
+
+    /// <summary>The NEW badge lengths Settings offers, in days.</summary>
+    public static IReadOnlyList<int> PlaylistNewBadgeDayChoices { get; } = new[] { 1, 3, 7, 14, 30 };
+
+    /// <summary>The nearest of <see cref="PlaylistNewBadgeDayChoices"/>: a hand-edited value snaps.</summary>
+    public static int SnapPlaylistNewBadgeDays(int days) =>
+        PlaylistNewBadgeDayChoices.MinBy(c => Math.Abs((long)c - days));
     public bool PlaylistShowAddedColumn { get; set; } = true;
     public bool PlaylistShowFavoriteColumn { get; set; } = true;
 
@@ -58,6 +69,13 @@ public class AppSettings : IJsonOnDeserializing
     /// (Discord, DendyAly 11-02). Off hides it and skips its artist pictures and the
     /// suggestion scan; the track list takes the width.</summary>
     public bool PlaylistShowSideRail { get; set; } = true;
+
+    /// <summary>Album pages show a clickable heart on every song row, faint until favorited
+    /// (Discord 11-24, sina: favoriting from an album took the "..." menu). Off shows the
+    /// heart only on favorited songs and it can't be clicked, the old look. On for a new
+    /// install; a settings.json saved before the setting existed keeps it off
+    /// (<see cref="OnDeserializing"/>).</summary>
+    public bool AlbumShowSongHearts { get; set; } = true;
 
     /// <summary>File paths explicitly removed from the library. Skipped during rescans.</summary>
     public List<string> ExcludedFilePaths { get; set; } = new();
@@ -200,10 +218,18 @@ public class AppSettings : IJsonOnDeserializing
     /// unknown reads as Cover.</summary>
     public string MobileNowPlayingArtwork { get; set; } = "Cover";
 
+    /// <summary>Phone: Settings › Appearance › Animated Covers, "Off", "WifiOnly" (the default) or
+    /// "Always": when Now Playing's cover moves and the computer's loops may download.</summary>
+    public string MobileAnimatedCovers { get; set; } = "WifiOnly";
+
     /// <summary>Phone: the sort each list was left in, by list ("Nav.Songs", "Nav.Playlists",
     /// "Playlist:{id}"): a sort name, with " desc" when reversed. A list in its own order has no
     /// entry; a name the phone does not know reads as its own order.</summary>
     public Dictionary<string, string> MobileListSorts { get; set; } = new();
+
+    /// <summary>Phone: Search's Recent Searches, newest first, each once (ignoring case), at most
+    /// ten. A search is kept once a result is opened or the keyboard's Search key is pressed.</summary>
+    public List<string> MobileRecentSearches { get; set; } = new();
 
     /// <summary>Phone, Settings › Appearance › Now Playing Background: how dark the wash behind
     /// Now Playing is, -50 (darker) to 50 (brighter); 0, the default, is the stock shade.</summary>
@@ -224,6 +250,11 @@ public class AppSettings : IJsonOnDeserializing
     /// clear glass instead of the dark tinted pill. Off by default.</summary>
     public bool MobileGlassTabPill { get; set; }
 
+    /// <summary>Phone, Settings › Appearance › Reduce Glass (beta testers 11-22): the menus, the
+    /// floating bars and the header buttons draw a plain fill instead of Liquid Glass (no backdrop
+    /// blur or lens). Off by default.</summary>
+    public bool MobileReduceGlass { get; set; }
+
     /// <summary>Phone, Settings › Tab Bar (beta testers 11-17): the tabs on the bottom bar, in order,
     /// by name ("Home", "Songs", ...). Empty (the default, and what a settings file without the field
     /// reads as) = Home, Favorites, Playlists, Library, Search. Names this build does not know are
@@ -234,6 +265,11 @@ public class AppSettings : IJsonOnDeserializing
     /// already played in a History section above the current track (a tap plays one again). Off by
     /// default: played songs leave the Queue page, as they always have.</summary>
     public bool MobileQueueShowHistory { get; set; }
+
+    /// <summary>Phone, Settings › Account › Show Remote on Home (Discord beta 11-22): a Remote button
+    /// next to the profile picture on Home, while signed in. On by default (a settings file without
+    /// the field reads as on; a saved false stays off).</summary>
+    public bool MobileHomeRemote { get; set; } = true;
 
     /// <summary>Phone, Settings › Downloads › Download on Wi-Fi Only: the phone fetches songs from the
     /// computer only on an unmetered network (Wi-Fi), never over mobile data. On by default.</summary>
@@ -356,6 +392,19 @@ public class AppSettings : IJsonOnDeserializing
 
     public int PlayPauseFadeMs { get; set; } = 300;
 
+    /// <summary>Skip Silence (Discord, Spark 11-23): a song starts at its first sound and ends
+    /// after its last one; the silence at both ends is measured in the background (ffmpeg or libVLC),
+    /// files are never changed. Off by default.</summary>
+    public bool SkipSilenceEnabled { get; set; }
+
+    /// <summary>Skip Silence level in dBFS: anything quieter counts as silence
+    /// (<see cref="SkipSilenceThresholdMin"/> to <see cref="SkipSilenceThresholdMax"/>).</summary>
+    public int SkipSilenceThresholdDb { get; set; } = SkipSilenceThresholdDefault;
+
+    public const int SkipSilenceThresholdDefault = -50;
+    public const int SkipSilenceThresholdMin = -80;
+    public const int SkipSilenceThresholdMax = -20;
+
     /// <summary>GitHub #101: how much of a song (percent) has to be heard before the play
     /// counts (play count, Last Played, the play log). 0 = as soon as it starts, the old
     /// behaviour; otherwise one of <see cref="PlayCountThresholdChoices"/>. Half the song on a
@@ -405,6 +454,19 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Keep played songs in the queue (GitHub #124): the queue lists what played above
     /// Now Playing and the last song stays loaded when the queue ends. Off by default.</summary>
     public bool KeepPlayedInQueue { get; set; }
+
+    /// <summary>Keep Shuffle On (Discord 11-23): while Shuffle is on, playing an album, playlist or
+    /// song list keeps it on and shuffles the new music. Off by default (a new list plays in order
+    /// and turns Shuffle off).</summary>
+    public bool KeepShuffleOn { get; set; }
+
+    /// <summary>Show Where Music Plays From (Discord 11-24, sina): the queue drawer's "Playing from …"
+    /// link to the page the queue was started from. On by default (it is not on the island).</summary>
+    public bool ShowPlaySource { get; set; } = true;
+
+    /// <summary>Song Title Opens Where It Plays From (Discord 11-24, sina): the island title's click
+    /// opens the page the song plays from at the song, instead of its album. Off by default.</summary>
+    public bool TitleOpensPlaySource { get; set; }
 
     /// <summary>Missing Songs (GitHub #154): a queued song whose file is gone is taken off the
     /// queue when playback passes over it; off (the default) keeps it there, marked missing.</summary>
@@ -620,6 +682,10 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Also save the timings as a .ttml sidecar, for players that read TTML but not ELRC (Discord: Light Cone).</summary>
     public bool LyricsStudioSaveTtml { get; set; }
 
+    /// <summary>Lyrics Studio's files for word-timed lyrics: a <see cref="Models.LyricsStudioFiles"/> name
+    /// (ELRC and LRC, ELRC only, LRC only).</summary>
+    public string LyricsStudioFiles { get; set; } = nameof(Models.LyricsStudioFiles.ElrcAndLrc);
+
     /// <summary>The Studio's live preview pane beside the review is open (10-14).</summary>
     public bool LyricsStudioLivePreview { get; set; } = true;
 
@@ -631,6 +697,10 @@ public class AppSettings : IJsonOnDeserializing
     public bool ShowArtworkColumn { get; set; } = true;
     public bool ShowGenreColumn { get; set; } = true;
     public bool ShowRatingColumn { get; set; } = true;
+    /// <summary>Settings › Library › Show Star Ratings (Discord 11-24, Halil): off hides the stars on
+    /// album rows, the Songs page Rating column and the Rate menu item for people who never rate.
+    /// Ratings stay in the library and in Edit Info. ShowRatingColumn keeps its own value.</summary>
+    public bool ShowStarRatings { get; set; } = true;
     public bool ShowBpmColumn { get; set; }
     public bool ShowBitrateColumn { get; set; }
     public bool ShowSampleRateColumn { get; set; }
@@ -689,6 +759,12 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Artist page Albums tab layout (GitHub #149): "grid" or "carousel". One
     /// setting for every artist, like the release sort.</summary>
     public string ArtistAlbumsViewMode { get; set; } = "grid";
+
+    /// <summary>Artist page Singles &amp; EPs and Live Albums tab layouts: "grid" or "carousel".
+    /// Each tab keeps its own choice (one for every artist), so the Albums tab's carousel
+    /// doesn't switch the other tabs.</summary>
+    public string ArtistSinglesViewMode { get; set; } = "grid";
+    public string ArtistLiveViewMode { get; set; } = "grid";
 
     /// <summary>How albums are dressed in the album carousel: "Cover" (default), "JewelCase",
     /// "Vinyl" or "Cassette" (<see cref="AlbumCarouselStyles.Parse"/>). Shared by both carousels.</summary>
@@ -902,6 +978,10 @@ public class AppSettings : IJsonOnDeserializing
     /// is 1.6.9's look: 8px between covers and one row height for every Albums row.</summary>
     public bool AlbumGridWideSpacing { get; set; }
 
+    /// <summary>GitHub #258: album cards (Albums grid, Home, artist page, More By Artist) end
+    /// their caption with the album's song count ("Artist · 1982 · 12 songs"). On by default.</summary>
+    public bool ShowAlbumSongCount { get; set; } = true;
+
     /// <summary>GitHub #218: in the Albums grid the hovered album grows a little with a soft
     /// glow; no other album moves (GitHub #250). Off by default.</summary>
     public bool AlbumHoverZoom { get; set; }
@@ -1007,6 +1087,14 @@ public class AppSettings : IJsonOnDeserializing
     /// carries no time labels.</summary>
     public bool PlaybackBarShowTime { get; set; }
 
+    /// <summary>Discord 11-23: clicking the island's time swaps its lower line between the time
+    /// left ("-2:41", the default) and the song's total length ("4:05").</summary>
+    public bool PlaybackBarTimeShowsTotal { get; set; }
+
+    /// <summary>Discord 11-23: the island shows a small volume slider next to its Volume button
+    /// all the time instead of popping one up (the button then mutes on click). Off by default.</summary>
+    public bool PlaybackBarInlineVolume { get; set; }
+
     /// <summary>GitHub #93: the island and mini player seek bars draw the track's waveform
     /// (decoded in the background with ffmpeg, cached under cache/waveforms). Off by
     /// default — when off nothing is decoded and the plain seek line stays.</summary>
@@ -1038,6 +1126,14 @@ public class AppSettings : IJsonOnDeserializing
     /// default. Settings greys it out while <see cref="SidebarAlwaysExpanded"/> is on, and
     /// the other way round.</summary>
     public bool SidebarAutoHide { get; set; }
+
+    /// <summary>New Playlist and Folder Position (Discord 11-24, sina): new playlists and New
+    /// Folder… folders go first in the sidebar list instead of last. Off (Bottom) by default.</summary>
+    public bool NewPlaylistsAtTop { get; set; }
+
+    /// <summary>Remove Empty Folders (Discord 11-24, sina): a sidebar folder whose last playlist is
+    /// moved out or deleted is removed too, instead of staying empty. Off by default.</summary>
+    public bool RemoveEmptyPlaylistFolders { get; set; }
 
     /// <summary>Sidebar page keys ("home", "songs", …) in the order the user arranged them in
     /// Settings › General › Sidebar (GitHub #199). Empty = the built-in order; a page missing
@@ -1127,6 +1223,12 @@ public class AppSettings : IJsonOnDeserializing
     /// ("Tyler, The Creator", "AC/DC"). Settings saved before the list existed load the
     /// built-ins (ArtistCredit.DefaultProtectedNames); an emptied list stays empty.</summary>
     public List<string> ArtistProtectedNames { get; set; } = ArtistCredit.DefaultProtectedNames.ToList();
+
+    /// <summary>GitHub #260: separators that split one genre tag into several genres ("Rock, Pop"),
+    /// on top of ';', which always splits. Read-time only (grouping and display); files keep their
+    /// genre text. Settings saved before the list existed load GenreSeparators.Defaults (","); an
+    /// emptied list stays empty.</summary>
+    public List<string> GenreTagSeparators { get; set; } = GenreSeparators.Defaults.ToList();
 
     /// <summary>The join (ArtistCredit.JoinText) the indexed artist credits were read with —
     /// multi-value artist tags are joined with it. Every build before GitHub #117 used ", ".
@@ -1441,6 +1543,11 @@ public class AppSettings : IJsonOnDeserializing
     /// instead of leaving the lyrics half empty. Ships on.</summary>
     public bool LyricsCenterWhenNoLyrics { get; set; } = true;
 
+    /// <summary>The lyrics page follows the sung line again a few seconds after the user
+    /// scrolled away (on, as it always did); off keeps the view where it was scrolled until
+    /// the Follow pill is pressed (11-23 feedback).</summary>
+    public bool LyricsAutoReturnToLine { get; set; } = true;
+
     /// <summary>Discord (f7uh): the lyrics page hides the lyrics and shows the centred player
     /// even when the song has lyrics (island ⋯ ▸ Lyrics Display ▸ Hide Lyrics). The lyrics
     /// stay loaded; only the page's lyrics column goes. Off by default.</summary>
@@ -1542,6 +1649,24 @@ public class AppSettings : IJsonOnDeserializing
     /// <summary>Override path to ffmpeg. Empty = auto-detect (app dir, then PATH).</summary>
     public string FfmpegPath { get; set; } = string.Empty;
 
+    /// <summary>The Convert dialog's options as of the last conversion started, so the next one
+    /// opens with them (Discord request 11-21). Checked against the dialog's choices on open: a
+    /// value it no longer offers falls back to its default. "Overwrite existing files" is not
+    /// kept: it replaces files on disk and stays a per-run choice.</summary>
+    public string ConverterFormat { get; set; } = "mp3";
+    public int ConverterBitrateKbps { get; set; } = 320;
+    public string ConverterBitDepth { get; set; } = "Auto";
+    /// <summary>WAV / AIFF depth as last used for one of them; empty = follow the source (24-bit
+    /// for a 24-bit source, else 16).</summary>
+    public string ConverterPcmBitDepth { get; set; } = string.Empty;
+    public string ConverterDsdRate { get; set; } = "DSD64";
+    /// <summary>Empty = next to each source file. A folder on this computer's disks (computers.json).</summary>
+    public string ConverterOutputFolder { get; set; } = string.Empty;
+    public string ConverterFilenamePattern { get; set; } = "%artist% - %title%";
+    public bool ConverterCopyTags { get; set; } = true;
+    public bool ConverterEmbedArtwork { get; set; } = true;
+    public bool ConverterAddToLibrary { get; set; } = true;
+
     // ── ReplayGain ──
 
     /// <summary>"Off", "Track", "Album", or "Auto" (album when same-album sequence else track).
@@ -1553,6 +1678,10 @@ public class AppSettings : IJsonOnDeserializing
 
     /// <summary>Pre-amp in dB applied on top of the RG tag value.</summary>
     public double ReplayGainPreampDb { get; set; } = 0.0;
+
+    /// <summary>The phone's Prevent Clipping (Settings › Listening › ReplayGain): a boost stops at
+    /// the song's peak headroom (ReplayGainLevel). The desktop does not read it.</summary>
+    public bool ReplayGainPreventClipping { get; set; } = true;
 
     /// <summary>GitHub #148: measure new files (found by the folder watcher or a library scan)
     /// and write ReplayGain tags into them once their album has finished copying. Off by
@@ -1596,6 +1725,7 @@ public class AppSettings : IJsonOnDeserializing
         EqPreampDb = Math.Clamp(EqPreampDb, Services.ParametricEqMath.EqPreampMinDb, Services.ParametricEqMath.EqPreampMaxDb);
         CrossfadeDuration = Math.Clamp(CrossfadeDuration, 1, 12);
         PlayPauseFadeMs = Math.Clamp(PlayPauseFadeMs, 100, 2000);
+        SkipSilenceThresholdDb = Math.Clamp(SkipSilenceThresholdDb, SkipSilenceThresholdMin, SkipSilenceThresholdMax);
         AudioBalance = Math.Clamp(AudioBalance, -100, 100);
         SleepTimerFadeSeconds = SnapSleepTimerFadeSeconds(SleepTimerFadeSeconds);
         PlayCountThresholdPercent = SnapPlayCountThreshold(PlayCountThresholdPercent);
@@ -1651,6 +1781,8 @@ public class AppSettings : IJsonOnDeserializing
         // New-install defaults of 2026-11-14: plays counted at the start, drops moved in.
         PlayCountThresholdPercent = 0;
         ImportDroppedMedia = true;
+        // Album song-row hearts (2026-11-24): favorited songs only, not clickable.
+        AlbumShowSongHearts = false;
     }
 
     // ── One data folder, several Noctis versions (GitHub #230) ──

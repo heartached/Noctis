@@ -16,6 +16,13 @@
             <views:PageHeader.Tools>
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <views:ListTools VerticalAlignment="Center" />
+                    <!-- Account › No longer on your computer: Remove All, after its question. -->
+                    <controls:GlassPanel Classes="header-glass" Width="NaN" IsVisible="{Binding CanRemoveSongs}">
+                        <Button Name="RemoveAllButton" Classes="glass-text" Command="{Binding AskRemoveAllCommand}"
+                                IsEnabled="{Binding HasSongs}" AutomationProperties.Name="{loc:T Mobile.NotOnComputer.RemoveAll}">
+                            <TextBlock Text="{loc:T Mobile.NotOnComputer.RemoveAll}" />
+                        </Button>
+                    </controls:GlassPanel>
                     <!-- A playlist's page: its ⋯ in a round glass button (Apple's), the playlist's menu with
                          Rename and Delete Playlist. Shown on an empty playlist too, where the tools are not. -->
                     <controls:GlassPanel Classes="header-glass" Width="NaN" IsVisible="{Binding IsPlaylist}">
@@ -46,19 +53,21 @@
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="20,0,20,8">
                 <Button Classes="pill-accent" Command="{Binding PlayAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{DynamicResource PhPlayFill}" Width="20" Height="20" />
+                        <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhPlayFill}" Width="20" Height="20" />
                         <TextBlock Text="{loc:T Mobile.Play}" />
                     </StackPanel>
                 </Button>
                 <Button Classes="pill" Command="{Binding ShuffleAllCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <PathIcon Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
+                        <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" Width="20" Height="20" />
                         <TextBlock Text="{loc:T Mobile.Shuffle}" />
                     </StackPanel>
                 </Button>
             </StackPanel>
             <!-- Its own line: the toolbar has no room left for it on a phone. -->
             <TextBlock Name="CountLabel" Classes="subtle" FontSize="13" Margin="22,0,20,4" Text="{Binding CountText}" />
+            <TextBlock Name="RemoveHint" Classes="subtle" FontSize="13" Margin="22,0,20,4" TextWrapping="Wrap"
+                       Text="{loc:T Mobile.NotOnComputer.Hint}" IsVisible="{Binding CanRemoveSongs}" />
         </StackPanel>
 
         <ScrollViewer Classes="page-scroll" Grid.Row="2" Name="SongScroll" views:ScrollMemory.IsEnabled="True" HorizontalScrollBarVisibility="Disabled">
@@ -91,12 +100,18 @@
                                     views:LongPress.Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}"
                                     Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).PlayCommand}"
                                     CommandParameter="{Binding}">
-                                <Grid ColumnDefinitions="Auto,*">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
                                     <views:SelectCheck Name="RowCheck" Margin="8,0,-8,0" Track="{Binding}"
                                                        Selection="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).Selection}" />
                                     <views:SongRow Grid.Column="1"
                                                    MenuCommand="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).OpenSongMenuCommand}"
                                                    IsMenuVisible="{Binding !$parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).Selection.IsActive}" />
+                                    <!-- Account › No longer on your computer: the row's own Remove (deletes its file). -->
+                                    <Button Grid.Column="2" Name="RowRemoveButton" Classes="pill" VerticalAlignment="Center" Margin="0,0,4,0" Padding="14,0" MinHeight="32" FontSize="14"
+                                            Content="{loc:T Mobile.NotOnComputer.Remove}"
+                                            IsVisible="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).CanRemoveSongs}"
+                                            Command="{Binding $parent[views:SongListPage].((vm:SongListPageViewModel)DataContext).RemoveSongCommand}"
+                                            CommandParameter="{Binding}" />
                                 </Grid>
                             </Button>
                         </DataTemplate>

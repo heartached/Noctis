@@ -116,7 +116,7 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
 
         _volume = new AndroidVolumeControl(context);
         var nowPlaying = new NowPlayingViewModel(_player, library, persistence, history, volume: _volume);
-        var account = CreateAccountService(context, library, persistence, stateRecorder, _libraryLoaded.Task);
+        var account = CreateAccountService(context, library, persistence, metadata, stateRecorder, _libraryLoaded.Task);
         // Desktop songs' lyrics come from the desktop (saved on the phone for offline use); every
         // other song reads its sidecars through SAF as before.
         var remoteLyrics = account is IRemoteLyricsSource source
@@ -131,6 +131,9 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             // by title, artist and length only (Settings → Lyrics → Find Lyrics Online).
             Online = LrcLibOnlineLyricsSource.Create(persistence.DataDirectory, new HttpClient()),
         };
+        // Downloads from the computer: an ongoing progress card, then "Downloaded 12 songs"; the
+        // keeper keeps the process running under that card while they run in the background.
+        var downloadNotifier = account != null ? new AndroidDownloadNotifier(context) : null;
         var shell = new ShellViewModel(
             // Settings › Music Folders › Find All Music Automatically (MediaStore, opt-in).
             new LibraryViewModel(library, persistence, new AndroidFolderPicker(), history)
@@ -153,6 +156,14 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             PlaylistFiles = new AndroidPlaylistFilePicker(context),
             VersionText = DescribeVersion(context),
             Account = account,
+            DownloadNotifier = downloadNotifier,
+            DownloadKeeper = downloadNotifier != null ? new AndroidDownloadKeeper(context, downloadNotifier) : null,
+            // Songs left waiting (for Wi-Fi, or by an ended process) go on when the system runs this
+            // job, in the background too, not only when the app comes to the front.
+            DownloadWakeup = downloadNotifier != null ? new AndroidDownloadWakeup(context) : null,
+            // Off screen until MainActivity resumes (OnForegrounded): the wakeup's job may start the
+            // process with no activity, and DownloadActivity then knows the app is not in front.
+            IsSuspended = true,
             // Plays sent from the phone itself to Last.fm / ListenBrainz (Settings → Scrobbling).
             // Without an account there is no computer to send plays through: the phone sends them.
             Scrobbler = new PhoneScrobbler(persistence, new HttpClient()) { HasComputerRoute = account != null },
@@ -171,6 +182,10 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             ArtistLogos = ArtistLogoKeys.FromAssembly(typeof(AndroidApp).Assembly) is { IsEmpty: false } logoKeys
                 ? ArtistLogoSource.Create(persistence.DataDirectory, new HttpClient(), library, logoKeys)
                 : null,
+            // Now Playing's animated covers (Settings › Appearance › Animated Covers): cover.mp4
+            // beside the phone's own songs, else the computer's loop, saved under the app's cache
+            // folder (300 MB, least recently shown first; Android's Clear cache empties it).
+            AnimatedCoverSource = CreateAnimatedCoverSource(context, account),
         };
         _shell = shell;
         // A fast word is one search, not one per letter (SearchPageViewModel.TypingDebounce).
@@ -195,6 +210,8 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         // through PlaybackQueue; they arrive on a Java binder thread, hence the dispatcher hop.
         _player.SessionNextRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.NextCommand.Execute(null));
         _player.SessionPreviousRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.PreviousCommand.Execute(null));
+        // Play with nothing loaded (the queue ran out, or a restored queue): what the in-app Play does.
+        _player.SessionPlayRequested += (_, _) => Dispatcher.UIThread.Post(() => shell.Player.Play());
         // Whether those buttons are drawn enabled. Read synchronously from the same Java
         // thread, so they stay plain field reads on the ViewModel (see NowPlayingViewModel.
         // HasNext/HasPrevious) — ExoPlayer's own item list is the wrong source because it
@@ -209,6 +226,16 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
                 or nameof(NowPlayingViewModel.CurrentTrack))
                 Dispatcher.UIThread.Post(() => _player.NotifyQueueCommandsChanged());
         };
+
+        // DIAGNOSTIC ONLY, off unless set: lyrics layers taken away to bisect the phone's cost
+        // (`adb shell setprop debug.noctis.lyr.noblur 1` etc., then restart; LyricsDiagnostics).
+        LyricsDiagnostics.NoLineBlur = ReadSystemProperty("debug.noctis.lyr.noblur") == "1";
+        LyricsDiagnostics.NoBands = ReadSystemProperty("debug.noctis.lyr.nobands") == "1";
+        LyricsDiagnostics.NoBackdrop = ReadSystemProperty("debug.noctis.lyr.nobackdrop") == "1";
+        LyricsDiagnostics.NoDither = ReadSystemProperty("debug.noctis.lyr.nodither") == "1";
+        if (LyricsDiagnostics.Any)
+            DebugLog.Write("Stalls", $"Lyrics diagnostics: noblur={LyricsDiagnostics.NoLineBlur} nobands={LyricsDiagnostics.NoBands}"
+                + $" nobackdrop={LyricsDiagnostics.NoBackdrop} nodither={LyricsDiagnostics.NoDither}");
 
         if (ApplicationLifetime is IActivityApplicationLifetime activity)
             activity.MainViewFactory = () =>
@@ -230,13 +257,31 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
         base.OnFrameworkInitializationCompleted();
     }
 
+    private static AnimatedCoverSource? CreateAnimatedCoverSource(Context context, INoctisAccountService? account)
+    {
+        try
+        {
+            // The video view the cover's NativeControlHost shows (a muted ExoPlayer of its own).
+            Noctis.Mobile.Views.AnimatedCoverView.SurfaceFactory = () => new AndroidAnimatedCoverSurface(context);
+            var folders = new SafTrackFileAccess(context);
+            var cache = new AnimatedCoverCache(Path.Combine(context.CacheDir!.AbsolutePath, "animated_covers"));
+            return AnimatedCoverSource.ForAccount(cache, () => AndroidNetwork.IsUnmetered(context), account,
+                t => folders.FindSibling(t.FilePath, AnimatedCoverLocator.SidecarNames));
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("AnimatedCover", $"Animated covers unavailable: {ex.GetType().Name}");
+            return null;
+        }
+    }
+
     /// <summary>
     /// The phone's link to the owner's Noctis desktop (Settings → Account). Null while the
     /// feature is parked (<see cref="PhoneAccountFeatures"/>) or if it cannot be built: Settings
     /// then shows no Account section, the sheet no download actions, and the player never streams.
     /// </summary>
     private static INoctisAccountService? CreateAccountService(Context context, ILibraryService library,
-        IPersistenceService persistence, NoctisStateRecorder stateRecorder, Task libraryReady)
+        IPersistenceService persistence, IMetadataService metadata, NoctisStateRecorder stateRecorder, Task libraryReady)
     {
         if (!PhoneAccountFeatures.Enabled) return null;
         // The service's TLS: its pin check wired into AndroidMessageHandler.
@@ -254,13 +299,15 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             {
                 LibraryReady = libraryReady,
                 // Settings → Downloads → Wi-Fi only: a download on mobile data is refused.
-                IsOnWifi = () => AndroidNetwork.IsUnmetered(context),
+                IsOnWifi = () => AndroidNetwork.IsOnWifi(context),
                 // No ALAC decoder, neither the phone's nor the bundled FFmpeg (a build without
                 // Libs/media3-decoder-ffmpeg): the desktop sends its ALAC songs as FLAC.
                 PreferFlacForAlac = !Media3AudioPlayer.HasDecoder("audio/alac"),
                 // "Send phone songs to computer" reads the phone's songs as playback does: the SAF
                 // document through its file descriptor, streamed, never copied.
                 LocalFiles = new SafTrackFileAccess(context),
+                // A download the computer no longer has and the library holds no row for: its own tags.
+                ReadFileTags = metadata.ReadTrackMetadata,
             };
         }
         catch (Exception ex)
@@ -359,12 +406,17 @@ public partial class AndroidApp : Avalonia.Application, IThemeHost
             _shell!.Background.ApplySettings(settings);
             // The Library rows need only the settings: on screen now, not after the loads below.
             _shell!.Library.ApplySettings(settings);
+            // Settings › Artist Separators, before the library builds (or restores) its artist list.
+            ArtistSeparatorsViewModel.ApplySaved(settings);
+            // Settings › Genre Separators, before the library loads and anything reads its genres.
+            GenreSeparatorsViewModel.ApplySaved(settings);
             // No SetGapless(settings.GaplessPlaybackEnabled): the phone is always gapless
             // (NowPlayingViewModel turns it on), whatever a desktop-written settings.json says.
             await history.PreloadAsync();
             await library.LoadAsync();
             _libraryLoaded.TrySetResult();
-            await _shell!.InitializeAsync();
+            // The settings read above, handed along: the start reads settings.json once.
+            await _shell!.InitializeAsync(settings);
             // Scan on Startup (desktop parity): new songs in the folders show up on their own.
             _ = _shell.Library.ScanAtStartupAsync();
         }

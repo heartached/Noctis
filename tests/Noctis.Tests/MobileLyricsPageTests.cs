@@ -183,6 +183,251 @@ public class MobileLyricsPageTests
         try { Directory.Delete(root, recursive: true); } catch { }
     }
 
+    /// <summary>Counts the compositor's render passes that reach it (a custom draw op runs on every pass
+    /// that draws its spot).</summary>
+    private sealed class RenderCounter : Control
+    {
+        private readonly Op _op = new();
+        public int Passes => _op.Passes;
+        public override void Render(DrawingContext context) => context.Custom(_op);
+        private sealed class Op : Avalonia.Rendering.SceneGraph.ICustomDrawOperation
+        {
+            private int _passes;
+            public int Passes => Volatile.Read(ref _passes);
+            public Rect Bounds => new(0, 0, 50, 50);
+            public bool HitTest(Point p) => false;
+            public bool Equals(Avalonia.Rendering.SceneGraph.ICustomDrawOperation? other) => ReferenceEquals(this, other);
+            public void Dispose() { }
+            public void Render(ImmediateDrawingContext context) => Interlocked.Increment(ref _passes);
+        }
+    }
+
+    /// <summary>S23 11-22: back from Lyrics to Now Playing the render thread stayed at 55%, playback
+    /// stopped. A keep-alive animation the page never got to stop redraws the screen on every vsync,
+    /// and a hidden parent does not stop that (its children still mark their spot changed). The
+    /// keep-alive's pulse now ends by itself: nothing has to stop it.</summary>
+    [AvaloniaFact]
+    public void KeepAlivePulse_EndsByItself_EvenUnderAHiddenPage()
+    {
+        var counter = new RenderCounter { Width = 50, Height = 50, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var keepAlive = new RenderKeepAlive { HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top };
+        var page = new Panel { Children = { keepAlive } };
+        var window = new Window { Width = 200, Height = 200, Content = new Panel { Children = { counter, page } } };
+        window.Show();
+        void Ticks(int n, int sleepMs = 0)
+        {
+            for (var i = 0; i < n; i++)
+            {
+                if (sleepMs > 0) Thread.Sleep(sleepMs);
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            }
+        }
+        Ticks(5);
+        var before = counter.Passes;
+        Ticks(5);
+        Assert.Equal(before, counter.Passes);              // a still screen draws nothing
+
+        keepAlive.Run(true);                               // one pulse, never stopped
+        Ticks(2);
+        before = counter.Passes;
+        Ticks(5, sleepMs: 10);
+        Assert.True(counter.Passes - before >= 5, $"{counter.Passes - before} passes in 5 vsyncs");   // a frame on every vsync while it runs
+
+        page.IsVisible = false;                            // the page goes, nobody calls Run(false)
+        Ticks(3, sleepMs: 10);
+        Assert.True(counter.Passes > before + 5, "still drawing under the hidden page within the tail");
+        Thread.Sleep((int)RenderKeepAlive.Tail.TotalMilliseconds + 100);
+        Ticks(3);
+        before = counter.Passes;
+        Ticks(5, sleepMs: 10);
+        Assert.Equal(before, counter.Passes);              // the pulse ran out: the screen is still again
+        window.Close();
+    }
+
+    /// <summary>S23 11-22: Lyrics, then back to Now Playing with the lyrics button: the page's frame
+    /// loop and keep-alive must stop with the page, playing or not.</summary>
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ClosingTheLyrics_StopsTheFrameLoopAndTheKeepAlive(bool stopPlaybackFirst)
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(2.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        Motion.FinishAll();
+        shell.ToggleLyricsCommand.Execute(null);
+        Motion.FinishAll();
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var keepAlive = page.FindControl<RenderKeepAlive>("KeepAlive")!;
+        void Frames(int n)
+        {
+            for (var i = 0; i < n; i++) { AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); }
+        }
+        Frames(3);
+        Assert.True(keepAlive.IsRunning && page.IsFrameLoopRunning);
+
+        if (stopPlaybackFirst) shell.Player.TogglePlayPauseCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);           // Now Playing's (or the page's) lyrics button
+        Motion.FinishAll();
+        Assert.False(page.IsVisible);
+        Assert.False(keepAlive.IsRunning);                 // at once with the page
+        Frames(2);
+        Assert.False(page.IsFrameLoopRunning);
+        Assert.False(keepAlive.IsRunning);
+        Assert.True(shell.IsNowPlayingOpen);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    private static readonly double LineLookaheadMs = 80 + Noctis.Helpers.LineMotion.HalfTravelMs;
+
+    /// <summary>Plain synced lines change only when a line starts: the view model says how far off
+    /// that is (from the last poll, without the frame clock), and that a shown line is stale after
+    /// a seek. Word-timed lyrics move every frame.</summary>
+    [AvaloniaFact]
+    public async Task PlainLines_SayWhenTheyNextChange_WordTimedOnesMoveEveryFrame()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = MobileLyricsAllocationTests.Lrc(gap: 5);   // lines at 1, 6, 11, ... s
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+        var lyrics = shell.Lyrics;
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(2000));
+        lyrics.OnFrame(LyricsPageViewModel.NowMs());
+        Assert.Equal(0, lyrics.ActiveLineIndex);
+        Assert.False(lyrics.AnimatesEveryFrame);
+        var expected = 6000 - 2000 - LineLookaheadMs;
+        Assert.InRange(lyrics.MsToNextChange(LyricsPageViewModel.NowMs()), expected - 250, expected + 1);
+
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(8000));   // a seek past line 1, no frame yet
+        Assert.Equal(0, lyrics.MsToNextChange(LyricsPageViewModel.NowMs()));
+        lyrics.OnFrame(LyricsPageViewModel.NowMs());
+        Assert.Equal(1, lyrics.ActiveLineIndex);
+        expected = 11000 - 8000 - LineLookaheadMs;
+        Assert.InRange(lyrics.MsToNextChange(LyricsPageViewModel.NowMs()), expected - 250, expected + 1);
+
+        files.Sidecars.Remove(".lrc");
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+        Assert.True(lyrics.AnimatesEveryFrame);
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>S23 11-22: the lyrics of an LRC song kept the render thread at 63% at 120 Hz, a frame
+    /// on every vsync for a line that changes every few seconds. Between plain lines the frame loop
+    /// and the keep-alive rest; a position poll wakes them <see cref="LyricsPage.WakeLeadMs"/> ahead
+    /// of the next line, so the screen is back at full rate before the line glides.</summary>
+    [AvaloniaFact]
+    public async Task PlainLines_TheFrameLoopRests_BetweenLineChanges_AndWakesBeforeTheNext()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".lrc"] = MobileLyricsAllocationTests.Lrc(gap: 5);   // lines at 1, 6, 11, ... s
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!shell.Lyrics.HasLyrics && DateTime.UtcNow < deadline) await Task.Delay(10);
+        var start = 6000 - LineLookaheadMs - 300;            // line 1 is 300 ms off
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(start));
+        shell.OpenNowPlayingCommand.Execute(null);
+        Motion.FinishAll();
+        shell.ToggleLyricsCommand.Execute(null);
+        Motion.FinishAll();
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var keepAlive = page.FindControl<RenderKeepAlive>("KeepAlive")!;
+
+        // Play 2.2 s in real time, polled four times a second as on the phone: line 1 starts and
+        // glides, then nothing moves until line 2 (at 11 s).
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var nextPoll = 0.0;
+        var ranBeforeTheLine = false;
+        var ranAfter = false;
+        while (clock.ElapsedMilliseconds < 2200)
+        {
+            var t = clock.Elapsed.TotalMilliseconds;
+            if (t >= nextPoll)
+            {
+                nextPoll = t + 250;
+                player.RaisePositionChanged(TimeSpan.FromMilliseconds(start + t));
+            }
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            if (shell.Lyrics.ActiveLineIndex == 0 && page.IsFrameLoopRunning && keepAlive.IsRunning) ranBeforeTheLine = true;
+            // The glide itself runs on the compositor: no UI frames for it.
+            if (shell.Lyrics.ActiveLineIndex == 1 && (page.IsFrameLoopRunning || page.IsGlidingOnCompositor)) ranAfter = true;
+            Thread.Sleep(8);
+        }
+        Assert.True(ranBeforeTheLine, "awake before line 1 started");
+        Assert.True(ranAfter, "line 1 glided in");
+        Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
+        Assert.False(page.IsFrameLoopRunning);                // resting: line 2 is ~2.5 s off
+        Assert.False(keepAlive.IsRunning);
+
+        // A poll inside the lead wakes both before line 2 starts.
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(11000 - LineLookaheadMs - 400));
+        Assert.True(page.IsFrameLoopRunning);
+        Assert.True(keepAlive.IsRunning);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(1, shell.Lyrics.ActiveLineIndex);
+
+        // A seek far ahead wakes it at once and the page follows.
+        player.RaisePositionChanged(TimeSpan.FromMilliseconds(21500));
+        Assert.True(page.IsFrameLoopRunning);
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal(4, shell.Lyrics.ActiveLineIndex);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>Home, task switch or screen off with the lyrics open and playing: the frame loop and
+    /// the render keep-alive stop (they kept the render loop ticking in the background: battery),
+    /// and start again when the app is back in front.</summary>
+    [AvaloniaFact]
+    public void PlayingLyrics_StopTheRenderLoop_WhileTheAppIsInTheBackground()
+    {
+        var (shell, player, files, root) = MakeShell();
+        files.Sidecars[".ttml"] = MobileLyricsViewModelTests.IssueTtml;
+        var (view, window) = Mount(shell);
+        shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(2.5));
+        shell.OpenNowPlayingCommand.Execute(null);
+        shell.ToggleLyricsCommand.Execute(null);
+        window.UpdateLayout();
+        var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+        var keepAlive = page.FindControl<RenderKeepAlive>("KeepAlive")!;
+        void Frames(Func<bool> until)
+        {
+            for (var i = 0; i < 5 && !until(); i++) { Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick(); Avalonia.Threading.Dispatcher.UIThread.RunJobs(); }
+        }
+        Frames(() => keepAlive.IsRunning);
+        Assert.True(keepAlive.IsRunning);
+
+        shell.IsSuspended = true;
+        Assert.False(keepAlive.IsRunning);                 // at once, not only at a next frame
+        Frames(() => false);
+        Assert.True(shell.Player.IsPlaying);
+        Assert.False(keepAlive.IsRunning);
+
+        shell.IsSuspended = false;
+        Frames(() => keepAlive.IsRunning);
+        Assert.True(keepAlive.IsRunning);
+
+        window.Close();
+        try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
     /// <summary>S23 11-14: the ⋯ menu stuttered only over the lyrics (every frame of its pop
     /// re-blurred each line under the dim). A menu over the page holds the lines still and draws the
     /// lyric column from a bitmap at the screen's scale; once its close pop has run (11-17: released
@@ -646,7 +891,7 @@ public class MobileLyricsPageTests
         Assert.Contains("lyric-line", line.Classes);
         foreach (var b in new[] { line, plain }) b.Transitions = null;   // transitions are frame-driven
         window.UpdateLayout();
-        var resting = line.RenderTransform?.Value ?? Matrix.Identity;   // 0.96 before the first line
+        var resting = line.RenderTransform?.Value ?? Matrix.Identity;   // none: its size is LineScale's
         var presenter = line.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
         presenter.Transitions = null;
         var plainPresenter = plain.GetVisualDescendants().OfType<ContentPresenter>().First(p => p.Name == "PART_ContentPresenter");
@@ -690,5 +935,42 @@ public class MobileLyricsPageTests
 
         window.Close();
         try { Directory.Delete(root, recursive: true); } catch { }
+    }
+
+    /// <summary>The diagnostic switches (debug.noctis.lyr.*, off by default) take their layer out
+    /// of the page: no line blur, no fade bands, no wash or Blurred Cover, no dither; off, all
+    /// are there.</summary>
+    [AvaloniaTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DiagnosticSwitches_TakeTheirLayersAway(bool on)
+    {
+        LyricsDiagnostics.NoLineBlur = LyricsDiagnostics.NoBands = LyricsDiagnostics.NoBackdrop = LyricsDiagnostics.NoDither = on;
+        try
+        {
+            var (shell, player, files, _) = MakeShell();
+            files.Sidecars[".lrc"] = string.Join('\n', Enumerable.Range(0, 20).Select(i => $"[00:{10 + i * 2:00}.00]line {i}"));
+            var (view, window) = Mount(shell);
+            shell.Player.PlayTracks(new[] { NewTrack() }, 0);
+            player.RaisePositionChanged(TimeSpan.FromSeconds(20.5));
+            shell.OpenNowPlayingCommand.Execute(null);
+            shell.ToggleLyricsCommand.Execute(null);
+            for (var i = 0; i < 3; i++)
+            {
+                Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+                window.UpdateLayout();
+            }
+            var page = view.GetLogicalDescendants().OfType<LyricsPage>().Single();
+            foreach (var name in new[] { "TopFade", "BottomFade", "Backdrop", "BlurCover", "WashDither" })
+                Assert.Equal(!on, page.FindControl<Control>(name)!.IsAttachedToVisualTree());
+            Assert.True(shell.Lyrics.ActiveLineIndex > 2);
+            var blurred = shell.Lyrics.Lines.Count(l => l.BlurRadius > 0);
+            Assert.Equal(!on, blurred > 0);
+            window.Close();
+        }
+        finally
+        {
+            LyricsDiagnostics.NoLineBlur = LyricsDiagnostics.NoBands = LyricsDiagnostics.NoBackdrop = LyricsDiagnostics.NoDither = false;
+        }
     }
 }

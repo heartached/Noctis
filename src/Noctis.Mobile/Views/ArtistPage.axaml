@@ -200,14 +200,14 @@
                     <StackPanel Name="ButtonRow" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="26" Margin="0,16,0,12">
                         <Button Name="ShuffleButton" Classes="round artist-round" Command="{Binding ShuffleCommand}" VerticalAlignment="Center"
                                 AutomationProperties.Name="{loc:T Mobile.Shuffle}">
-                            <PathIcon Data="{DynamicResource PhShuffle}" />
+                            <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" />
                         </Button>
                         <Button Name="PlayButton" Classes="round artist-round artist-play" Command="{Binding PlayCommand}" VerticalAlignment="Center"
                                 AutomationProperties.Name="{loc:T Mobile.Play}">
                             <!-- The desktop's play triangle sits 1.43 of its 24 right of the box's middle
                                  (its ink runs 5 to 21.86): moved back so the ink is dead centre (owner
                                  10-20: "center middle of the button"). Same for the stars' ink below. -->
-                            <PathIcon Name="PlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.79px, 0px)" />
+                            <PathIcon FlowDirection="LeftToRight" Name="PlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.79px, 0px)" />
                         </Button>
                         <Button Name="FavouriteButton" Classes="round artist-round" Command="{Binding ToggleFavouriteCommand}" VerticalAlignment="Center"
                                 AutomationProperties.Name="{loc:T Mobile.Favorite}">
@@ -263,7 +263,7 @@
                                             <Button Grid.Column="2" Name="CardPlay" Classes="round card-play" VerticalAlignment="Center"
                                                     Command="{Binding $parent[views:ArtistPage].((vm:ArtistPageViewModel)DataContext).PlayCardCommand}"
                                                     CommandParameter="{Binding}">
-                                                <PathIcon Name="CardPlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.07px, 0px)" />
+                                                <PathIcon FlowDirection="LeftToRight" Name="CardPlayGlyph" Data="{DynamicResource PhPlayFill}" RenderTransform="translate(-1.07px, 0px)" />
                                             </Button>
                                         </Grid>
                                     </Border>
@@ -278,27 +278,28 @@
                      cover, two buttons and the bars) used to be realised as the page opened, and
                      they were the largest part of its first layout; now the column on screen and
                      the one peeking in. VirtualizingStackPanel has no Spacing, so each column
-                     carries the gap as a right margin. -->
+                     carries the gap as a right margin. A column is built once and handed the next
+                     page (RowItemsControl), its rows handed that page's songs (WordItemsControl). -->
                 <StackPanel Name="TopSongsSection" Margin="0,22,0,0" IsVisible="{Binding HasTopSongs}">
                     <Button Name="TopSongsHeader" Classes="row artist-section" Command="{Binding OpenAllSongsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Mobile.Artist.TopSongs}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Name="TopSongScroll" Margin="0,4,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
                                   HorizontalSnapPointsType="MandatorySingle" HorizontalSnapPointsAlignment="Near">
-                        <ItemsControl Name="TopSongPages" ItemsSource="{Binding TopSongPages}" Margin="16,0,16,0">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="TopSongPages" ItemsSource="{Binding TopSongPages}" Margin="16,0,16,0">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
+                            </views:RowItemsControl.ItemsPanel>
+                            <views:RowItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:ArtistTopSongPage">
-                                    <ItemsControl ItemsSource="{Binding Rows}" Width="{Binding $parent[views:ArtistPage].TopSongPageWidth}"
+                                    <views:WordItemsControl ItemsSource="{Binding Rows}" Width="{Binding $parent[views:ArtistPage].TopSongPageWidth}"
                                                   Margin="{x:Static views:ArtistPage.ColumnMargin}" VerticalAlignment="Top">
-                                        <ItemsControl.ItemTemplate>
+                                        <views:WordItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="vm:ArtistTopSong">
                                                 <Button Classes="row"
                                                         Command="{Binding $parent[views:ArtistPage].((vm:ArtistPageViewModel)DataContext).PlayTopSongCommand}"
@@ -341,33 +342,34 @@
                                                     </Grid>
                                                 </Button>
                                             </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
+                                        </views:WordItemsControl.ItemTemplate>
+                                    </views:WordItemsControl>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemTemplate>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
 
                 <!-- Albums, Singles & EPs, Appears On: Apple's rails of covers with the year under
                      the name; › opens the whole set as a grid. Virtualised sideways (a prolific
-                     artist would otherwise realise every tile at page open); VirtualizingStackPanel
-                     has no Spacing, so each tile carries the gap as a right margin. -->
+                     artist would otherwise realise every tile at page open), each tile built once
+                     and handed the next release (RowItemsControl); VirtualizingStackPanel has no
+                     Spacing, so each tile carries the gap as a right margin. -->
                 <StackPanel Name="AlbumsSection" Margin="0,22,0,0" IsVisible="{Binding HasAlbums}">
                     <Button Name="AlbumsHeader" Classes="row artist-section" Command="{Binding OpenAlbumsCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Nav.Albums}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="AlbumRail" ItemsSource="{Binding Albums}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="AlbumRail" ItemsSource="{Binding Albums}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemsPanel>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
 
@@ -375,17 +377,17 @@
                     <Button Name="SinglesHeader" Classes="row artist-section" Command="{Binding OpenSinglesCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Mobile.Artist.SinglesEps}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="SingleRail" ItemsSource="{Binding Singles}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="SingleRail" ItemsSource="{Binding Singles}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemsPanel>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
 
@@ -393,17 +395,17 @@
                     <Button Name="AppearsOnHeader" Classes="row artist-section" Command="{Binding OpenAppearsOnCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="2">
                             <TextBlock Text="{loc:T Mobile.Artist.AppearsOn}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" />
                         </StackPanel>
                     </Button>
                     <ScrollViewer Margin="0,6,0,0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
-                        <ItemsControl Name="AppearsOnRail" ItemsSource="{Binding AppearsOn}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
-                            <ItemsControl.ItemsPanel>
+                        <views:RowItemsControl Name="AppearsOnRail" ItemsSource="{Binding AppearsOn}" Margin="20,0,8,0" ItemTemplate="{StaticResource ArtistRailTile}">
+                            <views:RowItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <VirtualizingStackPanel Orientation="Horizontal" />
                                 </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
+                            </views:RowItemsControl.ItemsPanel>
+                        </views:RowItemsControl>
                     </ScrollViewer>
                 </StackPanel>
             </StackPanel>
@@ -418,7 +420,7 @@
         <Grid Name="TopBar" VerticalAlignment="Top" ColumnDefinitions="Auto,*,Auto" Margin="16,6,16,0">
             <controls:GlassPanel Classes="header-glass">
                 <Button Name="BackButton" Classes="glass-round" Command="{Binding Shell.NavigateBackCommand}">
-                    <PathIcon Data="{DynamicResource PhBack}" />
+                    <PathIcon Classes="dir" Data="{DynamicResource PhBack}" />
                 </Button>
             </controls:GlassPanel>
             <TextBlock Grid.Column="1" Name="SmallTitle" Text="{Binding Name}" FontSize="17" FontWeight="SemiBold"

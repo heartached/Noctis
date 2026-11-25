@@ -35,6 +35,19 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Saved scroll offset for restoring position after navigation.</summary>
     public double SavedScrollOffset { get; set; }
 
+    /// <summary>The song the page was opened for (the playing song's title in the island,
+    /// View Album on a song): the page glides it into view and washes it once. Taken by the
+    /// view on first show, so Back to this page restores its scroll instead.</summary>
+    public Guid? RevealTrackId { get; set; }
+
+    /// <summary>Returns <see cref="RevealTrackId"/> and clears it.</summary>
+    public Guid? TakeRevealTrackId()
+    {
+        var id = RevealTrackId;
+        RevealTrackId = null;
+        return id;
+    }
+
     [ObservableProperty] private Album _album;
     [ObservableProperty] private Bitmap? _albumArt;
 
@@ -96,6 +109,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     /// <summary>Settings → Album Page → Tint whole page: the tint also runs under Other
     /// Versions / More By; true without a settings VM.</summary>
     public bool TintWholePage => _settings?.AlbumPageTintWholePage ?? AppSettings.AlbumPageTintWholePageDefault;
+
+    /// <summary>Settings › Show Star Ratings (Discord 11-24, Halil): the track rows' stars; true without a settings VM.</summary>
+    public bool ShowStarRatings => _settings?.ShowStarRatings ?? true;
     [ObservableProperty] private bool _isLightTint;
 
     /// <summary>Whether the tint runs under the floating player island right now (set by the
@@ -114,6 +130,9 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     [ObservableProperty] private IBrush _tintButtonBorder = Brushes.Transparent;
     [ObservableProperty] private IBrush _tintIconBrush = Brushes.White;
     [ObservableProperty] private IBrush _tintHeartBrush = new SolidColorBrush(AlbumTintPalette.HeartRed);
+    /// <summary>The header's artist links on a tint: the accent, moved lighter or darker until
+    /// it reads on the page (AlbumTintPalette.HeaderColours.Link).</summary>
+    [ObservableProperty] private IBrush _tintLinkBrush = Brushes.White;
     [ObservableProperty] private Guid? _currentPlayingTrackId;
     [ObservableProperty] private bool _isPlayerPlaying;
     [ObservableProperty] private string _albumDescription = string.Empty;
@@ -335,6 +354,8 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
                     Dispatcher.UIThread.Post(ReapplyTint);
                 else if (e.PropertyName == nameof(SettingsViewModel.AlbumPageTintWholePage))
                     Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(TintWholePage)));
+                else if (e.PropertyName == nameof(SettingsViewModel.ShowStarRatings))
+                    Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(ShowStarRatings)));
             };
             _settings.PropertyChanged += _settingsPropertyChangedHandler;
             // A theme switch flips the untinted page text between the variants' colours.
@@ -629,6 +650,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         TintButtonBorder = new SolidColorBrush(c.Border);
         TintIconBrush = new SolidColorBrush(c.Icon);
         TintHeartBrush = new SolidColorBrush(c.Heart);
+        TintLinkBrush = new SolidColorBrush(c.Link);
     }
 
     private void BuildRelatedSections()
@@ -788,14 +810,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         if (Tracks.Count == 0) return;
         var tracks = InAlbumOrder(Tracks);
         DebugLogger.Info(DebugLogger.Category.Queue, "Album.Play", $"tracks={tracks.Count}, startIdx=0");
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.WithSource(PlaySource.ForAlbum(Album)).PlayAll(tracks);
     }
 
     [RelayCommand]
     private void ShufflePlay()
     {
         if (Tracks.Count == 0) return;
-        _player.PlayShuffled(InAlbumOrder(Tracks));
+        _player.WithSource(PlaySource.ForAlbum(Album)).PlayShuffled(InAlbumOrder(Tracks));
     }
 
     [RelayCommand]
@@ -805,7 +827,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         var idx = tracks.FindIndex(t => t.Id == track.Id);
         if (idx < 0) idx = 0;
         DebugLogger.Info(DebugLogger.Category.Queue, "Album.PlayFrom", $"tracks={tracks.Count}, startIdx={idx}, track={track.Title}");
-        _player.ReplaceQueueAndPlay(tracks, idx);
+        _player.WithSource(PlaySource.ForAlbum(Album)).ReplaceQueueAndPlay(tracks, idx);
     }
 
     /// <summary>Navigates to a related album shown in Other Versions / More By Artist.</summary>
@@ -1103,6 +1125,24 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(IsAlbumFavorited));
     }
 
+    /// <summary>The row heart (Settings › Album page › Heart on every song; Discord 11-24,
+    /// sina): this song only, never the Ctrl-selection. Synchronous like the playlist row
+    /// heart: an async command would disable every row's heart while the save runs.</summary>
+    [RelayCommand]
+    private void ToggleFavoriteSingle(Track track)
+    {
+        if (track == null) return;
+        track.IsFavorite = !track.IsFavorite;
+        OnPropertyChanged(nameof(IsAlbumFavorited));
+        _ = PersistFavoriteChangeAsync(track);
+    }
+
+    private async Task PersistFavoriteChangeAsync(Track track)
+    {
+        await _library.SaveTrackUserStateAsync(new[] { track });
+        _library.NotifyFavoritesChanged(new[] { track });
+    }
+
     [RelayCommand]
     private async Task ToggleAlbumFavorites()
     {
@@ -1219,7 +1259,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void PlayRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(InAlbumOrder(album.EditionTracks), 0);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(InAlbumOrder(album.EditionTracks));
     }
 
     /// <summary>Related tile hover button: Pause/resume when this album is the loaded one,
@@ -1236,7 +1276,7 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
     private void ShuffleRelatedAlbum(Album? album)
     {
         if (album == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(InAlbumOrder(album.EditionTracks));
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(InAlbumOrder(album.EditionTracks));
     }
 
     [RelayCommand]

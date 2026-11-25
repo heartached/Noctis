@@ -110,7 +110,7 @@ public class MobileListSortMemoryTests
             s.MobileListSorts["Nav.Favorites"] = "Title";
             await p.SaveSettingsAsync(s);
         });
-        var root = rig.Shell.FavoritesRoot;   // the shell view binds it before InitializeAsync runs
+        var root = rig.Shell.FavoritesRoot!;   // the shell view binds it before InitializeAsync runs
         Assert.False(root.IsSorted);
         await rig.Shell.InitializeAsync();
         Assert.Equal(SongSort.Title, root.Sort);
@@ -152,7 +152,7 @@ public class MobileListSortMemoryTests
         var back = Assert.IsType<PlaylistListPageViewModel>(rig.Shell.CurrentPage);
         Assert.Equal(PlaylistSort.RecentlyUpdated, back.Sort);
         Assert.Equal(new[] { "Two", "One" }, back.Playlists.Select(p => p.Name));
-        Assert.Equal(PlaylistSort.RecentlyUpdated, rig.Shell.PlaylistsRoot.Sort);   // the tab's list agrees
+        Assert.Equal(PlaylistSort.RecentlyUpdated, rig.Shell.PlaylistsRoot!.Sort);   // the tab's list agrees
         await rig.Shell.PendingListSortSave;
         Assert.Equal("RecentlyUpdated", (await rig.Persistence.LoadSettingsAsync()).MobileListSorts[PlaylistListPageViewModel.SortKey]);
     }

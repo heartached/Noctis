@@ -83,6 +83,8 @@ public partial class LyricsView : UserControl
     {
         InitializeComponent();
 
+        RightPanel.SizeChanged += (_, _) => UpdateFollowPillMargin();
+
         // Detect manual scroll via mouse wheel to pause auto-follow
         if (LyricsScrollViewer != null)
         {
@@ -348,6 +350,20 @@ public partial class LyricsView : UserControl
     /// content when the centred layout or the queue changes without a resize.</summary>
     private Size _layoutSize;
 
+    /// <summary>The Follow pill sits 30px above the page's bottom edge as seen. The wide-mode
+    /// 1.1x zoom scales RightPanel from its top-left corner, so a plain 30px margin ended up
+    /// 10% of the panel's height below the window (the pill was never visible): solve
+    /// 1.1 × (height − margin) = height − 30 for the margin while zoomed.</summary>
+    private void UpdateFollowPillMargin()
+    {
+        const double gap = 30, zoom = 1.1;
+        var height = RightPanel.Bounds.Height;
+        var bottom = RightPanel.RenderTransform != null && height > 0
+            ? ((zoom - 1) * height + gap) / zoom
+            : gap;
+        FollowButton.Margin = new Thickness(0, 0, 0, bottom);
+    }
+
     private void ApplyContentSizing(double width, double height)
     {
         if (width <= 0 || height <= 0) return;
@@ -389,6 +405,7 @@ public partial class LyricsView : UserControl
             LyricsItemsControl.MaxWidth = Math.Clamp(width / 2 - 120, 280, 620);
             RightPanel.RenderTransform = Avalonia.Media.Transformation.TransformOperations.Parse("scale(1.1, 1.1)");
         }
+        UpdateFollowPillMargin();
 
         LeftContentStack.Width = stackWidth;
 
@@ -1387,17 +1404,22 @@ public partial class LyricsView : UserControl
 
         vm.IsAutoFollowPaused = true;
 
-        // Auto-resume after 5 seconds
+        // Auto-resume after 5 seconds, unless Settings › Lyrics Page › "Return to the current
+        // line automatically" is off: then only the Follow pill (or a seek) resumes.
         CancelAutoFollowResumeTimer();
+        if (!vm.AutoReturnToCurrentLine) return;
         _autoFollowResumeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _autoFollowResumeTimer.Tick += (_, _) =>
         {
             CancelAutoFollowResumeTimer();
-            if (DataContext is LyricsViewModel v)
+            if (DataContext is LyricsViewModel { AutoReturnToCurrentLine: true } v)
                 v.IsAutoFollowPaused = false;
         };
         _autoFollowResumeTimer.Start();
     }
+
+    /// <summary>Whether a scrolled-away view will return to the sung line by itself (tests).</summary>
+    internal static bool AutoFollowResumePending(LyricsView view) => view._autoFollowResumeTimer != null;
 
     // ── Center-anchored lyrics padding ──
 

@@ -34,6 +34,9 @@ public sealed partial class AccountPageViewModel : MobilePage
     private bool _ownSyncEndPending;
     private bool _downloadRunning;
     private NoctisDownloadProgress? _lastDownload;
+    private DownloadActivity? _downloads;
+    /// <summary>DownloadText says what songs wait for (RefreshDownloads).</summary>
+    private bool _showsWaiting;
     private CancellationTokenSource? _uploadCts;
 
     public AccountPageViewModel(ShellViewModel shell, INoctisAccountService account)
@@ -45,6 +48,15 @@ public sealed partial class AccountPageViewModel : MobilePage
         _account.SyncProgress += OnSyncProgress;
         _account.DownloadProgress += OnDownloadProgress;
         _account.UploadProgress += OnUploadProgress;
+        // Opened while an album's download runs: its counts from the start, not from the next
+        // song to land (a big FLAC left the row blank, and Download Everything on offer, for minutes).
+        if (shell.Downloads?.Last is { Pending: > 0 } running) _lastDownload = running;
+        // Songs found waiting for the computer once the start's sync gives up, with the page open.
+        if (shell.Downloads is { } downloads)
+        {
+            _downloads = downloads;
+            downloads.Changed += OnDownloadsChanged;
+        }
         Refresh();
         // Signed out by the sync at app start (which only logs): say why the form is back.
         if (!IsSignedIn && _account.WasSignedOutByComputer) SetError(Describe(NoctisErrorKind.SignedOut, signedIn: false));
@@ -166,7 +178,9 @@ public sealed partial class AccountPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(SignOutQuestion))]
     private string _computerName = string.Empty;
 
-    /// <summary>The Remote row's grey line: "Play, pause and skip on Studio PC".</summary>
+    /// <summary>The Remote row's grey line: "Play and skip on Studio PC. Main account only." Said
+    /// before the first try: only the computer's main account may drive its player, and a phone
+    /// signed in with another one learned that only from the Remote page's refusal.</summary>
     [ObservableProperty] private string _remoteHint = string.Empty;
 
     /// <summary>The sign-out card's question: "Sign out of Studio PC?".</summary>
@@ -237,6 +251,14 @@ public sealed partial class AccountPageViewModel : MobilePage
 
     /// <summary>The Downloaded row's value: "12 songs · 340 MB".</summary>
     [ObservableProperty] private string _storageValue = string.Empty;
+
+    /// <summary>Downloads whose song the computer no longer has (INoctisAccountService.IsNotOnComputer):
+    /// the row under Downloaded, hidden with none; it opens their list.</summary>
+    [ObservableProperty] private bool _hasNotOnComputer;
+
+    /// <summary>That row's value, "3 songs · 40 MB", and its spoken name.</summary>
+    [ObservableProperty] private string _notOnComputerValue = string.Empty;
+    [ObservableProperty] private string _notOnComputerText = string.Empty;
 
     [ObservableProperty] private bool _isConfirmingSignOut;
     [ObservableProperty] private bool _alsoRemoveDownloads;
@@ -428,7 +450,10 @@ public sealed partial class AccountPageViewModel : MobilePage
         var finished = false;
         try
         {
-            await _account.DownloadAllAsync();
+            // As one start, so album pages and the notification follow it too.
+            await (Shell.Downloads is { } downloads && ReferenceEquals(Shell.Account, _account)
+                ? downloads.RunAsync(null, Shell.Library.Service.Tracks, () => _account.DownloadAllAsync())
+                : _account.DownloadAllAsync());
             finished = true;
         }
         catch (Exception ex)
@@ -513,6 +538,19 @@ public sealed partial class AccountPageViewModel : MobilePage
             cancelled: () => IsConfirmingRemoveDownloads = false));
     }
 
+    /// <summary>The No longer on your computer row: those songs in a list, each with Remove, and
+    /// Remove All (asked first). They play from there as anywhere else.</summary>
+    [RelayCommand]
+    private void OpenNotOnComputer()
+    {
+        var account = _account;
+        Shell.Navigate(new SongListPageViewModel(Shell, "Mobile.Account.NotOnComputer", () => account.NotOnComputerTracks)
+        {
+            OffersDownloadedFilter = false,
+            RemoveSongs = account.RemoveDownloadsAsync,
+        });
+    }
+
     [RelayCommand]
     private void CancelRemoveDownloads()
     {
@@ -549,7 +587,8 @@ public sealed partial class AccountPageViewModel : MobilePage
                 AlsoRemoveDownloads = true;
                 return ConfirmSignOutCommand.ExecuteAsync(null);
             }, isDestructive: true));
-        Ask(new PromptViewModel(Shell, SignOutQuestion, Loc.T("Mobile.Account.SignOutDetail"),
+        // Kept downloads keep their songs (they play on, no longer on a computer).
+        Ask(new PromptViewModel(Shell, SignOutQuestion, Loc.T(HasDownloads ? "Mobile.Account.SignOutDetailKeep" : "Mobile.Account.SignOutDetail"),
             actions, cancelled: () => IsConfirmingSignOut = false));
     }
 
@@ -646,6 +685,9 @@ public sealed partial class AccountPageViewModel : MobilePage
         RefreshDownloads();
     });
 
+    /// <summary>UI thread (DownloadActivity.Changed).</summary>
+    private void OnDownloadsChanged(object? sender, EventArgs e) => RefreshDownloads();
+
     private void OnUploadProgress(object? sender, NoctisUploadProgress progress) => _marshal(() =>
     {
         // The send's last report is posted before its task completes, but the page's await
@@ -670,7 +712,7 @@ public sealed partial class AccountPageViewModel : MobilePage
             ? account.UserName : string.Empty;
         ServerText = account == null ? string.Empty : Loc.T("Mobile.Account.OnServer", ServerLabel(account));
         ComputerName = account == null ? string.Empty : ServerLabel(account);
-        RemoteHint = account == null ? string.Empty : Loc.T("Mobile.Remote.Hint", ServerLabel(account));
+        RemoteHint = account == null ? string.Empty : Loc.T("Mobile.Remote.HintMain", ServerLabel(account));
         Initials = InitialsOf(shownName);
         AvatarPath = IsSignedIn ? _account.AvatarPath : null;
         RefreshSyncTime();
@@ -696,17 +738,38 @@ public sealed partial class AccountPageViewModel : MobilePage
         StorageValue = $"{Loc.Plural("Mobile.Count.Songs", _account.DownloadedCount)} · {FormatBytes(_account.DownloadedBytes)}";
         StorageText = Loc.T("Mobile.Account.DownloadedStorage", StorageValue);
         HasDownloads = _account.DownloadedCount > 0;
+        var notOnComputer = _account.NotOnComputerTracks.Count;
+        HasNotOnComputer = notOnComputer > 0;
+        NotOnComputerValue = HasNotOnComputer
+            ? $"{Loc.Plural("Mobile.Count.Songs", notOnComputer)} · {FormatBytes(_account.NotOnComputerBytes)}"
+            : string.Empty;
+        NotOnComputerText = Loc.T("Mobile.Account.NotOnComputerStorage", NotOnComputerValue);
         var pending = _lastDownload is { Pending: > 0 };
         IsDownloading = _downloadRunning || pending;
         IsDownloadCounted = pending;
-        DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Completed / (double)(d.Completed + d.Pending) : 0;
+        DownloadFraction = _lastDownload is { Pending: > 0 } d ? d.Handled / (double)d.Total : 0;
+        // Songs left waiting are not finished: the page says what they wait for, as the card does,
+        // also for the ones found waiting at start (nothing on the page said so before).
+        var showedWaiting = _showsWaiting;
+        _showsWaiting = false;
+        if (!IsDownloading)
+        {
+            var waiting = _lastDownload is { Waiting: > 0 } w
+                ? Loc.T(w.WaitsForWifi ? "Mobile.Download.WaitingForWifi" : "Mobile.Download.WaitingForComputer") + DownloadActivity.FailureParts(w)
+                : Shell.Downloads?.WaitingText;
+            if (waiting != null)
+            {
+                DownloadText = waiting;
+                _showsWaiting = true;
+                return;
+            }
+            // No longer waiting (signed out, called off) with no report to show instead.
+            if (showedWaiting && _lastDownload == null) DownloadText = string.Empty;
+        }
         if (_lastDownload is not { } p) return;
-        // Songs whose file is gone from the computer are told apart: a retry cannot fetch them.
-        var otherFailures = p.Failed - p.Missing;
-        var failed = (p.Missing > 0 ? " · " + Loc.T("Mobile.Account.MissingOnComputer", p.Missing) : string.Empty)
-                     + (otherFailures > 0 ? " · " + Loc.T("Mobile.Account.Failed", otherFailures) : string.Empty);
+        var failed = DownloadActivity.FailureParts(p);
         DownloadText = pending
-            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Completed + p.Pending, failed)
+            ? Loc.T("Mobile.Account.Downloading", p.Completed, p.Total, failed)
             : _downloadRunning ? DownloadText : Loc.T("Mobile.Account.DownloadsFinished", failed);
     }
 
@@ -721,6 +784,7 @@ public sealed partial class AccountPageViewModel : MobilePage
         _account.SyncProgress -= OnSyncProgress;
         _account.DownloadProgress -= OnDownloadProgress;
         _account.UploadProgress -= OnUploadProgress;
+        if (_downloads != null) _downloads.Changed -= OnDownloadsChanged;
         Password = string.Empty;
     }
 

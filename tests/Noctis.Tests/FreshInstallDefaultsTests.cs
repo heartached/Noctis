@@ -34,6 +34,9 @@ public class FreshInstallDefaultsTests
         // end does — opt-in.
         Assert.False(Fresh.KeepPlayedInQueue);
 
+        // Keep Shuffle On (Discord 11-23): a new list turning Shuffle off stays the default.
+        Assert.False(Fresh.KeepShuffleOn);
+
         // Taskbar progress (GitHub #53) changes what the Windows taskbar shows — opt-in.
         Assert.False(Fresh.TaskbarProgressEnabled);
     }

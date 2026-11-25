@@ -275,7 +275,7 @@ public class MobilePlaylistEditingTests
             await prompt.SubmitCommand.ExecuteAsync(null);
             Assert.False(rig.Shell.IsPromptOpen);
             Assert.Equal("Road Trip", Assert.Single(await rig.Persistence.LoadPlaylistsAsync()).Name);
-            Assert.Equal(new[] { "Road Trip" }, rig.Shell.PlaylistsRoot.Rows.Select(r => r.Name));
+            Assert.Equal(new[] { "Road Trip" }, rig.Shell.PlaylistsRoot!.Rows.Select(r => r.Name));
         }
         finally
         {

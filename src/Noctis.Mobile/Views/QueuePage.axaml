@@ -326,7 +326,9 @@
                                         <DataTemplate x:DataType="vm:QueueHistoryItem">
                                             <Button Classes="row history-row" Height="56"
                                                     Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Player.PlayFromHistoryCommand}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Track.Title}">
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="{Binding Track.Title}"
+                                                    views:LongPress.Command="{Binding $parent[views:QueuePage].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                                    views:LongPress.CommandParameter="{Binding Track}">
                                                 <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,0,6,0">
                                                     <Border Classes="art" Width="44" Height="44" CornerRadius="6" Opacity="0.55">
                                                         <Panel>
@@ -340,7 +342,8 @@
                                                     </StackPanel>
                                                     <Border Grid.Column="2" Name="DragHandle" Width="44" Background="Transparent"
                                                             PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
-                                                            PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
+                                                            PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost"
+                                                            Holding="OnHandleHolding">
                                                         <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
                                                                   Foreground="{DynamicResource QueueSubtleText}" />
                                                     </Border>
@@ -384,10 +387,12 @@
                                 </views:RowItemsControl.ItemsPanel>
                                 <views:RowItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="models:Track">
-                                        <!-- Transparent background: the whole row must hit-test for the swipe. -->
+                                        <!-- Transparent background: the whole row must hit-test for the swipe.
+                                             A long press opens the song's menu, as on every song row. -->
                                         <Border Classes="queue-row" Height="68" Background="Transparent"
                                                 PointerPressed="OnRowPressed" PointerMoved="OnRowMoved"
-                                                PointerReleased="OnRowReleased" PointerCaptureLost="OnRowCaptureLost">
+                                                PointerReleased="OnRowReleased" PointerCaptureLost="OnRowCaptureLost"
+                                                views:LongPress.Command="{Binding $parent[views:QueuePage].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}">
                                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="20,0,6,0">
                                                 <Border Classes="art" Width="52" Height="52" CornerRadius="6">
                                                     <Panel>
@@ -408,7 +413,8 @@
                                                 </StackPanel>
                                                 <Border Grid.Column="2" Name="DragHandle" Width="44" Background="Transparent"
                                                         PointerPressed="OnHandlePressed" PointerMoved="OnHandleMoved"
-                                                        PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost">
+                                                        PointerReleased="OnHandleReleased" PointerCaptureLost="OnHandleCaptureLost"
+                                                        Holding="OnHandleHolding">
                                                     <PathIcon Data="{DynamicResource QueueReorderIcon}" Width="24" Height="24"
                                                               Foreground="{DynamicResource QueueSubtleText}" />
                                                 </Border>

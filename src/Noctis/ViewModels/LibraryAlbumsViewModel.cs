@@ -324,9 +324,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     public bool IsGridView => !IsCarouselView;
 
     /// <summary>GitHub #213: the grid as Masonry (Settings › Albums "Masonry Album Grid" or the
-    /// View menu). An artist page that interleaves its Songs section keeps the row grid: the
-    /// masonry panel lays out album cards only.</summary>
-    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry && !_rowsHaveSections;
+    /// View menu). A genre page keeps its Songs section on top, above the Masonry cards
+    /// (<see cref="MasonrySectionRows"/>, GitHub #259).</summary>
+    public bool IsMasonryView => IsGridView && _settings.AlbumGridMasonry;
 
     /// <summary>GitHub #218: Settings › Appearance "Album Hover Zoom".</summary>
     public bool IsHoverZoom => _settings.AlbumHoverZoom;
@@ -334,8 +334,9 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     /// <summary>The row grid (the ListBox of album rows) is up.</summary>
     public bool IsRowGridView => IsGridView && !IsMasonryView;
 
-    /// <summary>The current rows carry an artist page's section headers / song rows.</summary>
-    private bool _rowsHaveSections;
+    /// <summary>The rows above the albums on a genre (or artist) page: the Songs header, its
+    /// song rows and the "Albums" header, which Masonry shows above its cards (GitHub #259).</summary>
+    public IReadOnlyList<object> MasonrySectionRows { get; private set; } = Array.Empty<object>();
 
     /// <summary>View menu: Masonry on/off (the same setting Settings shows).</summary>
     [RelayCommand]
@@ -383,12 +384,12 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         CarouselAlbums = FilteredAlbumRows.OfType<AlbumRow>().SelectMany(r => r.Albums).ToList();
         OnPropertyChanged(nameof(CarouselAlbums));
-        var sections = FilteredAlbumRows.Any(r => r is not AlbumRow);
-        if (sections != _rowsHaveSections)
+        // Section rows lead the list (ComposeArtistRows): header, song rows, "Albums".
+        var sections = FilteredAlbumRows.TakeWhile(r => r is not AlbumRow).ToList();
+        if (!sections.SequenceEqual(MasonrySectionRows))
         {
-            _rowsHaveSections = sections;
-            OnPropertyChanged(nameof(IsMasonryView));
-            OnPropertyChanged(nameof(IsRowGridView));
+            MasonrySectionRows = sections;
+            OnPropertyChanged(nameof(MasonrySectionRows));
         }
     }
 
@@ -1247,7 +1248,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     private void PlayAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(album.EditionTracks, 0);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(album.EditionTracks);
     }
 
     /// <summary>Tile hover button: Pause/resume when this album is the loaded one, else
@@ -1259,15 +1260,22 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         if (album.IsCurrent) { _player.PlayPauseCommand.Execute(null); return; }
         var ordered = Helpers.AlbumTile.EditionOrder(album);
         if (ordered.Count == 0) return;
-        _player.ReplaceQueueAndPlay(ordered, 0);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(ordered);
     }
 
     [RelayCommand]
     private void ShuffleAlbum(Album album)
     {
         if (album == null || album.Tracks == null || album.Tracks.Count == 0) return;
-        _player.PlayShuffled(album.EditionTracks);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayShuffled(album.EditionTracks);
     }
+
+    /// <summary>"Playing from …" (Discord 11-24, sina): the genre or artist this grid is narrowed
+    /// to, else the Albums page.</summary>
+    private PlaySource GridPlaySource =>
+        GenreFilterName.Length > 0 ? PlaySource.ForGenre(GenreFilterName)
+        : ArtistFilterName.Length > 0 ? PlaySource.ForArtist(ArtistFilterName)
+        : PlaySource.Section(PlaySourceKind.Albums);
 
     /// <summary>Plays all tracks from the current filtered artist view in order.</summary>
     [RelayCommand]
@@ -1275,7 +1283,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var allTracks = GetAllFilteredTracks();
         if (allTracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(allTracks, 0);
+        _player.WithSource(GridPlaySource).PlayAll(allTracks);
     }
 
     /// <summary>Shuffles and plays all tracks from the current filtered artist view.</summary>
@@ -1284,7 +1292,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var allTracks = GetAllFilteredTracks();
         if (allTracks.Count == 0) return;
-        _player.PlayShuffled(allTracks);
+        _player.WithSource(GridPlaySource).PlayShuffled(allTracks);
     }
 
     /// <summary>
@@ -1333,7 +1341,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
         var songs = GetArtistSongsInOrder();
         if (songs.Count == 0) return;
         var index = songs.IndexOf(track);
-        _player.ReplaceQueueAndPlay(songs, index < 0 ? 0 : index);
+        _player.WithSource(GridPlaySource).ReplaceQueueAndPlay(songs, index < 0 ? 0 : index);
     }
 
     [RelayCommand]
@@ -1341,7 +1349,7 @@ public partial class LibraryAlbumsViewModel : ViewModelBase, ISearchable, IDispo
     {
         var songs = GetArtistSongsInOrder();
         if (songs.Count == 0) return;
-        _player.PlayShuffled(songs);
+        _player.WithSource(GridPlaySource).PlayShuffled(songs);
     }
 
     [RelayCommand]

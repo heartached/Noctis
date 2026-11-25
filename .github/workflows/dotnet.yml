@@ -408,6 +408,9 @@ jobs:
           # AppImage is self-contained. The runner's Ubuntu release sets the
           # AppImage's glibc floor: 22.04 = 2.35 (checked below, GitHub #192);
           # older distros keep the tarball + system VLC path.
+          # Refresh the package lists first: the runner image's copy goes stale and asks
+          # for .debs the mirror has already replaced (v1.7.2 CI: libssh-gcrypt-4 404).
+          sudo apt-get update
           sudo apt-get install -y --no-install-recommends libvlc5 libvlccore9 vlc-plugin-base vlc-data
           LIBDIR=/usr/lib/x86_64-linux-gnu
           cp -a "$LIBDIR"/libvlc.so.5* "$LIBDIR"/libvlccore.so.9* "$APPDIR/usr/lib/"

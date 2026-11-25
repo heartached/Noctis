@@ -2732,6 +2732,17 @@
                                 <TextBlock Text="{Binding LyricsMenuLabel}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+                        <!-- Full Artwork: jumps to the tall artwork card, so lyrics can be hidden without
+                             losing the full-height cover (Hide Lyrics returns to the form it came from). -->
+                        <Button Classes="mini-menu-item" Command="{Binding ShowFullArtworkCommand}"
+                                IsVisible="{Binding ShowFullArtworkMenuItem}"
+                                AutomationProperties.Name="{loc:T MiniPlayer.FullArtwork}"
+                                Click="OnMenuItemClick">
+                            <StackPanel Orientation="Horizontal" Spacing="11">
+                                <controls:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineImage}"/>
+                                <TextBlock Text="{loc:T MiniPlayer.FullArtwork}" Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                         <!-- EQ on/off (GitHub #94): the Settings → Audio master switch, reachable
                              from every form that has this menu. Accent glyph + "On" while enabled. -->
                         <Button Classes="mini-menu-item" Command="{Binding Settings.ToggleEqualizerCommand}"

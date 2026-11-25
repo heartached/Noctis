@@ -26,6 +26,21 @@ public enum LyricsPreferredType
     Plain,
 }
 
+/// <summary>The lyrics files Lyrics Studio saves for word-timed lyrics (owner 11-24: "choose LRC or ELRC
+/// instead of saving both").</summary>
+public enum LyricsStudioFiles
+{
+    /// <summary>The .elrc with the word timings and a line-timed .lrc beside it, for players that only read LRC
+    /// (the behaviour before the choice).</summary>
+    ElrcAndLrc,
+
+    /// <summary>Only the .elrc; an old .lrc beside the song is removed.</summary>
+    ElrcOnly,
+
+    /// <summary>Only a line-timed .lrc (the word timings are not saved); an old .elrc is removed.</summary>
+    LrcOnly,
+}
+
 /// <summary>Parsing for the string-valued lyrics save settings in <see cref="AppSettings"/>.</summary>
 public static class LyricsSaveOptions
 {
@@ -38,6 +53,11 @@ public static class LyricsSaveOptions
     public static LyricsPreferredType ParsePreferredType(string? value) =>
         Enum.TryParse<LyricsPreferredType>(value, ignoreCase: true, out var type) && Enum.IsDefined(type)
             ? type : LyricsPreferredType.WordSynced;
+
+    /// <summary>The stored setting as a choice; anything unknown is the default, <see cref="LyricsStudioFiles.ElrcAndLrc"/>.</summary>
+    public static LyricsStudioFiles ParseStudioFiles(string? value) =>
+        Enum.TryParse<LyricsStudioFiles>(value, ignoreCase: true, out var files) && Enum.IsDefined(files)
+            ? files : LyricsStudioFiles.ElrcAndLrc;
 
     /// <summary>Lyrics files are written for this target.</summary>
     public static bool WritesSidecars(this LyricsSaveTarget target) => target != LyricsSaveTarget.Embedded;

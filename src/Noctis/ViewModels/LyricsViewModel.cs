@@ -659,6 +659,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isAutoFollowPaused;
 
+    /// <summary>Settings › Lyrics Page › "Return to the current line automatically": a
+    /// scrolled-away view follows the sung line again after a few seconds (on, the default),
+    /// or stays put until Follow is pressed (off). Set by the app from the settings.</summary>
+    public bool AutoReturnToCurrentLine { get; set; } = true;
+
     /// <summary>Name of the lyrics source currently displayed (e.g. "LRCLIB", "NetEase", "Local").</summary>
     [ObservableProperty]
     private string _lyricsSourceName = string.Empty;
@@ -1269,6 +1274,33 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
     /// <summary>Sets the action to navigate to the current track's album.</summary>
     public void SetViewAlbumAction(Action<Track> action) => _viewAlbumAction = action;
 
+    private Action<string>? _openGenreAction;
+
+    /// <summary>Sets the action to open a genre's page (the facts line's genre links).</summary>
+    public void SetOpenGenreAction(Action<string> action) => _openGenreAction = action;
+
+    /// <summary>The facts line's genres, one link each, like the album page's (11-23 feedback:
+    /// the genre was plain text here).</summary>
+    [ObservableProperty] private IReadOnlyList<ArtistTokenItem> _genreTokens = Array.Empty<ArtistTokenItem>();
+
+    [ObservableProperty] private bool _hasGenreTokens;
+
+    /// <summary>True when the facts line has a year or a track count after the genres.</summary>
+    [ObservableProperty] private bool _hasHeaderFacts;
+
+    [RelayCommand]
+    private void OpenGenre(string? genre)
+    {
+        if (!string.IsNullOrWhiteSpace(genre))
+            _openGenreAction?.Invoke(genre);
+    }
+
+    internal static ArtistTokenItem[] BuildGenreTokens(string? genre)
+    {
+        var genres = Track.SplitGenres(genre);
+        return genres.Select((g, i) => new ArtistTokenItem(g, i == genres.Length - 1, " · ")).ToArray();
+    }
+
     [RelayCommand]
     private void ViewArtist()
     {
@@ -1306,6 +1338,11 @@ public partial class LyricsViewModel : ViewModelBase, IDisposable
         ArtistTokens = tokens;
         HasMultipleArtists = tokens.Length > 1;
         AlbumTrackCount = track is null ? 0 : ResolveAlbumTrackCount(track, _library.GetAlbumById(track.AlbumId));
+        var genres = BuildGenreTokens(track?.Genre);
+        if (!genres.SequenceEqual(GenreTokens))
+            GenreTokens = genres;
+        HasGenreTokens = genres.Length > 0;
+        HasHeaderFacts = track is not null && (track.DisplayYear > 0 || AlbumTrackCount > 0);
     }
 
     /// <summary>Splits the shown credit (<see cref="Track.ArtistCreditDisplay"/>) with the library's

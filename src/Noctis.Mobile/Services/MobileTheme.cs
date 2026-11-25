@@ -34,6 +34,8 @@ public sealed class MobileTheme
     /// The chrome brush is the Liquid Glass tint (translucent: what passes beneath shows
     /// through it), its outline the hairline rim every floating pill carries, and the selected
     /// brush the tab bar's inner capsule: a grey on light glass, darker than the pill on dark.
+    /// The plain chrome brush is Reduce Glass's fill (GlassPanel.PlainBackground): the glass tint
+    /// over the page, opaque, so the bars read the same over a cover as over the page.
     /// Secondary text is translucent, Apple's secondaryLabel, as opaque as WCAG AA needs on the
     /// page, the grouped rows and the cards (PhoneThemes.Secondary). The explicit badge is the
     /// desktop's half-grey on dark, and Apple's secondary grey on Light, where the half-grey
@@ -55,6 +57,7 @@ public sealed class MobileTheme
             ["PhoneSeparatorBrush"] = B(light.Separator),
             ["PhoneFillBrush"] = B(light.Fill),
             ["PhoneChromeBrush"] = B(light.Chrome),
+            ["PhoneChromePlainBrush"] = B(PhoneThemes.Over(light.Chrome, light.Page)),
             ["PhoneChromeOutlineBrush"] = B(Color.Parse("#21000000")),
             ["PhoneChromeSelectedBrush"] = B(Color.Parse("#12000000")),
             ["PhoneSecondaryTextBrush"] = B(light.Secondary),
@@ -70,6 +73,7 @@ public sealed class MobileTheme
             ["PhoneSeparatorBrush"] = B(dark.Separator),
             ["PhoneFillBrush"] = B(dark.Fill),
             ["PhoneChromeBrush"] = B(dark.Chrome),
+            ["PhoneChromePlainBrush"] = B(PhoneThemes.Over(dark.Chrome, dark.Page)),
             ["PhoneChromeOutlineBrush"] = B(Color.Parse("#30FFFFFF")),
             ["PhoneChromeSelectedBrush"] = B(Color.Parse("#99000000")),
             ["PhoneSecondaryTextBrush"] = B(dark.Secondary),

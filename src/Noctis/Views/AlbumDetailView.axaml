@@ -187,16 +187,51 @@
         <Style Selector="Button.row-more-dots:pressed">
             <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
+        <!-- Row heart (Heart on every song): no hover square, no zoom; hover brightens the
+             faint glyph, as on playlist rows. -->
+        <Style Selector="Button.row-heart">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.row-heart:pointerover">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.row-heart:pressed">
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="Button.row-heart /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.row-heart:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Button.row-heart:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <!-- The empty row heart takes the page's text colour, as the header heart does: the
+             button's own white was near-invisible on a light tint or the Light theme. Styles,
+             not a local value, and the now-playing row's colour restated after it: a view
+             style outranks the app's Border.now-playing HeartIcon rule. -->
+        <Style Selector="controls|HeartIcon.faint-heart">
+            <Setter Property="OffBrush" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+        </Style>
+        <Style Selector="Border.now-playing controls|HeartIcon.faint-heart">
+            <Setter Property="OffBrush" Value="{DynamicResource NowPlayingRowForegroundBrush}" />
+        </Style>
+        <Style Selector="Button.row-heart:pointerover controls|HeartIcon.faint-heart">
+            <Setter Property="OffOpacity" Value="0.7" />
+        </Style>
 
-        <!-- Album artist credits: accent on the plain page. On a cover tint they take the
-             page text colour instead — with "Accent follows album art" the accent IS the
-             cover colour, so the name vanished into the tint (Discord NJZ 09-22). Style
-             setters, not local values: a local Foreground would beat both. -->
+        <!-- Album artist credits: accent on the plain page. On a cover tint the accent is
+             moved lighter or darker until it reads on the tint (4.5:1, TintLinkBrush) — with
+             "Accent follows album art" the accent IS the cover colour, so the plain accent
+             vanished into the tint (Discord NJZ 09-22), and the page text colour that replaced
+             it lost the link look (11-23 feedback). Style setters, not local values: a local
+             Foreground would beat both. -->
         <Style Selector="TextBlock.artist-credit-text">
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
         </Style>
         <Style Selector="ItemsControl.on-tint TextBlock.artist-credit-text">
-            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).PageForegroundBrush}" />
+            <Setter Property="Foreground" Value="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).TintLinkBrush}" />
         </Style>
         <!-- Track rows' artist line: its Button's theme resets the text to the theme colour
              (near-white on a light cover's page, GitHub #180) and hover / press swap the
@@ -983,8 +1018,11 @@
                               VerticalAlignment="Center"
                               Margin="0,0,10,0">
                             <!-- Col 0: rating stars (collapsed when unrated) -->
-                            <!-- Click-to-rate (see LibrarySongsView): revealed on row hover, always on once rated. -->
+                            <!-- Click-to-rate (see LibrarySongsView): revealed on row hover, always on once rated.
+                                 Settings › Show Star Ratings off (Discord 11-24, Halil) collapses it; the
+                                 Auto column and its margin go with it, so no gap is left. -->
                             <controls:RatingStars Grid.Column="0"
+                                                  IsVisible="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ShowStarRatings, FallbackValue=True}"
                                                   Value="{Binding Rating}"
                                                   Classes="row-rating"
                                                   Classes.rated="{Binding !!Rating}"
@@ -1001,8 +1039,29 @@
                                  left a favorited single as the only row in the app with no
                                  heart on it. -->
                             <Panel Grid.Column="1">
+                                <!-- Settings › Album page › Heart on every song (Discord 11-24, sina):
+                                     every row gets a clickable heart, faint until favorited, so
+                                     favoriting doesn't take the "..." menu. The press skips row
+                                     selection (OnTrackRowPointerPressed). -->
+                                <Button Classes="row-heart"
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        Width="22" Height="28"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Cursor="Hand"
+                                        ToolTip.Tip="{loc:T Playlist.Favorite}"
+                                        AutomationProperties.Name="{loc:T Playlist.Favorite}"
+                                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).Settings.AlbumShowSongHearts, FallbackValue=False}"
+                                        Command="{Binding $parent[UserControl].((vm:AlbumDetailViewModel)DataContext).ToggleFavoriteSingleCommand}"
+                                        CommandParameter="{Binding}">
+                                    <controls:HeartIcon Classes="faint-heart" Size="14"
+                                                        OffOpacity="0.28"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                        IsFavorite="{Binding IsFavorite}"/>
+                                </Button>
+                                <!-- Setting off: the old look, a heart on favorites only, not clickable. -->
                                 <controls:HeartIcon Size="14" ShowWhenOff="False"
                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).Settings.AlbumShowSongHearts, FallbackValue=True}"
                                     IsFavorite="{Binding IsFavorite}"/>
                             </Panel>
                             <!-- Col 2: duration — fixed 52px, right-aligned for perfect column -->

@@ -329,6 +329,45 @@ public class MobileLibraryViewModelTests : IDisposable
         public override Task SaveSettingsAsync(AppSettings settings) => throw new IOException("disk full");
     }
 
+    /// <summary>Settings whose save waits until the test lets it land; reads give what landed last.</summary>
+    private sealed class HeldSavePersistence : TestPersistenceService
+    {
+        public string SavedSource = "";
+        public int Loads;
+        public readonly TaskCompletionSource Land = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override Task<AppSettings> LoadSettingsAsync()
+        {
+            Loads++;
+            return Task.FromResult(new AppSettings { PhoneLibrarySource = SavedSource });
+        }
+        public override async Task SaveSettingsAsync(AppSettings settings)
+        {
+            await Land.Task;
+            SavedSource = settings.PhoneLibrarySource;
+        }
+    }
+
+    /// <summary>Cold start: the host applies the settings, then the library loads (a second or
+    /// more) with the source button already on screen. A pick in that window whose save had not
+    /// landed when the start re-read the settings was put back to the old source.</summary>
+    [Fact]
+    public async Task ASourcePick_DuringTheColdStart_IsNotPutBack_ByTheStartsSettingsRead()
+    {
+        using var persistence = new HeldSavePersistence();
+        var vm = new LibraryViewModel(new FakeLibraryService(), persistence, new ScriptedPicker(), marshal: a => a());
+        vm.ApplySettings(await persistence.LoadSettingsAsync());                // what the host does first
+
+        var pick = vm.SetSourceAsync(LibrarySource.Computer);                     // its save still in flight
+        var loads = persistence.Loads;
+        await vm.InitializeAsync();
+
+        Assert.Equal(LibrarySource.Computer, vm.Source);
+        Assert.Equal(loads, persistence.Loads);                                   // the start does not read settings.json again
+        persistence.Land.SetResult();
+        await pick;
+        Assert.Equal("Computer", persistence.SavedSource);
+    }
+
     [Fact]
     public async Task SetAlbumPinned_SettingsSaveFails_IsLoggedNotThrown()
     {
@@ -414,10 +453,13 @@ public class MobileLibraryViewModelTests : IDisposable
 
     /// <summary>On the phone the sort runs on the pool: the refresh on the UI thread only reads
     /// the counts, and the sorted songs come back as a separate step. Updates while it sorts are
-    /// one sort more, of the library as it is then.</summary>
+    /// one sort more, of the library as it is then. Each sort waits for the test to let it go: a
+    /// pool that sorted the two songs before the test sent its update (a loaded machine) made the
+    /// update land after the sort instead of during it.</summary>
     [Fact]
     public async Task SortOffUiThread_SwapsTheSortedSongsInAsALaterStep()
     {
+        using var gate = new SemaphoreSlim(0);
         var library = new FakeLibraryService();
         var b = new Track { Title = "B" };
         var a = new Track { Title = "A" };
@@ -426,6 +468,7 @@ public class MobileLibraryViewModelTests : IDisposable
         var vm = new LibraryViewModel(library, new PersistenceService(_root), new ScriptedPicker(), marshal: posted.Add)
         {
             SortOffUiThread = true,
+            SortGate = gate,
         };
         var refreshed = 0;
         vm.Refreshed += (_, _) => refreshed++;
@@ -447,11 +490,13 @@ public class MobileLibraryViewModelTests : IDisposable
         library.RaiseLibraryUpdated();
         Drain();                         // mid-sort: noted, not sorted again yet
 
+        gate.Release();
         await vm.PendingSort;
         Drain();                         // the first sort lands, the second starts
         Assert.Equal(new[] { a, b }, vm.Songs);
         Assert.Equal(1, refreshed);
 
+        gate.Release();
         await vm.PendingSort;
         Drain();
         Assert.Equal(new[] { a, b, c }, vm.Songs);

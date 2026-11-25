@@ -43,6 +43,9 @@
     <Style Selector="controls|PillDialogHost">
         <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
         <Setter Property="CornerRadius" Value="30" />
+        <!-- Where the card sits: centred, unless a pop-up places it (the Ctrl+K palette sits
+             in the upper third, VerticalContentAlignment Top + CardMargin). -->
+        <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Panel>
@@ -59,7 +62,8 @@
                     <!-- The card's frame: PART_Card and, under it, the card's Liquid Glass (#234).
                          Sized by the card, so the glass has the card's exact geometry. -->
                     <Panel HorizontalAlignment="Center"
-                           VerticalAlignment="Center">
+                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                           Margin="{TemplateBinding CardMargin}">
                     <!-- Liquid Glass card (GitHub #234), the Settings sheet's frost: shown only
                          while Liquid Glass is on AND the blurred owner snapshot is up (the
                          window is transparent, so without the snapshot there is nothing to

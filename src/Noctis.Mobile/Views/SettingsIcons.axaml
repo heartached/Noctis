@@ -10,15 +10,21 @@
     <StreamGeometry x:Key="SetIconDisc">M12 3.5A8.5 8.5 0 1 1 12 20.5A8.5 8.5 0 1 1 12 3.5Z M12 9.6A2.4 2.4 0 1 1 12 14.4A2.4 2.4 0 1 1 12 9.6Z M7.2 9.4A5.6 5.6 0 0 1 9.4 7.2</StreamGeometry>
     <!-- Smooth Motion: three speed lines trailing a circle. -->
     <StreamGeometry x:Key="SetIconMotion">M15 6.5A5.5 5.5 0 1 1 15 17.5A5.5 5.5 0 1 1 15 6.5Z M3 8.5h5 M2 12h5.5 M3 15.5h5</StreamGeometry>
+    <!-- Animated Covers: a cover with a play mark (it used Smooth Motion's glyph). -->
+    <StreamGeometry x:Key="SetIconAnimatedCover">M7.5 4H16.5A3.5 3.5 0 0 1 20 7.5V16.5A3.5 3.5 0 0 1 16.5 20H7.5A3.5 3.5 0 0 1 4 16.5V7.5A3.5 3.5 0 0 1 7.5 4Z M10.3 8.9V15.1L15.2 12Z</StreamGeometry>
     <StreamGeometry x:Key="SetIconPlayerBar">M8.5 7H15.5A5.5 5.5 0 0 1 15.5 18H8.5A5.5 5.5 0 0 1 8.5 7Z M7 12.5h6</StreamGeometry>
     <StreamGeometry x:Key="SetIconFolder">M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5z</StreamGeometry>
     <StreamGeometry x:Key="SetIconDownload">M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14</StreamGeometry>
     <StreamGeometry x:Key="SetIconRescan">M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9M17 3.5v3.8h-3.8M7 20.5v-3.8h3.8</StreamGeometry>
     <StreamGeometry x:Key="SetIconLyrics">M4 6h10M4 11h10M4 16h6 M18 5v10.5 M13.7 16a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0</StreamGeometry>
     <StreamGeometry x:Key="SetIconScrobbling">M4 18V9M9 18V5M14 18v-6M19 18V8</StreamGeometry>
+    <!-- ReplayGain: the desktop's level meter dial (MenuLineReplayGain). -->
+    <StreamGeometry x:Key="SetIconReplayGain">M3.8 16.5a8.2 8.2 0 0 1 16.4 0M12 16.5l4-4.8</StreamGeometry>
     <StreamGeometry x:Key="SetIconHistory">M4 12a8 8 0 1 0 16 0a8 8 0 1 0-16 0Z M12 7.5V12l3 2</StreamGeometry>
     <!-- Played Songs in Queue: queue lines with an arrow up beside them (played songs stay above). -->
     <StreamGeometry x:Key="SetIconQueueHistory">M10 6h10M10 12h10M10 18h10 M5 18V6 M2.5 8.5L5 6l2.5 2.5</StreamGeometry>
+    <!-- Keep Shuffle On: two crossing paths, each with its arrowhead. -->
+    <StreamGeometry x:Key="SetIconShuffle">M3 7h3.5c4.5 0 6.5 10 11 10H21 M3 17h3.5c1.8 0 3-1.6 4.1-3.6 M13.4 10.6C14.5 8.6 15.7 7 17.5 7H21 M18.5 4.5L21 7l-2.5 2.5 M18.5 14.5L21 17l-2.5 2.5</StreamGeometry>
     <StreamGeometry x:Key="SetIconPickUp">M5 4H14A2 2 0 0 1 16 6V12A2 2 0 0 1 14 14H5A2 2 0 0 1 3 12V6A2 2 0 0 1 5 4Z M16.6 9H19.4A1.6 1.6 0 0 1 21 10.6V18.4A1.6 1.6 0 0 1 19.4 20H16.6A1.6 1.6 0 0 1 15 18.4V10.6A1.6 1.6 0 0 1 16.6 9Z M7 18h5</StreamGeometry>
     <StreamGeometry x:Key="SetIconWarning">M12 3l9 16H3z M12 10v4M12 16.8v.2</StreamGeometry>
     <StreamGeometry x:Key="SetIconDoc">M7 3h7l4 4v14H7z M14 3v4h4M10 12h5M10 16h5</StreamGeometry>
@@ -30,4 +36,8 @@
     <StreamGeometry x:Key="SetIconUpDown">M8 10l4-4 4 4M8 14l4 4 4-4</StreamGeometry>
     <!-- Library › Hidden: the desktop's Hide Folder eye (MenuLineEyeOff). -->
     <StreamGeometry x:Key="SetIconHidden">M2.8 12C4.7 8 8 5.8 12 5.8C16 5.8 19.3 8 21.2 12C19.3 16 16 18.2 12 18.2C8 18.2 4.7 16 2.8 12ZM12 14.8a2.8 2.8 0 1 0 0-5.6a2.8 2.8 0 0 0 0 5.6ZM4.5 4.5l15 15</StreamGeometry>
+    <!-- Library › Artist Separators: two artists with a dividing line between them. -->
+    <StreamGeometry x:Key="SetIconSeparators">M4.2 9a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0Z M2.5 18c0-2.5 1.8-4.3 4-4.3s4 1.8 4 4.3 M15.2 9a2.3 2.3 0 1 0 4.6 0a2.3 2.3 0 1 0-4.6 0Z M13.5 18c0-2.5 1.8-4.3 4-4.3s4 1.8 4 4.3 M12 4v16</StreamGeometry>
+    <!-- Library › Genre Separators: one genre tag split in two, a tag each side of the dividing line. -->
+    <StreamGeometry x:Key="SetIconGenreSeparators">M2.5 6H7.8L10.3 9L7.8 12H2.5Z M13.7 12H19L21.5 15L19 18H13.7Z M12 4v16</StreamGeometry>
 </ResourceDictionary>

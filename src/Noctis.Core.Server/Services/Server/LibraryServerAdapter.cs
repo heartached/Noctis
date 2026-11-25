@@ -115,6 +115,9 @@ public sealed class LibraryServerAdapter : IServerLibrary
         return !string.IsNullOrEmpty(path) && File.Exists(path) ? path : null;
     }
 
+    public string? AnimatedCoverPath(Guid albumId, IReadOnlyList<Track> albumTracks)
+        => AnimatedCoverLocator.ResolveAlbum(_persistence, albumId, albumTracks);
+
     public string? ProfileName => _profileName?.Invoke();
 
     public async Task<string?> UploadRootAsync(CancellationToken ct)

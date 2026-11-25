@@ -77,6 +77,51 @@ public sealed class SafTrackFileAccess : ITrackFileAccess
         }
     }
 
+    // Folders already looked in for an animated cover (folder document id → the loop's URI, or null):
+    // a whole album plays from one folder, and the lookup runs on every track change. Bounded.
+    private readonly Dictionary<string, string?> _siblings = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// A document beside the song whose name is one of <paramref name="names"/> (any case), as a
+    /// playable content:// URI under the same tree grant: the album's <c>cover.mp4</c> for Now
+    /// Playing's animated cover (AnimatedCoverSource). Null for anything but a SAF tree song, or
+    /// when there is none. Worker thread.
+    /// </summary>
+    public string? FindSibling(string trackPath, IReadOnlyList<string> names)
+    {
+        try
+        {
+            if (!trackPath.StartsWith("content://", StringComparison.Ordinal)) return null;
+            var uri = AUri.Parse(trackPath)!;
+            if (!DocumentsContract.IsTreeUri(uri)) return null;
+            var docId = DocumentsContract.GetDocumentId(uri);
+            if (docId == null || ParentDocumentId(uri, docId) is not { } parentId) return null;
+            lock (_siblings)
+                if (_siblings.TryGetValue(parentId, out var known)) return known;
+
+            string? found = null;
+            var children = ListChildren(uri, parentId);
+            foreach (var name in names)
+            {
+                var hit = children.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+                if (hit.Id is null) continue;
+                found = DocumentsContract.BuildDocumentUriUsingTree(uri, hit.Id)!.ToString();
+                break;
+            }
+            lock (_siblings)
+            {
+                if (_siblings.Count >= 256) _siblings.Clear();
+                _siblings[parentId] = found;
+            }
+            return found;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("AnimatedCover", $"Folder lookup failed: {ex.GetType().Name}");
+            return null;
+        }
+    }
+
     public Stream? OpenAudio(string trackPath)
     {
         try

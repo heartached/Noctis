@@ -1350,9 +1350,6 @@
         <Setter Property="Template">
             <ControlTemplate TargetType="Button">
                 <Panel>
-                    <!-- GitHub #218: hover-zoom glow, shown only under .hover-zoom. -->
-                    <Border Name="PART_Glow" Classes="tile-glow"
-                            CornerRadius="{TemplateBinding CornerRadius}" />
                     <Border Name="PART_SelectRing" Classes="select-ring"
                             CornerRadius="{TemplateBinding CornerRadius}" />
                     <ContentPresenter Name="PART_ContentPresenter"
@@ -1642,12 +1639,16 @@
     </Style>
 
     <!-- Album Hover Zoom (GitHub #218, Settings › Appearance, off by default): under a view
-         tagged .hover-zoom (the Albums page) the hovered tile grows to 104% with a soft glow;
-         every other tile stays as it is (GitHub #250: the neighbours used to step back to 97%,
-         which read as the whole grid moving). LibraryAlbumsView lifts the hovered tile above
-         its neighbours and anchors it at the grid's edges so it is not clipped there.
-         Render transforms and opacity only, so nothing re-lays out; declared after the
-         album-tile scale(1) opt-outs above so these win. -->
+         tagged .hover-zoom (the Albums page) the hovered tile's artwork (Panel.tile-art: the
+         cover and its glow) grows to 104% round the cover's own centre; the title lines stay
+         put (Discord 11-21: the whole tile grew, so the cover grew downward and the text
+         moved). Every other tile stays as it is (GitHub #250: the neighbours used to step back
+         to 97%, which read as the whole grid moving). LibraryAlbumsView lifts the hovered tile
+         above its neighbours, anchors the cover at the grid's edges so it is not clipped there
+         and drops the glow (.glow-cut) where the scroller's edge would cut it.
+         The Button is unclipped: an Avalonia 12 TemplatedControl clips to its bounds, which
+         cut the glow (then on the Button's template) down to a faint hard-edged box round the
+         whole tile (Discord 11-21). Render transforms and opacity only, nothing re-lays out. -->
     <Style Selector="Border.tile-glow">
         <Setter Property="IsHitTestVisible" Value="False" />
         <Setter Property="Background" Value="Transparent" />
@@ -1660,10 +1661,12 @@
         </Setter>
     </Style>
     <Style Selector=".hover-zoom Button.album-tile">
+        <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector=".hover-zoom Panel.tile-art">
         <Setter Property="RenderTransformOrigin" Value="50%,50%" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.04" />
                 <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22">
                     <TransformOperationsTransition.Easing>
                         <helpers:CubicBezierEase>
@@ -1675,10 +1678,12 @@
         </Setter>
     </Style>
     <Style Selector=".hover-zoom Button.album-tile:pointerover">
-        <Setter Property="RenderTransform" Value="scale(1.04)" />
         <Setter Property="ZIndex" Value="1" />
     </Style>
-    <Style Selector=".hover-zoom Button.album-tile:pointerover /template/ Border.tile-glow">
+    <Style Selector=".hover-zoom Button.album-tile:pointerover Panel.tile-art">
+        <Setter Property="RenderTransform" Value="scale(1.04)" />
+    </Style>
+    <Style Selector=".hover-zoom Button.album-tile:pointerover:not(.glow-cut) Border.tile-glow">
         <Setter Property="Opacity" Value="1" />
     </Style>
 

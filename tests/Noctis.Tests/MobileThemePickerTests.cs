@@ -75,7 +75,8 @@ public class MobileThemePickerTests
 
     /// <summary>Every theme, through the real resource stack (overlay, palette, accent guard): body
     /// text at WCAG AA (4.5:1) on the page, the grouped rows and the cards, secondary text at AA too,
-    /// both at least 4.5:1 on the chrome glass over the page, and the accent's text and glyphs at
+    /// both at least 4.5:1 on the chrome glass over the page and on Reduce Glass's plain chrome fill
+    /// (opaque), and the accent's text and glyphs at
     /// 3:1 on the cards - with the user's default accent and with the theme's own.</summary>
     [AvaloniaFact]
     public void EveryTheme_KeepsBodyAndSecondaryText_AtAA_OnItsCardsRowsAndGlass()
@@ -94,12 +95,14 @@ public class MobileThemePickerTests
             {
                 ("page", page), ("grouped", C("PhoneGroupedBackgroundBrush")), ("card", C("PhoneCardBrush")),
                 ("chrome", PhoneThemes.Over(C("PhoneChromeBrush"), page)),
+                ("plain chrome", C("PhoneChromePlainBrush")),
             };
+            if (C("PhoneChromePlainBrush").A != 255) failures.Add($"{theme.Id} plain chrome is not opaque");
             foreach (var (where, under) in surfaces)
             {
                 Check($"{theme.Id} body on {where}", C("PrimaryTextBrush"), under, BodyAA);
                 Check($"{theme.Id} secondary on {where}", C("PhoneSecondaryTextBrush"), under, BodyAA);
-                if (where != "chrome") Check($"{theme.Id} accent (follows {follows}) on {where}", C("AccentTextExactBrush"), under, MobileTheme.MinAccentContrast);
+                if (!where.EndsWith("chrome")) Check($"{theme.Id} accent (follows {follows}) on {where}", C("AccentTextExactBrush"), under, MobileTheme.MinAccentContrast);
             }
         }
         foreach (var f in failures) _o.WriteLine(f);

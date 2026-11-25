@@ -141,6 +141,39 @@ public static class ArtworkThumbnailCache
     }
 
     /// <summary>
+    /// Settings › Clear Artwork Cache: deletes every thumbnail. They are thumbnails of the
+    /// covers that clear deletes, so they only took up disk (up to <see cref="MaxBytes"/>)
+    /// until the trim got to them. Runs on the calling thread; returns how many were deleted.
+    /// </summary>
+    public static int Clear()
+    {
+        var dir = Directory;
+        if (dir == null) return 0;
+        var deleted = 0;
+        try
+        {
+            foreach (var file in System.IO.Directory.EnumerateFiles(dir))
+            {
+                try
+                {
+                    File.Delete(file);
+                    deleted++;
+                }
+                catch
+                {
+                    // In use right now: the trim takes it later.
+                }
+            }
+        }
+        catch
+        {
+            // Folder gone or unreadable: nothing to clear.
+        }
+        Touched.Clear();
+        return deleted;
+    }
+
+    /// <summary>
     /// Bumped when the decode's pixels change, so thumbnails from an older resize are
     /// rebuilt instead of served (v2: trilinear, see SkiaArtworkDecoder.Downscale).
     /// Stale ones age out through the trim. v3 (GitHub #224): a v2 thumbnail may hold a cover

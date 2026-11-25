@@ -149,8 +149,8 @@ public sealed partial class LibraryViewModel : ObservableObject
             });
     }
 
-    /// <summary>Pinned artists whose photo was asked for this session: a lookup that found nothing
-    /// (or failed) is not repeated on every refresh.</summary>
+    /// <summary>Pinned and top artists whose photo was asked for this session: a lookup that found
+    /// nothing (or failed) is not repeated on every refresh.</summary>
     private readonly HashSet<string> _pinnedPhotoAsked = new(StringComparer.OrdinalIgnoreCase);
 
     public IPersistenceService Persistence => _persistence;
@@ -160,6 +160,16 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>Raised on the UI thread after every rebuild (library update, favourites, playlists, pins).</summary>
     public event EventHandler? Refreshed;
+
+    /// <summary>The <see cref="Refreshed"/> args of a heart toggled (<see cref="RefreshFavourites"/>):
+    /// no song, album or artist changed but its favourite, so a page whose rows and order do not
+    /// depend on hearts keeps them.</summary>
+    public static readonly EventArgs FavouritesRefresh = new();
+
+    /// <summary>The <see cref="Refreshed"/> args of the number of offline copies changing
+    /// (<see cref="NotifyDownloadsChanged"/>, during a download batch as songs land): no song's
+    /// tags changed, though a source or the Downloaded filter may now hold other songs.</summary>
+    public static readonly EventArgs DownloadsRefresh = new();
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMusic), nameof(ShowConnectCard), nameof(HasNotice), nameof(ShowSections))]
@@ -338,6 +348,8 @@ public sealed partial class LibraryViewModel : ObservableObject
     [ObservableProperty] private bool _hasRecentlyAdded;
     [ObservableProperty] private bool _hasOnRepeat;
     [ObservableProperty] private bool _hasMostPlayed;
+    [ObservableProperty] private bool _hasDownloaded;
+    [ObservableProperty] private bool _hasTopArtists;
 
     /// <summary>The Shelf as a horizontal rail of covers (true) or a vertical list (false).</summary>
     [ObservableProperty] private bool _isShelfGrid = true;
@@ -370,6 +382,10 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// thread (see <see cref="RefreshFromLibrary"/>). Off in tests: the sort runs inline.</summary>
     public bool SortOffUiThread { get; init; }
 
+    /// <summary>Test hook: each off-thread sort waits for one release of it before it runs, so a
+    /// test can land an update while a sort is in flight however fast the pool is.</summary>
+    internal SemaphoreSlim? SortGate { get; init; }
+
     /// <summary>The configured roots (SAF tree URIs on Android), mirrored from settings.</summary>
     public ObservableCollection<string> Folders { get; } = new();
 
@@ -382,6 +398,18 @@ public sealed partial class LibraryViewModel : ObservableObject
     public BulkObservableCollection<RailItem> RecentlyAddedRail { get; } = new();
     public BulkObservableCollection<RailItem> OnRepeatRail { get; } = new();
     public BulkObservableCollection<RailItem> MostPlayedRail { get; } = new();
+
+    /// <summary>Home › Top Artists: the artists with the most plays, as round artist tiles
+    /// (<see cref="TopArtistItems"/>).</summary>
+    public BulkObservableCollection<RailItem> TopArtistsRail { get; } = new();
+
+    /// <summary>Home › Downloaded: the albums with a song downloaded from the computer, newest
+    /// download first (<see cref="MobileLibrary.DownloadedAlbums"/>).</summary>
+    public BulkObservableCollection<RailItem> DownloadedRail { get; } = new();
+
+    /// <summary>Home › Downloaded's › page: every such album (the rail holds the first twelve).</summary>
+    public IEnumerable<RailItem> DownloadedAlbums() =>
+        MobileLibrary.DownloadedAlbums(_library, Account, int.MaxValue).Select(RailItem.ForAlbum);
 
     /// <summary>The Shelf's albums as rail tiles: Library → Recently Played.</summary>
     public BulkObservableCollection<RailItem> RecentlyPlayedRail { get; } = new();
@@ -421,6 +449,9 @@ public sealed partial class LibraryViewModel : ObservableObject
     /// rule is three plays of one song; one song played once is not a chart yet).</summary>
     internal const int MostPlayedMinSongs = 3;
 
+    /// <summary>Home's Top Artists shows once this many artists have a counted play.</summary>
+    internal const int TopArtistsMinArtists = 3;
+
     /// <summary>Most Played's › list: every song with a counted play (Track.PlayCount, the number
     /// Sort by Most Played uses), the hidden ones left out as everywhere (Tracks).</summary>
     public IEnumerable<Track> MostPlayedTracks() => _library.Tracks.Where(t => t.PlayCount > 0);
@@ -438,7 +469,17 @@ public sealed partial class LibraryViewModel : ObservableObject
         playlist.TrackIds.Count(id => _library.GetTrackById(id) != null);
 
     public static bool HasCustomCover(Playlist playlist) =>
-        !string.IsNullOrEmpty(playlist.CoverArtPath) && File.Exists(playlist.CoverArtPath);
+        !string.IsNullOrEmpty(playlist.CoverArtPath) && CoverFileExists.GetOrAdd(playlist.CoverArtPath, File.Exists);
+
+    /// <summary>
+    /// Whether each playlist cover file exists, as last asked. Every refresh (a heart, a download
+    /// landing) asked the file system once per playlist; with 300 playlists that was most of the
+    /// Playlists page's refresh. Forgotten whenever the playlists are read again or a cover is set
+    /// or removed (a new cover is a new file name, PlaylistCovers.Store).
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> CoverFileExists = new(StringComparer.Ordinal);
+
+    private static void ForgetCoverChecks() => CoverFileExists.Clear();
 
     /// <summary>Pin or unpin an album on the Pinned rail (AppSettings.PinnedAlbumIds).</summary>
     public async Task SetAlbumPinnedAsync(Guid albumId, bool pinned)
@@ -533,6 +574,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     {
         await EditPlaylistsAsync(list => list.RemoveAll(p => p.Id == playlist.Id));
         PlaylistCovers.DeleteOthers(playlist.Id, PlaylistCoversDirectory, except: null);
+        ForgetCoverChecks();
     }
 
     private string PlaylistCoversDirectory => PlaylistCovers.CoversDirectory(_persistence.DataDirectory);
@@ -568,6 +610,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             try { if (File.Exists(temp)) File.Delete(temp); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         }
         if (path is null) return false;
+        ForgetCoverChecks();
         var now = DateTime.UtcNow;
         playlist.CoverArtPath = path;
         await EditPlaylistAsync(playlist, p =>
@@ -590,6 +633,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             p.ModifiedAt = now;
         });
         PlaylistCovers.DeleteOthers(playlist.Id, PlaylistCoversDirectory, except: null);
+        ForgetCoverChecks();
     }
 
     /// <summary>Desktop parity (PlaylistViewModel.RemoveTrack): the songs leave the playlist with
@@ -640,6 +684,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         try
         {
             _playlists = await _persistence.LoadPlaylistsAsync();
+            ForgetCoverChecks();
         }
         catch (Exception ex)
         {
@@ -686,7 +731,11 @@ public sealed partial class LibraryViewModel : ObservableObject
 
     /// <summary>The desktop songs' offline copies changed: open lists (Downloaded, the Downloaded
     /// filter) re-read.</summary>
-    public void NotifyDownloadsChanged() => Refreshed?.Invoke(this, EventArgs.Empty);
+    public void NotifyDownloadsChanged()
+    {
+        RefreshDownloaded();
+        Refreshed?.Invoke(this, DownloadsRefresh);
+    }
 
     /// <summary>The UI language changed: the rails' subtitles ("Artist", "12 songs") and the open
     /// pages' rows are rebuilt; the library itself is unchanged.</summary>
@@ -722,13 +771,22 @@ public sealed partial class LibraryViewModel : ObservableObject
         _pinnedTrackIds = settings.PinnedTrackIds.ToList();
         LibraryRowKeys = settings.PhoneLibraryRows.ToList();
         Source = LibrarySources.Parse(settings.PhoneLibrarySource);
+        _settingsApplied = true;
     }
 
-    public async Task InitializeAsync()
+    /// <summary>The host applied the settings at start (<see cref="ApplySettings"/>): the start does
+    /// not read them again. That second read put back a source picked during the library load
+    /// whose save had not landed yet, and read settings.json once more on every cold launch.</summary>
+    private bool _settingsApplied;
+
+    public Task InitializeAsync() => InitializeAsync(null);
+
+    /// <param name="settings">The start's one read (ShellViewModel.InitializeAsync); null = read here.</param>
+    public async Task InitializeAsync(AppSettings? settings)
     {
         try
         {
-            ApplySettings(await _persistence.LoadSettingsAsync());
+            if (!_settingsApplied) ApplySettings(settings ?? await _persistence.LoadSettingsAsync());
             await LoadPlaylistsAsync();
             RefreshFromLibrary();
         }
@@ -977,6 +1035,7 @@ public sealed partial class LibraryViewModel : ObservableObject
             DebugLog.Write("Library", $"Playlist load failed: {ex.Message}");
             _playlists = new List<Playlist>();
         }
+        ForgetCoverChecks();
         PlaylistCount = _playlists.Count;
     }
 
@@ -1056,7 +1115,11 @@ public sealed partial class LibraryViewModel : ObservableObject
         Track[]? sorted = null;
         try
         {
-            sorted = await Task.Run(() => SortByTitle(source)).ConfigureAwait(false);
+            sorted = await Task.Run(async () =>
+            {
+                if (SortGate is { } gate) await gate.WaitAsync().ConfigureAwait(false);
+                return SortByTitle(source);
+            }).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1129,7 +1192,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     private void RefreshFavourites()
     {
         FavoriteCount = _library.Tracks.Count(t => t.IsFavorite);
-        Refreshed?.Invoke(this, EventArgs.Empty);
+        Refreshed?.Invoke(this, FavouritesRefresh);
     }
 
     /// <summary>Pinned and Recently Added: library structure and pins only.</summary>
@@ -1144,7 +1207,7 @@ public sealed partial class LibraryViewModel : ObservableObject
         // The artist's photo when the phone has one, else the cover; a missing photo is asked for.
         var pinnedArtists = pinnedArtistList
             .Select(a => RailItem.ForArtist(a, ArtistPhotos?.CachedPhoto(a.Name) ?? artistArt?.GetValueOrDefault(a.Name)));
-        foreach (var artist in pinnedArtistList) AskPinnedArtistPhoto(artist.Name);
+        foreach (var artist in pinnedArtistList) AskArtistPhoto(artist.Name);
         var pinned = _pinnedAlbumIds.Select(_library.GetAlbumById).OfType<Album>().Select(RailItem.ForAlbum)
             .Concat(pinnedArtists)
             .Concat(_playlists.Where(p => p.IsPinned).Select(p => RailItem.ForPlaylist(p, PlaylistArtwork(p), PlaylistSongCount(p))))
@@ -1156,21 +1219,36 @@ public sealed partial class LibraryViewModel : ObservableObject
         var recent = MobileLibrary.RecentlyAddedAlbums(_library, RailSize, InSource).Select(RailItem.ForAlbum).ToList();
         MobileLibrary.ReplaceIfChanged(RecentlyAddedRail, recent);
         HasRecentlyAdded = RecentlyAddedRail.Count > 0;
+
+        RefreshDownloaded();
     }
 
-    /// <summary>A pinned artist's circle shows on the Library tab: ask once a session for a photo
+    /// <summary>Home › Downloaded: the library or the offline copies changed.</summary>
+    private void RefreshDownloaded()
+    {
+        var downloaded = MobileLibrary.DownloadedAlbums(_library, Account, RailSize).Select(RailItem.ForAlbum).ToList();
+        MobileLibrary.ReplaceIfChanged(DownloadedRail, downloaded);
+        HasDownloaded = DownloadedRail.Count > 0;
+    }
+
+    /// <summary>A pinned or top artist's circle shows on a rail: ask once a session for a photo
     /// the phone does not have yet, and rebuild the rails when one arrives.</summary>
-    private void AskPinnedArtistPhoto(string name)
+    private void AskArtistPhoto(string name)
     {
         if (ArtistPhotos is not { } photos || photos.CachedPhoto(name) != null || !_pinnedPhotoAsked.Add(name)) return;
-        _ = LoadPinnedArtistPhotoAsync(photos, name);
+        _ = LoadArtistPhotoAsync(photos, name);
     }
 
-    private async Task LoadPinnedArtistPhotoAsync(IArtistPhotoSource photos, string name)
+    private async Task LoadArtistPhotoAsync(IArtistPhotoSource photos, string name)
     {
         try
         {
-            if (await photos.GetPhotoAsync(name, CancellationToken.None) != null) _marshal(RefreshRails);
+            if (await photos.GetPhotoAsync(name, CancellationToken.None) != null)
+                _marshal(() =>
+                {
+                    RefreshRails();
+                    RefreshRecents();
+                });
         }
         catch (Exception ex)
         {
@@ -1179,7 +1257,7 @@ public sealed partial class LibraryViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Shelf and On Repeat: the play log; Most Played: the play counts. Called on every library refresh and by the shell
+    /// Shelf and On Repeat: the play log; Most Played and Top Artists: the play counts. Called on every library refresh and by the shell
     /// whenever a track starts (the play is recorded before CurrentTrack changes).
     /// </summary>
     public void RefreshRecents()
@@ -1206,5 +1284,41 @@ public sealed partial class LibraryViewModel : ObservableObject
                 .Take(RailSize).Select(RailItem.ForTrack).ToList();
         MobileLibrary.ReplaceIfChanged(MostPlayedRail, mostPlayed);
         HasMostPlayed = MostPlayedRail.Count > 0;
+
+        MobileLibrary.ReplaceIfChanged(TopArtistsRail, TopArtistItems(played));
+        HasTopArtists = TopArtistsRail.Count > 0;
+    }
+
+    /// <summary>
+    /// Top Artists (beta testers 11-22): the desktop Home's rule, the artists whose songs have the
+    /// most counted plays (Track.PlayCount added up by Track.GroupingArtist, the Artists list's key;
+    /// "Unknown Artist" left out), most first. Each shows its photo when the phone has one, else the
+    /// cover of its most played song. Read from <paramref name="played"/>, the songs with a play,
+    /// so it costs no second walk of the library; nothing until three artists have a play.
+    /// </summary>
+    private List<RailItem> TopArtistItems(IReadOnlyList<Track> played)
+    {
+        var byArtist = new Dictionary<string, (int Plays, string? Cover, int CoverPlays)>(StringComparer.OrdinalIgnoreCase);
+        foreach (var track in played)
+        {
+            var name = track.GroupingArtist;
+            if (string.IsNullOrWhiteSpace(name) || name.Equals("Unknown Artist", StringComparison.OrdinalIgnoreCase)) continue;
+            byArtist.TryGetValue(name, out var entry);
+            var (cover, coverPlays) = (entry.Cover, entry.CoverPlays);
+            if (!string.IsNullOrEmpty(track.AlbumArtworkPath) && (cover == null || track.PlayCount > coverPlays))
+                (cover, coverPlays) = (track.AlbumArtworkPath, track.PlayCount);
+            byArtist[name] = (entry.Plays + track.PlayCount, cover, coverPlays);
+        }
+        if (byArtist.Count < TopArtistsMinArtists) return new List<RailItem>();
+        var items = new List<RailItem>();
+        foreach (var (name, entry) in byArtist.OrderByDescending(kv => kv.Value.Plays)
+                     .ThenBy(kv => kv.Key, StringComparer.CurrentCultureIgnoreCase).Take(RailSize))
+        {
+            var artist = _library.Artists.FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase))
+                ?? new Artist { Name = name };
+            AskArtistPhoto(artist.Name);
+            items.Add(RailItem.ForArtist(artist, ArtistPhotos?.CachedPhoto(artist.Name) ?? entry.Cover));
+        }
+        return items;
     }
 }

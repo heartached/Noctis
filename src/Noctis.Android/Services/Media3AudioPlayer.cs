@@ -50,6 +50,12 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private readonly Listener _listener;
     private readonly SessionForwardingPlayer _sessionPlayer;
     private readonly MeterTap _meterTap = new(RowEqLevels.Shared);
+    // ReplayGain, scaled in the audio sink (ReplayGainAudioProcessor): each queued item's level is
+    // set here on the main thread and taken up by the sink at that item's first sample.
+    private readonly ReplayGainStage _replayGain = new();
+    private ReplayGainMode _rgMode = ReplayGainMode.Off;
+    private double _rgPreampDb;
+    private bool _rgPreventClipping = true;
     // The position poll runs on the main looper's own Handler, not a DispatcherTimer. At
     // DispatcherPriority.Background Avalonia pumps the timer together with frames, so it
     // stopped whenever the app drew nothing, screen off included (device run 2026-09-22:
@@ -87,6 +93,15 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
     /// <summary>Raised for the session's own Previous transport command. See <see cref="SessionNextRequested"/>.</summary>
     public event EventHandler? SessionPreviousRequested;
+
+    /// <summary>
+    /// Raised for the session's Play while nothing is loaded (State Stopped: the queue ran out,
+    /// or was restored after process death). Our Stop() clears ExoPlayer's items, so the
+    /// session's own Play (Util.handlePlayButtonAction: prepare() when IDLE, then play())
+    /// prepared an empty playlist and nothing played while the app still showed the song.
+    /// The ViewModel starts what its own Play button would.
+    /// </summary>
+    public event EventHandler? SessionPlayRequested;
 
     /// <summary>Whether the app queue has a next/previous track, for the media session's
     /// transport buttons. ExoPlayer's own item list holds at most the current track plus a
@@ -132,7 +147,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         // ExtensionRendererModeOn: the bundled FFmpeg renderer is tried only after the phone's
         // own decoders, so it is used for ALAC (no MediaCodec on most phones) and nothing else.
         // The audio sink carries the meter tap (MeterTap), which feeds the playing row's bars.
-        var renderers = new TappedRenderersFactory(context, _meterTap)
+        var renderers = new TappedRenderersFactory(context, _meterTap, _replayGain)
             .SetExtensionRendererMode(DefaultRenderersFactory.ExtensionRendererModeOn);
         _player = new ExoPlayerBuilder(context, renderers)
             .SetMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context, httpSources))
@@ -174,7 +189,14 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     public bool ExclusiveModeActive => false;
     public bool EqualizerActive => false;
     public string OutputDescription => "Android AudioTrack (Media3)";
-    public double ReplayGainAppliedDb => 0;
+    public double ReplayGainAppliedDb
+    {
+        get
+        {
+            var gain = _replayGain.GainFor(CurrentMediaPath);
+            return gain == 1f ? 0 : 20 * Math.Log10(gain);
+        }
+    }
 
     public void Play(string filePath)
     {
@@ -187,6 +209,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         {
             _autoTransitionPending = false;
             CurrentMediaPath = filePath;
+            _replayGain.Announce(filePath);
             State = PlaybackState.Playing;
             RaiseDurationIfKnown();
             EnsureServiceStarted();
@@ -195,7 +218,9 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         }
 
         _autoTransitionPending = false;
+        _replayGain.Announce(filePath);
         _player.SetMediaItem(BuildItem(filePath));
+        ForgetUnqueuedReplayGain();
         _player.Prepare();
         if (PendingSeekMs >= 0)
         {
@@ -268,7 +293,9 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         if (_player.MediaItemCount > current + 1 && _player.GetMediaItemAt(current + 1)?.MediaId == filePath)
             return; // already queued
         TrimAfterCurrent();
+        // Its level is set now and taken up by the sink at its first sample, not before.
         _player.AddMediaItem(BuildItem(filePath));
+        ForgetUnqueuedReplayGain();
     }
 
     public void CancelPreparedNext()
@@ -303,7 +330,67 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     public void CommitVolume() { }
     public void SetNormalization(bool enabled) { }
     public void SetExclusiveMode(bool enabled) { }
-    public void ApplyReplayGain(string mode, double preampDb) { }
+    public void ApplyReplayGain(string mode, double preampDb) => ApplyReplayGain(mode, preampDb, _rgPreventClipping);
+
+    /// <summary>
+    /// Settings › Listening › ReplayGain. Every queued item's level is worked out again
+    /// (ReplayGainLevel, from the song's tags) and the playing one glides to its new level in the
+    /// sink (ReplayGainStage.SettingsRampMs); the next song takes its own at its first sample.
+    /// </summary>
+    public void ApplyReplayGain(string mode, double preampDb, bool preventClipping)
+    {
+        if (_disposed) return;
+        var parsed = ReplayGainLevel.ParseMode(mode);
+        var preamp = double.IsFinite(preampDb) ? Math.Clamp(preampDb, ReplayGainLevel.MinPreampDb, ReplayGainLevel.MaxPreampDb) : 0;
+        var changed = parsed != _rgMode || preamp != _rgPreampDb || preventClipping != _rgPreventClipping;
+        _rgMode = parsed;
+        _rgPreampDb = preamp;
+        _rgPreventClipping = preventClipping;
+        if (changed) RefreshReplayGain(log: true);
+    }
+
+    /// <summary>The level a song plays at under the current settings (1 = as it is).</summary>
+    private double ReplayGainFor(Track? track) =>
+        ReplayGainLevel.Linear(_rgMode, track, _rgPreampDb, _rgPreventClipping);
+
+    /// <summary>Main thread: every item in ExoPlayer's list gets its level again (settings or tags
+    /// changed), then the sink glides the playing one there.</summary>
+    private void RefreshReplayGain(bool log)
+    {
+        for (var i = 0; i < _player.MediaItemCount; i++)
+        {
+            var id = _player.GetMediaItemAt(i)?.MediaId;
+            if (id == null) continue;
+            var track = Lookup(id);
+            _replayGain.SetGain(id, ReplayGainFor(track));
+            if (log) LogReplayGain(track, id);
+        }
+        _replayGain.Refresh();
+    }
+
+    /// <summary>Drops the levels of items no longer in ExoPlayer's list.</summary>
+    private void ForgetUnqueuedReplayGain()
+    {
+        var ids = new List<string>(_player.MediaItemCount);
+        for (var i = 0; i < _player.MediaItemCount; i++)
+            if (_player.GetMediaItemAt(i)?.MediaId is { } id) ids.Add(id);
+        _replayGain.Retain(ids);
+    }
+
+    /// <summary>"ReplayGain: Track, 'Song': track -7.84 dB, album -6.10 dB, peak 0.988, pre-amp 0.0 dB,
+    /// clip guard on -> -7.84 dB" in the exported log, once per item built (and per settings change).</summary>
+    private void LogReplayGain(Track? track, string path)
+    {
+        var gain = _replayGain.GainFor(path);
+        if (_rgMode == ReplayGainMode.Off && gain == 1f) return;
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        string Num(double? v, string format) => v is { } d ? d.ToString(format, inv) : "none";
+        var applied = gain == 1f ? "0.00" : (20 * Math.Log10(gain)).ToString("+0.00;-0.00", inv);
+        DebugLog.Write("Audio", $"ReplayGain: {ReplayGainLevel.ModeName(_rgMode)}, '{track?.Title ?? FallbackTitle(path)}': " +
+            $"track {Num(track?.ReplayGainTrackDb, "+0.00;-0.00")} dB, album {Num(track?.ReplayGainAlbumDb, "+0.00;-0.00")} dB, " +
+            $"peak {Num(track?.ReplayGainTrackPeak, "0.000")}, pre-amp {_rgPreampDb.ToString("+0.0;-0.0;0.0", inv)} dB, " +
+            $"clip guard {(_rgPreventClipping ? "on" : "off")} -> {applied} dB");
+    }
     public void SetCrossfade(bool enabled, int durationSeconds, AutoMixFadeCurve fadeCurve = AutoMixFadeCurve.SmoothEase, bool fadeOut = true, bool overlap = false) { }
     public void SetPitchSemitones(double semitones) { }
     public void SetUpmixMode(string mode) { }
@@ -334,6 +421,9 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         // track ended; its Play(next) will match this item and leave it running.
         _autoTransitionPending = true;
         CurrentMediaPath = item.MediaId;
+        // The sink took up this item's level at its first sample already; this is the fallback
+        // for a sink that could not name the item (ReplayGainAudioProcessor).
+        _replayGain.Announce(item.MediaId);
         Position = TimeSpan.Zero;
         TrackEnded?.Invoke(this, EventArgs.Empty);
     }
@@ -443,13 +533,27 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         // Audio focus loss, headphone unplug and lock-screen Pause all land here without a
         // Pause() call from us. Mirror it so the ViewModel's next toggle does the right thing.
-        // No PlayWhenReady check: Media3 only clears it for a PERMANENT focus loss. A
-        // transient loss (e.g. an incoming call) is signalled as a playback-suppression
-        // reason with PlayWhenReady left true — requiring it false here would miss that case
-        // and leave State stuck on Playing over a frozen clock. StateReady is still required:
-        // it is what stops our own Stop() (which drives the state to Idle) from re-entering
-        // here and being misread as an external pause.
-        if (!isPlaying && State == PlaybackState.Playing && _player.PlaybackState == BasePlayer.InterfaceConsts.StateReady)
+        // No PlayWhenReady check, and StateReady required for the pause: see PlayerStateMirror.
+        MirrorState(PlayerStateMirror.OnIsPlayingChanged(State, isPlaying,
+            _player.PlaybackState == BasePlayer.InterfaceConsts.StateReady));
+    }
+
+    /// <summary>
+    /// A permanent focus loss or a session Pause while a stream is still buffering clears
+    /// PlayWhenReady with no IsPlaying change (buffering made it false already), so
+    /// OnIsPlayingChanged never saw it and State stayed Playing over a paused player.
+    /// </summary>
+    private void OnPlayWhenReadyChanged(bool playWhenReady, int reason)
+    {
+        var next = PlayerStateMirror.OnPlayWhenReadyChanged(State, playWhenReady);
+        if (next != State) DebugLog.Write("Audio", $"Paused from outside the app (reason {reason}, playback state {_player.PlaybackState})");
+        MirrorState(next);
+    }
+
+    private void MirrorState(PlaybackState next)
+    {
+        if (next == State) return;
+        if (next == PlaybackState.Paused)
         {
             // Deliberately do NOT stop the poll timer here (unlike our own Pause()): it must
             // keep ticking through an external pause, because PollPosition's tick is the only
@@ -457,7 +561,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             // state change happened at all.
             State = PlaybackState.Paused;
         }
-        else if (isPlaying && State == PlaybackState.Paused)
+        else if (next == PlaybackState.Playing)
         {
             // Mirror image of our own Resume(): a session Play (notification, lock screen,
             // Bluetooth) reaches ExoPlayer directly — SessionForwardingPlayer only intercepts
@@ -487,6 +591,11 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     {
         if (_disposed || generation != _positionPumpGeneration) return;
         PollPosition();
+        // An outside pause (focus loss, unplug, lock screen) leaves the chain running so that
+        // this tick tells the ViewModel; once it has, a paused player has nothing more to say.
+        // It ran four times a second for as long as the app lived (battery). Resume() and
+        // OnIsPlayingChanged's Play branch start a new chain; Seek reports its own position.
+        if (State == PlaybackState.Paused) return;
         _positionHandler.PostDelayed(() => PositionTick(generation), PositionPollMs);
     }
 
@@ -572,6 +681,8 @@ public sealed class Media3AudioPlayer : IAudioPlayer
 
         var meta = new MediaMetadata.Builder();
         var track = Lookup(path);
+        _replayGain.SetGain(path, ReplayGainFor(track), track?.Title ?? FallbackTitle(path));
+        LogReplayGain(track, path);
         if (track != null)
         {
             meta.SetTitle(track.Title).SetArtist(track.Artist).SetAlbumTitle(track.Album);
@@ -779,7 +890,17 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         return _byPath.GetValueOrDefault(path);
     }
 
-    private void OnLibraryUpdated(object? sender, EventArgs e) => _byPath = null;
+    private void OnLibraryUpdated(object? sender, EventArgs e)
+    {
+        _byPath = null;
+        // A song's ReplayGain may have just been read (the tag backfill, a sync with the desktop).
+        // The event can come from a pool thread; ExoPlayer is only touched on the main looper.
+        if (_rgMode != ReplayGainMode.Off)
+            _positionHandler.Post(() =>
+            {
+                if (!_disposed) RefreshReplayGain(log: false);
+            });
+    }
 
     /// <summary>
     /// ExoPlayer's position already tracks the AudioTrack head, so what remains is the
@@ -842,20 +963,28 @@ public sealed class Media3AudioPlayer : IAudioPlayer
     private void RaiseSessionNextRequested() => SessionNextRequested?.Invoke(this, EventArgs.Empty);
     private void RaiseSessionPreviousRequested() => SessionPreviousRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>Whether the session's Play goes to the ViewModel (<see cref="SessionPlayRequested"/>)
+    /// instead of ExoPlayer: nothing is loaded and someone listens. Paused stays ExoPlayer's own
+    /// resume, which OnIsPlayingChanged mirrors.</summary>
+    private bool RoutesSessionPlay => !_disposed && State == PlaybackState.Stopped && SessionPlayRequested != null;
+
     /// <summary>Adds the device key header to the signed-in desktop's stream requests; every
     /// other request passes through untouched. Runs on ExoPlayer's loader threads.</summary>
     /// <summary>
     /// The stock renderers over a stock DefaultAudioSink (what DefaultRenderersFactory.buildAudioSink
-    /// builds in Media3 1.11) with one audio processor added: a TeeAudioProcessor into the meter
-    /// tap. Both the platform decoders' renderer and the FFmpeg one write to this one sink.
+    /// builds in Media3 1.11) with two audio processors added: a TeeAudioProcessor into the meter
+    /// tap (it meters the song as decoded), then ReplayGain's gain stage. Both the platform
+    /// decoders' renderer and the FFmpeg one write to this one sink.
     /// </summary>
     private sealed class TappedRenderersFactory : DefaultRenderersFactory
     {
         private readonly MeterTap _tap;
+        private readonly ReplayGainStage _replayGain;
 
-        public TappedRenderersFactory(Context context, MeterTap tap) : base(context)
+        public TappedRenderersFactory(Context context, MeterTap tap, ReplayGainStage replayGain) : base(context)
         {
             _tap = tap;
+            _replayGain = replayGain;
         }
 
         protected override IAudioSink? BuildAudioSink(Context context, bool enableFloatOutput, bool enableAudioOutputPlaybackParameters)
@@ -863,7 +992,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
             var sink = new DefaultAudioSink.Builder(context)
                 .SetEnableFloatOutput(enableFloatOutput)
                 .SetEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParameters)
-                .SetAudioProcessors(new AndroidX.Media3.Common.Audio.IAudioProcessor[] { new TeeAudioProcessor(_tap) })
+                .SetAudioProcessors(new AndroidX.Media3.Common.Audio.IAudioProcessor[] { new TeeAudioProcessor(_tap), new ReplayGainAudioProcessor(_replayGain) })
                 .Build();
             _tap.Sink = sink;
             return sink;
@@ -895,6 +1024,7 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public void OnPlayerError(PlaybackException error) => _owner.OnPlayerError(error);
         public void OnTracksChanged(Tracks tracks) => _owner.OnTracksChanged(tracks);
         public void OnIsPlayingChanged(bool isPlaying) => _owner.OnIsPlayingChanged(isPlaying);
+        public void OnPlayWhenReadyChanged(bool playWhenReady, int reason) => _owner.OnPlayWhenReadyChanged(playWhenReady, reason);
 
         /// <summary>
         /// Unused, but Java calls it after every batch of player events and the binding wraps
@@ -940,6 +1070,19 @@ public sealed class Media3AudioPlayer : IAudioPlayer
         public override void SeekToNextMediaItem() => _owner.RaiseSessionNextRequested();
         public override void SeekToPrevious() => _owner.RaiseSessionPreviousRequested();
         public override void SeekToPreviousMediaItem() => _owner.RaiseSessionPreviousRequested();
+
+        // Nothing loaded: the session's prepare-then-play would only prepare an empty playlist
+        // (straight to ENDED); the ViewModel loads and starts the song instead.
+        public override void Prepare()
+        {
+            if (!_owner.RoutesSessionPlay) base.Prepare();
+        }
+
+        public override void Play()
+        {
+            if (_owner.RoutesSessionPlay) _owner.SessionPlayRequested?.Invoke(_owner, EventArgs.Empty);
+            else base.Play();
+        }
 
         public override bool HasNextMediaItem => _owner.HasNextInQueue?.Invoke() ?? base.HasNextMediaItem;
         public override bool HasPreviousMediaItem => _owner.HasPreviousInQueue?.Invoke() ?? base.HasPreviousMediaItem;

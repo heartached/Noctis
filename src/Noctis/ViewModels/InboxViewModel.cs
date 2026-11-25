@@ -118,13 +118,13 @@ public partial class InboxViewModel : ViewModelBase, ISearchable
     [RelayCommand(CanExecute = nameof(HasWaiting))]
     private void PlayAll()
     {
-        if (Tracks.Count > 0) _player.ReplaceQueueAndPlay(Tracks.ToList(), 0);
+        if (Tracks.Count > 0) _player.WithSource(PlaySource.Section(PlaySourceKind.Inbox)).PlayAll(Tracks.ToList());
     }
 
     [RelayCommand(CanExecute = nameof(HasWaiting))]
     private void ShuffleAll()
     {
-        if (Tracks.Count > 0) _player.PlayShuffled(Tracks.ToList());
+        if (Tracks.Count > 0) _player.WithSource(PlaySource.Section(PlaySourceKind.Inbox)).PlayShuffled(Tracks.ToList());
     }
 
     /// <summary>Double-click / Play: plays the list from that song, so Next walks the Inbox.</summary>
@@ -134,7 +134,7 @@ public partial class InboxViewModel : ViewModelBase, ISearchable
         if (track == null) return;
         var list = Tracks.ToList();
         var index = list.IndexOf(track);
-        _player.ReplaceQueueAndPlay(list, Math.Max(index, 0));
+        _player.WithSource(PlaySource.Section(PlaySourceKind.Inbox)).ReplaceQueueAndPlay(list, Math.Max(index, 0));
     }
 
     /// <summary>Moves the songs into the library (the row button, the menu, the header button

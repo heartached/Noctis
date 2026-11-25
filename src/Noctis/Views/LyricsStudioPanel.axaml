@@ -587,6 +587,17 @@
                                               ToolTip.Tip="{loc:T LyricsStudioSettings.EmbedTagsHint}" />
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding SaveTtml}" Content="{loc:T LyricsStudioSettings.SaveTtml}"
                                               ToolTip.Tip="{loc:T LyricsStudioSettings.SaveTtmlHint}" />
+                                    <!-- Word-timed saves: .elrc and .lrc, or just one of them (owner 11-24). -->
+                                    <StackPanel Spacing="6" IsEnabled="{Binding WordTimings}"
+                                                ToolTip.Tip="{loc:T LyricsStudioSettings.LyricsFilesHint}">
+                                        <TextBlock Classes="studio-pop-label" Text="{loc:T LyricsStudioSettings.LyricsFiles}" />
+                                        <ComboBox x:Name="StudioLyricsFilesBox" Classes="pill-field" SelectedIndex="{Binding LyricsFilesIndex}"
+                                                  AutomationProperties.Name="{loc:T LyricsStudioSettings.LyricsFiles}">
+                                            <ComboBoxItem Content="{loc:T LyricsStudioSettings.LyricsFilesBoth}" />
+                                            <ComboBoxItem Content="{loc:T LyricsStudioSettings.LyricsFilesElrc}" />
+                                            <ComboBoxItem Content="{loc:T LyricsStudioSettings.LyricsFilesLrc}" />
+                                        </ComboBox>
+                                    </StackPanel>
                                     <CheckBox Classes="metadata-pill-checkbox studio-option" IsChecked="{Binding TranscribeOnly}" Content="{loc:T LyricsStudio.TranscribeOnly}"
                                               ToolTip.Tip="{loc:T LyricsStudio.TranscribeOnlyTip}" />
                                     <!-- Experimental GPU (Vulkan): only in builds made with -p:LyricsGpu=true. -->

@@ -8,8 +8,10 @@
              x:DataType="vm:ListeningHistoryViewModel">
 
     <!-- Listening History, the content of a page pushed inside the Settings sheet (the sheet draws
-         the header and Back): this week's time and plays over seven day bars (today in the accent),
-         the last three songs with Show All, then Keep History, Share with Computer and Clear.
+         the header and Back): this week's time and plays over seven day bars (today in the accent;
+         a bar tapped shows that day's numbers, tapped again or the card tapped shows the week's),
+         the all-time total, the last three songs with their play counts and Show All, then Keep
+         History, Share with Computer and Clear.
          Everything is the phone's own play log. Shared look: GroupedStyles.axaml. -->
 
     <UserControl.Styles>
@@ -34,13 +36,22 @@
         <Style Selector="Border.day-bar.today">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
         </Style>
+        <!-- The day the card shows: filled in the text colour; today keeps its accent and gets a ring. -->
+        <Style Selector="Border.day-bar.selected">
+            <Setter Property="Background" Value="{DynamicResource PrimaryTextBrush}" />
+        </Style>
+        <Style Selector="Border.day-bar.today.selected">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
         <Style Selector="TextBlock.day-label">
             <Setter Property="FontSize" Value="13.5" />
             <Setter Property="Foreground" Value="{DynamicResource PhoneSecondaryTextBrush}" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="Margin" Value="0,8,0,0" />
         </Style>
-        <Style Selector="TextBlock.day-label.today">
+        <Style Selector="TextBlock.day-label.today, TextBlock.day-label.selected">
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         </Style>
@@ -52,36 +63,45 @@
     </UserControl.Styles>
 
     <StackPanel Classes="grouped-content">
-        <!-- This Week: the time and plays, then one bar per day. -->
-        <Border Name="WeekCard" Classes="group-card">
-            <StackPanel Margin="16,14,16,16">
-                <!-- Left, as the total under it: the sheet caps a row-value's width (220), which
-                     centred a stretched caption in the wide card. -->
-                <TextBlock Name="WeekCaption" Classes="row-value" Margin="0" HorizontalAlignment="Left" FontWeight="SemiBold" Text="{loc:T Mobile.History.ThisWeek}" />
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                    <TextBlock Name="WeekTotalLabel" Classes="week-total" Text="{Binding WeekTotal}" />
-                    <TextBlock Name="WeekPlaysLabel" Classes="row-value" Margin="0,0,0,5" VerticalAlignment="Bottom"
-                               FontWeight="SemiBold" Text="{Binding WeekPlays}" />
+        <StackPanel>
+            <!-- This Week: the time and plays, then one bar per day. A tap on the card outside the bars
+                 shows the week again (the code-behind's Tapped). -->
+            <Border Name="WeekCard" Classes="group-card">
+                <StackPanel Margin="16,14,16,16">
+                    <!-- Left, as the total under it: the sheet caps a row-value's width (220), which
+                         centred a stretched caption in the wide card. -->
+                    <TextBlock Name="WeekCaption" Classes="row-value" Margin="0" HorizontalAlignment="Left" FontWeight="SemiBold" Text="{Binding WeekCaption}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                        <TextBlock Name="WeekTotalLabel" Classes="week-total" Text="{Binding WeekTotal}" />
+                        <TextBlock Name="WeekPlaysLabel" Classes="row-value" Margin="0,0,0,5" VerticalAlignment="Bottom"
+                                   FontWeight="SemiBold" Text="{Binding WeekPlays}" />
+                    </StackPanel>
+                    <ItemsControl Name="DayBars" Margin="0,14,0,0" ItemsSource="{Binding Bars}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <!-- The whole column is the button: the space over a short bar and the letter too. -->
+                            <DataTemplate x:DataType="vm:HistoryBar">
+                                <Button Classes="row day-button" VerticalAlignment="Stretch" AutomationProperties.Name="{Binding Name}"
+                                        Command="{Binding $parent[ItemsControl].((vm:ListeningHistoryViewModel)DataContext).SelectDayCommand}"
+                                        CommandParameter="{Binding}">
+                                    <Grid RowDefinitions="*,Auto">
+                                        <Border Classes="day-bar" Classes.today="{Binding IsToday}" Classes.selected="{Binding IsSelected}" Height="{Binding Height}" />
+                                        <TextBlock Grid.Row="1" Classes="day-label" Classes.today="{Binding IsToday}" Classes.selected="{Binding IsSelected}" Text="{Binding Label}" />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
-                <ItemsControl Name="DayBars" Margin="0,14,0,0" ItemsSource="{Binding Bars}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Rows="1" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:HistoryBar">
-                            <StackPanel VerticalAlignment="Bottom" AutomationProperties.Name="{Binding Name}">
-                                <Border Classes="day-bar" Classes.today="{Binding IsToday}" Height="{Binding Height}" />
-                                <TextBlock Classes="day-label" Classes.today="{Binding IsToday}" Text="{Binding Label}" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </Border>
+            </Border>
+            <TextBlock Name="AllTimeLabel" Classes="group-footnote" Text="{Binding AllTime}" IsVisible="{Binding AllTime, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
 
-        <!-- Recently Played: the last three songs, then Show All. -->
+        <!-- Recently Played: the last three songs with their play counts, then Show All. -->
         <StackPanel Name="RecentSection">
             <TextBlock Classes="group-caption" FontWeight="SemiBold" Text="{loc:T Mobile.RecentlyPlayed}" />
             <Border Name="RecentCard" Classes="group-card">
@@ -89,14 +109,21 @@
                     <ItemsControl Name="RecentList" ItemsSource="{Binding Recent}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:HistoryRow">
-                                <StackPanel>
+                                <!-- A long press opens the song's menu, as on every song row. -->
+                                <StackPanel Background="Transparent"
+                                            views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenTrackSheetCommand}"
+                                            views:LongPress.CommandParameter="{Binding Track}">
                                     <Grid ColumnDefinitions="Auto,*,Auto" Height="60" Margin="12,0,16,0">
                                         <Border Classes="history-art" Width="44" Height="44">
                                             <controls:CachedImage SourcePath="{Binding Track.AlbumArtworkPath}" DecodeWidth="128" Stretch="UniformToFill" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
                                             <TextBlock Classes="row-title" Text="{Binding Track.Title}" MaxLines="1" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Classes="row-sub" Margin="0" Text="{Binding Track.Artist}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            <!-- The count first (docked right, at its full width), so a long artist is the one cut short. -->
+                                            <DockPanel HorizontalAlignment="Left">
+                                                <TextBlock DockPanel.Dock="Right" Classes="row-sub" Margin="0" Text="{Binding Plays}" MaxLines="1" />
+                                                <TextBlock Classes="row-sub" Margin="0" Text="{Binding Track.Artist}" MaxLines="1" TextTrimming="CharacterEllipsis" />
+                                            </DockPanel>
                                         </StackPanel>
                                         <TextBlock Grid.Column="2" Classes="row-value" FontSize="15" Text="{Binding When}" />
                                     </Grid>

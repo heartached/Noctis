@@ -73,6 +73,29 @@ public class MobileUnreachableComputerPlaybackTests : IDisposable
         Assert.Equal(t[1].FilePath, player.PlayedPaths[^1]);
     }
 
+    /// <summary>
+    /// The song after a phone song streams from the computer, and the player loads it ahead
+    /// (gapless) while the phone song plays: a computer that went away is reported near that
+    /// song's end, while the phone song is still the current one. A phone song never reaches the
+    /// network, so the error is the stream's, yet it was taken for a broken phone file: the
+    /// queue went on to the desktop song, waited out the same timeout in silence, and showed
+    /// the raw error code instead of "Can't reach your computer".
+    /// </summary>
+    [Fact]
+    public void AConnectionError_WhileAPhoneSongPlays_IsTheComputersToo()
+    {
+        var t = Tracks("lsl");
+        var (vm, player) = Make(t);
+        vm.PlayTracks(t, 0);
+        player.RaisePositionChanged(TimeSpan.FromSeconds(95));
+
+        player.RaisePlaybackError(Timeout);                       // the prefetch of s1 failed
+
+        Assert.Same(t[2], vm.CurrentTrack);
+        Assert.DoesNotContain(t[1].FilePath, player.PlayedPaths);
+        Assert.Equal(NowPlayingViewModel.ComputerUnreachableSkipping, vm.Notice);
+    }
+
     [Fact]
     public void ErrorStreak_IsNotClearedByTicksThatNeverLeaveTheStart()
     {

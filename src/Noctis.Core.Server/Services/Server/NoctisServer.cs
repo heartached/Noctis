@@ -572,7 +572,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
         return user is null ? (null, null, SubsonicResponse.ErrWrongCredentials, "Wrong username or password") : (user, null, 0, "");
     }
 
-    // ── Binary endpoints: stream / download / getCoverArt / getNoctisPlaylistCover / getAvatar
+    // ── Binary endpoints: stream / download / getCoverArt / getNoctisPlaylistCover / getNoctisAnimatedCover / getAvatar
 
     private async Task<bool> TryHandleBinaryAsync(HttpContext ctx, string method, Params p)
     {
@@ -644,6 +644,9 @@ public sealed partial class NoctisServer : IAsyncDisposable
             case "getnoctisplaylistcover":
                 await ServePlaylistCoverAsync(ctx, p).ConfigureAwait(false);
                 return true;
+            case "getnoctisanimatedcover":
+                await ServeAnimatedCoverAsync(ctx, p).ConfigureAwait(false);
+                return true;
             case "getavatar":
             {
                 // The caller's own picture only: another account's name is 70, never the owner's
@@ -663,6 +666,22 @@ public sealed partial class NoctisServer : IAsyncDisposable
             }
         }
         return false;
+    }
+
+    /// <summary>
+    /// noctisCover on a search3 album (a Noctis extension; other clients ignore it): its cover file's
+    /// version, the last write in hex ticks (the stamp the resized copies are named by). The phone
+    /// compares it with the version it holds and downloads only a cover changed here. No cover, no field.
+    /// </summary>
+    private JsonObject WithCoverVersion(JsonObject album, Guid albumId)
+    {
+        try
+        {
+            if (_library.ArtworkPath(albumId) is { } path)
+                album["noctisCover"] = File.GetLastWriteTimeUtc(path).Ticks.ToString("x", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { /* no version: the phone keeps its 30-day rule */ }
+        return album;
     }
 
     internal static string ContentTypeFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
@@ -817,7 +836,7 @@ public sealed partial class NoctisServer : IAsyncDisposable
                     [key] = new JsonObject
                     {
                         ["artist"] = new JsonArray(artists.Select(view.ArtistObject).ToArray()),
-                        ["album"] = new JsonArray(albums.Select(view.AlbumObject).ToArray()),
+                        ["album"] = new JsonArray(albums.Select(a => WithCoverVersion(view.AlbumObject(a), a.Id)).ToArray()),
                         ["song"] = new JsonArray(songs.Select(view.SongObject).ToArray()),
                     },
                 };
@@ -1292,7 +1311,14 @@ internal sealed class LibraryView
             .OrderBy(a => a.Year).ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase);
 
     public IEnumerable<Track> SongsOf(Album album)
-        => _tracksByAlbum[album.Id].OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
+        => LinkedSongsOf(album) is { Count: > 0 } linked
+            ? Noctis.Services.AlbumLinks.InAlbumOrder(_tracksByAlbum[album.Id], linked)
+            : _tracksByAlbum[album.Id].OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The songs <paramref name="album"/> lists from other albums (Link Tracks From, Discord
+    /// 11-11), as the desktop album page shows them: those this snapshot still has.</summary>
+    private List<Track> LinkedSongsOf(Album album)
+        => album.LinkedTracks.Select(t => TrackById(t.Id)).OfType<Track>().Where(t => t.AlbumId != album.Id).ToList();
 
     public IEnumerable<Track> SongsOf(Playlist playlist)
         => playlist.TrackIds.Select(id => _tracks.TryGetValue(id, out var t) ? t : null).Where(t => t is not null)!;
@@ -1343,6 +1369,8 @@ internal sealed class LibraryView
     public JsonObject AlbumObject(Album a)
     {
         var songs = _tracksByAlbum[a.Id].ToList();
+        // A linked album's count, length and heart cover the linked songs too, as on the desktop.
+        var listed = a.HasLinkedTracks ? SongsOf(a).ToList() : songs;
         var obj = new JsonObject
         {
             ["id"] = Ids.AlbumId(a.Id),
@@ -1352,15 +1380,19 @@ internal sealed class LibraryView
             ["artist"] = a.Artist,
             ["isDir"] = true,
             ["coverArt"] = Ids.AlbumId(a.Id),
-            ["songCount"] = songs.Count > 0 ? songs.Count : a.TrackCount,
-            ["duration"] = (int)(songs.Count > 0 ? songs.Sum(t => t.Duration.TotalSeconds) : a.TotalDuration.TotalSeconds),
+            ["songCount"] = listed.Count > 0 ? listed.Count : a.TrackCount,
+            ["duration"] = (int)(listed.Count > 0 ? listed.Sum(t => t.Duration.TotalSeconds) : a.TotalDuration.TotalSeconds),
             ["playCount"] = songs.Sum(t => (long)t.PlayCount), // long: an int Sum throws on overflow
             ["created"] = (songs.Count > 0 ? songs.Min(t => t.DateAdded) : DateTime.UtcNow).ToString("O"),
         };
         if (ArtistIdOf(a) is { } artistId) { obj["artistId"] = artistId; obj["parent"] = artistId; }
         if (a.Year > 0) obj["year"] = a.Year;
         if (!string.IsNullOrWhiteSpace(a.Genre) && a.Genre != "Unknown") obj["genre"] = a.Genre;
-        if (songs.Count > 0 && songs.All(t => t.IsFavorite)) obj["starred"] = DateTime.UtcNow.ToString("O");
+        if (listed.Count > 0 && listed.All(t => t.IsFavorite)) obj["starred"] = DateTime.UtcNow.ToString("O");
+        // The albums it lists songs from (additive; older phones ignore it): the phone links the
+        // same albums, so its album page lists the same songs.
+        if (a.HasLinkedTracks && a.LinkedAlbumIds.Count > 0)
+            obj["noctisLinks"] = new JsonArray(a.LinkedAlbumIds.Select(id => (JsonNode)Ids.AlbumId(id)).ToArray());
         return obj;
     }
 
@@ -1394,7 +1426,20 @@ internal sealed class LibraryView
         if (t.Rating > 0) obj["userRating"] = t.Rating;
         if (t.IsFavorite) obj["starred"] = DateTime.UtcNow.ToString("O");
         if (_artistsByName.TryGetValue(t.Artist ?? "", out var artist)) obj["artistId"] = Ids.ArtistId(artist);
+        if (ReplayGainObject(t) is { } rg) obj["replayGain"] = rg;
         return obj;
+    }
+
+    /// <summary>OpenSubsonic's replayGain for a song whose file has ReplayGain tags (Track's copy of
+    /// them), null otherwise: the phone levels a desktop song by it. Additive; older phones ignore it.</summary>
+    private static JsonObject? ReplayGainObject(Track t)
+    {
+        if (t.ReplayGainTrackDb is null && t.ReplayGainAlbumDb is null && t.ReplayGainTrackPeak is null) return null;
+        var rg = new JsonObject();
+        if (t.ReplayGainTrackDb is { } track) rg["trackGain"] = track;
+        if (t.ReplayGainAlbumDb is { } album) rg["albumGain"] = album;
+        if (t.ReplayGainTrackPeak is { } peak) rg["trackPeak"] = peak;
+        return rg;
     }
 
     public JsonObject PlaylistObject(Playlist p, ServerUser owner)

@@ -2,15 +2,18 @@ using Noctis.Models;
 
 namespace Noctis.Services;
 
-/// <summary>The last seven local days of the play log: listening time per day, the total and the play count.</summary>
+/// <summary>The last seven local days of the play log: listening time and plays per day, and the week's totals.</summary>
 /// <param name="Days">The seven local dates, oldest first; the last is today.</param>
 /// <param name="DayTicks">Time listened on each of <paramref name="Days"/>.</param>
-public sealed record ListeningWeek(IReadOnlyList<DateTime> Days, IReadOnlyList<long> DayTicks, int Plays)
+/// <param name="DayPlays">Plays (skips included) on each of <paramref name="Days"/>.</param>
+public sealed record ListeningWeek(IReadOnlyList<DateTime> Days, IReadOnlyList<long> DayTicks, IReadOnlyList<int> DayPlays)
 {
     public long TotalTicks => DayTicks.Sum();
 
+    public int Plays => DayPlays.Sum();
+
     public static ListeningWeek Empty(DateTime today) => new(
-        Enumerable.Range(-6, 7).Select(i => today.Date.AddDays(i)).ToList(), new long[7], 0);
+        Enumerable.Range(-6, 7).Select(i => today.Date.AddDays(i)).ToList(), new long[7], new int[7]);
 }
 
 /// <summary>
@@ -31,7 +34,7 @@ public static class ListeningWeekCalculator
         var today = TimeZoneInfo.ConvertTimeFromUtc(AsUtc(nowUtc), zone).Date;
         var first = today.AddDays(-6);
         var ticks = new long[7];
-        var plays = 0;
+        var plays = new int[7];
         // Oldest first, so walk back and stop once past the window (a day's slack covers any zone's offset).
         var stopBefore = AsUtc(first).AddDays(-1);
         for (var i = events.Count - 1; i >= 0; i--)
@@ -41,11 +44,21 @@ public static class ListeningWeekCalculator
             if (utc < stopBefore) break;
             var day = (TimeZoneInfo.ConvertTimeFromUtc(utc, zone).Date - first).Days;
             if (day is < 0 or > 6) continue;
-            plays++;
+            plays[day]++;
             if (e.Skipped) continue;
             ticks[day] += PlayListening.Heard(e, lengthOf(e.TrackId)).Ticks;
         }
         return new ListeningWeek(Enumerable.Range(0, 7).Select(i => first.AddDays(i)).ToList(), ticks, plays);
+    }
+
+    /// <summary>The whole kept log by the same rule: the time listened and the play count.</summary>
+    /// <param name="lengthOf">A song's length by id; null or zero when unknown.</param>
+    public static (long Ticks, int Plays) ComputeAllTime(IReadOnlyList<PlayHistoryEvent> events, Func<Guid, TimeSpan?> lengthOf)
+    {
+        long ticks = 0;
+        foreach (var e in events)
+            if (!e.Skipped) ticks += PlayListening.Heard(e, lengthOf(e.TrackId)).Ticks;
+        return (ticks, events.Count);
     }
 
     /// <summary>"6 h 12 min", "12 min", "45 s" (under a minute); "0 min" for none.</summary>

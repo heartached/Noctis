@@ -7,9 +7,10 @@ using Noctis.Models;
 namespace Noctis.ViewModels;
 
 /// <summary>
-/// ViewModel for the unified "Add to Playlist" dialog. Lets the user pick an
-/// existing playlist or create a new one inline; the host wires the actual
-/// add/create work through events.
+/// ViewModel for the unified "Add to Playlist" dialog. Lets the user pick one or more
+/// existing playlists or create a new one inline; the host wires the actual add/create
+/// work through events. A click on a row ticks it (Add puts the songs in every ticked
+/// playlist); a double click or Enter on a row adds at once, as the one-pick dialog did.
 /// </summary>
 public partial class AddToPlaylistDialogViewModel : ViewModelBase
 {
@@ -22,6 +23,12 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TrackCountText))]
     private int _trackCount;
+
+    /// <summary>How many rows are ticked; Add is off at 0.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(AddButtonText))]
+    [NotifyCanExecuteChangedFor(nameof(AddCheckedCommand))]
+    private int _checkedCount;
 
     /// <summary>Set once a playlist was picked or a new one requested. The dialog animates out
     /// after that, and a second pick or Create meanwhile (Enter in the name, a double click)
@@ -47,6 +54,11 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     public string TrackCountText => TrackCount == 1
         ? Loc.T("AddToPlaylist.AddingOneSong")
         : Loc.T("AddToPlaylist.AddingSongs", TrackCount);
+
+    /// <summary>"Add" for none or one ticked playlist, "Add to 3 Playlists" for more.</summary>
+    public string AddButtonText => CheckedCount > 1
+        ? Loc.T("AddToPlaylist.AddToCount", CheckedCount)
+        : Loc.T("AddToPlaylist.Add");
 
     /// <summary>The existing-playlists section is hidden while the create form is open.</summary>
     public bool ShowPlaylistList => HasPlaylists && !IsCreatingNew;
@@ -79,8 +91,9 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
         Rows = rows;
     }
 
-    /// <summary>Fires when the user picks an existing playlist row.</summary>
-    public event EventHandler<PlaylistNavItem>? PlaylistSelected;
+    /// <summary>Fires once with the playlists the songs go in (list order): the ticked rows
+    /// on Add, or the row double clicked / Entered (with any ticked ones).</summary>
+    public event EventHandler<IReadOnlyList<PlaylistNavItem>>? PlaylistsSelected;
 
     /// <summary>Fires when the user submits the inline "create new" form.</summary>
     public event EventHandler<(string Name, string Description)>? NewPlaylistRequested;
@@ -88,14 +101,46 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
     /// <summary>Fires when the dialog should close.</summary>
     public event EventHandler? CloseRequested;
 
+    /// <summary>A click on a row: ticks it, or unticks it. A full row (every song on it
+    /// already) never ticks.</summary>
+    [RelayCommand]
+    private void ToggleRow(AddToPlaylistRow? row)
+    {
+        if (row == null || _done || IsCreatingNew || row.IsAlreadyOnPlaylist) return;
+        row.IsChecked = !row.IsChecked;
+        CheckedCount = Rows.Count(r => r.IsChecked);
+    }
+
+    /// <summary>Double click or Enter on a row: adds at once, to that row and any ticked
+    /// ones (the quick single add of the one-pick dialog).</summary>
     [RelayCommand]
     private void SelectPlaylist(PlaylistNavItem? playlist)
     {
         if (playlist == null || _done || IsCreatingNew) return;
+        if (!_rowOf.TryGetValue(playlist, out var row)) return;
         // Every song is in it already: nothing to add (the row is greyed and takes no clicks).
-        if (_rowOf.TryGetValue(playlist, out var row) && row.IsAlreadyOnPlaylist) return;
+        if (row.IsAlreadyOnPlaylist) return;
+        row.IsChecked = true;
+        CheckedCount = Rows.Count(r => r.IsChecked);
+        Finish();
+    }
+
+    private bool CanAddChecked() => CheckedCount > 0;
+
+    /// <summary>The footer's Add: every ticked playlist, then close.</summary>
+    [RelayCommand(CanExecute = nameof(CanAddChecked))]
+    private void AddChecked()
+    {
+        if (_done || IsCreatingNew || CheckedCount == 0) return;
+        Finish();
+    }
+
+    private void Finish()
+    {
+        var picked = Rows.Where(r => r.IsChecked).Select(r => r.Playlist).ToList();
+        if (picked.Count == 0) return;
         _done = true;
-        PlaylistSelected?.Invoke(this, playlist);
+        PlaylistsSelected?.Invoke(this, picked);
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -159,8 +204,11 @@ public partial class AddToPlaylistDialogViewModel : ViewModelBase
 }
 
 /// <summary>One playlist row in the Add to Playlist dialog.</summary>
-public sealed class AddToPlaylistRow
+public sealed partial class AddToPlaylistRow : ObservableObject
 {
+    /// <summary>Ticked for the footer's Add.</summary>
+    [ObservableProperty] private bool _isChecked;
+
     public AddToPlaylistRow(PlaylistNavItem playlist, int alreadyCount, int addingCount)
     {
         Playlist = playlist;

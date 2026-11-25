@@ -123,4 +123,29 @@ public class PartialPublishPageTests
         Assert.Null(vm.SelectedNode);
         Assert.Empty(vm.SelectedFolderTracks);
     }
+
+    [AvaloniaFact]
+    public async Task Folders_PlayingFromLink_OpensTheSourceFolder_AndRevealsTheSong()
+    {
+        // "Playing from B" while folder A is open: the link opens B (the source's path) at the song.
+        var root = TestPaths.Primary("Music");
+        var inA = new Track { Id = Guid.NewGuid(), Title = "A1", FilePath = Path.Combine(root, "A", "a1.flac") };
+        var inB = new Track { Id = Guid.NewGuid(), Title = "B1", FilePath = Path.Combine(root, "B", "b1.flac") };
+        var lib = new FakeLibraryService();
+        lib.TrackList.AddRange(new[] { inA, inB });
+        var persistence = new SettingsPersistence();
+        persistence.Settings.MusicFolders.Add(root);
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var vm = new LibraryFoldersViewModel(lib, player, persistence, new SidebarViewModel(persistence, lib));
+        await RefreshAsync(vm);
+        var folderB = vm.RootNodes.Single().Children.Single(n => n.DisplayName == "B");
+        vm.SelectedNode = vm.RootNodes.Single().Children.Single(n => n.DisplayName == "A");
+        Track? revealed = null;
+        vm.ScrollToTrackRequested += (_, t) => revealed = t;
+
+        vm.RevealTrack(inB, folderB.FullPath);
+
+        Assert.Equal(folderB.FullPath, vm.SelectedNode?.FullPath);
+        Assert.Same(inB, revealed);
+    }
 }

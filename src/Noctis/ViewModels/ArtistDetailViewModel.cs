@@ -312,6 +312,10 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
 
     private bool ShowsCarouselLayout => IsAlbumsCarousel && IsCarouselAvailable;
 
+    /// <summary>GitHub #259: the release grids (Albums, Singles &amp; EPs, Live Albums, Compilations,
+    /// Appears On) stack as Masonry when the Albums page's Masonry setting is on.</summary>
+    public bool UseMasonry => _settings?.AlbumGridMasonry ?? false;
+
     /// <summary>Case style, shared with the Albums page carousel (<see cref="SettingsViewModel.AlbumCarouselStyle"/>).</summary>
     [ObservableProperty] private AlbumCarouselStyle _carouselStyle = AlbumCarouselStyle.Cover;
 
@@ -326,15 +330,66 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     [RelayCommand]
     private void ToggleAlbumsView() => IsAlbumsCarousel = !IsAlbumsCarousel;
 
+    // ── Singles & EPs / Live Albums tab layouts: the same grid-or-carousel choice as the
+    // Albums tab (Discord 11-24), each tab remembering its own for every artist. ──
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowSinglesGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowSinglesCarousel))]
+    [NotifyPropertyChangedFor(nameof(SinglesViewToggleLabel))]
+    private bool _isSinglesCarousel;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowLiveGrid))]
+    [NotifyPropertyChangedFor(nameof(ShowLiveCarousel))]
+    [NotifyPropertyChangedFor(nameof(LiveViewToggleLabel))]
+    private bool _isLiveCarousel;
+
+    public string SinglesViewToggleLabel => Loc.T(IsSinglesCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
+    public string LiveViewToggleLabel => Loc.T(IsLiveCarousel ? "ArtistDetail.ShowGrid" : "ArtistDetail.ShowCarousel");
+
+    public bool ShowSinglesGrid => HasSingles && !(IsSinglesCarousel && IsCarouselAvailable);
+    public bool ShowSinglesCarousel => HasSingles && IsSinglesCarousel && IsCarouselAvailable;
+    public bool ShowLiveGrid => HasLive && !(IsLiveCarousel && IsCarouselAvailable);
+    public bool ShowLiveCarousel => HasLive && IsLiveCarousel && IsCarouselAvailable;
+
+    /// <summary>The single / live album each tab's carousel last centred.</summary>
+    [ObservableProperty] private Album? _singlesCarouselCenterAlbum;
+    [ObservableProperty] private Album? _liveCarouselCenterAlbum;
+
+    partial void OnIsSinglesCarouselChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistSinglesViewMode = value ? "carousel" : "grid";
+    }
+
+    partial void OnIsLiveCarouselChanged(bool value)
+    {
+        if (_settings != null) _settings.ArtistLiveViewMode = value ? "carousel" : "grid";
+    }
+
+    [RelayCommand]
+    private void ToggleSinglesView() => IsSinglesCarousel = !IsSinglesCarousel;
+
+    [RelayCommand]
+    private void ToggleLiveView() => IsLiveCarousel = !IsLiveCarousel;
+
     /// <summary>Re-reads the shared layout and style (a change made on another page while this
     /// one sat in history applies on the way back).</summary>
     private void AdoptAlbumsView()
     {
         if (_settings == null) return;
         IsAlbumsCarousel = _settings.ArtistAlbumsViewMode == "carousel";
+        IsSinglesCarousel = _settings.ArtistSinglesViewMode == "carousel";
+        IsLiveCarousel = _settings.ArtistLiveViewMode == "carousel";
         OnPropertyChanged(nameof(IsCarouselAvailable));
         OnPropertyChanged(nameof(ShowAlbumsGrid));
         OnPropertyChanged(nameof(ShowAlbumsCarousel));
+        OnPropertyChanged(nameof(ShowSinglesGrid));
+        OnPropertyChanged(nameof(ShowSinglesCarousel));
+        OnPropertyChanged(nameof(ShowLiveGrid));
+        OnPropertyChanged(nameof(ShowLiveCarousel));
+        OnPropertyChanged(nameof(UseMasonry));
+        OnPropertyChanged(nameof(TileFixedHeight));
+        OnPropertyChanged(nameof(TileMinHeight));
         CarouselStyle = AlbumCarouselStyles.Parse(_settings.AlbumCarouselStyle);
     }
 
@@ -454,7 +509,16 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     private const double TileLabelHeight = 64;
     [ObservableProperty] private double _tileArtworkSize = 184;
     public double TileHeight => TileArtworkSize + TileLabelHeight;
-    partial void OnTileArtworkSizeChanged(double value) => OnPropertyChanged(nameof(TileHeight));
+    /// <summary>The tiles' fixed height in the row grids; Masonry cards size to their caption
+    /// (NaN / 0, GitHub #259). The Overview rows share the template.</summary>
+    public double TileFixedHeight => UseMasonry ? double.NaN : TileHeight;
+    public double TileMinHeight => UseMasonry ? 0 : TileHeight;
+    partial void OnTileArtworkSizeChanged(double value)
+    {
+        OnPropertyChanged(nameof(TileHeight));
+        OnPropertyChanged(nameof(TileFixedHeight));
+        OnPropertyChanged(nameof(TileMinHeight));
+    }
 
     public event EventHandler? BackRequested;
     public event EventHandler<Album>? AlbumOpened;
@@ -814,9 +878,13 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         OnPropertyChanged(nameof(ShowAlbumsGrid));
         OnPropertyChanged(nameof(ShowAlbumsCarousel));
         OnPropertyChanged(nameof(HasSingles));
+        OnPropertyChanged(nameof(ShowSinglesGrid));
+        OnPropertyChanged(nameof(ShowSinglesCarousel));
         OnPropertyChanged(nameof(HasOverviewAlbums));
         OnPropertyChanged(nameof(HasOverviewSingles));
         OnPropertyChanged(nameof(HasLive));
+        OnPropertyChanged(nameof(ShowLiveGrid));
+        OnPropertyChanged(nameof(ShowLiveCarousel));
         OnPropertyChanged(nameof(HasCompilations));
         OnPropertyChanged(nameof(HasOverviewLive));
         OnPropertyChanged(nameof(HasOverviewCompilations));
@@ -1182,7 +1250,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -1190,7 +1258,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var tracks = GetAllTracks();
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(tracks);
     }
 
     [RelayCommand]
@@ -1212,7 +1280,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
         var album = LatestRelease;
         if (album == null || album.Tracks.Count == 0) return;
         var tracks = album.EditionTracks.OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber).ToList();
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.WithSource(PlaySource.ForAlbum(album)).PlayAll(tracks);
     }
 
     /// <summary>Plays a row: the queue is the list the row came from — favourites when the
@@ -1236,7 +1304,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
             : RankPopular(_allSongs, string.Empty, 0).Select(r => r.Track).ToList();
         var index = songs.IndexOf(track);
         if (index < 0) { songs.Insert(0, track); index = 0; }
-        _player.ReplaceQueueAndPlay(songs, index);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).ReplaceQueueAndPlay(songs, index);
     }
 
     [RelayCommand]
@@ -1244,7 +1312,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var songs = PopularSongs.Select(r => r.Track).ToList();
         if (songs.Count == 0) return;
-        _player.PlayShuffled(songs);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(songs);
     }
 
     [RelayCommand]
@@ -1252,7 +1320,7 @@ public partial class ArtistDetailViewModel : ViewModelBase, ISearchable, IDispos
     {
         var songs = _allSongs.Where(t => t.IsFavorite).ToList();
         if (songs.Count == 0) return;
-        _player.PlayShuffled(songs);
+        _player.WithSource(PlaySource.ForArtist(ArtistName)).PlayShuffled(songs);
     }
 
     [RelayCommand]

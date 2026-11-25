@@ -7,6 +7,21 @@
              xmlns:controls="using:Noctis.Controls"
              x:Class="Noctis.Mobile.Views.SearchPage"
              x:DataType="vm:SearchPageViewModel">
+    <UserControl.Styles>
+        <!-- Recent Searches' Clear: accent text at the end of the title, as the Queue's Clear. -->
+        <Style Selector="Button.pill.clear">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="CornerRadius" Value="16" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Margin" Value="0,0,-2,0" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Styles>
     <Grid RowDefinitions="Auto,Auto,Auto,*">
         <!-- The title, with the sort menu in the header's glass pill (as Library's tools are), so
              the chip row below has the full width to scroll in. -->
@@ -23,8 +38,9 @@
                                  AvatarPath="{Binding Shell.ProfileAvatarPath}" Command="{Binding Shell.OpenSettingsCommand}" />
         </Grid>
         <!-- Apple's search field: a filled capsule with the magnifier, no border (MobileStyles). -->
+        <!-- The keyboard's Search key keeps the search in Recent Searches (SearchPage.OnSearchKeyDown). -->
         <TextBox Grid.Row="1" Name="SearchBox" Classes="search-field" Margin="16,0,16,12" Text="{Binding Query}"
-                 PlaceholderText="{loc:T Mobile.Search.Placeholder}" />
+                 PlaceholderText="{loc:T Mobile.Search.Placeholder}" TextInputOptions.ReturnKeyType="Search" />
 
         <!-- A chip per kind of result, with its icon, right under the box. -->
         <ScrollViewer Grid.Row="2" Name="ScopeBar" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
@@ -70,6 +86,38 @@
 
         <TextBlock Grid.Row="3" Name="SearchPrompt" Classes="subtle" Text="{loc:T Mobile.Search.Hint}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowPrompt}" />
+        <!-- Recent Searches: on an empty field, the searches kept before, newest first. A row searches
+             again; its × forgets it; Clear forgets them all. -->
+        <ScrollViewer Classes="page-scroll" Grid.Row="3" Name="RecentScroll" HorizontalScrollBarVisibility="Disabled"
+                      IsVisible="{Binding ShowRecentSearches}">
+            <StackPanel Margin="12,0,12,24" Spacing="4">
+                <Grid ColumnDefinitions="*,Auto" Margin="8,0,0,0" MinHeight="36">
+                    <TextBlock Classes="section" Text="{loc:T Mobile.Search.Recent}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Name="ClearRecentButton" Classes="pill clear" VerticalAlignment="Center"
+                            Content="{loc:T Mobile.Search.ClearRecent}" Command="{Binding ClearRecentCommand}" />
+                </Grid>
+                <ItemsControl Name="RecentList" ItemsSource="{Binding RecentSearches}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Button Classes="row" AutomationProperties.Name="{Binding}"
+                                    Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).SearchRecentCommand}"
+                                    CommandParameter="{Binding}">
+                                <Grid ColumnDefinitions="Auto,*,Auto" Height="52" Margin="8,0,0,0">
+                                    <PathIcon Data="{DynamicResource PhSearch}" Width="18" Height="18" Opacity="0.5" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Classes="row-title" Margin="12,0,8,0" VerticalAlignment="Center" Text="{Binding}" />
+                                    <Button Grid.Column="2" Classes="icon" VerticalAlignment="Center"
+                                            AutomationProperties.Name="{Binding Converter={x:Static views:LocFormat.Text}, ConverterParameter=Mobile.Search.RemoveRecent}"
+                                            Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).RemoveRecentCommand}"
+                                            CommandParameter="{Binding}">
+                                        <PathIcon Data="{DynamicResource PhClose}" Width="16" Height="16" Opacity="0.6" />
+                                    </Button>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
         <TextBlock Grid.Row="3" Name="NoResults" Classes="subtle" Text="{loc:T Mobile.Search.NoResults}" HorizontalAlignment="Center"
                    Margin="0,40,0,0" IsVisible="{Binding ShowNoResults}" />
 
@@ -97,10 +145,10 @@
                             </Button>
                             <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                                 <Button Name="FeaturedShuffle" Classes="icon" Command="{Binding ShuffleFeaturedCommand}">
-                                    <PathIcon Data="{DynamicResource PhShuffle}" />
+                                    <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhShuffle}" />
                                 </Button>
                                 <Button Name="FeaturedPlay" Classes="pill-accent" Padding="14,0" Command="{Binding PlayFeaturedCommand}">
-                                    <PathIcon Data="{DynamicResource PhPlayFill}" />
+                                    <PathIcon FlowDirection="LeftToRight" Data="{DynamicResource PhPlayFill}" />
                                 </Button>
                             </StackPanel>
                         </Grid>
@@ -133,7 +181,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Songs}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <views:RowItemsControl Name="SongResults" ItemsSource="{Binding Songs}">
@@ -160,7 +208,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Albums}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <!-- Virtualised sideways (the artist page's rails): every keystroke used to
@@ -175,7 +223,7 @@
                             <views:RowItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:Album">
                                     <Button Classes="row" Width="140" Margin="0,0,12,0"
-                                            Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).Shell.OpenAlbumCommand}"
+                                            Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenAlbumCommand}"
                                             CommandParameter="{Binding}"
                                             views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
                                         <views:AlbumTile />
@@ -184,24 +232,31 @@
                             </views:RowItemsControl.ItemTemplate>
                         </views:RowItemsControl>
                     </ScrollViewer>
-                    <!-- The Albums chip: every match as a two-column grid. -->
-                    <ItemsControl Name="AlbumGridResults" ItemsSource="{Binding Albums}" Margin="4,0" IsVisible="{Binding ShowAlbumGrid}">
-                        <ItemsControl.ItemsPanel>
+                    <!-- The Albums chip: every match as a two-column grid, in rows (AlbumRows) that
+                         virtualise and keep their tiles (SlotRow), as the Albums page's grid. -->
+                    <views:RowItemsControl Name="AlbumGridResults" ItemsSource="{Binding AlbumRows}" Margin="4,0" IsVisible="{Binding ShowAlbumGrid}">
+                        <views:RowItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" />
+                                <VirtualizingStackPanel />
                             </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="models:Album">
-                                <Button Classes="row" Margin="6,0,6,14"
-                                        Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).Shell.OpenAlbumCommand}"
-                                        CommandParameter="{Binding}"
-                                        views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
-                                    <views:AlbumTile />
-                                </Button>
+                        </views:RowItemsControl.ItemsPanel>
+                        <views:RowItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:AlbumRow">
+                                <views:SlotRow Items="{Binding Albums}" Columns="2">
+                                    <views:SlotRow.ItemTemplate>
+                                        <DataTemplate x:DataType="models:Album">
+                                            <Button Classes="row" Margin="6,0,6,14" VerticalAlignment="Top"
+                                                    Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenAlbumCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenAlbumSheetCommand}">
+                                                <views:AlbumTile />
+                                            </Button>
+                                        </DataTemplate>
+                                    </views:SlotRow.ItemTemplate>
+                                </views:SlotRow>
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </views:RowItemsControl.ItemTemplate>
+                    </views:RowItemsControl>
                 </StackPanel>
 
                 <StackPanel Spacing="4" IsVisible="{Binding HasArtists}">
@@ -209,7 +264,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Artists}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <views:RowItemsControl Name="ArtistResults" ItemsSource="{Binding Artists}">
@@ -244,7 +299,7 @@
                             IsHitTestVisible="{Binding IsAllScope}">
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="8,0">
                             <TextBlock Classes="section" Text="{loc:T Nav.Playlists}" />
-                            <PathIcon Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
+                            <PathIcon Classes="dir" Data="{DynamicResource PhChevronRight}" Width="18" Height="18" Opacity="0.6" IsVisible="{Binding IsAllScope}" />
                         </StackPanel>
                     </Button>
                     <views:RowItemsControl Name="PlaylistResults" ItemsSource="{Binding Playlists}">
@@ -256,7 +311,7 @@
                         <views:RowItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:PlaylistResult">
                                 <Button Classes="row"
-                                        Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).Shell.OpenPlaylistCommand}"
+                                        Command="{Binding $parent[views:SearchPage].((vm:SearchPageViewModel)DataContext).OpenPlaylistCommand}"
                                         CommandParameter="{Binding Playlist}"
                                         views:LongPress.Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).OpenPlaylistSheetCommand}"
                                         views:LongPress.CommandParameter="{Binding Playlist}">

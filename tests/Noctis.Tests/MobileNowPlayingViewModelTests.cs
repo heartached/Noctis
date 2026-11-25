@@ -30,6 +30,33 @@ public class MobileNowPlayingViewModelTests : IDisposable
         return (vm, player, library, persistence);
     }
 
+    /// <summary>The seek labels are made and announced only when the second they show changes:
+    /// every binding formatted them again on each of the player's four ticks a second (a new
+    /// string and a pass through every listening binding). The seek bar reads PositionSeconds.</summary>
+    [Fact]
+    public void TimeLabels_ChangeOnlyWhenTheShownSecondDoes()
+    {
+        var tracks = Tracks(1);
+        var (vm, player, _, _) = Make(tracks);
+        vm.PlayTracks(tracks, 0);
+        vm.Duration = TimeSpan.FromSeconds(100.5);
+        var shown = new System.Collections.Generic.List<string>();
+        var seconds = 0;
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(NowPlayingViewModel.PositionSeconds)) seconds++;
+            if (e.PropertyName == nameof(NowPlayingViewModel.ElapsedText)) shown.Add(vm.ElapsedText);
+            if (e.PropertyName == nameof(NowPlayingViewModel.RemainingText)) shown.Add(vm.RemainingText);
+        };
+        for (var i = 0; i < 8; i++) player.RaisePositionChanged(TimeSpan.FromSeconds(10 + i * 0.25));
+        Assert.Equal(8, seconds);
+        // 10.0-11.75 s of 100.5: elapsed 00:10, 00:11; remaining -01:30, -01:29, -01:28.
+        Assert.Equal(new[] { "00:10", "-01:30", "-01:29", "00:11", "-01:28" }, shown);
+        Assert.Equal(11.75, vm.PositionSeconds);
+        vm.Duration = TimeSpan.FromSeconds(200);
+        Assert.Equal("-" + NowPlayingViewModel.FormatTime(TimeSpan.FromSeconds(200 - 11.75)), vm.RemainingText);
+    }
+
     [Fact]
     public void PlayTracks_StartsTheChosenTrack_AndPreparesTheNextOneForGapless()
     {
@@ -592,6 +619,61 @@ public class MobileNowPlayingViewModelTests : IDisposable
         Assert.Same(t[0], next.CurrentTrack);
         Assert.True(next.IsPlaying);
         Assert.Equal(new[] { t[1], t[2] }, next.UpNext);
+    }
+
+    /// <summary>
+    /// Bug: the song playing when the app was closed left the library before the next start
+    /// (deleted, a duplicate removed). The restore came back with no song loaded but its Up Next
+    /// still queued: no player bar, Play did nothing, and the next song tapped replaced the queue.
+    /// </summary>
+    [Fact]
+    public async Task Restore_WhenTheSavedSongLeftTheLibrary_TheNextQueuedSongTakesItsPlace()
+    {
+        var t = Tracks(3);
+        var (vm, _, library, persistence) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.Seek(TimeSpan.FromSeconds(42));
+        await vm.SaveStateAsync();
+        library.TrackList.Remove(t[0]);
+
+        var player = new FakeAudioPlayer();
+        var restored = new NowPlayingViewModel(player, library, persistence, marshal: a => a());
+        await restored.RestoreStateAsync();
+
+        Assert.Same(t[1], restored.CurrentTrack);
+        Assert.Equal(new[] { t[2] }, restored.UpNext);
+        Assert.Equal(TimeSpan.Zero, restored.Position);    // the 42 s were the gone song's
+        Assert.Equal(t[1].Duration, restored.Duration);
+        Assert.False(restored.IsPlaying);
+
+        restored.TogglePlayPauseCommand.Execute(null);
+        Assert.Equal(new[] { t[1].FilePath }, player.PlayedPaths);
+    }
+
+    /// <summary>
+    /// Measurement: every song change and queue edit saves the queue, on the UI thread up to the
+    /// write's own thread hop. A queue started from the library holds the whole library, and the
+    /// save copied each id list twice (the snapshot's lists, then a copy of each for the file),
+    /// all of it large-object-heap garbage for a big library. One copy is enough.
+    /// </summary>
+    [Fact]
+    public async Task SaveState_CopiesTheQueueIdsOnce()
+    {
+        const int n = 20_000;
+        var t = Tracks(n);
+        var (vm, _, _, _) = Make(t);
+        vm.PlayTracks(t, 0);
+        vm.ToggleShuffleCommand.Execute(null);             // the pre-shuffle order is saved too
+        await vm.SaveStateAsync();                          // warm up
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var save = vm.SaveStateAsync();
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        await save;
+
+        // Up Next, the Repeat All cycle and the pre-shuffle order: about 3n ids of 16 bytes each.
+        var oneCopy = 3L * n * 16;
+        Assert.True(allocated < oneCopy * 3 / 2, $"allocated {allocated:N0} bytes, one copy is {oneCopy:N0}");
     }
 
     // ── Queue History and Add Before Current Song (Discord 11-07) ──

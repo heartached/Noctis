@@ -299,65 +299,165 @@ public static class ArtworkCache
                 return hit.Bitmap;
             }
 
-            Bitmap? bitmap;
-            if (DecoderOverride is { } decoder)
-                bitmap = decoder(path, width);
-            else
+            // Two tiles asking for one cover at once (a rail and the grid under it, the same album
+            // twice on a page) each decoded it, and the loser threw its decode away: the later
+            // request waits for the decode already running and takes its result.
+            var mine = new Lazy<CacheEntry?>(() => DecodeAndAdd(path, width, key, acquire), LazyThreadSafetyMode.ExecutionAndPublication);
+            var flight = InFlight.GetOrAdd(key, mine);
+            CacheEntry? entry;
+            try
             {
-                // Not Bitmap.DecodeToWidth(Stream): that path rents a file-sized buffer
-                // from ArrayPool<byte>.Shared per decode, and the pool kept 224 MB of
-                // them after one screen of covers. Skia reads the file itself here, or
-                // the downscaled copy the thumbnail cache kept from an earlier decode.
-                using var decoded = ArtworkThumbnailCache.DecodeToWidth(path, width);
-                bitmap = decoded is null ? null : Helpers.SkiaArtworkDecoder.ToAvaloniaBitmap(decoded);
+                entry = flight.Value;
             }
-            if (bitmap is null)
-                return null;
-
-            var counter = Interlocked.Increment(ref _accessCounter);
-            var newEntry = new CacheEntry(key, path, width, bitmap, counter);
-            if (acquire) newEntry.Refs = 1;
-
-            if (!Cache.TryAdd(key, newEntry))
+            finally
             {
-                // Another thread won the race — discard our decode
-                bitmap.Dispose();
-                if (Cache.TryGetValue(key, out var existing))
+                if (ReferenceEquals(flight, mine))
+                    InFlight.TryRemove(new KeyValuePair<string, Lazy<CacheEntry?>>(key, mine));
+            }
+            if (entry is null)
+                return null;
+            if (!ReferenceEquals(flight, mine))
+            {
+                Touch(entry);
+                if (acquire) Acquire(entry.Bitmap);
+                if (Volatile.Read(ref entry.State) == 2)
                 {
-                    Touch(existing);
-                    if (acquire) Acquire(existing.Bitmap);
-                    return existing.Bitmap;
+                    if (acquire) Release(entry.Bitmap);
+                    return null;   // evicted and disposed already
                 }
-                return null;
             }
-            EntryByBitmap[bitmap] = newEntry;
-            Interlocked.Add(ref _totalBytes, newEntry.Bytes);
-            // The decoded pixels live in native (Skia) memory the GC can't see — the
-            // managed Bitmap wrapper is tiny, so without this hint evicted bitmaps sit
-            // in the finalizer queue for ages while native memory climbs into the GBs.
-            // Registering the real cost makes Gen2 collections (and thus finalization
-            // of evicted, no-longer-referenced bitmaps) keep pace with decode churn.
-            if (UseMemoryPressure)
-            {
-                GC.AddMemoryPressure(newEntry.Bytes);
-                Interlocked.Add(ref _pressureBytes, newEntry.Bytes);
-                newEntry.Pressured = true;
-            }
-
-            // Evict if over capacity — non-blocking; skip if another thread is already evicting
-            if ((Cache.Count > MaxCacheSize || Interlocked.Read(ref _totalBytes) > MaxCacheBytes) &&
-                Interlocked.CompareExchange(ref _evictLock, 1, 0) == 0)
-            {
-                try { EvictOldest(); }
-                finally { Interlocked.Exchange(ref _evictLock, 0); }
-            }
-
-            return bitmap;
+            return entry.Bitmap;
         }
         catch
         {
             return null;
         }
+    }
+
+    /// <summary>Decodes started and not finished, by cache key (see <see cref="LoadAndCache(string,int,bool,bool)"/>).</summary>
+    private static readonly ConcurrentDictionary<string, Lazy<CacheEntry?>> InFlight = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>The decode behind a cache miss: <paramref name="width"/> pixels of <paramref name="path"/>,
+    /// cached under <paramref name="key"/> (held for the caller with <paramref name="acquire"/>).</summary>
+    private static CacheEntry? DecodeAndAdd(string path, int width, string key, bool acquire)
+    {
+        // A size of a cover already decoded larger (an Albums tile, then Search's smaller tile
+        // or a song row) is made from that decode: the file is not read and decoded again.
+        var bitmap = FromLargerDecode(path, width);
+        if (bitmap is null && DecoderOverride is { } decoder)
+            bitmap = decoder(path, width);
+        else if (bitmap is null)
+        {
+            // Not Bitmap.DecodeToWidth(Stream): that path rents a file-sized buffer
+            // from ArrayPool<byte>.Shared per decode, and the pool kept 224 MB of
+            // them after one screen of covers. Skia reads the file itself here, or
+            // the downscaled copy the thumbnail cache kept from an earlier decode.
+            using var decoded = ArtworkThumbnailCache.DecodeToWidth(path, width);
+            bitmap = decoded is null ? null : Helpers.SkiaArtworkDecoder.ToAvaloniaBitmap(decoded);
+        }
+        if (bitmap is null)
+            return null;
+
+        var counter = Interlocked.Increment(ref _accessCounter);
+        var newEntry = new CacheEntry(key, path, width, bitmap, counter);
+        if (acquire) newEntry.Refs = 1;
+
+        if (!Cache.TryAdd(key, newEntry))
+        {
+            // Another thread won the race — discard our decode
+            bitmap.Dispose();
+            if (Cache.TryGetValue(key, out var existing))
+            {
+                Touch(existing);
+                if (acquire) Acquire(existing.Bitmap);
+                return existing;
+            }
+            return null;
+        }
+        EntryByBitmap[bitmap] = newEntry;
+        Interlocked.Add(ref _totalBytes, newEntry.Bytes);
+        // The decoded pixels live in native (Skia) memory the GC can't see — the
+        // managed Bitmap wrapper is tiny, so without this hint evicted bitmaps sit
+        // in the finalizer queue for ages while native memory climbs into the GBs.
+        // Registering the real cost makes Gen2 collections (and thus finalization
+        // of evicted, no-longer-referenced bitmaps) keep pace with decode churn.
+        if (UseMemoryPressure)
+        {
+            GC.AddMemoryPressure(newEntry.Bytes);
+            Interlocked.Add(ref _pressureBytes, newEntry.Bytes);
+            newEntry.Pressured = true;
+        }
+
+        // Evict if over capacity — non-blocking; skip if another thread is already evicting
+        if ((Cache.Count > MaxCacheSize || Interlocked.Read(ref _totalBytes) > MaxCacheBytes) &&
+            Interlocked.CompareExchange(ref _evictLock, 1, 0) == 0)
+        {
+            try { EvictOldest(); }
+            finally { Interlocked.Exchange(ref _evictLock, 0); }
+        }
+
+        return newEntry;
+    }
+
+    /// <summary>
+    /// <paramref name="width"/> pixels of <paramref name="path"/> resampled from the smallest
+    /// cached decode at least that wide, or null when there is none (or it went meanwhile). Close
+    /// sizes (half to full width: a 180 dp tile's decode for a 140 dp one) take a Catmull-Rom cubic,
+    /// which needs no more than its 4×4 taps there and keeps the edges a file decode at that size
+    /// has (105% of its edge contrast on a detailed cover, where drawing the larger decode shrunk
+    /// keeps 90%: MobileCoverDecodeTests); stronger shrinks take the decoder's own trilinear
+    /// (mipmapped) downscale. Either way the result is drawn 1:1 like a decode of its own, so a
+    /// PixelExact surface stays sharp.
+    /// </summary>
+    private static Bitmap? FromLargerDecode(string path, int width)
+    {
+        CacheEntry? larger = null;
+        foreach (var observed in _observedWidths.Keys)
+        {
+            if (observed <= width || !Cache.TryGetValue($"{observed}|{path}", out var entry)) continue;
+            if (larger is null || observed < larger.Width) larger = entry;
+        }
+        if (larger is null) return null;
+        var source = larger.Bitmap;
+        Acquire(source);
+        try
+        {
+            if (!EntryByBitmap.ContainsKey(source) || Volatile.Read(ref larger.State) == 2) return null;
+            var size = source.PixelSize;
+            if (size.Width < width || size.Height <= 0) return null;
+            using var pixels = new SkiaSharp.SKBitmap(new SkiaSharp.SKImageInfo(size.Width, size.Height,
+                SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul));
+            source.CopyPixels(new Avalonia.PixelRect(size), pixels.GetPixels(), pixels.ByteCount, pixels.RowBytes);
+            using var resized = Resized(pixels, width);
+            var made = new WriteableBitmap(new Avalonia.PixelSize(resized.Width, resized.Height), new Avalonia.Vector(96, 96),
+                Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
+            using (var target = made.Lock())
+                resized.PeekPixels().ReadPixels(resized.Info, target.Address, target.RowBytes);
+            return made;
+        }
+        catch
+        {
+            return null;   // the file decode below still runs
+        }
+        finally
+        {
+            Release(source);
+        }
+    }
+
+    /// <summary><paramref name="from"/> shrunk to <paramref name="width"/> (see <see cref="FromLargerDecode"/>).
+    /// The caller owns the result. Internal for tests.</summary>
+    internal static SkiaSharp.SKBitmap Resized(SkiaSharp.SKBitmap from, int width)
+    {
+        var info = new SkiaSharp.SKImageInfo(width, Math.Max(1, (int)Math.Round(from.Height * (width / (double)from.Width))),
+            SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Premul);
+        if (width * 2 < from.Width) return Helpers.SkiaArtworkDecoder.Downscale(from, info);
+        var result = new SkiaSharp.SKBitmap(info);
+        using var canvas = new SkiaSharp.SKCanvas(result);
+        using var image = SkiaSharp.SKImage.FromBitmap(from);
+        canvas.DrawImage(image, new SkiaSharp.SKRect(0, 0, info.Width, info.Height),
+            new SkiaSharp.SKSamplingOptions(SkiaSharp.SKCubicResampler.CatmullRom));
+        return result;
     }
 
     private static void EvictOldest()

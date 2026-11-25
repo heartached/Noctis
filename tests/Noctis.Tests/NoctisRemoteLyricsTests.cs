@@ -62,7 +62,7 @@ public class NoctisRemoteLyricsTests : IAsyncLifetime
         _deskPersistence = new TestPersistenceService();
         _sync = new LibrarySyncService(() => _deskSettings, _deskPersistence);
         _server = new NoctisServer(new LyricsDesk(new List<Track> { _ttmlSong, _storedSong }), _users, "test", _sync) { PrivateClientsOnly = true };
-        await _server.StartAsync(0, certificate: null);
+        await _server.StartAsync(0, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         _url = $"http://127.0.0.1:{_server.Port}";
 
         _phonePersistence = new PersistenceService(Path.Combine(_dir, "phone-files"));
@@ -243,7 +243,7 @@ public class NoctisRemoteLyricsTests : IAsyncLifetime
         // The desktop is back with an edit, no sync yet.
         _storedSong.SyncedLyrics = "[00:01.00]Edited on the desktop";
         _server = new NoctisServer(new LyricsDesk(new List<Track> { _ttmlSong, _storedSong }), _users, "test", _sync) { PrivateClientsOnly = true };
-        await _server.StartAsync(port, certificate: null);
+        await _server.StartAsync(port, certificate: null, bindAddress: System.Net.IPAddress.Loopback);
         time.Advance(TimeSpan.FromSeconds(61));
         // Within the stretched quiet: the saved copy, the desktop not asked.
         Assert.Contains((await LoadOnPhone(svc, phoneTrack)).Lines, l => l.Text == "Stored second");

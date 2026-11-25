@@ -179,7 +179,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
-        _player.ReplaceQueueAndPlay(tracks, 0);
+        _player.WithSource(PlaySource.ForPlaylist(playlist)).PlayAll(tracks);
     }
 
     [RelayCommand]
@@ -189,7 +189,7 @@ public partial class LibraryPlaylistsViewModel : ViewModelBase, ISearchable
         if (playlist == null) return;
         var tracks = ResolvePlaylistTracks(playlist);
         if (tracks.Count == 0) return;
-        _player.PlayShuffled(tracks);
+        _player.WithSource(PlaySource.ForPlaylist(playlist)).PlayShuffled(tracks);
     }
 
     [RelayCommand]

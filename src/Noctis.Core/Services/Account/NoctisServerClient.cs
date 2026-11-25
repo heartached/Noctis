@@ -13,7 +13,8 @@ namespace Noctis.Mobile.Services.Account;
 internal sealed record RemoteSong(
     Guid Id, Guid? AlbumId, string Title, string Album, string Artist, int DurationSeconds, long Size,
     string Suffix, int Track, int Disc, int Year, string Genre, int BitRate, int SamplingRate,
-    int UserRating, bool Starred, int PlayCount, DateTime? Created);
+    int UserRating, bool Starred, int PlayCount, DateTime? Created,
+    double? TrackGainDb = null, double? TrackPeak = null, double? AlbumGainDb = null);
 
 internal sealed record SignInResult(string ApiKey, string? User, string? Server, bool SyncEnabled, string? DisplayName = null);
 
@@ -82,6 +83,15 @@ internal sealed partial class NoctisServerClient : IDisposable
     }
 
     public string BaseUrl => _baseUrl;
+
+    // Ticks; long.MinValue = no response has named its date yet. Responses land on several threads.
+    private long _serverClockAheadTicks = long.MinValue;
+
+    /// <summary>How far the computer's clock runs ahead of this device's (negative: behind), from the
+    /// Date header of its last response; to a second or so (Date has whole seconds). Null until one
+    /// named its date.</summary>
+    public TimeSpan? ServerClockAhead =>
+        Interlocked.Read(ref _serverClockAheadTicks) is var t && t != long.MinValue ? TimeSpan.FromTicks(t) : null;
 
     /// <summary>A download that receives nothing for this long has lost its link (a dropped Wi-Fi
     /// delivers nothing and raises nothing): it fails as Unreachable instead of waiting forever.</summary>
@@ -274,8 +284,12 @@ internal sealed partial class NoctisServerClient : IDisposable
         return (count, Bool(s, "scanning"));
     }
 
-    /// <summary>Every album's artist by album id (search3 with an empty query, paged).</summary>
-    public async Task<Dictionary<Guid, string>> GetAlbumArtistsAsync(CancellationToken ct)
+    /// <summary>Every album's artist by album id (search3 with an empty query, paged). With
+    /// <paramref name="coverVersions"/>, also each album's cover version where the computer says it
+    /// (noctisCover; computers from before it never do). With <paramref name="albumLinks"/>, also
+    /// the albums each one lists songs from (noctisLinks, Link Tracks From on the computer).</summary>
+    public async Task<Dictionary<Guid, string>> GetAlbumArtistsAsync(CancellationToken ct, Dictionary<Guid, string>? coverVersions = null,
+        Dictionary<Guid, List<Guid>>? albumLinks = null)
     {
         var result = new Dictionary<Guid, string>();
         for (var page = 0; page < MaxPages; page++)
@@ -290,12 +304,45 @@ internal sealed partial class NoctisServerClient : IDisposable
             foreach (var a in albums)
             {
                 if (NoctisRemoteIds.TryParseServerId(Str(a, "id"), "al-", out var id))
+                {
                     result.TryAdd(id, Cap(Str(a, "artist"), MaxStringLength) ?? string.Empty);
+                    if (coverVersions is not null && ParseCoverVersion(Str(a, "noctisCover")) is { } version) coverVersions.TryAdd(id, version);
+                    if (albumLinks is not null && ParseAlbumLinks(a) is { Count: > 0 } sources) albumLinks.TryAdd(id, sources);
+                }
             }
             if (albums.Count < PageSize) break;
         }
         return result;
     }
+
+    /// <summary>A search3 album's noctisCover: the computer's cover file version (its last write in
+    /// hex ticks). Lower-cased; null when absent or not that shape.</summary>
+    internal static string? ParseCoverVersion(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > 16 || !value.All(char.IsAsciiHexDigit)) return null;
+        return value.ToLowerInvariant();
+    }
+
+    /// <summary>A search3 album's noctisLinks: the albums whose songs it lists too, each once (a
+    /// handful at most; junk skipped). Empty when absent (a computer from before it).</summary>
+    internal static List<Guid> ParseAlbumLinks(JsonElement album)
+    {
+        var result = new List<Guid>();
+        if (album.ValueKind != JsonValueKind.Object || !album.TryGetProperty("noctisLinks", out var links)
+            || links.ValueKind != JsonValueKind.Array)
+            return result;
+        foreach (var l in links.EnumerateArray().Take(MaxAlbumLinks))
+            if (l.ValueKind == JsonValueKind.String && NoctisRemoteIds.TryParseServerId(l.GetString(), "al-", out var id) && !result.Contains(id))
+                result.Add(id);
+        return result;
+    }
+
+    private const int MaxAlbumLinks = 50;
+
+    /// <summary>When the computer's cover file was last written, from its <see cref="ParseCoverVersion"/> version.</summary>
+    internal static DateTime? CoverVersionTime(string version) =>
+        long.TryParse(version, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var ticks)
+        && ticks > 0 && ticks <= DateTime.MaxValue.Ticks ? new DateTime(ticks, DateTimeKind.Utc) : null;
 
     /// <summary>Every song (search3 with an empty query, 500 per page). Invalid entries are skipped;
     /// a song listed twice (library changed between pages) is kept once.</summary>
@@ -347,7 +394,24 @@ internal sealed partial class NoctisServerClient : IDisposable
             Math.Clamp(Int(e, "userRating"), 0, 5),
             e.TryGetProperty("starred", out var st) && st.ValueKind is not (JsonValueKind.Null or JsonValueKind.False or JsonValueKind.Undefined),
             Math.Max(0, Int(e, "playCount")),
-            Date(e, "created"));
+            Date(e, "created"),
+            ReplayGainField(e, "trackGain", -MaxReplayGainDb, MaxReplayGainDb),
+            ReplayGainField(e, "trackPeak", double.Epsilon, MaxReplayGainPeak),
+            ReplayGainField(e, "albumGain", -MaxReplayGainDb, MaxReplayGainDb));
+    }
+
+    // A sane window for the desktop's ReplayGain (OpenSubsonic "replayGain"): anything outside is a
+    // broken tag, dropped rather than played (the player clamps what it applies on top of this).
+    private const double MaxReplayGainDb = 60, MaxReplayGainPeak = 100;
+
+    /// <summary>One number of the song's "replayGain" object; null when absent, not a number, or out of range.</summary>
+    internal static double? ReplayGainField(JsonElement song, string name, double min, double max)
+    {
+        if (song.ValueKind != JsonValueKind.Object || !song.TryGetProperty("replayGain", out var rg) || rg.ValueKind != JsonValueKind.Object
+            || !rg.TryGetProperty(name, out var v) || v.ValueKind != JsonValueKind.Number || !v.TryGetDouble(out var d)
+            || !double.IsFinite(d) || d < min || d > max)
+            return null;
+        return d;
     }
 
     // ── Binary: covers and downloads ─────────────────────────────────────
@@ -758,6 +822,8 @@ internal sealed partial class NoctisServerClient : IDisposable
                     "The desktop's certificate changed. Sign out and sign in again to trust the new one."), what, 0);
             throw Log(Unreachable(), what, 0);
         }
+        if (response.Headers.Date is { } date)
+            Interlocked.Exchange(ref _serverClockAheadTicks, (date - DateTimeOffset.UtcNow).Ticks);
         if (response.StatusCode == HttpStatusCode.TooManyRequests)
         {
             var retry = response.Headers.RetryAfter?.Delta;

@@ -784,8 +784,8 @@ public class MetadataService : IMetadataService
             // genre edit, a row holding only some of the file's genres (one read before
             // multi-genre support keeps just the first) must not shrink the file's list: a
             // lyrics or rating save would silently drop the rest.
-            var newGenres = Track.SplitGenres(track.Genre);
-            var fileGenres = Track.SplitGenres(Track.JoinGenres(tag.Genres));
+            var newGenres = Track.SplitStoredGenres(track.Genre);
+            var fileGenres = Track.SplitStoredGenres(Track.JoinGenres(tag.Genres));
             var wouldOnlyDropGenres = !genreEdited && fileGenres.Length > newGenres.Length
                                       && newGenres.All(g => fileGenres.Contains(g, StringComparer.OrdinalIgnoreCase));
             if (!newGenres.SequenceEqual(fileGenres, StringComparer.Ordinal) && !wouldOnlyDropGenres)
@@ -990,6 +990,7 @@ public class MetadataService : IMetadataService
                 applyTags(file);
                 file.Save();
             }
+            TagLibFileTypes.RepairAiffFormSize(tempPath);
             ReplaceWithCopy(tempPath, targetFilePath, releaseOpenFile);
         }
         catch
@@ -2132,6 +2133,22 @@ public class MetadataService : IMetadataService
                     var val = fields?.FirstOrDefault();
                     if (!string.IsNullOrWhiteSpace(val) && val.Trim().Length > 4) return val.Trim();
                 }
+            }
+        }
+        catch { }
+
+        // APEv2 (APE, WavPack, Musepack) and ASF (WMA): Edit Info's release date is saved
+        // there as RELEASEDATE, which was never read back, so the date did not show.
+        try
+        {
+            foreach (var key in new[] { "RELEASETIME", "RELEASEDATE" })
+            {
+                string? val = null;
+                if (file.GetTag(TagLib.TagTypes.Ape) is TagLib.Ape.Tag ape)
+                    val = ape.GetItem(key)?.ToString();
+                if (string.IsNullOrWhiteSpace(val) && file.GetTag(TagLib.TagTypes.Asf) is TagLib.Asf.Tag asf)
+                    val = asf.GetDescriptorString(key);
+                if (!string.IsNullOrWhiteSpace(val) && val.Trim().Length > 4) return val.Trim();
             }
         }
         catch { }

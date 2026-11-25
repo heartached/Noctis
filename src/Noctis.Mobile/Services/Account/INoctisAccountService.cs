@@ -46,7 +46,21 @@ public sealed record NoctisSyncProgress(NoctisSyncStage Stage, int Done, int Tot
 public sealed record NoctisSyncResult(int Songs, int Playlists, int StateChangesPulled, int StateChangesPushed, int PlaysSent);
 
 /// <param name="Missing">Of <paramref name="Failed"/>, the songs whose file is missing on the computer.</param>
-public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0);
+/// <param name="CalledOff">Sign-out or Remove All Downloads stopped every download (running or paused):
+/// nothing is left to download, so the notification goes and the background keeping ends now.</param>
+/// <param name="Waiting">In a batch's last report: its songs left waiting, not failed, because the
+/// computer could not be reached or Wi-Fi went with Wi-Fi only on (<paramref name="WaitsForWifi"/>).
+/// They stay asked for and go on by themselves.</param>
+public sealed record NoctisDownloadProgress(int Pending, int Completed, int Failed, long BytesUsed, int Missing = 0, bool CalledOff = false,
+    int Waiting = 0, bool WaitsForWifi = false)
+{
+    /// <summary>The songs asked for: a failed one stays counted ("Downloading 1 of 3 · 1 failed"),
+    /// where Completed + Pending shrank the total with every failure.</summary>
+    public int Total => Pending + Completed + Failed;
+
+    /// <summary>The songs handled so far, landed or failed: how far the bar has come.</summary>
+    public int Handled => Completed + Failed;
+}
 
 /// <summary>Sending the phone's own songs to the computer: <paramref name="Done"/> of <paramref name="Total"/> handled.</summary>
 public sealed record NoctisUploadProgress(int Done, int Total);
@@ -100,7 +114,8 @@ public interface INoctisAccountService
     Task SignInWithPairingAsync(Noctis.Services.Server.PairingPayload pairing, CancellationToken ct = default);
 
     /// <summary>Revokes this device's key on the server (best effort), forgets the account,
-    /// removes the desktop's songs from the phone library and, if asked, the downloads.</summary>
+    /// removes the desktop's songs from the phone library and, if asked, the downloads (kept, their
+    /// songs stay and play, <see cref="IsNotOnComputer"/>).</summary>
     Task SignOutAsync(bool removeDownloads, CancellationToken ct = default);
 
     /// <summary>Full sync: catalog, covers, favorites/ratings, playlists, queued plays.</summary>
@@ -144,6 +159,13 @@ public interface INoctisAccountService
     /// fetched, else fetched now into the same place. Null when the computer has none.</summary>
     Task<string?> GetComputerCoverAsync(Guid albumId, CancellationToken ct = default) => Task.FromResult<string?>(null);
 
+    /// <summary>getNoctisAnimatedCover: the computer's animated cover of <paramref name="albumId"/> into
+    /// <paramref name="destination"/>, or NotModified when <paramref name="etag"/> is still its version.
+    /// None when signed out, or the computer has none (or is older than the call). Throws
+    /// NoctisServerException when the computer cannot be reached.</summary>
+    Task<AnimatedCoverDownload> FetchAnimatedCoverAsync(Guid albumId, string destination, string? etag, CancellationToken ct) =>
+        Task.FromResult(new AnimatedCoverDownload(AnimatedCoverFetch.None, null));
+
     /// <summary>One of the computer's playlists (synced, not made on the phone).</summary>
     bool IsSyncedPlaylist(Guid playlistId) => false;
 
@@ -163,12 +185,54 @@ public interface INoctisAccountService
     /// desktop's id). Null for a song only the phone has.</summary>
     Guid? DesktopIdOf(Track track) => IsRemote(track) ? track.Id : null;
     bool IsDownloaded(Track track);
+
+    /// <summary>When the phone saved <paramref name="track"/>'s offline copy (the file's time), null
+    /// when it has none or the host cannot tell: Home's Downloaded rail puts the newest first.</summary>
+    DateTime? DownloadedAt(Track track) => null;
     long DownloadedBytes { get; }
     int DownloadedCount { get; }
     Task DownloadAsync(IEnumerable<Track> tracks, CancellationToken ct = default);
     Task DownloadAllAsync(CancellationToken ct = default);
     Task RemoveDownloadsAsync(IEnumerable<Track> tracks);
     Task RemoveAllDownloadsAsync();
+
+    /// <summary>The system stopped the background job the downloads ran under (IDownloadKeeper.Paused):
+    /// the running downloads stop, their partial files go, nothing is removed or counted as failed.</summary>
+    Task PauseDownloadsAsync() => Task.CompletedTask;
+
+    /// <summary>Goes on with paused downloads: as <see cref="DownloadAsync"/>, except that a song
+    /// removed (Remove Download) while they were paused stays removed.</summary>
+    Task ResumeDownloadsAsync(IEnumerable<Track> tracks, CancellationToken ct = default) => DownloadAsync(tracks, ct);
+
+    /// <summary>The songs a download run left unfinished (the app ended mid-way, or the system paused
+    /// it) and still asked for: on the computer signed in to now, still listed by it, neither
+    /// downloaded nor removed since. Empty when signed out. The next start resumes them
+    /// (DownloadActivity.ResumeUnfinishedAsync).</summary>
+    Task<IReadOnlyList<Track>> UnfinishedDownloadsAsync() => Task.FromResult<IReadOnlyList<Track>>(Array.Empty<Track>());
+
+    /// <summary>Settings › Downloads › Wi-Fi only is on and the phone is on mobile data: a download
+    /// now would be refused, so resumed downloads wait for Wi-Fi.</summary>
+    Task<bool> DownloadsWaitForWifiAsync() => Task.FromResult(false);
+
+    /// <summary>Settings › Downloads › Wi-Fi only is on, on any network: the background run for the
+    /// songs left waits for an unmetered one (DownloadActivity, IDownloadWakeup).</summary>
+    Task<bool> DownloadsWifiOnlyAsync() => Task.FromResult(false);
+
+    /// <summary>The phone is on Wi-Fi (or Ethernet) now; true when the host cannot tell.</summary>
+    bool IsOnWifiNow => true;
+
+    /// <summary>A downloaded desktop song the computer no longer has (a settled catalog without it,
+    /// or signed out keeping the downloads): its file stays and plays until the user removes it
+    /// (<see cref="RemoveDownloadsAsync"/>, which then takes its row too). Never deleted on its own:
+    /// a drive unplugged on the computer, or another computer signed in to, would take music saved
+    /// for offline. The song coming back on the computer makes it an ordinary download again.</summary>
+    bool IsNotOnComputer(Track track) => false;
+
+    /// <summary>The songs <see cref="IsNotOnComputer"/> holds for (Account › Downloads lists them).</summary>
+    IReadOnlyList<Track> NotOnComputerTracks => Array.Empty<Track>();
+
+    /// <summary>The space their files take.</summary>
+    long NotOnComputerBytes => 0;
 
     // ── The phone's own songs → the computer ──
 

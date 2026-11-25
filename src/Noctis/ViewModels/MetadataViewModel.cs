@@ -168,8 +168,13 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _isSearchingAnimatedCover;
     [ObservableProperty] private bool _isDownloadingAnimatedCover;
 
-    /// <summary>True while a Save is in flight — drives the "Saving…" spinner on the button.</summary>
-    [ObservableProperty] private bool _isSaving;
+    /// <summary>True while a Save is in flight — drives the "Saving…" spinner on the button.
+    /// Save and Cancel are off meanwhile: Save already committed the edit (Discord 11-23, "Cancel
+    /// ... still applies the changes; it just closes the page").</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
+    private bool _isSaving;
     [ObservableProperty] private bool _hasAnimatedArtworkSearchResults;
     [ObservableProperty] private bool _isAnimatedArtworkSearchOpen;
     [ObservableProperty] private string _animatedSearchStatus = string.Empty;
@@ -572,7 +577,7 @@ public partial class MetadataViewModel : ViewModelBase
         LoadFromTrack();
         // Cheap path-derived File-tab fields so the window isn't blank while
         // InitializeAsync loads the rest. Copyright must be seeded before any
-        // Save (SaveInternalAsync writes it back to the track unconditionally).
+        // Save (ApplyEditsToTracks writes it back to the track unconditionally).
         FileName = Path.GetFileName(_track.FilePath);
         FileLocation = _track.FilePath;
         FullFilePath = _track.FilePath;
@@ -626,6 +631,10 @@ public partial class MetadataViewModel : ViewModelBase
         // What the window shows as the load starts (after AddUserEqPresets has respelled the
         // preset). Anything that differs when the load lands was typed by the user meanwhile.
         CaptureChangeBaseline();
+        // An earlier save of these songs may still be writing their files behind its closed
+        // window: read them once it has landed, never half-written or stale. The fields shown
+        // meanwhile are the library's, which already hold that save's edit.
+        await MetadataSaveQueue.WhenSavedAsync(_albumTracks is { } album ? album.Append(_track) : new[] { _track });
         HashSet<string>? edited = null;
         string? loadedCustomTagsBaseline = null;
         var trackSynced = _track.SyncedLyrics;
@@ -2398,7 +2407,12 @@ public partial class MetadataViewModel : ViewModelBase
         return (".jpg", new FilePickerFileType(Noctis.Localization.Loc.T("Picker.JpegImage")) { Patterns = new[] { "*.jpg", "*.jpeg" } });
     }
 
-    private bool CanSave() => !IsLoading;
+    private bool CanSave() => !IsLoading && !IsSaving;
+
+    /// <summary>Files one save writes at once. A few overlap the copy-tag-rename cycle of one
+    /// file with the next (SaveTagsAtomically copies the whole file); more only thrash a hard
+    /// disk and hold more file buffers in RAM.</summary>
+    internal const int ParallelFileWrites = 3;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
@@ -2406,15 +2420,31 @@ public partial class MetadataViewModel : ViewModelBase
         // ExecuteAsync and key bindings skip CanExecute. Saving before InitializeAsync has
         // applied the sidecar lyrics and advanced tags would write state that was never
         // loaded (an empty plain field read as "the user cleared the lyrics").
-        if (IsLoading) return;
+        if (IsLoading || IsSaving) return;
 
-        // Surface a "Saving…" state on the button while the (potentially slow) file
-        // writes run; the work itself lives in SaveInternalAsync. try/finally so the
-        // spinner always clears even if a write throws.
+        // Pressing Save is the commit (Discord 11-23: "we can't close the window until the
+        // changes have been saved", "let us click outside and have the changes saved in the
+        // background"). The library's tracks take the edit now, the window closes at once,
+        // and the files are written behind it; MetadataHelper reports a slow or failed save
+        // in the notice pill. Until Save, nothing touches the library's tracks, so Cancel
+        // (or Esc, or a click outside) discards everything.
         IsSaving = true;
         try
         {
-            await SaveInternalAsync();
+            var oldAlbumId = _track.AlbumId;
+            ApplyEditsToTracks();
+            var artTargets = ArtworkTargets();
+            var scope = new List<Track>(_albumTracks ?? new List<Track>());
+            scope.Add(_track);
+            if (artTargets != null) scope.AddRange(artTargets);
+            var write = MetadataSaveQueue.RunAsync(scope, () => WriteSavedEditsAsync(oldAlbumId, artTargets));
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+            await write;
+        }
+        catch (Exception ex)
+        {
+            DebugLog.Write("Metadata", $"Save failed: {ex}");
+            SaveErrorMessage = Localization.Loc.T("Metadata.SaveFailed", ex.Message);
         }
         finally
         {
@@ -2422,10 +2452,22 @@ public partial class MetadataViewModel : ViewModelBase
         }
     }
 
-    private async Task SaveInternalAsync()
+    /// <summary>The songs whose embedded cover a new or removed cover rewrites: the whole
+    /// album (the persisted PNG is keyed by AlbumId and every track carries its own embedded
+    /// copy), or null when the cover is unchanged. A single-track edit resolves its album
+    /// from the library, as the Remove path always did, so the other tracks don't keep stale
+    /// embedded art that a later load resurrects.</summary>
+    private List<Track>? ArtworkTargets()
     {
-        var oldAlbumId = _track.AlbumId;
+        if (_newArtworkData == null && !_artworkRemoved) return null;
+        var targets = _albumTracks
+            ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
+        return targets.Count == 0 ? new List<Track> { _track } : targets;
+    }
 
+    /// <summary>Writes the edit into the library's tracks (in memory) and shows it at once.</summary>
+    private void ApplyEditsToTracks()
+    {
         if (!_albumScoped)
         {
             // Apply Details changes to the track model
@@ -2448,6 +2490,10 @@ public partial class MetadataViewModel : ViewModelBase
             _track.DiscCount = int.TryParse(DiscCount, out var dc) ? Math.Max(1, dc) : 1;
             _track.Bpm = int.TryParse(Bpm, out var bp) ? Math.Max(0, bp) : 0;
             _track.Year = int.TryParse(Year, out var yr) ? yr : 0;
+            // Advanced Details › release date: the library's copy too, so the album page shows
+            // the new date without a rescan (the file gets it with the advanced fields below).
+            if (_originalAdvancedFields != null && AdvReleaseDate != _originalAdvancedFields.ReleaseDate)
+                _track.ReleaseDate = AdvancedTagIO.NormalizeReleaseDate(AdvReleaseDate);
             _track.IsCompilation = IsCompilation;
             _track.ShowComposerInAllViews = ShowComposerInAllViews;
             _track.Grouping = Grouping;
@@ -2546,18 +2592,44 @@ public partial class MetadataViewModel : ViewModelBase
             }
         }
 
-        // Write metadata to file tags (plain lyrics go to USLT tag). Album-scoped
-        // edits must be written to every track, not just Tracks[0]. Each write
-        // opens and rewrites the audio file, so run the batch on a worker thread —
-        // doing it on the UI thread froze the app for seconds on large albums
-        // (e.g. saving an animated cover for a 20+ track album).
+        // Advisory in the Advanced tab → IsExplicit, for an immediate badge update.
+        if (!_albumScoped && _originalAdvancedFields != null)
+            _track.IsExplicit = BuildAdvancedFields().ItunesAdvisory == 1;
+
+        // Views bound directly to Track properties (genre/title columns, lyrics-page info
+        // line) show the edit now, while the files are still being written.
+        NotifyEditedTracks();
+    }
+
+    private void NotifyEditedTracks()
+    {
+        _track.NotifyMetadataUpdated();
+        if (_albumTracks != null)
+        {
+            foreach (var t in _albumTracks)
+            {
+                if (!ReferenceEquals(t, _track))
+                    t.NotifyMetadataUpdated();
+            }
+        }
+    }
+
+    /// <summary>
+    /// The file half of a save, behind the closed window: tags, advanced fields, lyrics,
+    /// covers, renames, then the library save. Every file operation runs off the UI thread.
+    /// Failed writes end in <see cref="SaveErrorMessage"/>.
+    /// </summary>
+    private async Task WriteSavedEditsAsync(Guid oldAlbumId, List<Track>? artTargets)
+    {
         // Files whose tags could not be written. Collected rather than discarded: the
         // write result used to be dropped on the floor, so a failed save (most commonly
-        // the currently-playing track, whose handle libVLC holds) closed the dialog
-        // cleanly and showed the new tags while the file on disk was untouched — the
-        // edit then silently vanished on the next rescan.
+        // the currently-playing track, whose handle libVLC holds) showed the new tags
+        // while the file on disk was untouched — the edit then silently vanished on the
+        // next rescan.
         var failedWrites = new List<string>();
 
+        // Write metadata to file tags (plain lyrics go to USLT tag). Album-scoped edits are
+        // written to every track that changed, a few files at a time (ParallelFileWrites).
         // Only files whose tags actually changed. Rewriting the rest is not merely wasted
         // work: the audio file the player holds open cannot be written at all, so an
         // unconditional pass made an animated-cover or rating save fail on the playing track
@@ -2565,15 +2637,15 @@ public partial class MetadataViewModel : ViewModelBase
         if (_albumScoped && _albumTracks != null && _albumTracks.Count > 0)
         {
             var tagWriteTargets = _albumTracks.Where(NeedsTagWrite).ToList();
-            var yearClearTargets = tagWriteTargets.Where(YearWasCleared).ToList();
-            var versionClearTargets = tagWriteTargets.Where(VersionWasCleared).ToList();
-            await Task.Run(() =>
+            var yearClearTargets = tagWriteTargets.Where(YearWasCleared).ToHashSet();
+            var versionClearTargets = tagWriteTargets.Where(VersionWasCleared).ToHashSet();
+            var genreEdited = tagWriteTargets.Where(GenreEdited).ToHashSet();
+            await WriteEachFileAsync(tagWriteTargets, t =>
             {
-                foreach (var t in tagWriteTargets)
-                    if (!_metadata.WriteTrackMetadata(t, GenreEdited(t))
-                        || (yearClearTargets.Contains(t) && !_metadata.ClearYear(t.FilePath))
-                        || (versionClearTargets.Contains(t) && !_metadata.ClearVersion(t.FilePath)))
-                        lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
+                if (!_metadata.WriteTrackMetadata(t, genreEdited.Contains(t))
+                    || (yearClearTargets.Contains(t) && !_metadata.ClearYear(t.FilePath))
+                    || (versionClearTargets.Contains(t) && !_metadata.ClearVersion(t.FilePath)))
+                    AddFailedWrite(failedWrites, t.FilePath);
             });
 
             // "Album is explicit": write ITUNESADVISORY to every track whose flag differs
@@ -2584,15 +2656,12 @@ public partial class MetadataViewModel : ViewModelBase
                 var advisoryTargets = _albumTracks.Where(t => t.IsExplicit != IsExplicit).ToList();
                 var advisoryValue = IsExplicit ? 1 : 0;
                 var flipped = new List<Track>();
-                await Task.Run(() =>
+                await WriteEachFileAsync(advisoryTargets, t =>
                 {
-                    foreach (var t in advisoryTargets)
-                    {
-                        if (_metadata.WriteAdvisory(t.FilePath, advisoryValue))
-                            lock (flipped) flipped.Add(t);
-                        else
-                            lock (failedWrites) failedWrites.Add(Path.GetFileName(t.FilePath));
-                    }
+                    if (_metadata.WriteAdvisory(t.FilePath, advisoryValue))
+                        lock (flipped) flipped.Add(t);
+                    else
+                        AddFailedWrite(failedWrites, t.FilePath);
                 });
                 // Track.IsExplicit is observable, so every "E" badge and the playback
                 // filter see the change immediately; the library save below persists it.
@@ -2609,13 +2678,11 @@ public partial class MetadataViewModel : ViewModelBase
             var ok = await Task.Run(() => _metadata.WriteTrackMetadata(_track, genreEdited)
                                           && (!clearYear || _metadata.ClearYear(_track.FilePath))
                                           && (!clearVersion || _metadata.ClearVersion(_track.FilePath)));
-            if (!ok) failedWrites.Add(Path.GetFileName(_track.FilePath));
+            if (!ok) AddFailedWrite(failedWrites, _track.FilePath);
         }
 
-        // Write advanced fields (sort, people, identifiers, custom tags).
-        // Runs on a worker thread for the same reason as the writes above — this opens
-        // the file and rewrites every tag block, which for a large FLAC/WAV/DSD froze
-        // the window for the duration when it ran inline.
+        // Write advanced fields (sort, people, identifiers, custom tags) on a worker thread:
+        // this opens the file and rewrites every tag block.
         if (!_albumScoped && _originalAdvancedFields != null)
         {
             var advFields = BuildAdvancedFields();
@@ -2631,11 +2698,8 @@ public partial class MetadataViewModel : ViewModelBase
             if (!AdvancedTagIO.FieldsEqual(advFields, originalAdv))
             {
                 if (!await Task.Run(() => _metadata.WriteAdvancedFields(advPath, advFields, originalAdv)))
-                    failedWrites.Add(Path.GetFileName(advPath));
+                    AddFailedWrite(failedWrites, advPath);
             }
-
-            // Sync advisory → IsExplicit for immediate badge update
-            _track.IsExplicit = advFields.ItunesAdvisory == 1;
         }
 
         // Settings ▸ Lyrics ▸ Save lyrics to (GitHub #135): lyrics files beside the song (the
@@ -2643,38 +2707,65 @@ public partial class MetadataViewModel : ViewModelBase
         LyricsSaveTarget lyricsTarget;
         try { lyricsTarget = LyricsSaveTarget(); } catch { lyricsTarget = Models.LyricsSaveTarget.Sidecar; }
 
-        // Write synced lyrics to sidecar .lrc file (single-track only, as above).
-        // Deletion is gated on an explicit user removal and never happens when the
-        // sidecar failed to load — and it goes to the trash, not File.Delete, so a
-        // mistake is recoverable.
+        // Lyric sidecars (single-track only: the album dialog has no lyric tabs), all on a
+        // worker thread: their existence probes and writes used to run on the UI thread.
         if (!_albumScoped)
         {
-            try
+            var audioPath = _track.FilePath;
+            var synced = _track.SyncedLyrics;
+            var plain = _track.Lyrics;
+            var syncedChanged = SyncedLyricsWereChanged;
+            var syncedRemoved = SyncedLyricsWereRemoved;
+            var plainRemoved = PlainLyricsWereRemoved;
+            var ttml = syncedChanged && lyricsTarget.WritesSidecars() ? ImportedTtmlToSave() : null;
+            var plainChanged = !string.Equals(plain, _loadedPlainLyrics, StringComparison.Ordinal)
+                               && lyricsTarget.WritesSidecars();
+            await Task.Run(() =>
             {
-                var lrcPath = Path.ChangeExtension(_track.FilePath, ".lrc");
-                if (!string.IsNullOrWhiteSpace(_track.SyncedLyrics))
+                // Synced lyrics to the .lrc. Deletion is gated on an explicit user removal and
+                // never happens when the sidecar failed to load — and it goes to the trash,
+                // not File.Delete, so a mistake is recoverable.
+                try
                 {
-                    // Only a real change creates the file, and only when lyrics files are wanted:
-                    // synced lyrics loaded from the song's tags (LRC in its lyrics tag, a SYLT)
-                    // used to gain a .lrc beside the song on any save, a title fix included. One
-                    // already there is kept up to date, as before — it is read before the tags.
-                    if (File.Exists(lrcPath) || (SyncedLyricsWereChanged && lyricsTarget.WritesSidecars()))
-                        await File.WriteAllTextAsync(lrcPath, _track.SyncedLyrics);
-                    if (SyncedLyricsWereChanged)
+                    var lrcPath = Path.ChangeExtension(audioPath, ".lrc");
+                    if (!string.IsNullOrWhiteSpace(synced))
                     {
-                        await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
-                        if (lyricsTarget.WritesSidecars() && ImportedTtmlToSave() is { } ttml)
-                            await File.WriteAllTextAsync(Path.ChangeExtension(_track.FilePath, ".ttml"), ttml);
+                        // Only a real change creates the file, and only when lyrics files are wanted:
+                        // synced lyrics loaded from the song's tags (LRC in its lyrics tag, a SYLT)
+                        // used to gain a .lrc beside the song on any save, a title fix included. One
+                        // already there is kept up to date, as before — it is read before the tags.
+                        if (File.Exists(lrcPath) || (syncedChanged && lyricsTarget.WritesSidecars()))
+                            File.WriteAllText(lrcPath, synced);
+                        if (syncedChanged)
+                        {
+                            TrashSidecarsAboveLrc(audioPath);
+                            if (ttml != null)
+                                File.WriteAllText(Path.ChangeExtension(audioPath, ".ttml"), ttml);
+                        }
+                    }
+                    else if (syncedRemoved)
+                    {
+                        if (File.Exists(lrcPath)) TrashFile(lrcPath);
+                        TrashSidecarsAboveLrc(audioPath);
                     }
                 }
-                else if (SyncedLyricsWereRemoved)
+                catch { /* Best effort — sidecar write is non-fatal */ }
+
+                // Plain lyrics to the .txt, only when the text actually changed: LoadFromTrack
+                // fills this field from the *embedded* tag when no .txt exists, so an
+                // unconditional write created a new file in the user's music folder after
+                // editing an unrelated field. Lyrics saved inside the file only (#135) create
+                // no .txt; one already there is kept current.
+                try
                 {
-                    if (File.Exists(lrcPath))
-                        await Task.Run(() => TrashFile(lrcPath));
-                    await Task.Run(() => TrashSidecarsAboveLrc(_track.FilePath));
+                    var txtPath = Path.ChangeExtension(audioPath, ".txt");
+                    if (!string.IsNullOrWhiteSpace(plain) && (plainChanged || File.Exists(txtPath)))
+                        File.WriteAllText(txtPath, plain);
+                    else if (plainRemoved && File.Exists(txtPath))
+                        Helpers.RecycleBin.TryMoveToTrash(txtPath);
                 }
-            }
-            catch { /* Best effort — sidecar write is non-fatal */ }
+                catch { /* Best effort — sidecar write is non-fatal */ }
+            });
         }
 
         // Lyrics inside the audio file: the synced text (word timings kept) in its lyrics tag,
@@ -2689,63 +2780,48 @@ public partial class MetadataViewModel : ViewModelBase
                 AddFailedWrite(failedWrites, path);
         }
 
-        // Write plain lyrics to sidecar .txt file.
-        // Only write when the plain text actually changed: LoadFromTrack fills this
-        // field from the *embedded* tag when no .txt exists, so an unconditional write
-        // created a new file in the user's music folder after editing an unrelated field.
-        // Lyrics saved inside the file only (#135) create no .txt; one already there is kept current.
-        if (!_albumScoped)
+        // Handle artwork changes. Artwork is per-album in Noctis (the persisted PNG is keyed
+        // by AlbumId and every track carries its own embedded copy), so the new cover goes
+        // into every track of the album (ArtworkTargets) and each affected album's cached PNG.
+        if (_newArtworkData != null && artTargets != null)
         {
-            try
-            {
-                var txtPath = Path.ChangeExtension(_track.FilePath, ".txt");
-                var plainChanged = !string.Equals(_track.Lyrics, _loadedPlainLyrics, StringComparison.Ordinal)
-                                   && lyricsTarget.WritesSidecars();
-                if (!string.IsNullOrWhiteSpace(_track.Lyrics) && (plainChanged || File.Exists(txtPath)))
-                    await File.WriteAllTextAsync(txtPath, _track.Lyrics);
-                else if (PlainLyricsWereRemoved && File.Exists(txtPath))
-                    await Task.Run(() => Helpers.RecycleBin.TryMoveToTrash(txtPath));
-            }
-            catch { /* Best effort — sidecar write is non-fatal */ }
-        }
-
-        // Handle artwork changes. Artwork is per-album in Noctis (the persisted
-        // PNG is keyed by AlbumId and every track carries its own embedded copy),
-        // so embed the new cover in every track of the album and refresh each
-        // affected album's cached PNG. For a single-track edit we resolve the
-        // album's tracks from the library — this mirrors the Remove path, so the
-        // other tracks don't keep stale embedded art that a later load resurrects.
-        if (_newArtworkData != null)
-        {
-            var artTargets = _albumTracks
-                ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
-            if (artTargets.Count == 0) artTargets = new List<Track> { _track };
-
-            foreach (var albumId in artTargets.Select(t => t.AlbumId).Distinct())
-            {
-                _persistence.SaveArtwork(albumId, _newArtworkData);
-                ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
-            }
-            // A failed cover write (the playing track libVLC holds, a read-only file) leaves
-            // the old cover in that file: report it like a failed tag write so the dialog
-            // stays open, and keep that track's fingerprint matching what is still on disk.
+            var art = _newArtworkData;
+            var albumIds = artTargets.Select(t => t.AlbumId).Distinct().ToList();
+            var artHash = TrackArtwork.Fingerprint(art);
+            // A track already carrying this exact cover (its fingerprint, recorded at import
+            // and by every cover save) keeps its file: re-embedding the same bytes copied and
+            // rewrote the whole audio file for nothing.
+            var embedTargets = artTargets
+                .Where(t => !string.Equals(t.ArtworkHash, artHash, StringComparison.Ordinal))
+                .ToList();
             await Task.Run(() =>
             {
-                var written = new List<Track>();
-                foreach (var t in artTargets)
-                {
-                    bool ok;
-                    try { ok = _metadata.WriteAlbumArt(t.FilePath, _newArtworkData); } catch { ok = false; }
-                    if (ok) written.Add(t);
-                    else AddFailedWrite(failedWrites, t.FilePath);
-                    t.AlbumArtworkPath = null;
-                }
-                ClearOwnTrackArtwork(written, _newArtworkData);
+                foreach (var albumId in albumIds)
+                    _persistence.SaveArtwork(albumId, art);
+            });
+            foreach (var albumId in albumIds)
+                ArtworkCache.Invalidate(_persistence.GetArtworkPath(albumId));
+            // A failed cover write (the playing track libVLC holds, a read-only file) leaves
+            // the old cover in that file: reported like a failed tag write, and that track
+            // keeps the fingerprint matching what is still on disk.
+            var failedArt = new HashSet<Track>();
+            await WriteEachFileAsync(embedTargets, t =>
+            {
+                bool ok;
+                try { ok = _metadata.WriteAlbumArt(t.FilePath, art); } catch { ok = false; }
+                if (ok) return;
+                lock (failedArt) failedArt.Add(t);
+                AddFailedWrite(failedWrites, t.FilePath);
+            });
+            await Task.Run(() =>
+            {
+                foreach (var t in artTargets) t.AlbumArtworkPath = null;
+                ClearOwnTrackArtwork(artTargets.Where(t => !failedArt.Contains(t)).ToList(), art);
             });
             foreach (var t in artTargets)
                 ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
         }
-        else if (_artworkRemoved)
+        else if (_artworkRemoved && artTargets != null)
         {
             // Artwork in this app is per-album: the persisted PNG is keyed by
             // AlbumId, and every track of that album carries its own embedded
@@ -2753,31 +2829,28 @@ public partial class MetadataViewModel : ViewModelBase
             // other album tracks with intact embedded art, so any later load
             // path (LoadArtwork, library import) re-extracts and resurrects
             // the cover. Strip the tag from every track of the album.
-            var albumTracks = _albumTracks
-                ?? _library.Tracks.Where(t => t.AlbumId == _track.AlbumId).ToList();
-            if (albumTracks.Count == 0) albumTracks = new List<Track> { _track };
             // Failed strips are reported and keep their fingerprint, as for a new cover above.
-            await Task.Run(() =>
+            var failedArt = new HashSet<Track>();
+            await WriteEachFileAsync(artTargets, t =>
             {
-                var written = new List<Track>();
-                foreach (var t in albumTracks)
-                {
-                    bool ok;
-                    try { ok = _metadata.WriteAlbumArt(t.FilePath, null); } catch { ok = false; }
-                    if (ok) written.Add(t);
-                    else AddFailedWrite(failedWrites, t.FilePath);
-                    t.AlbumArtworkPath = null;
-                }
-                ClearOwnTrackArtwork(written, null);
+                bool ok;
+                try { ok = _metadata.WriteAlbumArt(t.FilePath, null); } catch { ok = false; }
+                if (ok) return;
+                lock (failedArt) failedArt.Add(t);
+                AddFailedWrite(failedWrites, t.FilePath);
             });
-            foreach (var t in albumTracks)
-                ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
-
             // Delete the persisted cache file too — invalidating the in-memory
             // cache alone leaves the PNG on disk, so the next album load reads
             // it back and the cover appears to "un-remove" itself.
             var artPath = _persistence.GetArtworkPath(_track.AlbumId);
-            try { if (File.Exists(artPath)) File.Delete(artPath); } catch { }
+            await Task.Run(() =>
+            {
+                foreach (var t in artTargets) t.AlbumArtworkPath = null;
+                ClearOwnTrackArtwork(artTargets.Where(t => !failedArt.Contains(t)).ToList(), null);
+                try { if (File.Exists(artPath)) File.Delete(artPath); } catch { }
+            });
+            foreach (var t in artTargets)
+                ArtworkCache.Invalidate(_persistence.GetTrackArtworkPath(t.Id));
             ArtworkCache.Invalidate(artPath);
         }
         else if (oldAlbumId != _track.AlbumId)
@@ -2787,14 +2860,16 @@ public partial class MetadataViewModel : ViewModelBase
             // re-keys the track there, and art under that id shows on every
             // untagged track in the library) — same rule as SaveArtwork.
             var oldPath = _persistence.GetArtworkPath(oldAlbumId);
-            if (File.Exists(oldPath) && _track.AlbumId != Track.UnknownAlbumBucketId)
+            var newAlbumId = _track.AlbumId;
+            await Task.Run(() =>
             {
+                if (!File.Exists(oldPath) || newAlbumId == Track.UnknownAlbumBucketId) return;
                 // Through SaveArtwork: never written in place under a decode (GitHub #224).
-                try { _persistence.SaveArtwork(_track.AlbumId, File.ReadAllBytes(oldPath)); }
+                try { _persistence.SaveArtwork(newAlbumId, File.ReadAllBytes(oldPath)); }
                 catch { /* Non-fatal */ }
-            }
+            });
             ArtworkCache.Invalidate(oldPath);
-            ArtworkCache.Invalidate(_persistence.GetArtworkPath(_track.AlbumId));
+            ArtworkCache.Invalidate(_persistence.GetArtworkPath(newAlbumId));
         }
 
         // Animated cover handling — scope follows how the dialog was opened:
@@ -2819,20 +2894,24 @@ public partial class MetadataViewModel : ViewModelBase
             // edited: one song moved to another album leaves the rest of its old album behind,
             // and moving the loop took theirs away (copied instead, as the still cover is).
             // Never onto the shared Unknown-Album bucket (see the still cover above).
-            foreach (var ext in new[] { ".mp4", ".webm" })
+            var loops = new[] { ".mp4", ".webm" }
+                .Select(ext => (Old: _persistence.GetAnimatedCoverPath(oldAlbumId, null, ext),
+                                New: _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext)))
+                .ToList();
+            var moveLoop = _albumScoped;
+            await Task.Run(() =>
             {
-                var oldP = _persistence.GetAnimatedCoverPath(oldAlbumId, null, ext);
-                if (File.Exists(oldP))
+                foreach (var (oldP, newP) in loops)
                 {
-                    var newP = _persistence.GetAnimatedCoverPath(_track.AlbumId, null, ext);
+                    if (!File.Exists(oldP)) continue;
                     try
                     {
-                        if (_albumScoped) File.Move(oldP, newP, true);
+                        if (moveLoop) File.Move(oldP, newP, true);
                         else File.Copy(oldP, newP, true);
                     }
                     catch { }
                 }
-            }
+            });
         }
 
         // Rename files by pattern (multi-select only). Done after tag writes so the
@@ -2890,20 +2969,11 @@ public partial class MetadataViewModel : ViewModelBase
             }
         }
 
-        // Refresh bindings on the edited track instances immediately — views bound
-        // directly to Track properties (genre/title columns, lyrics-page info line)
-        // would otherwise show stale values until their next full rebuild.
-        _track.NotifyMetadataUpdated();
-        if (_albumTracks != null)
-        {
-            foreach (var t in _albumTracks)
-            {
-                if (!ReferenceEquals(t, _track))
-                    t.NotifyMetadataUpdated();
-            }
-        }
+        // Covers, explicit flags and renamed paths changed since the edit was first shown.
+        NotifyEditedTracks();
 
-        // Persist library changes and notify UI
+        // Persist library changes. library.json has no per-track update (the journal below
+        // holds user state only), so this stays one structural save, off the UI thread.
         await _library.SaveAsync();
 
         // The editor can also change journaled user state (rating, disliked,
@@ -2919,10 +2989,9 @@ public partial class MetadataViewModel : ViewModelBase
 
         ChangesSaved?.Invoke(this, EventArgs.Empty);
 
-        // Keep the dialog open when the tags did not actually reach disk, so the edit
-        // isn't silently lost on the next rescan. The player lets go of the playing file
-        // for the save (OpenFileHolders), so what is left is another app holding the file
-        // open, or a file that cannot be written at all.
+        // The window has closed by now: MetadataHelper shows this in the notice pill. The
+        // player lets go of the playing file for the save (OpenFileHolders), so what is left
+        // is another app holding the file open, or a file that cannot be written at all.
         if (failedWrites.Count > 0)
         {
             // TagLib has no DSDIFF writer: say so instead of blaming another app or a
@@ -2936,7 +3005,20 @@ public partial class MetadataViewModel : ViewModelBase
         }
 
         SaveErrorMessage = string.Empty;
-        CloseRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Runs <paramref name="write"/> for each track on worker threads, up to
+    /// <see cref="ParallelFileWrites"/> files at a time. Tracks sharing one audio file are
+    /// written one after another, never at once.
+    /// </summary>
+    private static Task WriteEachFileAsync(IReadOnlyCollection<Track> tracks, Action<Track> write)
+    {
+        if (tracks.Count == 0) return Task.CompletedTask;
+        var byFile = tracks.GroupBy(t => t.FilePath, StringComparer.OrdinalIgnoreCase).ToList();
+        return Task.Run(() => Parallel.ForEach(byFile,
+            new ParallelOptions { MaxDegreeOfParallelism = ParallelFileWrites },
+            group => { foreach (var t in group) write(t); }));
     }
 
     /// <summary>
@@ -2987,11 +3069,16 @@ public partial class MetadataViewModel : ViewModelBase
         watcher.SuppressPaths(paths, TimeSpan.FromSeconds(30));
     }
 
-    [RelayCommand]
+    /// <summary>Closes without applying anything: until Save, no edit has touched the library's
+    /// tracks or files. Off once Save is pressed (that save goes on behind the window).</summary>
+    [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel()
     {
+        if (IsSaving) return;
         CloseRequested?.Invoke(this, EventArgs.Empty);
     }
+
+    private bool CanCancel() => !IsSaving;
 
     /// <summary>
     /// Start/stop time text. m:ss.fff alone drops the hours (TimeSpan's "m" is the minutes

@@ -51,7 +51,7 @@
                     Command="{Binding $parent[views:ShellView].((vm:ShellViewModel)DataContext).NavigateBackCommand}"
                     AutomationProperties.Name="{Binding BackTitle}">
                 <StackPanel Orientation="Horizontal">
-                    <PathIcon Data="{DynamicResource PhBack}" />
+                    <PathIcon Classes="dir" Data="{DynamicResource PhBack}" />
                     <TextBlock Name="BackLabel" Text="{Binding BackTitle}" />
                 </StackPanel>
             </Button>

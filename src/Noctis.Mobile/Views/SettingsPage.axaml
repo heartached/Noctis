@@ -432,7 +432,7 @@
                 <Grid Classes="sheet-header settings-header" ColumnDefinitions="46,*,46">
                     <Button Name="BackButton" Classes="sheet-close" AutomationProperties.Name="{loc:T Mobile.BackToSettings}"
                             IsVisible="{Binding IsSubPane}" Command="{Binding ShowMainCommand}">
-                        <views:GridIcon Data="{DynamicResource PhBack}" />
+                        <views:GridIcon Classes="dir" Data="{DynamicResource PhBack}" />
                     </Button>
                     <TextBlock Grid.Column="1" Name="SettingsTitle" Classes="sheet-title" Text="{Binding HeaderTitle}" />
                     <Button Grid.Column="2" Name="CloseButton" Classes="sheet-close" AutomationProperties.Name="{loc:T Common.Close}"
@@ -580,6 +580,17 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <!-- Animated Covers: Off / Wi-Fi Only / Always on the glass menu (Discord beta 11-23). -->
+                                    <Button Name="AnimatedCoversRow" Classes="row" Command="{Binding ShowAnimatedCoversMenuCommand}"
+                                            AutomationProperties.Name="{Binding AnimatedCoversRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconAnimatedCover}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.AnimatedCovers}" />
+                                            <TextBlock Grid.Column="2" Name="AnimatedCoversValueLabel" Classes="row-value" Text="{Binding AnimatedCoversValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Language: System (the phone's) or one of the shipped translations, on a page of its own. -->
                                     <Button Name="LanguageRow" Classes="row" Command="{Binding OpenPaneCommand}"
                                             CommandParameter="{x:Static vm:SettingsPane.Language}" AutomationProperties.Name="{Binding LanguageRowName}">
@@ -591,8 +602,22 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
-                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06). -->
+                                    <!-- Reduce Glass: menus, bars and header buttons as a plain fill (testers 11-22). -->
+                                    <ToggleButton Name="ReduceGlassSwitch" Classes="switch-row" IsChecked="{Binding Shell.ReduceGlass}"
+                                                  AutomationProperties.Name="{loc:T Mobile.Settings.ReduceGlass}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconBackground}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.ReduceGlass}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.ReduceGlassHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Liquid Glass Tab Pill: the selected tab's pill stays clear glass (testers 11-06).
+                                         Disabled under Reduce Glass, where the pill is a plain fill. -->
                                     <ToggleButton Name="GlassTabPillSwitch" Classes="switch-row" IsChecked="{Binding Shell.GlassTabPill}"
+                                                  IsEnabled="{Binding !Shell.ReduceGlass}"
                                                   AutomationProperties.Name="{loc:T Mobile.Settings.GlassTabPill}">
                                         <Grid ColumnDefinitions="Auto,*">
                                             <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconPlayerBar}" /></Border>
@@ -708,6 +733,30 @@
                                             <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
                                         </views:SettingRow>
                                     </Button>
+                                    <!-- Artist Separators: what splits one artist tag into several artists (the desktop's
+                                         Artist Tag Separators; Discord beta feedback). -->
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="ArtistSeparatorsRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.ArtistSeparators}" AutomationProperties.Name="{Binding ArtistSeparatorsRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconSeparators}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.ArtistSeparators}" />
+                                            <TextBlock Grid.Column="2" Name="ArtistSeparatorsValueLabel" Classes="row-value" Text="{Binding ArtistSeparators.Summary}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <!-- Genre Separators: what splits one genre tag into several genres (the desktop's
+                                         Genre Tag Separators; GitHub #260). -->
+                                    <Border Classes="row-separator chipped" />
+                                    <Button Name="GenreSeparatorsRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.GenreSeparators}" AutomationProperties.Name="{Binding GenreSeparatorsRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconGenreSeparators}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Mobile.Settings.GenreSeparators}" />
+                                            <TextBlock Grid.Column="2" Name="GenreSeparatorsValueLabel" Classes="row-value" Text="{Binding GenreSeparators.Summary}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
                                     <Border Classes="row-separator chipped" />
                                     <Button Name="RescanButton" Classes="row" Command="{Binding Shell.Library.RescanCommand}"
                                             IsEnabled="{Binding CanRescan}" AutomationProperties.Name="{Binding RescanRowName}">
@@ -741,7 +790,7 @@
                             <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.SongRowsHint}" />
                         </StackPanel>
 
-                        <!-- Listening: Lyrics, Scrobbling and Listening History are pages; Played Songs in Queue and Pick Up on Computer switches. -->
+                        <!-- Listening: Lyrics, Scrobbling, Listening History and ReplayGain are pages; Played Songs in Queue, Keep Shuffle On and Pick Up on Computer switches. -->
                         <StackPanel>
                             <TextBlock Classes="group-caption" Text="{loc:T Mobile.Settings.Listening}" />
                             <Border Name="ListeningCard" Classes="group-card">
@@ -776,6 +825,16 @@
                                         </views:SettingRow>
                                     </Button>
                                     <Border Classes="row-separator chipped" />
+                                    <Button Name="ReplayGainRow" Classes="row" Command="{Binding OpenPaneCommand}"
+                                            CommandParameter="{x:Static vm:SettingsPane.ReplayGain}" AutomationProperties.Name="{Binding ReplayGainRowName}">
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconReplayGain}" /></Border>
+                                            <TextBlock Grid.Column="1" Classes="row-label" Text="{loc:T Settings.ReplayGain}" />
+                                            <TextBlock Grid.Column="2" Name="ReplayGainValueLabel" Classes="row-value" Text="{Binding ReplayGainValue}" />
+                                            <views:GridIcon Grid.Column="3" Classes="row-chevron" Data="{DynamicResource PhChevronRight}" />
+                                        </views:SettingRow>
+                                    </Button>
+                                    <Border Classes="row-separator chipped" />
                                     <!-- Played Songs in Queue: the Queue page keeps a History above the current track (Discord 11-07). -->
                                     <ToggleButton Name="QueueHistorySwitch" Classes="switch-row" IsChecked="{Binding Shell.ShowQueueHistory}"
                                                   AutomationProperties.Name="{loc:T Mobile.Settings.QueueHistory}">
@@ -784,6 +843,18 @@
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
                                                 <TextBlock Classes="row-label" Text="{loc:T Mobile.Settings.QueueHistory}" />
                                                 <TextBlock Classes="row-sub" Text="{loc:T Mobile.Settings.QueueHistoryHint}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </ToggleButton>
+                                    <Border Classes="row-separator chipped" />
+                                    <!-- Keep Shuffle On: starting a list leaves Shuffle on and shuffles it (Discord 11-23, the desktop's setting). -->
+                                    <ToggleButton Name="KeepShuffleSwitch" Classes="switch-row" IsChecked="{Binding Shell.KeepShuffleOn}"
+                                                  AutomationProperties.Name="{loc:T Settings.KeepShuffleOn}">
+                                        <Grid ColumnDefinitions="Auto,*">
+                                            <Border Classes="row-chip"><views:GridIcon StrokeThickness="1.8" Data="{DynamicResource SetIconShuffle}" /></Border>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Settings.KeepShuffleOn}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Settings.KeepShuffleOnHint}" />
                                             </StackPanel>
                                         </Grid>
                                     </ToggleButton>
@@ -1013,6 +1084,12 @@
                         <Panel Name="TabBarHost" IsVisible="{Binding ShowsTabBarPane}">
                             <views:TabBarPane Name="TabBarPane" DataContext="{Binding TabBar}" />
                         </Panel>
+                        <Panel Name="ArtistSeparatorsHost" IsVisible="{Binding ShowsArtistSeparatorsPane}">
+                            <views:ArtistSeparatorsPane Name="ArtistSeparatorsPane" DataContext="{Binding ArtistSeparators}" />
+                        </Panel>
+                        <Panel Name="GenreSeparatorsHost" IsVisible="{Binding ShowsGenreSeparatorsPane}">
+                            <views:GenreSeparatorsPane Name="GenreSeparatorsPane" DataContext="{Binding GenreSeparators}" />
+                        </Panel>
 
                         <!-- Accent: the colours and Match Artwork, then whether album and artist pages take the cover's colour. -->
                         <StackPanel Name="AccentPane" Classes="grouped-content" IsVisible="{Binding ShowsAccentPane}">
@@ -1235,6 +1312,42 @@
                                 <TextBlock Classes="group-footnote" Text="{loc:T Mobile.Settings.LicenseFootnote}" />
                             </StackPanel>
                         </StackPanel>
+                        <!-- ReplayGain (the desktop's model): Mode on the glass menu (Off, Track, Album), the
+                             pre-amp, Prevent Clipping. All live: the playing song glides to its new level. -->
+                        <StackPanel Name="ReplayGainPane" Classes="grouped-content" IsVisible="{Binding ShowsReplayGainPane}">
+                            <StackPanel>
+                                <Border Name="ReplayGainCard" Classes="group-card">
+                                    <StackPanel>
+                                        <Button Name="ReplayGainModeRow" Classes="row" Command="{Binding ShowReplayGainModeMenuCommand}"
+                                                AutomationProperties.Name="{Binding ReplayGainModeRowName}">
+                                            <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto,Auto">
+                                                <TextBlock Classes="row-label" Text="{loc:T Settings.Mode}" />
+                                                <TextBlock Grid.Column="1" Name="ReplayGainModeLabel" Classes="row-value" Text="{Binding ReplayGainValue}" />
+                                                <views:GridIcon Grid.Column="2" Classes="row-trailing" StrokeThickness="2" Data="{DynamicResource SetIconUpDown}" />
+                                            </views:SettingRow>
+                                        </Button>
+                                        <Border Classes="row-separator plain" />
+                                        <views:SettingRow Classes="setting-row" ColumnDefinitions="*,Auto">
+                                            <TextBlock Classes="row-label" Text="{loc:T Mobile.ReplayGain.Preamp}" />
+                                            <TextBlock Grid.Column="1" Name="ReplayGainPreampLabel" Classes="row-value" Text="{Binding Shell.Player.ReplayGainPreampLabel}" />
+                                        </views:SettingRow>
+                                        <controls:SmoothSlider Name="ReplayGainPreampSlider" Classes="accent-slider" Margin="7,-12,7,6"
+                                                               Minimum="-12" Maximum="12" Step="0.5" SteppedValue="{Binding Shell.Player.ReplayGainPreampDb}"
+                                                               AutomationProperties.Name="{loc:T Mobile.ReplayGain.Preamp}" />
+                                        <Border Classes="row-separator plain" />
+                                        <ToggleButton Name="ReplayGainClippingSwitch" Classes="switch-row" AutomationProperties.Name="{loc:T Mobile.ReplayGain.PreventClipping}"
+                                                      IsChecked="{Binding Shell.Player.ReplayGainPreventClipping}">
+                                            <StackPanel VerticalAlignment="Center" Margin="0,8">
+                                                <TextBlock Classes="row-label" Text="{loc:T Mobile.ReplayGain.PreventClipping}" />
+                                                <TextBlock Classes="row-sub" Text="{loc:T Mobile.ReplayGain.PreventClippingHint}" />
+                                            </StackPanel>
+                                        </ToggleButton>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Classes="group-footnote" Text="{loc:T Mobile.ReplayGain.Footnote}" />
+                            </StackPanel>
+                        </StackPanel>
+
                         <!-- Lyrics: the desktop's lyrics display settings that the phone's lyrics
                              page honours: the extra lines, the text size and the dimmed lines'
                              floor, joining split words, then the desktop's first online source

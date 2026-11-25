@@ -75,7 +75,7 @@ public sealed record SettingsFolder(string Root, string Name, bool AccessLost)
 public sealed record LicenseEntry(string Name, string License, string Detail);
 
 /// <summary>Settings is one sheet: its top level, or one of the pages pushed inside it.</summary>
-public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme, Hidden, TabBar }
+public enum SettingsPane { Main, Folders, Lyrics, Background, Scrobbling, History, Accent, PlayerBar, Downloads, WhatsNew, Licenses, Language, Theme, Hidden, TabBar, ArtistSeparators, ReplayGain, GenreSeparators }
 
 /// <summary>One line of Settings › Theme: a small preview of the theme (its page, a card and the
 /// chrome glass on it, its accent when it has one), its name, and a tick on the one in use.</summary>
@@ -175,14 +175,19 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Scrobbling = new ScrobblingSettingsViewModel(shell);
         History = new ListeningHistoryViewModel(shell);
         TabBar = new TabBarSettingsViewModel(shell);
+        ArtistSeparators = new ArtistSeparatorsViewModel(shell);
+        GenreSeparators = new GenreSeparatorsViewModel(shell);
         Shell.Library.Folders.CollectionChanged += OnFoldersChanged;
         Shell.Library.PropertyChanged += OnLibraryChanged;
         Shell.Library.Refreshed += OnLibraryRefreshed;
         Shell.Lyrics.PropertyChanged += OnLyricsChanged;
         Shell.PropertyChanged += OnShellChanged;
+        Shell.Player.PropertyChanged += OnPlayerChanged;
         Background.PropertyChanged += OnSubPageChanged;
         Scrobbling.PropertyChanged += OnSubPageChanged;
         History.PropertyChanged += OnSubPageChanged;
+        ArtistSeparators.PropertyChanged += OnSubPageChanged;
+        GenreSeparators.PropertyChanged += OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged += OnAccountChanged;
         RefreshStats();
     }
@@ -198,6 +203,12 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     /// <summary>Settings › Tab Bar: which tabs are on the bottom bar, in what order.</summary>
     public TabBarSettingsViewModel TabBar { get; }
+
+    /// <summary>Settings › Artist Separators: what splits one artist tag into several artists.</summary>
+    public ArtistSeparatorsViewModel ArtistSeparators { get; }
+
+    /// <summary>Settings › Genre Separators: what splits one genre tag into several genres (GitHub #260).</summary>
+    public GenreSeparatorsViewModel GenreSeparators { get; }
 
     /// <summary>The clock behind the profile row's "Synced 5 min ago"; tests pin it.</summary>
     internal Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
@@ -218,7 +229,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
     [NotifyPropertyChangedFor(nameof(ShowsFoldersPane), nameof(ShowsLyricsPane), nameof(ShowsBackgroundPane), nameof(ShowsScrobblingPane),
         nameof(ShowsHistoryPane), nameof(ShowsAccentPane), nameof(ShowsPlayerBarPane), nameof(ShowsDownloadsPane),
         nameof(ShowsWhatsNewPane), nameof(ShowsLicensesPane), nameof(ShowsLanguagePane), nameof(ShowsThemePane),
-        nameof(ShowsHiddenPane), nameof(ShowsTabBarPane), nameof(LanguageListSource))]
+        nameof(ShowsHiddenPane), nameof(ShowsTabBarPane), nameof(ShowsArtistSeparatorsPane), nameof(ShowsReplayGainPane),
+        nameof(ShowsGenreSeparatorsPane), nameof(LanguageListSource))]
     private SettingsPane _shownSubPane = SettingsPane.Folders;
 
     public bool IsMainPane => Pane == SettingsPane.Main;
@@ -236,6 +248,9 @@ public sealed partial class SettingsPageViewModel : MobilePage
     public bool ShowsLanguagePane => ShownSubPane == SettingsPane.Language;
     public bool ShowsThemePane => ShownSubPane == SettingsPane.Theme;
     public bool ShowsTabBarPane => ShownSubPane == SettingsPane.TabBar;
+    public bool ShowsArtistSeparatorsPane => ShownSubPane == SettingsPane.ArtistSeparators;
+    public bool ShowsReplayGainPane => ShownSubPane == SettingsPane.ReplayGain;
+    public bool ShowsGenreSeparatorsPane => ShownSubPane == SettingsPane.GenreSeparators;
 
     /// <summary>The header's title: "Settings", or the pushed page's name.</summary>
     public string HeaderTitle => Pane switch
@@ -254,12 +269,21 @@ public sealed partial class SettingsPageViewModel : MobilePage
         SettingsPane.Theme => Loc.T("Mobile.Settings.Theme"),
         SettingsPane.Hidden => Loc.T("Mobile.Settings.Hidden"),
         SettingsPane.TabBar => Loc.T("Mobile.Settings.TabBar"),
+        SettingsPane.ArtistSeparators => Loc.T("Mobile.Settings.ArtistSeparators"),
+        SettingsPane.ReplayGain => Loc.T("Settings.ReplayGain"),
+        SettingsPane.GenreSeparators => Loc.T("Mobile.Settings.GenreSeparators"),
         _ => Title,
     };
 
     partial void OnPaneChanged(SettingsPane value)
     {
-        if (value != SettingsPane.Main) ShownSubPane = value;
+        if (value != SettingsPane.Main)
+        {
+            // The saved separators are applied at start, possibly after this sheet was made.
+            if (value == SettingsPane.ArtistSeparators) ArtistSeparators.Sync();
+            else if (value == SettingsPane.GenreSeparators) GenreSeparators.Sync();
+            ShownSubPane = value;
+        }
         else
         {
             FolderToRemove = null;   // a question left open on Music Folders does not wait there
@@ -494,6 +518,24 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
     }
 
+    /// <summary>The Animated Covers row's value: Off, Wi-Fi Only or Always.</summary>
+    public string AnimatedCoversValue => AnimatedCoversLabel(Shell.AnimatedCovers);
+
+    internal static string AnimatedCoversLabel(AnimatedCoversSetting setting) => Loc.T("Mobile.AnimatedCovers." + setting);
+
+    public string AnimatedCoversRowName => Named(Loc.T("Mobile.Settings.AnimatedCovers"), AnimatedCoversValue);
+
+    /// <summary>The Animated Covers row: Off / Wi-Fi Only / Always on the glass pop menu, as Now
+    /// Playing Artwork; a pick applies at once.</summary>
+    [RelayCommand]
+    private void ShowAnimatedCoversMenu()
+    {
+        var items = new List<OptionsMenuItem>();
+        foreach (var setting in AnimatedCoversSettings.All)
+            items.Add(new OptionsMenuItem(Shell, AnimatedCoversLabel(setting), Shell.AnimatedCovers == setting, () => Shell.AnimatedCovers = setting));
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
     /// <summary>The Now Playing Background row's value: Colour Wash or Blurred Cover.</summary>
     public string NowPlayingBackgroundValue => BackgroundStyleLabel(Shell.NowPlayingBackground);
 
@@ -650,10 +692,46 @@ public sealed partial class SettingsPageViewModel : MobilePage
 
     public string LyricsRowName => Named(Loc.T("Tab.Lyrics"), LyricsValue);
 
+    // ── ReplayGain ──
+
+    /// <summary>The ReplayGain row's value and the pane's Mode row: Off, Track or Album
+    /// (the choices live on <see cref="NowPlayingViewModel"/>, which hands them to the player).</summary>
+    public string ReplayGainValue => ReplayGainModeLabel(Shell.Player.ReplayGainMode);
+
+    internal static string ReplayGainModeLabel(ReplayGainMode mode) => mode switch
+    {
+        ReplayGainMode.Track => Loc.T("Mobile.ReplayGain.Track"),
+        ReplayGainMode.Album => Loc.T("Mobile.ReplayGain.Album"),
+        _ => Loc.T("Mobile.Off"),
+    };
+
+    public string ReplayGainRowName => Named(Loc.T("Settings.ReplayGain"), ReplayGainValue);
+    public string ReplayGainModeRowName => Named(Loc.T("Settings.Mode"), ReplayGainValue);
+
+    /// <summary>Settings › ReplayGain › Mode: Off, Track or Album on the glass menu.</summary>
+    [RelayCommand]
+    private void ShowReplayGainModeMenu()
+    {
+        var items = Enum.GetValues<ReplayGainMode>()
+            .Select(mode => new OptionsMenuItem(Shell, ReplayGainModeLabel(mode), Shell.Player.ReplayGainMode == mode, () => Shell.Player.ReplayGainMode = mode))
+            .ToList();
+        Shell.ShowOptions(OptionsMenuViewModel.ForItems(items));
+    }
+
+    private void OnPlayerChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(NowPlayingViewModel.ReplayGainMode)) return;
+        OnPropertyChanged(nameof(ReplayGainValue));
+        OnPropertyChanged(nameof(ReplayGainRowName));
+        OnPropertyChanged(nameof(ReplayGainModeRowName));
+    }
+
     // ── Listening ──
 
     public string ScrobblingRowName => Named(Loc.T("Mobile.Settings.Scrobbling"), Scrobbling.Summary);
     public string HistoryRowName => Named(Loc.T("Mobile.Settings.ListeningHistory"), History.Summary);
+    public string ArtistSeparatorsRowName => Named(Loc.T("Mobile.Settings.ArtistSeparators"), ArtistSeparators.Summary);
+    public string GenreSeparatorsRowName => Named(Loc.T("Mobile.Settings.GenreSeparators"), GenreSeparators.Summary);
 
     /// <summary>Pick Up on Computer and its footnote: only while signed in (the queue goes to the
     /// account's computer; signed out there is none, though the account service is there).</summary>
@@ -866,11 +944,15 @@ public sealed partial class SettingsPageViewModel : MobilePage
     /// the lines about the computer only where there is an account.</summary>
     public IReadOnlyList<string> WhatsNewItems => new[]
     {
-        Loc.T("Mobile.WhatsNew.AddSongs"),
-        Loc.T("Mobile.WhatsNew.Lyrics"),
-        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Recent") : null,
-        Loc.T("Mobile.WhatsNew.Queue"),
-        Loc.T("Mobile.WhatsNew.Startup"),
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.RemoteHome") : null,
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Downloads") : null,
+        Shell.HasAccount ? Loc.T("Mobile.WhatsNew.Deluxe") : null,
+        Loc.T("Mobile.WhatsNew.Looks"),
+        Loc.T("Mobile.WhatsNew.Listening"),
+        Loc.T("Mobile.WhatsNew.Library"),
+        Loc.T("Mobile.WhatsNew.History"),
+        Loc.T("Mobile.WhatsNew.HomeSearch"),
+        Loc.T("Mobile.WhatsNew.Arabic"),
         Loc.T("Mobile.WhatsNew.Fixes"),
     }.OfType<string>().ToArray();
 
@@ -1108,6 +1190,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Scrobbling.Relabel();
         History.Relabel();
         TabBar.Relabel();
+        ArtistSeparators.Relabel();
+        GenreSeparators.Relabel();
         // The account card's numbers carry the language too ("48 МБ", "5 201" stayed Russian
         // after picking English).
         RefreshStats();
@@ -1336,6 +1420,11 @@ public sealed partial class SettingsPageViewModel : MobilePage
             OnPropertyChanged(nameof(NowPlayingArtworkValue));
             OnPropertyChanged(nameof(NowPlayingArtworkRowName));
         }
+        else if (e.PropertyName == nameof(ShellViewModel.AnimatedCovers))
+        {
+            OnPropertyChanged(nameof(AnimatedCoversValue));
+            OnPropertyChanged(nameof(AnimatedCoversRowName));
+        }
         else if (e.PropertyName == nameof(ShellViewModel.NowPlayingBackground))
         {
             OnPropertyChanged(nameof(NowPlayingBackgroundValue));
@@ -1350,6 +1439,8 @@ public sealed partial class SettingsPageViewModel : MobilePage
         OnPropertyChanged(nameof(BackgroundRowName));
         OnPropertyChanged(nameof(ScrobblingRowName));
         OnPropertyChanged(nameof(HistoryRowName));
+        OnPropertyChanged(nameof(ArtistSeparatorsRowName));
+        OnPropertyChanged(nameof(GenreSeparatorsRowName));
     }
 
     private void OnAccountChanged(object? sender, EventArgs e)
@@ -1382,11 +1473,15 @@ public sealed partial class SettingsPageViewModel : MobilePage
         Shell.Library.Refreshed -= OnLibraryRefreshed;
         Shell.Lyrics.PropertyChanged -= OnLyricsChanged;
         Shell.PropertyChanged -= OnShellChanged;
+        Shell.Player.PropertyChanged -= OnPlayerChanged;
         Background.PropertyChanged -= OnSubPageChanged;
         Background.Detach();
         Scrobbling.PropertyChanged -= OnSubPageChanged;
         Scrobbling.Detach();
         History.PropertyChanged -= OnSubPageChanged;
+        History.Detach();
+        ArtistSeparators.PropertyChanged -= OnSubPageChanged;
+        GenreSeparators.PropertyChanged -= OnSubPageChanged;
         if (Shell.Account != null) Shell.Account.StateChanged -= OnAccountChanged;
     }
 }

@@ -49,6 +49,42 @@ public class ArtworkCacheLifetimeTests : IDisposable
 
     private static string Path(string name) => System.IO.Path.Combine("C:\\", "art", name + ".jpg");
 
+    /// <summary>
+    /// Two tiles asking for one cover at the same moment: the second waits for the first's decode
+    /// and shares its bitmap (each decoded it before, and one copy was thrown away), each holding it.
+    /// </summary>
+    [AvaloniaFact]
+    public async Task TwoRequestsForOneCoverAtOnce_DecodeItOnce()
+    {
+        using var started = new System.Threading.ManualResetEventSlim();
+        using var go = new System.Threading.ManualResetEventSlim();
+        var decodes = 0;
+        ArtworkCache.DecoderOverride = (path, width) =>
+        {
+            System.Threading.Interlocked.Increment(ref decodes);
+            started.Set();
+            go.Wait(TimeSpan.FromSeconds(10));
+            return new WriteableBitmap(new PixelSize(width, width), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
+        };
+        var first = Task.Run(() => ArtworkCache.LoadAndCache(Path("same"), 256, exact: false, acquire: true));
+        Assert.True(started.Wait(TimeSpan.FromSeconds(10)));
+        var second = Task.Run(() => ArtworkCache.LoadAndCache(Path("same"), 256, exact: false, acquire: true));
+        await Task.Delay(100);   // the second is waiting on the first's decode, not decoding
+        go.Set();
+        var (a, b) = (await first, await second);
+
+        Assert.Equal(1, decodes);
+        Assert.NotNull(a);
+        Assert.Same(a, b);
+        Assert.Equal(1, ArtworkCache.LiveBitmapCount);
+        // Both callers hold it: an invalidate disposes it only after both let go.
+        ArtworkCache.Invalidate(Path("same"));
+        ArtworkCache.Release(a);
+        Assert.Equal(1, ArtworkCache.LiveBitmapCount);
+        ArtworkCache.Release(b);
+        Assert.Equal(0, ArtworkCache.LiveBitmapCount);
+    }
+
     [AvaloniaFact]
     public void Invalidate_DisposesAnUnheldBitmap_ButNotOneStillOnScreen()
     {

@@ -541,7 +541,7 @@ public class LyricsStudioPickerDialogTests : IDisposable
             Assert.Equal(new CornerRadius(24), card.CornerRadius);
             Assert.Contains(card.GetVisualAncestors().OfType<FlyoutPresenter>(), p => p.Classes.Contains("studio-options-pop"));
 
-            var language = card.GetVisualDescendants().OfType<ComboBox>().Single();
+            var language = card.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "StudioLanguageBox");
             Assert.Equal("StudioLanguageBox", language.Name);
             Assert.Contains("pill-field", language.Classes);
             Assert.DoesNotContain("pill", language.Classes);
