@@ -31,6 +31,7 @@ internal static class ExtendedTagIO
     private const string MovementTotalKey = "MOVEMENTTOTAL";
     private const string ShowComposerKey = "NOCTIS_SHOWCOMPOSER";
     private const string UseWorkMovementKey = "NOCTIS_USEWORKMOVEMENT";
+    private const string CompilationKey = "COMPILATION";
 
     // Release type tags. RELEASETYPE is the primary key used by mp3tag/foobar2000.
     // MUSICBRAINZ_ALBUM_TYPE is what MusicBrainz Picard writes (often multi-valued,
@@ -58,7 +59,7 @@ internal static class ExtendedTagIO
             return id3.IsCompilation;
         if (file.GetTag(TagTypes.Xiph, false) is XiphComment xiph)
             return xiph.IsCompilation;
-        return false;
+        return ReadCustomBool(file, CompilationKey);
     }
 
     public static void WriteIsCompilation(TagFile file, bool value)
@@ -70,6 +71,10 @@ internal static class ExtendedTagIO
             id3.IsCompilation = value;
         if (file.GetTag(TagTypes.Xiph, AdvancedTagIO.CreatesTag(file, TagTypes.Xiph, true)) is XiphComment xiph)
             xiph.IsCompilation = value;
+        // TagLib# has no compilation flag for APEv2 (WavPack, Monkey's Audio) or ASF (WMA): the
+        // box was never saved there (owner 11-25 audit). Their custom field, as foobar2000 does.
+        if (AdvancedTagIO.NativeCustomTagType(file) is TagTypes.Ape or TagTypes.Asf)
+            WriteCustomBool(file, CompilationKey, value);
     }
 
     // ── Record label (read-only) ──
@@ -441,7 +446,7 @@ internal static class ExtendedTagIO
     {
         isUserOverride = false;
 
-        var overrideValue = ReadCustomString(file, NoctisReleaseTypeOverrideKey);
+        var overrideValue = ReadCustomString(file, NoctisReleaseTypeOverrideKey, appleDashBox: true);
         if (!string.IsNullOrWhiteSpace(overrideValue) && TryParseReleaseType(overrideValue, out var overrideParsed))
         {
             isUserOverride = true;
@@ -473,7 +478,7 @@ internal static class ExtendedTagIO
 
     public static void WriteReleaseTypeOverride(TagFile file, ReleaseType? value)
     {
-        WriteCustomString(file, NoctisReleaseTypeOverrideKey, value?.ToString());
+        WriteCustomString(file, NoctisReleaseTypeOverrideKey, value?.ToString(), appleDashBox: true);
     }
 
     /// <summary>Parses a tag value like "Album", "ep", "Soundtrack" into <see cref="ReleaseType"/>.</summary>
@@ -701,7 +706,11 @@ internal static class ExtendedTagIO
 
     // ── Shared custom-field helpers (ID3v2 TXXX / Xiph SetField / APE item / ASF descriptor) ──
 
-    private static string ReadCustomString(TagFile file, string key)
+    /// <param name="appleDashBox">Also an MP4 freeform (----:com.apple.iTunes) box: for
+    /// Noctis' own fields that have no MP4 atom. Without it, Not Liked, the release-type override
+    /// and Show composer (whose shwm value Use Work &amp; Movement shares) were lost on every
+    /// M4A / MP4 / ALAC save (owner 11-25 audit).</param>
+    private static string ReadCustomString(TagFile file, string key, bool appleDashBox = false)
     {
         if (file.GetTag(TagTypes.Id3v2, false) is TagLib.Id3v2.Tag id3)
         {
@@ -732,6 +741,12 @@ internal static class ExtendedTagIO
             if (!string.IsNullOrEmpty(text))
                 return text;
         }
+        if (appleDashBox && file.GetTag(TagTypes.Apple, false) is AppleTag apple)
+        {
+            var text = apple.GetDashBox(AppleItunesMean, key);
+            if (!string.IsNullOrEmpty(text))
+                return text;
+        }
         return string.Empty;
     }
 
@@ -752,7 +767,8 @@ internal static class ExtendedTagIO
         return ReadCustomString(file, key);
     }
 
-    private static void WriteCustomString(TagFile file, string key, string? value)
+    /// <param name="appleDashBox">See <see cref="ReadCustomString"/>.</param>
+    private static void WriteCustomString(TagFile file, string key, string? value, bool appleDashBox = false)
     {
         var clean = string.IsNullOrWhiteSpace(value) ? null : value;
 
@@ -787,16 +803,19 @@ internal static class ExtendedTagIO
             if (clean == null) asf.RemoveDescriptors(key);
             else asf.SetDescriptorString(clean, key);
         }
+
+        if (appleDashBox && file.GetTag(TagTypes.Apple, AdvancedTagIO.CreatesTag(file, TagTypes.Apple, clean)) is AppleTag apple)
+            apple.SetDashBox(AppleItunesMean, key, clean);
     }
 
     private static bool ReadCustomBool(TagFile file, string key)
     {
-        var raw = ReadCustomString(file, key);
+        var raw = ReadCustomString(file, key, appleDashBox: true);
         return raw == "1" || string.Equals(raw, "true", System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static void WriteCustomBool(TagFile file, string key, bool value)
     {
-        WriteCustomString(file, key, value ? "1" : null);
+        WriteCustomString(file, key, value ? "1" : null, appleDashBox: true);
     }
 }

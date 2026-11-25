@@ -121,6 +121,8 @@ internal static class AdvancedTagIO
     //  READ
     // ══════════════════════════════════════════════════════════════
 
+    private const string AsfComposerSortKey = "WM/ComposerSortOrder";
+
     public static AdvancedFields ReadAll(string filePath)
     {
         using var file = TagFile.Create(filePath);
@@ -133,6 +135,8 @@ internal static class AdvancedTagIO
         fields.AlbumSort = tag.AlbumSort ?? string.Empty;
         fields.AlbumArtistSort = string.Join("; ", tag.AlbumArtistsSort ?? Array.Empty<string>());
         fields.ComposerSort = string.Join("; ", tag.ComposersSort ?? Array.Empty<string>());
+        if (string.IsNullOrEmpty(fields.ComposerSort) && file.GetTag(TagTypes.Asf, false) is TagLib.Asf.Tag asfSort)
+            fields.ComposerSort = asfSort.GetDescriptorString(AsfComposerSortKey) ?? string.Empty;
 
         // ── People ──
         // PERFORMER is a separate "performed by" credit (e.g. orchestra/ensemble),
@@ -249,6 +253,7 @@ internal static class AdvancedTagIO
             using (var file = TagFile.Create(filePath))
             {
                 ApplyAll(file, fields, original);
+                TagLibFileTypes.UpgradeId3v22(file);
                 file.Save();
             }
             TagLibFileTypes.RepairAiffFormSize(filePath);
@@ -275,6 +280,12 @@ internal static class AdvancedTagIO
             tag.AlbumSort = NullIfEmpty(fields.AlbumSort);
             tag.AlbumArtistsSort = SplitSemicolon(fields.AlbumArtistSort);
             tag.ComposersSort = SplitSemicolon(fields.ComposerSort);
+            // TagLib#'s ASF tag has no composer sort: the box was dropped on WMA (owner 11-25 audit).
+            if (file.GetTag(TagTypes.Asf, CreatesTag(file, TagTypes.Asf, NullIfEmpty(fields.ComposerSort))) is TagLib.Asf.Tag asfSort)
+            {
+                if (NullIfEmpty(fields.ComposerSort) is { } composerSort) asfSort.SetDescriptorString(composerSort.Trim(), AsfComposerSortKey);
+                else asfSort.RemoveDescriptors(AsfComposerSortKey);
+            }
 
             // A field that was loaded from an ffmpeg-style alias (SORT_ALBUM …) is now
             // written under its canonical key; drop the alias when the user changed the
@@ -395,8 +406,29 @@ internal static class AdvancedTagIO
             if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
         }
 
+        if (UsesCustomFieldFor(file, xiphKey, appleAtom))
+        {
+            var val = ReadCustomField(file, xiphKey!);
+            if (!string.IsNullOrWhiteSpace(val)) return val;
+        }
+
         return null;
     }
+
+    /// <summary>
+    /// True when the file's own tag type has no frame or atom for this field: APEv2
+    /// (WavPack, Monkey's Audio), ASF (WMA) and MP4 for a field with no atom. The value lives
+    /// in the format's custom field under its Vorbis name there (LYRICIST, ISRC, LANGUAGE…).
+    /// Writing only ID3v2 / Xiph / Apple dropped Lyricist, Publisher, Encoded by, ISRC,
+    /// Language and Description on those files (owner 11-25 audit).
+    /// </summary>
+    private static bool UsesCustomFieldFor(TagFile file, string? xiphKey, string? appleAtom)
+        => xiphKey != null && NativeCustomTagType(file) switch
+        {
+            TagTypes.Ape or TagTypes.Asf => true,
+            TagTypes.Apple => appleAtom == null,
+            _ => false,
+        };
 
     /// <summary>Reads a TXXX / Xiph / APE / Apple dash-box custom field by key.</summary>
     private static string ReadCustomField(TagFile file, string key)
@@ -555,6 +587,9 @@ internal static class AdvancedTagIO
                 : ByteVector.FromString(appleAtom, StringType.Latin1);
             apple.SetText(bv, clean);
         }
+
+        if (UsesCustomFieldFor(file, xiphKey, appleAtom))
+            WriteCustomField(file, xiphKey!, clean);
     }
 
     private static void WritePublisher(TagFile file, string? value)

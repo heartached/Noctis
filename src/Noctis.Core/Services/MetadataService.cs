@@ -988,6 +988,7 @@ public class MetadataService : IMetadataService
             using (var file = TagLib.File.Create(tempPath))
             {
                 applyTags(file);
+                TagLibFileTypes.UpgradeId3v22(file);
                 file.Save();
             }
             TagLibFileTypes.RepairAiffFormSize(tempPath);
@@ -1960,6 +1961,18 @@ public class MetadataService : IMetadataService
         }
         catch { }
 
+        // APEv2 (WavPack, Monkey's Audio) and ASF (WMA): their own copyright field, which
+        // Edit Info writes; it was never read back, so the box came back empty (owner 11-25 audit).
+        try
+        {
+            foreach (var type in new[] { TagLib.TagTypes.Ape, TagLib.TagTypes.Asf })
+            {
+                var val = file.GetTag(type, false)?.Copyright;
+                if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
+            }
+        }
+        catch { }
+
         return string.Empty;
     }
 
@@ -2224,6 +2237,20 @@ public class MetadataService : IMetadataService
                     if (rate) return true;
                 }
             }
+        }
+        catch { }
+
+        // APEv2 (WavPack, Monkey's Audio) and ASF (WMA): the ITUNESADVISORY custom field Edit
+        // Info writes there. Unread, a song marked Explicit lost its badge on the next scan
+        // (owner 11-25 audit).
+        try
+        {
+            if (file.GetTag(TagLib.TagTypes.Ape, false) is TagLib.Ape.Tag ape
+                && TryParseExplicitValue(ape.GetItem("ITUNESADVISORY")?.ToString(), out var apeExplicit) && apeExplicit)
+                return true;
+            if (file.GetTag(TagLib.TagTypes.Asf, false) is TagLib.Asf.Tag asf
+                && TryParseExplicitValue(asf.GetDescriptorString("ITUNESADVISORY"), out var asfExplicit) && asfExplicit)
+                return true;
         }
         catch { }
 
