@@ -1125,10 +1125,6 @@ Deezer 和 TIDAL：粘贴链接。</value>
     <value>播放时间</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve">
-    <value>在曲目框中显示当前曲目的已播放时间和剩余时间。</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve">
     <value>波形进度条</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -7937,10 +7933,6 @@ Deezer 和 TIDAL：粘贴链接。</value>
     <value>取消侧边栏星标</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>移动到文件夹…</value>
-    <comment>Header in SidebarView.axaml</comment>
-  </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
     <value>从文件夹移除</value>
     <comment>Header in SidebarView.axaml</comment>
@@ -13506,10 +13498,6 @@ Deezer 和 TIDAL：粘贴链接。</value>
     <value>稍微多耗电并在省电模式下暂停</value>
     <comment>Background footnote</comment>
   </data>
-  <data name="Mobile.History.DayName" xml:space="preserve">
-    <value>{0}：{1}</value>
-    <comment>Screen reader: a day bar. {0} = weekday, {1} = listening time</comment>
-  </data>
   <data name="Mobile.History.Forever" xml:space="preserve">
     <value>永久</value>
     <comment>Keep History choice</comment>
@@ -14017,30 +14005,6 @@ Deezer 和 TIDAL：粘贴链接。</value>
   <data name="Mobile.Count.Playlists" xml:space="preserve">
     <value>{0} 个播放列表</value>
     <comment>Plural forms, see Mobile.Count.Songs</comment>
-  </data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve">
-    <value>在播放列表中“添加歌曲”：轻点 + 并从资料库中挑选歌曲。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve">
-    <value>歌词会适配你的屏幕，滚动流畅。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve">
-    <value>来自电脑的歌曲会显示在“最近添加”中。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve">
-    <value>将歌曲拖到队列的顶部或底部边缘，列表会随之滚动。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve">
-    <value>启动更快，加载资料库时不再卡顿，菜单也更流畅。</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve">
-    <value>进度条在整个高度内都能响应，横屏也能完整显示。</value>
-    <comment>What's New</comment>
   </data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve">
     <value>内置的 ALAC 解码器，基于未经修改的 FFmpeg 6.0 源代码构建，不含 GPL 或非自由部分：git.ffmpeg.org/ffmpeg.git</value>
