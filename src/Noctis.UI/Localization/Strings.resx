@@ -1764,14 +1764,14 @@ Saving replaces them with the lyrics on screen. A lyrics file Noctis didn't writ
   <data name="Metadata.PreviewFirst8Tracks" xml:space="preserve"><value>Preview (first 8 tracks)</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Conflict" xml:space="preserve"><value>conflict</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.File" xml:space="preserve"><value>File</value><comment>Header in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.Format" xml:space="preserve"><value>Format</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Format" xml:space="preserve"><value>format</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Duration" xml:space="preserve"><value>duration</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Size" xml:space="preserve"><value>size</value><comment>Text in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.Bitrate" xml:space="preserve"><value>Bitrate</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Bitrate" xml:space="preserve"><value>bitrate</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.BitDepth" xml:space="preserve"><value>Bit Depth</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.SampleRate" xml:space="preserve"><value>sample rate</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Channels" xml:space="preserve"><value>channels</value><comment>Text in MetadataWindow.axaml</comment></data>
-  <data name="Metadata.Codec" xml:space="preserve"><value>Codec</value><comment>Text in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.Codec" xml:space="preserve"><value>codec</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.Quality" xml:space="preserve"><value>quality</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.DateModified" xml:space="preserve"><value>date modified</value><comment>Text in MetadataWindow.axaml</comment></data>
   <data name="Metadata.DateAdded" xml:space="preserve"><value>date added</value><comment>Text in MetadataWindow.axaml</comment></data>
