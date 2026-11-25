@@ -1,0 +1,161 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
+        x:Class="Noctis.Views.BulkDiscogsGenresDialog"
+        x:DataType="vm:BulkDiscogsGenresViewModel"
+        Title="{loc:T DiscogsGenres.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="Border.job-row">
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="CornerRadius" Value="14" />
+        </Style>
+        <Style Selector="TextBlock.status.failed">
+            <Setter Property="Foreground" Value="#FF8A80" />
+        </Style>
+        <Style Selector="TextBlock.dg-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.65" />
+        </Style>
+    </Window.Styles>
+
+    <!-- GitHub #267: the rounded pill pop-up (PillDialogHost), as Find Lyrics / Animated Artwork. -->
+    <controls:PillDialogHost>
+
+    <Grid Width="680" MaxHeight="760" RowDefinitions="Auto,Auto,*,Auto">
+
+        <Border Grid.Row="0" Padding="28,22,28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding TitleText}" FontSize="18" FontWeight="Bold" />
+                <TextBlock Text="{loc:T DiscogsGenres.Subtitle}" FontSize="12.5" Opacity="0.65" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- Options: source, how many, master or release, add or replace. -->
+        <StackPanel Grid.Row="1" Spacing="6" Margin="28,12,28,4" IsEnabled="{Binding CanChangeOptions}">
+            <Grid ColumnDefinitions="*,12,*">
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Classes="dg-label" Text="{loc:T DiscogsGenres.Use}" />
+                    <ComboBox x:Name="SourceBox" Classes="pill-field" HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding SourceOptions}" SelectedIndex="{Binding SourceIndex}"
+                              AutomationProperties.Name="{loc:T DiscogsGenres.Use}" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock Classes="dg-label" Text="{loc:T DiscogsGenres.Max}" />
+                    <ComboBox x:Name="MaxBox" Classes="pill-field" HorizontalAlignment="Stretch"
+                              ItemsSource="{Binding MaxOptions}" SelectedIndex="{Binding MaxIndex}"
+                              AutomationProperties.Name="{loc:T DiscogsGenres.Max}" />
+                </StackPanel>
+            </Grid>
+            <CheckBox x:Name="ReleaseBox" Classes="metadata-pill-checkbox" FontSize="12.5" IsChecked="{Binding UseRelease}"
+                      Content="{loc:T DiscogsGenres.UseRelease}" />
+            <CheckBox x:Name="AddBox" Classes="metadata-pill-checkbox" FontSize="12.5" IsChecked="{Binding AddToExisting}"
+                      Content="{loc:T DiscogsGenres.AddToExisting}" />
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="28,8,28,8">
+            <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:BulkDiscogsGenresViewModel+Row">
+                        <Border Classes="job-row pill-well">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <!-- Ticked rows are written by Apply. -->
+                                <CheckBox Grid.Column="0" Classes="metadata-pill-checkbox" IsChecked="{Binding IsIncluded}"
+                                          IsEnabled="{Binding CanInclude}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                          AutomationProperties.Name="{Binding Title}" />
+                                <StackPanel Grid.Column="1" Spacing="1">
+                                    <DockPanel HorizontalAlignment="Left">
+                                        <Border DockPanel.Dock="Right" Classes="explicit-badge compact" Margin="6,0,0,0" VerticalAlignment="Center" IsVisible="{Binding IsExplicit}">
+                                            <TextBlock Text="E" Classes="explicit-badge-text compact" FontSize="8" Opacity="0.9" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                    <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.55" TextTrimming="CharacterEllipsis" />
+                                    <!-- Now → proposed -->
+                                    <TextBlock FontSize="11.5" Opacity="0.8" TextTrimming="CharacterEllipsis" Margin="0,3,0,0"
+                                               ToolTip.Tip="{Binding CurrentText}">
+                                        <Run Text="{loc:T DiscogsGenres.Now}" FontWeight="SemiBold" />
+                                        <Run Text=" " />
+                                        <Run Text="{Binding CurrentText}" />
+                                    </TextBlock>
+                                    <TextBlock FontSize="11.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasMatch}"
+                                               Foreground="{DynamicResource AccentColorBrush}" ToolTip.Tip="{Binding ProposedText}">
+                                        <Run Text="{loc:T DiscogsGenres.New}" FontWeight="SemiBold" />
+                                        <Run Text=" " />
+                                        <Run Text="{Binding ProposedText}" />
+                                    </TextBlock>
+                                    <!-- The Discogs record it came from; opens its page. -->
+                                    <Button Classes="link" Padding="0" Margin="0,1,0,0" Background="Transparent" BorderThickness="0"
+                                            Cursor="Hand" HorizontalAlignment="Left" IsVisible="{Binding HasMatch}"
+                                            Command="{Binding $parent[ItemsControl].((vm:BulkDiscogsGenresViewModel)DataContext).OpenMatchCommand}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip.Tip="{loc:T DiscogsGenres.OpenOnDiscogs}"
+                                            AutomationProperties.Name="{loc:T DiscogsGenres.OpenOnDiscogs}">
+                                        <TextBlock Text="{Binding MatchText}" FontSize="11" Opacity="0.55"
+                                                   TextDecorations="Underline" TextTrimming="CharacterEllipsis" />
+                                    </Button>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="8,0,0,0">
+                                    <TextBlock Classes="status" Classes.failed="{Binding Failed}" Text="{Binding Status}" FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                                    <PathIcon Data="{StaticResource CheckmarkIcon}" Width="12" Height="12"
+                                              Foreground="{DynamicResource AccentColorBrush}" IsVisible="{Binding Succeeded}" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Border Grid.Row="3" Padding="28,12,28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Spacing="10">
+                <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
+                             IsVisible="{Binding IsRunning}" />
+                <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <DockPanel HorizontalAlignment="Left">
+                            <controls:LoadingSpinner DockPanel.Dock="Right" Width="14" Height="14" Margin="8,0,0,0"
+                                                     Foreground="{DynamicResource AccentColorBrush}"
+                                                     IsVisible="{Binding IsRunning}" IsActive="{Binding IsRunning}" />
+                            <TextBlock Text="{Binding StatusMessage}" FontSize="12.5" Opacity="0.65"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       ToolTip.Tip="{Binding StatusMessage}" />
+                        </DockPanel>
+                        <!-- Discogs API terms: attribution next to the data. -->
+                        <Button x:Name="AttributionButton" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                HorizontalAlignment="Left" Command="{Binding OpenDiscogsCommand}"
+                                AutomationProperties.Name="{loc:T DiscogsGenres.Attribution}">
+                            <TextBlock Text="{loc:T DiscogsGenres.Attribution}" FontSize="11" Opacity="0.5" />
+                        </Button>
+                    </StackPanel>
+                    <Button x:Name="StopButton" Grid.Column="1" Classes="pill-secondary" Content="{loc:T BulkLyrics.Stop}"
+                            Command="{Binding StopCommand}" IsVisible="{Binding IsRunning}"
+                            MinWidth="92" Margin="0,0,10,0" />
+                    <Button x:Name="CloseButton" Grid.Column="2" Classes="pill-secondary" Content="{Binding CloseText}"
+                            Command="{Binding CancelCommand}" MinWidth="100" Margin="0,0,10,0" />
+                    <Button x:Name="StartButton" Grid.Column="3" Classes="pill-secondary" Content="{Binding StartText}"
+                            Command="{Binding StartCommand}" IsEnabled="{Binding CanStart}" MinWidth="100" Margin="0,0,10,0" />
+                    <Button x:Name="ApplyButton" Grid.Column="4" Classes="pill-primary" Content="{loc:T DiscogsGenres.Apply}"
+                            Command="{Binding ApplyCommand}" IsEnabled="{Binding CanApply}" MinWidth="108" />
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
+</Window>

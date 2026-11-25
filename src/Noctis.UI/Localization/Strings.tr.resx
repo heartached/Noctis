@@ -4551,4 +4551,43 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Bu adda başka albüm yok. Albümler ızgarasında birbirine ait albümlere ⌘ tuşuyla tıkla, ardından birine sağ tıkla.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
   <data name="Metadata.Of" xml:space="preserve"><value>/</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
   <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (son çalınma {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
+  <data name="DiscogsGenres.Title" xml:space="preserve"><value>Discogs türleri</value><comment>Get Genres from Discogs dialog title (window)</comment></data>
+  <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>1 albüm için türleri al</value></data>
+  <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>{0:N0} albüm için türleri al</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
+  <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Her albümü Discogs'ta arar ve stillerini albümün türleri olarak önerir. Uygula'yı seçene kadar hiçbir şey kaydedilmez.</value></data>
+  <data name="DiscogsGenres.Use" xml:space="preserve"><value>Kullan</value></data>
+  <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Stiller</value></data>
+  <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Türler</value></data>
+  <data name="DiscogsGenres.SourceBoth" xml:space="preserve"><value>Stiller ve türler</value></data>
+  <data name="DiscogsGenres.Max" xml:space="preserve"><value>Kaç tane</value><comment>Label: at most how many genres to take</comment></data>
+  <data name="DiscogsGenres.MaxAll" xml:space="preserve"><value>Tümü</value></data>
+  <data name="DiscogsGenres.UseRelease" xml:space="preserve"><value>Ana sürüm yerine en yakın yayın sürümünü kullan</value></data>
+  <data name="DiscogsGenres.AddToExisting" xml:space="preserve"><value>Mevcut türlerin yerine koymak yerine onlara ekle</value></data>
+  <data name="DiscogsGenres.Now" xml:space="preserve"><value>Şimdi:</value><comment>Label before an album's current genres</comment></data>
+  <data name="DiscogsGenres.New" xml:space="preserve"><value>Yeni:</value><comment>Label before the genres Discogs proposes</comment></data>
+  <data name="DiscogsGenres.NoGenre" xml:space="preserve"><value>Tür yok</value></data>
+  <data name="DiscogsGenres.Mixed" xml:space="preserve"><value>Şarkıya göre farklı</value></data>
+  <data name="DiscogsGenres.Master" xml:space="preserve"><value>Ana sürüm</value><comment>Discogs master release (the release group)</comment></data>
+  <data name="DiscogsGenres.Release" xml:space="preserve"><value>Yayın</value><comment>One Discogs release version</comment></data>
+  <data name="DiscogsGenres.OpenOnDiscogs" xml:space="preserve"><value>Discogs'ta aç</value></data>
+  <data name="DiscogsGenres.Searching" xml:space="preserve"><value>Aranıyor…</value></data>
+  <data name="DiscogsGenres.NotFound" xml:space="preserve"><value>Bulunamadı</value></data>
+  <data name="DiscogsGenres.LookupFailed" xml:space="preserve"><value>Aranamadı</value></data>
+  <data name="DiscogsGenres.NoChange" xml:space="preserve"><value>Değişiklik yok</value></data>
+  <data name="DiscogsGenres.RowSaved" xml:space="preserve"><value>Kaydedildi</value></data>
+  <data name="DiscogsGenres.RowWriteFailed" xml:space="preserve"><value>Kaydedilemedi</value></data>
+  <data name="DiscogsGenres.SumFound" xml:space="preserve"><value>{0:N0} bulundu</value></data>
+  <data name="DiscogsGenres.SumNotFound" xml:space="preserve"><value>{0:N0} bulunamadı</value></data>
+  <data name="DiscogsGenres.Busy" xml:space="preserve"><value>Discogs şu anda meşgul. Birkaç dakika sonra yeniden deneyin.</value></data>
+  <data name="DiscogsGenres.Saving" xml:space="preserve"><value>Türler kaydediliyor…</value></data>
+  <data name="DiscogsGenres.Saved" xml:space="preserve"><value>Türler kaydedildi · albüm: {0:N0}</value></data>
+  <data name="DiscogsGenres.SavedSomeFailed" xml:space="preserve"><value>Kaydedilen albüm: {0:N0} · kaydedilemeyen şarkı: {1:N0}</value></data>
+  <data name="DiscogsGenres.Apply" xml:space="preserve"><value>Uygula</value></data>
+  <data name="DiscogsGenres.Continue" xml:space="preserve"><value>Devam et</value></data>
+  <data name="DiscogsGenres.Attribution" xml:space="preserve"><value>Veriler Discogs tarafından sağlanmıştır.</value><comment>Required by the Discogs API terms, shown under the results</comment></data>
+  <data name="DiscogsGenres.Menu" xml:space="preserve"><value>Discogs'tan türleri al</value><comment>Album / song menu (Tools) and album page menu: GitHub #267</comment></data>
+  <data name="Settings.DiscogsGenres" xml:space="preserve"><value>Discogs'tan türleri al</value></data>
+  <data name="Settings.DiscogsGenresSub" xml:space="preserve"><value>Albümlerinin türlerini Discogs'taki stilleriyle etiketler. Her değişikliği kaydedilmeden önce gözden geçirirsin.</value></data>
+  <data name="Palette.DiscogsGenres" xml:space="preserve"><value>Discogs'tan türleri al…</value><comment>Command palette (Ctrl+K)</comment></data>
+  <data name="Palette.DiscogsGenresSub" xml:space="preserve"><value>Albüm türlerini Discogs stilleriyle etiketle</value><comment>Command palette (Ctrl+K)</comment></data>
 </root>

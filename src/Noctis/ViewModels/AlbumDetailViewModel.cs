@@ -1124,6 +1124,14 @@ public partial class AlbumDetailViewModel : ViewModelBase, IDisposable
         await MetadataHelper.OpenAudioConverterDialog(Album.Tracks.ToList());
     }
 
+    /// <summary>GitHub #267: this album → Get Genres from Discogs.</summary>
+    [RelayCommand]
+    private async Task DiscogsGenresAlbum()
+    {
+        if (Album.Tracks.Count == 0) return;
+        await MetadataHelper.OpenDiscogsGenresDialog(Album.Tracks.ToList());
+    }
+
     [RelayCommand]
     private async Task ScanAlbumReplayGain()
     {

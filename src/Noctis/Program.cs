@@ -506,6 +506,8 @@ internal class Program
         services.AddSingleton<ArtistInfoService>();
         services.AddSingleton<SimilarArtistsService>();
         services.AddSingleton<ITunesArtworkService>();
+        // GitHub #267: one Discogs client for the app, so every genre lookup shares its pacing.
+        services.AddSingleton(sp => new DiscogsGenreService(sp.GetRequiredService<HttpClient>()));
         services.AddSingleton<UpdateService>();
         services.AddSingleton<ShortcutService>();
         services.AddSingleton<ILrcLibService, LrcLibService>();

@@ -1393,6 +1393,15 @@ public partial class HomeViewModel : ViewModelBase, IDisposable
         await MetadataHelper.OpenBulkLyricsDialog(tracks, remove: false);
     }
 
+    /// <summary>GitHub #267: the album (or the Ctrl-selection it is in) → Get Genres from Discogs.</summary>
+    [RelayCommand]
+    private async Task DiscogsGenresAlbum(Album album)
+    {
+        var tracks = SelectionOr(album).SelectMany(a => a.Tracks ?? new()).Distinct().ToList();
+        CtrlSelectedAlbums.Clear();
+        await MetadataHelper.OpenDiscogsGenresDialog(tracks);
+    }
+
     [RelayCommand]
     private async Task RemoveFromLibrary(Album album)
     {

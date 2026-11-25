@@ -73,6 +73,8 @@ public sealed class TrackContextMenuBuilder
     /// Hidden unless the view passes a badgeCommand; rebuilt on every Bind since the list changes.</summary>
     public MenuItem Badge { get; private set; } = null!;
     public MenuItem SendToFolder { get; private set; } = null!;
+    /// <summary>GitHub #267: the songs' albums → Get Genres from Discogs. Bound by <see cref="BindDiscogsGenres"/>.</summary>
+    public MenuItem DiscogsGenres { get; private set; } = null!;
     public MenuItem LyricsBackground { get; private set; } = null!;
     public MenuItem LyricsBackgroundChoose { get; private set; } = null!;
     public MenuItem LyricsBackgroundClear { get; private set; } = null!;
@@ -286,6 +288,9 @@ public sealed class TrackContextMenuBuilder
         SendToFolder.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(SendToFolder);
 
+        DiscogsGenres = MenuV2.Row(resourceHost, Loc.T("DiscogsGenres.Menu"), "MenuLineBadge", visible: false);
+        items.Add(DiscogsGenres);
+
         ShowFolder = new MenuItem { Header = "Show Folder" };
         ShowFolder.Icon = CreatePngIcon("avares://Noctis.UI/Assets/Icons/Folder%20ICON.png");
         items.Add(ShowFolder);
@@ -418,6 +423,9 @@ public sealed class TrackContextMenuBuilder
         Tools.Items.Add(Spectrogram);
         SendToFolder = MenuV2.Row(host, Loc.T("SendTo.Title"), "MenuLineSendToFolder", visible: false);
         Tools.Items.Add(SendToFolder);
+        // GitHub #267
+        DiscogsGenres = MenuV2.Row(host, Loc.T("DiscogsGenres.Menu"), "MenuLineBadge", visible: false);
+        Tools.Items.Add(DiscogsGenres);
         OpenWith = MenuV2.Row(host, Loc.T("Menu.OpenFileWith"), "MenuLineOpenWith");
         Tools.Items.Add(OpenWith);
         DontScrobble = MenuV2.Row(host, string.Empty, "MenuLineScrobbleOff", visible: false);
@@ -708,6 +716,16 @@ public sealed class TrackContextMenuBuilder
         if (string.IsNullOrWhiteSpace(pathData)) return null;
         try { return Geometry.Parse(pathData); }
         catch { return null; }
+    }
+
+    /// <summary>
+    /// GitHub #267: "Get Genres from Discogs" for the song's album (or the albums of the
+    /// Ctrl-selection it is in); hidden when null. Call after <see cref="Bind"/>.
+    /// </summary>
+    public void BindDiscogsGenres(Track track, ICommand? discogsGenresCommand)
+    {
+        BindOptional(DiscogsGenres, discogsGenresCommand, track);
+        if (IsV2) MenuV2.RefreshLayout(Menu.Items);
     }
 
     private static void BindOptional(MenuItem item, ICommand? command, Track track)

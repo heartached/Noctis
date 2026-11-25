@@ -1592,6 +1592,14 @@ public class AppSettings : IJsonOnDeserializing
     public bool BulkLyricsRecheck { get; set; }
     public bool BulkLyricsReviewFirst { get; set; }
 
+    /// <summary>GitHub #267: the Get Genres from Discogs dialog's options as last set. Source is
+    /// "Styles" (the default), "Genres" or "StylesAndGenres"; MaxGenres 0 = all; the master release
+    /// unless UseRelease; the found genres replace the album's unless AddToExisting.</summary>
+    public string DiscogsGenreSource { get; set; } = "Styles";
+    public int DiscogsMaxGenres { get; set; }
+    public bool DiscogsUseRelease { get; set; }
+    public bool DiscogsAddToExisting { get; set; }
+
     /// <summary>GitHub #219: every song without synced lyrics is looked up gradually in the background
     /// (and new songs as they arrive); misses are asked again after a month. Off by default.</summary>
     public bool LyricsAutoFindLibrary { get; set; }

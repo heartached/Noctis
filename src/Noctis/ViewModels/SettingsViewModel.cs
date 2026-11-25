@@ -8744,6 +8744,10 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private Task OpenLibraryAnimatedArtwork() => MetadataHelper.OpenLibraryAnimatedArtworkDialog();
 
+    /// <summary>GitHub #267: Tools ▸ Get Genres from Discogs: every album, reviewed before saving.</summary>
+    [RelayCommand]
+    private Task OpenLibraryDiscogsGenres() => MetadataHelper.OpenLibraryDiscogsGenresDialog();
+
     [RelayCommand]
     private async Task OpenMetadataFinder()
         => await MetadataHelper.OpenMetadataFinderDialog();
