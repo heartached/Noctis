@@ -2362,6 +2362,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>他のバージョン</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <data name="AlbumDetail.Disc" xml:space="preserve"><value>ディスク{0}</value><comment>Album page, over a disc’s songs (GitHub #264)</comment></data>
+  <data name="AlbumDetail.PlayDisc" xml:space="preserve"><value>ディスク{0}を再生</value><comment>Disc header menu: play only this disc (GitHub #264)</comment></data>
+  <data name="AlbumDetail.ShuffleDisc" xml:space="preserve"><value>ディスク{0}をシャッフル</value><comment>Disc header menu and button: shuffle only this disc (GitHub #264)</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve">
     <value>次に再生</value>
     <comment>Header in AlbumDetailView.axaml</comment>

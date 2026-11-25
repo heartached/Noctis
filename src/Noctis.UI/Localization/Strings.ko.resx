@@ -2362,6 +2362,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <value>다른 버전</value>
     <comment>Text in AlbumDetailView.axaml</comment>
   </data>
+  <data name="AlbumDetail.Disc" xml:space="preserve"><value>디스크 {0}</value><comment>Album page, over a disc’s songs (GitHub #264)</comment></data>
+  <data name="AlbumDetail.PlayDisc" xml:space="preserve"><value>디스크 {0} 재생</value><comment>Disc header menu: play only this disc (GitHub #264)</comment></data>
+  <data name="AlbumDetail.ShuffleDisc" xml:space="preserve"><value>디스크 {0} 셔플</value><comment>Disc header menu and button: shuffle only this disc (GitHub #264)</comment></data>
   <data name="AlbumDetail.PlayNext" xml:space="preserve">
     <value>다음에 재생</value>
     <comment>Header in AlbumDetailView.axaml</comment>
