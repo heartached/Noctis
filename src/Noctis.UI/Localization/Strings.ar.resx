@@ -8172,6 +8172,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
     <value>المشغّل المصغّر</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve">
+    <value>توسيع / طي الشريط الجانبي</value>
+    <comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment>
+  </data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve">
     <value>رجوع</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>

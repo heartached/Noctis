@@ -3210,6 +3210,7 @@ The lines and their timings are dropped and an empty lyrics box opens for your o
   <data name="Shortcuts.Action.SeekForward" xml:space="preserve"><value>Skip forward</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.SeekBackward" xml:space="preserve"><value>Skip back</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.ToggleMiniPlayer" xml:space="preserve"><value>Mini player</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve"><value>Expand / collapse sidebar</value><comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment></data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve"><value>Back</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoForward" xml:space="preserve"><value>Forward</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>
   <data name="Shortcuts.Action.GoHome" xml:space="preserve"><value>Go to Home</value><comment>Settings › Shortcuts (GitHub #131)</comment></data>

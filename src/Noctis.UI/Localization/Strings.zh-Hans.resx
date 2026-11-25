@@ -8172,6 +8172,10 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
     <value>迷你播放器</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve">
+    <value>展开 / 收起侧边栏</value>
+    <comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment>
+  </data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve">
     <value>后退</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>

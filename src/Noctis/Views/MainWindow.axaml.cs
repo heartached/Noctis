@@ -193,6 +193,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private Track? _trackedFavoriteTrack;
     private Border? _sidebarWrapper;
     private SidebarEdgePeek? _sidebarPeek;
+    private SidebarResizeGrip? _sidebarGrip;
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
@@ -989,6 +990,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         // Un-hiding restores the pinned layout when "Keep sidebar expanded" is on.
                         var pinned = !mainVm2.IsSidebarHidden && mainVm2.Settings.SidebarAlwaysExpanded;
                         _sidebarPeek?.SyncHidden();
+                        _sidebarGrip?.Sync();
                         if (!mainVm2.IsSidebarHidden)
                             mainVm2.Sidebar.IsExpanded = pinned; // a peek may have left it expanded
                         if (_sidebarWrapper != null)
@@ -1042,8 +1044,19 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                     // persisted value lands) — no pointer event will fire to do it for us.
                     // Unlike the transient hover slide (the rail over the page), pinning
                     // reflows the content into the remaining width via a real left margin.
+                    // Discord (Luwi 11-25): drag the rail's right edge to pin / unpin it.
+                    if (this.FindControl<Border>("SidebarResizeGrip") is { } grip)
+                    {
+                        _sidebarGrip = new SidebarResizeGrip(grip,
+                            () => vm.IsSidebarHidden,
+                            () => vm.Settings.SidebarAlwaysExpanded,
+                            pinned => !vm.IsSidebarHidden && vm.Settings.TrySetSidebarPinned(pinned));
+                        _sidebarGrip.Sync();
+                    }
+
                     _sidebarAlwaysExpandedHandler = (_, pinned) =>
                     {
+                        _sidebarGrip?.Sync();
                         if (_sidebarWrapper == null || vm.IsSidebarHidden) return;
                         var expanded = pinned
                                        || (_sidebarWrapper.IsPointerOver
@@ -2508,6 +2521,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
             case ShortcutAction.ToggleMiniPlayer:
                 ToggleMiniPlayer();
                 return true;
+            case ShortcutAction.ToggleSidebar:
+                return vm.ToggleSidebarPinned();
             // With the Settings sheet up, Back / Forward close it (it is the page on top);
             // the Go-to keys close it and land on the page.
             case ShortcutAction.GoBack:

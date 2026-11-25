@@ -8172,6 +8172,10 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>ミニプレイヤー</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
   </data>
+  <data name="Shortcuts.Action.ToggleSidebar" xml:space="preserve">
+    <value>サイドバーの展開 / 折りたたみ</value>
+    <comment>Settings › Shortcuts and command palette (Discord, Luwi 11-25)</comment>
+  </data>
   <data name="Shortcuts.Action.GoBack" xml:space="preserve">
     <value>戻る</value>
     <comment>Settings › Shortcuts (GitHub #131)</comment>
