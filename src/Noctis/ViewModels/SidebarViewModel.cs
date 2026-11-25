@@ -1005,7 +1005,8 @@ public partial class SidebarViewModel : ViewModelBase
         // folder, it is that folder now.
         var emptyPlace = _savedFolderOrder.GetValueOrDefault(item.Label.Trim());
         var savedRenamed = ForgetSavedFolder(item.Label);
-        if (savedRenamed && !GetFolderNames().Contains(newName.Trim(), StringComparer.OrdinalIgnoreCase))
+        // (GetFolderNames would always hold the new name once the folder's own playlists moved.)
+        if (savedRenamed && !merged && !_savedFolders.Contains(newName.Trim(), StringComparer.OrdinalIgnoreCase))
         {
             _savedFolders.Add(newName.Trim());
             if (emptyPlace > 0) _savedFolderOrder[newName.Trim()] = emptyPlace;

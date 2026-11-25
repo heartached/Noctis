@@ -1968,7 +1968,10 @@ public partial class PlayerViewModel : ViewModelBase, IDiscScratchTarget
             ReplaceQueueAndPlay(tracks, 0, unshuffled: null);
     }
 
-    private bool KeepsShuffle(IList<Track> tracks) => KeepShuffleOn && IsShuffleEnabled && tracks.Count > 0;
+    // A list Shuffle skips entirely (every song "Skip when Shuffling") plays in its own order:
+    // PlayShuffled would find nothing to start and play nothing at all.
+    private bool KeepsShuffle(IList<Track> tracks) =>
+        KeepShuffleOn && IsShuffleEnabled && tracks.Any(t => !t.SkipWhenShuffling);
 
     /// <summary>
     /// A song row double-clicked in a list. With Shuffle on it plays that song, then the rest of

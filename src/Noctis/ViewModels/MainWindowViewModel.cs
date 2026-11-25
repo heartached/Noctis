@@ -2915,7 +2915,7 @@ public partial class MainWindowViewModel : ViewModelBase
             case PlaySourceKind.Folder:
                 Navigate("folders");
                 // After the page is shown, so its view hears the scroll request.
-                Dispatcher.UIThread.Post(() => _foldersVm.RevealTrack(track), DispatcherPriority.Background);
+                Dispatcher.UIThread.Post(() => _foldersVm.RevealTrack(track, source.Id), DispatcherPriority.Background);
                 return;
             case PlaySourceKind.Albums: Navigate("albums"); return;
             case PlaySourceKind.Favorites: Navigate("favorites"); return;

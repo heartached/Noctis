@@ -156,4 +156,17 @@ public class KeepShuffleOnTests
         Assert.Equal(album.Select(t => t.Id).OrderBy(g => g),
             WholeQueue(vm).Take(5).OrderBy(g => g));
     }
+
+    [Fact]
+    public void On_PlayAll_OnAListThatShuffleSkipsEntirely_StillPlaysIt_InOrder()
+    {
+        var vm = ShufflingVm(keepShuffleOn: true);
+        var book = Album("Audiobook", 6);
+        foreach (var t in book) t.SkipWhenShuffling = true;
+
+        vm.PlayAll(book);
+
+        Assert.Equal(book[0].Id, vm.CurrentTrack!.Id);
+        Assert.Equal(book.Skip(1).Select(t => t.Id), vm.UpNext.Select(t => t.Id));
+    }
 }
