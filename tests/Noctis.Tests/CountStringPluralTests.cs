@@ -40,6 +40,7 @@ public class CountStringPluralTests
         ("Metadata.ArtistsSelected", Array.Empty<object>()),
         ("Metadata.SongsSelected", Array.Empty<object>()),
         ("BulkArtwork.TitleMany", Array.Empty<object>()),
+        ("DiscogsGenres.TitleMany", Array.Empty<object>()), // GitHub #267
         ("BulkLyrics.StudioOfferMany", Array.Empty<object>()),
         ("Settings.ArtistCreditsUpdated", Array.Empty<object>()),
         ("Metadata.WriteFailedMany", new object[] { "a.flac" }),

@@ -273,7 +273,8 @@ public sealed class DiscogsGenreService
             if (title < MinTitle || artist < MinArtist) continue;
             if (r.Genres.Count == 0 && r.Styles.Count == 0) continue;
             var score = title * 100 + artist * 20 - i * 0.01;
-            if (query.Year > 0 && r.Year > 0) score -= Math.Min(Math.Abs(r.Year - query.Year), 30) * 0.5;
+            // A result without a year ranks as if 6 years off: behind a near one, ahead of a far one.
+            if (query.Year > 0) score -= Math.Min(r.Year > 0 ? Math.Abs(r.Year - query.Year) : 6, 30) * 0.5;
             if (score > bestScore)
             {
                 bestScore = score;
