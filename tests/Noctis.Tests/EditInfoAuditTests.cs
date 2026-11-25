@@ -356,6 +356,38 @@ public class EditInfoAuditTests : IDisposable
     }
 
     [Fact]
+    public async Task LyricsAddedElsewhereWhileTheEditorIsOpen_SurviveAnUnrelatedSave()
+    {
+        // Lyrics Studio / Find Lyrics can give the song lyrics while its Edit Info is open;
+        // Save wrote the dialog's (empty) lyric tabs back over them.
+        var (track, library) = Load(Create("flac"));
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        track.Lyrics = "line one\nline two";
+        track.SyncedLyrics = "[00:01.00]line one\n[00:02.00]line two";
+        vm.Title = "Edited";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("line one\nline two", track.Lyrics);
+        Assert.Equal("[00:01.00]line one\n[00:02.00]line two", track.SyncedLyrics);
+    }
+
+    [Fact]
+    public async Task LyricsEditedInTheEditor_StillSave()
+    {
+        var (track, library) = Load(Create("flac"));
+        var vm = Open(track, library);
+        await vm.InitializeAsync();
+
+        vm.HasCustomLyrics = true;
+        vm.Lyrics = "typed here";
+        await vm.SaveCommand.ExecuteAsync(null);
+
+        Assert.Equal("typed here", track.Lyrics);
+    }
+
+    [Fact]
     public async Task RatingGivenElsewhereWhileTheEditorIsOpen_SurvivesAnUnrelatedSave()
     {
         var (track, library) = Load(Create("flac"));

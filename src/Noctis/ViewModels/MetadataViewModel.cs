@@ -195,6 +195,9 @@ public partial class MetadataViewModel : ViewModelBase
     [ObservableProperty] private bool _hasCustomLyrics;
     [ObservableProperty] private bool _hasCustomSyncedLyrics;
 
+    // The song's lyrics when this window loaded them, to tell a later change made elsewhere.
+    private (string? Plain, string? Synced)? _openedTrackLyrics;
+
     // True while ApplyLyrics fills the lyric fields from the song: that text is no paste.
     private bool _applyingLyrics;
 
@@ -639,6 +642,7 @@ public partial class MetadataViewModel : ViewModelBase
         string? loadedCustomTagsBaseline = null;
         var trackSynced = _track.SyncedLyrics;
         var trackPlain = _track.Lyrics;
+        _openedTrackLyrics = (trackPlain, trackSynced);
         var renamePattern = RenamePattern;
         // The cover first, in its own task (owner 10-08: cover shows late in the metadata
         // window). It comes from the app's cover cache, but it used to wait behind the TagLib
@@ -2550,7 +2554,14 @@ public partial class MetadataViewModel : ViewModelBase
         // Single-track only: the album/multi-select dialog has no lyric tabs, and applying
         // the first track's sidecar text here changed its Lyrics, so an Options-only album
         // save rewrote that file's tags and sidecars (failing outright on the playing file).
-        if (!_albumScoped)
+        // Not when Lyrics Studio or Find Lyrics gave the song new lyrics while this window was
+        // open and its lyric tabs were left alone: writing the tabs back wiped them on an
+        // unrelated save (owner 11-25 audit).
+        var lyricsEditedHere = !_changeBaselineCaptured || PlainLyricsChanged || SyncedLyricsChanged;
+        var lyricsChangedElsewhere = _openedTrackLyrics is { } opened
+            && (!string.Equals(opened.Plain, _track.Lyrics, StringComparison.Ordinal)
+                || !string.Equals(opened.Synced, _track.SyncedLyrics, StringComparison.Ordinal));
+        if (!_albumScoped && (lyricsEditedHere || !lyricsChangedElsewhere))
         {
             var plainToWrite = HasCustomLyrics
                 ? (LyricsTextHelper.ContainsTimestamps(Lyrics) ? LyricsTextHelper.StripTimestamps(Lyrics) : Lyrics)
