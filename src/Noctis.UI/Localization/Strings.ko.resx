@@ -1125,10 +1125,6 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value>
     <value>재생 시간</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve">
-    <value>트랙 상자에 현재 곡의 경과 시간과 남은 시간을 표시합니다.</value>
-    <comment>Text in SettingsView.axaml</comment>
-  </data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve">
     <value>파형 탐색 막대</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -7925,10 +7921,6 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value>
     <value>사이드바 별표 해제</value>
     <comment>Header in SidebarView.axaml</comment>
   </data>
-  <data name="Sidebar.MoveFolder" xml:space="preserve">
-    <value>폴더로 이동…</value>
-    <comment>Header in SidebarView.axaml</comment>
-  </data>
   <data name="Sidebar.RemoveFromFolder" xml:space="preserve">
     <value>폴더에서 제거</value>
     <comment>Header in SidebarView.axaml</comment>
@@ -13982,30 +13974,6 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value>
   <data name="Mobile.Count.Playlists" xml:space="preserve">
     <value>재생목록 {0}개</value>
     <comment>Plural forms, see Mobile.Count.Songs</comment>
-  </data>
-  <data name="Mobile.WhatsNew.AddSongs" xml:space="preserve">
-    <value>재생목록 안에서 노래 추가: +를 눌러 라이브러리에서 노래를 고르세요.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Lyrics" xml:space="preserve">
-    <value>가사가 화면에 맞게 표시되고 부드럽게 스크롤됩니다.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Recent" xml:space="preserve">
-    <value>컴퓨터의 노래가 최근 추가된 항목에 표시됩니다.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Queue" xml:space="preserve">
-    <value>노래를 대기열 위나 아래 끝으로 끌면 목록이 함께 스크롤됩니다.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Startup" xml:space="preserve">
-    <value>더 빨라진 시작, 라이브러리를 불러오는 동안 멈춤 없음, 더 부드러운 메뉴.</value>
-    <comment>What's New</comment>
-  </data>
-  <data name="Mobile.WhatsNew.Fixes" xml:space="preserve">
-    <value>진행 막대가 높이 전체에서 반응하고, 가로 모드가 화면에 맞습니다.</value>
-    <comment>What's New</comment>
   </data>
   <data name="Mobile.License.FFmpeg" xml:space="preserve">
     <value>내장 ALAC 디코더로, GPL 또는 non-free 구성 요소 없이 수정되지 않은 FFmpeg 6.0 소스에서 빌드되었습니다: git.ffmpeg.org/ffmpeg.git</value>
