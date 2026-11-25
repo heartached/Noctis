@@ -1978,6 +1978,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // GitHub #167: an album page fetches its animated cover only while it is on screen.
         if (oldValue is AlbumDetailViewModel leftAlbumPage && !ReferenceEquals(oldValue, newValue)) leftAlbumPage.StopAutoFetch();
         if (newValue is AlbumDetailViewModel albumPage) albumPage.StartAutoFetch();
+        // The pill text a page that can't filter was shown with (see OnSearchTextChanged).
+        if (newValue is not ISearchable) _unsearchablePageSearchText = TopBar?.SearchText ?? string.Empty;
 
         var enteringLyrics = ReferenceEquals(newValue, _lyricsVm);
         var leavingLyrics = ReferenceEquals(oldValue, _lyricsVm) && !enteringLyrics;
@@ -2034,6 +2036,9 @@ public partial class MainWindowViewModel : ViewModelBase
             PlaylistFeaturedArtistsViewModel => Loc.T("TopBar.SearchIn", Loc.T("TopBar.FeaturedArtists")),
             MoreByArtistViewModel => Loc.T("TopBar.SearchIn", Loc.T("Nav.Albums")),
             ArtistDetailViewModel artistPage => Loc.T("TopBar.SearchIn", artistPage.ArtistName),
+            // Statistics, Queue, Audio CD: a search there lands on Songs, so say so.
+            not ISearchable when TopBar.CurrentTabName != "Songs" && UnsearchablePageSearchTarget() == "songs"
+                => Loc.T("TopBar.SearchIn", Loc.T("Nav.Songs")),
             _ => Loc.T("TopBar.SearchIn", TopBar.CurrentTabTitle)
         };
 
@@ -2289,12 +2294,12 @@ public partial class MainWindowViewModel : ViewModelBase
         RestoreNavigationEntry(_forwardHistory.Pop());
     }
 
-    private void RestoreNavigationEntry(NavigationEntry target)
+    private void RestoreNavigationEntry(NavigationEntry target, string? searchText = null)
     {
         ClearAllTopBarActions();
         target.RestoreState();
         TopBar.CurrentTabName = target.TabName;
-        TopBar.SearchText = target.SearchText;
+        TopBar.SearchText = searchText ?? target.SearchText;
         _currentSectionKey = target.SectionKey;
         _albumDetailBackButtonText = target.View is AlbumDetailViewModel
             ? NormalizeAlbumDetailBackButtonText(target.BackButtonText)
@@ -2621,13 +2626,17 @@ public partial class MainWindowViewModel : ViewModelBase
         // switch is a fresh context, so an open (now empty) search box shouldn't
         // follow the user to the new page. Queue popup stays open across navigation —
         // it's only dismissed by toggling the Queue button itself or by Escape.
-        TopBar.IsSearchOpen = false;
-        TopBar.SearchText = string.Empty;
-        // Assigning SearchText only dispatches ApplyFilter when the box value actually
-        // changes (and via a debounce). If the box was already empty from a prior visit,
-        // the destination view keeps whatever filter it was last given — so it can show
-        // nothing even though the search box looks empty. Clear it directly here.
-        ClearStaleSearch(CurrentView);
+        // (A query carried here from a page that can't filter keeps the pill as it is.)
+        if (!_keepSearchOnNavigate)
+        {
+            TopBar.IsSearchOpen = false;
+            TopBar.SearchText = string.Empty;
+            // Assigning SearchText only dispatches ApplyFilter when the box value actually
+            // changes (and via a debounce). If the box was already empty from a prior visit,
+            // the destination view keeps whatever filter it was last given — so it can show
+            // nothing even though the search box looks empty. Clear it directly here.
+            ClearStaleSearch(CurrentView);
+        }
 
         TopBar.CurrentTabName = key switch
         {
@@ -3091,6 +3100,68 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             searchable.ApplyFilter(query);
         }
+        else if (TopBar.IsSearchVisible && !_isCoverFlowMode
+                 && !string.IsNullOrWhiteSpace(TopBar.SearchText)
+                 && query != _unsearchablePageSearchText)
+        {
+            SearchFromUnsearchablePage();
+        }
+    }
+
+    /// <summary>Text the pill held when the current non-searchable page was shown. Only a
+    /// query typed after that is a new search: the text an album page was opened with, or
+    /// restored with on Back, is not.</summary>
+    private string _unsearchablePageSearchText = string.Empty;
+
+    /// <summary>Navigate keeps the pill open with its text (a search carried to a list).</summary>
+    private bool _keepSearchOnNavigate;
+
+    /// <summary>
+    /// The pill stays up on pages that can't filter (an album page keeps its section's tab),
+    /// so a new query typed there was dropped (11-25). It goes to the list the page belongs to:
+    /// Back to that list when it sits right behind the page (Forward returns to the page),
+    /// else the tab's section, with the album page kept in history. The pill stays open with
+    /// the typed text untouched (no caret jump, no lost keys); later keystrokes only filter.
+    /// </summary>
+    /// <summary>The list a search typed on a page that can't filter lands on: the tab's own
+    /// list, or Songs for a page with no list behind it (Statistics, Queue, Audio CD).</summary>
+    private string UnsearchablePageSearchTarget() => TopBar.CurrentTabName switch
+    {
+        "Albums" => "albums",
+        "Artists" => "artists",
+        "Folders" => "folders",
+        "Genres" => "genres",
+        "Playlists" or "Playlist" => "playlists",
+        "Favorites" => "favorites",
+        "Server" => "server",
+        "Inbox" => "inbox",
+        _ => "songs",
+    };
+
+    private void SearchFromUnsearchablePage()
+    {
+        var typed = TopBar.SearchText;
+        if (_navigationHistory.TryPeek(out var previous)
+            && previous.View is ISearchable
+            && previous.View is not (ArtistDetailViewModel or MoreByArtistViewModel or PlaylistFeaturedArtistsViewModel)
+            && previous.TabName == TopBar.CurrentTabName)
+        {
+            _forwardHistory.Push(CaptureCurrentNavigationEntry());
+            RestoreNavigationEntry(_navigationHistory.Pop(), typed);
+        }
+        else
+        {
+            var key = UnsearchablePageSearchTarget();
+            _keepSearchOnNavigate = true;
+            try { Navigate(key); }
+            finally { _keepSearchOnNavigate = false; }
+        }
+
+        if (CurrentView is ISearchable searchable)
+            searchable.ApplyFilter(typed);
+        // Keeps the box focused (a no-op re-focus when it already is).
+        if (TopBar.IsSearchVisible)
+            TopBar.OpenSearchCommand.Execute(null);
     }
 
     private void OnHomeSearchRedirectRequested(object? sender, EventArgs e)
