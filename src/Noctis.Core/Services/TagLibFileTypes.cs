@@ -26,6 +26,19 @@ internal static class TagLibFileTypes
     }
 
     /// <summary>
+    /// Saves an ID3v2.2 tag as ID3v2.3, right before a TagLib# save. TagLib# gives an untagged
+    /// AIFF a v2.2 tag (Apple writes v2.2 too), and v2.2 has no sort, lyricist (TEXT) or other
+    /// later frames: they were dropped on render, so those Edit Info fields never reached an
+    /// AIFF file (owner 11-25 audit). TagLib# reads v2.2 frames into their later ids, so
+    /// nothing already in the tag is lost.
+    /// </summary>
+    internal static void UpgradeId3v22(TagLib.File file)
+    {
+        if (file.GetTag(TagLib.TagTypes.Id3v2, false) is TagLib.Id3v2.Tag { Version: < 3 } id3)
+            id3.Version = 3;
+    }
+
+    /// <summary>
     /// Sets an AIFF / AIFF-C file's FORM size to its length after a TagLib# save. TagLib# adds
     /// the first "ID3 " chunk at the end of the file but updates the FORM size only for a tag
     /// that sits inside it, so a song tagged for the first time claimed its old length and

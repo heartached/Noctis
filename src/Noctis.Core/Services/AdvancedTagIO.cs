@@ -21,7 +21,7 @@ internal static class AdvancedTagIO
         "TRACKNUMBER", "TRACK", "TOTALTRACKS", "TRACKTOTAL",
         "DISCNUMBER", "DISC", "TOTALDISCS", "DISCTOTAL",
         "BPM", "TBPM", "DATE", "YEAR", "COMMENT", "LYRICS",
-        "UNSYNCEDLYRICS", "GROUPING", "COPYRIGHT",
+        "UNSYNCEDLYRICS", "GROUPING", "COPYRIGHT", "ALBUM ARTIST",
         // Sort fields (handled by this tab, but known)
         "TITLESORT", "ARTISTSORT", "ALBUMSORT", "ALBUMARTISTSORT", "COMPOSERSORT",
         // ffmpeg-style spellings of the same fields (see FieldAliases): absorbed into
@@ -42,6 +42,10 @@ internal static class AdvancedTagIO
         // ExtendedTagIO custom keys
         "WORK", "MOVEMENTNAME", "MOVEMENT", "MOVEMENTTOTAL",
         "NOCTIS_SHOWCOMPOSER", "NOCTIS_USEWORKMOVEMENT",
+        // Boxes of their own (Details: compilation, rating, Not Liked; Options: release type;
+        // this tab: Performer). Listed as custom tags too, their stale copy was written back
+        // over a second edit of the box (owner 11-25 audit).
+        "COMPILATION", "RATING", "NOCTIS_DISLIKED", "NOCTIS_RELEASETYPE", "PERFORMER",
         // The song's version: its own box under the title (Track.Version)
         "VERSION",
     };
@@ -121,6 +125,11 @@ internal static class AdvancedTagIO
     //  READ
     // ══════════════════════════════════════════════════════════════
 
+    private const string AsfComposerSortKey = "WM/ComposerSortOrder";
+    private static readonly ByteVector FreeformBoxType = "----";
+    private static readonly ByteVector MeanBoxType = "mean";
+    private static readonly ByteVector NameBoxType = "name";
+
     public static AdvancedFields ReadAll(string filePath)
     {
         using var file = TagFile.Create(filePath);
@@ -133,6 +142,8 @@ internal static class AdvancedTagIO
         fields.AlbumSort = tag.AlbumSort ?? string.Empty;
         fields.AlbumArtistSort = string.Join("; ", tag.AlbumArtistsSort ?? Array.Empty<string>());
         fields.ComposerSort = string.Join("; ", tag.ComposersSort ?? Array.Empty<string>());
+        if (string.IsNullOrEmpty(fields.ComposerSort) && file.GetTag(TagTypes.Asf, false) is TagLib.Asf.Tag asfSort)
+            fields.ComposerSort = asfSort.GetDescriptorString(AsfComposerSortKey) ?? string.Empty;
 
         // ── People ──
         // PERFORMER is a separate "performed by" credit (e.g. orchestra/ensemble),
@@ -249,6 +260,7 @@ internal static class AdvancedTagIO
             using (var file = TagFile.Create(filePath))
             {
                 ApplyAll(file, fields, original);
+                TagLibFileTypes.UpgradeId3v22(file);
                 file.Save();
             }
             TagLibFileTypes.RepairAiffFormSize(filePath);
@@ -275,6 +287,12 @@ internal static class AdvancedTagIO
             tag.AlbumSort = NullIfEmpty(fields.AlbumSort);
             tag.AlbumArtistsSort = SplitSemicolon(fields.AlbumArtistSort);
             tag.ComposersSort = SplitSemicolon(fields.ComposerSort);
+            // TagLib#'s ASF tag has no composer sort: the box was dropped on WMA (owner 11-25 audit).
+            if (file.GetTag(TagTypes.Asf, CreatesTag(file, TagTypes.Asf, NullIfEmpty(fields.ComposerSort))) is TagLib.Asf.Tag asfSort)
+            {
+                if (NullIfEmpty(fields.ComposerSort) is { } composerSort) asfSort.SetDescriptorString(composerSort.Trim(), AsfComposerSortKey);
+                else asfSort.RemoveDescriptors(AsfComposerSortKey);
+            }
 
             // A field that was loaded from an ffmpeg-style alias (SORT_ALBUM …) is now
             // written under its canonical key; drop the alias when the user changed the
@@ -329,10 +347,12 @@ internal static class AdvancedTagIO
                     WriteCustomField(file, key, string.Empty);
             }
 
-            // Add/update tags
+            // Add/update tags: only new or changed ones. Writing every listed tag back put the
+            // value the editor opened with over anything this save wrote under the same key.
             foreach (var kv in fields.CustomTags)
             {
-                if (!string.IsNullOrWhiteSpace(kv.Key))
+                if (!string.IsNullOrWhiteSpace(kv.Key)
+                    && !(origDict.TryGetValue(kv.Key, out var was) && was == kv.Value))
                     WriteCustomField(file, kv.Key, kv.Value);
             }
         }
@@ -395,8 +415,29 @@ internal static class AdvancedTagIO
             if (!string.IsNullOrWhiteSpace(val)) return val.Trim();
         }
 
+        if (UsesCustomFieldFor(file, xiphKey, appleAtom))
+        {
+            var val = ReadCustomField(file, xiphKey!);
+            if (!string.IsNullOrWhiteSpace(val)) return val;
+        }
+
         return null;
     }
+
+    /// <summary>
+    /// True when the file's own tag type has no frame or atom for this field: APEv2
+    /// (WavPack, Monkey's Audio), ASF (WMA) and MP4 for a field with no atom. The value lives
+    /// in the format's custom field under its Vorbis name there (LYRICIST, ISRC, LANGUAGE…).
+    /// Writing only ID3v2 / Xiph / Apple dropped Lyricist, Publisher, Encoded by, ISRC,
+    /// Language and Description on those files (owner 11-25 audit).
+    /// </summary>
+    private static bool UsesCustomFieldFor(TagFile file, string? xiphKey, string? appleAtom)
+        => xiphKey != null && NativeCustomTagType(file) switch
+        {
+            TagTypes.Ape or TagTypes.Asf => true,
+            TagTypes.Apple => appleAtom == null,
+            _ => false,
+        };
 
     /// <summary>Reads a TXXX / Xiph / APE / Apple dash-box custom field by key.</summary>
     private static string ReadCustomField(TagFile file, string key)
@@ -555,6 +596,9 @@ internal static class AdvancedTagIO
                 : ByteVector.FromString(appleAtom, StringType.Latin1);
             apple.SetText(bv, clean);
         }
+
+        if (UsesCustomFieldFor(file, xiphKey, appleAtom))
+            WriteCustomField(file, xiphKey!, clean);
     }
 
     private static void WritePublisher(TagFile file, string? value)
@@ -776,14 +820,62 @@ internal static class AdvancedTagIO
             catch { /* Reflection may fail on newer TagLib# versions — non-fatal */ }
         }
 
-        // APE tags
+        // APEv2 (WavPack, Monkey's Audio), ASF (WMA) and MP4 freeform boxes were never listed,
+        // so a custom tag added there was saved but gone from the list on the next open, and
+        // could not be edited or removed (owner 11-25 audit). Text values only.
         if (file.GetTag(TagTypes.Ape, false) is TagLib.Ape.Tag ape)
         {
-            // APE tag doesn't expose field names easily, skip enumeration
+            foreach (var key in ape)
+            {
+                if (string.IsNullOrWhiteSpace(key) || KnownKeys.Contains(key)) continue;
+                if (ape.GetItem(key) is not { Type: TagLib.Ape.ItemType.Text } item) continue;
+                var val = item.ToString();
+                if (!string.IsNullOrWhiteSpace(val))
+                    result.TryAdd(key, val.Trim());
+            }
         }
 
-        // Apple dash-boxes: no easy way to enumerate all freeform boxes in TagLib#,
-        // but common ones are covered by explicit reads above.
+        // ASF: plain names only; the "WM/…" attributes are the standard fields TagLib# maps.
+        if (file.GetTag(TagTypes.Asf, false) is TagLib.Asf.Tag asf)
+        {
+            foreach (var descriptor in asf.ExtendedContentDescriptionObject)
+            {
+                var key = descriptor.Name;
+                if (string.IsNullOrWhiteSpace(key) || key.Contains('/') || KnownKeys.Contains(key)) continue;
+                if (descriptor.Type != TagLib.Asf.DataType.Unicode) continue;
+                var val = descriptor.ToString();
+                if (!string.IsNullOrWhiteSpace(val))
+                    result.TryAdd(key, val.Trim());
+            }
+        }
+
+        // MP4 freeform (----:com.apple.iTunes:NAME) boxes; ilst is private, as field_list above.
+        // iTunes' own housekeeping boxes (iTunNORM, iTunSMPB, …) are not tags anyone edits.
+        if (file.GetTag(TagTypes.Apple, false) is AppleTag apple)
+        {
+            try
+            {
+                var ilst = typeof(AppleTag).GetField("ilst_box",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?.GetValue(apple) as Box;
+                foreach (var box in ilst?.Children ?? Enumerable.Empty<Box>())
+                {
+                    if (box.BoxType != FreeformBoxType) continue;
+                    string? mean = null, name = null;
+                    foreach (var child in box.Children)
+                    {
+                        if (child is not AppleAdditionalInfoBox info) continue;
+                        if (child.BoxType == MeanBoxType) mean = info.Text;
+                        else if (child.BoxType == NameBoxType) name = info.Text;
+                    }
+                    if (mean != "com.apple.iTunes" || string.IsNullOrWhiteSpace(name) || KnownKeys.Contains(name)
+                        || name.StartsWith("iTun", StringComparison.Ordinal) || name == "Encoding Params") continue;
+                    var val = apple.GetDashBox(mean, name);
+                    if (!string.IsNullOrWhiteSpace(val))
+                        result.TryAdd(name, val.Trim());
+                }
+            }
+            catch { /* Reflection may fail on newer TagLib# versions — non-fatal */ }
+        }
 
         return result.Select(kv => new KeyValuePair<string, string>(kv.Key, kv.Value)).ToList();
     }

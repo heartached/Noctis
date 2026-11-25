@@ -9494,4 +9494,6 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>키를 클릭해 변경하세요. Esc는 취소, Delete는 해제합니다.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.AppIconDescMac" xml:space="preserve"><value>메뉴 막대의 아이콘을 바꿉니다. Dock은 클래식 아이콘을 유지합니다.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>이 이름의 다른 앨범이 없습니다. 앨범 그리드에서 함께 묶을 앨범을 ⌘+클릭한 다음, 그중 하나를 마우스 오른쪽 버튼으로 클릭하세요.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>/</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (마지막 재생 {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
 </root>

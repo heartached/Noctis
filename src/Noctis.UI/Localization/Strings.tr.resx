@@ -4549,4 +4549,6 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Settings.Desc.ShortcutsMac" xml:space="preserve"><value>Değiştirmek için bir tuşa tıkla. Esc iptal eder, Delete bağı kaldırır.</value><comment>macOS wording of Settings.Desc.Shortcuts (Loc.Platform)</comment></data>
   <data name="Settings.AppIconDescMac" xml:space="preserve"><value>Menü çubuğundaki simgeyi değiştirir. Dock klasik simgeyi korur.</value><comment>macOS wording of Settings.AppIconDesc (Loc.Platform)</comment></data>
   <data name="GroupAlbums.SelectHintMac" xml:space="preserve"><value>Bu adda başka albüm yok. Albümler ızgarasında birbirine ait albümlere ⌘ tuşuyla tıkla, ardından birine sağ tıkla.</value><comment>GroupAlbums.SelectHint on macOS, where Ctrl-click is a right-click and ⌘-click adds to the selection</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>/</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (son çalınma {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
 </root>

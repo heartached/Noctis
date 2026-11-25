@@ -555,7 +555,7 @@
                                             <TextBox Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Movement}" Text="{Binding MovementNumber, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" Spacing="4">
-                                            <TextBlock Text="of" FontSize="12" Opacity="0.5" />
+                                            <TextBlock Text="{loc:T Metadata.Of}" FontSize="12" Opacity="0.5" />
                                             <TextBox Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.MovementCount}" Text="{Binding MovementCount, UpdateSourceTrigger=PropertyChanged}" Width="80" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="4" Spacing="4">
@@ -639,7 +639,7 @@
                                 <TextBlock Text="{loc:T Metadata.Track}" FontSize="12" Opacity="0.5" />
                                 <Grid ColumnDefinitions="*,Auto,*">
                                     <TextBox Grid.Column="0" Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Track}" Text="{Binding TrackNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackNumberWatermark}" />
-                                    <TextBlock Grid.Column="1" Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
+                                    <TextBlock Grid.Column="1" Text="{loc:T Metadata.Of}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
                                     <TextBox Grid.Column="2" Classes="pill-field" AutomationProperties.Name="{loc:T MetadataSearch.F.TrackCount}" Text="{Binding TrackCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding TrackCountWatermark}" />
                                 </Grid>
                             </StackPanel>
@@ -647,7 +647,7 @@
                                 <TextBlock Text="{loc:T Metadata.Disc}" FontSize="12" Opacity="0.5" />
                                 <Grid ColumnDefinitions="*,Auto,*">
                                     <TextBox Grid.Column="0" Classes="pill-field" AutomationProperties.Name="{loc:T Metadata.Disc}" Text="{Binding DiscNumber, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscNumberWatermark}" />
-                                    <TextBlock Grid.Column="1" Text="of" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
+                                    <TextBlock Grid.Column="1" Text="{loc:T Metadata.Of}" FontSize="12" Opacity="0.5" VerticalAlignment="Center" Margin="10,0" />
                                     <TextBox Grid.Column="2" Classes="pill-field" AutomationProperties.Name="{loc:T MetadataSearch.F.DiscCount}" Text="{Binding DiscCount, UpdateSourceTrigger=PropertyChanged}" Watermark="{Binding DiscCountWatermark}" />
                                 </Grid>
                             </StackPanel>

@@ -4487,4 +4487,6 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="Playlist.ViewCover" xml:space="preserve"><value>Cover anzeigen</value><comment>Playlist page hero cover menu: opens the cover full size</comment></data>
   <data name="Playlist.ChangeCover" xml:space="preserve"><value>Cover ändern…</value><comment>Playlist page hero cover menu: pick a picture as the playlist's cover</comment></data>
   <data name="Playlist.CoverMenu" xml:space="preserve"><value>Playlist-Cover</value><comment>Screen-reader name of the playlist page's hero cover (a click opens its menu)</comment></data>
+  <data name="Metadata.Of" xml:space="preserve"><value>von</value><comment>Between the two boxes of Track / Disc / Movement "3 of 12" in MetadataWindow.axaml</comment></data>
+  <data name="Metadata.PlayCountLastPlayed" xml:space="preserve"><value>{0} (zuletzt gespielt {1})</value><comment>Edit Info play count; {0} = plays, {1} = date and time</comment></data>
 </root>
