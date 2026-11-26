@@ -469,6 +469,7 @@
               IsVisible="{Binding Player.ShowsMusicVideoBackdrop}">
             <controls:VideoBackdrop x:Name="MusicVideoBackdrop"
                                     Source="{Binding Player.CurrentMusicVideoPath}"
+                                    StreamFailedCommand="{Binding Player.MusicVideoStreamFailedCommand}"
                                     SyncPosition="{Binding Player.MusicVideoSyncPosition}"
                                     Rate="{Binding Player.PlaybackRate}"
                                     IsPaused="{Binding !Player.IsPlaying}"
@@ -584,6 +585,7 @@
                              Music video audio on). -->
                         <controls:VideoBackdrop x:Name="MusicVideo"
                                                 Source="{Binding Player.CurrentMusicVideoPath}"
+                                                StreamFailedCommand="{Binding Player.MusicVideoStreamFailedCommand}"
                                                 SyncPosition="{Binding Player.MusicVideoSyncPosition}"
                                                 Rate="{Binding Player.PlaybackRate}"
                                                 IsPaused="{Binding !Player.IsPlaying}"
@@ -1486,6 +1488,7 @@
                    IsVisible="{Binding !#MusicVideoFullSize.HasVideoStream}"/>
             <controls:VideoBackdrop x:Name="MusicVideoFullSize"
                                     Source="{Binding Player.CurrentMusicVideoPath}"
+                                    StreamFailedCommand="{Binding Player.MusicVideoStreamFailedCommand}"
                                     SyncPosition="{Binding Player.MusicVideoSyncPosition}"
                                     Rate="{Binding Player.PlaybackRate}"
                                     IsPaused="{Binding !Player.IsPlaying}"

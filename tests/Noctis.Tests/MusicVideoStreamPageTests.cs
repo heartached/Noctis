@@ -94,6 +94,21 @@ public class MusicVideoStreamPageTests
     }
 
     [AvaloniaFact]
+    public void EveryMusicVideoLayer_ReportsABrokenStream_ToThePlayer()
+    {
+        // A stream that breaks mid-song is resolved again (11-25 follow-up): whichever layer
+        // plays it hands the failure to the player.
+        var (win, view, player) = Mount();
+        try
+        {
+            foreach (var name in new[] { "MusicVideoBackdrop", "MusicVideo", "MusicVideoFullSize" })
+                Assert.Same(player.MusicVideoStreamFailedCommand, Layer(view, name).StreamFailedCommand);
+            Assert.Null(Layer(view, "MediaBackdrop").StreamFailedCommand); // the user's own background file
+        }
+        finally { win.Close(); }
+    }
+
+    [AvaloniaFact]
     public void LocalClip_InTheCoverSlot_IsTheOnlyDecoder_AndHasNoWrongVideo()
     {
         var (win, view, player) = Mount();

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -126,6 +127,17 @@ public sealed class VideoBackdrop : Control
     {
         get => GetValue(MaxDecodeSideProperty);
         set => SetValue(MaxDecodeSideProperty, value);
+    }
+
+    /// <summary>A stream (http/https source) broke: an error, its end long before the clip's,
+    /// or no frame for a while as the song plays. Executed once per started stream, on the UI
+    /// thread, with the failed <see cref="Source"/>; the owner resolves a fresh URL (11-25).</summary>
+    public static readonly StyledProperty<ICommand?> StreamFailedCommandProperty =
+        AvaloniaProperty.Register<VideoBackdrop, ICommand?>(nameof(StreamFailedCommand));
+    public ICommand? StreamFailedCommand
+    {
+        get => GetValue(StreamFailedCommandProperty);
+        set => SetValue(StreamFailedCommandProperty, value);
     }
 
     public const int SyncToleranceMs = 350;
@@ -269,7 +281,7 @@ public sealed class VideoBackdrop : Control
                     break;
                 }
                 var (bw, bh) = FitBuffer(vw, vh, maxSide);
-                session = new Session(this, bw, bh, probe.Duration, remote);
+                session = new Session(this, bw, bh, probe.Duration, remote, source, generation);
             }
             catch
             {
@@ -354,11 +366,12 @@ public sealed class VideoBackdrop : Control
         private readonly MediaPlayer.LibVLCVideoLockCb _lockCb;
         private readonly MediaPlayer.LibVLCVideoDisplayCb _displayCb;
 
-        public Session(VideoBackdrop owner, int width, int height, long lengthMs, bool remote = false)
+        public Session(VideoBackdrop owner, int width, int height, long lengthMs, bool remote = false, string? source = null, int generation = 0)
         {
             _owner = owner;
             _lengthMs = lengthMs;
-            _remote = remote;
+            _source = source;
+            _ownerGeneration = generation;
             _stride = width * 4;
             _bufferBytes = _stride * height;
             _buffer = Marshal.AllocHGlobal(_bufferBytes);
@@ -371,12 +384,22 @@ public sealed class VideoBackdrop : Control
             Player = new MediaPlayer(SharedLibVlc.Instance) { EnableHardwareDecoding = false, Mute = true };
             Player.SetVideoFormat("RV32", (uint)width, (uint)height, (uint)_stride);
             Player.SetVideoCallbacks(_lockCb, null, _displayCb);
+            if (remote)
+            {
+                _gate = new StreamSyncGate();
+                _capTimer = new Timer(_ => { if (!_dead && _gate.OnCapElapsed()) KickRemoteSync(); });
+                // VLC's event thread: no player calls in here, only flags and a post.
+                Player.EncounteredError += OnPlayerError;
+                Player.EndReached += OnPlayerEndReached;
+            }
         }
 
         public void SetPaused(bool paused)
         {
             if (_dead) return;
+            var wasPaused = _paused;
             _paused = paused;
+            if (wasPaused && !paused) _gate?.Resumed();
             ThreadPool.QueueUserWorkItem(_ => { try { Player.SetPause(paused); } catch { } });
         }
 
@@ -385,17 +408,20 @@ public sealed class VideoBackdrop : Control
         {
             if (_dead || double.IsNaN(rate) || rate <= 0) return;
             var r = (float)Math.Clamp(rate, 0.25, 4.0);
+            _rate = r;
             ThreadPool.QueueUserWorkItem(_ => { try { Player.SetRate(r); } catch { } });
         }
 
         private int _syncInFlight;
-        // A stream seeks over the network: its clock lags a moment after each seek, and
-        // re-seeking on that lag made it stutter from seek to seek. So a stream gets a wider
-        // tolerance and a pause after each seek before the next correction.
-        private readonly bool _remote;
-        private long _lastSeekTick;
-        internal const int RemoteSyncToleranceMs = 900;
-        internal const int RemoteSeekCooldownMs = 2500;
+        // A stream (11-25 follow-ups): seeks and failure checks go through the gate, see
+        // StreamSyncGate. Null for a local clip, which keeps the plain path below.
+        private readonly string? _source;
+        private readonly int _ownerGeneration;
+        private readonly StreamSyncGate? _gate;
+        private readonly Timer? _capTimer;
+        private volatile float _rate = 1f;
+        private int _landCheck;
+        private int _failed;
 
         /// <summary>
         /// Keeps the clip within <see cref="SyncToleranceMs"/> of the song. Reading and
@@ -406,7 +432,14 @@ public sealed class VideoBackdrop : Control
         public void SyncTo(long targetMs, bool force = false)
         {
             if (_dead) return;
-            if (_remote && !force && Environment.TickCount64 - Interlocked.Read(ref _lastSeekTick) < RemoteSeekCooldownMs) return;
+            if (_gate != null)
+            {
+                _gate.Want(targetMs, force, !_paused, _rate);
+                if (!_paused && !_gate.IsSeeking && _gate.IsStalled(targetMs, Interlocked.Read(ref _lengthMs)))
+                    Fail("stalled");
+                KickRemoteSync();
+                return;
+            }
             if (Interlocked.CompareExchange(ref _syncInFlight, 1, 0) != 0) return;
             ThreadPool.QueueUserWorkItem(_ =>
             {
@@ -414,24 +447,90 @@ public sealed class VideoBackdrop : Control
                 {
                     var length = Player.Length;
                     if (length > 0) _lengthMs = length; // 0 once ended — keep the last known
-                    var tolerance = _remote ? RemoteSyncToleranceMs : SyncToleranceMs;
-                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, tolerance, force))
+                    switch (PlanSync(Player.State == VLCState.Ended, Player.Time, targetMs, _lengthMs, SyncToleranceMs, force))
                     {
                         case SyncAction.Seek:
                             Player.Time = targetMs;
-                            Interlocked.Exchange(ref _lastSeekTick, Environment.TickCount64);
                             break;
                         case SyncAction.Restart:
                             Player.Stop();
                             Player.Play();
                             Player.Time = targetMs;
                             if (_paused) Player.SetPause(true);
-                            Interlocked.Exchange(ref _lastSeekTick, Environment.TickCount64);
                             break;
                     }
                 }
                 catch { }
                 finally { Interlocked.Exchange(ref _syncInFlight, 0); }
+            });
+        }
+
+        /// <summary>A stream's sync: the latest request only, one seek in flight at a time; the
+        /// landing (first frame at the target) or the safety cap runs whatever came meanwhile.</summary>
+        private void KickRemoteSync()
+        {
+            var gate = _gate;
+            if (_dead || gate == null || !gate.HasWork) return;
+            if (Interlocked.CompareExchange(ref _syncInFlight, 1, 0) != 0) return;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try
+                {
+                    while (!_dead && gate.TryTake(out var target, out var jumped))
+                    {
+                        var length = Player.Length;
+                        if (length > 0) _lengthMs = length;
+                        var (action, to) = gate.Plan(target, jumped, Player.State == VLCState.Ended, Player.Time,
+                            _lengthMs, !_paused, _rate);
+                        if (action == SyncAction.None) continue;
+                        gate.SeekIssued(to);
+                        _capTimer?.Change(StreamSyncGate.SeekCapMs + 50, Timeout.Infinite);
+                        if (action == SyncAction.Restart)
+                        {
+                            Player.Stop();
+                            Player.Play();
+                        }
+                        Player.Time = to;
+                        if (action == SyncAction.Restart && _paused) Player.SetPause(true);
+                    }
+                }
+                catch { }
+                finally { Interlocked.Exchange(ref _syncInFlight, 0); }
+                KickRemoteSync(); // a request that arrived while this one finished
+            });
+        }
+
+        /// <summary>A frame showed while a seek is in flight: read the clock off VLC's thread
+        /// and let the gate decide whether the seek landed.</summary>
+        private void CheckLanding()
+        {
+            if (Interlocked.CompareExchange(ref _landCheck, 1, 0) != 0) return;
+            ThreadPool.QueueUserWorkItem(_ =>
+            {
+                try { if (!_dead && _gate!.OnFrame(Player.Time)) KickRemoteSync(); }
+                catch { }
+                finally { Interlocked.Exchange(ref _landCheck, 0); }
+            });
+        }
+
+        private void OnPlayerError(object? sender, EventArgs e) => Fail("error");
+
+        private void OnPlayerEndReached(object? sender, EventArgs e)
+        {
+            if (_gate != null && StreamSyncGate.IsPrematureEnd(_gate.LastTargetMs, Interlocked.Read(ref _lengthMs)))
+                Fail("ended early");
+        }
+
+        /// <summary>Tells the owner, once, that this stream broke (it re-resolves the URL).</summary>
+        private void Fail(string reason)
+        {
+            if (_dead || _gate == null || Interlocked.Exchange(ref _failed, 1) != 0) return;
+            DebugLogger.Warn(DebugLogger.Category.Playback, "Backdrop.StreamFailed", reason);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_dead || _owner._generation != _ownerGeneration) return;
+                var command = _owner.StreamFailedCommand;
+                if (command?.CanExecute(_source) == true) command.Execute(_source);
             });
         }
 
@@ -443,6 +542,11 @@ public sealed class VideoBackdrop : Control
 
         private void OnDisplay(IntPtr opaque, IntPtr picture)
         {
+            if (_gate != null && !_dead)
+            {
+                _gate.NoteFrame();
+                if (_gate.IsSeeking) CheckLanding();
+            }
             if (_framePending || _dead) return;
             _framePending = true;
             // Taken here, on VLC's thread, while the picture is complete: VLC starts writing
@@ -473,8 +577,14 @@ public sealed class VideoBackdrop : Control
         {
             if (_dead) return;
             _dead = true;
+            try { _capTimer?.Dispose(); } catch { }
             ThreadPool.QueueUserWorkItem(_ =>
             {
+                if (_gate != null)
+                {
+                    try { Player.EncounteredError -= OnPlayerError; } catch { }
+                    try { Player.EndReached -= OnPlayerEndReached; } catch { }
+                }
                 try { Player.Stop(); } catch { }
 #pragma warning disable CS8625
                 try { Player.SetVideoCallbacks(null, null, null); } catch { }
