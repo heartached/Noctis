@@ -337,7 +337,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>맨 위</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>맨 아래</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>빈 폴더 제거</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
-  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>마지막 재생목록을 다른 곳으로 옮기거나 삭제하면 폴더도 제거합니다. 새 폴더는 재생목록이 한 번 들어갈 때까지 유지됩니다.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>마지막 재생목록이 없어지면 폴더를 제거합니다. 새로 만든 빈 폴더는 유지됩니다.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>위로 이동</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>아래로 이동</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">
@@ -876,9 +876,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>이퀄라이저</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>셔플 다음에 EQ 켜기/끄기 버튼을 표시합니다.</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>재생 시간</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>트랙 상자에 현재 곡의 경과 시간과 남은 시간을 표시합니다. 시간을 클릭하면 대신 전체 길이를 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>경과 시간과 남은 시간을 표시합니다. 시간을 클릭하면 전체 길이를 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>볼륨 슬라이더 항상 표시</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
-  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>볼륨 슬라이더가 팝업 대신 볼륨 버튼 옆에 표시됩니다. 버튼을 클릭하면 음소거됩니다. 좁은 아일랜드에서는 팝업을 사용합니다.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>볼륨 슬라이더를 볼륨 버튼 옆에 둡니다. 버튼을 클릭하면 음소거됩니다.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>파형 탐색 막대</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>탐색 막대에 노래의 파형을 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
@@ -1018,7 +1018,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FullSpectrum" xml:space="preserve"><value>전체 스펙트럼</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>스튜디오 분석기처럼 막대에 가중치를 두어 20kHz까지의 작은 고음역도 보이게 합니다.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>작은 고음역을 키워 20kHz까지 보이게 합니다.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
     <value>아래에서 솟아오르는 주파수 막대</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
@@ -1196,7 +1196,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
-    <value>전체 화면 가사 페이지에서는 곡 아래에 진행 막대만 남깁니다. 재생은 계속 키보드 단축키로 조작할 수 있습니다.</value>
+    <value>전체 화면에서는 진행 막대만 표시합니다. 키보드 조작은 계속 됩니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -1204,7 +1204,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>모든 가사 줄을 희미하게 보이게 해 아무 줄이나 클릭해 이동할 수 있게 합니다. 0%는 현재 줄에서 먼 줄을 숨깁니다.</value>
+    <value>먼 줄도 희미하게 보여 클릭할 수 있게 합니다. 0%는 숨깁니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
@@ -1212,7 +1212,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve">
-    <value>TTML 가사가 단어를 음절로 나누어도 단어를 온전하게 유지합니다.</value>
+    <value>가사가 단어를 음절로 나누어도 단어를 온전하게 유지합니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve">
@@ -1224,7 +1224,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>가사 렌더러</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>플러그인으로 가사 줄을 그립니다. 스크롤, 타이밍, 클릭하여 이동은 Noctis가 처리합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>플러그인이 가사 줄을 그립니다. 스크롤과 타이밍은 그대로입니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0}(플러그인 꺼짐)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
@@ -1232,7 +1232,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>곡에 가사가 없으면 아트워크와 컨트롤을 가운데로 옮깁니다.</value>
+    <value>아트워크와 컨트롤을 가운데로 옮깁니다.</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsAutoReturn" xml:space="preserve">
@@ -1240,19 +1240,19 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Lyrics Page toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsAutoReturnHint" xml:space="preserve">
-    <value>가사를 스크롤해도 몇 초 뒤 지금 부르는 줄로 돌아갑니다. 끄면 '따라가기'를 누를 때까지 스크롤한 위치에 머뭅니다.</value>
+    <value>스크롤하고 몇 초 뒤 현재 줄로 돌아갑니다. 끄면 '따라가기'를 누를 때까지 그대로 있습니다.</value>
     <comment>Lyrics Page toggle hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>사이드바 뒤까지 배경 표시</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>가사 배경이 사이드바 뒤까지 이어지게 합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>파형 진행 막대</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>가사 페이지의 진행 막대에 노래의 파형을 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>진행 막대에 노래의 파형을 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>번역 표시</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>TTML 가사 파일에 들어 있는 번역을 각 줄 아래에 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>파일에 번역이 있으면 각 줄 아래에 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>로마자 표기 표시</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>파일에 로마자 표기(로마지, 병음)가 있으면 각 줄 아래에 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>파일에 로마지나 병음이 있으면 각 줄 아래에 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>백그라운드 보컬 표시</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>백그라운드 보컬과 애드리브를 줄 아래에 작은 글씨로 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>백그라운드 보컬과 애드리브를 작은 줄로 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>유리 불투명도</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1370,9 +1370,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>이보다 작은 소리는 무음으로 봅니다. 낮추면 조용한 페이드아웃을 남기고, 높이면 잡음 등 더 많이 잘라냅니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0}에서 재생 중</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
   <data name="Settings.ShowPlaySource" xml:space="preserve"><value>재생 위치 표시</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>대기열에 음악을 재생하기 시작한 앨범, 재생목록 또는 페이지가 표시됩니다. 클릭하면 그곳의 노래로 돌아갑니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>대기열에 음악을 시작한 곳이 표시됩니다. 클릭하면 그곳으로 돌아갑니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>노래 제목을 누르면 재생 위치 열기</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>플레이어 아일랜드에서 노래 제목을 클릭하면 앨범 대신 노래가 재생되는 페이지의 해당 노래로 이동합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>노래 제목을 클릭하면 앨범 대신 노래가 재생되는 페이지를 엽니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>없는 노래</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>대기열에 있는 노래의 파일이 없으면 Noctis가 건너뜁니다. 그 노래를 어떻게 처리할지 선택하세요.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>없음으로 표시</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1768,7 +1768,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Musixmatch" xml:space="preserve"><value>Musixmatch</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>단어 싱크 가사 · 캡차를 요구하면 일시 중지될 수 있음</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>단어 싱크 가사 · 캡차를 요구할 수 있음</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Kugou" xml:space="preserve"><value>Kugou</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.KugouHint" xml:space="preserve"><value>단어 싱크 가사 카탈로그</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LrcRed" xml:space="preserve"><value>lrc.red</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
@@ -1776,9 +1776,9 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics 커뮤니티 가사 · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev를 통한 Deezer, KuGou, YouTube Music, Musixmatch 가사, 마지막에 조회</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev를 통한 Deezer, KuGou, YouTube Music, Musixmatch · 마지막에 조회</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
   <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.GeniusHint" xml:space="preserve"><value>다른 소스에 없는 곡의 싱크 없는 가사(덜 알려진 아티스트에 많음) · Lyrics Studio에서 바로 싱크 가능</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>다른 소스에 없는 곡의 싱크 없는 가사 · Lyrics Studio에서 싱크</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>싱크 가사 · 검색이 느림</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>가사 페이지의 '소스 선택'에서는 여기서 끈 소스도 사용할 수 있습니다.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -7573,15 +7573,15 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.LyricsSaveTarget.Embedded" xml:space="preserve"><value>오디오 파일 내부</value><comment>Save lyrics to choice: the audio file's own tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsSaveTarget.Both" xml:space="preserve"><value>둘 다</value><comment>Save lyrics to choice: files and the audio file's tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsAutoDownload" xml:space="preserve"><value>가사 자동 다운로드</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>가사가 없는 노래의 가사를 찾아 저장합니다. 기존 가사는 절대 바꾸지 않습니다.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>가사가 없는 노래의 가사를 저장합니다. 기존 가사는 바꾸지 않습니다.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>선호하는 가사 유형</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Noctis가 온라인에서 가사를 직접 고를 때 유지할 유형입니다.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Noctis가 직접 가사를 찾을 때 고르는 유형입니다.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>일반 가사 업그레이드</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>노래에 일반 가사만 있으면 선호하는 싱크 유형을 찾습니다. 찾지 못하면 일반 가사를 그대로 둡니다.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>노래에 일반 가사만 있으면 싱크 가사를 찾습니다. 찾지 못하면 일반 가사를 유지합니다.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>새 노래의 가사 찾기</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>라이브러리에 추가된 노래의 가사를 백그라운드에서 찾습니다. 싱크 가사가 있는 노래는 건드리지 않습니다.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>추가한 노래의 가사를 찾습니다. 싱크 가사가 있는 노래는 건너뜁니다.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>라이브러리 전체의 가사 찾기</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>아직 싱크 가사가 없는 노래의 가사를 백그라운드에서 찾습니다.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>싱크 가사가 없는 모든 노래의 가사를 찾습니다.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>단어 싱크(최상)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>줄 싱크</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>일반 텍스트</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -9174,7 +9174,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>곡에 별점을 매기지 않는다면 끄세요. 앨범 페이지, 곡 목록, 메뉴에서 별을 숨깁니다. 매긴 별점은 그대로 유지됩니다.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>다음보다 곡이 적은 아티스트 숨기기</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>마우스를 올릴 때까지 사이드바 숨기기</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>사이드바를 완전히 숨겨 페이지가 전체 너비를 사용합니다. 포인터를 창의 왼쪽 가장자리로 옮기면 나타납니다.</value><comment>Description under Hide sidebar until hover</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>사이드바를 숨깁니다. 포인터를 왼쪽 가장자리로 옮기면 나타납니다.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0}개 트랙</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0}개 항목</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0}시간 {1}분</value><comment>Short duration (sidebar playlist row)</comment></data>
@@ -9450,7 +9450,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Search.LyricsOnly" xml:space="preserve"><value>가사만</value><comment>Search box lyrics button menu: find songs by their lyrics only</comment></data>
   <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>이 데이터 폴더는 Noctis {0}에서 저장되었습니다. 새 버전의 설정은 유지되지만 이 버전에서는 업데이트하기 전까지 사용할 수 없습니다.</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve"><value>가사 페이지에서 가사 숨기기</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>노래에 가사가 있어도 대신 가운데 정렬된 플레이어를 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>가사 대신 항상 가운데 정렬된 플레이어를 표시합니다.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="LyricShare.Watermark" xml:space="preserve"><value>Noctis 워터마크</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
   <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>카드와 동영상에 Noctis 로고를 표시합니다</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
   <data name="MoveToAlbum.Menu" xml:space="preserve"><value>앨범으로 이동</value><comment>Song menu row (GitHub #239)</comment></data>
@@ -9547,7 +9547,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: 로그인 비밀번호가 아니라 Subsonic 비밀번호(Ampache 계정에서 설정) 또는 API 키로 로그인하세요.</value><comment>Music Server (GitHub #268)</comment></data>
   <data name="Settings.Section.MusicVideos" xml:space="preserve"><value>뮤직비디오</value><comment>Settings section label (Lyrics tab)</comment></data>
   <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>뮤직비디오 자동으로 찾기</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
-  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>자체 뮤직비디오가 없는 곡은 YouTube에서 영상을 찾아 가사 뒤에서 음소거 상태로 스트리밍합니다. 곡의 아티스트와 제목이 YouTube로 전송됩니다.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>가사 뒤에서 YouTube 영상을 음소거로 재생합니다. 아티스트와 제목이 YouTube로 전송됩니다.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>YouTube에서 영상을 찾으려면 yt-dlp가 필요합니다.</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
   <data name="YtDlp.BotCheck" xml:space="preserve"><value>YouTube에서 로봇이 아닌지 확인을 요청했습니다. '브라우저의 YouTube 로그인 사용'을 켜거나 나중에 다시 시도하세요.</value><comment>Music video lookup refused by YouTube's bot check, no browser sign-in in use</comment></data>
   <data name="YtDlp.BotCheckSignedIn" xml:space="preserve"><value>YouTube에서 계속 로봇이 아닌지 확인을 요청합니다. {0}에서 YouTube에 로그인되어 있는지 확인하거나 나중에 다시 시도하세요.</value><comment>Bot check even with the browser sign-in; {0} = browser name (Firefox, Chrome…)</comment></data>
@@ -9556,7 +9556,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="YtDlp.CookiesFailed" xml:space="preserve"><value>{0}의 YouTube 로그인을 사용할 수 없습니다: {1}</value><comment>yt-dlp could not use the browser sign-in, in a wording Noctis does not know; {0} = browser name, {1} = yt-dlp's own error line</comment></data>
   <data name="MusicVideo.LastLookupFailed" xml:space="preserve"><value>마지막 뮤직비디오 검색 실패: {0}</value><comment>Settings ▸ Lyrics ▸ Music videos note: the last lookup failed for a reason Noctis has no message for; {0} = yt-dlp's own error line</comment></data>
   <data name="Settings.MusicVideoBrowserSignIn" xml:space="preserve"><value>브라우저의 YouTube 로그인 사용</value><comment>Settings ▸ Lyrics ▸ Music videos toggle</comment></data>
-  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>YouTube에서 로봇이 아닌지 확인을 요청할 때 사용합니다. yt-dlp가 이 컴퓨터에서 이 브라우저의 YouTube 쿠키를 읽어 자체 YouTube 요청에만 사용합니다.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>YouTube의 '로봇이 아닌지 확인' 요청을 해결합니다. 브라우저의 YouTube 쿠키는 YouTube에만 사용됩니다.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoBrowser" xml:space="preserve"><value>브라우저</value><comment>Settings ▸ Lyrics ▸ Music videos: label of the browser picker</comment></data>
   <data name="MusicVideo.Title" xml:space="preserve"><value>YouTube 뮤직비디오</value><comment>Music Video from YouTube dialog title</comment></data>
   <data name="MusicVideo.PasteLink" xml:space="preserve"><value>YouTube 링크 붙여넣기</value><comment>Music video dialog: label of the link box</comment></data>

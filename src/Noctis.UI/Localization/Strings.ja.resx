@@ -337,7 +337,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>上</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>下</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>空のフォルダーを削除</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
-  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>最後のプレイリストが移動または削除されたフォルダーを削除します。新しいフォルダーは、一度プレイリストが入るまで残ります。</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>最後のプレイリストがなくなったフォルダーを削除します。新しい空のフォルダーは残ります。</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>上へ移動</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>下へ移動</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve">
@@ -876,9 +876,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>イコライザー</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>シャッフルの後ろにイコライザーのオン/オフボタンを表示します。</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>再生時間</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>トラック表示欄に、再生中の曲の経過時間と残り時間を表示します。時間をクリックすると、代わりに全体の長さを表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>経過時間と残り時間を表示します。時間をクリックすると全体の長さを表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>音量スライダーを常に表示</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
-  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>音量スライダーをポップアップではなく音量ボタンの横に表示します。ボタンをクリックするとミュートします。幅の狭いアイランドではポップアップを使います。</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>音量スライダーを音量ボタンの横に表示します。ボタンをクリックするとミュートします。</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>波形シークバー</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>シークバーに曲の波形を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve">
@@ -1018,7 +1018,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.FullSpectrum" xml:space="preserve"><value>フルスペクトラム</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>スタジオ用アナライザーのようにバーを重み付けし、20 kHz までの小さな高音域も見えるようにします。</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>小さな高音域を持ち上げて、20 kHz まで見えるようにします。</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve">
     <value>下から伸びる周波数バー</value>
     <comment>ToolTip.Tip in SettingsView.axaml</comment>
@@ -1196,7 +1196,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve">
-    <value>全画面の歌詞ページでは、曲の下に進行バーだけを表示します。再生はキーボードショートカットで操作できます。</value>
+    <value>全画面では進行バーだけを表示します。キーボード操作はそのまま使えます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve">
@@ -1204,7 +1204,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve">
-    <value>すべての行をうっすら表示したままにして、どの行もクリックできるようにします。0% にすると離れた行は非表示になります。</value>
+    <value>離れた行もうっすら表示し、クリックできるようにします。0% で非表示になります。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.JoinSplitWords" xml:space="preserve">
@@ -1212,7 +1212,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.KeepWordsWholeWhen" xml:space="preserve">
-    <value>TTML 歌詞が単語を音節に分割していても、単語をひとまとまりに保ちます。</value>
+    <value>歌詞が単語を音節に分割していても、単語をひとまとまりに保ちます。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve">
@@ -1224,7 +1224,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>歌詞のレンダラー</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>歌詞の行をプラグインで描画します。スクロール、タイミング、クリックでのシークは Noctis が担当します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>プラグインで歌詞の行を描画します。スクロールとタイミングは変わりません。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (プラグインはオフ)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve">
@@ -1232,7 +1232,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve">
-    <value>歌詞がない曲では、アートワークと操作ボタンを中央に移動します。</value>
+    <value>アートワークと操作ボタンを中央に移動します。</value>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsAutoReturn" xml:space="preserve">
@@ -1240,19 +1240,19 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Lyrics Page toggle in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsAutoReturnHint" xml:space="preserve">
-    <value>歌詞をスクロールしても、数秒後に歌われている行へ戻ります。オフにすると、「追従」を押すまでスクロールした位置のままになります。</value>
+    <value>スクロールして数秒後に現在の行へ戻ります。オフにすると「追従」を押すまでその位置のままです。</value>
     <comment>Lyrics Page toggle hint in SettingsView.axaml</comment>
   </data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>サイドバーの背後にも背景を表示</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>歌詞ページの背景をサイドバーの背後まで広げます。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>波形プログレスバー</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>歌詞ページのプログレスバーに曲の波形を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>プログレスバーに曲の波形を表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>翻訳を表示</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>TTML 歌詞ファイルに含まれる翻訳を各行の下に表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>ファイルに翻訳があれば、各行の下に表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>ローマ字表記を表示</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>ファイルに含まれている場合、ローマ字表記の歌詞 (ローマ字、ピンイン) を各行の下に表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>ファイルにローマ字やピンインがあれば、各行の下に表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>バックグラウンドボーカルを表示</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>バックグラウンドボーカルやアドリブを、行の下に小さく表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>バックグラウンドボーカルやアドリブを小さな行で表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve">
     <value>ガラスの不透明度</value>
     <comment>Text in SettingsView.axaml</comment>
@@ -1370,9 +1370,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>これより小さい音は無音とみなします。低くすると静かなフェードアウトを残し、高くするとノイズなども多くカットします。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0}から再生中</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
   <data name="Settings.ShowPlaySource" xml:space="preserve"><value>再生元を表示</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>キューに、音楽を再生し始めたアルバム、プレイリスト、ページを表示します。クリックすると、そこにある曲に戻ります。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>キューに音楽の再生元を表示します。クリックするとそこに戻ります。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>曲名をクリックして再生元を開く</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>プレイヤーアイランドで曲名をクリックすると、アルバムではなく、再生元のページにあるその曲に移動します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>曲名をクリックすると、アルバムではなく再生元のページを開きます。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>見つからない曲</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>キュー内の曲のファイルがなくなっている場合、Noctis はその曲をスキップします。その曲の扱いを選んでください。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>見つからないとマーク</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -1768,7 +1768,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <comment>Text in SettingsView.axaml</comment>
   </data>
   <data name="Settings.Musixmatch" xml:space="preserve"><value>Musixmatch</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>単語同期の歌詞 · CAPTCHA を求められると一時停止することがあります</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>単語同期の歌詞 · CAPTCHA を求められることがあります</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Kugou" xml:space="preserve"><value>Kugou</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.KugouHint" xml:space="preserve"><value>単語同期の歌詞カタログ</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LrcRed" xml:space="preserve"><value>lrc.red</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
@@ -1776,9 +1776,9 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Better Lyrics コミュニティの歌詞 · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev 経由の Deezer、KuGou、YouTube Music、Musixmatch の歌詞。最後に問い合わせます</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>lrcmux.dev 経由の Deezer、KuGou、YouTube Music、Musixmatch · 最後に問い合わせ</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
   <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.GeniusHint" xml:space="preserve"><value>他のソースにない曲の同期なし歌詞（あまり知られていないアーティストに多い）· Lyrics Studio ですぐ同期できます</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>他のソースにない曲の同期なし歌詞 · Lyrics Studio で同期できます</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>同期歌詞 · 検索に時間がかかります</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>歌詞ページの「ソースを選択」では、ここでオフにしたソースも使えます。</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -7573,15 +7573,15 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.LyricsSaveTarget.Embedded" xml:space="preserve"><value>オーディオファイル内</value><comment>Save lyrics to choice: the audio file's own tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsSaveTarget.Both" xml:space="preserve"><value>両方</value><comment>Save lyrics to choice: files and the audio file's tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsAutoDownload" xml:space="preserve"><value>歌詞を自動でダウンロード</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>歌詞のない曲の歌詞を探して保存します。既存の歌詞が置き換えられることはありません。</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>歌詞のない曲の歌詞を保存します。既存の歌詞は置き換えません。</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>優先する歌詞の種類</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Noctis がオンラインで自動的に歌詞を選ぶときに残す種類です。</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Noctis が自動で歌詞を見つけたときに選ぶ種類です。</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>通常の歌詞をアップグレード</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>曲に通常の歌詞しかない場合、優先する種類の同期歌詞を探します。見つからなければ通常の歌詞のままです。</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>曲に通常の歌詞しかないとき、同期歌詞を探します。見つからなければ通常の歌詞のままです。</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>新しい曲の歌詞を探す</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>ライブラリに追加された曲の歌詞をバックグラウンドで探します。同期歌詞のある曲はそのままです。</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>追加した曲の歌詞を探します。同期歌詞のある曲はスキップします。</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>ライブラリ全体の歌詞を探す</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>まだ同期歌詞のない曲の歌詞をバックグラウンドで探します。</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>同期歌詞のないすべての曲の歌詞を探します。</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>単語同期 (利用可能な最良のもの)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>行同期</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>テキストのみ</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -9174,7 +9174,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>曲を評価しない場合はオフにしてください。アルバムページ、曲リスト、メニューの星を非表示にします。評価は保持されます。</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>次の曲数未満のアーティストを隠す</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>ホバーするまでサイドバーを隠す</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>サイドバーを完全に隠し、ページを全幅で表示します。ポインターをウィンドウの左端に移動すると表示されます。</value><comment>Description under Hide sidebar until hover</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>サイドバーを隠します。ポインターを左端に移動すると表示されます。</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} トラック</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} 項目</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0}時間{1}分</value><comment>Short duration (sidebar playlist row)</comment></data>
@@ -9450,7 +9450,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Search.LyricsOnly" xml:space="preserve"><value>歌詞のみ</value><comment>Search box lyrics button menu: find songs by their lyrics only</comment></data>
   <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>このデータフォルダーは Noctis {0} で保存されました。新しいバージョンの設定は保持されますが、このバージョンではアップデートするまで使用できません。</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve"><value>歌詞ページで歌詞を隠す</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>曲に歌詞がある場合でも、代わりに中央配置のプレイヤーを表示します。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>歌詞の代わりに常に中央配置のプレイヤーを表示します。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="LyricShare.Watermark" xml:space="preserve"><value>Noctis の透かし</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
   <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>カードとその動画に Noctis のロゴを表示します</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
   <data name="MoveToAlbum.Menu" xml:space="preserve"><value>アルバムに移動</value><comment>Song menu row (GitHub #239)</comment></data>
@@ -9547,7 +9547,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: ログイン用パスワードではなく、Subsonic パスワード（Ampache アカウントで設定）または API キーでサインインしてください。</value><comment>Music Server (GitHub #268)</comment></data>
   <data name="Settings.Section.MusicVideos" xml:space="preserve"><value>ミュージックビデオ</value><comment>Settings section label (Lyrics tab)</comment></data>
   <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>ミュージックビデオを自動で探す</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
-  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>専用のミュージックビデオがない曲には YouTube から動画を探し、歌詞の後ろでミュートしてストリーミング再生します。曲のアーティスト名とタイトルが YouTube に送信されます。</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>歌詞の後ろで YouTube の動画をミュートで再生します。アーティスト名とタイトルが YouTube に送信されます。</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>YouTube で動画を探すには yt-dlp が必要です。</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
   <data name="YtDlp.BotCheck" xml:space="preserve"><value>YouTube からボットではないことの確認を求められました。「ブラウザの YouTube ログインを使用」をオンにするか、しばらくしてからもう一度お試しください。</value><comment>Music video lookup refused by YouTube's bot check, no browser sign-in in use</comment></data>
   <data name="YtDlp.BotCheckSignedIn" xml:space="preserve"><value>YouTube から引き続きボットではないことの確認を求められています。{0} で YouTube にログインしているか確認するか、しばらくしてからもう一度お試しください。</value><comment>Bot check even with the browser sign-in; {0} = browser name (Firefox, Chrome…)</comment></data>
@@ -9556,7 +9556,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="YtDlp.CookiesFailed" xml:space="preserve"><value>{0} の YouTube ログインを使用できませんでした: {1}</value><comment>yt-dlp could not use the browser sign-in, in a wording Noctis does not know; {0} = browser name, {1} = yt-dlp's own error line</comment></data>
   <data name="MusicVideo.LastLookupFailed" xml:space="preserve"><value>前回のミュージックビデオの検索に失敗しました: {0}</value><comment>Settings ▸ Lyrics ▸ Music videos note: the last lookup failed for a reason Noctis has no message for; {0} = yt-dlp's own error line</comment></data>
   <data name="Settings.MusicVideoBrowserSignIn" xml:space="preserve"><value>ブラウザの YouTube ログインを使用</value><comment>Settings ▸ Lyrics ▸ Music videos toggle</comment></data>
-  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>YouTube からボットではないことの確認を求められたときに使います。yt-dlp はこのブラウザの YouTube の Cookie をこのコンピューター上で読み取り、自身の YouTube へのリクエストにだけ使用します。</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>YouTube の「ボットではないことを確認」を解決します。ブラウザの YouTube の Cookie は YouTube にだけ使われます。</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoBrowser" xml:space="preserve"><value>ブラウザ</value><comment>Settings ▸ Lyrics ▸ Music videos: label of the browser picker</comment></data>
   <data name="MusicVideo.Title" xml:space="preserve"><value>YouTube のミュージックビデオ</value><comment>Music Video from YouTube dialog title</comment></data>
   <data name="MusicVideo.PasteLink" xml:space="preserve"><value>YouTube のリンクを貼り付け</value><comment>Music video dialog: label of the link box</comment></data>
