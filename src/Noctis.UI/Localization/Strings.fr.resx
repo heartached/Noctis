@@ -2533,7 +2533,7 @@ Années : year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar s
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Installation</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>Activée</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>Désactivée</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Extension officielle de Noctis</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Vérifié</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, extension officielle de Noctis</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, extension de la communauté par {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, extension de la communauté</value></data>

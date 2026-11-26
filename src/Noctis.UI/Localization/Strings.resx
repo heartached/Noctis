@@ -2540,7 +2540,7 @@ Years: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar sear
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Installing</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>On</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>Off</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Official Noctis Plugin</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Verified</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, official plugin by Noctis</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, community plugin by {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, community plugin</value></data>

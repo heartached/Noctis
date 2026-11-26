@@ -2530,7 +2530,7 @@ Yıllar: year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar se
   <data name="Plugins.Card.Installing" xml:space="preserve"><value>Kuruluyor</value></data>
   <data name="Plugins.Card.On" xml:space="preserve"><value>Açık</value></data>
   <data name="Plugins.Card.Off" xml:space="preserve"><value>Kapalı</value></data>
-  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Resmi Noctis Eklentisi</value></data>
+  <data name="Plugins.Card.Verified" xml:space="preserve"><value>Doğrulandı</value></data>
   <data name="Plugins.Card.A11yOfficial" xml:space="preserve"><value>{0}, Noctis'in resmi eklentisi</value></data>
   <data name="Plugins.Card.A11yCommunity" xml:space="preserve"><value>{0}, topluluk eklentisi, yapan: {1}</value></data>
   <data name="Plugins.Card.A11yCommunityNoAuthor" xml:space="preserve"><value>{0}, topluluk eklentisi</value></data>
