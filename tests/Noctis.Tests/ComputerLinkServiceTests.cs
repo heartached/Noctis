@@ -57,6 +57,7 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         public readonly LibraryServerAdapter Adapter;
         public readonly AppSettings Settings;
         public readonly TestComputer Protector;
+        public readonly SignallingRecorder Recorder;
 
         public Pc(string root, string name, bool syncOn)
         {
@@ -66,8 +67,9 @@ public class ComputerLinkServiceTests : IAsyncLifetime
             Persistence = new PersistenceService(Path.Combine(root, "data")) { Protector = Protector };
             Settings = new AppSettings { SyncEnabled = syncOn, SyncDeviceId = "desktop-" + name.ToLowerInvariant() + "-test", SyncDeviceName = "PC " + name, MusicFolders = { Music } };
             Ledger = new LibrarySyncService(() => Settings, Persistence);
+            Recorder = new SignallingRecorder(Ledger);
             Library = new LibraryService(new MetadataService(), Persistence, new SqliteLibraryIndexService(Persistence),
-                new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: Ledger);
+                new NoctisAccountLibraryTests.NoOpAudit(), syncRecorder: Recorder);
             Adapter = new LibraryServerAdapter(Library, Persistence, new NoOpPlayHistory());
         }
 
@@ -105,6 +107,18 @@ public class ComputerLinkServiceTests : IAsyncLifetime
             var all = await Persistence.LoadPlaylistsAsync();
             all.RemoveAll(p => p.Id == id);
             await Persistence.SavePlaylistsAsync(all);
+        }
+    }
+
+    /// <summary>The ledger's recorder, as the library save calls it (in the background); then it
+    /// completes <see cref="Next"/>, so a test can wait for that background record.</summary>
+    private sealed class SignallingRecorder(LibrarySyncService ledger) : ITrackStateRecorder
+    {
+        public TaskCompletionSource? Next;
+        public void RecordTrackStates(IEnumerable<Track> tracks)
+        {
+            ledger.RecordTrackStates(tracks);
+            System.Threading.Interlocked.Exchange(ref Next, null)?.TrySetResult();
         }
     }
 
@@ -256,6 +270,38 @@ public class ComputerLinkServiceTests : IAsyncLifetime
         await link.SyncNowAsync(ct);
         Assert.Equal(4, _a.Song("One").Rating);
         Assert.Equal(4, _b.Song("One").Rating);
+    }
+
+    [Fact]
+    public async Task AChangeFromTheOtherComputer_IsAppliedAsOne_TheLedgerKeepsItsStamp()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _a.AddSongsAsync("One");
+        var edited = new TaskCompletionSource();
+        _a.Recorder.Next = edited;
+        await _a.EditAsync("One", t => t.Rating = 2);
+        await edited.Task.WaitAsync(TimeSpan.FromSeconds(10), ct); // the edit's background record is done
+        await Tick();
+        var stamp = DateTime.UtcNow;
+        var theirs = new TrackSyncState(Favorite: true, Rating: 5, Disliked: true, PlayCount: 3, LastPlayed: stamp.AddHours(-1), FavoritedAt: stamp);
+        var id = _a.Song("One").Id.ToString("N");
+        // The library save's background ledger record runs at the worst moment it can: the
+        // favourite's notice, right after the save, waits for it.
+        var recorded = new TaskCompletionSource();
+        _a.Recorder.Next = recorded;
+        _a.Library.FavoritesChanged += (_, _) => recorded.Task.Wait(TimeSpan.FromSeconds(10), ct);
+
+        await _a.Ledger.MergeAsync(new[] { new SyncItem(SyncKinds.Track, id, SyncJson.Serialize(theirs), stamp, "desktop-b-test", 0) }, _a.Adapter, ct);
+        await recorded.Task.WaitAsync(TimeSpan.FromSeconds(10), ct);
+
+        var song = _a.Song("One");
+        Assert.Equal((true, 5, true, 3), (song.IsFavorite, song.Rating, song.IsDisliked, song.PlayCount));
+        // Not a change of this computer's (a half-applied one, the old rating, newer than theirs,
+        // went back to the other computer on the next sync): their state under their stamp.
+        var row = (await _a.Ledger.LocalItemsAsync(ct)).Single(i => i.Kind == SyncKinds.Track && i.Id == id);
+        Assert.Equal(SyncJson.Serialize(theirs), row.Payload);
+        Assert.Equal(stamp, row.UpdatedUtc);
+        Assert.Equal("desktop-b-test", row.Device);
     }
 
     [Fact]

@@ -2521,6 +2521,16 @@ public class LibraryService : ILibraryService
         await SaveTrackUserStateAsync(changed);
     }
 
+    /// <inheritdoc />
+    public async Task ApplyTrackUserStateAsync(Track track, Action<Track> apply)
+    {
+        var (rating, disliked) = (track.Rating, track.IsDisliked);
+        apply(track);
+        await SaveTrackUserStateAsync(new[] { track });
+        if (track.Rating != rating || track.IsDisliked != disliked)
+            QueueRatingTagWrites(new[] { track });
+    }
+
     /// <summary>
     /// Persists rating tags to the audio files on a worker thread (best effort —
     /// the library JSON saved above is the source of truth if a file is locked/read-only).
