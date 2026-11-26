@@ -1365,7 +1365,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>保持随机播放</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>随机播放开启时，播放专辑、播放列表或歌曲会保持开启，并随机播放新的音乐。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>跳过静音</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>每首歌从第一个声音开始播放，在最后一个声音之后切到下一首。不会修改你的文件，为歌曲设置的开始或停止时间优先。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>跳过歌曲开头和结尾的静音。不会修改你的文件。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>静音电平</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>低于此音量的部分都视为静音。调低会保留轻柔的淡出，调高会剪掉更多，例如底噪。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>播放来源：{0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -7910,8 +7910,8 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   </data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>其他电脑</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>与另一台电脑同步</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>收藏、评分、播放次数和播放列表在两台电脑上保持一致。每台电脑保留各自的音乐文件；歌曲按标题、艺人和时长匹配。</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>在另一台电脑上开启“{0}”和“{1}”，然后打开 {2} › {3}。在此输入它的地址和你的账户。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>让收藏、评分、播放次数和播放列表在两台电脑上保持一致。音乐文件各自保留。</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>在另一台电脑上开启“{0}”和“{1}”，然后在此输入 {2} › {3} 中显示的地址和你的账户。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>另一台电脑上显示的地址</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>电子邮件或用户名</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>密码</value><comment>Password box watermark</comment></data>
