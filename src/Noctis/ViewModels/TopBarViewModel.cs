@@ -632,7 +632,7 @@ public partial class TopBarViewModel : ViewModelBase
     // ── Corner icon "not at default" dots ──
     //
     // The top-right corner shows filter / sort as round icon buttons (no label, no
-    // value at rest); a small accent dot on the icon says the control is away from its
+    // value at rest); the icon in the accent colour says the control is away from its
     // default, so a filtered or re-sorted grid never looks like the plain one. The
     // labels compared here are the raw keys the grid view-models report, not localized
     // text (LibraryAlbumsViewModel.ReleaseTypeFilterLabel etc. are English constants).
@@ -644,7 +644,7 @@ public partial class TopBarViewModel : ViewModelBase
     public bool IsSongsFilterActive => PageShowOnlyFavorites || (HasSongsFilters && SongsQualityFilter != "All");
     /// <summary>
     /// Songs default order is "Date Added", newest first (LibrarySongsViewModel); empty = not
-    /// reported yet. Oldest first counts as changed too, so the dot always means "Reset to
+    /// reported yet. Oldest first counts as changed too, so the accent icon always means "Reset to
     /// Date Added" in the Sort menu has something to do (GitHub #156).
     /// </summary>
     public bool IsSongsSortActive => PageSortColumn switch

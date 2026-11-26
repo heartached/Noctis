@@ -181,6 +181,60 @@ public class TopBarCornerOrderTests
         finally { window.Close(); }
     }
 
+    /// <summary>
+    /// Discord 11-26 (Halil): a sort or filter away from its default used to wear a small dot in the
+    /// accent colour (red by default) at the button's corner, which read as an unread notification
+    /// that never went away. Now the button's own icon takes the accent instead, no corner dot.
+    /// </summary>
+    [AvaloniaTheory]
+    [InlineData("Albums", "SortIcon")]
+    [InlineData("Albums", "FilterIcon")]
+    [InlineData("Songs", "SortIcon")]
+    [InlineData("Songs", "FilterIcon")]
+    [InlineData("Artists", "SortIcon")]
+    [InlineData("Artists", "FilterIcon")]
+    [InlineData("Playlists", "SortIcon")]
+    [InlineData("Folders", "SortIcon")]
+    public void ChangedSortOrFilter_TintsTheIcon_NoNotificationDot(string page, string iconKey)
+    {
+        Action<TopBarViewModel> changed = vm =>
+        {
+            switch (page)
+            {
+                case "Albums": vm.AlbumSortMode = "random"; vm.QualityFilterLabel = "Lossless"; break;
+                case "Songs": vm.PageSortColumn = "Title"; vm.PageShowOnlyFavorites = true; break;
+                case "Artists": vm.ArtistSortMode = "songs"; vm.IsArtistSmallFilterActive = true; break;
+                case "Playlists": vm.PlaylistSortMode = "name"; break;
+                case "Folders": vm.FoldersSortMode = "modified-newest"; break;
+            }
+        };
+        var setup = Pages.Single(p => p.Page == page).Setup;
+
+        foreach (var active in new[] { false, true })
+        {
+            var (window, corner) = Mount(vm =>
+            {
+                setup(vm);
+                if (page == "Songs") vm.PageSortAscending = false; // Date Added, newest first = the default
+                if (active) changed(vm);
+            });
+            try
+            {
+                Assert.DoesNotContain(corner.GetVisualDescendants().OfType<Border>(),
+                    b => b.Classes.Contains("corner-dot") && b.IsEffectivelyVisible);
+                Application.Current!.TryGetResource(iconKey, null, out var glyph);
+                var button = VisibleButtons(corner).Single(b =>
+                    ReferenceEquals(b.GetLogicalDescendants().OfType<PathIcon>().FirstOrDefault()?.Data, glyph));
+                var icon = button.GetLogicalDescendants().OfType<PathIcon>().First();
+                var accent = (icon.TryFindResource("AccentColorBrush", icon.ActualThemeVariant, out var a) ? a : null) as ISolidColorBrush;
+                var isAccent = icon.Foreground is ISolidColorBrush fg && accent != null && fg.Color == accent.Color;
+                Assert.Equal(active, button.Classes.Contains("active"));
+                Assert.True(active == isAccent, $"{page} {iconKey}: icon {icon.Foreground} vs accent {accent}");
+            }
+            finally { window.Close(); }
+        }
+    }
+
     [Fact]
     public void ArtistsViewMenu_PicksALayout_TogglingOnlyWhenItDiffers()
     {
