@@ -18,8 +18,8 @@ namespace Noctis.Views;
 /// blurred app behind, a compact header (cover, title, artist, fact chips) and one filled
 /// editor. Opened from "more" it shows the text ready to read, from "Edit Description" / "Add
 /// a description" with the caret in it. Save closes it (the view model's
-/// AlbumDescriptionSaved); Cancel, Esc, a click outside the card and Alt+F4 close it and drop
-/// the edit.
+/// AlbumDescriptionSaved); Cancel, Esc and Alt+F4 close it and drop the edit; a click outside
+/// the card closes it only while the text is unchanged.
 /// </summary>
 public partial class AlbumDescriptionDialog : Window
 {
@@ -35,7 +35,8 @@ public partial class AlbumDescriptionDialog : Window
         CardRoot.AddHandler(KeyDownEvent, OnCardKeyDown, RoutingStrategies.Tunnel);
         DescriptionEditor.TextChanged += (_, _) => UpdateFooter();
         DescriptionDialogs.CloseOnOutsidePress(this, CardRoot, DescriptionEditor,
-            () => _vm?.SaveAlbumDescriptionEditCommand.IsRunning == true);
+            () => _vm?.SaveAlbumDescriptionEditCommand.IsRunning == true,
+            () => _vm?.HasAlbumDescriptionChanges == true);
     }
 
     public AlbumDescriptionDialog(AlbumDetailViewModel vm) : this()
@@ -213,9 +214,13 @@ internal static class DescriptionDialogs
     /// nothing hit-testable, so a backdrop press reaches the window alone. Only the press counts,
     /// so a text-selection drag that starts in the editor and ends outside never closes. While
     /// the editor's own menu is open the press only closes that menu; while a save runs nothing
-    /// closes (as with Esc).
+    /// closes (as with Esc). Once the text differs from what the dialog opened with
+    /// (<paramref name="hasChanges"/>, the same test that enables Save) an outside press is
+    /// ignored, so a stray click never throws away typing (owner 11-26); Cancel and Esc still
+    /// drop it on purpose.
     /// </summary>
-    internal static void CloseOnOutsidePress(Window window, Control card, TextBox editor, Func<bool> isSaving)
+    internal static void CloseOnOutsidePress(Window window, Control card, TextBox editor,
+        Func<bool> isSaving, Func<bool> hasChanges)
     {
         window.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
         {
@@ -223,7 +228,7 @@ internal static class DescriptionDialogs
             if (editor.ContextFlyout is { IsOpen: true } || editor.ContextMenu is { IsOpen: true }) return;
             if (new Rect(card.Bounds.Size).Contains(e.GetPosition(card))) return;
             e.Handled = true;
-            if (!isSaving()) window.Close();
+            if (!isSaving() && !hasChanges()) window.Close();
         }, RoutingStrategies.Tunnel);
     }
 
