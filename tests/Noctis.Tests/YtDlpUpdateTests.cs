@@ -337,7 +337,7 @@ public class YtDlpUpdateTests : IDisposable
         var ex = await Assert.ThrowsAsync<YtDlpRunException>(() =>
             tool.DownloadVideoAsync("https://www.youtube.com/watch?v=vid", target, null, 0, null, CancellationToken.None));
 
-        Assert.Equal("ERROR: [youtube] vid: Video unavailable", ex.Message);
+        Assert.Equal("[youtube] vid: Video unavailable", ex.Message); // yt-dlp's first ERROR line, without "ERROR:" (11-26)
         Assert.Single(fake.Runs);
         Assert.Equal(0, fake.FetchCalls);
         Assert.Equal(0, fake.UpdateCalls);

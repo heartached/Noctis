@@ -16,11 +16,14 @@ public sealed class YtDlpRunException : InvalidOperationException
 {
     public int ExitCode { get; }
     public string Stderr { get; }
+    /// <summary>What the run printed to stdout (a download's "[youtube]" lines show YouTube was reached).</summary>
+    public string Stdout { get; }
 
-    public YtDlpRunException(int exitCode, string stderr, string message) : base(message)
+    public YtDlpRunException(int exitCode, string stderr, string message, string? stdout = null) : base(message)
     {
         ExitCode = exitCode;
         Stderr = stderr ?? string.Empty;
+        Stdout = stdout ?? string.Empty;
     }
 }
 
@@ -35,8 +38,10 @@ public sealed class YtDlpAccessException : InvalidOperationException
     /// <summary>The browser whose sign-in was used, or null.</summary>
     public string? CookieBrowser { get; }
 
-    public YtDlpAccessException(YtDlpFailureKind kind, string? cookieBrowser, Exception? inner = null)
-        : base(YtDlpParsing.FailureMessage(kind, cookieBrowser), inner)
+    /// <param name="detail">yt-dlp's own line (<see cref="YtDlpParsing.FirstErrorLine"/>), quoted by
+    /// the message of a sign-in failure yt-dlp worded in a way Noctis does not know.</param>
+    public YtDlpAccessException(YtDlpFailureKind kind, string? cookieBrowser, Exception? inner = null, string? detail = null)
+        : base(YtDlpParsing.FailureMessage(kind, cookieBrowser, detail), inner)
     {
         Kind = kind;
         CookieBrowser = cookieBrowser;
@@ -412,7 +417,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
             var (code, stdout, stderr) = await RunLoggedAsync("VideoSearch", exe, YtDlpParsing.SearchArgs(query, count, js), null, ct).ConfigureAwait(false);
             var found = YtDlpParsing.ParseVideoInfos(stdout);
             // --ignore-errors: one unavailable result must not lose the others.
-            if (code != 0 && found.Count == 0) throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Search failed.");
+            if (code != 0 && found.Count == 0) throw new YtDlpRunException(code, stderr, YtDlpParsing.FirstErrorLine(stderr) ?? "Search failed.", stdout);
             return found;
         }, null, ct);
 
@@ -421,7 +426,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
         RunWithBlockedRetryAsync<YouTubeVideoInfo?>("VideoInfo", async (exe, js) =>
         {
             var (code, stdout, stderr) = await RunLoggedAsync("VideoInfo", exe, YtDlpParsing.InfoArgs(url, js), null, ct).ConfigureAwait(false);
-            if (code != 0) throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Could not read the video.");
+            if (code != 0) throw new YtDlpRunException(code, stderr, YtDlpParsing.FirstErrorLine(stderr) ?? "Could not read the video.", stdout);
             return YtDlpParsing.ParseVideoInfos(stdout).FirstOrDefault();
         }, null, ct);
 
@@ -432,7 +437,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
             var (code, stdout, stderr) = await RunLoggedAsync("VideoStream", exe,
                 YtDlpParsing.StreamUrlArgs(YouTubeLinks.WatchUrl(videoId), maxHeight, js), null, ct).ConfigureAwait(false);
             var url = code == 0 ? YtDlpParsing.ParseStreamUrl(stdout) : null;
-            return url ?? throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "No stream URL.");
+            return url ?? throw new YtDlpRunException(code, stderr, YtDlpParsing.FirstErrorLine(stderr) ?? "No stream URL.", stdout);
         }, null, ct);
 
     private async Task<string> DownloadToScratchAsync(string operation, string exe, string targetDir,
@@ -443,7 +448,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
         try
         {
             var template = Path.Combine(scratch, "%(id)s.%(ext)s");
-            var (code, _, stderr) = await RunLoggedAsync(operation, exe, buildArgs(template), line =>
+            var (code, stdout, stderr) = await RunLoggedAsync(operation, exe, buildArgs(template), line =>
             {
                 if (YtDlpParsing.ParseProgressPercent(line) is { } pct) progress?.Report(pct / 100.0);
             }, ct).ConfigureAwait(false);
@@ -453,7 +458,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
                 .OrderByDescending(f => new FileInfo(f).Length)
                 .FirstOrDefault();
             if (produced is null || code != 0 && new FileInfo(produced).Length == 0)
-                throw new YtDlpRunException(code, stderr, Tail(stderr) ?? "Download produced no file.");
+                throw new YtDlpRunException(code, stderr, YtDlpParsing.FirstErrorLine(stderr) ?? "Download produced no file.", stdout);
             progress?.Report(1);
             return produced;
         }
@@ -478,7 +483,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
         {
             return await attempt(exe, await JsRuntimeForAsync(exe, ct).ConfigureAwait(false)).ConfigureAwait(false);
         }
-        catch (YtDlpRunException first) when (!ct.IsCancellationRequested && YtDlpParsing.ClassifyFailure(first.Stderr) is var kind && kind != YtDlpFailureKind.Other)
+        catch (YtDlpRunException first) when (!ct.IsCancellationRequested && YtDlpParsing.ClassifyFailure(first.Stderr, cookies != null, first.Stdout) is var kind && kind != YtDlpFailureKind.Other)
         {
             // A bot check is about this computer's address, not a stale yt-dlp: no update, no
             // retry (it would only ask YouTube again). Cookie trouble never reached YouTube.
@@ -501,7 +506,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
             {
                 return await attempt(retryExe, await JsRuntimeForAsync(retryExe, ct).ConfigureAwait(false)).ConfigureAwait(false);
             }
-            catch (YtDlpRunException second) when (!ct.IsCancellationRequested && YtDlpParsing.ClassifyFailure(second.Stderr) is var kind && kind != YtDlpFailureKind.Other)
+            catch (YtDlpRunException second) when (!ct.IsCancellationRequested && YtDlpParsing.ClassifyFailure(second.Stderr, cookies != null, second.Stdout) is var kind && kind != YtDlpFailureKind.Other)
             {
                 throw Access(operation, kind, cookies, second);
             }
@@ -516,7 +521,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
     private static YtDlpAccessException Access(string operation, YtDlpFailureKind kind, string? cookies, YtDlpRunException run)
     {
         LogWarn("YtDlp.AccessFailed", $"{operation} {kind} cookies={cookies ?? "off"}");
-        return new YtDlpAccessException(kind, cookies, run);
+        return new YtDlpAccessException(kind, cookies, run, YtDlpParsing.FirstErrorLine(run.Stderr));
     }
 
     /// <summary>Runs yt-dlp, logging version + args up front and the stderr tail of a failing run.
@@ -580,12 +585,5 @@ public sealed class YtDlpTool : IYouTubeVideoSource
         var stderr = await stderrTask.ConfigureAwait(false);
         await p.WaitForExitAsync(ct).ConfigureAwait(false);
         return (p.ExitCode, stdout.ToString(), stderr);
-    }
-
-    private static string? Tail(string stderr)
-    {
-        var lines = stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var last = lines.LastOrDefault(l => l.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase)) ?? lines.LastOrDefault();
-        return string.IsNullOrWhiteSpace(last) ? null : last.Length > 240 ? last[..240] : last;
     }
 }
