@@ -4652,4 +4652,7 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>YouTube'dan müzik videosu</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>Yanlış video mu?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>Başka bir video seç, bağlantı yapıştır veya bu şarkı için videoyu kapat</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>Sanatçı Videoları</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Varsa sanatçının Apple Music videosunu sayfasının arkasında oynatır. Açtığın her sanatçıyı arar.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Sanatçı Videosunu Kaldır</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

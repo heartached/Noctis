@@ -4599,4 +4599,7 @@ Créer une playlist nommée « {0} » avec ces titres ?</value><comment>Drag-and
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>Clip depuis YouTube</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>Mauvaise vidéo ?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>Choisissez une autre vidéo, collez un lien ou désactivez la vidéo pour ce morceau</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>Vidéos d'artistes</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Lit la vidéo Apple Music d'un artiste derrière sa page lorsqu'elle existe. Recherche chaque artiste que vous ouvrez.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Supprimer la vidéo de l'artiste</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

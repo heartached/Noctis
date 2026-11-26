@@ -517,7 +517,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
         // Albums opened since the last look filled the animated artwork cache; the usage
         // line was read once at launch and kept saying "0 B".
-        else if (tab == TabAppearance && AnimatedArtworkAutoFetch)
+        else if (tab == TabAppearance && (AnimatedArtworkAutoFetch || ArtistVideos))
         {
             _ = RefreshAnimatedArtworkCacheUsageAsync();
         }

@@ -9603,4 +9603,7 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>YouTube 뮤직비디오</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>영상이 틀렸나요?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>다른 영상을 고르거나 링크를 붙여넣거나 이 곡의 영상을 끕니다</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>아티스트 비디오</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>아티스트의 Apple Music 비디오가 있으면 페이지 뒤에서 재생합니다. 여는 아티스트마다 찾아봅니다.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>아티스트 비디오 제거</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>
