@@ -67,7 +67,7 @@ public sealed class RouletteFilter
         {
             case PlayedFilter.NeverPlayed when !album.NeverPlayed:
                 return false;
-            case PlayedFilter.NotIn6Months when album.LastPlayed is { } last && last > now.AddMonths(-6):
+            case PlayedFilter.NotIn6Months when !album.NotPlayedSince(now.AddMonths(-6)):
                 return false;
         }
         if (Artist is { } a && !album.Artists.Any(x => string.Equals(x, a, StringComparison.OrdinalIgnoreCase))) return false;

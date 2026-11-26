@@ -131,7 +131,8 @@ public sealed class SubsonicClient : IMediaServerClient
         using (envelope.Doc)
         {
             var albums = new List<ServerAlbum>();
-            if (Root(envelope.Doc).TryGetProperty("albumList2", out var list) &&
+            var root = Root(envelope.Doc);
+            if (root.TryGetProperty("albumList2", out var list) &&
                 list.TryGetProperty("album", out var array) &&
                 array.ValueKind == JsonValueKind.Array)
             {
@@ -141,6 +142,7 @@ public sealed class SubsonicClient : IMediaServerClient
                     if (mapped != null) albums.Add(mapped);
                 }
             }
+            FillUnplayedCounts(albums, ReportsPlayCounts(root, albums));
             return albums;
         }
     }
@@ -403,6 +405,28 @@ public sealed class SubsonicClient : IMediaServerClient
         return sb.ToString().Trim();
     }
 
+    /// <summary>
+    /// Whether this server counts album plays. Navidrome does, and leaves playCount out of an
+    /// album it never played (Go omitempty), as does any server once one album on the page
+    /// carries a count or a play date. A plain Subsonic server that never sends them stays
+    /// unknown, so its albums are not taken as never played.
+    /// </summary>
+    internal static bool ReportsPlayCounts(JsonElement root, IReadOnlyList<ServerAlbum> albums)
+    {
+        if (string.Equals(GetString(root, "type"), "navidrome", StringComparison.OrdinalIgnoreCase)) return true;
+        foreach (var album in albums)
+            if (album.HasPlayInfo) return true;
+        return false;
+    }
+
+    /// <summary>On a server that counts plays, an album without a count was played zero times.</summary>
+    internal static void FillUnplayedCounts(IEnumerable<ServerAlbum> albums, bool serverCountsPlays)
+    {
+        if (!serverCountsPlays) return;
+        foreach (var album in albums)
+            if (album.PlayCount == null && album.LastPlayed == null) album.PlayCount = 0;
+    }
+
     private static ServerAlbum? MapAlbum(JsonElement album)
     {
         var id = GetId(album, "id");
@@ -417,7 +441,11 @@ public sealed class SubsonicClient : IMediaServerClient
             SongCount = GetInt(album, "songCount"),
             Duration = TimeSpan.FromSeconds(Math.Max(0, GetInt(album, "duration"))),
             CoverArtId = GetId(album, "coverArt"),
-            Genre = GetString(album, "genre") ?? string.Empty
+            Genre = GetString(album, "genre") ?? string.Empty,
+            // Navidrome / OpenSubsonic: playCount and played (ISO date). Missing = unknown here;
+            // FillUnplayedCounts decides when a missing count means zero.
+            PlayCount = ServerPlayInfo.Count(album, "playCount"),
+            LastPlayed = ServerPlayInfo.Date(album, "played")
         };
     }
 

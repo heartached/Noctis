@@ -96,10 +96,33 @@ public sealed class PluginRouletteHost : IRouletteHost, IDisposable
         for (var i = 0; i < albums.Count; i++)
         {
             var a = albums[i];
-            result[i] = new RemoteAlbum(a.Id, a.Title, a.Artist, a.Year, a.Genre, a.ServerName, a.ArtworkPath);
+            var (playCount, lastPlayed) = PlayInfo(a);
+            result[i] = new RemoteAlbum(a.Id, a.Title, a.Artist, a.Year, a.Genre, a.ServerName, a.ArtworkPath, playCount, lastPlayed);
         }
         return result;
     }
+
+    private volatile bool _noServerPlays;
+
+    /// <summary>What the album's server says about its plays. A Noctis whose API 1.9 has no play
+    /// counts yet leaves them unknown (the MissingMethodException is thrown at the call into
+    /// <see cref="ReadPlayInfo"/>, inside the try here), so those albums stay off the play filters.</summary>
+    private (int? PlayCount, DateTimeOffset? LastPlayed) PlayInfo(ServerAlbumInfo album)
+    {
+        if (_noServerPlays) return (null, null);
+        try
+        {
+            return ReadPlayInfo(album);
+        }
+        catch (Exception ex) when (ex is MissingMethodException or MissingMemberException)
+        {
+            _noServerPlays = true;
+            return (null, null);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (int? PlayCount, DateTimeOffset? LastPlayed) ReadPlayInfo(ServerAlbumInfo album) => (album.PlayCount, album.LastPlayed);
 
     public async Task<string?> ServerAlbumArtworkAsync(string serverAlbumId)
     {
