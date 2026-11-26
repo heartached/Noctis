@@ -163,6 +163,13 @@ public partial class MetadataViewModel : ViewModelBase
     /// <summary>The query the artwork chooser's box shows when the search came from the tags.</summary>
     [ObservableProperty] private string _artworkSearchQueryHint = string.Empty;
     [ObservableProperty] private bool _isArtworkSearchOpen;
+    /// <summary>Owner 11-26: the chooser's results in sections (ArtworkSearchResults, grouped).</summary>
+    public ObservableCollection<ArtworkResultSection> ArtworkSearchSections { get; } = new();
+    /// <summary>The artist whose library the chooser shows; empty for a plain search.</summary>
+    [ObservableProperty] private string _artworkLibraryArtist = string.Empty;
+    /// <summary>"36 releases" under the artist's name.</summary>
+    [ObservableProperty] private string _artworkLibraryDetail = string.Empty;
+    private CancellationTokenSource? _artworkSearchCts;
 
     // ── iTunes animated-cover search ──
     [ObservableProperty] private bool _isSearchingAnimatedCover;
@@ -1778,6 +1785,10 @@ public partial class MetadataViewModel : ViewModelBase
         if (_itunes == null) { ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearchUnavailable"); return; }
 
         var gen = ++_artworkSearchGeneration;
+        // A new search stops the one still running (its requests and its covers).
+        _artworkSearchCts?.Cancel();
+        var cts = _artworkSearchCts = new CancellationTokenSource();
+        var ct = cts.Token;
         IsSearchingArtwork = true;
         ArtworkSearchStatus = Localization.Loc.T("Metadata.AnimSearching");
         ClearArtworkSearchResults();
@@ -1785,44 +1796,36 @@ public partial class MetadataViewModel : ViewModelBase
         IsArtworkSearchOpen = true;
         try
         {
-            // The chooser's box (same as the animated one): a typed name replaces the tags and
-            // is read as the album, artist words included, so no artist filter applies.
+            // The chooser's box (same as the animated one): a typed name replaces the tags. Owner
+            // 11-26: an artist's name lists that artist's artwork library; "artist title" finds
+            // the release in it (ArtworkLibrarySearch).
             var typed = (ArtworkSearchInput ?? string.Empty).Trim();
-            var artist = typed.Length > 0 ? string.Empty
-                : !string.IsNullOrWhiteSpace(AlbumArtist) ? AlbumArtist : Artist;
+            // The library's placeholder is no artist (a song with no album artist tag has
+            // "Unknown Artist" there, which named nobody in the store and sank the search).
+            static bool Known(string? a) => !string.IsNullOrWhiteSpace(a) &&
+                !string.Equals(a.Trim(), "Unknown Artist", StringComparison.OrdinalIgnoreCase);
+            var artist = Known(AlbumArtist) ? AlbumArtist : Known(Artist) ? Artist : string.Empty;
             var album = typed.Length > 0 ? typed : GetArtworkSearchAlbumTerm();
             ArtworkSearchQueryHint = typed.Length > 0 || string.IsNullOrWhiteSpace(artist) ? album : $"{album} — {artist}";
-            var results = await _itunes.SearchAlbumsAsync(artist, album);
+            var query = typed.Length > 0 ? typed : ITunesArtworkService.BuildAlbumSearchTerm(artist, album);
+            var result = await _itunes.SearchArtworkLibraryAsync(query, artist, searchPreferredArtist: typed.Length == 0, ct);
+            // Tags whose artist the store does not know: the album title alone, as before.
+            if (gen == _artworkSearchGeneration && typed.Length == 0 && !result.Sections.Any() &&
+                !string.Equals(query, album, StringComparison.OrdinalIgnoreCase))
+                result = await _itunes.SearchArtworkLibraryAsync(album, artist, searchPreferredArtist: false, ct);
             if (gen != _artworkSearchGeneration) return;
 
-            if (!string.IsNullOrWhiteSpace(artist))
-            {
-                // Multi-artist tags ("Rema & Selena Gomez") rarely equal iTunes's
-                // artist string exactly, so match loosely on normalized text —
-                // and keep the ranked list untouched when nothing survives,
-                // since the service already sorts best matches first.
-                var wanted = NormalizeArtistForMatch(artist);
-                var matched = results.Where(r =>
-                {
-                    var got = NormalizeArtistForMatch(r.ArtistName);
-                    return got.Length > 0 &&
-                           (got.Contains(wanted, StringComparison.Ordinal) ||
-                            wanted.Contains(got, StringComparison.Ordinal));
-                }).ToList();
-                if (matched.Count > 0)
-                    results = matched;
-            }
-            foreach (var r in results)
-            {
-                var item = await CreateArtworkSearchResultAsync(r);
-                if (gen != _artworkSearchGeneration) return;
-                ArtworkSearchResults.Add(item);
-            }
-
+            ShowArtworkLibrary(result);
             HasArtworkSearchResults = ArtworkSearchResults.Count > 0;
             // As the animated chooser: no status once results show (the tiles speak for
             // themselves); the line stays for errors.
             ArtworkSearchStatus = HasArtworkSearchResults ? string.Empty : Localization.Loc.T("Metadata.ArtNoMatches");
+            if (HasArtworkSearchResults)
+                _ = LoadArtworkPostersAsync(ArtworkSearchResults.ToList(), gen, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // A newer search took over.
         }
         catch (Exception ex)
         {
@@ -2266,18 +2269,6 @@ public partial class MetadataViewModel : ViewModelBase
         try { if (File.Exists(path)) File.Delete(path); } catch { }
     }
 
-    /// <summary>Lowercases and strips punctuation/joiners so artist strings from
-    /// tags and iTunes compare on words alone ("A & B" == "a b").</summary>
-    private static string NormalizeArtistForMatch(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        var normalized = System.Text.RegularExpressions.Regex.Replace(
-            value.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+", " ");
-        return System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
-    }
-
     private string GetArtworkSearchAlbumTerm()
     {
         if (!string.IsNullOrWhiteSpace(Album) &&
@@ -2289,28 +2280,68 @@ public partial class MetadataViewModel : ViewModelBase
         return Title.Trim();
     }
 
-    private async Task<ArtworkSearchResult> CreateArtworkSearchResultAsync(ITunesArtworkService.ArtworkCandidate candidate)
+    /// <summary>
+    /// Owner 11-26: fills the chooser from a library answer — the artist header, the sections
+    /// (Albums, Singles &amp; EPs, Appears On; or Best Matches then More by …; or one untitled
+    /// list for a plain search) and the flat list the picks and tests read, in the same order.
+    /// </summary>
+    private void ShowArtworkLibrary(ArtworkLibraryResult result)
     {
-        Bitmap? thumbnail = null;
-        if (_itunes != null)
+        var artist = result.ArtistName ?? string.Empty;
+        foreach (var section in result.Sections)
         {
-            var data = await _itunes.DownloadAsync(candidate.ThumbUrl);
-            if (data is { Length: > 0 })
+            var items = section.Items.Select(c => new ArtworkSearchResult(c, null)).ToList();
+            foreach (var item in items)
+                ArtworkSearchResults.Add(item);
+            var title = section.Kind switch
             {
+                ArtworkSectionKind.Albums => Localization.Loc.T("Metadata.ArtLibAlbums"),
+                ArtworkSectionKind.SinglesAndEps => Localization.Loc.T("Metadata.ArtLibSinglesEps"),
+                ArtworkSectionKind.AppearsOn => Localization.Loc.T("Metadata.ArtLibAppearsOn"),
+                ArtworkSectionKind.Matches => Localization.Loc.T("Metadata.ArtLibMatches"),
+                ArtworkSectionKind.MoreByArtist => Localization.Loc.T("Metadata.ArtLibMoreBy", artist),
+                _ => string.Empty,
+            };
+            ArtworkSearchSections.Add(new ArtworkResultSection(title, items));
+        }
+        ArtworkLibraryArtist = artist;
+        ArtworkLibraryDetail = artist.Length > 0 && result.ReleaseCount > 0
+            ? Localization.Loc.Plural("Metadata.ArtLibReleases", result.ReleaseCount)
+            : string.Empty;
+    }
+
+    /// <summary>The covers, a few at a time, in the order shown; a new search or the pop-up's
+    /// results going away stops it.</summary>
+    private async Task LoadArtworkPostersAsync(IReadOnlyList<ArtworkSearchResult> items, int gen, CancellationToken ct)
+    {
+        if (_itunes == null) return;
+        using var gate = new SemaphoreSlim(6);
+        var tasks = items.Select(async item =>
+        {
+            await gate.WaitAsync(ct).ConfigureAwait(true);
+            try
+            {
+                if (string.IsNullOrWhiteSpace(item.Candidate.ThumbUrl)) return;
+                var data = await _itunes.DownloadAsync(item.Candidate.ThumbUrl, ct).ConfigureAwait(true);
+                if (data is not { Length: > 0 } || ct.IsCancellationRequested || gen != _artworkSearchGeneration) return;
+                Bitmap? bitmap = null;
                 try
                 {
                     using var ms = new MemoryStream(data);
-                    thumbnail = new Bitmap(ms);
+                    bitmap = new Bitmap(ms);
                 }
                 catch
                 {
-                    thumbnail?.Dispose();
-                    thumbnail = null;
+                    return;
                 }
+                // Cleared meanwhile (a new search): the tile is gone, so is its cover.
+                if (gen != _artworkSearchGeneration || !ArtworkSearchResults.Contains(item)) bitmap.Dispose();
+                else item.Thumbnail = bitmap;
             }
-        }
-
-        return new ArtworkSearchResult(candidate, thumbnail);
+            finally { gate.Release(); }
+        }).ToList();
+        try { await Task.WhenAll(tasks).ConfigureAwait(true); }
+        catch (OperationCanceledException) { /* a newer search */ }
     }
 
     private void ClearArtworkSearchResults()
@@ -2318,6 +2349,9 @@ public partial class MetadataViewModel : ViewModelBase
         foreach (var result in ArtworkSearchResults)
             result.Dispose();
         ArtworkSearchResults.Clear();
+        ArtworkSearchSections.Clear();
+        ArtworkLibraryArtist = string.Empty;
+        ArtworkLibraryDetail = string.Empty;
     }
 
     [RelayCommand]
@@ -3292,12 +3326,14 @@ public partial class CustomTagItem : ObservableObject
     [ObservableProperty] private string _value = string.Empty;
 }
 
-public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
+public sealed class ArtworkSearchResult : ObservableObject, IArtworkChooserItem, IDisposable
 {
+    private Bitmap? _thumbnail;
+
     public ArtworkSearchResult(ITunesArtworkService.ArtworkCandidate candidate, Bitmap? thumbnail)
     {
         Candidate = candidate;
-        Thumbnail = thumbnail;
+        _thumbnail = thumbnail;
         Choices = new[]
         {
             new ArtworkSearchChoice(this, Highest: false, Localization.Loc.T("Metadata.Standard")),
@@ -3306,16 +3342,44 @@ public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
     }
 
     public ITunesArtworkService.ArtworkCandidate Candidate { get; }
-    public Bitmap? Thumbnail { get; }
+
+    /// <summary>The cover; arrives after the tile shows (owner 11-26: a library of up to 200).</summary>
+    public Bitmap? Thumbnail
+    {
+        get => _thumbnail;
+        set
+        {
+            var old = _thumbnail;
+            if (SetProperty(ref _thumbnail, value))
+            {
+                OnPropertyChanged(nameof(IArtworkChooserItem.Poster));
+                if (old != null && !ReferenceEquals(old, value)) old.Dispose();
+            }
+        }
+    }
+
     public string CollectionName => Candidate.CollectionName;
     public string ArtistName => Candidate.ArtistName;
 
     /// <summary>Standard, then Max (the accent pill).</summary>
     public IReadOnlyList<ArtworkSearchChoice> Choices { get; }
 
+    /// <summary>"2019 · Explicit", as the animated chooser: what tells same-titled tiles apart.</summary>
+    public string Detail
+    {
+        get
+        {
+            var parts = new List<string>(2);
+            if (Candidate.ReleaseYear > 0) parts.Add(Candidate.ReleaseYear.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (Candidate.Explicitness.Equals("cleaned", StringComparison.OrdinalIgnoreCase)) parts.Add(Localization.Loc.T("Metadata.AnimClean"));
+            else if (Candidate.Explicitness.Equals("explicit", StringComparison.OrdinalIgnoreCase)) parts.Add(Localization.Loc.T("Metadata.AnimExplicit"));
+            return string.Join(" · ", parts);
+        }
+    }
+
+    public bool HasDetail => Detail.Length > 0;
+
     Bitmap? IArtworkChooserItem.Poster => Thumbnail;
-    string IArtworkChooserItem.Detail => string.Empty;
-    bool IArtworkChooserItem.HasDetail => false;
     bool IArtworkChooserItem.CanPreview => false;
     string? IArtworkChooserItem.PosterTip => null;
     string? IArtworkChooserItem.PreviewPath => null;
@@ -3323,5 +3387,18 @@ public sealed class ArtworkSearchResult : IArtworkChooserItem, IDisposable
     bool IArtworkChooserItem.IsPreviewLoading => false;
     IReadOnlyList<IArtworkChooserChoice> IArtworkChooserItem.Choices => Choices;
 
-    public void Dispose() => Thumbnail?.Dispose();
+    public void Dispose()
+    {
+        var old = _thumbnail;
+        _thumbnail = null;
+        old?.Dispose();
+    }
+}
+
+/// <summary>A titled run of tiles in the Choose Artwork library ("Albums", "Singles &amp; EPs");
+/// an untitled one for a plain search.</summary>
+public sealed record ArtworkResultSection(string Title, IReadOnlyList<ArtworkSearchResult> Items)
+{
+    public bool HasTitle => Title.Length > 0;
+    public string CountText => Items.Count.ToString(System.Globalization.CultureInfo.CurrentCulture);
 }
