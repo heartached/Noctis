@@ -155,48 +155,44 @@
             <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
             <Setter Property="Foreground" Value="{DynamicResource AccentTextExactBrush}" />
         </Style>
-        <!-- Tab strip under the hero: plain labels, the selected one bright with an
-             accent underline (reference: Overview · Albums · Singles & EPs · Songs · Similar). -->
+        <!-- Tab strip under the hero (owner 11-26): pills in the "See all" family instead of
+             labels over an underline. The selected tab is a solid accent pill exactly like
+             See all (fill, text, border, size); the others are quiet chip pills that brighten
+             under the pointer. The fill and text colour glide between states. -->
         <Style Selector="Button.page-tab">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="2,10,2,0" />
+            <Setter Property="Background" Value="{DynamicResource ChipBackground}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,5" />
             <Setter Property="MinHeight" Value="0" />
-            <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="FontSize" Value="14" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="CornerRadius" Value="999" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="RenderTransform" Value="scale(1)" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="CubicEaseOut" />
+                    <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="CubicEaseOut" />
                 </Transitions>
             </Setter>
         </Style>
         <Style Selector="Button.page-tab:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)" />
-            <Setter Property="Opacity" Value="0.9" />
+            <Setter Property="Background" Value="{DynamicResource ChipHoverBackground}" />
         </Style>
-        <Style Selector="Button.page-tab:pointerover /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
-        </Style>
-        <Style Selector="Button.page-tab:pressed /template/ ContentPresenter">
-            <Setter Property="Background" Value="Transparent" />
+        <Style Selector="Button.page-tab:pointerover /template/ ContentPresenter, Button.page-tab:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="{Binding $parent[Button].Background}" />
+            <Setter Property="BorderBrush" Value="{Binding $parent[Button].BorderBrush}" />
+            <Setter Property="Foreground" Value="{Binding $parent[Button].Foreground}" />
         </Style>
         <Style Selector="Button.page-tab.selected">
-            <Setter Property="Opacity" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource AccentButtonBackground}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentForegroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
         </Style>
-        <Style Selector="Button.page-tab Border.tab-underline">
-            <Setter Property="Opacity" Value="0" />
-            <Setter Property="Transitions">
-                <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
-                </Transitions>
-            </Setter>
-        </Style>
-        <Style Selector="Button.page-tab.selected Border.tab-underline">
-            <Setter Property="Opacity" Value="1" />
+        <Style Selector="Button.page-tab.selected:pointerover, Button.page-tab.selected:pressed">
+            <Setter Property="Background" Value="{DynamicResource AccentColorBrushDark1}" />
         </Style>
         <!-- Tab pages: incoming page fades in with a short upward glide (Settings recipe). -->
         <Style Selector="StackPanel.tab-page">
@@ -943,75 +939,46 @@
 
             <!-- ── Tabs ─────────────────────────────────────────────── -->
             <StackPanel Margin="32,2,32,0">
-                <StackPanel Orientation="Horizontal" Spacing="26">
+                <StackPanel Orientation="Horizontal" Spacing="6">
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabOverview}"
                             Command="{Binding SelectTabCommand}" CommandParameter="overview"
                             AutomationProperties.Name="{loc:T ArtistDetail.Overview}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.Overview}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.Overview}" />
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabAlbums}"
                             Command="{Binding SelectTabCommand}" CommandParameter="albums"
                             AutomationProperties.Name="{loc:T ArtistDetail.Albums}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.Albums}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.Albums}" />
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabSingles}"
                             Command="{Binding SelectTabCommand}" CommandParameter="singles"
                             AutomationProperties.Name="{loc:T ArtistDetail.SinglesEPs}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.SinglesEPs}" />
                     </Button>
                     <!-- Live Albums / Compilations (GitHub #122): only for an artist who has any. -->
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabLive}"
                             Command="{Binding SelectTabCommand}" CommandParameter="live"
                             IsVisible="{Binding ShowLiveTab}"
                             AutomationProperties.Name="{loc:T ArtistDetail.LiveAlbums}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.LiveAlbums}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.LiveAlbums}" />
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabCompilations}"
                             Command="{Binding SelectTabCommand}" CommandParameter="compilations"
                             IsVisible="{Binding ShowCompilationsTab}"
                             AutomationProperties.Name="{loc:T ArtistDetail.Compilations}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.Compilations}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.Compilations}" />
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabSongs}"
                             Command="{Binding SelectTabCommand}" CommandParameter="songs"
                             AutomationProperties.Name="{loc:T ArtistDetail.Songs}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.Songs}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.Songs}" />
                     </Button>
                     <Button Classes="page-tab" Classes.selected="{Binding IsTabSimilar}"
                             Command="{Binding SelectTabCommand}" CommandParameter="similar"
                             AutomationProperties.Name="{loc:T ArtistDetail.SimilarArtists}">
-                        <StackPanel>
-                            <TextBlock Text="{loc:T ArtistDetail.SimilarArtists}" />
-                            <Border Classes="tab-underline" Height="2" Margin="0,9,0,0" CornerRadius="1"
-                                    Background="{DynamicResource AccentColorBrush}" />
-                        </StackPanel>
+                        <TextBlock Text="{loc:T ArtistDetail.SimilarArtists}" />
                     </Button>
                 </StackPanel>
-                <Border Height="1" Background="{DynamicResource ChipBackground}" />
             </StackPanel>
 
             <!-- ── Overview ─────────────────────────────────────────── -->
