@@ -9339,6 +9339,10 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>جرّب {0}</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>لا توجد ألبومات بعد. مكتبة الموسيقى على هذا الخادم فارغة — أو تعذّر الوصول إليها.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>تعذّر تحميل هذا الألبوم من الخادم.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} لم يستجب.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} لم يقبل تسجيل الدخول.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} ردّ بخطأ.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>إعادة المحاولة</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>الختم متوقف أثناء تشغيل صوت الفيديو الموسيقي — أوقف صوت الفيديو الموسيقي وأعد تشغيل الأغنية</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>لا شيء لحفظه — اختم سطرًا واحدًا على الأقل</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>تم الحفظ · تعذّرت كتابة الكلمات في الملف الصوتي (قيد الاستخدام أو للقراءة فقط؟)</value><comment>Sync lyrics (LRC editor) status</comment></data>

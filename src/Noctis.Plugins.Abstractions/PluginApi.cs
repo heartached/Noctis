@@ -251,13 +251,13 @@ public sealed record ServerAlbumInfo(string Id, string Title, string Artist, int
     /// (<see cref="ILibraryReader.GetServerAlbumArtworkAsync"/> fetches it).</summary>
     public string? ArtworkPath { get; init; }
 
-    /// <summary>How many times its server counted the album played (0 = never played); null when
-    /// the server does not say. Unknown is not "never played": leave such an album out of
-    /// play-history filters.</summary>
+    /// <summary>How many times the album was played (0 = never played): its servers' count plus
+    /// the plays of its songs in Noctis, which the servers never see. Null when neither knows.
+    /// Unknown is not "never played": leave such an album out of play-history filters.</summary>
     public int? PlayCount { get; init; }
 
-    /// <summary>When its server last saw the album played; null when never played or unknown
-    /// (a server can count plays without dating them).</summary>
+    /// <summary>When the album was last played, on a server or in Noctis; null when never played
+    /// or unknown (a server can count plays without dating them).</summary>
     public DateTimeOffset? LastPlayed { get; init; }
 }
 

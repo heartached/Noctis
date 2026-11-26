@@ -9336,6 +9336,10 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>试试 {0}</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>还没有专辑。此服务器上的音乐资料库为空，或无法访问。</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>无法从服务器加载此专辑。</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} 没有响应。</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} 未接受登录。</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} 返回了错误。</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>重试</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>播放音乐视频音频时无法打点 — 请关闭音乐视频音频并重新开始播放歌曲</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>没有可保存的内容 — 请至少为一行打点</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>已保存 · 无法将歌词写入音频文件（正在使用或只读？）</value><comment>Sync lyrics (LRC editor) status</comment></data>

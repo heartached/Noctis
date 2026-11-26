@@ -800,6 +800,10 @@ public sealed class PluginHost
     /// headless) = no server albums.</summary>
     public Services.MediaServer.IMediaServerService? MediaServer { get; set; }
 
+    /// <summary>The play log (<see cref="IPlayHistoryService.Events"/>), so a server album's plays
+    /// include the ones made in Noctis (GitHub #268). Set by the app; null (tests, headless) = none.</summary>
+    public Func<IReadOnlyList<PlayHistoryEvent>>? PlayHistorySource { get; set; }
+
     /// <summary>A plain copy of a playlist for plugins: its library tracks in order (a smart
     /// playlist's current matches), ids the library no longer has left out.</summary>
     public static PlaylistInfo ToPlaylistInfo(Playlist p, ILibraryService? library)
@@ -2469,11 +2473,16 @@ public sealed class PluginHost
                 return Array.Empty<ServerAlbumInfo>();
             }
             if (_disposed) return Array.Empty<ServerAlbumInfo>();
+            IReadOnlyList<PlayHistoryEvent>? history = null;
+            try { history = _owner.PlayHistorySource?.Invoke(); }
+            catch (Exception ex) { DebugLogger.Error(DebugLogger.Category.State, "Plugins", $"{_plugin.Id} play history: {ex.Message}"); }
+            var noctisPlays = Services.MediaServer.NoctisAlbumPlays.Build(history, albums);
             var result = new ServerAlbumInfo[albums.Count];
             for (var i = 0; i < albums.Count; i++)
             {
                 var a = albums[i];
-                var (playCount, lastPlayed) = Services.MediaServer.MediaServerService.CombinedPlayInfo(a);
+                var (playCount, lastPlayed) = Services.MediaServer.MediaServerService.WithNoctisPlays(
+                    Services.MediaServer.MediaServerService.CombinedPlayInfo(a), noctisPlays.For(a));
                 result[i] = new ServerAlbumInfo(a.Key, a.Name, a.Artist, a.Year, a.Genre, a.SongCount, a.ServerName)
                 {
                     ArtworkPath = server.CachedArtworkPath(a),

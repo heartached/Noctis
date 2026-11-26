@@ -33,6 +33,31 @@ public class ServerAlbumRow
 }
 
 /// <summary>
+/// A server whose albums could not be read (GitHub #268), under the "Connected to" line:
+/// "B didn't answer." with a Retry. <see cref="Detail"/> (the tooltip) is the reason.
+/// </summary>
+public partial class ServerFailureItem : ObservableObject
+{
+    public Guid ConnectionId { get; }
+    public string Text { get; }
+    public string Detail { get; }
+
+    [ObservableProperty] private bool _isRetrying;
+
+    public ServerFailureItem(ServerFailure failure)
+    {
+        ConnectionId = failure.ConnectionId;
+        Detail = failure.Message;
+        Text = Noctis.Localization.Loc.T(failure.Error switch
+        {
+            MediaServerError.AuthFailed => "Server.ServerSignInFailed",
+            MediaServerError.ServerError => "Server.ServerFailed",
+            _ => "Server.ServerNoAnswer",
+        }, failure.ServerName);
+    }
+}
+
+/// <summary>
 /// Sentinel last item of the album-row list: hosts the status line and the
 /// load-more button inside the virtualized list so they keep scrolling with
 /// the grid content.
@@ -88,6 +113,10 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
     public ObservableCollection<Track> SearchTracks { get; } = new();
     public ObservableCollection<Track> AlbumTracks { get; } = new();
 
+    /// <summary>Servers that did not answer the last album read, each with a Retry (GitHub #268).</summary>
+    public ObservableCollection<ServerFailureItem> ServerFailures { get; } = new();
+    [ObservableProperty] private bool _hasServerFailures;
+
     [ObservableProperty] private bool _isConfigured;
     [ObservableProperty] private bool _isLoading;
     [ObservableProperty] private bool _isLoadingMore;
@@ -115,6 +144,8 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
 
         _mediaServer.ActiveConnectionChanged += (_, _) =>
             Dispatcher.UIThread.Post(ResetForConnectionChange);
+        _mediaServer.FailuresChanged += (_, _) =>
+            Dispatcher.UIThread.Post(SyncServerFailures);
 
         SyncConfiguredState();
         UpdateSurfaces();
@@ -385,6 +416,58 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         }
     }
 
+    // ── Servers that did not answer ──
+
+    private void SyncServerFailures()
+    {
+        var failures = _mediaServer.Failures;
+        var retrying = ServerFailures.Where(f => f.IsRetrying).Select(f => f.ConnectionId).ToHashSet();
+        ServerFailures.Clear();
+        foreach (var failure in failures)
+            ServerFailures.Add(new ServerFailureItem(failure) { IsRetrying = retrying.Contains(failure.ConnectionId) });
+        HasServerFailures = ServerFailures.Count > 0;
+    }
+
+    /// <summary>
+    /// Asks that one server again. With several, only it is read and its albums merge into the
+    /// grid (the others stay as they are); with one, the grid reloads.
+    /// </summary>
+    [RelayCommand]
+    private async Task RetryServer(ServerFailureItem? failure)
+    {
+        if (failure == null || failure.IsRetrying) return;
+        failure.IsRetrying = true;
+        try
+        {
+            if (!_mergedMode)
+            {
+                await ReloadAlbumsAsync();
+                return;
+            }
+            var ct = _lifetimeCts.Token;
+            var generation = _albumLoadGeneration;
+            IReadOnlyList<ServerAlbum> all;
+            try
+            {
+                all = await _mediaServer.RetryServerAsync(failure.ConnectionId, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            // While the first load still runs, its progress updates bring the albums in.
+            if (ct.IsCancellationRequested || generation != _albumLoadGeneration || IsLoading) return;
+            _mergedAlbums = all;
+            ShowMergedAlbums(ct);
+            if (Albums.Count == 0) StatusText = Noctis.Localization.Loc.T("Server.NoAlbums");
+        }
+        finally
+        {
+            failure.IsRetrying = false;
+            SyncServerFailures();
+        }
+    }
+
     // ── Album detail ──
 
     [RelayCommand]
@@ -530,6 +613,7 @@ public partial class ServerViewModel : ViewModelBase, ISearchable
         StatusText = "";
         SearchCameUpEmpty = false;
         SyncConfiguredState();
+        SyncServerFailures();
         UpdateSurfaces();
     }
 

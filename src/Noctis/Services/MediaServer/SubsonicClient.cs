@@ -119,15 +119,20 @@ public sealed class SubsonicClient : IMediaServerClient
     }
 
     public async Task<IReadOnlyList<ServerAlbum>> GetAlbumsAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
+        => (await GetAlbumPageAsync(connection, offset, limit, ct)).Albums;
+
+    public async Task<ServerAlbumPage> GetAlbumPageAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
     {
         var url = BuildUrl(connection, "getAlbumList2",
             ("type", "alphabeticalByName"),
             ("size", Math.Clamp(limit, 1, 500).ToString()),
             ("offset", Math.Max(0, offset).ToString()));
-        if (url == null) return Array.Empty<ServerAlbum>();
+        if (url == null)
+            return new(Array.Empty<ServerAlbum>(), MediaServerConnectResult.Fail(MediaServerError.InvalidUrl, Loc.T("Settings.Server.InvalidUrl")));
 
         var envelope = await GetSubsonicRootAsync(url, ct);
-        if (envelope.Doc == null) return Array.Empty<ServerAlbum>();
+        if (envelope.Doc == null)
+            return new(Array.Empty<ServerAlbum>(), MediaServerConnectResult.Fail(envelope.Error, envelope.Message));
         using (envelope.Doc)
         {
             var albums = new List<ServerAlbum>();
@@ -143,7 +148,7 @@ public sealed class SubsonicClient : IMediaServerClient
                 }
             }
             FillUnplayedCounts(albums, ReportsPlayCounts(root, albums));
-            return albums;
+            return new(albums);
         }
     }
 
@@ -482,7 +487,8 @@ public sealed class SubsonicClient : IMediaServerClient
             DateAdded = DateTime.UtcNow,
             SourceType = SourceType.Navidrome,
             SourceTrackId = songId,
-            SourceConnectionId = connection.Id.ToString("N")
+            SourceConnectionId = connection.Id.ToString("N"),
+            SourceAlbumId = GetId(song, "albumId")
         };
 
         track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);

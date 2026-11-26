@@ -143,6 +143,12 @@ public sealed class PlayHistoryService : IPlayHistoryService
             PlayedAtUtc = playedUtc,
             Skipped = false
         };
+        // A media server's song (GitHub #268): keep its album, the song is in no library.
+        if (track.SourceType is SourceType.Navidrome or SourceType.Jellyfin && track.SourceConnectionId.Length > 0)
+        {
+            e.ServerAlbumKey = string.IsNullOrEmpty(track.SourceAlbumId) ? null : $"{track.SourceConnectionId}:{track.SourceAlbumId}";
+            e.ServerAlbumIdentity = track.AlbumId;
+        }
         lock (_lock)
         {
             EnsureLoaded();

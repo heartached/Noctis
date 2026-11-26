@@ -9339,6 +9339,10 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>{0} を試す</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>まだアルバムがありません。このサーバーの音楽ライブラリが空か、接続できませんでした。</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>サーバーからこのアルバムを読み込めませんでした。</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} が応答しませんでした。</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} がサインインを受け付けませんでした。</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} がエラーを返しました。</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>再試行</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>ミュージックビデオの音声再生中はスタンプできません。ミュージックビデオの音声をオフにして曲を最初から再生してください</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>保存するものがありません。少なくとも 1 行にスタンプしてください</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>保存しました · オーディオファイルに歌詞を書き込めませんでした（使用中または読み取り専用？）</value><comment>Sync lyrics (LRC editor) status</comment></data>
