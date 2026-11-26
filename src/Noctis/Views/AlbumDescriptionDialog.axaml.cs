@@ -18,7 +18,8 @@ namespace Noctis.Views;
 /// blurred app behind, a compact header (cover, title, artist, fact chips) and one filled
 /// editor. Opened from "more" it shows the text ready to read, from "Edit Description" / "Add
 /// a description" with the caret in it. Save closes it (the view model's
-/// AlbumDescriptionSaved); Cancel, Esc and Alt+F4 close it and drop the edit.
+/// AlbumDescriptionSaved); Cancel, Esc, a click outside the card and Alt+F4 close it and drop
+/// the edit.
 /// </summary>
 public partial class AlbumDescriptionDialog : Window
 {
@@ -33,6 +34,8 @@ public partial class AlbumDescriptionDialog : Window
         // while the close plays, so a late Ctrl+Enter can't save twice.
         CardRoot.AddHandler(KeyDownEvent, OnCardKeyDown, RoutingStrategies.Tunnel);
         DescriptionEditor.TextChanged += (_, _) => UpdateFooter();
+        DescriptionDialogs.CloseOnOutsidePress(this, CardRoot, DescriptionEditor,
+            () => _vm?.SaveAlbumDescriptionEditCommand.IsRunning == true);
     }
 
     public AlbumDescriptionDialog(AlbumDetailViewModel vm) : this()
@@ -202,6 +205,27 @@ internal static class DescriptionDialogs
     /// <summary>Ctrl+Enter (Cmd+Enter on macOS). Plain Enter is a new line in the editor.</summary>
     internal static bool IsSaveGesture(KeyEventArgs e)
         => e.Key == Key.Enter && e.KeyModifiers is KeyModifiers.Control or KeyModifiers.Meta;
+
+    /// <summary>
+    /// Light dismiss (owner 11-26), the way SongsViewOptionsDialog / WrapDialog do it: a left
+    /// press outside <paramref name="card"/> closes the window, which drops the edit as Cancel
+    /// does (OnClosed). On the window and tunnelling: outside the card PillDialogHost draws
+    /// nothing hit-testable, so a backdrop press reaches the window alone. Only the press counts,
+    /// so a text-selection drag that starts in the editor and ends outside never closes. While
+    /// the editor's own menu is open the press only closes that menu; while a save runs nothing
+    /// closes (as with Esc).
+    /// </summary>
+    internal static void CloseOnOutsidePress(Window window, Control card, TextBox editor, Func<bool> isSaving)
+    {
+        window.AddHandler(InputElement.PointerPressedEvent, (_, e) =>
+        {
+            if (!e.GetCurrentPoint(window).Properties.IsLeftButtonPressed) return;
+            if (editor.ContextFlyout is { IsOpen: true } || editor.ContextMenu is { IsOpen: true }) return;
+            if (new Rect(card.Bounds.Size).Contains(e.GetPosition(card))) return;
+            e.Handled = true;
+            if (!isSaving()) window.Close();
+        }, RoutingStrategies.Tunnel);
+    }
 
     internal static void FocusAtEnd(TextBox editor)
     {
