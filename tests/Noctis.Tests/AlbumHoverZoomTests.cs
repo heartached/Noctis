@@ -517,6 +517,129 @@ public class AlbumHoverZoomTests
         win.Close();
     }
 
+    /// <summary>Discord 11-25 (live, "Ryda (feat. Shoneyin &amp; Lil Tjay)"): a first-row cover sat
+    /// 5px below the scroller's top, less than half its grow plus the shadow's reach, so it grew
+    /// away from the top: downward by the whole grow (12-20px), over the top of its title. The
+    /// grids now give the first row that room inside the scroller without moving it, so a
+    /// first-row cover grows round its centre like every other row: its bottom moves half the
+    /// grow, it stays inside the viewport and its shadow shows. Row grid and Masonry, both
+    /// spacings, the widths it was measured at.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, false, 1600)]
+    [InlineData(false, false, 1890)]
+    [InlineData(false, false, 2560)]
+    [InlineData(true, false, 1600)]
+    [InlineData(true, false, 1890)]
+    [InlineData(true, false, 2560)]
+    [InlineData(false, true, 1600)]
+    [InlineData(false, true, 1890)]
+    [InlineData(false, true, 2560)]
+    [InlineData(true, true, 1600)]
+    [InlineData(true, true, 1890)]
+    [InlineData(true, true, 2560)]
+    public async Task FirstRowCover_GrowsRoundItsCentre_NotDownOverItsTitle(bool wide, bool masonry, int width)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 60; i++)
+            ((List<Album>)lib.Albums).Add(new Album { Id = Guid.NewGuid(), Name = $"Album {i:00}", Artist = "Artist", Year = 2020, Tracks = new List<Track>() });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumHoverZoom = true;
+        settings.AlbumGridWideSpacing = wide;
+        settings.AlbumGridMasonry = masonry;
+        var vm = new LibraryAlbumsViewModel(lib, player, new SidebarViewModel(persistence, lib), settings);
+        vm.AlbumSortMode = "title";
+        var view = new LibraryAlbumsView { DataContext = vm };
+        var win = new Window { Width = width, Height = 1400, Content = view };
+        win.Show(); Pump();
+        vm.IsActive = true;
+        List<Button> Tiles() => view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && Tiles().Count < 15) { Pump(1); await Task.Delay(5); }
+        Pump(4);
+        Assert.Equal(masonry, vm.IsMasonryView);
+        var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
+        var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.IsEffectivelyVisible);
+        AssertFirstRowGrowsRoundItsCentre(win, view, sv, tiles, vm.GridColumns, wide, $"wide={wide} masonry={masonry} width={width}");
+        win.Close();
+    }
+
+    /// <summary>The same room above the Favorites grid's first row: it shares TileHoverZoom and
+    /// the Albums page's 5px (wide 9px) first-row gap.</summary>
+    [AvaloniaTheory]
+    [InlineData(false, 1600)]
+    [InlineData(false, 2560)]
+    [InlineData(true, 1600)]
+    [InlineData(true, 2560)]
+    public async Task Favorites_FirstRowCover_GrowsRoundItsCentre(bool wide, int width)
+    {
+        EnsureAppStyles();
+        var lib = new FakeLibraryService();
+        for (var i = 0; i < 20; i++)
+            lib.TrackList.Add(new Track
+            {
+                Id = Guid.NewGuid(), Title = $"Song {i:00}", Artist = "Artist", Album = $"Single {i}", AlbumArtist = "Artist",
+                FilePath = $"/music/{i}.mp3", Duration = TimeSpan.FromMinutes(3), IsFavorite = true, AlbumId = Guid.NewGuid(),
+            });
+        var persistence = new TestPersistenceService();
+        var player = new PlayerViewModel(new FakeAudioPlayer(), lib, persistence, new FakeAnimatedCoverService());
+        var settings = new SettingsViewModel(persistence, lib, new NoOpPlayHistory());
+        settings.AlbumHoverZoom = true;
+        settings.AlbumGridWideSpacing = wide;
+        var vm = new FavoritesViewModel(player, lib, persistence, new SidebarViewModel(persistence, lib), settings);
+        vm.Refresh();
+        var view = new FavoritesView { DataContext = vm };
+        var win = new Window { Width = width, Height = 1400, Content = view };
+        win.Show(); Pump();
+        List<Button> Tiles() => view.GetVisualDescendants().OfType<Button>().Where(b => b.Classes.Contains("album-tile") && b.IsEffectivelyVisible).ToList();
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && Tiles().Count < 10) { Pump(1); await Task.Delay(5); }
+        Pump(4);
+        var tiles = Tiles().OrderBy(t => t.TranslatePoint(default, view)!.Value.Y).ThenBy(t => t.TranslatePoint(default, view)!.Value.X).ToList();
+        var sv = view.GetVisualDescendants().OfType<ScrollViewer>().First(s => s.IsEffectivelyVisible);
+        AssertFirstRowGrowsRoundItsCentre(win, view, sv, tiles, vm.GridColumns, wide, $"favorites wide={wide} width={width}");
+        win.Close();
+    }
+
+    /// <summary>The first row rests where it did (dock top margin 8, wide 13, + the cover's top in
+    /// the scroller content: row 1 + tile 4, wide 1 + 2 + 6), and its first, second and last
+    /// covers each grow round their centre (bottom moves half the grow), inside the viewport,
+    /// with their shadow.</summary>
+    private void AssertFirstRowGrowsRoundItsCentre(Window win, Control view, ScrollViewer sv, List<Button> tiles, int cols, bool wide, string label)
+    {
+        Border Cover(Button t) => t.GetVisualDescendants().OfType<Border>().First(b => b.ClipToBounds);
+        var restingTop = wide ? 13 + 9 : 8 + 5;
+        var first = Cover(tiles[0]).TranslatePoint(default, view)!.Value.Y;
+        var size = Cover(tiles[0]).Bounds.Height;
+        var grow = size * 0.04;
+        _o.WriteLine($"{label}: cover {size:0.##}, first row top {first:0.##} (was {restingTop}), half grow {grow / 2:0.##}");
+        Assert.True(Math.Abs(first - restingTop) < 0.5, $"first row moved from {restingTop} to {first:0.##}");
+
+        foreach (var idx in new[] { 0, 1, cols - 1 })
+        {
+            var t = tiles[idx];
+            var cover = Cover(t);
+            var bottom = cover.TranslatePoint(new Point(0, cover.Bounds.Height), view)!.Value.Y;
+            var p = t.TranslatePoint(new Point(t.Bounds.Width / 2, 40), win)!.Value;
+            win.MouseMove(p); Pump(2);
+            var until = Environment.TickCount64 + 350;
+            while (Environment.TickCount64 < until) { Thread.Sleep(16); Pump(1); }
+            Pump(3);
+            Assert.Equal(1.04, Scale(Art(t)), 2);
+            var grownBottom = cover.TranslatePoint(new Point(0, cover.Bounds.Height), view)!.Value.Y;
+            var tl = cover.TranslatePoint(default, sv)!.Value;
+            var br = cover.TranslatePoint(new Point(cover.Bounds.Width, cover.Bounds.Height), sv)!.Value;
+            _o.WriteLine($"  tile {idx}: origin {Art(t).RenderTransformOrigin} bottom +{grownBottom - bottom:0.##} cover ({tl.X:0.#},{tl.Y:0.#})-({br.X:0.#},{br.Y:0.#}) of {sv.Viewport.Width:0.#} glow-fits={t.Classes.Contains("glow-fits")}");
+            Assert.Equal(0.5, Art(t).RenderTransformOrigin.Point.Y, 3);
+            Assert.True(grownBottom - bottom <= grow / 2 + 0.05, $"tile {idx}: cover bottom moved {grownBottom - bottom:0.##} (half grow {grow / 2:0.##})");
+            Assert.True(tl.X >= -0.01 && tl.Y >= -0.01 && br.X <= sv.Viewport.Width + 0.01, $"tile {idx} cover clipped by the viewport");
+            Assert.Contains("glow-fits", t.Classes);
+            Assert.Equal(1, Glow(t).Opacity, 2);
+        }
+    }
+
     /// <summary>Discord 11-25: the hover glow was white (#3DFFFFFF, 24px), a light plate behind
     /// the white title text, and on a Ctrl-selected tile it spilled past the red selection
     /// outline. The glow is a dark shadow in every theme now.</summary>
