@@ -32,6 +32,28 @@ public class AnimatedArtworkCacheUsageTests : IDisposable
         try { Directory.Delete(_dir, recursive: true); } catch { }
     }
 
+    /// <summary>Album loops and artist videos share the cache, so its options show while either
+    /// fetcher is on (they used to follow the album switch only), and About's What's new opens the
+    /// running version's release notes.</summary>
+    [AvaloniaFact]
+    public async Task CacheOptions_ShowWhileEitherFetcherIsOn_AndWhatsNewPointsAtThisVersion()
+    {
+        var vm = new SettingsViewModel(new PersistenceService(_dir), new FakeLibraryService(), new NoOpPlayHistoryService());
+        await vm.LoadAsync();
+        vm.AnimatedArtworkAutoFetch = false;
+        vm.ArtistVideos = false;
+        Assert.False(vm.ShowAnimatedArtworkCacheOptions);
+        var raised = 0;
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(SettingsViewModel.ShowAnimatedArtworkCacheOptions)) raised++; };
+        vm.ArtistVideos = true;
+        Assert.True(vm.ShowAnimatedArtworkCacheOptions);
+        vm.ArtistVideos = false;
+        vm.AnimatedArtworkAutoFetch = true;
+        Assert.True(vm.ShowAnimatedArtworkCacheOptions);
+        Assert.Equal(3, raised);
+        Assert.EndsWith("/releases/tag/v" + UpdateService.CurrentVersion.ToString(3), SettingsViewModel.WhatsNewUrl);
+    }
+
     [AvaloniaFact]
     public async Task OpeningTheAppearanceTab_RereadsTheCacheFilledSinceLaunch()
     {

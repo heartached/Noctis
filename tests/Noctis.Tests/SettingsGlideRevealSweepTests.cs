@@ -19,7 +19,7 @@ public class SettingsGlideRevealSweepTests
         // General
         "LaunchAtStartupError", "FileTypesStatus",
         // Appearance
-        "EnableAnimatedCovers", "AnimatedArtworkAutoFetch", "AlbumPageTintEnabled",
+        "EnableAnimatedCovers", "ShowAnimatedArtworkCacheOptions", "AlbumPageTintEnabled",
         // Player
         "PlaybackBarShowStop", "PlaybackBarShowQuickPlaylist", "PlaybackBarShowTrash", "PlaybackBarShowSkipButtons",
         "ShowTrashFolderMissingHint", "ShowArtworkLyricsHint", "MiniPlayerFrostUnavailable",

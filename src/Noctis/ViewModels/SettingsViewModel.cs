@@ -10543,6 +10543,13 @@ public partial class SettingsViewModel : ViewModelBase
         Helpers.PlatformHelper.OpenUrl(url);
     }
 
+    /// <summary>The release notes of the version that is running (About's "What's new").</summary>
+    internal static string WhatsNewUrl =>
+        $"https://github.com/heartached/Noctis/releases/tag/v{UpdateService.CurrentVersion.ToString(3)}";
+
+    [RelayCommand]
+    private void OpenWhatsNew() => Helpers.PlatformHelper.OpenUrl(WhatsNewUrl);
+
     [RelayCommand]
     private void OpenDiscord()
     {

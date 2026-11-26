@@ -115,13 +115,19 @@ public partial class SettingsViewModel
     /// <summary>The cache's files; the block list is not needed here.</summary>
     private AnimatedArtworkCache AnimatedArtworkCacheFiles => _animatedArtworkCache ??= new AnimatedArtworkCache(_persistence, null);
 
+    /// <summary>The cache options (quality, size, usage, Clear) show while either fetcher is on:
+    /// album loops and artist videos share the one size-capped cache.</summary>
+    public bool ShowAnimatedArtworkCacheOptions => AnimatedArtworkAutoFetch || ArtistVideos;
+
     partial void OnAnimatedArtworkAutoFetchChanged(bool value)
     {
+        OnPropertyChanged(nameof(ShowAnimatedArtworkCacheOptions));
         if (_settingsLoaded) _ = SaveAsync();
     }
 
     partial void OnArtistVideosChanged(bool value)
     {
+        OnPropertyChanged(nameof(ShowAnimatedArtworkCacheOptions));
         if (_settingsLoaded) _ = SaveAsync();
     }
 

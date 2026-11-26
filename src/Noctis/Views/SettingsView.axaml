@@ -3207,10 +3207,30 @@
                                           IsChecked="{Binding AnimatedArtworkAutoFetch}"
                                           VerticalAlignment="Center"/>
                 </Grid>
-                <controls:CollapsibleContent IsOpen="{Binding AnimatedArtworkAutoFetch}" Lift="10" Motion="Glide">
+                </StackPanel>
+            </Border>
+            <!-- Artist videos: the artist's Apple Music motion video behind their page's header,
+                 in the same size-capped cache. Off by default: it asks Apple about every artist
+                 page opened. -->
+            <Border Classes="setting-row divided">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.ArtistVideos}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.ArtistVideosDesc}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          AutomationProperties.Name="{loc:T Settings.ArtistVideos}"
+                                          IsChecked="{Binding ArtistVideos}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+                <!-- The cache options serve both fetchers (album loops and artist videos share the
+                     size-capped cache), so they show while either is on. -->
+                <controls:CollapsibleContent IsOpen="{Binding ShowAnimatedArtworkCacheOptions}" Lift="10" Motion="Glide">
                 <!-- 11-26: the folded options sit in their own inset card (hairline between rows),
                      so they read as one group under the toggle; the usage bar is a pill. -->
-                <Border Classes="sub-card" Margin="0,12,0,0">
+                <Border Classes="sub-card" Margin="0,0,0,14">
                 <StackPanel Classes="sub-setting">
                     <!-- GitHub #185: the quality fetched loops download at (also Find Animated
                          Artwork); 2160p falls back to 1080p when an album has none. -->
@@ -3275,24 +3295,6 @@
                 </StackPanel>
                 </Border>
                 </controls:CollapsibleContent>
-                </StackPanel>
-            </Border>
-            <!-- Artist videos: the artist's Apple Music motion video behind their page's header,
-                 in the same size-capped cache. Off by default: it asks Apple about every artist
-                 page opened. -->
-            <Border Classes="setting-row divided">
-                <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
-                        <TextBlock Text="{loc:T Settings.ArtistVideos}" FontSize="15" FontWeight="SemiBold"/>
-                        <TextBlock Text="{loc:T Settings.ArtistVideosDesc}"
-                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
-                    </StackPanel>
-                    <controls:LottieToggle Grid.Column="1"
-                                          AutomationProperties.Name="{loc:T Settings.ArtistVideos}"
-                                          IsChecked="{Binding ArtistVideos}"
-                                          VerticalAlignment="Center"/>
-                </Grid>
-            </Border>
             </StackPanel>
             </controls:CollapsibleContent>
             <Border Classes="setting-row">
@@ -9695,13 +9697,13 @@
                                        FontSize="12"
                                        VerticalAlignment="Center" />
                         </StackPanel>
-                        <!-- After an automatic update: the release notes on GitHub -->
-                        <Button Command="{Binding OpenLatestReleaseCommand}"
+                        <!-- Always there (Discord 11-26, Andre): this version's release notes on GitHub -->
+                        <Button x:Name="WhatsNewButton"
+                                Command="{Binding OpenWhatsNewCommand}"
                                 AutomationProperties.Name="{loc:T Settings.WhatsNew}"
                                 Classes="pill"
                                 Padding="12,4"
-                                VerticalAlignment="Center"
-                                IsVisible="{Binding ShowWhatsNew}">
+                                VerticalAlignment="Center">
                             <TextBlock Text="{loc:T Settings.WhatsNew}" FontSize="12" />
                         </Button>
                     </StackPanel>

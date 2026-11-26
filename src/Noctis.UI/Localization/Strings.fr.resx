@@ -2222,7 +2222,7 @@ Années : year:1990-1999, year:&gt;2000</value><comment>Tooltip on the sidebar s
   <data name="Spectrogram.FileMissing" xml:space="preserve"><value>Le fichier est introuvable sur le disque.</value><comment>Spectrogram pop-up error</comment></data>
   <data name="Spectrogram.Failed" xml:space="preserve"><value>Échec de l'analyse : {0}</value><comment>Spectrogram pop-up error; {0} = the error</comment></data>
   <data name="Spectrogram.Verdict.Checking" xml:space="preserve"><value>Vérification…</value><comment>Spectrogram verdict row while the source-quality check runs</comment></data>
-  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>Semble authentique</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
+  <data name="Spectrogram.Verdict.LooksGenuine" xml:space="preserve"><value>Aucun signe d’encodage avec perte</value><comment>Spectrogram verdict: lossless file whose frequency content looks like a real lossless source</comment></data>
   <data name="Spectrogram.Verdict.ProbablyLossy" xml:space="preserve"><value>Probablement issu d’une source avec perte</value><comment>Spectrogram verdict: lossless file that probably came from an MP3/AAC</comment></data>
   <data name="Spectrogram.Verdict.ProbablyUpsampled" xml:space="preserve"><value>Probablement suréchantillonné depuis la qualité CD</value><comment>Spectrogram verdict: hi-res file that is probably CD audio upsampled</comment></data>
   <data name="Spectrogram.Verdict.ProbablyReencoded" xml:space="preserve"><value>Probablement réencodé depuis un débit inférieur</value><comment>Spectrogram verdict: lossy file whose cutoff is far below what its bitrate keeps</comment></data>
