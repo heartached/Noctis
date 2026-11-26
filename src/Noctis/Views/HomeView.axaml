@@ -13,6 +13,8 @@
              Background="{DynamicResource AppMainBackground}">
 
     <UserControl.Resources>
+        <!-- The Show pill menus mark the count in use (accent pill, like a Settings drop-down). -->
+        <conv:IntEqualsConverter x:Key="IntEquals" />
         <conv:ArtworkPathConverter x:Key="ArtworkConverter" />
 
         <!-- One chart row, shared by Most Played and Last Played: rank | art | title+heart |
@@ -811,7 +813,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                         </Button>
@@ -915,7 +917,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                         </Button>
@@ -947,7 +949,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                         </Button>
@@ -984,7 +986,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                         </Button>
@@ -1002,11 +1004,11 @@
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                    <MenuItem Header="6" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="6" />
-                                    <MenuItem Header="10" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="10" />
-                                    <MenuItem Header="20" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="20" />
-                                    <MenuItem Header="50" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="50" />
-                                    <MenuItem Header="100" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="100" />
+                                    <MenuItem Header="6" Classes.current="{Binding RecentAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=6}" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="6" />
+                                    <MenuItem Header="10" Classes.current="{Binding RecentAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=10}" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="10" />
+                                    <MenuItem Header="20" Classes.current="{Binding RecentAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=20}" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="20" />
+                                    <MenuItem Header="50" Classes.current="{Binding RecentAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=50}" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="50" />
+                                    <MenuItem Header="100" Classes.current="{Binding RecentAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=100}" Command="{Binding SetRecentAlbumsCountCommand}" CommandParameter="100" />
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
@@ -1061,7 +1063,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                         </Button>
@@ -1078,11 +1080,11 @@
                             <Button.Flyout>
                                 <MenuFlyout Placement="BottomEdgeAlignedRight"
                                             helpers:MenuOpenAnimation.EnableFlyoutClose="True">
-                                    <MenuItem Header="6" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="6" />
-                                    <MenuItem Header="10" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="10" />
-                                    <MenuItem Header="20" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="20" />
-                                    <MenuItem Header="50" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="50" />
-                                    <MenuItem Header="100" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="100" />
+                                    <MenuItem Header="6" Classes.current="{Binding NewAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=6}" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="6" />
+                                    <MenuItem Header="10" Classes.current="{Binding NewAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=10}" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="10" />
+                                    <MenuItem Header="20" Classes.current="{Binding NewAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=20}" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="20" />
+                                    <MenuItem Header="50" Classes.current="{Binding NewAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=50}" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="50" />
+                                    <MenuItem Header="100" Classes.current="{Binding NewAlbumsCount, Converter={StaticResource IntEquals}, ConverterParameter=100}" Command="{Binding SetNewAlbumsCountCommand}" CommandParameter="100" />
                                 </MenuFlyout>
                             </Button.Flyout>
                         </Button>
@@ -1135,7 +1137,7 @@
                                 <Path Classes="section-chevron"
                                       Width="28" Height="28"
                                       Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                      StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                      StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                             </Border>
                         </StackPanel>
                     </Button>
@@ -1213,7 +1215,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                             <TextBlock Text="{loc:T Home.RepeatThesePastTwo}" FontSize="12" Opacity="0.5"
@@ -1293,7 +1295,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                             <TextBlock Text="{loc:T Home.BackEarsAfterLong}" FontSize="12" Opacity="0.5"
@@ -1376,7 +1378,7 @@
                                         <Path Classes="section-chevron"
                                               Width="28" Height="28"
                                               Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                              StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                              StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                     </Border>
                                 </StackPanel>
                                 <TextBlock Text="{Binding LastFmStatus}" FontSize="12" Opacity="0.5"
@@ -1489,7 +1491,7 @@
                                     <Path Classes="section-chevron"
                                           Width="28" Height="28"
                                           Data="M 9,11.5 L 14,16.5 L 19,11.5"
-                                          StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" />
+                                          StrokeThickness="1.75" StrokeLineCap="Round" StrokeJoin="Round" />
                                 </Border>
                             </StackPanel>
                             <TextBlock Text="{loc:T Home.LastFm.DiscoverLine}" FontSize="12" Opacity="0.5"

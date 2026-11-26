@@ -194,6 +194,8 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
     private Border? _sidebarWrapper;
     private SidebarEdgePeek? _sidebarPeek;
     private SidebarResizeGrip? _sidebarGrip;
+    private SidebarMotion? _sidebarMotion;
+    private int _sidebarHoverEpoch;
     private Border? _lyricsPanelWrapper;
     private DockPanel? _contentDockPanel;
     private DockPanel? _rootPanel;
@@ -995,7 +997,9 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             mainVm2.Sidebar.IsExpanded = pinned; // a peek may have left it expanded
                         if (_sidebarWrapper != null)
                         {
-                            _sidebarWrapper.Width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
+                            var width = mainVm2.IsSidebarHidden ? 0 : (pinned ? 220 : 60);
+                            if (_sidebarMotion != null) _sidebarMotion.Snap(width);
+                            else _sidebarWrapper.Width = width;
                             _sidebarWrapper.Background = null;
                             _sidebarWrapper.IsVisible = !mainVm2.IsSidebarHidden;
                         }
@@ -1004,7 +1008,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             _rootPanel.Margin = new Avalonia.Thickness(
                                 mainVm2.IsSidebarHidden ? 0 : (pinned ? 236 : 76), 0, 0, 0);
                             if (_rootPanel.RenderTransform is TranslateTransform t)
+                            {
+                                var slide = t.Transitions;
+                                t.Transitions = null; // drop an in-flight pin slide
                                 t.X = 0;
+                                t.Transitions = slide;
+                            }
                         }
                     }
                 };
@@ -1019,6 +1028,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                 // Sidebar hover expand/collapse
                 if (_sidebarWrapper != null)
                 {
+                    _sidebarMotion = new SidebarMotion(_sidebarWrapper, SidebarPane);
                     _sidebarWrapper.PropertyChanged += (_, e) =>
                     {
                         if (e.Property == Border.IsPointerOverProperty && !vm.IsSidebarHidden
@@ -1032,11 +1042,19 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             // It used to also translate the page 160 px right, which pushed the
                             // page's right edge off-screen while hovering: the Albums grid's last
                             // column and the top-right buttons were cut off (live check 11-23).
-                            var expanded = _sidebarWrapper.IsPointerOver
-                                           && vm.Settings.SidebarHoverExpand;
-                            _sidebarWrapper.Width = expanded ? 220 : 60;
-                            _sidebarWrapper.Background = expanded ? SidebarOverPageBacking(vm) : null;
-                            vm.Sidebar.IsExpanded = expanded;
+                            // Owner 11-26 (choppy): it opened the moment the pointer crossed the
+                            // rail and shut the moment it left, so passing over it or jitter on
+                            // its edge started and reversed the slide. A short intent delay each
+                            // way; the latest pointer state wins.
+                            var want = _sidebarWrapper.IsPointerOver && vm.Settings.SidebarHoverExpand;
+                            var hoverEpoch = ++_sidebarHoverEpoch;
+                            Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+                            {
+                                if (hoverEpoch != _sidebarHoverEpoch || _sidebarWrapper == null
+                                    || vm.IsSidebarHidden || vm.Settings.SidebarAlwaysExpanded) return;
+                                MoveSidebar(vm, _sidebarWrapper.IsPointerOver && vm.Settings.SidebarHoverExpand,
+                                    overPage: true);
+                            }, want ? SidebarMotion.HoverOpenDelay : SidebarMotion.HoverCloseDelay);
                         }
                     };
 
@@ -1061,15 +1079,12 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                         var expanded = pinned
                                        || (_sidebarWrapper.IsPointerOver
                                            && vm.Settings.SidebarHoverExpand);
-                        _sidebarWrapper.Width = expanded ? 220 : 60;
-                        _sidebarWrapper.Background = !pinned && expanded ? SidebarOverPageBacking(vm) : null;
+                        ++_sidebarHoverEpoch; // a pending hover move must not undo this
+                        MoveSidebar(vm, expanded, overPage: !pinned);
+                        // The page takes its new margin in one layout and slides there with
+                        // the rail's edge (render transform), instead of jumping at once.
                         if (_rootPanel != null)
-                        {
-                            _rootPanel.Margin = new Avalonia.Thickness(pinned ? 236 : 76, 0, 0, 0);
-                            if (_rootPanel.RenderTransform is TranslateTransform translate)
-                                translate.X = 0;
-                        }
-                        vm.Sidebar.IsExpanded = expanded;
+                            SidebarMotion.SlidePage(_rootPanel, pinned ? 236 : 76, opening: pinned);
                     };
                     vm.Settings.SidebarAlwaysExpandedChanged += _sidebarAlwaysExpandedHandler;
 
@@ -1091,6 +1106,7 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
                             // A short grace before tucking away, so overshooting the rail by a
                             // few pixels does not snap it shut (GitHub #233 auto-hide).
                             CloseDelay = TimeSpan.FromMilliseconds(300),
+                            Motion = _sidebarMotion,
                         };
                         _sidebarPeek.SyncHidden();
                     }
@@ -1110,6 +1126,30 @@ public partial class MainWindow : Window, IPageKeyOverlayHost
 
             }
         }
+    }
+
+    /// <summary>
+    /// Expand or collapse the shown rail with <see cref="SidebarMotion"/>. Expanding lays the
+    /// labels out first and the growing rail uncovers them; collapsing keeps them (and the
+    /// backing under them) until the rail is narrow, so the icons never jump to the middle of
+    /// a still-wide rail. <paramref name="overPage"/>: the rail covers the page (not pinned).
+    /// </summary>
+    private void MoveSidebar(MainWindowViewModel vm, bool expanded, bool overPage)
+    {
+        if (_sidebarWrapper is not { } rail || _sidebarMotion == null) return;
+        if (expanded)
+        {
+            rail.Background = overPage ? SidebarOverPageBacking(vm) : null;
+            vm.Sidebar.IsExpanded = true;
+            _sidebarMotion.MoveTo(SidebarEdgePeek.ExpandedWidth);
+            return;
+        }
+        if (vm.Sidebar.IsExpanded) rail.Background = SidebarOverPageBacking(vm);
+        _sidebarMotion.MoveTo(SidebarEdgePeek.RailWidth, () =>
+        {
+            rail.Background = null;
+            vm.Sidebar.IsExpanded = false;
+        });
     }
 
     /// <summary>

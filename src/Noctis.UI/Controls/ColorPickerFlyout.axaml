@@ -159,15 +159,20 @@
                                         Width="22" Height="22" CornerRadius="11"
                                         VerticalAlignment="Center"
                                         Margin="0,0,8,0"/>
+                                <!-- 11-26: the caret sat on the last digit and the "#" was cut by the field's
+                                     left edge. Avalonia draws an end-of-line caret 1px inside the text,
+                                     and bold Consolas digits fill their whole advance. Now the app font
+                                     at SemiBold with 2.5px tracking (its trailing share keeps the caret
+                                     clear of the digit) and 2px side padding. -->
                                 <TextBox x:Name="HexInput"
                                          Classes="hex-input"
                                          Grid.Column="1"
                                          Watermark="#RRGGBB"
-                                         FontFamily="Consolas, Courier New, monospace"
-                                         FontWeight="Bold"
+                                         FontWeight="SemiBold"
                                          Background="Transparent"
                                          BorderThickness="0"
-                                         Padding="0"
+                                         Padding="2,0"
+                                         LetterSpacing="2.5"
                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                          FocusAdorner="{x:Null}"
                                          VerticalContentAlignment="Center"/>

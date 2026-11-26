@@ -155,7 +155,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.NewPlaylistPositionTop" xml:space="preserve"><value>Вверху</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.NewPlaylistPositionBottom" xml:space="preserve"><value>Внизу</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.RemoveEmptyFolders" xml:space="preserve"><value>Удалять пустые папки</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
-  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Удалять папку, когда из неё перемещён или удалён последний плейлист. Новая папка остаётся, пока в ней не побывал плейлист.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
+  <data name="Settings.RemoveEmptyFoldersHint" xml:space="preserve"><value>Удаляет папку, когда в ней не остаётся плейлистов. Новые пустые папки остаются.</value><comment>Text in SettingsView.axaml (Discord 11-24, sina)</comment></data>
   <data name="Settings.SidebarMoveUp" xml:space="preserve"><value>Переместить вверх</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SidebarMoveDown" xml:space="preserve"><value>Переместить вниз</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.CollapseAlbumEditions" xml:space="preserve"><value>Объединять издания альбомов</value><comment>Text in SettingsView.axaml</comment></data>
@@ -329,9 +329,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.EqualizerButton" xml:space="preserve"><value>Эквалайзер</value><comment>Player Island Buttons row: EQ on/off button (GitHub #94)</comment></data>
   <data name="Settings.EqualizerButtonHint" xml:space="preserve"><value>Кнопка включения эквалайзера после кнопки «Перемешать».</value><comment>Player Island Buttons row hint</comment></data>
   <data name="Settings.PlaybackTime" xml:space="preserve"><value>Время воспроизведения</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Прошедшее и оставшееся время текущего трека в блоке трека. Нажмите на время, чтобы вместо этого показать общую длительность.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.PlaybackTimeInTrackBox" xml:space="preserve"><value>Показывает прошедшее и оставшееся время. Нажмите на время, чтобы увидеть общую длительность.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.InlineVolumeSlider" xml:space="preserve"><value>Всегда показывать ползунок громкости</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
-  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ползунок громкости находится рядом с кнопкой громкости, а не во всплывающем окне. Нажатие на кнопку выключает звук. Узкий островок по-прежнему использует всплывающее окно.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
+  <data name="Settings.InlineVolumeSliderHint" xml:space="preserve"><value>Ползунок громкости остаётся рядом с кнопкой громкости. Нажатие на кнопку выключает звук.</value><comment>Text in SettingsView.axaml (Player Island buttons: the volume slider always on the island)</comment></data>
   <data name="Settings.WaveformSeekBar" xml:space="preserve"><value>Волновая форма на полосе перемотки</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.WaveformSeekBarHint" xml:space="preserve"><value>Показывать волновую форму песни на полосе перемотки островка плеера и мини-плеера. Она рассчитывается в фоне для текущей и следующей песни и затем запоминается.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TrackBoxOpacity" xml:space="preserve"><value>Непрозрачность блока трека</value><comment>Text in SettingsView.axaml</comment></data>
@@ -401,7 +401,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ArtworkColour" xml:space="preserve"><value>Цвет обложки</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TintBarsCurrentCover" xml:space="preserve"><value>Окрашивать столбцы в цвет обложки. Если выключено — они белые.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.FullSpectrum" xml:space="preserve"><value>Полный спектр</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
-  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Взвешивать столбцы как студийный анализатор, чтобы тихие высокие частоты до 20 кГц оставались видны.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
+  <data name="Settings.FullSpectrumHint" xml:space="preserve"><value>Усиливает тихие высокие частоты до 20 кГц, чтобы они оставались видны.</value><comment>Text in SettingsView.axaml (GitHub #205)</comment></data>
   <data name="Settings.FrequencyBarsRisingFromTip" xml:space="preserve"><value>Частотные столбцы, растущие снизу</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
   <data name="Settings.Bars" xml:space="preserve"><value>Столбцы</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BarsMirroredAboutCentreTip" xml:space="preserve"><value>Столбцы, отражённые относительно центральной линии</value><comment>ToolTip.Tip in SettingsView.axaml</comment></data>
@@ -464,31 +464,31 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.FullscreenLyricsFocus" xml:space="preserve"><value>Фокус в полноэкранном тексте</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.DimAllButCurrent" xml:space="preserve"><value>Приглушать все строки, кроме текущей и соседних.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsFullScreenHideIsland" xml:space="preserve"><value>Скрывать островок плеера в полноэкранном режиме</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>В полноэкранном режиме на странице текста под песней остаётся только полоса прогресса. Воспроизведением по-прежнему можно управлять с клавиатуры.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsFullScreenHideIslandHint" xml:space="preserve"><value>В полноэкранном режиме видна только полоса прогресса. Клавиатура по-прежнему работает.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsMinLineOpacity" xml:space="preserve"><value>Минимальная непрозрачность строк</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Все строки текста остаются слегка видимыми, чтобы можно было щёлкнуть по любой и перейти к ней. При 0% далёкие от текущей строки скрыты.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsMinLineOpacityHint" xml:space="preserve"><value>Далёкие строки остаются слегка видимыми, чтобы по ним можно было щёлкнуть. При 0% они скрыты.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.JoinSplitWords" xml:space="preserve"><value>Склеивать разбитые слова</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Не разбивать слова на слоги в текстах TTML.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.KeepWordsWholeWhen" xml:space="preserve"><value>Не разбивать слова на слоги в текстах песен.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLift" xml:space="preserve"><value>Свечение и подъём</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsGlowAndLiftHint" xml:space="preserve"><value>Пропетые слова плавно поднимаются, а протяжные ноты светятся, как в Apple Music. Если выключено, текст с синхронизацией по словам остаётся неподвижным.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRenderer" xml:space="preserve"><value>Отрисовка текста</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Рисовать строки текста песни плагином. Прокрутка, тайминг и переход по щелчку остаются за Noctis.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsRendererHint" xml:space="preserve"><value>Строки текста рисует плагин. Прокрутка и тайминг не меняются.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererBuiltIn" xml:space="preserve"><value>Noctis</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsRendererOff" xml:space="preserve"><value>{0} (плагин выключен)</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsCenterWhenNoLyrics" xml:space="preserve"><value>Центрировать плеер, если у песни нет текста</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Если у песни нет текста или это инструментал, страница текста переносит обложку, сведения о песне и кнопки в центр.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsCenterWhenNoLyricsHint" xml:space="preserve"><value>Переносит обложку и кнопки в центр.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoReturn" xml:space="preserve"><value>Автоматически возвращаться к текущей строке</value><comment>Lyrics Page toggle in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>После прокрутки текст через несколько секунд возвращается к строке, которая сейчас звучит. Выключено: он остаётся там, куда вы его прокрутили, пока вы не нажмёте «Следовать».</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoReturnHint" xml:space="preserve"><value>Через несколько секунд после прокрутки возвращается к текущей строке. Выключено: остаётся на месте, пока вы не нажмёте «Следовать».</value><comment>Lyrics Page toggle hint in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebar" xml:space="preserve"><value>Фон под боковой панелью</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsBackgroundBehindSidebarHint" xml:space="preserve"><value>Фон страницы текста (обложка, плавный фон, видео или цвет) доходит до края окна, а боковая панель лежит поверх него.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsWaveformSeekBar" xml:space="preserve"><value>Волновая форма в полосе прогресса</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Показывать волновую форму песни в полосе прогресса на странице текста; нажмите или перетащите, чтобы перемотать. Она вычисляется в фоне для текущей и следующих песен и затем запоминается.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsWaveformSeekBarHint" xml:space="preserve"><value>Показывает волновую форму песни в полосе прогресса.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowTranslations" xml:space="preserve"><value>Показывать переводы</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Показывать перевод из файла TTML под каждой строкой.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowTranslationsHint" xml:space="preserve"><value>Показывает перевод под каждой строкой, если он есть в файле.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowRomanization" xml:space="preserve"><value>Показывать транслитерацию</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Показывать транслитерацию из файла TTML (ромадзи, пиньинь…) под каждой строкой.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowRomanizationHint" xml:space="preserve"><value>Показывает ромадзи или пиньинь под каждой строкой, если они есть в файле.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.ShowBackgroundVocals" xml:space="preserve"><value>Показывать бэк-вокал</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Показывать бэк-вокал и импровизации мелкой строкой под основной.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowBackgroundVocalsHint" xml:space="preserve"><value>Показывает бэк-вокал и импровизации мелкой строкой.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.PlayerBarOpacity" xml:space="preserve"><value>Непрозрачность стекла</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.HowSolidPlaybackBar" xml:space="preserve"><value>Насколько плотными выглядят панель воспроизведения, очередь и меню. Очередь и меню используют это значение при включённом Liquid Glass.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.BackgroundBlur" xml:space="preserve"><value>Размытие фона</value><comment>Settings slider title: blur of the app behind pop-ups and Settings</comment></data>
@@ -537,9 +537,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Всё, что тише, считается тишиной. Ниже — сохраняются тихие затухания; выше — обрезается больше, например шипение.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Играет из «{0}»</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
   <data name="Settings.ShowPlaySource" xml:space="preserve"><value>Показывать, откуда играет музыка</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Очередь показывает альбом, плейлист или страницу, с которой запущена музыка. Нажмите, чтобы вернуться к песне там.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ShowPlaySourceHint" xml:space="preserve"><value>Очередь показывает, откуда запущена музыка. Нажмите, чтобы вернуться туда.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.TitleOpensPlaySource" xml:space="preserve"><value>Название песни открывает источник</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Щелчок по названию песни в островке плеера открывает песню на странице, откуда она играет, а не её альбом.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.TitleOpensPlaySourceHint" xml:space="preserve"><value>Щелчок по названию песни открывает страницу, откуда она играет, а не её альбом.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongs" xml:space="preserve"><value>Отсутствующие песни</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsHint" xml:space="preserve"><value>Если файл песни в очереди перемещён или удалён, воспроизведение переходит к следующей песне, которую можно воспроизвести. Выберите, что делать с отсутствующей песней.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.MissingSongsMark" xml:space="preserve"><value>Отмечать как отсутствующие</value><comment>Missing Songs picker option: keep the song in the queue, dimmed and marked</comment></data>
@@ -675,7 +675,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.NetEaseCloudMusic" xml:space="preserve"><value>NetEase Cloud Music</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LargeSyncedLyricsCatalog" xml:space="preserve"><value>Большой каталог синхронизированных текстов</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Musixmatch" xml:space="preserve"><value>Musixmatch</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>Тексты с синхронизацией по словам · может останавливаться, когда запрашивает капчу</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.MusixmatchHint" xml:space="preserve"><value>Тексты с синхронизацией по словам · может запросить капчу</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.Kugou" xml:space="preserve"><value>Kugou</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.KugouHint" xml:space="preserve"><value>Каталог текстов с синхронизацией по словам</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LrcRed" xml:space="preserve"><value>lrc.red</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
@@ -683,9 +683,9 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Unison" xml:space="preserve"><value>Unison</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.UnisonHint" xml:space="preserve"><value>Тексты сообщества Better Lyrics · Lyrics from Unison (unison.boidu.dev)</value><comment>Text in SettingsView.axaml; keep "Lyrics from Unison (unison.boidu.dev)": the attribution Unison's ODbL licence asks for</comment></data>
   <data name="Settings.LrcMux" xml:space="preserve"><value>lrcmux</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>Тексты из Deezer, KuGou, YouTube Music и Musixmatch через lrcmux.dev, запрашивается последним</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
+  <data name="Settings.LrcMuxHint" xml:space="preserve"><value>Deezer, KuGou, YouTube Music и Musixmatch через lrcmux.dev · запрашивается последним</value><comment>Text in SettingsView.axaml (GitHub #219)</comment></data>
   <data name="Settings.Genius" xml:space="preserve"><value>Genius</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
-  <data name="Settings.GeniusHint" xml:space="preserve"><value>Тексты без синхронизации для песен, которых нет в других источниках, часто у редких исполнителей · готовы к синхронизации в Lyrics Studio</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
+  <data name="Settings.GeniusHint" xml:space="preserve"><value>Тексты без синхронизации для песен, которых нет в других источниках · синхронизируйте их в Lyrics Studio</value><comment>Text in SettingsView.axaml (GitHub #265)</comment></data>
   <data name="Settings.YouTubeMusicLyrics" xml:space="preserve"><value>YouTube Music</value><comment>Text in SettingsView.axaml — lyrics provider name</comment></data>
   <data name="Settings.YouTubeMusicLyricsHint" xml:space="preserve"><value>Синхронизированные тексты · поиск медленнее</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.LyricsSourcesPickerHint" xml:space="preserve"><value>«Выбрать источник» на странице текста ищет во всех этих сервисах, даже если они здесь выключены.</value><comment>Text in SettingsView.axaml, under the online lyrics providers</comment></data>
@@ -3047,15 +3047,15 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.LyricsSaveTarget.Embedded" xml:space="preserve"><value>Внутри аудиофайла</value><comment>Save lyrics to choice: the audio file's own tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsSaveTarget.Both" xml:space="preserve"><value>Оба варианта</value><comment>Save lyrics to choice: files and the audio file's tags (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsAutoDownload" xml:space="preserve"><value>Автоматически загружать тексты</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Когда экран текста открыт для песни без текста, искать его в интернете и сохранять найденное. Уже имеющийся у песни текст никогда не заменяется.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoDownloadHint" xml:space="preserve"><value>Сохраняет тексты для песен без текста. Никогда не заменяет имеющийся текст.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType" xml:space="preserve"><value>Предпочтительный тип текста</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Что Noctis сохраняет, когда сам выбирает текст из интернета.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPreferredTypeHint" xml:space="preserve"><value>Тип, который Noctis выбирает, когда сам находит текст.</value><comment>Settings ▸ Lyrics (GitHub #135), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsUpgradePlain" xml:space="preserve"><value>Улучшать обычные тексты</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Если у песни есть только обычный текст, ищет синхронизированный текст выбранного типа. Если ничего не найдено, обычный текст остаётся.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsUpgradePlainHint" xml:space="preserve"><value>Ищет синхронизированный текст, если у песни есть только обычный. Если ничего не найдено, обычный текст остаётся.</value><comment>Settings ▸ Lyrics (GitHub #194), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindNew" xml:space="preserve"><value>Искать тексты для новых песен</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Ищет тексты в фоне для песен, добавленных в медиатеку. Песни с синхронизированным текстом не трогаются.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindNewHint" xml:space="preserve"><value>Ищет тексты для добавленных песен. Песни с синхронизированным текстом пропускаются.</value><comment>Settings ▸ Lyrics (GitHub #195), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsAutoFindLibrary" xml:space="preserve"><value>Искать тексты для всей медиатеки</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Ищет в фоне тексты для песен, у которых ещё нет синхронизированного текста.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsAutoFindLibraryHint" xml:space="preserve"><value>Ищет тексты для всех песен без синхронизированного текста.</value><comment>Settings ▸ Lyrics (GitHub #219), SettingsView.axaml</comment></data>
   <data name="Settings.LyricsPreferredType.WordSynced" xml:space="preserve"><value>По словам (лучшее из доступного)</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.LineSynced" xml:space="preserve"><value>По строкам</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
   <data name="Settings.LyricsPreferredType.Plain" xml:space="preserve"><value>Обычный текст</value><comment>Preferred lyrics type choice (SettingsViewModel)</comment></data>
@@ -4185,7 +4185,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.ShowStarRatingsHint" xml:space="preserve"><value>Выключите, если не оцениваете песни. Скрывает звёзды на страницах альбомов, в списках песен и меню. Ваши оценки сохраняются.</value><comment>Description under Show star ratings</comment></data>
   <data name="Settings.HideArtistsFewerThan" xml:space="preserve"><value>Скрывать исполнителей, у которых меньше</value><comment>Label before the song-count picker ("3 songs")</comment></data>
   <data name="Settings.HideSidebarUntilHover" xml:space="preserve"><value>Скрывать боковую панель до наведения</value><comment>Settings > General > Sidebar toggle (GitHub #233)</comment></data>
-  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Полностью скрывает боковую панель, и страницы занимают всю ширину. Подведите указатель к левому краю окна, чтобы она выехала.</value><comment>Description under Hide sidebar until hover</comment></data>
+  <data name="Settings.HideSidebarUntilHoverHint" xml:space="preserve"><value>Скрывает боковую панель. Подведите указатель к левому краю, чтобы показать её.</value><comment>Description under Hide sidebar until hover</comment></data>
   <data name="Count.Tracks" xml:space="preserve"><value>{0:N0} трек|{0:N0} трека|{0:N0} треков</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.Items" xml:space="preserve"><value>{0:N0} элемент|{0:N0} элемента|{0:N0} элементов</value><comment>Count with plural forms (one|other; see Loc.Plural)</comment></data>
   <data name="Count.HoursMinutes" xml:space="preserve"><value>{0} ч {1} мин</value><comment>Short duration (sidebar playlist row)</comment></data>
@@ -4462,7 +4462,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Search.LyricsOnly" xml:space="preserve"><value>Только тексты песен</value></data>
   <data name="Settings.DataFolderNewerVersion" xml:space="preserve"><value>Эта папка данных сохранена Noctis {0}. Её новые настройки сохранены, но эта версия сможет их использовать только после обновления.</value><comment>Notice pill at startup, shown once: a data folder shared with another computer was last saved by a newer Noctis; {0} is that version, e.g. 1.7.1 (GitHub #230)</comment></data>
   <data name="Settings.LyricsPageHideLyrics" xml:space="preserve"><value>Скрывать текст на странице текста</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Вместо него показывает плеер по центру, даже если у песни есть текст.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.LyricsPageHideLyricsHint" xml:space="preserve"><value>Всегда показывает плеер по центру вместо текста.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="LyricShare.Watermark" xml:space="preserve"><value>Водяной знак Noctis</value><comment>Checkbox above the card preview: draw the Noctis wordmark on the share card, its PNG and its video (LyricShareDialog, owner 11-12)</comment></data>
   <data name="LyricShare.WatermarkTip" xml:space="preserve"><value>Показывает логотип Noctis на карточке и в видео</value><comment>ToolTip on the Noctis watermark checkbox (LyricShareDialog)</comment></data>
   <data name="MoveToAlbum.Menu" xml:space="preserve"><value>Переместить в альбом</value><comment>Song menu row (GitHub #239)</comment></data>
@@ -4549,7 +4549,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Settings.Server.AmpacheHint" xml:space="preserve"><value>Ampache: входите с паролем Subsonic (задаётся в учётной записи Ampache) или ключом API, а не с паролем для входа.</value><comment>Music Server (GitHub #268)</comment></data>
   <data name="Settings.Section.MusicVideos" xml:space="preserve"><value>Музыкальные клипы</value><comment>Settings section label (Lyrics tab)</comment></data>
   <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>Находить клипы автоматически</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
-  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>Песни без своего клипа получают клип с YouTube — он транслируется без звука за текстом песни. Отправляет исполнителя и название песни в YouTube.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>Показывает видео с YouTube без звука за текстом песни. Отправляет исполнителя и название в YouTube.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>Для поиска видео на YouTube нужен yt-dlp.</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
   <data name="YtDlp.BotCheck" xml:space="preserve"><value>YouTube просит подтвердить, что вы не робот. Включите «Использовать вход в YouTube из браузера» или попробуйте позже.</value><comment>Music video lookup refused by YouTube's bot check, no browser sign-in in use</comment></data>
   <data name="YtDlp.BotCheckSignedIn" xml:space="preserve"><value>YouTube всё ещё просит подтвердить, что вы не робот. Убедитесь, что вы вошли в YouTube в {0}, или попробуйте позже.</value><comment>Bot check even with the browser sign-in; {0} = browser name (Firefox, Chrome…)</comment></data>
@@ -4558,7 +4558,7 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="YtDlp.CookiesFailed" xml:space="preserve"><value>Не удалось использовать вход в YouTube из {0}: {1}</value><comment>yt-dlp could not use the browser sign-in, in a wording Noctis does not know; {0} = browser name, {1} = yt-dlp's own error line</comment></data>
   <data name="MusicVideo.LastLookupFailed" xml:space="preserve"><value>Последний поиск клипа не удался: {0}</value><comment>Settings ▸ Lyrics ▸ Music videos note: the last lookup failed for a reason Noctis has no message for; {0} = yt-dlp's own error line</comment></data>
   <data name="Settings.MusicVideoBrowserSignIn" xml:space="preserve"><value>Использовать вход в YouTube из браузера</value><comment>Settings ▸ Lyrics ▸ Music videos toggle</comment></data>
-  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>На случай, если YouTube просит подтвердить, что вы не робот. yt-dlp читает cookie YouTube этого браузера здесь, на вашем компьютере, и использует их только для своих запросов к YouTube.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>Помогает пройти проверку YouTube «подтвердите, что вы не робот». Cookie YouTube из вашего браузера используются только для YouTube.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoBrowser" xml:space="preserve"><value>Браузер</value><comment>Settings ▸ Lyrics ▸ Music videos: label of the browser picker</comment></data>
   <data name="MusicVideo.Title" xml:space="preserve"><value>Клип с YouTube</value><comment>Music Video from YouTube dialog title</comment></data>
   <data name="MusicVideo.PasteLink" xml:space="preserve"><value>Вставьте ссылку YouTube</value><comment>Music video dialog: label of the link box</comment></data>

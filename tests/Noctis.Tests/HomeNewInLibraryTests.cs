@@ -341,6 +341,11 @@ public class HomeNewInLibraryTests
             Assert.True(item.Command!.CanExecute(item.CommandParameter));
             item.Command.Execute(item.CommandParameter);
             Assert.Equal(int.Parse(pick), read());
+            // The count in use is the menu's one accent pill (class "current"), like the chosen
+            // row of a Settings drop-down.
+            Dispatcher.UIThread.RunJobs();
+            Assert.Equal(new[] { pick }, menu.Items.OfType<MenuItem>()
+                .Where(m => m.Classes.Contains("current")).Select(m => (string?)m.Header).ToArray());
             menu.Hide();
         }
         await Task.Delay(50);
