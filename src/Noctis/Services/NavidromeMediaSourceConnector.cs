@@ -119,7 +119,7 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
                 songArray.ValueKind == JsonValueKind.Array)
             {
                 foreach (var song in songArray.EnumerateArray())
-                    songs.Add(MapSong(connection, song, albumName, albumArtist));
+                    songs.Add(MapSong(connection, song, albumId, albumName, albumArtist));
             }
         }
         catch
@@ -130,7 +130,7 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
         return songs;
     }
 
-    private static Track MapSong(SourceConnection connection, JsonElement song, string albumName, string albumArtist)
+    private static Track MapSong(SourceConnection connection, JsonElement song, string albumId, string albumName, string albumArtist)
     {
         string songId = song.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? Guid.NewGuid().ToString("N") : Guid.NewGuid().ToString("N");
         string title = song.TryGetProperty("title", out var tEl) ? tEl.GetString() ?? "Unknown Title" : "Unknown Title";
@@ -165,7 +165,11 @@ public sealed class NavidromeMediaSourceConnector : IMediaSourceConnector
             DateAdded = DateTime.UtcNow,
             SourceType = SourceType.Navidrome,
             SourceTrackId = songId,
-            SourceConnectionId = connection.Id.ToString("N")
+            SourceConnectionId = connection.Id.ToString("N"),
+            // The song's own album id, else the album it was listed under (GitHub #268: its
+            // plays count for that server album, not for every album of the same name).
+            SourceAlbumId = song.TryGetProperty("albumId", out var albumIdEl) && albumIdEl.ValueKind == JsonValueKind.String
+                && albumIdEl.GetString() is { Length: > 0 } songAlbumId ? songAlbumId : albumId
         };
 
         track.AlbumId = Track.ComputeAlbumId(track.AlbumArtist, track.Album);

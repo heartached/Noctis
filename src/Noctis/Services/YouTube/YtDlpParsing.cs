@@ -390,44 +390,123 @@ public static partial class YtDlpParsing
     }
 
     /// <summary>
-    /// yt-dlp could not read the browser's cookies (it stops before asking YouTube anything):
-    /// <see cref="YtDlpFailureKind.CookiesNotFound"/> when the browser or its profile is not
-    /// there, <see cref="YtDlpFailureKind.CookiesUnreadable"/> when the store is locked (the
-    /// browser is open), encrypted or not permitted, else <see cref="YtDlpFailureKind.Other"/>.
-    /// The bot-check line itself mentions "--cookies" and is not a cookie failure.
+    /// yt-dlp could not read the browser's cookies, in the wordings yt-dlp uses today (it stops
+    /// before asking YouTube anything): <see cref="YtDlpFailureKind.CookiesNotFound"/> when the
+    /// browser or its profile is not there, <see cref="YtDlpFailureKind.CookiesUnreadable"/> when
+    /// the store is locked (the browser is open), encrypted or not permitted, else
+    /// <see cref="YtDlpFailureKind.Other"/>. Other cookie wordings are left to
+    /// <see cref="ClassifyFailure"/>'s context rule. The bot-check line itself mentions
+    /// "--cookies" and is not a cookie failure.
     /// </summary>
     public static YtDlpFailureKind ClassifyCookieError(string? stderr)
     {
-        if (string.IsNullOrWhiteSpace(stderr)) return YtDlpFailureKind.Other;
-        var found = YtDlpFailureKind.Other;
-        foreach (var raw in stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        foreach (var line in ErrorLines(stderr))
         {
-            if (!raw.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase) || IsBotCheckError(raw)) continue;
-            var line = raw.ToLowerInvariant();
-            if (!line.Contains("cookie") && !line.Contains("local state") && !line.Contains("keyring") && !line.Contains("dpapi")) continue;
-            if (line.Contains("could not find") || line.Contains("not found") || line.Contains("no such file")
-                || line.Contains("unsupported browser"))
+            if (IsBotCheckError(line)) continue;
+            var l = line.ToLowerInvariant();
+            if (l.Contains("unsupported browser")
+                || l.Contains("could not find") && (l.Contains("cookies database") || l.Contains("cookie database") || l.Contains("local state")))
                 return YtDlpFailureKind.CookiesNotFound;
-            if (line.Contains("could not copy") || line.Contains("decrypt") || line.Contains("dpapi")
-                || line.Contains("permission") || line.Contains("not permitted") || line.Contains("locked")
-                || line.Contains("failed") || line.Contains("unable") || line.Contains("keyring"))
-                found = YtDlpFailureKind.CookiesUnreadable;
+            if (l.Contains("could not copy") && l.Contains("cookie")
+                || l.Contains("failed to decrypt with dpapi")
+                || l.Contains("cookie") && (l.Contains("permission denied") || l.Contains("database is locked")))
+                return YtDlpFailureKind.CookiesUnreadable;
         }
-        return found;
+        return YtDlpFailureKind.Other;
     }
 
-    /// <summary>The kind of failure a yt-dlp run's stderr shows. Cookie trouble first: it stops
-    /// a run before YouTube is asked anything.</summary>
-    public static YtDlpFailureKind ClassifyFailure(string? stderr)
+    /// <summary>
+    /// The kind of failure a yt-dlp run's stderr shows. With the browser sign-in on
+    /// (<paramref name="cookiesFromBrowser"/>), cookie trouble comes first: it stops a run before
+    /// YouTube is asked anything. A wording yt-dlp may use one day still counts by its context
+    /// (<see cref="YtDlpFailureKind.CookiesOther"/>): an ERROR line about cookies, a keyring,
+    /// DPAPI, decrypting or a browser profile, or a run that failed before any YouTube request.
+    /// With the sign-in off nothing is a cookie problem. <paramref name="stdout"/> is the run's
+    /// stdout, where a download prints its "[youtube]" lines.
+    /// </summary>
+    public static YtDlpFailureKind ClassifyFailure(string? stderr, bool cookiesFromBrowser = false, string? stdout = null)
     {
-        var cookies = ClassifyCookieError(stderr);
-        if (cookies != YtDlpFailureKind.Other) return cookies;
-        return IsBotCheckError(stderr) ? YtDlpFailureKind.BotCheck : YtDlpFailureKind.Other;
+        if (cookiesFromBrowser)
+        {
+            var cookies = ClassifyCookieError(stderr);
+            if (cookies != YtDlpFailureKind.Other) return cookies;
+        }
+        if (IsBotCheckError(stderr)) return YtDlpFailureKind.BotCheck;
+        if (cookiesFromBrowser && (ErrorLines(stderr).Any(IsCookieRelatedLine) || FailedBeforeYouTube(stderr, stdout)))
+            return YtDlpFailureKind.CookiesOther;
+        return YtDlpFailureKind.Other;
     }
+
+    private static readonly string[] CookieContext = { "cookie", "keyring", "dpapi", "decrypt", "local state" };
+
+    private static bool IsCookieRelatedLine(string line)
+    {
+        if (IsBotCheckError(line)) return false;
+        var l = line.ToLowerInvariant();
+        return CookieContext.Any(l.Contains) || l.Contains("browser") && l.Contains("profile");
+    }
+
+    /// <summary>
+    /// The run failed before yt-dlp asked YouTube anything: none of its lines names the YouTube
+    /// extractor ("[youtube]", "[youtube:search]"), a download, or an answer from YouTube.
+    /// </summary>
+    private static bool FailedBeforeYouTube(string? stderr, string? stdout)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return false;
+        if (IsBlockedError(stderr) || IsVideoGoneError(stderr)) return false;
+        var l = (stderr + "\n" + stdout).ToLowerInvariant();
+        return !l.Contains("[youtube") && !l.Contains("[download]") && !l.Contains("http error")
+               && !l.Contains("googlevideo") && !l.Contains("[info]");
+    }
+
+    /// <summary>yt-dlp's ERROR lines, trimmed, in order.</summary>
+    private static IEnumerable<string> ErrorLines(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) yield break;
+        foreach (var line in stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (line.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase)) yield return line;
+    }
+
+    /// <summary>Longest yt-dlp line a message quotes.</summary>
+    private const int MaxQuotedLine = 240;
+
+    /// <summary>
+    /// yt-dlp's first ERROR line (else its last line), for a message that quotes it: without the
+    /// "ERROR:" in front, the user's home folder shown as "~", and at most 240 characters. Null
+    /// when yt-dlp printed nothing.
+    /// </summary>
+    public static string? FirstErrorLine(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return null;
+        var line = ErrorLines(stderr).FirstOrDefault()
+                   ?? stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).LastOrDefault();
+        if (string.IsNullOrWhiteSpace(line)) return null;
+        if (line.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
+            line = line[5..].TrimStart(':', ' ', '\t');
+        line = WithoutHomeFolder(line).Trim();
+        if (line.Length == 0) return null;
+        return line.Length > MaxQuotedLine ? line[..MaxQuotedLine] + "…" : line;
+    }
+
+    /// <summary>The user's home folder (this one, or any "C:\Users\name", "/home/name", "/Users/name") as "~".</summary>
+    private static string WithoutHomeFolder(string text)
+    {
+        try
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile).TrimEnd('\\', '/');
+            if (home.Length > 3) text = text.Replace(home, "~", StringComparison.OrdinalIgnoreCase);
+        }
+        catch { }
+        return HomeFolderPattern().Replace(text, "~");
+    }
+
+    [GeneratedRegex(@"\b[A-Za-z]:\\(?:Users|Documents and Settings)\\[^\\/:*?""<>|\r\n]+|/(?:home|Users)/[^/\s""']+", RegexOptions.IgnoreCase)]
+    private static partial Regex HomeFolderPattern();
 
     /// <summary>The plain-language message for a bot check / cookie failure (empty for <see cref="YtDlpFailureKind.Other"/>).
-    /// <paramref name="cookieBrowser"/> is the browser whose sign-in was used, or null.</summary>
-    public static string FailureMessage(YtDlpFailureKind kind, string? cookieBrowser)
+    /// <paramref name="cookieBrowser"/> is the browser whose sign-in was used, or null; <paramref name="detail"/>
+    /// is yt-dlp's own line (<see cref="FirstErrorLine"/>) for <see cref="YtDlpFailureKind.CookiesOther"/>.</summary>
+    public static string FailureMessage(YtDlpFailureKind kind, string? cookieBrowser, string? detail = null)
     {
         var name = CookieBrowserName(cookieBrowser);
         return kind switch
@@ -437,6 +516,8 @@ public static partial class YtDlpParsing
             YtDlpFailureKind.BotCheck => Localization.Loc.T("YtDlp.BotCheck"),
             YtDlpFailureKind.CookiesNotFound => Localization.Loc.T("YtDlp.CookiesNotFound", name),
             YtDlpFailureKind.CookiesUnreadable => Localization.Loc.T("YtDlp.CookiesUnreadable", name),
+            YtDlpFailureKind.CookiesOther => Localization.Loc.T("YtDlp.CookiesFailed", name,
+                string.IsNullOrWhiteSpace(detail) ? "?" : detail),
             _ => string.Empty,
         };
     }
@@ -467,4 +548,7 @@ public enum YtDlpFailureKind
     CookiesUnreadable,
     /// <summary>The chosen browser (or its profile) is not on this computer.</summary>
     CookiesNotFound,
+    /// <summary>Another failure reading the browser sign-in (a wording yt-dlp may use one day),
+    /// shown with yt-dlp's own line.</summary>
+    CookiesOther,
 }

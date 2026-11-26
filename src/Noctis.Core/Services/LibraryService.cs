@@ -3478,6 +3478,7 @@ public class LibraryService : ILibraryService
         target.SourceType = source.SourceType;
         target.SourceTrackId = source.SourceTrackId;
         target.SourceConnectionId = source.SourceConnectionId;
+        target.SourceAlbumId = source.SourceAlbumId;
         target.SkipWhenShuffling = source.SkipWhenShuffling;
         target.RememberPlaybackPosition = source.RememberPlaybackPosition;
         target.MediaKind = source.MediaKind;

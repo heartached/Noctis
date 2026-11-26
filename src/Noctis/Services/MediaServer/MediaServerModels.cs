@@ -65,34 +65,64 @@ public sealed class ServerAlbum
 public sealed class NoctisAlbumPlays
 {
     private readonly Dictionary<string, (int Count, DateTimeOffset Last)> _byKey = new(StringComparer.Ordinal);
-    private readonly Dictionary<Guid, (int Count, DateTimeOffset Last)> _byIdentity = new();
 
     public static readonly NoctisAlbumPlays None = new();
 
     /// <summary>
     /// Indexes <paramref name="events"/> for <paramref name="albums"/> (the merged list). A play
     /// whose album key is in the list counts for that album (and the album it is an alternate
-    /// of); one without a key, or whose album id the server no longer lists, counts for the
-    /// album with the same album artist and title.
+    /// of). One without a key, or whose album id the server no longer lists, falls back to the
+    /// album artist + title, but only when that names ONE album: on the play's own server when
+    /// the key names it, else across the merged list. Two albums with that identity (two
+    /// "Greatest Hits" by one artist) are ambiguous, and the play counts for neither.
     /// </summary>
     public static NoctisAlbumPlays Build(IEnumerable<PlayHistoryEvent>? events, IReadOnlyList<ServerAlbum> albums)
     {
         var result = new NoctisAlbumPlays();
         if (events == null) return result;
         var keys = new HashSet<string>(StringComparer.Ordinal);
+        // Identity -> the merged albums with it; (server, identity) -> the merged albums holding a copy there.
+        var byIdentity = new Dictionary<Guid, List<ServerAlbum>>();
+        var byServerIdentity = new Dictionary<(Guid Server, Guid Identity), List<ServerAlbum>>();
         foreach (var album in albums)
         {
-            keys.Add(album.Key);
-            foreach (var alternate in album.Alternates) keys.Add(alternate.Key);
+            var identity = MediaServerService.AlbumIdentity(album);
+            Collect(byIdentity, identity, album);
+            foreach (var copy in album.Alternates.Prepend(album))
+            {
+                keys.Add(copy.Key);
+                Collect(byServerIdentity, (copy.ConnectionId, MediaServerService.AlbumIdentity(copy)), album);
+            }
         }
         foreach (var e in events)
         {
             if (e.ServerAlbumKey == null && e.ServerAlbumIdentity == null) continue;
             var played = new DateTimeOffset(DateTime.SpecifyKind(e.PlayedAtUtc, DateTimeKind.Utc));
-            if (e.ServerAlbumKey is { } key && keys.Contains(key)) Add(result._byKey, key, played);
-            else if (e.ServerAlbumIdentity is { } identity && identity != Track.UnknownAlbumBucketId) Add(result._byIdentity, identity, played);
+            if (e.ServerAlbumKey is { } key && keys.Contains(key))
+            {
+                Add(result._byKey, key, played);
+                continue;
+            }
+            if (e.ServerAlbumIdentity is not { } id || id == Track.UnknownAlbumBucketId) continue;
+            var candidates = ServerOf(e.ServerAlbumKey) is { } server && byServerIdentity.TryGetValue((server, id), out var onServer)
+                ? onServer
+                : byIdentity.GetValueOrDefault(id);
+            if (candidates is { Count: 1 }) Add(result._byKey, candidates[0].Key, played);
         }
         return result;
+    }
+
+    private static void Collect<TKey>(Dictionary<TKey, List<ServerAlbum>> map, TKey key, ServerAlbum album) where TKey : notnull
+    {
+        if (!map.TryGetValue(key, out var list)) map[key] = list = new List<ServerAlbum>();
+        if (!list.Contains(album)) list.Add(album);
+    }
+
+    /// <summary>The server a play's album key names ("&lt;connection id&gt;:&lt;album id&gt;"), or null.</summary>
+    private static Guid? ServerOf(string? key)
+    {
+        var colon = key?.IndexOf(':') ?? -1;
+        return colon > 0 && Guid.TryParseExact(key.AsSpan(0, colon), "N", out var server) ? server : null;
     }
 
     private static void Add<TKey>(Dictionary<TKey, (int Count, DateTimeOffset Last)> map, TKey key, DateTimeOffset played) where TKey : notnull
@@ -107,14 +137,12 @@ public sealed class NoctisAlbumPlays
     {
         var count = 0;
         DateTimeOffset? last = null;
-        void Take((int Count, DateTimeOffset Last) plays)
+        foreach (var copy in album.Alternates.Prepend(album))
         {
+            if (!_byKey.TryGetValue(copy.Key, out var plays)) continue;
             count += plays.Count;
             if (last is null || plays.Last > last) last = plays.Last;
         }
-        foreach (var copy in album.Alternates.Prepend(album))
-            if (_byKey.TryGetValue(copy.Key, out var plays)) Take(plays);
-        if (_byIdentity.TryGetValue(MediaServerService.AlbumIdentity(album), out var byIdentity)) Take(byIdentity);
         return (count, last);
     }
 }

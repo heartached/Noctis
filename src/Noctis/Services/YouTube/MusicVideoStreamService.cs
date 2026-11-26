@@ -1,3 +1,4 @@
+using Noctis.Localization;
 using Noctis.Models;
 
 namespace Noctis.Services.YouTube;
@@ -70,19 +71,29 @@ public sealed class MusicVideoStreamService
 
     /// <summary>
     /// Records a failed yt-dlp run: a bot check starts the cool-down, a bot check or cookie
-    /// failure becomes <see cref="LastProblem"/>. True when it was one of those.
+    /// failure becomes <see cref="LastProblem"/>, and so does any other yt-dlp failure Noctis
+    /// has no message for, quoting yt-dlp's first ERROR line (11-26; a video that is gone is
+    /// that video's matter, not a note). True when it became <see cref="LastProblem"/>.
     /// </summary>
     public bool NoteFailure(Exception ex)
     {
-        if (YtDlpAccessException.Find(ex) is not { } access) return false;
+        MusicVideoProblem problem;
         lock (_problemLock)
         {
             var now = Clock();
-            if (access.Kind == YtDlpFailureKind.BotCheck) _coolDownUntil = now + BotCheckCooldown;
-            _lastProblem = new MusicVideoProblem(access.Kind, access.Message, now);
+            if (YtDlpAccessException.Find(ex) is { } access)
+            {
+                if (access.Kind == YtDlpFailureKind.BotCheck) _coolDownUntil = now + BotCheckCooldown;
+                problem = new MusicVideoProblem(access.Kind, access.Message, now);
+            }
+            else if (ex is YtDlpRunException run && !YtDlpParsing.IsVideoGoneError(run.Stderr))
+                problem = new MusicVideoProblem(YtDlpFailureKind.Other, Loc.T("MusicVideo.LastLookupFailed", run.Message), now);
+            else
+                return false;
+            _lastProblem = problem;
         }
         DebugLogger.Warn(DebugLogger.Category.State, "MusicVideo.AccessProblem",
-            access.Kind == YtDlpFailureKind.BotCheck ? $"{access.Kind}, paused {BotCheckCooldown.TotalMinutes:0} min" : access.Kind.ToString());
+            problem.Kind == YtDlpFailureKind.BotCheck ? $"{problem.Kind}, paused {BotCheckCooldown.TotalMinutes:0} min" : problem.Kind.ToString());
         ProblemChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
