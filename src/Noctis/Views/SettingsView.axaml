@@ -893,6 +893,31 @@
             <Setter Property="Height" Value="15"/>
             <Setter Property="Opacity" Value="0.8"/>
         </Style>
+        <!-- 11-26 icon rule: an X or arrow that is a button by itself is a round-capped line
+             glyph, about 1.75px thick and ~0.29 of its button (28px in a row, 34px for the page
+             close). The Pages up/down arrows are the Home section chevron's drawing; one that
+             cannot move stays bare and dim (it drew the disabled grey disc, louder than the
+             arrows that work). -->
+        <Style Selector="Button.reorder-btn">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+        </Style>
+        <Style Selector="Path.reorder-chevron">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Data" Value="M 9,11.5 L 14,16.5 L 19,11.5"/>
+            <Setter Property="Stroke" Value="{Binding $parent[Button].Foreground}"/>
+            <Setter Property="StrokeThickness" Value="1.75"/>
+            <Setter Property="StrokeLineCap" Value="Round"/>
+            <Setter Property="StrokeJoin" Value="Round"/>
+            <Setter Property="Opacity" Value="0.8"/>
+        </Style>
+        <Style Selector="Button.reorder-btn:disabled /template/ ContentPresenter">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style Selector="Button.reorder-btn:disabled Path.reorder-chevron">
+            <Setter Property="Opacity" Value="0.25"/>
+        </Style>
         <Style Selector="Button.pill-action">
             <Setter Property="CornerRadius" Value="999"/>
             <Setter Property="Padding" Value="16,10"/>
@@ -1201,6 +1226,17 @@
                 </Transitions>
             </Setter>
         </Style>
+        <!-- A folded option group inside a row: an inset rounded card with hairlines between
+             its rows (Find Animated Artwork Automatically). -->
+        <Style Selector="Border.sub-card">
+            <Setter Property="Background" Value="#14808080"/>
+            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="Padding" Value="14,0"/>
+        </Style>
+        <Style Selector="Border.sub-divider">
+            <Setter Property="Height" Value="1"/>
+            <Setter Property="Background" Value="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+        </Style>
         <Style Selector="Grid.sub-setting:disabled, StackPanel.sub-setting:disabled">
             <Setter Property="Opacity" Value="0.4"/>
         </Style>
@@ -1433,16 +1469,16 @@
         <StyleInclude Source="avares://Noctis.UI/Assets/DropDowns.axaml"/>
         <!-- Equalizer: the per-band remove control is a round chip like the page's close X. -->
         <Style Selector="Button.eq-remove">
-            <Setter Property="Width" Value="26"/>
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="CornerRadius" Value="13"/>
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="CornerRadius" Value="14"/>
             <Setter Property="Padding" Value="0"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundListMediumBrush}"/>
         </Style>
         <Style Selector="Button.eq-remove /template/ ContentPresenter">
-            <Setter Property="CornerRadius" Value="13"/>
+            <Setter Property="CornerRadius" Value="14"/>
         </Style>
         <Style Selector="Button.eq-remove:pointerover">
             <Setter Property="RenderTransform" Value="scale(1)"/>
@@ -2058,7 +2094,7 @@
                 ToolTip.Tip="{loc:T Settings.CloseTip}"
                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CloseSettingsCommand}"
                 VerticalAlignment="Top" Margin="12,2,0,0">
-            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="24" Height="24" Margin="-6" StrokeThickness="1.75"/>
+            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="26" Height="26" Margin="-6" StrokeThickness="1.85"/>
         </Button>
     </Grid>
 
@@ -2262,22 +2298,21 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:SidebarPageOption">
                                 <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-                                    <Button Grid.Column="0" Classes="account-icon-btn"
+                                    <Button Grid.Column="0" Classes="account-icon-btn reorder-btn"
                                             AutomationProperties.Name="{loc:T Settings.SidebarMoveUp}"
                                             ToolTip.Tip="{loc:T Settings.SidebarMoveUp}"
                                             IsEnabled="{Binding CanMoveUp}"
                                             Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveSidebarPageUpCommand}"
                                             CommandParameter="{Binding}">
-                                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11"
-                                                  RenderTransform="rotate(180deg)"/>
+                                        <Path Classes="reorder-chevron" RenderTransform="rotate(180deg)"/>
                                     </Button>
-                                    <Button Grid.Column="1" Classes="account-icon-btn"
+                                    <Button Grid.Column="1" Classes="account-icon-btn reorder-btn"
                                             AutomationProperties.Name="{loc:T Settings.SidebarMoveDown}"
                                             ToolTip.Tip="{loc:T Settings.SidebarMoveDown}"
                                             IsEnabled="{Binding CanMoveDown}"
                                             Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).MoveSidebarPageDownCommand}"
                                             CommandParameter="{Binding}">
-                                        <PathIcon Data="{StaticResource ChevronDownThinIcon}" Width="11" Height="11"/>
+                                        <Path Classes="reorder-chevron"/>
                                     </Button>
                                     <TextBlock Grid.Column="2" Text="{Binding Label}" FontSize="13"
                                                Margin="8,0,0,0" VerticalAlignment="Center"
@@ -3171,12 +3206,15 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
                 <controls:CollapsibleContent IsOpen="{Binding AnimatedArtworkAutoFetch}" Lift="10" Motion="Glide">
-                <StackPanel Classes="sub-setting" Spacing="10" Margin="2,10,0,0">
+                <!-- 11-26: the folded options sit in their own inset card (hairline between rows),
+                     so they read as one group under the toggle; the usage bar is a pill. -->
+                <Border Classes="sub-card" Margin="0,12,0,0">
+                <StackPanel Classes="sub-setting">
                     <!-- GitHub #185: the quality fetched loops download at (also Find Animated
                          Artwork); 2160p falls back to 1080p when an album has none. -->
-                    <Grid ColumnDefinitions="*,Auto">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12">
                         <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Settings.AnimArtQuality}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AnimArtQuality}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.AnimArtQualityDesc}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
@@ -3185,14 +3223,15 @@
                                   Classes="pill-list"
                                   ItemsSource="{Binding AnimatedArtworkQualityOptions}"
                                   SelectedItem="{Binding SelectedAnimatedArtworkQualityOption}"
-                                  MinWidth="96"
+                                  MinWidth="110"
                                   VerticalAlignment="Center"
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </Grid>
-                    <Grid ColumnDefinitions="*,Auto">
+                    <Border Classes="sub-divider"/>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12">
                         <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Text="{loc:T Settings.AnimArtCacheSize}" FontSize="13" FontWeight="SemiBold"/>
+                            <TextBlock Text="{loc:T Settings.AnimArtCacheSize}" FontSize="14" FontWeight="SemiBold"/>
                             <TextBlock Text="{loc:T Settings.AnimArtCacheSizeDesc}"
                                        FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
                         </StackPanel>
@@ -3201,25 +3240,28 @@
                                   Classes="pill-list"
                                   ItemsSource="{Binding AnimatedArtworkCacheSizeOptions}"
                                   SelectedItem="{Binding SelectedAnimatedArtworkCacheSizeOption}"
-                                  MinWidth="96"
+                                  MinWidth="110"
                                   VerticalAlignment="Center"
                                   CornerRadius="999"
                                   Padding="14,8"/>
                     </Grid>
-                    <!-- How full the cache is: a thin bar plus "312 MB of 1 GB used", Clear on the right. -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="6" Margin="0,0,12,0" VerticalAlignment="Center">
-                            <ProgressBar Minimum="0" Maximum="100"
-                                         Value="{Binding AnimatedArtworkCacheUsedPercent}"
-                                         Height="4" CornerRadius="2"/>
+                    <Border Classes="sub-divider"/>
+                    <!-- How full the cache is: "312 MB of 1 GB used" over a pill bar, Clear on the right. -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,12">
+                        <StackPanel Grid.Column="0" Spacing="8" Margin="0,0,16,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding AnimatedArtworkCacheUsage}"
                                        FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                            <ProgressBar Minimum="0" Maximum="100"
+                                         Value="{Binding AnimatedArtworkCacheUsedPercent}"
+                                         Height="8" MinHeight="8" CornerRadius="999"/>
                         </StackPanel>
                         <Button Grid.Column="1"
                                 IsEnabled="{Binding HasAnimatedArtworkCache}"
                                 AutomationProperties.Name="{loc:T Settings.ClearCache}"
                                 Command="{Binding ClearAnimatedArtworkCacheCommand}"
                                 Classes="pill-action"
+                                MinWidth="110"
+                                HorizontalContentAlignment="Center"
                                 Padding="14,8"
                                 CornerRadius="999"
                                 Cursor="Hand"
@@ -3229,6 +3271,7 @@
                         </Button>
                     </Grid>
                 </StackPanel>
+                </Border>
                 </controls:CollapsibleContent>
                 </StackPanel>
             </Border>
@@ -5075,9 +5118,11 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
-            <Border Classes="setting-row" IsVisible="{Binding MusicVideoUseBrowserCookies}">
+            <!-- 11-26: folds open/shut like Discord Rich Presence's options. -->
+            <controls:CollapsibleContent IsOpen="{Binding MusicVideoUseBrowserCookies}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Grid.Column="0" Text="{loc:T Settings.MusicVideoBrowser}" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Grid.Column="0" Text="{loc:T Settings.MusicVideoBrowser}" FontSize="15" FontWeight="SemiBold"
                                VerticalAlignment="Center" Margin="0,0,12,0"/>
                     <ComboBox Grid.Column="1"
                               x:Name="MusicVideoCookieBrowserCombo"
@@ -5089,6 +5134,7 @@
                               VerticalAlignment="Center"/>
                 </Grid>
             </Border>
+            </controls:CollapsibleContent>
             <Border Classes="setting-row" IsVisible="{Binding HasMusicVideoProblem}">
                 <TextBlock x:Name="MusicVideoProblemNote" Text="{Binding MusicVideoProblemText}"
                            FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
@@ -5940,7 +5986,7 @@
                                                 Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RemoveEqBandCommand}"
                                                 CommandParameter="{Binding}"
                                                 ToolTip.Tip="{loc:T Settings.RemoveBandTip}">
-                                            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="20" Height="20" Margin="-5" StrokeThickness="2.1"/>
+                                            <controls:LineIcon Data="{StaticResource MenuLineClose}" Width="22" Height="22" Margin="-5" StrokeThickness="1.9"/>
                                         </Button>
                                     </Grid>
                                 </DataTemplate>
