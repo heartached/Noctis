@@ -146,6 +146,26 @@ public class FavoritesRowSelectionTests
         win.Close();
     }
 
+    /// <summary>Discord 11-26: holding a press on a tile painted its whole row grey (the row's
+    /// :pressed), and the tile shrank to 96% and back. Neither, through a right-click too.</summary>
+    [AvaloniaFact]
+    public async Task PressOnATile_PaintsNoRow_AndTheTileKeepsItsSize()
+    {
+        var (view, win) = await Mount(6);
+        var tile = Tiles(view)[1];
+        var p = tile.TranslatePoint(new Point(tile.Bounds.Width / 2, tile.Bounds.Height / 3), win)!.Value;
+        win.MouseMove(p); Pump(2);
+        win.MouseDown(p, MouseButton.Right); Pump(2);
+        win.MouseUp(p, MouseButton.Right); Pump(2);
+        AssertRowsLookPlain(view, "right-click");
+        win.MouseDown(p, MouseButton.Left); Pump(2);
+        AssertRowsLookPlain(view, "left press");
+        Assert.Equal(1, tile.RenderTransform?.Value.M11 ?? 1, 3);
+        win.MouseUp(p, MouseButton.Left); Pump(2);
+        AssertRowsLookPlain(view, "release");
+        win.Close();
+    }
+
     [AvaloniaFact]
     public async Task ArrowKeysAndSpace_NeverSelectTheRow()
     {
