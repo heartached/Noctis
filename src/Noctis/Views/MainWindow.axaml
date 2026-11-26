@@ -2187,15 +2187,8 @@
             Margin="8,8,8,12"
             CornerRadius="20"
             ZIndex="10">
-        <Border.Transitions>
-            <Transitions>
-                <DoubleTransition Property="Width" Duration="0:0:0.2">
-                    <DoubleTransition.Easing>
-                        <CubicEaseOut/>
-                    </DoubleTransition.Easing>
-                </DoubleTransition>
-            </Transitions>
-        </Border.Transitions>
+        <!-- Width moves are animated by SidebarMotion (code-behind): one curve for hover,
+             peek and pin, with the content held still while the rail resizes. -->
         <!-- Liquid Glass host: off, paints the sidebar fill the view used to paint
              itself; on, frosts the page content scrolling past under the rail. The
              rounded clip sits on the content, not on SidebarWrapper: the glass draws its

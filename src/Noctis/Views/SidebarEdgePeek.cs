@@ -45,6 +45,10 @@ internal sealed class SidebarEdgePeek
     /// away. Zero closes on the next dispatcher pass.</summary>
     public TimeSpan CloseDelay { get; init; }
 
+    /// <summary>Animates the rail in and out (the shell's shared sidebar motion). Without it the
+    /// rail snaps, and hides at once.</summary>
+    public SidebarMotion? Motion { get; init; }
+
     /// <summary>Whether the hidden rail is currently slid in.</summary>
     public bool IsPeeking { get; private set; }
 
@@ -115,16 +119,31 @@ internal sealed class SidebarEdgePeek
     {
         if (!IsPeeking)
         {
-            _rail.Width = 0;
-            _rail.IsVisible = false;
-            _setExpanded(false);
+            // Owner 11-26: it vanished in one frame while opening grew it; now it slides back
+            // out on the same curve, and leaves the tree once it got there.
+            Move(0, () =>
+            {
+                _rail.IsVisible = false;
+                _setExpanded(false);
+            });
             return;
         }
         // With hover-expand on, touching the edge brings the expanded sidebar at once (11-23
         // feedback: the edge brought the icon rail, and only a second hover expanded it).
         var expanded = _pinned() || ((_edge.IsPointerOver || _rail.IsPointerOver) && _hoverExpand());
         _rail.IsVisible = true;
-        _rail.Width = expanded ? ExpandedWidth : RailWidth;
         _setExpanded(expanded);
+        Move(expanded ? ExpandedWidth : RailWidth, null);
+    }
+
+    private void Move(double width, Action? settled)
+    {
+        if (Motion != null)
+        {
+            Motion.MoveTo(width, settled);
+            return;
+        }
+        _rail.Width = width;
+        settled?.Invoke();
     }
 }
