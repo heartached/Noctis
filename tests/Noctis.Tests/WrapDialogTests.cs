@@ -294,6 +294,81 @@ public class WrapDialogTests : IDisposable
         }
     }
 
+    /// <summary>Owner 11-26: the share card flickered on Full year / This month. A stats change
+    /// nulled Preview and disposed the cards, so the well showed "No data" until the new card
+    /// rendered. Now the old card stays until the new one lands, each switch renders each shape
+    /// once, and the new card fades in over the old one (no blank frame).</summary>
+    [AvaloniaFact]
+    public void PeriodSwitch_KeepsTheCard_RendersOncePerShape_AndCrossFades()
+    {
+        EnsureAppStyles();
+        var (lib, events) = SampleData();
+        var now = DateTime.Now;
+        for (var i = 0; i < 4; i++)
+            events.Add(Play(lib.TrackList[1], new DateTime(now.Year, now.Month, 1, 0, 0, i, DateTimeKind.Local)));
+        var vm = new WrapViewModel(new History(events), lib, new WrapArchiveService(ArchiveFile), _ => null);
+        var win = new WrapDialog(vm) { RequestedThemeVariant = ThemeVariant.Dark, Width = 1300, Height = 900 };
+        win.Show();
+        try
+        {
+            var front = win.FindControl<Image>("PreviewImage")!;
+            var back = win.FindControl<Image>("PreviewImageOld")!;
+            Assert.True(PumpUntil(() => vm.Preview != null && !vm.IsLoading && vm.CardsSettled, 8000));
+            Assert.True(PumpUntil(() => front.Opacity > 0.999 && back.Source == null, 2000));
+
+            var nulls = 0;
+            var swaps = new List<(object? Back, object? Front, double FrontOpacity, object? Old)>();
+            object? shown = vm.Preview;
+            vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName != nameof(WrapViewModel.Preview)) return;
+                if (vm.Preview == null) nulls++;
+                // The view handled it first (it subscribed on DataContext).
+                swaps.Add((back.Source, front.Source, front.Opacity, shown));
+                shown = vm.Preview;
+            };
+
+            foreach (var segment in new[] { "MonthSegment", "FullYearSegment" })
+            {
+                var old = vm.Preview;
+                var renders = vm.CardRenderCount;
+                swaps.Clear();
+                win.FindControl<RadioButton>(segment)!.IsChecked = true;
+                // Straight after the click the old card is still on screen.
+                Dispatcher.UIThread.RunJobs();
+                Assert.Same(old, front.Source);
+
+                Assert.True(PumpUntil(() => !vm.IsLoading && vm.Preview != null && !ReferenceEquals(vm.Preview, old) && vm.CardsSettled, 8000),
+                    $"{segment}: the new card never landed");
+                Assert.Equal(0, nulls);
+                Assert.Equal(renders + 2, vm.CardRenderCount);
+                var swap = Assert.Single(swaps);
+                Assert.Same(old, swap.Back);
+                Assert.Same(vm.Preview, swap.Front);
+                Assert.True(swap.FrontOpacity < 0.05, $"{segment}: new card started at {swap.FrontOpacity:0.00}");
+
+                Assert.True(PumpUntil(() => front.Opacity > 0.999 && back.Source == null, 2000),
+                    $"{segment}: the fade did not finish ({front.Opacity:0.00})");
+            }
+
+            // 1:1 -> 9:16: also a cross-fade, from the cached card, no render.
+            var square = vm.Preview;
+            var before = vm.CardRenderCount;
+            win.FindControl<RadioButton>("StorySegment")!.IsChecked = true;
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(square, back.Source);
+            Assert.NotNull(front.Source);
+            Assert.NotSame(square, front.Source);
+            Assert.Equal(before, vm.CardRenderCount);
+            Assert.True(PumpUntil(() => front.Opacity > 0.999 && back.Source == null && back.Opacity > 0.999, 2000));
+        }
+        finally
+        {
+            win.Close();
+            vm.Dispose();
+        }
+    }
+
     /// <summary>Saved years are whole-year snapshots: picking one hides "This month" and shows
     /// that year's recap; the share card follows.</summary>
     [AvaloniaFact]
