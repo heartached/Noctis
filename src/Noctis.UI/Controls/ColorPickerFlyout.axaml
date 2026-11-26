@@ -168,7 +168,7 @@
                                          Background="Transparent"
                                          BorderThickness="0"
                                          Padding="2,0"
-                                         LetterSpacing="1"
+                                         LetterSpacing="2"
                                          Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
                                          FocusAdorner="{x:Null}"
                                          VerticalContentAlignment="Center"/>

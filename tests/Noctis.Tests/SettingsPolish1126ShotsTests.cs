@@ -124,6 +124,53 @@ public class SettingsPolish1126ShotsTests
         });
     }
 
+    /// <summary>The colour picker's hex field with the caret after the last digit, 6x zoom:
+    /// "before" is the field as it was (no letter spacing, no padding), "after" as it ships.</summary>
+    [AvaloniaFact]
+    public void HexCaret_SavePngs()
+    {
+        var dir = Environment.GetEnvironmentVariable("NOCTIS_POLISH_SHOTS_DIR");
+        if (!HeadlessTestApp.RealRendering || string.IsNullOrEmpty(dir)) return;
+        Directory.CreateDirectory(dir);
+        EnsureAppStyles();
+        foreach (var (name, spacing, pad, caret) in new[] { ("hex-before-end", 0d, 0d, 7), ("hex-after-end", 2d, 2d, 7), ("hex-before-start", 0d, 0d, 0), ("hex-after-start", 2d, 2d, 0), ("hex-before-mid", 0d, 0d, 4), ("hex-after-mid", 2d, 2d, 4) })
+        {
+            var box = new TextBox
+            {
+                Text = "#E74856", Watermark = "#RRGGBB",
+                FontFamily = new FontFamily("Consolas, Courier New, monospace"), FontWeight = FontWeight.Bold,
+                Background = Brushes.Transparent, BorderThickness = new Thickness(0),
+                Padding = new Thickness(pad, 0), LetterSpacing = spacing,
+                Foreground = Brushes.White, CaretBrush = Brushes.White,
+                VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center,
+                Width = 120, Height = 24, MinHeight = 0,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+                Margin = new Thickness(10),
+            };
+            var window = new Window
+            {
+                Width = 160, Height = 48, Content = box, RequestedThemeVariant = ThemeVariant.Dark,
+                Background = new SolidColorBrush(Color.Parse("#141414")),
+            };
+            window.Show();
+            Pump(100);
+            box.Focus();
+            box.CaretIndex = caret;
+            Pump(120);
+            var full = Path.Combine(dir, $"_{name}.png");
+            window.CaptureRenderedFrame()!.Save(full);
+            using (var bmp = SKBitmap.Decode(full))
+            using (var big = bmp.Resize(new SKImageInfo(bmp.Width * 6, bmp.Height * 6), new SKSamplingOptions(SKFilterMode.Nearest)))
+            using (var img = SKImage.FromBitmap(big))
+            using (var data = img.Encode(SKEncodedImageFormat.Png, 100))
+            using (var fs = File.Create(Path.Combine(dir, $"{name}.png")))
+                data.SaveTo(fs);
+            File.Delete(full);
+            window.Close();
+        }
+    }
+
     private static void Crop(string src, string dst, SKRectI rect)
     {
         using var bmp = SKBitmap.Decode(src);
