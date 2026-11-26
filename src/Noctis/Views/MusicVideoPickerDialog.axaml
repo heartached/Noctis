@@ -1,0 +1,205 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="using:Noctis.Localization"
+        xmlns:vm="using:Noctis.ViewModels"
+        xmlns:controls="using:Noctis.Controls"
+        xmlns:helpers="using:Noctis.Helpers"
+        x:Class="Noctis.Views.MusicVideoPickerDialog"
+        x:DataType="vm:MusicVideoPickerViewModel"
+        Title="{loc:T MusicVideo.Title}"
+        CanResize="False"
+        WindowDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <!-- Same cards as Search Artist Info (ArtistInfoSearchDialog). -->
+        <Style Selector="ListBox.mv-results">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Padding" Value="0,0,16,0" />
+        </Style>
+        <Style Selector="ListBox.mv-results ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <Style Selector="ListBox.mv-results ListBoxItem" x:DataType="vm:MusicVideoCandidateRow">
+            <Setter Property="AutomationProperties.Name" Value="{Binding Converter={x:Static helpers:AccessibleNames.ItemName}}" />
+        </Style>
+        <Style Selector="ListBox.mv-results ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.mv-results ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.mv-results ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+        <Style Selector="Border.mv-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackground}" />
+            <Setter Property="BorderThickness" Value="1.5" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+        </Style>
+        <Style Selector="ListBox.mv-results ListBoxItem:pointerover Border.mv-row">
+            <Setter Property="Background" Value="{DynamicResource PillFieldBackgroundPointerOver}" />
+        </Style>
+        <Style Selector="TextBlock.mv-status">
+            <Setter Property="FontSize" Value="12.5" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+        <Style Selector="TextBlock.mv-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.6" />
+        </Style>
+    </Window.Styles>
+
+    <controls:PillDialogHost>
+
+    <Grid x:Name="CardContent" Width="600" Height="660" RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+        <!-- Header: the song and what it plays now. -->
+        <Border Grid.Row="0"
+                Padding="28,22,28,16"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="56,16,*">
+                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Classes="pill-well">
+                    <controls:LineIcon Data="{StaticResource MenuLineVideo}" Width="22" Height="22" Opacity="0.6"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{loc:T MusicVideo.Title}" FontSize="18" FontWeight="Bold" />
+                    <TextBlock FontSize="13" Opacity="0.8" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding TrackTitle}" FontWeight="SemiBold" />
+                        <Run Text=" · " />
+                        <Run Text="{Binding TrackArtist}" />
+                    </TextBlock>
+                    <TextBlock x:Name="CurrentChoiceText" Text="{Binding CurrentText}" FontSize="12" Opacity="0.55"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Paste a link: the video's title, thumbnail and length, then Stream or Download. -->
+        <StackPanel Grid.Row="1" Margin="28,16,28,0" Spacing="8">
+            <TextBlock Classes="mv-label" Text="{loc:T MusicVideo.PasteLink}" />
+            <TextBox x:Name="LinkBox" Classes="pill-field" Text="{Binding LinkText}"
+                     PlaceholderText="{loc:T MusicVideo.LinkWatermark}"
+                     AutomationProperties.Name="{loc:T MusicVideo.PasteLink}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasLinkStatus}">
+                <ProgressBar IsIndeterminate="True" Width="48" MinWidth="0" Height="4" CornerRadius="2"
+                             IsVisible="{Binding IsLookingUp}" VerticalAlignment="Center" />
+                <TextBlock Classes="mv-status" Text="{Binding LinkStatus}" TextWrapping="Wrap" MaxWidth="520" />
+            </StackPanel>
+            <Border Classes="mv-row" CornerRadius="16" Padding="10,8" IsVisible="{Binding HasLinkPreview}">
+                <Grid ColumnDefinitions="96,12,*,Auto">
+                    <Border Grid.Column="0" Width="96" Height="54" CornerRadius="8" ClipToBounds="True"
+                            Background="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                        <Image Source="{Binding LinkPreview.Thumbnail}" Stretch="UniformToFill" />
+                    </Border>
+                    <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding LinkPreview.Title}" FontSize="13.5" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding LinkPreview.Detail}" FontSize="11.5" Opacity="0.65"
+                                   TextTrimming="CharacterEllipsis" />
+                        <ProgressBar Value="{Binding DownloadProgress}" Minimum="0" Maximum="1" Height="4" CornerRadius="2"
+                                     MinWidth="0" Margin="0,4,0,0" IsVisible="{Binding IsDownloading}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="12,0,0,0">
+                        <Button x:Name="StreamButton" Classes="pill-primary" Content="{loc:T MusicVideo.Stream}"
+                                ToolTip.Tip="{loc:T MusicVideo.StreamTip}"
+                                Command="{Binding StreamLinkCommand}" IsVisible="{Binding !IsDownloading}" />
+                        <Button x:Name="DownloadButton" Classes="pill-secondary" Content="{loc:T MusicVideo.Download}"
+                                ToolTip.Tip="{loc:T MusicVideo.DownloadTip}"
+                                Command="{Binding DownloadLinkCommand}"
+                                IsVisible="{Binding CanDownload}" />
+                        <Button Classes="pill-secondary" Content="{loc:T Metadata.Cancel}"
+                                Command="{Binding CancelDownloadCommand}" IsVisible="{Binding IsDownloading}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <!-- yt-dlp missing: install it here (Noctis's own copy, kept up to date). -->
+        <Border Grid.Row="2" Margin="28,14,28,0" Classes="mv-row" CornerRadius="16" Padding="14,10"
+                IsVisible="{Binding ShowToolMissing}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{loc:T Settings.MusicVideoToolNeeded}" FontSize="12.5" Opacity="0.75"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+                <Button Grid.Column="1" Classes="pill-primary" Content="{loc:T LyricsBackground.InstallYtDlp}"
+                        Command="{Binding InstallToolCommand}" IsVisible="{Binding CanInstallTool}"
+                        IsEnabled="{Binding !IsInstallingTool}" Margin="12,0,0,0" />
+            </Grid>
+        </Border>
+
+        <!-- The automatic search's results, best match first: "Wrong video?" picks another. -->
+        <Grid Grid.Row="3" Margin="28,16,28,12" RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                <TextBlock Classes="mv-label" Text="{loc:T MusicVideo.Results}" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="48" MinWidth="0" Height="4" CornerRadius="2"
+                                 IsVisible="{Binding IsSearching}" VerticalAlignment="Center" />
+                    <TextBlock Classes="mv-status" Text="{Binding SearchStatus}" IsVisible="{Binding HasSearchStatus}"
+                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="380" />
+                </StackPanel>
+            </Grid>
+            <ListBox Grid.Row="1" Classes="mv-results" ItemsSource="{Binding Results}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:MusicVideoCandidateRow">
+                        <Border Classes="mv-row" CornerRadius="16" Padding="10,8">
+                            <Grid ColumnDefinitions="96,12,*,Auto">
+                                <Border Grid.Column="0" Width="96" Height="54" CornerRadius="8" ClipToBounds="True"
+                                        Background="{DynamicResource SystemControlForegroundBaseLowBrush}">
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding HasThumbnail}" />
+                                </Border>
+                                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <Border CornerRadius="999" Padding="7,1"
+                                                Background="{DynamicResource AccentColorBrush}"
+                                                IsVisible="{Binding IsCurrent}" VerticalAlignment="Center">
+                                            <TextBlock Text="{loc:T MusicVideo.Current}" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AccentForegroundBrush}" />
+                                        </Border>
+                                        <TextBlock Text="{Binding Detail}" FontSize="11.5" Opacity="0.65"
+                                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Grid.Column="3" Classes="pill-secondary" Margin="12,0,0,0" VerticalAlignment="Center"
+                                        Content="{loc:T MusicVideo.Use}"
+                                        AutomationProperties.Name="{loc:T MusicVideo.Use}"
+                                        Command="{Binding $parent[Window].((vm:MusicVideoPickerViewModel)DataContext).UseCandidateCommand}"
+                                        CommandParameter="{Binding}" />
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+
+        <Border Grid.Row="4"
+                Padding="28,14"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <Button Grid.Column="0" x:Name="NoVideoButton" Classes="pill-secondary"
+                        Content="{loc:T MusicVideo.NoVideo}"
+                        Command="{Binding NoVideoCommand}" />
+                <Button Grid.Column="2" x:Name="AutomaticButton" Classes="pill-secondary"
+                        Content="{loc:T MusicVideo.BackToAutomatic}"
+                        ToolTip.Tip="{loc:T MusicVideo.BackToAutomaticTip}"
+                        Command="{Binding BackToAutomaticCommand}"
+                        IsVisible="{Binding HasUserChoice}"
+                        Margin="0,0,10,0" />
+                <Button Grid.Column="3" Classes="pill-primary"
+                        Content="{loc:T MusicVideo.Close}"
+                        Command="{Binding CloseCommand}"
+                        MinWidth="96" />
+            </Grid>
+        </Border>
+    </Grid>
+    </controls:PillDialogHost>
+</Window>

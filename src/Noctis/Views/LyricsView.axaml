@@ -446,10 +446,12 @@
               ClipToBounds="True"
               IsHitTestVisible="False"
               IsVisible="{Binding Player.ShowsLyricsBackgroundMedia}">
+            <!-- IsActive follows the layer's own flag: $self.IsVisible stayed true under the
+                 hidden Grid, so every hidden layer decoded too (11-25). -->
             <controls:VideoBackdrop x:Name="MediaBackdrop"
                                     Source="{Binding Player.LyricsBackgroundMediaPath}"
                                     IsPaused="{Binding Player.LyricsBackgroundHoldsWhilePaused}"
-                                    IsActive="{Binding $self.IsVisible}" />
+                                    IsActive="{Binding Player.ShowsLyricsBackgroundMedia}" />
             <Rectangle Fill="#8C000000"/>
         </Grid>
 
@@ -470,7 +472,7 @@
                                     SyncPosition="{Binding Player.MusicVideoSyncPosition}"
                                     Rate="{Binding Player.PlaybackRate}"
                                     IsPaused="{Binding !Player.IsPlaying}"
-                                    IsActive="{Binding $self.IsVisible}" />
+                                    IsActive="{Binding Player.ShowsMusicVideoBackdrop}" />
             <Rectangle Fill="#8C000000"/>
         </Grid>
 
@@ -1489,7 +1491,7 @@
                                     IsPaused="{Binding !Player.IsPlaying}"
                                     Stretch="Uniform"
                                     MaxDecodeSide="1920"
-                                    IsActive="{Binding $self.IsVisible}" />
+                                    IsActive="{Binding Player.ShowsMusicVideoFullSize}" />
         </Grid>
 
         <!-- Audio / Video switch: shown while the song has a music video (Settings → Lyrics
@@ -1516,6 +1518,15 @@
                         Command="{Binding Player.ShowMusicVideoFullSizeCommand}"
                         Content="{loc:T Lyrics.MusicVideoVideoSide}"
                         AutomationProperties.Name="{loc:T Lyrics.MusicVideoVideoSide}"/>
+                <!-- Discord 11-25: a video streamed from YouTube can be the wrong one; this opens
+                     the song's Music Video from YouTube dialog (other results, a link, no video). -->
+                <Button x:Name="WrongMusicVideoButton"
+                        Classes="mv-seg"
+                        Command="{Binding Player.PickMusicVideoCommand}"
+                        Content="{loc:T Lyrics.WrongVideo}"
+                        ToolTip.Tip="{loc:T Lyrics.WrongVideoTip}"
+                        AutomationProperties.Name="{loc:T Lyrics.WrongVideo}"
+                        IsVisible="{Binding Player.IsStreamingMusicVideo}"/>
             </StackPanel>
         </Border>
     </Grid>

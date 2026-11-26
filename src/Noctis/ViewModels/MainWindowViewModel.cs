@@ -416,6 +416,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Player.SilenceScanner = new Noctis.Services.AudioAnalysis.SilenceScanService(
             () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath(),
             Noctis.Services.AudioAnalysis.SilenceScanService.DecodeWithVlc);
+        // Discord #feedback 11-25: music videos streamed from YouTube behind the lyrics.
+        Player.MusicVideoStreams = App.Services?.GetService<Noctis.Services.YouTube.MusicVideoStreamService>();
+        PlayerViewModel.OpenMusicVideoPicker ??= MetadataHelper.OpenMusicVideoPicker;
         QueueToast.Attach(Player);
         if (App.Services?.GetService<PhoneHandoffInbox>() is { } handoffInbox)
         {

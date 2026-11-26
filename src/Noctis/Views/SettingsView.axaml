@@ -5023,6 +5023,45 @@
             </StackPanel>
             </Border>
 
+            <!-- Discord #feedback 11-25: music videos streamed from YouTube behind the lyrics.
+                 Off by default (it sends the song's artist and title to YouTube); needs yt-dlp,
+                 which the row under the toggle installs. -->
+            <TextBlock Classes="section-title" Text="{loc:T Settings.Section.MusicVideos}" Margin="0,16,0,8"/>
+            <Border Classes="setting-card group-card">
+            <StackPanel>
+            <Border Classes="setting-row">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.MusicVideoAutoFind}" FontSize="15" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:T Settings.MusicVideoAutoFindHint}"
+                                   FontSize="12" Opacity="0.5" TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <controls:LottieToggle Grid.Column="1"
+                                          x:Name="MusicVideoAutoFindToggle"
+                                          AutomationProperties.Name="{loc:T Settings.MusicVideoAutoFind}"
+                                          IsChecked="{Binding MusicVideoAutoFind}"
+                                          VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+            <Border Classes="setting-row" IsVisible="{Binding ShowMusicVideoToolInstall}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
+                        <TextBlock Text="{loc:T Settings.MusicVideoToolNeeded}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding MusicVideoToolStatus}" FontSize="12" Opacity="0.6" TextWrapping="Wrap"
+                                   IsVisible="{Binding MusicVideoToolStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="pill-action" Padding="14,7" CornerRadius="999" Cursor="Hand"
+                            VerticalAlignment="Center"
+                            IsEnabled="{Binding !IsInstallingMusicVideoTool}"
+                            Command="{Binding InstallMusicVideoToolCommand}"
+                            AutomationProperties.Name="{loc:T LyricsBackground.InstallYtDlp}">
+                        <TextBlock Text="{loc:T LyricsBackground.InstallYtDlp}" FontSize="12"/>
+                    </Button>
+                </Grid>
+            </Border>
+            </StackPanel>
+            </Border>
+
             </StackPanel>
 
             <StackPanel x:Name="ShortcutsTabPanel" Classes="tab-page" IsVisible="{Binding IsShortcutsTabVisible}" Spacing="4">

@@ -195,6 +195,131 @@ public static partial class YtDlpParsing
     private static string? Str(JsonElement e, string name) =>
         e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString()) ? v.GetString() : null;
 
+    // ── Music video search / streaming (Discord #feedback 11-25) ──────────────
+
+    /// <summary>Highest stream the lyrics page asks for: the backdrop decodes at 960 px and the
+    /// full-size view at 1920, so more only costs bandwidth.</summary>
+    public const int StreamMaxHeight = 1080;
+
+    /// <summary>
+    /// A YouTube search without downloading anything: one JSON object per result line
+    /// (<c>--flat-playlist</c> keeps it to the search page, no per-video page fetch).
+    /// </summary>
+    public static IReadOnlyList<string> SearchArgs(string query, int count, string? jsRuntime = null)
+    {
+        var args = new List<string> { "--no-warnings", "--flat-playlist", "--dump-json", "--ignore-errors" };
+        AddJsRuntime(args, jsRuntime);
+        args.Add($"ytsearch{Math.Clamp(count, 1, 20)}:{query}");
+        return args;
+    }
+
+    /// <summary>One video's details (title, channel, length) for a pasted link; no download.</summary>
+    public static IReadOnlyList<string> InfoArgs(string url, string? jsRuntime = null)
+    {
+        var args = new List<string> { "--no-warnings", "--no-playlist", "--skip-download", "--dump-json" };
+        AddJsRuntime(args, jsRuntime);
+        args.Add(url);
+        return args;
+    }
+
+    /// <summary>
+    /// The direct URL of a video-only stream (the song's own file is the audio), capped at
+    /// <paramref name="maxHeight"/>: H.264 in MP4 first — the backdrop decodes in software, and
+    /// that is the cheapest — then any MP4, then anything, then a muxed file as a last resort.
+    /// </summary>
+    public static IReadOnlyList<string> StreamUrlArgs(string url, int maxHeight = StreamMaxHeight, string? jsRuntime = null)
+    {
+        var cap = maxHeight > 0 ? $"[height<={maxHeight}]" : string.Empty;
+        var args = new List<string>
+        {
+            "--no-warnings", "--no-playlist", "-g",
+            "-f", $"bestvideo{cap}[vcodec^=avc1]/bestvideo{cap}[ext=mp4]/bestvideo{cap}/best{cap}",
+        };
+        AddJsRuntime(args, jsRuntime);
+        args.Add(url);
+        return args;
+    }
+
+    /// <summary>
+    /// Search results (or one video's <c>--dump-json</c>) from yt-dlp's JSON lines. Lines that
+    /// are not a video object are skipped, as are live streams (nothing to keep in step) and
+    /// duplicates. Order is kept: it is YouTube's relevance order, the matcher's tie-break.
+    /// </summary>
+    public static IReadOnlyList<YouTubeVideoInfo> ParseVideoInfos(string? stdout)
+    {
+        var list = new List<YouTubeVideoInfo>();
+        if (string.IsNullOrWhiteSpace(stdout)) return list;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in stdout.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line[0] != '{') continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(line);
+                var e = doc.RootElement;
+                if (e.ValueKind != JsonValueKind.Object) continue;
+                var id = Str(e, "id");
+                if (!YouTubeLinks.IsVideoId(id) || !seen.Add(id!)) continue;
+                var live = Str(e, "live_status");
+                if (live is "is_live" or "is_upcoming" || e.TryGetProperty("is_live", out var il) && il.ValueKind == JsonValueKind.True)
+                    continue;
+                double? duration = e.TryGetProperty("duration", out var d) && d.ValueKind == JsonValueKind.Number ? d.GetDouble() : null;
+                long? views = e.TryGetProperty("view_count", out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt64(out var n) ? n : null;
+                var verified = e.TryGetProperty("channel_is_verified", out var cv) && cv.ValueKind == JsonValueKind.True;
+                list.Add(new YouTubeVideoInfo(
+                    id!,
+                    Str(e, "title") ?? id!,
+                    Str(e, "channel") ?? Str(e, "uploader"),
+                    duration is > 0 ? duration : null,
+                    views,
+                    verified));
+            }
+            catch (JsonException) { }
+        }
+        return list;
+    }
+
+    /// <summary>The first http(s) line of a <c>-g</c> run, or null.</summary>
+    public static string? ParseStreamUrl(string? stdout)
+    {
+        if (string.IsNullOrWhiteSpace(stdout)) return null;
+        foreach (var raw in stdout.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || line.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                return line;
+        }
+        return null;
+    }
+
+    [GeneratedRegex(@"(?:[?&]expire=|/expire/)(\d{9,11})(?:[&/]|$)", RegexOptions.IgnoreCase)]
+    private static partial Regex ExpireRegex();
+
+    /// <summary>
+    /// When a googlevideo stream URL stops working: its <c>expire=</c> (or <c>/expire/N/</c>)
+    /// Unix time, or null when the URL does not say.
+    /// </summary>
+    public static DateTime? StreamUrlExpiry(string? url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+        var m = ExpireRegex().Match(url);
+        if (!m.Success || !long.TryParse(m.Groups[1].Value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)) return null;
+        try { return DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime; }
+        catch (ArgumentOutOfRangeException) { return null; }
+    }
+
+    /// <summary>yt-dlp said the video itself is gone (removed, private, blocked here), so a
+    /// remembered automatic match for it should be dropped and searched again.</summary>
+    public static bool IsVideoGoneError(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return false;
+        return stderr.Contains("Video unavailable", StringComparison.OrdinalIgnoreCase)
+               || stderr.Contains("Private video", StringComparison.OrdinalIgnoreCase)
+               || stderr.Contains("This video has been removed", StringComparison.OrdinalIgnoreCase)
+               || stderr.Contains("not available in your country", StringComparison.OrdinalIgnoreCase);
+    }
+
     // ── Progress ──────────────────────────────────────────────────────────────
 
     [GeneratedRegex(@"\[download\]\s+(\d{1,3}(?:\.\d+)?)%")]
