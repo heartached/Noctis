@@ -1,0 +1,18 @@
+{
+"resultCount": 1,
+"results": [
+{
+"wrapperType": "collection",
+"collectionType": "Album",
+"artistId": 879496517,
+"collectionId": 1708867356,
+"artistName": "Chase Atlantic",
+"collectionName": "Nostalgia - EP",
+"collectionViewUrl": "https://music.apple.com/us/album/nostalgia-ep/1708867356?uo=4",
+"artworkUrl100": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/90/d1/3f/90d13fba-4c95-f97a-511c-145a39df9e68/5055834135256.jpg/100x100bb.jpg",
+"collectionExplicitness": "notExplicit",
+"trackCount": 5,
+"releaseDate": "2015-02-21T08:00:00Z"
+}
+]
+}
