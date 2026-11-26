@@ -507,6 +507,17 @@ public partial class LibraryAlbumsView : UserControl, ITrackSelectionSource
     {
         base.OnAttachedToVisualTree(e);
 
+        // The cached view comes back with the same DataContext (PageDeck keeps 8 sections; past
+        // that it is detached and later attached again), so OnDataContextChanged does not run:
+        // hook again what OnDetachedFromVisualTree unhooked. -= first so it is never hooked twice.
+        if (_vm != null)
+        {
+            _vm.FilteredAlbumRows.CollectionChanged -= OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed -= OnCtrlSelectionConsumed;
+            _vm.FilteredAlbumRows.CollectionChanged += OnFilteredRowsChanged;
+            _vm.CtrlSelectionConsumed += OnCtrlSelectionConsumed;
+        }
+
         if (DataContext is LibraryAlbumsViewModel vm && vm.SavedScrollOffset > 0)
         {
             var targetOffset = vm.SavedScrollOffset;
