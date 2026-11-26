@@ -692,44 +692,78 @@
                 <!-- Colour wash from the backdrop art's edge colour (VM, off-thread): the
                      ground when there is no portrait, and what shows through the fades. -->
                 <Border Background="{Binding HeroBackgroundBrush}" />
-                <!-- Backdrop: the portrait (else the newest cover) as an abstract glow,
-                     heavy blur, zoomed past the frame, faint, so the band is never a
-                     flat slab. Before 09-15 the sharp portrait itself was stretched across
-                     the whole band: a 1800px square blown up to the window width and
-                     centre-cropped to a 400px strip, i.e. a soft close-up of the eyes. -->
-                <ctrl:CachedImage SourcePath="{Binding HeroArtPath}"
-                                  DecodeWidth="512"
-                                  Stretch="UniformToFill"
-                                  Opacity="0.45">
-                    <ctrl:CachedImage.Effect>
-                        <BlurEffect Radius="130" />
-                    </ctrl:CachedImage.Effect>
-                    <ctrl:CachedImage.RenderTransform>
-                        <ScaleTransform ScaleX="1.7" ScaleY="1.7" />
-                    </ctrl:CachedImage.RenderTransform>
-                </ctrl:CachedImage>
-                <!-- Portrait: the whole photo, sharp and uncropped, at the band's height on
-                     the right (1800px source scaled DOWN to 400 logical px, so it stays
-                     crisp at any DPI). Its left edge dissolves into the blurred backdrop;
-                     the page-background fade below dissolves its bottom into the sections. -->
-                <ctrl:CachedImage SourcePath="{Binding ImagePath}"
-                                  DecodeWidth="1024"
-                                  PixelExact="True"
-                                  Stretch="Uniform"
-                                  Width="400" Height="400"
-                                  HorizontalAlignment="Right"
-                                  VerticalAlignment="Top"
-                                  RenderOptions.BitmapInterpolationMode="HighQuality"
-                                  IsVisible="{Binding HasImage}">
-                    <ctrl:CachedImage.OpacityMask>
-                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                            <GradientStop Color="#00000000" Offset="0" />
-                            <GradientStop Color="#FF000000" Offset="0.45" />
-                        </LinearGradientBrush>
-                    </ctrl:CachedImage.OpacityMask>
-                </ctrl:CachedImage>
+                <!-- The still art (blurred glow + portrait). Settings › Artwork › Artist videos:
+                     it stays up until the video's first frame is on screen, then cross-fades to
+                     it (code-behind, ~250 ms), and comes back when the video goes. -->
+                <Panel x:Name="HeroStills">
+                    <Panel.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                        </Transitions>
+                    </Panel.Transitions>
+                    <!-- Backdrop: the portrait (else the newest cover) as an abstract glow,
+                         heavy blur, zoomed past the frame, faint, so the band is never a
+                         flat slab. Before 09-15 the sharp portrait itself was stretched across
+                         the whole band: a 1800px square blown up to the window width and
+                         centre-cropped to a 400px strip, i.e. a soft close-up of the eyes. -->
+                    <ctrl:CachedImage SourcePath="{Binding HeroArtPath}"
+                                      DecodeWidth="512"
+                                      Stretch="UniformToFill"
+                                      Opacity="0.45">
+                        <ctrl:CachedImage.Effect>
+                            <BlurEffect Radius="130" />
+                        </ctrl:CachedImage.Effect>
+                        <ctrl:CachedImage.RenderTransform>
+                            <ScaleTransform ScaleX="1.7" ScaleY="1.7" />
+                        </ctrl:CachedImage.RenderTransform>
+                    </ctrl:CachedImage>
+                    <!-- Portrait: the whole photo, sharp and uncropped, at the band's height on
+                         the right (1800px source scaled DOWN to 400 logical px, so it stays
+                         crisp at any DPI). Its left edge dissolves into the blurred backdrop;
+                         the page-background fade below dissolves its bottom into the sections. -->
+                    <ctrl:CachedImage SourcePath="{Binding ImagePath}"
+                                      DecodeWidth="1024"
+                                      PixelExact="True"
+                                      Stretch="Uniform"
+                                      Width="400" Height="400"
+                                      HorizontalAlignment="Right"
+                                      VerticalAlignment="Top"
+                                      RenderOptions.BitmapInterpolationMode="HighQuality"
+                                      IsVisible="{Binding HasImage}">
+                        <ctrl:CachedImage.OpacityMask>
+                            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                <GradientStop Color="#00000000" Offset="0" />
+                                <GradientStop Color="#FF000000" Offset="0.45" />
+                            </LinearGradientBrush>
+                        </ctrl:CachedImage.OpacityMask>
+                    </ctrl:CachedImage>
+                </Panel>
+                <!-- The artist's Apple Music motion video, muted and looping, across the whole
+                     band under the darkening gradients and the fade below. Paused while the hero
+                     is scrolled away or the window is in the background (code-behind); stopped
+                     when the page is left (the VM clears the path) or the window is minimized. -->
+                <ctrl:VideoBackdrop x:Name="HeroVideo"
+                                    Source="{Binding ArtistVideoPath}"
+                                    IsActive="{Binding HasArtistVideo}"
+                                    IsVisible="{Binding HasArtistVideo}"
+                                    Stretch="UniformToFill"
+                                    IsHitTestVisible="False"
+                                    Opacity="0">
+                    <ctrl:VideoBackdrop.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                        </Transitions>
+                    </ctrl:VideoBackdrop.Transitions>
+                </ctrl:VideoBackdrop>
                 <Rectangle Fill="#30000000" />
-                <Rectangle IsVisible="{Binding HasImage}">
+                <!-- Left-side darkening: behind the name over the portrait, and over the video. -->
+                <Rectangle>
+                    <Rectangle.IsVisible>
+                        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+                            <Binding Path="HasImage" />
+                            <Binding Path="HasArtistVideo" />
+                        </MultiBinding>
+                    </Rectangle.IsVisible>
                     <Rectangle.Fill>
                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
                             <GradientStop Color="#A6000000" Offset="0" />
@@ -908,6 +942,15 @@
                                         <MenuItem Header="{loc:T ArtistDetail.FindPictureOnline}" Click="OnSearchPictureClick">
                                             <MenuItem.Icon>
                                                 <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineSearch}"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+                                        <!-- Settings › Artwork › Artist videos: one click for a wrong (or unwanted)
+                                             video; it is not fetched again for this artist. -->
+                                        <MenuItem Header="{loc:T ArtistDetail.RemoveArtistVideo}"
+                                                  Command="{Binding RemoveArtistVideoCommand}"
+                                                  IsVisible="{Binding CanRemoveArtistVideo}">
+                                            <MenuItem.Icon>
+                                                <ctrl:LineIcon Classes="mv2-icon" Data="{StaticResource MenuLineVideo}"/>
                                             </MenuItem.Icon>
                                         </MenuItem>
                                         <MenuItem Header="{loc:T ArtistDetail.RemovePicture}" Classes="danger" Click="OnRemovePictureClick"
