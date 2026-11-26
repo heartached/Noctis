@@ -639,8 +639,15 @@ public class DescriptionDialogTests
         return new Point(cardLeft.X / 2, cardLeft.Y);
     }
 
+    private static void ClickAt(Window win, Point at)
+    {
+        win.MouseMove(at);
+        win.MouseDown(at, MouseButton.Left);
+        win.MouseUp(at, MouseButton.Left);
+    }
+
     [AvaloniaFact]
-    public void AlbumDialog_ClickOutsideTheCard_ClosesOnceLikeCancel_DropsTheEdit()
+    public void AlbumDialog_ClickOutsideTheCard_Unchanged_ClosesOnce()
     {
         EnsureAppStyles();
         var lastFm = SlowLastFm.Loaded("Kept.");
@@ -649,12 +656,9 @@ public class DescriptionDialogTests
         var closed = 0;
         win.Closed += (_, _) => closed++;
         Assert.True(PumpUntil(() => CardSettledOpen(host)));
-        win.FindControl<TextBox>("DescriptionEditor")!.Text = "Half typed";
+        Assert.Equal("Kept.", win.FindControl<TextBox>("DescriptionEditor")!.Text);
 
-        var at = Outside(win, win.FindControl<Grid>("CardRoot")!);
-        win.MouseMove(at);
-        win.MouseDown(at, MouseButton.Left);
-        win.MouseUp(at, MouseButton.Left);
+        ClickAt(win, Outside(win, win.FindControl<Grid>("CardRoot")!));
 
         Assert.True(host.IsClosing);
         Assert.True(PumpUntil(() => closed > 0, 2000));
@@ -662,7 +666,70 @@ public class DescriptionDialogTests
         Assert.Equal(1, closed);
         Assert.Empty(lastFm.Overrides);
         Assert.Equal("Kept.", vm.AlbumDescription);
-        Assert.Equal("Kept.", vm.AlbumDescriptionEditorText);
+    }
+
+    [AvaloniaFact]
+    public void AlbumDialog_ClickOutsideTheCard_AfterTyping_StaysOpenAndKeepsTheEdit_EscStillDrops()
+    {
+        EnsureAppStyles();
+        var lastFm = SlowLastFm.Loaded("Kept.");
+        var vm = AlbumPage(lastFm);
+        var (win, host) = OpenAlbumDialog(vm, forEditing: true);
+        var closed = 0;
+        win.Closed += (_, _) => closed++;
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var editor = win.FindControl<TextBox>("DescriptionEditor")!;
+            editor.Text = "Half typed";
+
+            ClickAt(win, Outside(win, win.FindControl<Grid>("CardRoot")!));
+            PumpUntil(() => false, 250);
+            Assert.False(host.IsClosing, "an outside click must not throw away a changed text");
+            Assert.True(win.IsVisible);
+            Assert.Equal(0, closed);
+            Assert.Equal("Half typed", editor.Text);
+            Assert.Equal("Half typed", vm.AlbumDescriptionEditorText);
+
+            // Esc still drops the edit on purpose.
+            win.KeyPressQwerty(PhysicalKey.Escape, RawInputModifiers.None);
+            Assert.True(PumpUntil(() => closed > 0, 2000));
+            PumpUntil(() => false, 250);
+            Assert.Equal(1, closed);
+            Assert.Empty(lastFm.Overrides);
+            Assert.Equal("Kept.", vm.AlbumDescription);
+            Assert.Equal("Kept.", vm.AlbumDescriptionEditorText);
+        }
+        finally { CloseNow(win); }
+    }
+
+    [AvaloniaFact]
+    public void PlaylistDialog_ClickOutsideTheCard_AfterTyping_StaysOpen_TypedBackToTheOriginal_Closes()
+    {
+        EnsureAppStyles();
+        var (vm, playlist, persistence) = PlaylistPage("Old words");
+        var (win, host) = OpenPlaylistDialog(vm, forEditing: true);
+        try
+        {
+            Assert.True(PumpUntil(() => CardSettledOpen(host)));
+            var editor = win.FindControl<TextBox>("DescriptionEditor")!;
+            var outside = Outside(win, win.FindControl<Grid>("CardRoot")!);
+            editor.Text = "Changed";
+
+            ClickAt(win, outside);
+            PumpUntil(() => false, 100);
+            Assert.False(host.IsClosing);
+            Assert.Equal("Changed", vm.DescriptionEditorText);
+
+            // Back to what it opened with: nothing to lose, so the outside click closes again.
+            editor.Text = "Old words";
+            ClickAt(win, outside);
+            Assert.True(host.IsClosing);
+            Assert.True(PumpUntil(() => !win.IsVisible, 2000));
+            Assert.Equal(0, persistence.PlaylistSaves);
+            Assert.Equal("Old words", playlist.Description);
+        }
+        finally { CloseNow(win); }
     }
 
     [AvaloniaFact]
@@ -675,7 +742,6 @@ public class DescriptionDialogTests
 
         var (playlistVm, playlist, persistence) = PlaylistPage("Old words");
         var (playlistWin, playlistHost) = OpenPlaylistDialog(playlistVm, forEditing: false);
-        playlistWin.FindControl<TextBox>("DescriptionEditor")!.Text = "Changed";
         AssertDragStaysThenClickCloses(playlistWin, playlistHost);
         Assert.Equal(0, persistence.PlaylistSaves);
         Assert.Equal("Old words", playlist.Description);
