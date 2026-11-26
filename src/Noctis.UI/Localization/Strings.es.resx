@@ -4508,6 +4508,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>Obtener géneros para 1 álbum</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>Obtener géneros para {0:N0} álbumes</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>Busca cada álbum en Discogs y propone sus estilos como géneros del álbum. No se guarda nada hasta que elijas Aplicar.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>Pulsa Buscar para consultar los álbumes y luego marca los que quieras cambiar.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>Usar</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>Estilos</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>Géneros</value></data>

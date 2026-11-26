@@ -1816,7 +1816,9 @@
 
     <!-- Round circle checkbox with check mark. Fluent's CheckBox theme clips to bounds: where
          the box is only as tall as the 22 px circle (a row tick with no label), the hover's
-         scale(1.06) cut the ring's top and bottom off (owner 11-14). -->
+         scale(1.06) cut the ring's top and bottom off (owner 11-14).
+         The Grid's Transparent background makes the label (and the gaps between its letters)
+         take the click too; without it only the circle and the glyphs did (owner 11-26). -->
     <Style Selector="CheckBox.metadata-pill-checkbox">
         <Setter Property="ClipToBounds" Value="False" />
         <Setter Property="Cursor" Value="Hand" />
@@ -1824,6 +1826,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Grid ColumnDefinitions="28,*"
+                      Background="Transparent"
                       VerticalAlignment="Center">
                     <Border x:Name="IndicatorBorder"
                             Margin="3,0"

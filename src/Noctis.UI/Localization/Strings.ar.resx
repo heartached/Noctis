@@ -9512,6 +9512,7 @@ Deezer وTIDAL: الصق الرابط.</value></data>
   <data name="DiscogsGenres.TitleOne" xml:space="preserve"><value>جلب الأنواع لألبوم واحد</value></data>
   <data name="DiscogsGenres.TitleMany" xml:space="preserve"><value>جلب الأنواع لـ {0:N0} ألبوم|جلب الأنواع لألبوم واحد|جلب الأنواع لألبومين|جلب الأنواع لـ {0:N0} ألبومات|جلب الأنواع لـ {0:N0} ألبومًا|جلب الأنواع لـ {0:N0} ألبوم</value><comment>Get Genres from Discogs dialog. Plural forms, see Mobile.Count.Songs.</comment></data>
   <data name="DiscogsGenres.Subtitle" xml:space="preserve"><value>يبحث عن كل ألبوم في Discogs ويقترح أنماطه كأنواع للألبوم. لا يُحفظ شيء حتى تختار تطبيق.</value></data>
+  <data name="DiscogsGenres.ReadyHint" xml:space="preserve"><value>اضغط بحث للبحث عن الألبومات، ثم حدّد ما تريد تغييره.</value></data>
   <data name="DiscogsGenres.Use" xml:space="preserve"><value>استخدام</value></data>
   <data name="DiscogsGenres.SourceStyles" xml:space="preserve"><value>الأنماط</value></data>
   <data name="DiscogsGenres.SourceGenres" xml:space="preserve"><value>الأنواع</value></data>
