@@ -1058,6 +1058,9 @@ public class BlurredBackdrop : Panel
             }
             StopLive();
             _blurHidden = false;
+            // Glass back on in the middle of the off fade: that fade is over. Its finisher only
+            // clears the flag while its own bitmap is still the one fading.
+            _handingOff = false;
             SetLayers(imageOpacity: 0, dimOpacity: 1, animate: false);
             _ = CaptureAfterRenderAsync(_epoch);
         }
