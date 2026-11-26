@@ -5086,7 +5086,8 @@
                                           VerticalAlignment="Center"/>
                 </Grid>
             </Border>
-            <Border Classes="setting-row" IsVisible="{Binding ShowMusicVideoToolInstall}">
+            <controls:CollapsibleContent IsOpen="{Binding ShowMusicVideoToolInstall}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
                         <TextBlock Text="{loc:T Settings.MusicVideoToolNeeded}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -5102,6 +5103,7 @@
                     </Button>
                 </Grid>
             </Border>
+            </controls:CollapsibleContent>
             <!-- 11-25: past YouTube's "confirm you're not a bot", yt-dlp may read the YouTube
                  sign-in (cookies) of a browser on this computer. Off by default. -->
             <Border Classes="setting-row">
@@ -5135,10 +5137,12 @@
                 </Grid>
             </Border>
             </controls:CollapsibleContent>
-            <Border Classes="setting-row" IsVisible="{Binding HasMusicVideoProblem}">
+            <controls:CollapsibleContent IsOpen="{Binding HasMusicVideoProblem}" Lift="10" Motion="Glide">
+            <Border Classes="setting-row divided">
                 <TextBlock x:Name="MusicVideoProblemNote" Text="{Binding MusicVideoProblemText}"
                            FontSize="12" Opacity="0.75" TextWrapping="Wrap"/>
             </Border>
+            </controls:CollapsibleContent>
             </StackPanel>
             </Border>
 
