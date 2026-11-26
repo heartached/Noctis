@@ -4605,4 +4605,7 @@ Eine Playlist namens „{0}“ mit diesen Titeln erstellen?</value><comment>Drag
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>Musikvideo von YouTube</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>Falsches Video?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>Anderes Video wählen, Link einfügen oder das Video für diesen Song ausschalten</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>Künstlervideos</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Spielt das Apple-Music-Video eines Künstlers hinter seiner Seite ab, wenn es eines gibt. Sucht nach jedem Künstler, den du öffnest.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Künstlervideo entfernen</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

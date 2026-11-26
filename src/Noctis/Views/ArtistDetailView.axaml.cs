@@ -10,6 +10,7 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Noctis.Controls;
 using Noctis.Helpers;
 using Noctis.Localization;
 using Noctis.Models;
@@ -33,7 +34,66 @@ public partial class ArtistDetailView : UserControl
         // Closing Edit Info / Find Lyrics gave focus back to the clicked tab and the page
         // scrolled up to it (GitHub #223); only keyboard focus moves the page now.
         KeyboardFocusScroll.Apply(PageScrollViewer);
+        // Settings › Artwork › Artist videos: cross-fade on the first frame; pause while the
+        // hero is scrolled away.
+        HeroVideo.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == VideoBackdrop.HasFrameProperty) ApplyHeroVideoFrame(HeroVideo.HasFrame);
+        };
+        PageScrollViewer.ScrollChanged += (_, _) => UpdateHeroVideoPause();
     }
+
+    // ── Artist video in the hero ──
+
+    private WindowBase? _heroWindow;
+    private bool _heroWindowActive = true;
+
+    /// <summary>The video's first frame is up (true) or it went away (false): the still art
+    /// fades out over the playing video, and back in without it (both ~250 ms transitions).</summary>
+    internal void ApplyHeroVideoFrame(bool hasFrame)
+    {
+        HeroVideo.Opacity = hasFrame ? 1 : 0;
+        HeroStills.Opacity = hasFrame ? 0 : 1;
+    }
+
+    /// <summary>The host window came to the front (true) or went to the background (false).</summary>
+    internal void OnHeroWindowActiveChanged(bool active)
+    {
+        _heroWindowActive = active;
+        UpdateHeroVideoPause();
+    }
+
+    /// <summary>The video holds its frame while the window is in the background or the hero is
+    /// scrolled out of view (VideoBackdrop parks it while the window is minimized on its own).</summary>
+    internal void UpdateHeroVideoPause()
+    {
+        var heroOnScreen = PageScrollViewer.Offset.Y < Math.Max(1, Hero.Bounds.Height);
+        HeroVideo.IsPaused = !(_heroWindowActive && heroOnScreen);
+    }
+
+    private void HookHeroWindow()
+    {
+        UnhookHeroWindow();
+        _heroWindow = TopLevel.GetTopLevel(this) as WindowBase;
+        if (_heroWindow != null)
+        {
+            _heroWindow.Activated += OnHeroWindowActivated;
+            _heroWindow.Deactivated += OnHeroWindowDeactivated;
+            _heroWindowActive = _heroWindow.IsActive;
+        }
+        UpdateHeroVideoPause();
+    }
+
+    private void UnhookHeroWindow()
+    {
+        if (_heroWindow == null) return;
+        _heroWindow.Activated -= OnHeroWindowActivated;
+        _heroWindow.Deactivated -= OnHeroWindowDeactivated;
+        _heroWindow = null;
+    }
+
+    private void OnHeroWindowActivated(object? sender, EventArgs e) => OnHeroWindowActiveChanged(true);
+    private void OnHeroWindowDeactivated(object? sender, EventArgs e) => OnHeroWindowActiveChanged(false);
 
     /// <summary>The header "…" menu: plugin entries (API 1.7) for this artist go at the end.</summary>
     private void OnOptionsMenuOpening(object? sender, EventArgs e)
@@ -56,6 +116,7 @@ public partial class ArtistDetailView : UserControl
         base.OnAttachedToVisualTree(e);
         TrackViewModel(DataContext as ArtistDetailViewModel);
         TryRestoreScroll();
+        HookHeroWindow();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
@@ -64,6 +125,7 @@ public partial class ArtistDetailView : UserControl
         if (_trackedVm != null)
             _trackedVm.SavedScrollOffset = PageScrollViewer.Offset.Y;
         TrackViewModel(null);
+        UnhookHeroWindow();
         base.OnDetachedFromVisualTree(e);
     }
 

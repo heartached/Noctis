@@ -4614,4 +4614,7 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>Videoclip de YouTube</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>¿Vídeo equivocado?</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>Elige otro vídeo, pega un enlace o desactiva el vídeo para esta canción</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>Vídeos de artistas</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>Reproduce el vídeo de Apple Music de un artista detrás de su página cuando existe. Busca cada artista que abres.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>Quitar vídeo del artista</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

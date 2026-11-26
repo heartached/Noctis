@@ -9618,4 +9618,7 @@ Deezer 和 TIDAL：粘贴链接。</value></data>
   <data name="PlaybackBar.MusicVideoFromYouTube" xml:space="preserve"><value>来自 YouTube 的音乐视频</value><comment>Island ⋯ menu on the lyrics page</comment></data>
   <data name="Lyrics.WrongVideo" xml:space="preserve"><value>视频不对？</value><comment>Lyrics page button next to the Audio / Video switch while a YouTube video streams</comment></data>
   <data name="Lyrics.WrongVideoTip" xml:space="preserve"><value>选择其他视频、粘贴链接，或关闭这首歌的视频</value><comment>Tooltip of Wrong video?</comment></data>
+  <data name="Settings.ArtistVideos" xml:space="preserve"><value>艺人视频</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.ArtistVideosDesc" xml:space="preserve"><value>如有艺人的 Apple Music 视频，在其页面背后播放。会查找你打开的每位艺人。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="ArtistDetail.RemoveArtistVideo" xml:space="preserve"><value>移除艺人视频</value><comment>Header in ArtistDetailView.axaml</comment></data>
 </root>

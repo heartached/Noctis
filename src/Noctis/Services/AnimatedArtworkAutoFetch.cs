@@ -34,19 +34,27 @@ public sealed class AnimatedArtworkCache
     /// <summary>Where a download lands until it is complete; not an .mp4, so nothing plays it half-written.</summary>
     internal string PartPathFor(Guid albumId) => PathFor(albumId) + ".part";
 
+    /// <summary>Settings › Artwork › Artist videos: an artist's video, by Apple artist id, in
+    /// the same folder, so the same cap, eviction and Clear cover it.</summary>
+    public string ArtistVideoPathFor(long appleArtistId) => Path.Combine(Folder, $"artist_{appleArtistId}.mp4");
+
     /// <summary>Marks the album's cached loop as just used, so eviction takes it last.</summary>
-    public void Touch(Guid albumId)
+    public void Touch(Guid albumId) => TouchFile(PathFor(albumId));
+
+    /// <summary>Marks a cached file as just used, so eviction takes it last.</summary>
+    internal void TouchFile(string path)
     {
-        var path = PathFor(albumId);
         try { if (File.Exists(path)) File.SetLastWriteTimeUtc(path, _now()); }
         catch (IOException) { }
         catch (UnauthorizedAccessException) { }
     }
 
     /// <summary>Moves a finished download into the cache as the album's loop.</summary>
-    internal string Commit(Guid albumId, string partPath)
+    internal string Commit(Guid albumId, string partPath) => CommitFile(PathFor(albumId), partPath);
+
+    /// <summary>Moves a finished download into the cache at <paramref name="path"/>.</summary>
+    internal string CommitFile(string path, string partPath)
     {
-        var path = PathFor(albumId);
         File.Move(partPath, path, overwrite: true);
         File.SetLastWriteTimeUtc(path, _now());
         return path;
@@ -192,6 +200,12 @@ public sealed class AnimatedArtworkAutoFetcher
     private readonly SemaphoreSlim _one = new(1, 1);
 
     public AnimatedArtworkCache Cache { get; }
+
+    /// <summary>The request spacing, shared with the artist video fetch so both pace together.</summary>
+    internal PoliteGate Gate => _gate;
+
+    /// <summary>One lookup at a time, shared with the artist video fetch.</summary>
+    internal SemaphoreSlim Turn => _one;
 
     public AnimatedArtworkAutoFetcher(
         AnimatedArtworkBulkService lookup, IAnimatedCoverService covers, AnimatedArtworkCache cache, string? missLedgerPath,
