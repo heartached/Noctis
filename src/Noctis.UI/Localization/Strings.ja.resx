@@ -4888,7 +4888,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>One-line subtitle under the title in LyricsSearchDialog.axaml</comment>
   </data>
   <data name="LyricsSearch.Auto" xml:space="preserve">
-    <value>自動 (最適な一致)</value>
+    <value>自動 (一致率が高い)</value>
     <comment>First source-picker entry (LyricsSearchViewModel)</comment>
   </data>
   <data name="LyricsSearch.ArtistWatermark" xml:space="preserve">
@@ -4928,7 +4928,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value>
     <comment>Status in LyricsSearchViewModel</comment>
   </data>
   <data name="LyricsSearch.BestMatch" xml:space="preserve">
-    <value>最適な一致: {0}</value>
+    <value>最も高い一致率： {0}</value>
     <comment>Status in LyricsSearchViewModel; {0} = source name</comment>
   </data>
   <data name="LyricsSearch.NotFound" xml:space="preserve">
