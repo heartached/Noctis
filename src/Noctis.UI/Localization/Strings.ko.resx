@@ -9549,6 +9549,13 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Settings.MusicVideoAutoFind" xml:space="preserve"><value>뮤직비디오 자동으로 찾기</value><comment>Settings ▸ Lyrics ▸ Music videos toggle (Discord 11-25)</comment></data>
   <data name="Settings.MusicVideoAutoFindHint" xml:space="preserve"><value>자체 뮤직비디오가 없는 곡은 YouTube에서 영상을 찾아 가사 뒤에서 음소거 상태로 스트리밍합니다. 곡의 아티스트와 제목이 YouTube로 전송됩니다.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
   <data name="Settings.MusicVideoToolNeeded" xml:space="preserve"><value>YouTube에서 영상을 찾으려면 yt-dlp가 필요합니다.</value><comment>Shown when yt-dlp is missing for music video search/streaming</comment></data>
+  <data name="YtDlp.BotCheck" xml:space="preserve"><value>YouTube에서 로봇이 아닌지 확인을 요청했습니다. '브라우저의 YouTube 로그인 사용'을 켜거나 나중에 다시 시도하세요.</value><comment>Music video lookup refused by YouTube's bot check, no browser sign-in in use</comment></data>
+  <data name="YtDlp.BotCheckSignedIn" xml:space="preserve"><value>YouTube에서 계속 로봇이 아닌지 확인을 요청합니다. {0}에서 YouTube에 로그인되어 있는지 확인하거나 나중에 다시 시도하세요.</value><comment>Bot check even with the browser sign-in; {0} = browser name (Firefox, Chrome…)</comment></data>
+  <data name="YtDlp.CookiesUnreadable" xml:space="preserve"><value>{0}에서 YouTube 로그인 정보를 읽을 수 없습니다. {0}을(를) 완전히 닫고 다시 시도하거나 다른 브라우저를 선택하세요(Firefox가 가장 잘 작동합니다).</value><comment>yt-dlp could not read the browser's cookies (locked/encrypted); {0} = browser name</comment></data>
+  <data name="YtDlp.CookiesNotFound" xml:space="preserve"><value>이 컴퓨터에서 {0} 또는 그 YouTube 로그인을 찾을 수 없습니다. YouTube에 사용하는 브라우저를 선택하세요.</value><comment>The chosen browser or its profile is not on this computer; {0} = browser name</comment></data>
+  <data name="Settings.MusicVideoBrowserSignIn" xml:space="preserve"><value>브라우저의 YouTube 로그인 사용</value><comment>Settings ▸ Lyrics ▸ Music videos toggle</comment></data>
+  <data name="Settings.MusicVideoBrowserSignInHint" xml:space="preserve"><value>YouTube에서 로봇이 아닌지 확인을 요청할 때 사용합니다. yt-dlp가 이 컴퓨터에서 이 브라우저의 YouTube 쿠키를 읽어 자체 YouTube 요청에만 사용합니다.</value><comment>Settings ▸ Lyrics ▸ Music videos toggle hint</comment></data>
+  <data name="Settings.MusicVideoBrowser" xml:space="preserve"><value>브라우저</value><comment>Settings ▸ Lyrics ▸ Music videos: label of the browser picker</comment></data>
   <data name="MusicVideo.Title" xml:space="preserve"><value>YouTube 뮤직비디오</value><comment>Music Video from YouTube dialog title</comment></data>
   <data name="MusicVideo.PasteLink" xml:space="preserve"><value>YouTube 링크 붙여넣기</value><comment>Music video dialog: label of the link box</comment></data>
   <data name="MusicVideo.LinkWatermark" xml:space="preserve"><value>youtube.com/watch?v=… 또는 youtu.be/…</value><comment>Music video dialog: link box placeholder</comment></data>

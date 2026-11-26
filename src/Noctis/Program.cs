@@ -653,7 +653,9 @@ internal class Program
             new Services.YouTube.YtDlpTool(
                 sp.GetRequiredService<HttpClient>(),
                 sp.GetRequiredService<IPersistenceService>().DataDirectory,
-                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty));
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.GetSettings().YtDlpPath ?? string.Empty,
+                // Settings › Lyrics › Music videos › Use my browser's YouTube sign-in (11-25).
+                () => App.Services?.GetService<MainWindowViewModel>()?.Settings.MusicVideoCookiesFromBrowser));
         // Discord #feedback 11-25: music videos streamed from YouTube behind the lyrics; the
         // per-song choices live in music_video_choices.json.
         services.AddSingleton<Services.YouTube.MusicVideoStreamService>(sp =>

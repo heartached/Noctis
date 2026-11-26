@@ -3920,6 +3920,8 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoUseVideoAudio = _settings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = _settings.MusicVideoAsBackground;
             MusicVideoAutoFind = _settings.MusicVideoAutoFind;
+            MusicVideoUseBrowserCookies = _settings.MusicVideoUseBrowserCookies;
+            MusicVideoCookieBrowserName = CookieBrowserNameFor(_settings.MusicVideoCookiesBrowser);
             LyricsFullScreenFocusEnabled = _settings.LyricsFullScreenFocusEnabled;
             LyricsFullScreenHideIsland = _settings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = Math.Clamp(_settings.LyricsMinLineOpacity, 0, 60);
@@ -4545,6 +4547,8 @@ public partial class SettingsViewModel : ViewModelBase
         _settings.MusicVideoUseVideoAudio = MusicVideoUseVideoAudio;
         _settings.MusicVideoAsBackground = MusicVideoAsBackground;
         _settings.MusicVideoAutoFind = MusicVideoAutoFind;
+        _settings.MusicVideoUseBrowserCookies = MusicVideoUseBrowserCookies;
+        _settings.MusicVideoCookiesBrowser = MusicVideoCookieBrowserId;
         _settings.LyricsFullScreenFocusEnabled = LyricsFullScreenFocusEnabled;
         _settings.LyricsFullScreenHideIsland = LyricsFullScreenHideIsland;
         _settings.LyricsMinLineOpacity = LyricsMinLineOpacity;
@@ -9246,6 +9250,8 @@ public partial class SettingsViewModel : ViewModelBase
             MusicVideoUseVideoAudio = defaultSettings.MusicVideoUseVideoAudio;
             MusicVideoAsBackground = defaultSettings.MusicVideoAsBackground;
             MusicVideoAutoFind = defaultSettings.MusicVideoAutoFind;
+            MusicVideoUseBrowserCookies = defaultSettings.MusicVideoUseBrowserCookies;
+            MusicVideoCookieBrowserName = CookieBrowserNameFor(defaultSettings.MusicVideoCookiesBrowser);
             LyricsFullScreenFocusEnabled = defaultSettings.LyricsFullScreenFocusEnabled;
             LyricsFullScreenHideIsland = defaultSettings.LyricsFullScreenHideIsland;
             LyricsMinLineOpacity = defaultSettings.LyricsMinLineOpacity;

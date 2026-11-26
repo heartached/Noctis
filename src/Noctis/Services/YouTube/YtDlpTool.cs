@@ -25,6 +25,33 @@ public sealed class YtDlpRunException : InvalidOperationException
 }
 
 /// <summary>
+/// YouTube asked to confirm "you're not a bot", or the browser sign-in (cookies) could not be
+/// read (11-25). <see cref="Exception.Message"/> is the plain-language text for the UI;
+/// <see cref="Kind"/> lets callers react (a cool-down, no "no match" mark).
+/// </summary>
+public sealed class YtDlpAccessException : InvalidOperationException
+{
+    public YtDlpFailureKind Kind { get; }
+    /// <summary>The browser whose sign-in was used, or null.</summary>
+    public string? CookieBrowser { get; }
+
+    public YtDlpAccessException(YtDlpFailureKind kind, string? cookieBrowser, Exception? inner = null)
+        : base(YtDlpParsing.FailureMessage(kind, cookieBrowser), inner)
+    {
+        Kind = kind;
+        CookieBrowser = cookieBrowser;
+    }
+
+    /// <summary>The access failure in <paramref name="ex"/> or its inner exceptions, or null.</summary>
+    public static YtDlpAccessException? Find(Exception? ex)
+    {
+        for (var e = ex; e != null; e = e.InnerException)
+            if (e is YtDlpAccessException access) return access;
+        return null;
+    }
+}
+
+/// <summary>
 /// yt-dlp as an external tool, the way ffmpeg already is: a user-set path wins, then the
 /// copy Noctis installs under its data folder, then PATH. Installing fetches the official
 /// release asset from GitHub; the same call updates it.
@@ -39,6 +66,7 @@ public sealed class YtDlpTool : IYouTubeVideoSource
 
     private readonly HttpClient _http;
     private readonly Func<string> _overridePath;
+    private readonly Func<string?> _cookiesFromBrowser;
     private readonly SemaphoreSlim _updateGate = new(1, 1);
     private readonly object _sessionLock = new();
     private Task<YtDlpUpdateStatus>? _sessionCheck;
@@ -59,10 +87,13 @@ public sealed class YtDlpTool : IYouTubeVideoSource
     /// <summary>Null = <see cref="ResumableDownload.Options.Default"/>; tests shorten the retry delays.</summary>
     internal ResumableDownload.Options? DownloadOptions { get; set; }
 
-    public YtDlpTool(HttpClient http, string dataRoot, Func<string> overridePath)
+    /// <param name="cookiesFromBrowser">The browser whose YouTube sign-in yt-dlp may read
+    /// (Settings › Lyrics › Music videos), or null while that is off.</param>
+    public YtDlpTool(HttpClient http, string dataRoot, Func<string> overridePath, Func<string?>? cookiesFromBrowser = null)
     {
         _http = http;
         _overridePath = overridePath;
+        _cookiesFromBrowser = cookiesFromBrowser ?? (() => null);
         ToolsDirectory = Path.Combine(dataRoot, "tools");
         Runner = RunProcessAsync;
         LatestVersionFetcher = FetchLatestVersionAsync;
@@ -84,6 +115,16 @@ public sealed class YtDlpTool : IYouTubeVideoSource
     }
 
     public bool IsAvailable => Resolve() != null;
+
+    /// <summary>The browser passed as <c>--cookies-from-browser</c> now (a known one), or null.</summary>
+    public string? CookiesBrowser
+    {
+        get
+        {
+            try { return YtDlpParsing.NormalizeCookieBrowser(_cookiesFromBrowser()); }
+            catch { return null; }
+        }
+    }
 
     /// <summary>True when <paramref name="path"/> is the copy Noctis installed (the only one it may replace).</summary>
     public bool IsAppInstalled(string? path)
@@ -432,9 +473,16 @@ public sealed class YtDlpTool : IYouTubeVideoSource
     private async Task<T> RunWithBlockedRetryAsync<T>(string operation, Func<string, string?, Task<T>> attempt, Action<string>? onStatus, CancellationToken ct)
     {
         var exe = Resolve() ?? throw new InvalidOperationException("yt-dlp is not installed.");
+        var cookies = CookiesBrowser;
         try
         {
             return await attempt(exe, await JsRuntimeForAsync(exe, ct).ConfigureAwait(false)).ConfigureAwait(false);
+        }
+        catch (YtDlpRunException first) when (!ct.IsCancellationRequested && YtDlpParsing.ClassifyFailure(first.Stderr) is var kind && kind != YtDlpFailureKind.Other)
+        {
+            // A bot check is about this computer's address, not a stale yt-dlp: no update, no
+            // retry (it would only ask YouTube again). Cookie trouble never reached YouTube.
+            throw Access(operation, kind, cookies, first);
         }
         catch (YtDlpRunException first) when (YtDlpParsing.IsBlockedError(first.Stderr) && !ct.IsCancellationRequested)
         {
@@ -453,6 +501,10 @@ public sealed class YtDlpTool : IYouTubeVideoSource
             {
                 return await attempt(retryExe, await JsRuntimeForAsync(retryExe, ct).ConfigureAwait(false)).ConfigureAwait(false);
             }
+            catch (YtDlpRunException second) when (!ct.IsCancellationRequested && YtDlpParsing.ClassifyFailure(second.Stderr) is var kind && kind != YtDlpFailureKind.Other)
+            {
+                throw Access(operation, kind, cookies, second);
+            }
             catch (YtDlpRunException second) when (YtDlpParsing.IsBlockedError(second.Stderr) && !ct.IsCancellationRequested)
             {
                 var version = await GetVersionAsync(retryExe, ct).ConfigureAwait(false) ?? check.InstalledVersion;
@@ -461,9 +513,17 @@ public sealed class YtDlpTool : IYouTubeVideoSource
         }
     }
 
-    /// <summary>Runs yt-dlp, logging version + args up front and the stderr tail of a failing run.</summary>
+    private static YtDlpAccessException Access(string operation, YtDlpFailureKind kind, string? cookies, YtDlpRunException run)
+    {
+        LogWarn("YtDlp.AccessFailed", $"{operation} {kind} cookies={cookies ?? "off"}");
+        return new YtDlpAccessException(kind, cookies, run);
+    }
+
+    /// <summary>Runs yt-dlp, logging version + args up front and the stderr tail of a failing run.
+    /// With the browser sign-in on (Settings), every YouTube run reads that browser's cookies.</summary>
     private async Task<(int ExitCode, string Stdout, string Stderr)> RunLoggedAsync(string operation, string exe, IReadOnlyList<string> args, Action<string>? onStdoutLine, CancellationToken ct)
     {
+        args = YtDlpParsing.WithCookiesFromBrowser(args, CookiesBrowser);
         var version = await GetVersionAsync(exe, ct).ConfigureAwait(false);
         Log("YtDlp.Run",
             $"{operation} yt-dlp {version ?? "?"} ({(IsAppInstalled(exe) ? "app-installed" : exe)}) args: {string.Join(' ', args)}");

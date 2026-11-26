@@ -320,6 +320,127 @@ public static partial class YtDlpParsing
                || stderr.Contains("not available in your country", StringComparison.OrdinalIgnoreCase);
     }
 
+    // ── Bot check / browser sign-in (11-25) ──────────────────────────────────
+
+    /// <summary>
+    /// YouTube's "Sign in to confirm you're not a bot": this computer's address was flagged.
+    /// Not a stale yt-dlp (an update does not help) and not the video's fault (a saved match
+    /// stays): only the user's YouTube sign-in, or time, gets past it.
+    /// </summary>
+    public static bool IsBotCheckError(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return false;
+        var text = stderr.Replace('’', '\'');
+        return text.Contains("confirm you're not a bot", StringComparison.OrdinalIgnoreCase)
+               || text.Contains("confirm you are not a bot", StringComparison.OrdinalIgnoreCase)
+               || text.Contains("Sign in to confirm", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public const string DefaultCookieBrowser = "firefox";
+
+    /// <summary>
+    /// Browsers yt-dlp's <c>--cookies-from-browser</c> reads, in the order Settings lists them.
+    /// Firefox first: Chromium browsers on Windows lock and encrypt their cookie store while
+    /// they run, so Firefox is the one that reads reliably there. Safari is macOS only.
+    /// </summary>
+    public static IReadOnlyList<string> CookieBrowsers(OSPlatform? platform = null)
+    {
+        var isMac = platform is null ? OperatingSystem.IsMacOS() : platform == OSPlatform.OSX;
+        var list = new List<string> { "firefox", "chrome", "edge", "brave", "opera", "vivaldi", "chromium", "whale" };
+        if (isMac) list.Add("safari");
+        return list;
+    }
+
+    /// <summary>A browser yt-dlp knows (any case), lower-cased; null otherwise.</summary>
+    public static string? NormalizeCookieBrowser(string? browser)
+    {
+        var b = browser?.Trim().ToLowerInvariant();
+        return !string.IsNullOrEmpty(b) && CookieBrowsers(OSPlatform.OSX).Contains(b) ? b : null;
+    }
+
+    /// <summary>The browser's own name ("Firefox", "Chrome"…), as Settings and messages show it.</summary>
+    public static string CookieBrowserName(string? browser) => NormalizeCookieBrowser(browser) switch
+    {
+        "firefox" => "Firefox",
+        "chrome" => "Chrome",
+        "edge" => "Edge",
+        "brave" => "Brave",
+        "opera" => "Opera",
+        "vivaldi" => "Vivaldi",
+        "chromium" => "Chromium",
+        "whale" => "Whale",
+        "safari" => "Safari",
+        _ => browser?.Trim() ?? string.Empty,
+    };
+
+    /// <summary>
+    /// <paramref name="args"/> with <c>--cookies-from-browser &lt;browser&gt;</c> before the last
+    /// argument (the URL or the search), when a known browser is given; unchanged otherwise.
+    /// </summary>
+    public static IReadOnlyList<string> WithCookiesFromBrowser(IReadOnlyList<string> args, string? browser)
+    {
+        var b = NormalizeCookieBrowser(browser);
+        if (b is null || args.Count == 0 || args.Contains("--cookies-from-browser")) return args;
+        var list = new List<string>(args.Count + 2);
+        list.AddRange(args.Take(args.Count - 1));
+        list.Add("--cookies-from-browser");
+        list.Add(b);
+        list.Add(args[^1]);
+        return list;
+    }
+
+    /// <summary>
+    /// yt-dlp could not read the browser's cookies (it stops before asking YouTube anything):
+    /// <see cref="YtDlpFailureKind.CookiesNotFound"/> when the browser or its profile is not
+    /// there, <see cref="YtDlpFailureKind.CookiesUnreadable"/> when the store is locked (the
+    /// browser is open), encrypted or not permitted, else <see cref="YtDlpFailureKind.Other"/>.
+    /// The bot-check line itself mentions "--cookies" and is not a cookie failure.
+    /// </summary>
+    public static YtDlpFailureKind ClassifyCookieError(string? stderr)
+    {
+        if (string.IsNullOrWhiteSpace(stderr)) return YtDlpFailureKind.Other;
+        var found = YtDlpFailureKind.Other;
+        foreach (var raw in stderr.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!raw.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase) || IsBotCheckError(raw)) continue;
+            var line = raw.ToLowerInvariant();
+            if (!line.Contains("cookie") && !line.Contains("local state") && !line.Contains("keyring") && !line.Contains("dpapi")) continue;
+            if (line.Contains("could not find") || line.Contains("not found") || line.Contains("no such file")
+                || line.Contains("unsupported browser"))
+                return YtDlpFailureKind.CookiesNotFound;
+            if (line.Contains("could not copy") || line.Contains("decrypt") || line.Contains("dpapi")
+                || line.Contains("permission") || line.Contains("not permitted") || line.Contains("locked")
+                || line.Contains("failed") || line.Contains("unable") || line.Contains("keyring"))
+                found = YtDlpFailureKind.CookiesUnreadable;
+        }
+        return found;
+    }
+
+    /// <summary>The kind of failure a yt-dlp run's stderr shows. Cookie trouble first: it stops
+    /// a run before YouTube is asked anything.</summary>
+    public static YtDlpFailureKind ClassifyFailure(string? stderr)
+    {
+        var cookies = ClassifyCookieError(stderr);
+        if (cookies != YtDlpFailureKind.Other) return cookies;
+        return IsBotCheckError(stderr) ? YtDlpFailureKind.BotCheck : YtDlpFailureKind.Other;
+    }
+
+    /// <summary>The plain-language message for a bot check / cookie failure (empty for <see cref="YtDlpFailureKind.Other"/>).
+    /// <paramref name="cookieBrowser"/> is the browser whose sign-in was used, or null.</summary>
+    public static string FailureMessage(YtDlpFailureKind kind, string? cookieBrowser)
+    {
+        var name = CookieBrowserName(cookieBrowser);
+        return kind switch
+        {
+            YtDlpFailureKind.BotCheck when NormalizeCookieBrowser(cookieBrowser) is not null
+                => Localization.Loc.T("YtDlp.BotCheckSignedIn", name),
+            YtDlpFailureKind.BotCheck => Localization.Loc.T("YtDlp.BotCheck"),
+            YtDlpFailureKind.CookiesNotFound => Localization.Loc.T("YtDlp.CookiesNotFound", name),
+            YtDlpFailureKind.CookiesUnreadable => Localization.Loc.T("YtDlp.CookiesUnreadable", name),
+            _ => string.Empty,
+        };
+    }
+
     // ── Progress ──────────────────────────────────────────────────────────────
 
     [GeneratedRegex(@"\[download\]\s+(\d{1,3}(?:\.\d+)?)%")]
@@ -334,4 +455,16 @@ public static partial class YtDlpParsing
             ? Math.Clamp(p, 0, 100)
             : null;
     }
+}
+
+/// <summary>A yt-dlp failure that needs its own handling (see <see cref="YtDlpParsing.ClassifyFailure"/>).</summary>
+public enum YtDlpFailureKind
+{
+    Other,
+    /// <summary>"Sign in to confirm you're not a bot".</summary>
+    BotCheck,
+    /// <summary>The chosen browser's cookie store is locked, encrypted or not permitted.</summary>
+    CookiesUnreadable,
+    /// <summary>The chosen browser (or its profile) is not on this computer.</summary>
+    CookiesNotFound,
 }

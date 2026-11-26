@@ -19,7 +19,12 @@ namespace Noctis.Controls;
 /// </para>
 /// <para>
 /// Failures: no frame for <see cref="StallMs"/> while the song plays (and the clip has not
-/// reached its end) is a stalled stream; see also <see cref="IsPrematureEnd"/>.
+/// reached its end) is a stalled stream; see also <see cref="IsPrematureEnd"/>. That detector
+/// is armed only once the stream shows its first frame: until then (start-up), and after a
+/// seek until a frame shows at (or after) it, the wait is <see cref="StartupCapMs"/>. VLC's
+/// buffering progress counts as activity in both phases: a slow connection that is still
+/// filling its cache is not a stalled one (11-25: a stream that took over 12 s to start was
+/// reported as broken and cost one of the song's retries).
 /// </para>
 /// Thread-safe: called from the UI thread, the thread pool and VLC's threads.
 /// </summary>
@@ -39,6 +44,9 @@ internal sealed class StreamSyncGate
     public const int MaxLeadMs = 1500;
     /// <summary>No frame this long while the song plays: the stream broke.</summary>
     public const int StallMs = 12000;
+    /// <summary>Start-up (no frame yet) or a seek still waiting for its first frame: the stream
+    /// broke only after this long without a frame or buffering progress.</summary>
+    public const int StartupCapMs = 30000;
     /// <summary>Within this of the clip's end, ending or showing no frames is normal.</summary>
     public const int EndSlackMs = 5000;
 
@@ -55,6 +63,10 @@ internal sealed class StreamSyncGate
     private long _settleUntil = long.MinValue;
     private long _leadMs = InitialLeadMs;
     private long _activeSince;
+    // True until the stream shows its first frame, and again from a seek until a frame shows
+    // after it: the long start-up cap applies instead of the stall detector.
+    private bool _awaitingFrame = true;
+    private float _lastBuffering = -1;
 
     public StreamSyncGate(Func<long>? now = null)
     {
@@ -147,13 +159,37 @@ internal sealed class StreamSyncGate
             _seekTo = seekToMs;
             _seekAt = now;
             _activeSince = now;
+            _awaitingFrame = true;
         }
     }
 
-    /// <summary>A frame was shown (every frame; feeds the stall check).</summary>
+    /// <summary>Waiting for the stream's first frame, or for the first one after a seek.</summary>
+    public bool IsAwaitingFrame { get { lock (_lock) return _awaitingFrame; } }
+
+    /// <summary>A frame was shown (every frame; feeds the stall check). Outside a seek it arms
+    /// the stall detector; during one, frames can still be the old position's, so only the
+    /// landing (<see cref="OnFrame"/>) or the first frame after the seek's cap does.</summary>
     public void NoteFrame()
     {
-        lock (_lock) _activeSince = _now();
+        lock (_lock)
+        {
+            _activeSince = _now();
+            if (!_seeking) _awaitingFrame = false;
+        }
+    }
+
+    /// <summary>
+    /// VLC reported buffering (<paramref name="percent"/> of its cache). A changed value means
+    /// data is still arriving: the stream is slow, not stalled.
+    /// </summary>
+    public void NoteBuffering(float percent)
+    {
+        lock (_lock)
+        {
+            if (percent == _lastBuffering) return;
+            _lastBuffering = percent;
+            _activeSince = _now();
+        }
     }
 
     /// <summary>
@@ -169,6 +205,7 @@ internal sealed class StreamSyncGate
             _activeSince = now;
             if (!_seeking || Math.Abs(videoMs - _seekTo) > LandSlackMs) return false;
             _leadMs = Math.Clamp((_leadMs + (now - _seekAt)) / 2, 0, MaxLeadMs);
+            _awaitingFrame = false;
             Land(now);
             return _dirty;
         }
@@ -204,13 +241,15 @@ internal sealed class StreamSyncGate
         }
     }
 
-    /// <summary>Called while the song plays: no frame for <see cref="StallMs"/> before the clip's end.</summary>
+    /// <summary>Called while the song plays: no frame (or buffering progress) for
+    /// <see cref="StallMs"/> before the clip's end, or <see cref="StartupCapMs"/> while the
+    /// stream has not shown its first frame (start-up, or since a seek).</summary>
     public bool IsStalled(long targetMs, long lengthMs)
     {
         lock (_lock)
         {
             if (lengthMs > 0 && targetMs >= lengthMs - EndSlackMs) return false;
-            return _now() - _activeSince > StallMs;
+            return _now() - _activeSince > (_awaitingFrame ? StartupCapMs : StallMs);
         }
     }
 

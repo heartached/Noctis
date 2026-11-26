@@ -170,7 +170,7 @@ public partial class MusicVideoPickerViewModel : ObservableObject
             if (!ToolInstalled) { LinkStatus = Loc.T("LyricsVideo.InstallFirst"); return; }
             IsLookingUp = true;
             LinkStatus = Loc.T("MusicVideo.LookingUp");
-            var info = await Task.Run(() => _service.Source.GetInfoAsync(YouTubeLinks.WatchUrl(id), ct), ct);
+            var info = await Task.Run(() => _service.LookUpLinkAsync(YouTubeLinks.WatchUrl(id), ct), ct);
             if (ct.IsCancellationRequested) return;
             if (info is null) { LinkStatus = Loc.T("MusicVideo.LinkNotFound"); return; }
             var row = new MusicVideoCandidateRow(info);
@@ -181,7 +181,7 @@ public partial class MusicVideoPickerViewModel : ObservableObject
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            if (!ct.IsCancellationRequested) LinkStatus = Loc.T("MusicVideo.LinkFailed", ex.Message);
+            if (!ct.IsCancellationRequested) LinkStatus = Explain(ex) ?? Loc.T("MusicVideo.LinkFailed", ex.Message);
         }
         finally
         {
@@ -227,7 +227,8 @@ public partial class MusicVideoPickerViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            LinkStatus = Loc.T("LyricsVideo.DownloadFailed", ex.Message);
+            _service.NoteFailure(ex);
+            LinkStatus = Explain(ex) ?? Loc.T("LyricsVideo.DownloadFailed", ex.Message);
         }
         finally
         {
@@ -263,7 +264,7 @@ public partial class MusicVideoPickerViewModel : ObservableObject
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            if (!ct.IsCancellationRequested) SearchStatus = Loc.T("MusicVideo.SearchFailed", ex.Message);
+            if (!ct.IsCancellationRequested) SearchStatus = Explain(ex) ?? Loc.T("MusicVideo.SearchFailed", ex.Message);
         }
         finally { IsSearching = false; }
     }
@@ -324,6 +325,9 @@ public partial class MusicVideoPickerViewModel : ObservableObject
         _downloadCts?.Cancel();
         _lifetime.Cancel();
     }
+
+    /// <summary>A bot check / browser sign-in failure says what to do on its own (no "Search failed:" in front).</summary>
+    private static string? Explain(Exception ex) => YtDlpAccessException.Find(ex)?.Message;
 
     private async Task LoadThumbnailAsync(MusicVideoCandidateRow row, CancellationToken ct)
     {

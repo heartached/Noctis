@@ -96,6 +96,9 @@ public partial class PlayerViewModel
         else Dispatcher.UIThread.Post(Apply);
     }
 
+    /// <summary>Looks the current song's stream up again (Settings: the YouTube sign-in changed).</summary>
+    public void RetryMusicVideoStream() => ResolveMusicVideoStream();
+
     /// <summary>A song with no local clip and no lyrics background of its own (song or album).</summary>
     private bool HasOwnLyricsBackground(Track track)
     {
@@ -231,9 +234,13 @@ public partial class PlayerViewModel
         {
             while (_streamFailures < StreamRetryDelays.Length)
             {
+                // YouTube asked to confirm "not a bot": asking again per attempt only digs
+                // deeper. The song keeps its artwork; the next song tries after the cool-down.
+                if (service.IsCoolingDown) break;
                 var delay = StreamRetryDelays[_streamFailures++];
                 await StreamRetryDelay(delay, ct);
                 if (ct.IsCancellationRequested || generation != _streamGeneration) return;
+                if (service.IsCoolingDown) break;
                 if (!IsNetworkUp())
                 {
                     DebugLogger.Info(DebugLogger.Category.State, "MusicVideo.RetryOffline", $"attempt {_streamFailures}");
@@ -262,7 +269,8 @@ public partial class PlayerViewModel
         catch (OperationCanceledException) { return; }
         if (generation != _streamGeneration) return;
         // Given up for this song: the artwork stays, and nothing more is tried until the next one.
-        DebugLogger.Info(DebugLogger.Category.Playback, "MusicVideo.StreamGaveUp", stream.VideoId);
+        DebugLogger.Info(DebugLogger.Category.Playback, "MusicVideo.StreamGaveUp",
+            service.IsCoolingDown ? stream.VideoId + " (bot check, cooling down)" : stream.VideoId);
         _stream = null;
         _streamRefreshing = false;
     }

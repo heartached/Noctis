@@ -261,6 +261,7 @@ public class MusicVideoStreamFollowupTests : IDisposable
     {
         long now = 0;
         var gate = new StreamSyncGate(() => now);
+        gate.NoteFrame(); // the detector is armed by the first frame (start-up: MusicVideoBotCheckTests)
         now = StreamSyncGate.StallMs - 1;
         Assert.False(gate.IsStalled(30_000, 200_000));
         now = StreamSyncGate.StallMs + 1;
