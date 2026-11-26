@@ -4341,6 +4341,10 @@ Se descartan las líneas y sus tiempos y se abre un cuadro de letras vacío para
   <data name="Lyrics.TrySource" xml:space="preserve"><value>Probar {0}</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>Aún no hay álbumes. La biblioteca de música de este servidor está vacía, o no se pudo acceder a ella.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>No se pudo cargar este álbum desde el servidor.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} no respondió.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} no aceptó el inicio de sesión.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} respondió con un error.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>Reintentar</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>No se puede marcar mientras suena el audio del videoclip: desactiva el audio del videoclip y reinicia la canción</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Nada que guardar: marca al menos una línea</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Guardado · no se pudo escribir la letra en el archivo de audio (¿en uso o de solo lectura?)</value><comment>Sync lyrics (LRC editor) status</comment></data>

@@ -70,6 +70,22 @@ public interface IMediaServerService
     /// <summary>An album of the last unified list by its <see cref="ServerAlbum.Key"/>, or null.</summary>
     ServerAlbum? FindAlbum(string key) => null;
 
+    /// <summary>
+    /// The servers whose album list could not be read on the last try (timeout, HTTP error,
+    /// rejected login), in the user's order. A server leaves it once it answers (GitHub #268).
+    /// </summary>
+    IReadOnlyList<ServerFailure> Failures => Array.Empty<ServerFailure>();
+
+    /// <summary>Raised (any thread) when <see cref="Failures"/> changes.</summary>
+    event EventHandler? FailuresChanged { add { } remove { } }
+
+    /// <summary>
+    /// Reads one server's albums again (the Server section's Retry) and merges them into the
+    /// cached list, by the usual server order and merge rules; the other servers are not asked.
+    /// Returns the merged list.
+    /// </summary>
+    Task<IReadOnlyList<ServerAlbum>> RetryServerAsync(Guid connectionId, CancellationToken ct = default) => GetAllAlbumsAsync(ct);
+
     /// <summary>The album's cover when it is already in the local artwork store, else null (no network).</summary>
     string? CachedArtworkPath(ServerAlbum album) => null;
 
@@ -123,6 +139,7 @@ public sealed class MediaServerService : IMediaServerService
     private AlbumListRead? _allAlbums;
     private Dictionary<string, ServerAlbum> _albumsByKey = new(StringComparer.Ordinal);
     private int _albumsByKeySequence;
+    private readonly Dictionary<Guid, ServerFailure> _failures = new();
 
     /// <summary>
     /// One read of every server's albums: the merged list so far (<see cref="Snapshot"/>,
@@ -133,7 +150,12 @@ public sealed class MediaServerService : IMediaServerService
         public readonly object Gate = new();
         public required int Generation { get; init; }
         public required DateTime StartedUtc { get; init; }
+        public required IReadOnlyList<SourceConnection> Connections { get; init; }
         public required List<ServerAlbum>[] PerServer { get; init; }
+        /// <summary>Under <see cref="Gate"/>: each server's read (a Retry replaces its entry).</summary>
+        public required Task?[] ServerTasks { get; init; }
+        /// <summary>Under <see cref="Gate"/>: every server's read finished; the list is final (cached).</summary>
+        public bool Done { get; set; }
         public Task<IReadOnlyList<ServerAlbum>> Task { get; set; } = null!;
         public IReadOnlyList<ServerAlbum> Snapshot { get; set; } = Array.Empty<ServerAlbum>();
         public bool HasSnapshot { get; set; }
@@ -177,6 +199,38 @@ public sealed class MediaServerService : IMediaServerService
     public bool IsConfigured => _connections.Count > 0;
 
     public event EventHandler? ActiveConnectionChanged;
+
+    public event EventHandler? FailuresChanged;
+
+    public IReadOnlyList<ServerFailure> Failures
+    {
+        get
+        {
+            lock (_albumsGate)
+                return _connections.Where(c => _failures.ContainsKey(c.Id)).Select(c => _failures[c.Id]).ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Notes whether a server's album list could be read (<paramref name="error"/> null = it
+    /// answered). Ignored when the servers changed since (<paramref name="generation"/>).
+    /// </summary>
+    private void SetFailure(int generation, SourceConnection connection, MediaServerConnectResult? error)
+    {
+        bool changed;
+        lock (_albumsGate)
+        {
+            if (generation != _generation) return;
+            if (error == null) changed = _failures.Remove(connection.Id);
+            else
+            {
+                var failure = new ServerFailure(connection.Id, DisplayName(connection), error.Error, error.Message);
+                changed = !_failures.TryGetValue(connection.Id, out var old) || old != failure;
+                _failures[connection.Id] = failure;
+            }
+        }
+        if (changed) FailuresChanged?.Invoke(this, EventArgs.Empty);
+    }
 
     /// <summary>
     /// What the app calls a server: the user's own name for it, else the preset and host
@@ -222,14 +276,18 @@ public sealed class MediaServerService : IMediaServerService
     {
         var list = connections.Where(c => c != null && c.Enabled && _clients.ContainsKey(c.Type))
             .GroupBy(c => c.Id).Select(g => g.First()).ToArray();
+        bool hadFailures;
         lock (_albumsGate)
         {
             _connections = list;
             _generation++;
             _allAlbums = null;
             _albumsByKey = new Dictionary<string, ServerAlbum>(StringComparer.Ordinal);
+            hadFailures = _failures.Count > 0;
+            _failures.Clear();
         }
         ActiveConnectionChanged?.Invoke(this, EventArgs.Empty);
+        if (hadFailures) FailuresChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task<IReadOnlyList<ServerAlbum>> GetAlbumsAsync(int offset, int limit, CancellationToken ct = default)
@@ -242,7 +300,11 @@ public sealed class MediaServerService : IMediaServerService
             // One server: page it directly, as before (no whole-library read on first open).
             var connection = connections[0];
             if (!_clients.TryGetValue(connection.Type, out var client)) return Array.Empty<ServerAlbum>();
-            var page = await client.GetAlbumsAsync(connection, offset, limit, ct);
+            int generation;
+            lock (_albumsGate) generation = _generation;
+            var result = await client.GetAlbumPageAsync(connection, offset, limit, ct);
+            SetFailure(generation, connection, result.Error);
+            var page = result.Albums;
             Stamp(page, connection);
             lock (_albumsGate)
                 foreach (var album in page) _albumsByKey[album.Key] = album;
@@ -297,7 +359,9 @@ public sealed class MediaServerService : IMediaServerService
                 {
                     Generation = _generation,
                     StartedUtc = DateTime.UtcNow,
+                    Connections = connections,
                     PerServer = connections.Select(_ => new List<ServerAlbum>()).ToArray(),
+                    ServerTasks = new Task?[connections.Count],
                 };
                 _allAlbums = read;
                 _albumsByKeySequence = 0;
@@ -325,35 +389,120 @@ public sealed class MediaServerService : IMediaServerService
     /// </summary>
     private async Task<IReadOnlyList<ServerAlbum>> ReadAllAlbumsAsync(IReadOnlyList<SourceConnection> connections, AlbumListRead read)
     {
-        await Task.WhenAll(connections.Select((connection, index) => ReadServerAlbumsAsync(connection, index, read)));
+        lock (read.Gate)
+            for (var i = 0; i < connections.Count; i++)
+            {
+                var index = i;
+                read.ServerTasks[index] = Task.Run(() => ReadServerAlbumsAsync(connections[index], index, read, replace: false));
+            }
+        // A Retry started while other servers were still loading is waited for as well, so the
+        // list this read completes with (and caches) has its albums.
+        while (true)
+        {
+            Task[] tasks;
+            lock (read.Gate) tasks = read.ServerTasks.Select(t => t ?? Task.CompletedTask).ToArray();
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+            lock (read.Gate)
+            {
+                if (tasks.Select((t, i) => ReferenceEquals(t, read.ServerTasks[i])).All(same => same))
+                {
+                    read.Done = true;
+                    break;
+                }
+            }
+        }
         return PublishMerged(read);
     }
 
-    private async Task ReadServerAlbumsAsync(SourceConnection connection, int index, AlbumListRead read)
+    /// <summary>
+    /// Reads one server's whole album list into the read, publishing after each page, and notes
+    /// whether it answered (<see cref="Failures"/>). <paramref name="replace"/> (a Retry): the
+    /// albums kept from the earlier try give way to the first page that arrives.
+    /// </summary>
+    private async Task ReadServerAlbumsAsync(SourceConnection connection, int index, AlbumListRead read, bool replace)
     {
         if (!_clients.TryGetValue(connection.Type, out var client)) return;
         var count = 0;
+        MediaServerConnectResult? failure = null;
         try
         {
             while (count < MaxAlbumsPerServer)
             {
                 var size = count == 0 ? FirstListPageSize : FullListPageSize;
-                var page = await client.GetAlbumsAsync(connection, count, size).ConfigureAwait(false);
-                count += page.Count;
-                if (page.Count > 0)
+                var result = await client.GetAlbumPageAsync(connection, count, size).ConfigureAwait(false);
+                if (result.Error != null)
+                {
+                    failure = result.Error;
+                    DebugLog.WriteOnce("Server", $"albums:{connection.Id:N}:{result.Error.Error}",
+                        $"Server album list failed ({DisplayName(connection)}): {result.Error.Message}");
+                    break;
+                }
+                var page = result.Albums;
+                if (replace || page.Count > 0)
                 {
                     Stamp(page, connection);
-                    lock (read.Gate) read.PerServer[index].AddRange(page);
+                    lock (read.Gate)
+                    {
+                        if (replace) read.PerServer[index].Clear();
+                        read.PerServer[index].AddRange(page);
+                    }
+                    replace = false;
                     PublishMerged(read);
                 }
+                count += page.Count;
                 if (page.Count < size) break;
             }
         }
         catch (Exception ex)
         {
+            failure = MediaServerConnectResult.FromTransportException(ex);
             DebugLog.WriteOnce("Server", $"albums:{connection.Id:N}:{ex.GetBaseException().GetType().Name}",
                 $"Server album list failed ({DisplayName(connection)}): {ex.Message}");
         }
+        lock (_albumsGate)
+            if (!ReferenceEquals(_allAlbums, read)) return; // a newer read (or other servers) took over
+        SetFailure(read.Generation, connection, failure);
+    }
+
+    public async Task<IReadOnlyList<ServerAlbum>> RetryServerAsync(Guid connectionId, CancellationToken ct = default)
+    {
+        if (_connections.Count <= 1) return await GetAlbumsAsync(0, FirstListPageSize, ct).ConfigureAwait(false);
+        var read = CurrentAlbumRead();
+        var index = -1;
+        for (var i = 0; i < read.Connections.Count; i++)
+            if (read.Connections[i].Id == connectionId) index = i;
+        if (index < 0) return await read.Task.WaitAsync(ct).ConfigureAwait(false);
+
+        Task serverTask;
+        bool afterDone;
+        lock (read.Gate)
+        {
+            if (read.ServerTasks[index] is not { IsCompleted: true })
+            {
+                // Still being read (a new read just started, or its first try is under way).
+                serverTask = read.ServerTasks[index] ?? read.Task;
+                afterDone = false;
+            }
+            else
+            {
+                var connection = read.Connections[index];
+                serverTask = Task.Run(() => ReadServerAlbumsAsync(connection, index, read, replace: true));
+                read.ServerTasks[index] = serverTask;
+                afterDone = read.Done;
+            }
+        }
+        await serverTask.WaitAsync(ct).ConfigureAwait(false);
+        if (!afterDone)
+        {
+            // The read is still going: its listeners get the albums; the final list will have them.
+            lock (read.Gate) return read.Snapshot;
+        }
+        // The read had finished: the cached list becomes the one with this server's albums.
+        var merged = PublishMerged(read);
+        lock (_albumsGate)
+            if (ReferenceEquals(_allAlbums, read))
+                lock (read.Gate) read.Task = Task.FromResult(merged);
+        return merged;
     }
 
     /// <summary>
@@ -466,6 +615,20 @@ public sealed class MediaServerService : IMediaServerService
         return someCopySilent ? (null, null) : (0, null);
     }
 
+    /// <summary>
+    /// The server's plays (<see cref="CombinedPlayInfo"/>) plus the plays Noctis logged for the
+    /// album's songs. Noctis never reports its plays to these servers (no scrobble, no Jellyfin
+    /// playback reporting; streams are plain downloads), so the two never count one play twice.
+    /// An album the server says nothing about becomes played, with the date of the last Noctis play.
+    /// </summary>
+    internal static (int? PlayCount, DateTimeOffset? LastPlayed) WithNoctisPlays(
+        (int? PlayCount, DateTimeOffset? LastPlayed) server, (int Count, DateTimeOffset? Last) noctis)
+    {
+        if (noctis.Count <= 0) return server;
+        var last = server.LastPlayed is { } s && (noctis.Last is null || s > noctis.Last) ? s : noctis.Last;
+        return ((server.PlayCount ?? 0) + noctis.Count, last);
+    }
+
     public async Task<IReadOnlyList<Track>> GetAlbumTracksAsync(ServerAlbum album, CancellationToken ct = default)
     {
         // The album's own server first, then the servers that also have it.
@@ -476,6 +639,9 @@ public sealed class MediaServerService : IMediaServerService
 
             var tracks = await client.GetAlbumTracksAsync(connection, candidate, ct);
             if (tracks.Count == 0) continue;
+
+            // The album the songs were listed under: their plays count for it (Album Roulette).
+            foreach (var track in tracks) track.SourceAlbumId = candidate.Id;
 
             // Materialize art once per distinct AlbumId the mapped tracks actually carry
             // (usually one; can differ from the listing when server tags disagree).

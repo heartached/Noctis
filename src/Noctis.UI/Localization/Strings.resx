@@ -4350,6 +4350,10 @@ Create a playlist named "{0}" with these tracks?</value><comment>Drag-and-drop i
   <data name="Lyrics.TrySource" xml:space="preserve"><value>Try {0}</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>No albums yet. The music library on this server is empty — or it couldn't be reached.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>Couldn't load this album from the server.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} didn't answer.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} didn't accept the sign-in.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} answered with an error.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>Retry</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>Stamping is off while the music video's audio plays — turn off Music video audio and restart the song</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Nothing to save — stamp at least one line</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Saved · couldn't write the lyrics into the audio file (in use or read-only?)</value><comment>Sync lyrics (LRC editor) status</comment></data>

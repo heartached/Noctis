@@ -546,6 +546,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Plugins.FfmpegPathSource = () => App.Services?.GetService<IAudioConverterService>()?.GetFfmpegPath();
         // API 1.9: plugins (Album Roulette) read and play the media servers' albums (GitHub #268).
         Plugins.MediaServer = mediaServer;
+        Plugins.PlayHistorySource = () => _playHistory.Events;
         Plugins.AlbumOpener = albumId =>
         {
             if (_library.GetAlbumById(albumId) is not { } album) return false;

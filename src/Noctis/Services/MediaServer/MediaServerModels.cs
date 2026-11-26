@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net.Http;
 using System.Text.Json;
 using Noctis.Localization;
+using Noctis.Models;
 
 namespace Noctis.Services.MediaServer;
 
@@ -54,6 +55,68 @@ public sealed class ServerAlbum
 
     /// <summary>Stable id across servers: "&lt;connection id&gt;:&lt;server album id&gt;".</summary>
     public string Key => $"{ConnectionId:N}:{Id}";
+}
+
+/// <summary>
+/// Plays Noctis logged for media-server songs, by album (GitHub #268): the play log keeps a
+/// server song's album (<see cref="PlayHistoryEvent.ServerAlbumKey"/>), so Album Roulette's
+/// "Never played" and "Not played in 6 months" see plays made in Noctis, not only the server's.
+/// </summary>
+public sealed class NoctisAlbumPlays
+{
+    private readonly Dictionary<string, (int Count, DateTimeOffset Last)> _byKey = new(StringComparer.Ordinal);
+    private readonly Dictionary<Guid, (int Count, DateTimeOffset Last)> _byIdentity = new();
+
+    public static readonly NoctisAlbumPlays None = new();
+
+    /// <summary>
+    /// Indexes <paramref name="events"/> for <paramref name="albums"/> (the merged list). A play
+    /// whose album key is in the list counts for that album (and the album it is an alternate
+    /// of); one without a key, or whose album id the server no longer lists, counts for the
+    /// album with the same album artist and title.
+    /// </summary>
+    public static NoctisAlbumPlays Build(IEnumerable<PlayHistoryEvent>? events, IReadOnlyList<ServerAlbum> albums)
+    {
+        var result = new NoctisAlbumPlays();
+        if (events == null) return result;
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var album in albums)
+        {
+            keys.Add(album.Key);
+            foreach (var alternate in album.Alternates) keys.Add(alternate.Key);
+        }
+        foreach (var e in events)
+        {
+            if (e.ServerAlbumKey == null && e.ServerAlbumIdentity == null) continue;
+            var played = new DateTimeOffset(DateTime.SpecifyKind(e.PlayedAtUtc, DateTimeKind.Utc));
+            if (e.ServerAlbumKey is { } key && keys.Contains(key)) Add(result._byKey, key, played);
+            else if (e.ServerAlbumIdentity is { } identity && identity != Track.UnknownAlbumBucketId) Add(result._byIdentity, identity, played);
+        }
+        return result;
+    }
+
+    private static void Add<TKey>(Dictionary<TKey, (int Count, DateTimeOffset Last)> map, TKey key, DateTimeOffset played) where TKey : notnull
+    {
+        map[key] = map.TryGetValue(key, out var seen)
+            ? (seen.Count + 1, played > seen.Last ? played : seen.Last)
+            : (1, played);
+    }
+
+    /// <summary>How many times Noctis played the album's songs (any of its servers' copies), and when last.</summary>
+    public (int Count, DateTimeOffset? Last) For(ServerAlbum album)
+    {
+        var count = 0;
+        DateTimeOffset? last = null;
+        void Take((int Count, DateTimeOffset Last) plays)
+        {
+            count += plays.Count;
+            if (last is null || plays.Last > last) last = plays.Last;
+        }
+        foreach (var copy in album.Alternates.Prepend(album))
+            if (_byKey.TryGetValue(copy.Key, out var plays)) Take(plays);
+        if (_byIdentity.TryGetValue(MediaServerService.AlbumIdentity(album), out var byIdentity)) Take(byIdentity);
+        return (count, last);
+    }
 }
 
 /// <summary>Categorised outcome of a connect/test attempt, for the Settings status line.</summary>
@@ -111,6 +174,16 @@ public sealed class MediaServerConnectResult
         return Fail(MediaServerError.Unreachable, message);
     }
 }
+
+/// <summary>A page of a server's album list, or why it could not be read (<see cref="Error"/> non-null).</summary>
+public sealed record ServerAlbumPage(IReadOnlyList<ServerAlbum> Albums, MediaServerConnectResult? Error = null);
+
+/// <summary>
+/// A server whose album list could not be read (GitHub #268): the Server section names it with
+/// a Retry while the other servers' albums keep showing. <see cref="Message"/> is the detail
+/// the Settings status line would show (no response, HTTP 500, wrong login).
+/// </summary>
+public sealed record ServerFailure(Guid ConnectionId, string ServerName, MediaServerError Error, string Message);
 
 /// <summary>Server-side search hits, split by kind.</summary>
 public sealed class ServerSearchResult

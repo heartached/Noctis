@@ -4350,6 +4350,10 @@ Deezer и TIDAL: вставьте ссылку.</value></data>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>Попробовать {0}</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>Альбомов пока нет. Медиатека на этом сервере пуста — или к ней не удалось подключиться.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>Не удалось загрузить этот альбом с сервера.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} не ответил.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} не принял вход.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} ответил ошибкой.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>Повторить</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>Метки недоступны, пока играет звук клипа — выключите звук клипа и перезапустите песню</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Нечего сохранять — поставьте метку хотя бы на одну строку</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Сохранено · не удалось записать текст в аудиофайл (используется или только для чтения?)</value><comment>Sync lyrics (LRC editor) status</comment></data>

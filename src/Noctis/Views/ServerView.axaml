@@ -25,10 +25,30 @@
 
         <!-- ── Albums grid ── -->
         <Grid IsVisible="{Binding ShowAlbumGrid}" RowDefinitions="Auto,*">
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" Margin="10,2,0,10">
-                <TextBlock Text="{Binding ServerLabel}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
-                <TextBlock Text="{loc:T Server.Loading}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"
-                           IsVisible="{Binding IsLoading}"/>
+            <StackPanel Grid.Row="0" Margin="10,2,0,10" Spacing="2">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock Text="{Binding ServerLabel}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"/>
+                    <TextBlock Text="{loc:T Server.Loading}" FontSize="12" Opacity="0.5" VerticalAlignment="Center"
+                               IsVisible="{Binding IsLoading}"/>
+                </StackPanel>
+                <!-- A server that did not answer (GitHub #268): named, with a Retry; the others' albums still show. -->
+                <ItemsControl ItemsSource="{Binding ServerFailures}" IsVisible="{Binding HasServerFailures}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ServerFailureItem">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="{Binding Text}" ToolTip.Tip="{Binding Detail}"
+                                           FontSize="12" Opacity="0.7" VerticalAlignment="Center"/>
+                                <Button Content="{loc:T Server.RetryServer}"
+                                        Command="{Binding $parent[UserControl].((vm:ServerViewModel)DataContext).RetryServerCommand}"
+                                        CommandParameter="{Binding}"
+                                        IsEnabled="{Binding !IsRetrying}"
+                                        Background="Transparent" BorderThickness="0" Padding="4,0"
+                                        FontSize="12" Cursor="Hand" VerticalAlignment="Center"
+                                        Foreground="{DynamicResource AccentTextBrush}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
 
             <!-- Outer ListBox virtualizes rows, inner UniformGrid lays out 5 tiles per

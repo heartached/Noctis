@@ -4394,6 +4394,10 @@ Bu parçalarla "{0}" adlı bir çalma listesi oluşturulsun mu?</value><comment>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>{0} kaynağını dene</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>Henüz albüm yok. Bu sunucudaki müzik kitaplığı boş — ya da ona ulaşılamadı.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>Bu albüm sunucudan yüklenemedi.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0} yanıt vermedi.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0} oturum açmayı kabul etmedi.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0} bir hatayla yanıt verdi.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>Yeniden dene</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>Müzik videosunun sesi çalarken zaman damgası kapalı — müzik videosu sesini kapat ve şarkıyı yeniden başlat</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>Kaydedilecek bir şey yok — en az bir satıra zaman damgası koy</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>Kaydedildi · sözler ses dosyasına yazılamadı (kullanımda veya salt okunur mu?)</value><comment>Sync lyrics (LRC editor) status</comment></data>

@@ -9339,6 +9339,10 @@ Deezer 및 TIDAL: 링크를 붙여넣으세요.</value></data>
   <data name="Lyrics.TrySource" xml:space="preserve"><value>{0} 시도</value><comment>Lyrics page</comment></data>
   <data name="Server.NoAlbums" xml:space="preserve"><value>아직 앨범이 없습니다. 이 서버의 음악 라이브러리가 비어 있거나 연결할 수 없습니다.</value><comment>Server page</comment></data>
   <data name="Server.AlbumLoadFailed" xml:space="preserve"><value>서버에서 이 앨범을 불러올 수 없습니다.</value><comment>Server page</comment></data>
+  <data name="Server.ServerNoAnswer" xml:space="preserve"><value>{0}이(가) 응답하지 않았습니다.</value><comment>Server page, under "Connected to …": a server timed out or could not be reached. {0} = server name</comment></data>
+  <data name="Server.ServerSignInFailed" xml:space="preserve"><value>{0}에서 로그인을 거부했습니다.</value><comment>Server page, under "Connected to …": a server rejected the login. {0} = server name</comment></data>
+  <data name="Server.ServerFailed" xml:space="preserve"><value>{0}에서 오류를 반환했습니다.</value><comment>Server page, under "Connected to …": a server answered with an HTTP/protocol error. {0} = server name</comment></data>
+  <data name="Server.RetryServer" xml:space="preserve"><value>다시 시도</value><comment>Server page: button beside a server that did not answer; asks only that server again</comment></data>
   <data name="LrcEditor.StampingOffVideoAudio" xml:space="preserve"><value>뮤직비디오 오디오가 재생되는 동안에는 타임스탬프를 찍을 수 없습니다. 뮤직비디오 오디오를 끄고 노래를 다시 시작하세요</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.NothingToSave" xml:space="preserve"><value>저장할 내용이 없습니다. 최소 한 줄에 타임스탬프를 찍으세요</value><comment>Sync lyrics (LRC editor) status</comment></data>
   <data name="LrcEditor.SavedEmbedFailed" xml:space="preserve"><value>저장됨 · 오디오 파일에 가사를 쓸 수 없습니다(사용 중이거나 읽기 전용?)</value><comment>Sync lyrics (LRC editor) status</comment></data>

@@ -26,6 +26,13 @@ public interface IMediaServerClient
     /// <summary>Alphabetical page of albums. Empty list when the window is past the end.</summary>
     Task<IReadOnlyList<ServerAlbum>> GetAlbumsAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default);
 
+    /// <summary>
+    /// <see cref="GetAlbumsAsync"/>, but a page that could not be read says why (timeout, HTTP
+    /// error, rejected login) instead of looking like the end of the list.
+    /// </summary>
+    async Task<ServerAlbumPage> GetAlbumPageAsync(SourceConnection connection, int offset, int limit, CancellationToken ct = default)
+        => new(await GetAlbumsAsync(connection, offset, limit, ct));
+
     /// <summary>Tracks of one album, in disc/track order, mapped to playable <see cref="Track"/>s.</summary>
     Task<IReadOnlyList<Track>> GetAlbumTracksAsync(SourceConnection connection, ServerAlbum album, CancellationToken ct = default);
 
