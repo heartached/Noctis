@@ -1365,7 +1365,7 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>シャッフルをオンのままにする</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>シャッフルがオンのとき、アルバム、プレイリスト、曲を再生してもオンのままで、新しい音楽をシャッフルします。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>無音をスキップ</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>各曲を最初の音から再生し、最後の音のあとで次の曲に進みます。ファイルは変更されず、曲に設定した開始・停止時間が優先されます。</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>曲の最初と最後の無音をスキップします。ファイルは変更されません。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>無音レベル</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>これより小さい音は無音とみなします。低くすると静かなフェードアウトを残し、高くするとノイズなども多くカットします。</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>{0}から再生中</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -7641,6 +7641,14 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
     <value>リセット</value>
     <comment>Settings section label</comment>
   </data>
+  <data name="Settings.Section.Versions" xml:space="preserve">
+    <value>バージョン</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment>
+  </data>
+  <data name="Settings.Section.Logs" xml:space="preserve">
+    <value>ログ</value>
+    <comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment>
+  </data>
   <data name="Settings.Section.YourAccount" xml:space="preserve">
     <value>あなたのアカウント</value>
     <comment>Settings section label</comment>
@@ -7910,8 +7918,8 @@ Deezer と TIDAL: リンクを貼り付けます。</value></data>
   </data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>ほかのコンピューター</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>別のコンピューターと同期</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>お気に入り、評価、再生回数、プレイリストを2台のコンピューターで同じ状態に保ちます。音楽ファイルはそれぞれのコンピューターに置いたままで、曲はタイトル、アーティスト、長さで照合されます。</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>別のコンピューターで「{0}」と「{1}」をオンにし、{2} › {3} を開きます。そこに表示されるアドレスとアカウントをここに入力してください。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>お気に入り、評価、再生回数、プレイリストを両方のコンピューターで同じに保ちます。音楽ファイルは別々のままです。</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>別のコンピューターで「{0}」と「{1}」をオンにし、{2} › {3} に表示されるアドレスとアカウントをここに入力します。</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>別のコンピューターに表示されたアドレス</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>メールアドレスまたはユーザー名</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>パスワード</value><comment>Password box watermark</comment></data>

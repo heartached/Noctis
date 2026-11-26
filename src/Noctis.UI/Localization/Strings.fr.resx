@@ -527,7 +527,7 @@ Deezer et TIDAL : collez le lien.</value></data>
   <data name="Settings.KeepShuffleOn" xml:space="preserve"><value>Garder la lecture aléatoire</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.KeepShuffleOnHint" xml:space="preserve"><value>Quand la lecture aléatoire est activée, elle le reste en lançant un album, une playlist ou un titre, et mélange la nouvelle musique.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SkipSilence" xml:space="preserve"><value>Ignorer les silences</value><comment>Text in SettingsView.axaml</comment></data>
-  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Commence chaque titre à son premier son et passe au suivant après le dernier. Vos fichiers ne sont pas modifiés, et les temps de début ou de fin définis pour un titre restent prioritaires.</value><comment>Text in SettingsView.axaml</comment></data>
+  <data name="Settings.SkipSilenceHint" xml:space="preserve"><value>Ignore le silence au début et à la fin des titres. Vos fichiers ne sont pas modifiés.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevel" xml:space="preserve"><value>Niveau de silence</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="Settings.SilenceLevelHint" xml:space="preserve"><value>Tout ce qui est plus faible compte comme du silence. Plus bas garde les fondus discrets ; plus haut coupe davantage, comme le souffle.</value><comment>Text in SettingsView.axaml</comment></data>
   <data name="PlaybackBar.PlayingFrom" xml:space="preserve"><value>Lecture depuis {0}</value><comment>Queue drawer link and island title tooltip (Discord 11-24). {0} = album, playlist, artist or page name</comment></data>
@@ -3065,6 +3065,8 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Settings.Section.AudioTools" xml:space="preserve"><value>Programmes d'aide</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Updates" xml:space="preserve"><value>Mises à jour et développeur</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Reset" xml:space="preserve"><value>Réinitialisation</value><comment>Settings section label</comment></data>
+  <data name="Settings.Section.Versions" xml:space="preserve"><value>Versions</value><comment>Settings section label (Advanced tab, Developer Mode: the version list)</comment></data>
+  <data name="Settings.Section.Logs" xml:space="preserve"><value>Journaux</value><comment>Settings section label (Advanced tab, Developer Mode: the session log)</comment></data>
   <data name="Settings.Section.YourAccount" xml:space="preserve"><value>Votre compte</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.Sync" xml:space="preserve"><value>Synchronisation</value><comment>Settings section label</comment></data>
   <data name="Settings.Section.OtherAccounts" xml:space="preserve"><value>Autres comptes</value><comment>Settings section label</comment></data>
@@ -3135,8 +3137,8 @@ Les lignes et leur minutage sont supprimés et une zone de paroles vide s'ouvre 
   <data name="Phone.Description" xml:space="preserve"><value>Écoutez et téléchargez cette bibliothèque sur votre téléphone.</value><comment>Phone app card subtitle</comment></data>
   <data name="Settings.Section.OtherComputers" xml:space="preserve"><value>Autres ordinateurs</value><comment>Settings section label, Account &amp; Devices tab</comment></data>
   <data name="PcSync.Title" xml:space="preserve"><value>Synchroniser avec un autre ordinateur</value><comment>Sync with another computer card title</comment></data>
-  <data name="PcSync.Description" xml:space="preserve"><value>Favoris, notes, nombres d'écoutes et playlists restent identiques sur deux ordinateurs. Chacun garde ses propres fichiers ; les morceaux sont associés par titre, artiste et durée.</value><comment>Sync with another computer card subtitle</comment></data>
-  <data name="PcSync.Help" xml:space="preserve"><value>Sur l'autre ordinateur, activez « {0} » et « {1} », puis ouvrez {2} › {3}. Saisissez ici son adresse et votre compte.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
+  <data name="PcSync.Description" xml:space="preserve"><value>Garde les mêmes favoris, notes, nombres d'écoutes et playlists sur les deux ordinateurs. Les fichiers musicaux restent séparés.</value><comment>Sync with another computer card subtitle</comment></data>
+  <data name="PcSync.Help" xml:space="preserve"><value>Sur l'autre ordinateur, activez « {0} » et « {1} », puis saisissez ici l'adresse affichée dans {2} › {3} et votre compte.</value><comment>Sync with another computer, where to start on the other computer; {0} = the phone card title, {1} = the phone sync switch title, {2} = Connect a phone, {3} = Enter manually (filled from those strings)</comment></data>
   <data name="PcSync.Address" xml:space="preserve"><value>Adresse affichée sur l'autre ordinateur</value><comment>Address box watermark</comment></data>
   <data name="PcSync.User" xml:space="preserve"><value>E-mail ou nom d'utilisateur</value><comment>Email or username box watermark</comment></data>
   <data name="PcSync.Password" xml:space="preserve"><value>Mot de passe</value><comment>Password box watermark</comment></data>
