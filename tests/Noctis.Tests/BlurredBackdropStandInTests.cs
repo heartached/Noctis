@@ -367,6 +367,81 @@ public class BlurredBackdropStandInTests : IDisposable
         finally { Close(s.Scrim); s.Win.Close(); }
     }
 
+    /// <summary>Owner 11-26: switching Liquid Glass on from the open sheet flickered: the blur
+    /// dropped to the sharp app under the full dim until the snapshot landed. Now the stand-in
+    /// keeps the blur up (the app never shown) until the snapshot replaces it in one pass.</summary>
+    [AvaloniaFact]
+    public void LiquidGlassOnFromTheSheet_TheBlurStaysUp_UntilTheSnapshotTakesOver()
+    {
+        var s = Build();
+        try
+        {
+            Open(s.Scrim);
+            Assert.True(PumpUntil(() => s.Scrim.IsStandingIn, 1000), "no stand-in");
+            var dim = s.Scrim.BlurDimOpacity;
+
+            AppGlass.Set(true, Colors.Black, Colors.Black);
+            var sw = Stopwatch.StartNew();
+            while (!s.Scrim.IsOpaqueCover && sw.ElapsedMilliseconds < 3000)
+            {
+                Assert.True(s.Scrim.IsTargetHostHidden, "the app showed through during the switch");
+                Assert.Null(s.Layer.Effect);
+                Assert.Equal(dim, s.Scrim.DimLayer.Opacity, 3);
+                Dispatcher.UIThread.RunJobs();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Thread.Sleep(5);
+            }
+            Assert.True(s.Scrim.IsOpaqueCover, "the snapshot never took over");
+            Assert.False(s.Scrim.IsLive);
+            Assert.False(s.Scrim.IsStandingIn);
+            Assert.Equal(1, s.Scrim.SnapshotImage.Opacity, 3);
+            Assert.Equal(dim, s.Scrim.DimLayer.Opacity, 3);
+            Assert.Equal(1, s.Scrim.CaptureCount);
+        }
+        finally { Close(s.Scrim); s.Win.Close(); }
+    }
+
+    /// <summary>Owner 11-26, the other way: the dim jumped to full and faded back down. Now the
+    /// glass-look snapshot fades out over the live blur with the dim left alone, and the stand-in
+    /// takes over only once that fade is done.</summary>
+    [AvaloniaFact]
+    public void LiquidGlassOffFromTheSheet_TheSnapshotFadesOut_OverTheLiveBlur_NoDimPulse()
+    {
+        AppGlass.Set(true, Colors.Black, Colors.Black);
+        var s = Build();
+        try
+        {
+            Open(s.Scrim);
+            Assert.True(PumpUntil(() => s.Scrim.IsOpaqueCover, 3000));
+            var dim = s.Scrim.BlurDimOpacity;
+
+            AppGlass.Clear();
+            Assert.True(s.Scrim.IsLive);
+            Assert.False(s.Scrim.HasSnapshot);
+            Assert.NotNull(s.Layer.Effect);
+            Assert.NotNull(s.Scrim.SnapshotImage.Source); // still on screen, fading out
+            Assert.False(s.Scrim.IsTargetHostHidden);
+
+            var sw = Stopwatch.StartNew();
+            var sawFadeStep = false;
+            while (s.Scrim.SnapshotImage.Source != null && sw.ElapsedMilliseconds < 2000)
+            {
+                Assert.Equal(dim, s.Scrim.DimLayer.Opacity, 3);
+                Assert.False(s.Scrim.IsStandingIn, "the stand-in covered the fade");
+                var o = s.Scrim.SnapshotImage.Opacity;
+                if (o > 0.05 && o < 0.95) sawFadeStep = true;
+                Dispatcher.UIThread.RunJobs();
+                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+                Thread.Sleep(5);
+            }
+            Assert.True(sawFadeStep, "the snapshot snapped away instead of fading");
+            Assert.Null(s.Scrim.SnapshotImage.Source);
+            Assert.True(PumpUntil(() => s.Scrim.IsStandingIn, 1000), "no stand-in after the fade");
+            Assert.Equal(dim, s.Scrim.DimLayer.Opacity, 3);
+        }
+        finally { Close(s.Scrim); s.Win.Close(); }
+    }
+
     /// <summary>The stand-in must look like the live blur: same brightness and tint, no seams at
     /// the bands, no edge change, at the default and the strongest blur, at 100/125/150%.</summary>
     [AvaloniaTheory]

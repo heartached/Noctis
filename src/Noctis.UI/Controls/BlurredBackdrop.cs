@@ -59,6 +59,10 @@ public class BlurredBackdrop : Panel
     /// already showing (the Settings reopen from Statistics shows the dim at once).</summary>
     private static readonly TimeSpan CrossfadeDuration = TimeSpan.FromMilliseconds(140);
 
+    /// <summary>Liquid Glass switched off from the open sheet: the glass-look snapshot fades out
+    /// over the live blur of the new look (<see cref="OnAppGlassChanged"/>).</summary>
+    internal static readonly TimeSpan ModeSwitchDuration = TimeSpan.FromMilliseconds(220);
+
     public static readonly StyledProperty<IBrush?> DimProperty =
         AvaloniaProperty.Register<BlurredBackdrop, IBrush?>(nameof(Dim), new ImmutableSolidColorBrush(Color.FromArgb(0xA6, 0, 0, 0)));
 
@@ -131,6 +135,12 @@ public class BlurredBackdrop : Panel
     private readonly Border _dim;
     private readonly Transitions _imageFade;
     private readonly Transitions _dimFade;
+    private readonly Transitions _modeSwitchFade;
+    /// <summary>The glass-look snapshot is fading out over the live blur (glass switched off
+    /// from the sheet); the stand-in waits for it, as it would cover the fade.</summary>
+    private bool _handingOff;
+    /// <summary>Bumped by every switch to glass while live: only the latest hand-over completes.</summary>
+    private int _handOverStamp;
     private WriteableBitmap? _snapshot;
     /// <summary>The unblurred snapshot behind <see cref="_snapshot"/>, kept while it is up so
     /// the Background Blur slider re-blurs it live instead of taking a new snapshot per step.</summary>
@@ -215,6 +225,7 @@ public class BlurredBackdrop : Panel
 
         _imageFade = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = CrossfadeDuration, Easing = new CubicEaseOut() } };
         _dimFade = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = CrossfadeDuration, Easing = new CubicEaseOut() } };
+        _modeSwitchFade = new Transitions { new DoubleTransition { Property = OpacityProperty, Duration = ModeSwitchDuration, Easing = new CubicEaseOut() } };
     }
 
     /// <summary>The blurred snapshot currently shown, if any.</summary>
@@ -435,6 +446,8 @@ public class BlurredBackdrop : Panel
         _source = null;
         _reblurBuffer = null;
         _blurHidden = false;
+        _handingOff = false;
+        _handOverStamp++;
         SetLayers(imageOpacity: 0, dimOpacity: 1, animate: false);
     }
 
@@ -715,7 +728,7 @@ public class BlurredBackdrop : Panel
     /// open and close fades run on the live blur as before.
     /// </summary>
     private bool CanStandIn =>
-        _live && !_blurHidden && LiveEffectRadius > 0 && Opacity >= 1 && IsEffectivelyVisible
+        _live && !_blurHidden && !_handingOff && LiveEffectRadius > 0 && Opacity >= 1 && IsEffectivelyVisible
         && Target is not null && TargetHost is not null;
 
     private void UpdateStandIn()
@@ -1020,6 +1033,13 @@ public class BlurredBackdrop : Panel
     /// Liquid Glass switched from the open sheet: change mode in place. On: the live blur
     /// gives way to a snapshot (the plain dim until it lands, as at an open), taken once the
     /// glass look has rendered. Off: the snapshot is freed and the live blur takes over.
+    ///
+    /// Owner 11-26 "a weird flicker" on the switch: on, the blur dropped at once to the sharp app
+    /// under the full dim until the snapshot landed, then faded back; off, the dim jumped to full
+    /// and faded back down (Release's plain dim, then the live layers' lighter one). Now, standing
+    /// in (the usual state with the sheet up), on keeps the stand-in's blur up, retaken with the
+    /// glass look, until the snapshot replaces it in place; off fades the glass-look snapshot out
+    /// over the live blur of the new look (<see cref="ModeSwitchDuration"/>), the dim unchanged.
     /// </summary>
     private void OnAppGlassChanged(object? sender, EventArgs e)
     {
@@ -1027,16 +1047,91 @@ public class BlurredBackdrop : Panel
         if (WantsLive == _live) return;
         if (_live)
         {
+            // Standing in, Target is already rendered on its own without its effect, so the
+            // snapshot can be taken from it while the stand-in still shows the blur.
+            if (_standingIn)
+            {
+                LayoutBands(); // a sheet gone glass leaves no opaque hole: the bands cover it all
+                RequestRetake();
+                _ = HandOverToSnapshotAsync(_epoch, ++_handOverStamp);
+                return;
+            }
             StopLive();
             _blurHidden = false;
             SetLayers(imageOpacity: 0, dimOpacity: 1, animate: false);
             _ = CaptureAfterRenderAsync(_epoch);
         }
+        else if (_snapshot is { } old && ReferenceEquals(_image.Source, old) && _image.Opacity > 0
+                 && IsEffectivelyVisible && Opacity > 0)
+            FadeSnapshotIntoLive(old);
         else
         {
             Release();
             StartLive();
         }
+    }
+
+    /// <summary>Glass on while standing in: once the glass look has rendered, the snapshot is
+    /// taken (under the stand-in, which covers the whole layer meanwhile) and then shown at full
+    /// strength as the stand-in goes, in one pass, so no frame shows the app unblurred.</summary>
+    private async Task HandOverToSnapshotAsync(int epoch, int stamp)
+    {
+        await Dispatcher.UIThread.InvokeAsync(static () => { }, DispatcherPriority.Background);
+        if (!Current()) return;
+        var shown = await CaptureAsync();
+        if (!Current())
+        {
+            // Glass went off again meanwhile: live stays, the snapshot it no longer needs goes.
+            if (shown && epoch == _epoch && _live && WantsLive && _snapshot is { } stale)
+            {
+                _image.Source = null;
+                _snapshot = null;
+                _source = null;
+                stale.Dispose();
+                SetLiveLayers(animate: false);
+            }
+            return;
+        }
+        StopLive();
+        _blurHidden = false;
+        if (shown && _snapshot != null)
+            SetLayers(imageOpacity: 1, dimOpacity: Math.Clamp(BlurDimOpacity, 0, 1), animate: false);
+        else
+            SetLayers(imageOpacity: 0, dimOpacity: 1, animate: true);
+
+        bool Current() => epoch == _epoch && stamp == _handOverStamp && _live && !WantsLive && IsVisible;
+    }
+
+    /// <summary>Glass off with the snapshot up: live mode starts under it (Target blurred in
+    /// place, the dim already the live one's), and the snapshot fades out over it, then is freed
+    /// and the stand-in may take over. As <see cref="Release"/>, but the snapshot stays on screen.</summary>
+    private void FadeSnapshotIntoLive(WriteableBitmap old)
+    {
+        _epoch++;
+        _capture = null;
+        _refreshStamp++;
+        _refreshPending = false;
+        _snapshot = null;
+        _source = null;
+        _reblurBuffer = null;
+        _fadingOut.Source = null;
+        _fadingBitmap?.Dispose();
+        _fadingBitmap = old;
+        _blurHidden = false;
+        _handingOff = true;
+        StartLive(); // SetLayers fades the image out over ModeSwitchDuration while _handingOff
+        _ = FinishHandOffAsync(old);
+    }
+
+    private async Task FinishHandOffAsync(Bitmap old)
+    {
+        await Task.Delay(ModeSwitchDuration + TimeSpan.FromMilliseconds(60));
+        if (!ReferenceEquals(_fadingBitmap, old)) return; // released or replaced meanwhile
+        if (ReferenceEquals(_image.Source, old)) _image.Source = null;
+        _fadingBitmap = null;
+        old.Dispose();
+        _handingOff = false;
+        UpdateStandIn();
     }
 
     private async Task CaptureAfterRenderAsync(int epoch)
@@ -1047,7 +1142,7 @@ public class BlurredBackdrop : Panel
 
     private void SetLayers(double imageOpacity, double dimOpacity, bool animate)
     {
-        _image.Transitions = animate ? _imageFade : null;
+        _image.Transitions = animate ? (_handingOff ? _modeSwitchFade : _imageFade) : null;
         _dim.Transitions = animate ? _dimFade : null;
         _image.Opacity = imageOpacity;
         _dim.Opacity = dimOpacity;
